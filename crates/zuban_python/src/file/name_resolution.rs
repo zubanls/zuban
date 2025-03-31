@@ -118,6 +118,23 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         }
     }
 
+    #[inline]
+    pub(super) fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
+        let point = self.file.points.get(star_import.star_node);
+        if point.calculated() {
+            return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
+                None
+            } else {
+                Some(self.i_s.db.loaded_python_file(point.file_index()))
+            };
+        }
+        let import_from =
+            NodeRef::new(self.file, star_import.import_from_node).expect_import_from();
+        self.assign_import_from_names(import_from, |_, _, _| unreachable!("Has no name_def"));
+        debug_assert!(self.file.points.get(star_import.star_node).calculated());
+        self.star_import_file(star_import)
+    }
+
     pub(super) fn assign_import_from_names(
         &self,
         imp: ImportFrom,
@@ -1012,7 +1029,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             // TODO we might want to add an issue in the future (not high-prio however)
             return None;
         }
-        let other_file = star_import.to_file(self)?;
+        let other_file = self.star_import_file(star_import)?;
         if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
             // Name not in __all__
             if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {

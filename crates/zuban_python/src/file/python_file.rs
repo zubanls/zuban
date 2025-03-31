@@ -217,22 +217,6 @@ pub(crate) struct StarImport {
 }
 
 impl StarImport {
-    #[inline]
-    pub(super) fn to_file<'db>(&self, nr: &NameResolution<'db, '_, '_>) -> Option<&'db PythonFile> {
-        let point = nr.file.points.get(self.star_node);
-        if point.calculated() {
-            return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
-                None
-            } else {
-                Some(nr.i_s.db.loaded_python_file(point.file_index()))
-            };
-        }
-        let import_from = NodeRef::new(nr.file, self.import_from_node).expect_import_from();
-        nr.assign_import_from_names(import_from, |_, _, _| unreachable!("Has no name_def"));
-        debug_assert!(nr.file.points.get(self.star_node).calculated());
-        self.to_file(nr)
-    }
-
     pub fn in_module_scope(&self) -> bool {
         self.scope == 0
     }
@@ -769,8 +753,9 @@ impl<'db> PythonFile {
                 .is_func_or_overload()
         }) || self.star_imports.iter().any(|star_import| {
             star_import.in_module_scope()
-                && star_import
-                    .to_file(&self.name_resolution_for_inference(i_s))
+                && self
+                    .name_resolution_for_types(i_s)
+                    .star_import_file(&star_import)
                     .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }
