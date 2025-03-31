@@ -130,9 +130,28 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         }
         let import_from =
             NodeRef::new(self.file, star_import.import_from_node).expect_import_from();
-        self.assign_import_from_names(import_from, |_, _, _| unreachable!("Has no name_def"));
+        self.assign_star_import(import_from, star_import.star_node);
         debug_assert!(self.file.points.get(star_import.star_node).calculated());
         self.star_import_file(star_import)
+    }
+
+    fn assign_star_import(&self, import_from: ImportFrom, star_index: NodeIndex) {
+        let from_first_part = self.import_from_first_part(import_from);
+        // Nothing to do here, was calculated earlier
+        let point = match from_first_part {
+            Some(ImportResult::File(file_index)) => {
+                Point::new_file_reference(file_index, Locality::Todo)
+            }
+            // Currently we don't support namespace star imports
+            Some(ImportResult::Namespace { .. }) => {
+                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+            }
+            Some(ImportResult::PyTypedMissing) => {
+                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+            }
+            None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
+        };
+        self.file.points.set(star_index, point);
     }
 
     pub(super) fn assign_import_from_names(
@@ -140,27 +159,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         imp: ImportFrom,
         assign_to_name_def: impl Fn(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
-        let from_first_part = self.import_from_first_part(imp);
-
         match imp.unpack_targets() {
-            ImportFromTargets::Star(keyword) => {
-                // Nothing to do here, was calculated earlier
-                let point = match from_first_part {
-                    Some(ImportResult::File(file_index)) => {
-                        Point::new_file_reference(file_index, Locality::Todo)
-                    }
-                    // Currently we don't support namespace star imports
-                    Some(ImportResult::Namespace { .. }) => {
-                        Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
-                    }
-                    Some(ImportResult::PyTypedMissing) => {
-                        Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
-                    }
-                    None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
-                };
-                self.file.points.set(keyword.index(), point);
-            }
+            ImportFromTargets::Star(keyword) => self.assign_star_import(imp, keyword.index()),
             ImportFromTargets::Iterator(as_names) => {
+                let from_first_part = self.import_from_first_part(imp);
                 for as_name in as_names {
                     /*
                     if self
