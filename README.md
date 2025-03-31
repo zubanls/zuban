@@ -30,7 +30,7 @@ Debugging:
 
     gdb -ex r --args <executable> <arguments...>
 
-# Running primer
+## Running primer
 
 Mypy uses mypy-primer to test for changes. We can simply check if we panic on
 some of these projects with:
@@ -43,7 +43,7 @@ Releasing is typically done by GitHub actions, which invokes `deploy/pypi/zuban/
 For a patch release, simply run `./release.sh`, for a minor release `./release.sh minor` (`minor` here comes from `cargo release`).
 
 
-### Profiling
+## Profiling
 
     sudo apt-get install linux-tools-generic
     cargo install flamegraph
@@ -58,7 +58,7 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
     flamegraph -c 'record -F 100 --call-graph dwarf,50000 -g' -- cargo test mypy --release
     firefox flamegraph.svg
 
-### Progress History
+## Progress History
 
 - 2022-09-27:  1170 /  2547 (0.08s -> 14625 tests/s 44b39e90299909bb1672a0a64699c42145efda35)
 - 2023-01-20:  1622 /  2989 (0.13s -> 12476 tests/s 914aede21d716bd80b9a790c213b6d54024b8b79)
@@ -87,7 +87,7 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 - 2025-02-23:  8812 / 10128 (1.25s ->  7050 tests/s b65d5256011792e807562f366168a3d3b7845eaa)
 - 2025-03-23:  8968 / 10369 (1.27s ->  7061 tests/s 4d34f7bc9aaa82ed1b64c54479a29932953a8eb8)
 
-### Unsound?
+## Unsound?
 
 - Chosing `__new__` or `__init__` via heuristic
 - Initializing casting `Type[Class]` to `Type[object]` and then `Type[object]()` is ok?
@@ -113,7 +113,19 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 - Method Overrides param signatures are not type checked if they are not annotated
 
 
-# Mypy: Please change!!
+### Mypy: Please change!!
 
 - Untyped decorated methods are not checked when `--check-untyped-defs`, see also test
   `untyped_override_check_untyped_defs_mypy_compatible`
+
+## Development Introduction
+
+- Test driven, always create a failing test first
+- Working on Parser Trees, see also https://docs.python.org/3/reference/grammar.html and crates/parsa_python
+- Trees are flat in a Vec in Memory
+- Trees and compiler information (`Vec<Point>`) are separate data structures,
+  it's also flat in memory with the same length as the tree.
+- `NodeRef` or `PointLink` is essentially a pointer to both a parser tree
+  terminal/nonterminal and a `Point`
+- Compiler information is either a type (`Type`), a special object (`Specific`) or a redirect
+- There is a concept of incremental compiling with localities
