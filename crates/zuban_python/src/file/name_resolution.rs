@@ -201,9 +201,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                                 )));
                                 return;
                             }
+                            self.file
+                                .points
+                                .set(name_def.index(), Point::new_uncalculated());
                         }
                     }
                 } else {
+                    // Since the point was calculating, we have to reset it here.
+                    // See also comments in cache_import_from_part
                     self.file
                         .points
                         .set(name_def.index(), Point::new_uncalculated());
@@ -247,7 +252,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     #[inline]
     fn is_allowed_to_assign_on_import_without_narrowing(&self, name_def: NameDef) -> bool {
-        self.file
+        !self
+            .file
             .points
             .get(name_def.name_index())
             .needs_flow_analysis()
@@ -358,8 +364,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         if self.file.points.get(n_index).calculated() {
             return;
         }
-        // Set calculating here, so that the logic that follows the names can set a
-        // cycle if it needs to.
+        // Set calculating here, so that the logic that follows the names can set a cycle if it
+        // needs to.  The point has to be set or unset again in assign_to_name_def (e.g. in type
+        // computation when the type can still be wrong because of star imports).
         self.file.points.set(n_index, Point::new_calculating());
         let inf = match from_first_part {
             Some(imp) => {

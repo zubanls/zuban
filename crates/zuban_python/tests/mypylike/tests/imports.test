@@ -413,6 +413,20 @@ from l import *
 [file l.py]
 from m import *
 
+[case star_import_with_module_and_types]
+import x
+y: x.m  # E: Module "m" is not valid as a type  # N: Perhaps you meant to use a protocol matching the module structure?
+reveal_type(x.m)  # N: Revealed type is "def () -> n.m"
+
+[file m.py]
+[file n.py]
+class m: ...
+
+[file x.py]
+from n import *
+import m  # E: Incompatible import of "m" (imported name has type Module, local name has type "Type[m]")
+import m  # E: Incompatible import of "m" (imported name has type Module, local name has type "Type[m]")
+
 [case importing_dunder_file]
 reveal_type(__file__)  # N: Revealed type is "str"
 from m import __file__ as f
