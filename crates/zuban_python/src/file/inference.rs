@@ -3528,7 +3528,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // This is typically a global in the module scope, which is completely useless.
                     let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
                     let inference = node_ref.file.inference(i_s);
-                    inference.calculate_diagnostics();
+                    if let Err(()) = inference.calculate_diagnostics() {
+                        // It feels weird that we add this to the global node.
+                        node_ref.add_issue(
+                            self.i_s,
+                            IssueKind::CannotDetermineType {
+                                for_: node_ref.as_code().into(),
+                            },
+                        );
+                        return Inferred::new_any_from_error();
+                    }
                     return inference.infer_point_resolution(pr);
                 }
                 let index = node_ref.node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
