@@ -85,6 +85,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     ) {
         match dotted_as_name.unpack() {
             DottedAsNameContent::Simple(name_def, rest) => {
+                if self.file.points.get(name_def.index()).calculated() {
+                    // It was already assigned (probably during type computation)
+                    return;
+                }
+
                 let result = self.global_import(name_def.name());
                 let inf = match &result {
                     Some(import_result) => import_result.as_inferred(),
@@ -98,11 +103,12 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
             }
             DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                let result = self.cache_import_dotted_name(dotted_name, None);
-                if cfg!(debug_assertions) {
-                    let p = self.file.points.get(as_name_def.index());
-                    debug_assert!(!p.calculated(), "{p:?}");
+                if self.file.points.get(as_name_def.index()).calculated() {
+                    // It was already assigned (probably during type computation)
+                    return;
                 }
+
+                let result = self.cache_import_dotted_name(dotted_name, None);
                 let inf = match result {
                     Some(import_result) => import_result.as_inferred(),
                     None => Inferred::new_module_not_found(),

@@ -433,3 +433,16 @@ from m import __file__ as f
 reveal_type(f)  # N: Revealed type is "str"
 
 [file m.py]
+
+[case import_at_end]
+x: mm.C
+y: m.C
+
+reveal_type(x)  # N: Revealed type is "m.C"
+reveal_type(y)  # N: Revealed type is "m.C"
+
+import m
+import m as mm
+
+[file m.py]
+class C: ...
