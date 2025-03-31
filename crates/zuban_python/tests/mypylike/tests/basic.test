@@ -1000,3 +1000,12 @@ def f(x):
             def meth(self, x: Nested): ...
             x: Nested
             class Nested: ...
+
+[case global_in_different_module]
+from m import t
+
+reveal_type(t) # N: Revealed type is "Any"
+
+[file m.py]
+global t  # E: Global at module level is unnecessary
+t = 1

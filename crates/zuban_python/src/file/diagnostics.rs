@@ -399,7 +399,18 @@ impl Inference<'_, '_, '_> {
                     self.cache_import_name(import_name);
                 }
                 StmtLikeContent::PassStmt(_) => {}
-                StmtLikeContent::GlobalStmt(_) => {}
+                StmtLikeContent::GlobalStmt(global) => {
+                    if self.i_s.in_module_context() {
+                        // TODO actually use a future assignment to it to determine the type.
+                        for name_def in global.iter_name_defs() {
+                            self.file.points.set(
+                                name_def.index(),
+                                Point::new_specific(Specific::AnyDueToError, Locality::File),
+                            );
+                        }
+                        self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel)
+                    }
+                }
                 StmtLikeContent::NonlocalStmt(_) => {}
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     self.flow_analysis_for_assert(assert_stmt);

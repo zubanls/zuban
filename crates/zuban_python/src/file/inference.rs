@@ -3524,12 +3524,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.infer_param(node_ref.node_index)
             }
             PointResolution::GlobalOrNonlocalName(node_ref) => {
-                debug_assert_eq!(node_ref.file_index(), self.file.file_index());
+                if node_ref.file_index() != self.file.file_index() {
+                    // This is typically a global in the module scope, which is completely useless.
+                    let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
+                    let inference = node_ref.file.inference(i_s);
+                    inference.calculate_diagnostics();
+                    return inference.infer_point_resolution(pr);
+                }
                 let index = node_ref.node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
                     + NAME_DEF_TO_NAME_DIFFERENCE;
                 if node_ref.file.points.get(index).calculated() {
                     self.check_point_cache(index).unwrap()
                 } else {
+                    let p = node_ref.point();
+                    if p.specific() == Specific::AnyDueToError {
+                        return Inferred::new_any_from_error();
+                    }
                     debug_assert_eq!(node_ref.point().specific(), Specific::GlobalVariable);
                     self.with_correct_context(true, |inference| {
                         inference.infer_name_by_str(node_ref.as_code(), index)

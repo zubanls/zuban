@@ -2695,6 +2695,16 @@ impl<'db> DottedAsName<'db> {
     }
 }
 
+impl<'db> GlobalStmt<'db> {
+    pub fn iter_name_defs(&self) -> impl Iterator<Item = NameDef<'db>> {
+        self.node
+            .iter_children()
+            .skip(1)
+            .step_by(2)
+            .map(NameDef::new)
+    }
+}
+
 impl<'db> AssertStmt<'db> {
     pub fn unpack(&self) -> (Expression<'db>, Option<Expression<'db>>) {
         let mut iterator = self.node.iter_children().skip(1);
