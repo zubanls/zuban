@@ -82,7 +82,7 @@ impl ProjectOptions {
         current_dir: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-    ) -> anyhow::Result<Self> {
+    ) -> anyhow::Result<Option<Self>> {
         let options = ParseOption {
             indented_multiline_values: true,
             ..Default::default()
@@ -91,9 +91,11 @@ impl ProjectOptions {
         let mut flags = TypeCheckerFlags::default();
         let mut settings = Settings::default();
         let mut overrides = vec![];
+        let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
             let Some(name) = name else { continue };
             if name == "mypy" {
+                had_relevant_section = true;
                 for (key, value) in section.iter() {
                     apply_from_base_config(
                         vfs,
@@ -106,6 +108,7 @@ impl ProjectOptions {
                     )?;
                 }
             } else if let Some(rest) = name.strip_prefix("mypy-") {
+                had_relevant_section = true;
                 overrides.push(OverrideConfig {
                     module: rest.into(),
                     config: section
@@ -115,11 +118,11 @@ impl ProjectOptions {
                 })
             }
         }
-        Ok(ProjectOptions {
+        Ok(had_relevant_section.then(|| ProjectOptions {
             settings,
             flags,
             overrides,
-        })
+        }))
     }
 
     pub fn from_pyproject_toml(
@@ -127,7 +130,7 @@ impl ProjectOptions {
         current_dir: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-    ) -> anyhow::Result<Self> {
+    ) -> anyhow::Result<Option<Self>> {
         let document = code.parse::<DocumentMut>()?;
         let mut flags = TypeCheckerFlags::default();
         let mut settings = Settings::default();
@@ -176,13 +179,13 @@ impl ProjectOptions {
                     }
                 }
             }
-            Ok(ProjectOptions {
+            Ok(Some(ProjectOptions {
                 settings,
                 flags,
                 overrides,
-            })
+            }))
         } else {
-            Ok(ProjectOptions::default())
+            Ok(None)
         }
     }
 }

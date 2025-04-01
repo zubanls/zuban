@@ -455,6 +455,34 @@ mod tests {
     }
 
     #[test]
+    fn test_pyproject_should_be_ignored_if_no_relevant_entry() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file pyproject.toml]
+
+            [file setup.cfg]
+            [mypy]
+            exclude = "foo.py"
+
+            [file foo.py]
+            1()
+            def foo(x) -> int: return 1
+            "#,
+            false,
+        );
+        let d = || diagnostics(Cli::parse_from(vec![""]), test_dir.path());
+
+        const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable";
+
+        assert!(d().is_empty());
+
+        test_dir.write_file("pyproject.toml", "[tool.mypy]");
+
+        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+    }
+
+    #[test]
     fn test_path_argument() {
         logging_config::setup_logging_for_tests();
         let test_dir = test_utils::write_files_from_fixture(

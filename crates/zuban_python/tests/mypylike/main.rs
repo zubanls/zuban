@@ -128,7 +128,8 @@ impl TestCase<'_, '_> {
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
             let mut new = BASE_PATH.with(|base_path| {
                 ProjectOptions::from_mypy_ini(&local_fs, base_path, &ini, &mut diagnostics_config)
-                    .unwrap()
+                    .expect("Expected there to be no errors in the mypy.ini")
+                    .unwrap_or_else(Default::default)
             });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
@@ -148,7 +149,8 @@ impl TestCase<'_, '_> {
                     &ini,
                     &mut diagnostics_config,
                 )
-                .unwrap()
+                .expect("Expected there to be no errors in the pyproject.toml")
+                .unwrap_or_else(Default::default)
             });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
