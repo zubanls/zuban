@@ -254,6 +254,17 @@ impl<'db> NameBinder<'db> {
         self.add_new_definition_with_cause(name_def, point, IndexingCause::Other)
     }
 
+    fn add_import_definition(&mut self, name_def: NameDef<'db>) {
+        let cause = if self.following_nodes_need_flow_analysis
+            && !self.db_infos.star_imports.borrow().is_empty()
+        {
+            IndexingCause::Other
+        } else {
+            IndexingCause::ConstantAssignment
+        };
+        self.add_new_definition_with_cause(name_def, Point::new_uncalculated(), cause)
+    }
+
     fn add_new_definition_with_cause(
         &mut self,
         name_def: NameDef<'db>,
@@ -437,6 +448,7 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::ImportFrom(import) => {
                     match import.unpack_targets() {
                         ImportFromTargets::Star(star) => {
+                            self.following_nodes_need_flow_analysis = true;
                             self.db_infos.star_imports.borrow_mut().push(StarImport {
                                 scope: self.scope_node,
                                 import_from_node: import.index(),
@@ -445,11 +457,7 @@ impl<'db> NameBinder<'db> {
                         }
                         ImportFromTargets::Iterator(targets) => {
                             for target in targets {
-                                self.add_new_definition_with_cause(
-                                    target.name_def(),
-                                    Point::new_uncalculated(),
-                                    IndexingCause::ConstantAssignment,
-                                )
+                                self.add_import_definition(target.name_def())
                             }
                         }
                     };
@@ -458,12 +466,9 @@ impl<'db> NameBinder<'db> {
                     for dotted in i.iter_dotted_as_names() {
                         match dotted.unpack() {
                             DottedAsNameContent::Simple(name_def, _)
-                            | DottedAsNameContent::WithAs(_, name_def) => self
-                                .add_new_definition_with_cause(
-                                    name_def,
-                                    Point::new_uncalculated(),
-                                    IndexingCause::ConstantAssignment,
-                                ),
+                            | DottedAsNameContent::WithAs(_, name_def) => {
+                                self.add_import_definition(name_def)
+                            }
                         }
                     }
                 }

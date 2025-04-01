@@ -313,3 +313,15 @@ class ScalarResult(list[R]): ...  # E: Variable "m.R" is not valid as a type \
 [file n.py]
 from m import KeyType
 class Row(list["KeyType"]): ...
+
+[case star_import_should_not_crash]
+from o import foo
+reveal_type(foo())  # N: Revealed type is "Any"
+
+[file m.py]
+def foo() -> int: ...
+[file n.py]
+foo = undefined()  # E: Name "undefined" is not defined
+[file o.py]
+from m import *
+from n import foo
