@@ -12,6 +12,7 @@ zmypy.workspace = true
 test_utils.workspace = true
 
 clap.workspace = true
+logging_config.workspace = true
 
 [features]
 zuban_debug = ["zmypy/zuban_debug"]

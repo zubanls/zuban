@@ -24,6 +24,9 @@ pub struct Cli {
 }
 
 fn main() -> ExitCode {
+    if let Err(err) = logging_config::setup_logging(None) {
+        panic!("{err}")
+    }
     let primer_projects_dir = env::var("HOME").unwrap() + "/tmp/mypy_primer/projects";
     let cli = Cli::parse();
     let mut projects = vec![];

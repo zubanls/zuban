@@ -15,9 +15,11 @@ vfs.workspace = true
 zuban_python.workspace = true
 
 clap.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 test_utils.workspace = true
+logging_config.workspace = true
 
 [features]
 zuban_debug = ["zuban_python/zuban_debug"]

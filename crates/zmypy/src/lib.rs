@@ -221,6 +221,7 @@ pub fn run_with_cli(
     current_dir: String,
     typeshed_path: Option<Box<AbsPath>>,
 ) -> ExitCode {
+    tracing::info!("Checking in {current_dir}");
     let (mut project, diagnostic_config) = project_from_cli(cli, current_dir, typeshed_path);
     let diagnostics = project.diagnostics();
     for diagnostic in diagnostics.issues.iter() {
@@ -346,6 +347,9 @@ fn apply_flags(
         project_options.settings.python_executable =
             Some(vfs_handler.absolute_path(&current_dir, p))
     }
+    if let Some(p) = &project_options.settings.python_executable {
+        tracing::info!("Checking the following python executable: {p}");
+    }
     if !cli.files.is_empty() {
         project_options.settings.files_or_directories_to_check = cli
             .files
@@ -353,6 +357,10 @@ fn apply_flags(
             .map(|p| vfs_handler.absolute_path(&current_dir, p))
             .collect();
     }
+    tracing::info!(
+        "Checking the following files: {:?}",
+        &project_options.settings.files_or_directories_to_check
+    );
     project_options
         .flags
         .enabled_error_codes
@@ -376,6 +384,15 @@ fn apply_flags(
             .excludes
             .push(ExcludeRegex::new(r).expect("Invalid --exclude regex"));
     }
+    tracing::info!(
+        "Found the following excludes: {:?}",
+        project_options
+            .flags
+            .excludes
+            .iter()
+            .map(|e| &e.regex_str)
+            .collect::<Vec<_>>()
+    );
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
     project_options.settings.mypy_path.push(current_dir);
@@ -405,6 +422,7 @@ mod tests {
 
     #[test]
     fn test_diagnostics() {
+        logging_config::setup_logging_for_tests();
         let test_dir = test_utils::write_files_from_fixture(
             r#"
             [file pyproject.toml]
@@ -439,6 +457,7 @@ mod tests {
 
     #[test]
     fn test_path_argument() {
+        logging_config::setup_logging_for_tests();
         let test_dir = test_utils::write_files_from_fixture(
             r#"
 
@@ -476,6 +495,7 @@ mod tests {
 
     #[test]
     fn test_environment() {
+        logging_config::setup_logging_for_tests();
         let test_dir = test_utils::write_files_from_fixture(
             r#"
             [file venv/bin/python]
@@ -504,6 +524,7 @@ mod tests {
 
     #[test]
     fn test_files_relative_paths() {
+        logging_config::setup_logging_for_tests();
         let mut project_options = ProjectOptions::default();
         let local_fs = LocalFS::without_watcher();
         let current_dir = local_fs.unchecked_abs_path("/a/b".into());
