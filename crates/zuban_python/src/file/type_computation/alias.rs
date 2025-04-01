@@ -47,33 +47,36 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         assignment: Assignment<'file>,
     ) -> Lookup<'file, 'file> {
-        let is_explicit = match assignment.unpack() {
-            AssignmentContent::WithAnnotation(target, annotation, _) => {
-                // We have to ensure that if this assignment is used as an invalid type within the
-                // annotation again that we don't get cycles. Therefore we add calculating to the
-                // annotation if necessary. This is not normally done to annotations, but doesn't
-                // matter, since calculating will just be overwritten.
-                if let Target::Name(name_def) = target {
-                    let annotation_ref = NodeRef::new(self.file, annotation.index());
-                    let p = annotation_ref.point();
-                    if !p.calculated() {
-                        if p.calculating() {
-                            return Lookup::T(TypeContent::InvalidVariable(
-                                InvalidVariableType::NameError {
-                                    name: name_def.as_code(),
-                                },
-                            ));
-                        }
-                        annotation_ref.set_point(Point::new_calculating());
+        let mut is_explicit = false;
+        if let AssignmentContent::WithAnnotation(target, annotation, _) = assignment.unpack() {
+            // We have to ensure that if this assignment is used as an invalid type within the
+            // annotation again that we don't get cycles. Therefore we add calculating to the
+            // annotation if necessary. This is not normally done to annotations, but doesn't
+            // matter, since calculating will just be overwritten.
+            if let Target::Name(name_def) = target {
+                let annotation_ref = NodeRef::new(self.file, annotation.index());
+                let p = annotation_ref.point();
+                if !p.calculated() {
+                    if p.calculating() {
+                        return Lookup::T(TypeContent::InvalidVariable(
+                            InvalidVariableType::NameError {
+                                name: name_def.as_code(),
+                            },
+                        ));
                     }
+                    annotation_ref.set_point(Point::new_calculating());
                 }
-
-                self.ensure_cached_annotation(annotation, true);
-                self.file.points.get(annotation.index()).maybe_specific()
-                    == Some(Specific::AnnotationTypeAlias)
             }
-            _ => false,
-        };
+
+            self.ensure_cached_annotation(annotation, true);
+            is_explicit = self.file.points.get(annotation.index()).maybe_specific()
+                == Some(Specific::AnnotationTypeAlias);
+            if !is_explicit {
+                if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
+                    return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
+                }
+            }
+        }
         self.compute_type_assignment_internal(assignment, is_explicit)
     }
 

@@ -1627,3 +1627,17 @@ def foo(self) -> None:
     x: "x.D"
 
 reveal_type(C.x)  # N: Revealed type is "Any"
+
+[case class_any_base]
+from typing import Any
+def foo() -> Any: ...
+X: Any = foo()
+Y: Any
+
+class C1(X): ...
+class C2(Y): ...
+class C3(A): ...  # E: Name "A" is used before definition
+class C4(B): ...  # E: Name "B" is used before definition
+
+A: Any = foo()
+B: Any
