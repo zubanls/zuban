@@ -113,7 +113,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 )
             });
         }
-        self.file.points.set(
+        self.set_point(
             imp.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
@@ -139,7 +139,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
         }
 
-        self.file.points.set(
+        self.set_point(
             imp.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
@@ -159,9 +159,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             AssignKind::Import,
             |_, inf| match redirect_to_link {
                 Some(link) if inf.is_saved() => {
-                    self.file
-                        .points
-                        .set(name_def.index(), link.into_redirect_point(Locality::Todo));
+                    self.set_point(name_def.index(), link.into_redirect_point(Locality::Todo));
                 }
                 _ => {
                     inf.clone()
@@ -251,9 +249,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     fn set_calculating_on_target(&self, target: Target) {
         match target {
             Target::Name(name_def) | Target::NameExpression(_, name_def) => {
-                self.file
-                    .points
-                    .set(name_def.index(), Point::new_calculating());
+                self.set_point(name_def.index(), Point::new_calculating());
             }
             Target::IndexExpression(_) => (),
             Target::Tuple(targets) => {
@@ -326,7 +322,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 ) {
                     value.clone().save_redirect(self.i_s, self.file, index);
                 } else {
-                    self.file.points.set(
+                    self.set_point(
                         index,
                         Point::new_redirect(
                             self.file.file_index,
@@ -538,7 +534,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
         }
-        self.file.points.set(
+        self.set_point(
             assignment.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
@@ -1449,9 +1445,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         if suppresses_partial_none_error() {
                             let mut flags = point.partial_flags();
                             flags.reported_error = true;
-                            self.file
-                                .points
-                                .set(name_def_index, point.set_partial_flags(flags))
+                            self.set_point(name_def_index, point.set_partial_flags(flags))
                         }
                     }
 
@@ -2046,9 +2040,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
 
         if first_defined_name_of_multi_def(self.file, name_def.name_index()).is_none() {
-            self.file
-                .points
-                .set(name_def.index(), Point::new_calculating());
+            self.set_point(name_def.index(), Point::new_calculating());
         }
         let inf = if let Some(inf) = self.infer_name_target(name_def, false) {
             self.infer_expression_with_context(

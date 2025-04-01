@@ -403,7 +403,7 @@ impl Inference<'_, '_, '_> {
                     if self.i_s.in_module_context() {
                         // TODO actually use a future assignment to it to determine the type.
                         for name_def in global.iter_name_defs() {
-                            self.file.points.set(
+                            self.set_point(
                                 name_def.index(),
                                 Point::new_specific(Specific::AnyDueToError, Locality::File),
                             );
@@ -460,7 +460,7 @@ impl Inference<'_, '_, '_> {
                 },
                 StmtLikeContent::Error(_) | StmtLikeContent::Newline => {}
             };
-            self.file.points.set(
+            self.set_point(
                 stmt_like.parent_index,
                 Point::new_specific(Specific::Analyzed, Locality::Todo),
             );
@@ -638,7 +638,7 @@ impl Inference<'_, '_, '_> {
                             */
                             self.ensure_cached_annotation(annotation, right_side.is_some());
                             if let Target::Name(n) | Target::NameExpression(_, n) = target {
-                                self.file.points.set(
+                                self.set_point(
                                     n.index(),
                                     Point::new_redirect(
                                         self.file.file_index,
@@ -1803,7 +1803,7 @@ impl Inference<'_, '_, '_> {
         };
         debug!("For loop input: {}", element.format_short(self.i_s));
         self.assign_targets(star_targets.as_target(), element, from, AssignKind::Normal);
-        self.file.points.set(
+        self.set_point(
             star_targets.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );

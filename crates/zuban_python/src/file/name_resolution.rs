@@ -146,7 +146,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             }
             None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
         };
-        self.file.points.set(star_index, point);
+        self.set_point(star_index, point);
     }
 
     pub(super) fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
@@ -190,9 +190,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
                     match redirect_to_link {
                         Some(link) => {
-                            self.file
-                                .points
-                                .set(name_def.index(), link.into_redirect_point(Locality::Todo));
+                            self.set_point(
+                                name_def.index(),
+                                link.into_redirect_point(Locality::Todo),
+                            );
                         }
                         None => {
                             // We can not assign in all cases here, for example in the precense of
@@ -205,17 +206,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                                 )));
                                 return;
                             }
-                            self.file
-                                .points
-                                .set(name_def.index(), Point::new_uncalculated());
+                            self.set_point(name_def.index(), Point::new_uncalculated());
                         }
                     }
                 } else {
                     // Since the point was calculating, we have to reset it here.
                     // See also comments in cache_import_from_part
-                    self.file
-                        .points
-                        .set(name_def.index(), Point::new_uncalculated());
+                    self.set_point(name_def.index(), Point::new_uncalculated());
                 }
                 found_pr = Some(pr);
             },
@@ -389,7 +386,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         // Set calculating here, so that the logic that follows the names can set a cycle if it
         // needs to.  The point has to be set or unset again in assign_to_name_def (e.g. in type
         // computation when the type can still be wrong because of star imports).
-        self.file.points.set(n_index, Point::new_calculating());
+        self.set_point(n_index, Point::new_calculating());
         let inf = match from_first_part {
             Some(imp) => {
                 let add_issue_if_not_ignored = || {
@@ -623,7 +620,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
             }
         };
-        self.file.points.set(save_to_index, point);
+        self.set_point(save_to_index, point);
         debug_assert!(self.point(save_to_index).calculated());
         self.resolve_point(save_to_index, narrow_name).unwrap()
     }
@@ -891,7 +888,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         Some(match star_imp {
             StarImportResult::Link(link) => match save_to_index {
                 Some(save_to_index) => {
-                    self.file.points.set(
+                    self.set_point(
                         save_to_index,
                         Point::new_redirect(link.file, link.node_index, Locality::Todo),
                     );
@@ -1090,6 +1087,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub fn point(&self, node_index: NodeIndex) -> Point {
         self.file.points.get(node_index)
+    }
+
+    pub fn set_point(&self, node_index: NodeIndex, p: Point) {
+        self.file.points.set(node_index, p)
     }
 }
 
