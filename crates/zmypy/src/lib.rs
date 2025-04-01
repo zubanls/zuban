@@ -342,14 +342,17 @@ fn apply_flags(
     if let Some(python_version) = cli.python_version {
         project_options.settings.python_version = python_version;
     }
-    project_options.settings.python_executable = cli
-        .python_executable
-        .map(|p| vfs_handler.absolute_path(&current_dir, p));
-    project_options.settings.files_or_directories_to_check = cli
-        .files
-        .into_iter()
-        .map(|p| vfs_handler.absolute_path(&current_dir, p))
-        .collect();
+    if let Some(p) = cli.python_executable {
+        project_options.settings.python_executable =
+            Some(vfs_handler.absolute_path(&current_dir, p))
+    }
+    if !cli.files.is_empty() {
+        project_options.settings.files_or_directories_to_check = cli
+            .files
+            .into_iter()
+            .map(|p| vfs_handler.absolute_path(&current_dir, p))
+            .collect();
+    }
     project_options
         .flags
         .enabled_error_codes
@@ -464,6 +467,11 @@ mod tests {
             d(&["", foo_path.to_str().unwrap()]),
             vec![NOT_CALLABLE_FOO.to_string(),]
         );
+
+        // Now set a default path
+        test_dir.write_file("mypy.ini", "[mypy]\nfiles = foo.py");
+        assert_eq!(d(&[""]), vec![NOT_CALLABLE_FOO.to_string(),]);
+        assert_eq!(d(&["", "bar.py"]), vec![NOT_CALLABLE_BAR.to_string(),]);
     }
 
     #[test]
