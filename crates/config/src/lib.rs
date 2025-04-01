@@ -1,3 +1,5 @@
+mod searcher;
+
 use std::borrow::Cow;
 
 use anyhow::bail;
@@ -5,6 +7,8 @@ use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 use vfs::{AbsPath, LocalFS, VfsHandler};
+
+pub use searcher::{find_cli_config, find_workspace_config};
 
 type ConfigResult = anyhow::Result<bool>;
 

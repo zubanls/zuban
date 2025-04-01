@@ -8,7 +8,6 @@ homepage.workspace = true
 authors.workspace = true
 
 [dependencies]
-config_searcher.workspace = true
 config.workspace = true
 licensing.workspace = true
 vfs.workspace = true

@@ -1,6 +1,6 @@
 use std::{io::Read, path::Path};
 
-use config::{DiagnosticConfig, ProjectOptions};
+use crate::{DiagnosticConfig, ProjectOptions};
 use vfs::{AbsPath, VfsHandler};
 
 const CONFIG_PATHS: [&str; 6] = [

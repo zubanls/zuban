@@ -13,7 +13,6 @@ authors = ["Dave Halter <info@zubanls.com>"]
 [workspace.dependencies]
 # Internal crates
 config = { path = "./crates/config" }
-config_searcher = { path = "./crates/config_searcher" }
 licensing = { path = "./crates/licensing" }
 logging_config = { path = "./crates/logging_config" }
 parsa = { path = "./crates/parsa" }

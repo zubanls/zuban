@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use config::{DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
-use config_searcher::find_cli_config;
+use config::{find_cli_config, DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
 use vfs::{AbsPath, LocalFS, VfsHandler as _};
 use zuban_python::Project;
 
