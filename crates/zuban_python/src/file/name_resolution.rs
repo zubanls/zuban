@@ -85,7 +85,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     ) {
         match dotted_as_name.unpack() {
             DottedAsNameContent::Simple(name_def, rest) => {
-                if self.file.points.get(name_def.index()).calculated() {
+                if self.point(name_def.index()).calculated() {
                     // It was already assigned (probably during type computation)
                     return;
                 }
@@ -98,7 +98,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
             }
             DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                if self.file.points.get(as_name_def.index()).calculated() {
+                if self.point(as_name_def.index()).calculated() {
                     // It was already assigned (probably during type computation)
                     return;
                 }
@@ -115,7 +115,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     #[inline]
     pub(super) fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
-        let point = self.file.points.get(star_import.star_node);
+        let point = self.point(star_import.star_node);
         if point.calculated() {
             return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
                 None
@@ -126,7 +126,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         let import_from =
             NodeRef::new(self.file, star_import.import_from_node).expect_import_from();
         self.assign_star_import(import_from, star_import.star_node);
-        debug_assert!(self.file.points.get(star_import.star_node).calculated());
+        debug_assert!(self.point(star_import.star_node).calculated());
         self.star_import_file(star_import)
     }
 
@@ -186,7 +186,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         self.assign_import_from_only_particular_name_def(
             as_name,
             |name_def, pr, redirect_to_link| {
-                debug_assert!(self.file.points.get(name_def.index()).calculating());
+                debug_assert!(self.point(name_def.index()).calculating());
                 if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
                     match redirect_to_link {
                         Some(link) => {
@@ -236,7 +236,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         let mut found_inf = None;
         self.assign_dotted_as_name(dotted_as_name, |name_def, inf| {
             if cfg!(debug_assertions) {
-                let p = self.file.points.get(name_def.index());
+                let p = self.point(name_def.index());
                 debug_assert!(!p.calculated(), "{p:?}");
                 debug_assert!(!p.calculating(), "{p:?}");
             }
@@ -263,11 +263,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     #[inline]
     fn is_allowed_to_assign_on_import_without_narrowing(&self, name_def: NameDef) -> bool {
-        !self
-            .file
-            .points
-            .get(name_def.name_index())
-            .needs_flow_analysis()
+        !self.point(name_def.name_index()).needs_flow_analysis()
     }
 
     pub fn cache_import_dotted_name(
@@ -387,7 +383,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         let (import_name, name_def) = as_name.unpack();
 
         let n_index = name_def.index();
-        if self.file.points.get(n_index).calculated() {
+        if self.point(n_index).calculated() {
             return;
         }
         // Set calculating here, so that the logic that follows the names can set a cycle if it
@@ -415,11 +411,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
                 match self.lookup_import_from_target(imp, import_name) {
                     Some((pr, redirect_to)) => {
-                        if self
-                            .file
-                            .points
-                            .get(n_index)
-                            .maybe_calculated_and_specific()
+                        if self.point(n_index).maybe_calculated_and_specific()
                             == Some(Specific::Cycle)
                         {
                             add_issue_if_not_ignored();
@@ -632,7 +624,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             }
         };
         self.file.points.set(save_to_index, point);
-        debug_assert!(self.file.points.get(save_to_index).calculated());
+        debug_assert!(self.point(save_to_index).calculated());
         self.resolve_point(save_to_index, narrow_name).unwrap()
     }
 
@@ -648,7 +640,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         node_index: NodeIndex,
         narrow_name: impl Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
     ) -> Option<PointResolution<'file>> {
-        let point = self.file.points.get(node_index);
+        let point = self.point(node_index);
         self.resolve_point_internal(node_index, point, false, narrow_name)
     }
 
@@ -706,7 +698,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     "{file_index}:{node_index}"
                 );
                 let resolve = |r: &NameResolution<'db, 'file, '_>| {
-                    let new_p = r.file.points.get(next_node_index);
+                    let new_p = r.point(next_node_index);
                     r.resolve_point_internal(
                         next_node_index,
                         new_p,
@@ -1094,6 +1086,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub fn file_path(&self) -> &str {
         self.file.file_path(self.i_s.db)
+    }
+
+    pub fn point(&self, node_index: NodeIndex) -> Point {
+        self.file.points.get(node_index)
     }
 }
 

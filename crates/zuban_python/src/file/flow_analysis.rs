@@ -1330,7 +1330,7 @@ impl Inference<'_, '_, '_> {
                 });
             }
 
-            let assert_point = self.file.points.get(assert_stmt.index());
+            let assert_point = self.point(assert_stmt.index());
             if assert_point.calculated() && assert_point.specific() == Specific::AssertAlwaysFails {
                 fa.mark_current_frame_unreachable()
             }
@@ -1749,9 +1749,7 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let name_binder_check = self
-            .file
-            .points
-            .get(if_block.first_leaf_index())
+            .point(if_block.first_leaf_index())
             .maybe_calculated_and_specific();
         if name_binder_check == Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) {
             return self.process_ifs(if_blocks, class, func);
@@ -2472,7 +2470,7 @@ impl Inference<'_, '_, '_> {
                     let (walrus_frame, inf) = fa.with_frame_and_result(Frame::default(), || {
                         // This can happen in weird closures. I'm not currently sure how we should
                         // best handle that, see avoid_walrus_crash_when_variable_is_used_in_closure
-                        if self.file.points.get(name_def.index()).calculated() {
+                        if self.point(name_def.index()).calculated() {
                             return inf;
                         }
                         self.save_walrus(name_def, inf)

@@ -205,7 +205,7 @@ impl Inference<'_, '_, '_> {
             cls.is_protocol(self.i_s.db)
                 && match assignment.unpack() {
                     AssignmentContent::WithAnnotation(_, annotation, _) => {
-                        if self.file.points.get(annotation.index()).maybe_specific()
+                        if self.point(annotation.index()).maybe_specific()
                             == Some(Specific::AnnotationOrTypeCommentFinal)
                         {
                             self.add_issue(
@@ -347,7 +347,7 @@ impl Inference<'_, '_, '_> {
     ) {
         // TODO In general all {} blocks are todos
         for stmt_like in stmts {
-            let point = self.file.points.get(stmt_like.parent_index);
+            let point = self.point(stmt_like.parent_index);
             if point.calculated() {
                 debug_assert_eq!(point.specific(), Specific::Analyzed);
                 continue;
@@ -577,8 +577,7 @@ impl Inference<'_, '_, '_> {
                     let AtomContent::Name(n) = atom.unpack() else {
                         continue;
                     };
-                    if n.as_code() == "reveal_type" && !self.file.points.get(n.index()).calculated()
-                    {
+                    if n.as_code() == "reveal_type" && !self.point(n.index()).calculated() {
                         self.infer_name_reference(n);
                         let PrimaryContent::Execution(_) = p.second() else {
                             continue;
@@ -671,9 +670,7 @@ impl Inference<'_, '_, '_> {
                 StmtLikeContent::IfStmt(if_stmt) => {
                     for b in if_stmt.iter_blocks() {
                         let name_binder_check = self
-                            .file
-                            .points
-                            .get(b.first_leaf_index())
+                            .point(b.first_leaf_index())
                             .maybe_calculated_and_specific();
                         let block = match b {
                             IfBlockType::If(_, block) => block,
@@ -1789,7 +1786,7 @@ impl Inference<'_, '_, '_> {
         star_exprs: StarExpressions,
         is_async: bool,
     ) {
-        let star_targets_point = self.file.points.get(star_targets.index());
+        let star_targets_point = self.point(star_targets.index());
         if star_targets_point.calculated() {
             debug_assert_eq!(star_targets_point.specific(), Specific::Analyzed);
             return;

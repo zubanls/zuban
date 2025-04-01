@@ -69,7 +69,7 @@ macro_rules! check_point_cache_with {
                     self.file.qualified_name(self.i_s.db),
                     self.file.byte_to_line_column(node.start()).0,
                     {
-                        let point = self.file.points.get(node.index());
+                        let point = self.point(node.index());
                         match point.kind() {
                             PointKind::Specific => format!("Specific::{:?}", point.specific()),
                             PointKind::Redirect => format!("Redirect {}:{}", point.file_index(), point.node_index()),
@@ -96,7 +96,7 @@ macro_rules! check_point_cache_with {
 
 impl<'db, 'file> Inference<'db, 'file, '_> {
     pub(super) fn cache_import_name(&self, imp: ImportName) {
-        if self.file.points.get(imp.index()).calculated() {
+        if self.point(imp.index()).calculated() {
             return;
         }
         for dotted_as_name in imp.iter_dotted_as_names() {
@@ -120,7 +120,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub(super) fn cache_import_from(&self, imp: ImportFrom) {
-        if self.file.points.get(imp.index()).calculated() {
+        if self.point(imp.index()).calculated() {
             return;
         }
         match imp.unpack_targets() {
@@ -414,7 +414,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.set_calculating_on_target(target.clone());
 
                 self.ensure_cached_annotation(annotation, right_side.is_some());
-                let specific = self.file.points.get(annotation.index()).maybe_specific();
+                let specific = self.point(annotation.index()).maybe_specific();
                 let assign_kind = AssignKind::Annotation { specific };
                 match specific {
                     Some(Specific::AnnotationTypeAlias) => {
@@ -487,7 +487,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         AssignKind::AugAssign,
                         |index, inf| {
                             if let Target::NameExpression(_, n) = target {
-                                if !self.file.points.get(n.index()).calculated()
+                                if !self.point(n.index()).calculated()
                                     && first_defined_name_of_multi_def(self.file, n.name_index())
                                         .is_none()
                                 {
@@ -1425,7 +1425,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // Mypy does not flag partials in non-classes with "Need type annotation".
                     // However in class scopes (where we don't override a union of a superclass)
                     // and module scopes it can still lead to errors.
-                    let point = self.file.points.get(name_def_index);
+                    let point = self.point(name_def_index);
                     if point.maybe_specific() == Some(Specific::PartialNone) {
                         let suppresses_partial_none_error = || {
                             if !self.flags().local_partial_types {
@@ -2866,7 +2866,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         match primary_or_atom {
             PrimaryOrAtom::Primary(prim) => {
                 let index = prim.index();
-                if self.file.points.get(index).calculated() {
+                if self.point(index).calculated() {
                     // This means that we have already tried so return.
                     return None;
                 }
@@ -3435,9 +3435,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if first.maybe_saved_specific(self.i_s.db) == Some(Specific::MaybeSelfParam) {
             if let PrimaryContent::Attribute(attr) = second {
                 let i = attr.index();
-                if self.file.points.get(i).calculated() {
+                if self.point(i).calculated() {
                     if let Some(first) = first_defined_name_of_multi_def(self.file, i) {
-                        let point = self.file.points.get(first - NAME_DEF_TO_NAME_DIFFERENCE);
+                        let point = self.point(first - NAME_DEF_TO_NAME_DIFFERENCE);
                         if point.calculated()
                             && point.maybe_specific().is_some_and(|s| s.is_partial())
                         {
@@ -3683,7 +3683,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 };
                 self.i_s.current_class();
 
-                let specific = self.file.points.get(node_index).specific();
+                let specific = self.point(node_index).specific();
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
                 } else if self.i_s.current_function().is_some() {
@@ -3729,7 +3729,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn infer_name_of_definition(&self, name: Name) -> Inferred {
-        let point = self.file.points.get(name.index());
+        let point = self.point(name.index());
         if point.calculated() && !point.is_name_of_name_def_like() {
             if let Some(inf) = self.check_point_cache(name.index()) {
                 return inf;
@@ -3742,10 +3742,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     fn _infer_name_def(&self, name_def: NameDef) -> Inferred {
         let defining_stmt = name_def.expect_defining_stmt();
         self.cache_defining_stmt(defining_stmt, NodeRef::new(self.file, name_def.index()));
-        debug_assert!(
-            self.file.points.get(name_def.index()).calculated(),
-            "{name_def:?}",
-        );
+        debug_assert!(self.point(name_def.index()).calculated(), "{name_def:?}",);
         self.infer_name_def(name_def)
     }
 
@@ -4116,7 +4113,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let expr = decorator.named_expression().expression();
         if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
             if let PrimaryContent::Execution(exec) = primary.second() {
-                if !self.file.points.get(primary.index()).calculated() {
+                if !self.point(primary.index()).calculated() {
                     // Try to find dataclass_transform and if there isn't one use the normal inference
                     let base = self.infer_primary_or_atom(primary.first());
                     if base.maybe_saved_specific(self.i_s.db)
@@ -4136,7 +4133,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             primary.index(),
                         );
                     };
-                    debug_assert!(self.file.points.get(primary.index()).calculated());
+                    debug_assert!(self.point(primary.index()).calculated());
                 }
             }
         }
