@@ -343,11 +343,13 @@ fn apply_flags(
         project_options.settings.python_version = python_version;
     }
     if let Some(p) = cli.python_executable {
-        project_options.settings.python_executable =
-            Some(vfs_handler.absolute_path(&current_dir, p))
+        let p = vfs_handler.absolute_path(&current_dir, p);
+        project_options
+            .apply_python_executable(vfs_handler, &p)
+            .expect("Error when applying --python-executable")
     }
-    if let Some(p) = &project_options.settings.python_executable {
-        tracing::info!("Checking the following python executable: {p}");
+    if let Some(p) = &project_options.settings.environment {
+        tracing::info!("Checking the following environment: {p}");
     }
     if !cli.files.is_empty() {
         project_options.settings.files_or_directories_to_check = cli

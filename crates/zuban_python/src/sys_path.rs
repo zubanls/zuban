@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use vfs::{AbsPath, LocalFS, VfsHandler};
 
@@ -9,7 +9,7 @@ pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> 
 
     sys_path.extend(settings.prepended_site_packages.iter().cloned());
 
-    if let Some(exe) = &settings.python_executable {
+    if let Some(exe) = &settings.environment {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
@@ -33,17 +33,8 @@ pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> 
     sys_path
 }
 
-fn site_packages_path_from_venv(executable: &str, version: PythonVersion) -> PathBuf {
-    const ERR: &str = "Expected a custom executable to be at least two directories deep";
-    let executable_dir = Path::new(executable).parent().expect(ERR);
-    let lib = executable_dir
-        .canonicalize()
-        .unwrap_or_else(|err| {
-            panic!("Expected directory access to be possible for {executable_dir:?}: {err}")
-        })
-        .parent()
-        .expect(ERR)
-        .join("lib");
+fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -> PathBuf {
+    let lib = environment.as_ref().join("lib");
 
     let expected_path = lib
         .join(format!("python{}.{}", version.major, version.minor))

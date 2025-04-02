@@ -36,7 +36,7 @@ pub struct ProjectOptions {
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
-    pub python_executable: Option<Box<AbsPath>>,
+    pub environment: Option<Box<AbsPath>>,
     pub mypy_path: Vec<Box<AbsPath>>,
     pub prepended_site_packages: Vec<Box<AbsPath>>,
     pub mypy_compatible: bool,
@@ -50,7 +50,7 @@ impl Default for Settings {
         Self {
             platform: None,
             python_version: PythonVersion::new(3, 13),
-            python_executable: None,
+            environment: None,
             typeshed_path: std::env::var("ZUBAN_TYPESHED")
                 .ok()
                 .map(|p| LocalFS::without_watcher().abs_path_from_current_dir(p)),
@@ -187,6 +187,36 @@ impl ProjectOptions {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn apply_python_executable(
+        &mut self,
+        handler: &dyn VfsHandler,
+        python_executable: &AbsPath,
+    ) -> anyhow::Result<()> {
+        const ERR: &str = "Expected a python-executable to be at least two directories deep";
+        let Some(executable_dir) = python_executable.as_ref().parent() else {
+            bail!(ERR)
+        };
+        let environment = executable_dir
+            .canonicalize()
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "Expected directory access to be possible for {executable_dir:?}: {err}"
+                )
+            })?
+            .parent()
+            .map(|p| {
+                let p = p.as_os_str().to_str().expect(
+                    "Should never happen, because we only put together valid unicode paths",
+                );
+                handler.unchecked_abs_path(p.to_string())
+            });
+        if environment.is_none() {
+            bail!(ERR)
+        }
+        self.settings.environment = environment;
+        Ok(())
     }
 }
 
