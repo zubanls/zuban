@@ -261,11 +261,7 @@ impl TestCase<'_, '_> {
         settings.mypy_compatible = mypy_compatible;
 
         if let Some(version) = arg_after("--python-version") {
-            let x = &version[..1];
-            let y = &version[2..];
-            let error = "Expected version X.Y like 3.10";
-            settings.python_version =
-                PythonVersion::new(x.parse().expect(error), y.parse().expect(error));
+            settings.python_version = version.parse().unwrap();
         } else {
             // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
             // different argument types.
