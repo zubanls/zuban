@@ -709,7 +709,13 @@ fn apply_from_base_config(
             let p = vfs.absolute_path(current_dir, value.as_str()?.to_string());
             settings.apply_python_executable(vfs, &p)?
         }
-        "python_version" => settings.python_version = value.as_str()?.parse()?,
+        "python_version" => {
+            settings.python_version = if let IniOrTomlValue::Toml(Value::Float(f)) = &value {
+                f.display_repr().parse()?
+            } else {
+                value.as_str()?.parse()?
+            }
+        }
         "platform" => settings.platform = Some(value.as_str()?.to_string()),
         _ => return apply_from_config_part(flags, key, value),
     };
@@ -876,6 +882,22 @@ mod tests {
         let version = &opts.settings.python_version;
         assert_eq!(version.major, 3);
         assert_eq!(version.minor, 1);
+    }
+
+    #[test]
+    fn test_python_version_valid_pyproject_toml_float() {
+        let check = |major, minor| {
+            let code = format!("[tool.mypy]\npython_version = {major}.{minor}");
+            let opts = project_options_valid(&code, false);
+            let version = &opts.settings.python_version;
+            assert_eq!(version.major, major);
+            assert_eq!(version.minor, minor);
+        };
+        check(3, 0);
+        check(3, 1);
+        check(3, 10);
+        check(3, 100);
+        check(3, 101);
     }
 
     #[test]
