@@ -1,7 +1,7 @@
 use std::{ptr::null, rc::Rc};
 
 use config::PythonVersion;
-use parsa_python_cst::{FunctionDef, Name, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
+use parsa_python_cst::{FunctionDef, Name, NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
 use vfs::FileIndex;
 
 use crate::{
@@ -202,7 +202,7 @@ pub(crate) struct PythonState {
     types_module_type_index: NodeIndex,
     types_none_type_index: Option<NodeIndex>,
     types_ellipsis_type_index: Option<NodeIndex>,
-    typing_ellipsis_fallback_index: Option<NodeIndex>,
+    builtins_ellipsis_fallback_index: Option<NodeIndex>,
     collections_namedtuple_index: NodeIndex,
     collections_defaultdict_index: NodeIndex,
     _collections_abc_dict_keys_index: NodeIndex,
@@ -299,7 +299,7 @@ impl PythonState {
             types_module_type_index: 0,
             types_none_type_index: None,
             types_ellipsis_type_index: None,
-            typing_ellipsis_fallback_index: None,
+            builtins_ellipsis_fallback_index: None,
             typeshed_supports_keys_and_get_item_index: 0,
             typing_type_var_index: 0,
             type_var_tuple_link: PointLink::new(FileIndex(0), 0),
@@ -677,7 +677,17 @@ impl PythonState {
         cache_index!(typing_special_form_index, typing, "_SpecialForm");
         cache_optional_index!(types_none_type_index, types, "NoneType");
         cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
-        cache_optional_index!(typing_ellipsis_fallback_index, typing, "ellipsis");
+        if let Some(ellipsis) = db.python_state.builtins().lookup_symbol("ellipsis") {
+            if matches!(
+                ellipsis
+                    .name_def_ref_of_name()
+                    .expect_name_def()
+                    .expect_type(),
+                TypeLike::ClassDef(_)
+            ) {
+                cache_optional_index!(builtins_ellipsis_fallback_index, builtins, "ellipsis");
+            }
+        }
         cache_index!(abc_abstractproperty_index, abc, "abstractproperty");
         cache_index!(
             functools_cached_property_index,
@@ -998,9 +1008,9 @@ impl PythonState {
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
     optional_attribute_link!(
-        typing,
+        builtins,
         ellipsis_fallback_link,
-        typing_ellipsis_fallback_index
+        builtins_ellipsis_fallback_index
     );
     attribute_link!(
         dataclasses_file,

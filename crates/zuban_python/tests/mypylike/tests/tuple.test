@@ -471,7 +471,7 @@ x = [
     (1, ""),
     (1, b''),
 ]
-reveal_type(x)  # N: Revealed type is "builtins.list[tuple[builtins.int, typing.Sequence[builtins.object]]]"
+reveal_type(x)  # N: Revealed type is "list[tuple[int, typing.Sequence[object]]]"
 
 [case common_base_type_for_fixed_len_tuple_no_mypy_compatible]
 # flags: --no-mypy-compatible
@@ -479,48 +479,48 @@ x = [
     (1, ""),
     (1, b''),
 ]
-reveal_type(x)  # N: Revealed type is "builtins.list[tuple[builtins.int, str | bytes]]"
+reveal_type(x)  # N: Revealed type is "list[tuple[int, str | bytes]]"
 
 [case common_base_type_for_arbitrary_len_tuple_mypy_compatible]
 # flags: --mypy-compatible
 def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     t = [x, y]
-    reveal_type(t)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+    reveal_type(t)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
 [case common_base_type_for_arbitrary_len_tuple_no_mypy_compatible]
 # flags: --no-mypy-compatible
 def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     t = [x, y]
-    reveal_type(t)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"
+    reveal_type(t)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
 
 [case common_base_type_for_arbitrary_vs_fixed_len_tuple_mypy_compatible]
 # flags: --mypy-compatible
 def f(x: tuple[str, ...], y: tuple[bytes]):
     t1 = [x, y]
-    reveal_type(t1)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+    reveal_type(t1)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
     t2 = [x, y]
-    reveal_type(t2)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+    reveal_type(t2)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
 [case common_base_type_for_arbitrary_vs_fixed_len_tuple_no_mypy_compatible]
 # flags: --no-mypy-compatible
 def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     t1 = [x, y]
-    reveal_type(t1)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"
+    reveal_type(t1)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
     t2 = [x, y]
-    reveal_type(t2)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"
+    reveal_type(t2)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
 
 [case common_base_type_for_different_fixed_len_tuples_mypy_compatible]
 # flags: --mypy-compatible
 def f(x: tuple[str, bytes], y: tuple[str]):
     t1 = [x, y]
-    reveal_type(t1)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+    reveal_type(t1)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
     t2 = [x, y]
-    reveal_type(t2)  # N: Revealed type is "builtins.list[tuple[typing.Sequence[builtins.object], ...]]"
+    reveal_type(t2)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
 [case common_base_type_for_different_fixed_len_tuples_no_mypy_compatible]
 # flags: --no-mypy-compatible
 def f(x: tuple[str, bytes], y: tuple[str]):
     t1 = [x, y]
-    reveal_type(t1)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"
+    reveal_type(t1)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
     t2 = [x, y]
-    reveal_type(t2)  # N: Revealed type is "builtins.list[tuple[str | bytes, ...]]"
+    reveal_type(t2)  # N: Revealed type is "list[tuple[str | bytes, ...]]"

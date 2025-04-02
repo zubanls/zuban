@@ -353,7 +353,7 @@ x: 'list["str"]'
 y: 'list["undefined"]'
 
 [out]
-main:3:11: error: Name "undefined" is not defined
+__main__:3:11: error: Name "undefined" is not defined
 
 [case union_alias_attr_access]
 # flags: --show-error-codes

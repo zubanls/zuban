@@ -100,6 +100,7 @@ struct TestCase<'name, 'code> {
     file_name: &'name str,
     name: String,
     code: &'code str,
+    from_mypy_test_suite: bool,
 }
 
 impl TestCase<'_, '_> {
@@ -327,7 +328,12 @@ impl TestCase<'_, '_> {
                     steps.steps.len()
                 );
             }
-            let mut wanted = initialize_and_return_wanted_output(&local_fs, project, step);
+            let mut wanted = initialize_and_return_wanted_output(
+                &local_fs,
+                project,
+                step,
+                self.from_mypy_test_suite,
+            );
 
             for path in &step.deletions {
                 project
@@ -503,12 +509,19 @@ fn initialize_and_return_wanted_output(
     local_fs: &LocalFS,
     project: &mut Project,
     step: &Step,
+    from_mypy_test_suite: bool,
 ) -> Vec<String> {
     let mut wanted = step
         .out
         .trim()
         .split('\n')
-        .filter_map(cleanup_mypy_issues)
+        .filter_map(|s| {
+            if from_mypy_test_suite {
+                cleanup_mypy_issues(s)
+            } else {
+                Some(s.to_string())
+            }
+        })
         .collect::<Vec<_>>();
 
     if wanted == [""] {
@@ -521,7 +534,7 @@ fn initialize_and_return_wanted_output(
         if ["mypy.ini", "pyproject.toml"].contains(&path) {
             continue;
         }
-        add_inline_errors(&mut wanted, path, code);
+        add_inline_errors(&mut wanted, path, code, from_mypy_test_suite);
         // testAbstractClassSubclasses
         let p = base_path_join(local_fs, path);
         project.load_in_memory_file(p, code.into());
@@ -533,13 +546,13 @@ fn initialize_and_return_wanted_output(
     wanted
 }
 
-fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
+fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str, from_mypy_test_suite: bool) {
     let lines: Box<_> = code.split('\n').collect();
     for (line_nr, column, mut type_, comment) in
         ErrorCommentsOnCode(&lines, lines.iter().enumerate())
     {
         for comment in comment.split(" # E: ") {
-            for (i, comment) in comment.split(" # N: ").enumerate() {
+            for (i, mut comment) in comment.split(" # N: ").enumerate() {
                 if i != 0 {
                     type_ = "note";
                 }
@@ -548,7 +561,7 @@ fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
                     // # E: \
                     continue;
                 }
-                if let Some(comment) = cleanup_mypy_issues(comment) {
+                let mut add_comment = |comment: &str| {
                     if let Some(column) = column {
                         wanted.push(format!(
                             "{path}:{line_nr}:{column}: {type_}: {}",
@@ -557,6 +570,16 @@ fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str) {
                     } else {
                         wanted.push(format!("{path}:{line_nr}: {type_}: {}", comment.trim_end()))
                     }
+                };
+                if from_mypy_test_suite {
+                    if let Some(comment) = cleanup_mypy_issues(comment) {
+                        add_comment(&comment)
+                    }
+                } else {
+                    if comment.ends_with(" \\") {
+                        comment = &comment[..comment.len() - 2];
+                    }
+                    add_comment(comment)
                 }
             }
         }
@@ -714,6 +737,7 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
 
 struct ProjectsCache {
     base_project: Option<Project>,
+    base_version: PythonVersion,
     map: HashMap<(Settings, TypeCheckerFlags), Project>,
 }
 
@@ -730,10 +754,12 @@ fn base_path_join(local_fs: &LocalFS, other: &str) -> Box<AbsPath> {
 impl ProjectsCache {
     fn new(reuse_db: bool) -> Self {
         let mut po = ProjectOptions::default();
+        let base_version = po.settings.python_version;
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
             base_project: reuse_db.then(|| Project::without_watcher(po)),
+            base_version,
             map: Default::default(),
         }
     }
@@ -744,7 +770,12 @@ impl ProjectsCache {
         if !self.map.contains_key(&key) {
             let mut options = ProjectOptions::new(key.0.clone(), key.1.clone());
             set_mypy_path(&mut options);
-            let project = self.try_to_reuse_project_parts(options);
+            // We can only reuse the project if the python version matches.
+            let project = if key.0.python_version == self.base_version {
+                self.try_to_reuse_project_parts(options)
+            } else {
+                Project::without_watcher(options)
+            };
             self.map.insert(key.clone(), project);
         }
         self.map.get_mut(&key).unwrap()
@@ -782,7 +813,7 @@ fn main() -> ExitCode {
         let code = REPLACE_COMMENTS.replace_all(&code, "");
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
-        for case in mypy_style_cases(file_name, &code) {
+        for case in mypy_style_cases(file_name, &code, from_mypy_test_suite) {
             if !filters.is_empty()
                 && !filters.contains(&case.name)
                 && !filters.iter().any(|s| s == file_name)
@@ -836,7 +867,11 @@ fn main() -> ExitCode {
     ExitCode::from((error_count > 0) as u8)
 }
 
-fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'a, 'b>> {
+fn mypy_style_cases<'a, 'b>(
+    file_name: &'a str,
+    code: &'b str,
+    from_mypy_test_suite: bool,
+) -> Vec<TestCase<'a, 'b>> {
     let mut cases = vec![];
 
     let mut add = |name, start, end| {
@@ -844,6 +879,7 @@ fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'
             file_name,
             name,
             code: &code[start..end],
+            from_mypy_test_suite,
         });
     };
 

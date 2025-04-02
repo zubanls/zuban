@@ -31,7 +31,7 @@ class E: pass
 [case import_no_reexport_if_importing_submodule]
 # A bit like testReExportChildStubs, but without relative imports
 from mod import submod
-reveal_type(submod.C().a)  # N: Revealed type is "builtins.str"
+reveal_type(submod.C().a)  # N: Revealed type is "str"
 
 [file mod/__init__.pyi]
 from mod import submod
@@ -43,7 +43,7 @@ class C:
 [case import_no_reexport_if_importing_submodule_with_import_as]
 # A bit like testReExportChildStubs, but without relative imports
 from mod import submod
-reveal_type(submod.C().a)  # N: Revealed type is "builtins.str"
+reveal_type(submod.C().a)  # N: Revealed type is "str"
 
 [file mod/__init__.pyi]
 import mod.submod as submod

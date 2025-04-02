@@ -26,9 +26,9 @@ Baz = NamedTuple("Baz", [('x', int)])
 def identity(x: Callable[P, T]) -> Callable[P, T]:
     return x
 
-reveal_type(identity(Foo)) # N: Revealed type is "def (a: builtins.int =) -> tuple[builtins.int, fallback=__main__.Foo]"
+reveal_type(identity(Foo)) # N: Revealed type is "def (a: int =) -> tuple[int, fallback=__main__.Foo]"
 reveal_type(identity(Bar)) # N: Revealed type is "def [T] (a: T) -> tuple[T, fallback=__main__.Bar[T]]"
-reveal_type(identity(Baz)) # N: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=__main__.Baz]"
+reveal_type(identity(Baz)) # N: Revealed type is "def (x: int) -> tuple[int, fallback=__main__.Baz]"
 
 [case namedtuple_replace_on_inherited_class]
 from typing import NamedTuple
@@ -73,7 +73,7 @@ class Foo(Generic[S]):
         nt_any: NT
         reveal_type(nt_any)  # N: Revealed type is "Tuple[S, Any, fallback=__main__.NT]"
         nts: NT[str]
-        reveal_type(nts)  # N: Revealed type is "Tuple[S, builtins.str, fallback=__main__.NT]"
+        reveal_type(nts)  # N: Revealed type is "Tuple[S, str, fallback=__main__.NT]"
 
         NT[int](key=1, value=1)  # E: Argument "key" to "NT" has incompatible type "int"; expected "S"
         NT[int](key=s, value=1)

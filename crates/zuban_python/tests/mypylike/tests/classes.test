@@ -114,18 +114,18 @@ class Spam: ...
 T = TypeVar("T", bound=Foo)
 def check_bound1(x: Type[T]) -> None:
     for var in x:
-        reveal_type(var)  # N: Revealed type is "builtins.int"
+        reveal_type(var)  # N: Revealed type is "int"
 
 U = TypeVar("U", bound=Foo | Bar)
 def check_bound2(x: Type[U]) -> None:
     for var in x:
-        reveal_type(var)  # N: Revealed type is "builtins.int | builtins.str"
+        reveal_type(var)  # N: Revealed type is "int | str"
 
 V = TypeVar("V", bound=Bar | Baz | Spam)
 def check_bound3(x: Type[V]) -> None:
     for var in x:  # E: "Type[Baz]" has no attribute "__iter__" (not iterable) \
                    # E: "Type[Spam]" has no attribute "__iter__" (not iterable)
-        reveal_type(var)  # N: Revealed type is "builtins.str | Any"
+        reveal_type(var)  # N: Revealed type is "str | Any"
 
 [case kwargs_base_class]
 from typing import Type, Any
@@ -212,7 +212,7 @@ class C(B):
     def f(self) -> int: pass
 
     def g(self: Self) -> Self:
-        reveal_type(super(C, self).f) # N: Revealed type is "def () -> builtins.float"
+        reveal_type(super(C, self).f) # N: Revealed type is "def () -> float"
         return self
 
 [case super_self_lookup]
@@ -538,10 +538,10 @@ type("A", (), {})
 type("B", 1, 1)
 
 [out]
-main:2: error: No overload variant of "type" matches argument types "str", "int", "int"
-main:2: note: Possible overload variants:
-main:2: note:     def __init__(self, object, /) -> type
-main:2: note:     def __init__(self, str, tuple[Type[Any], ...], dict[str, Any], /, **kwds: Any) -> type
+__main__:2: error: No overload variant of "type" matches argument types "str", "int", "int"
+__main__:2: note: Possible overload variants:
+__main__:2: note:     def __init__(self, object, /) -> type
+__main__:2: note:     def __init__(self, str, tuple[Type[Any], ...], dict[str, Any], /, **kwds: Any) -> type
 
 [case assign_in_subclass_to_callable]
 # Inspired a bit by testTypedDictUnpackSingleWithSubtypingNoCrash
@@ -828,7 +828,7 @@ Ts = TypeVarTuple("Ts")
 P = ParamSpec("P")
 class Foo(Generic[*Ts, P]):
     def foo(self, *x: P.args, **y: P.kwargs) -> None:
-        reveal_type(type(super()))  # N: Revealed type is "Type[builtins.super]"
+        reveal_type(type(super()))  # N: Revealed type is "Type[super]"
         reveal_type(type(Ts))  # N: Revealed type is "Type[typing.TypeVarTuple]"
         reveal_type(type(P))  # N: Revealed type is "Type[typing.ParamSpec]"
         reveal_type(type(x))  # N: Revealed type is "Type[object]"

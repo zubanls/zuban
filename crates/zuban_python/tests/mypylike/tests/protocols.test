@@ -104,10 +104,10 @@ l0 = [x, x]
 l1 = [y, y]
 l = [x, y]
 k = [y, x]
-reveal_type(l0) # N: Revealed type is "builtins.list[__main__.P]"
-reveal_type(l1) # N: Revealed type is "builtins.list[__main__.P2]"
-reveal_type(l) # N: Revealed type is "builtins.list[__main__.P]"
-reveal_type(k) # N: Revealed type is "builtins.list[__main__.P]"
+reveal_type(l0) # N: Revealed type is "list[__main__.P]"
+reveal_type(l1) # N: Revealed type is "list[__main__.P2]"
+reveal_type(l) # N: Revealed type is "list[__main__.P]"
+reveal_type(k) # N: Revealed type is "list[__main__.P]"
 
 [case protocol_recursive]
 from typing import Protocol
@@ -130,18 +130,18 @@ check(BadImpl1())
 check(BadImpl2())
 
 [out]
-main:17: error: Argument 1 to "check" has incompatible type "BadImpl1"; expected "Foo"
-main:17: note: Following member(s) of "BadImpl1" have conflicts:
-main:17: note:     Expected:
-main:17: note:         def foo(self) -> Foo
-main:17: note:     Got:
-main:17: note:         def foo(self) -> str
-main:18: error: Argument 1 to "check" has incompatible type "BadImpl2"; expected "Foo"
-main:18: note: Following member(s) of "BadImpl2" have conflicts:
-main:18: note:     Expected:
-main:18: note:         def foo(self) -> Foo
-main:18: note:     Got:
-main:18: note:         def foo(self) -> BadImpl1
+__main__:17: error: Argument 1 to "check" has incompatible type "BadImpl1"; expected "Foo"
+__main__:17: note: Following member(s) of "BadImpl1" have conflicts:
+__main__:17: note:     Expected:
+__main__:17: note:         def foo(self) -> Foo
+__main__:17: note:     Got:
+__main__:17: note:         def foo(self) -> str
+__main__:18: error: Argument 1 to "check" has incompatible type "BadImpl2"; expected "Foo"
+__main__:18: note: Following member(s) of "BadImpl2" have conflicts:
+__main__:18: note:     Expected:
+__main__:18: note:         def foo(self) -> Foo
+__main__:18: note:     Got:
+__main__:18: note:         def foo(self) -> BadImpl1
 
 [case protocol_recursive_with_param]
 from typing import Protocol
@@ -164,30 +164,30 @@ check(BadImpl1())
 check(BadImpl2())
 
 [out]
-main:15: error: Argument 1 to "check" has incompatible type "GoodImpl1"; expected "Foo"
-main:15: note: Following member(s) of "GoodImpl1" have conflicts:
-main:15: note:     Expected:
-main:15: note:         def foo(self, x: Foo) -> Foo
-main:15: note:     Got:
-main:15: note:         def foo(self, x: GoodImpl1) -> GoodImpl1
-main:16: error: Argument 1 to "check" has incompatible type "GoodImpl2"; expected "Foo"
-main:16: note: Following member(s) of "GoodImpl2" have conflicts:
-main:16: note:     Expected:
-main:16: note:         def foo(self, x: Foo) -> Foo
-main:16: note:     Got:
-main:16: note:         def foo(self, x: GoodImpl2) -> GoodImpl1
-main:17: error: Argument 1 to "check" has incompatible type "BadImpl1"; expected "Foo"
-main:17: note: Following member(s) of "BadImpl1" have conflicts:
-main:17: note:     Expected:
-main:17: note:         def foo(self, x: Foo) -> Foo
-main:17: note:     Got:
-main:17: note:         def foo(self, x: BadImpl1) -> str
-main:18: error: Argument 1 to "check" has incompatible type "BadImpl2"; expected "Foo"
-main:18: note: Following member(s) of "BadImpl2" have conflicts:
-main:18: note:     Expected:
-main:18: note:         def foo(self, x: Foo) -> Foo
-main:18: note:     Got:
-main:18: note:         def foo(self, x: BadImpl2) -> BadImpl1
+__main__:15: error: Argument 1 to "check" has incompatible type "GoodImpl1"; expected "Foo"
+__main__:15: note: Following member(s) of "GoodImpl1" have conflicts:
+__main__:15: note:     Expected:
+__main__:15: note:         def foo(self, x: Foo) -> Foo
+__main__:15: note:     Got:
+__main__:15: note:         def foo(self, x: GoodImpl1) -> GoodImpl1
+__main__:16: error: Argument 1 to "check" has incompatible type "GoodImpl2"; expected "Foo"
+__main__:16: note: Following member(s) of "GoodImpl2" have conflicts:
+__main__:16: note:     Expected:
+__main__:16: note:         def foo(self, x: Foo) -> Foo
+__main__:16: note:     Got:
+__main__:16: note:         def foo(self, x: GoodImpl2) -> GoodImpl1
+__main__:17: error: Argument 1 to "check" has incompatible type "BadImpl1"; expected "Foo"
+__main__:17: note: Following member(s) of "BadImpl1" have conflicts:
+__main__:17: note:     Expected:
+__main__:17: note:         def foo(self, x: Foo) -> Foo
+__main__:17: note:     Got:
+__main__:17: note:         def foo(self, x: BadImpl1) -> str
+__main__:18: error: Argument 1 to "check" has incompatible type "BadImpl2"; expected "Foo"
+__main__:18: note: Following member(s) of "BadImpl2" have conflicts:
+__main__:18: note:     Expected:
+__main__:18: note:         def foo(self, x: Foo) -> Foo
+__main__:18: note:     Got:
+__main__:18: note:         def foo(self, x: BadImpl2) -> BadImpl1
 
 [case protocol_contravariant]
 from typing import Protocol

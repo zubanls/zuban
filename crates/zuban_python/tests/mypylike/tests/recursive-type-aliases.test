@@ -103,7 +103,7 @@ x: B
 B = List["C"]
 class C(B): pass
 
-reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(x)  # N: Revealed type is "list[__main__.C]"
 reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
 
 [case recursive_alias_via_base_class_with_different_module]
@@ -117,7 +117,7 @@ from typing import List
 x: B
 B = List[n.C]
 
-reveal_type(x)  # N: Revealed type is "builtins.list[n.C]"
+reveal_type(x)  # N: Revealed type is "list[n.C]"
 reveal_type(x[0][0])  # N: Revealed type is "n.C"
 
 [file n.py]
@@ -134,5 +134,5 @@ B = List[X.C]
 class X:
     class C(B): pass  # E: This base class/alias cycle is currently unsupported
 
-reveal_type(x)  # N: Revealed type is "builtins.list[__main__.X.C]"
+reveal_type(x)  # N: Revealed type is "list[__main__.X.C]"
 reveal_type(x[0][0])  # E: Value of type "C" is not indexable # N: Revealed type is "Any"

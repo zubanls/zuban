@@ -108,11 +108,11 @@ class A:
 
 class B(A):
     def foo(self: T) -> T:
-        reveal_type(super(B, self).foo())  # N: Revealed type is "T`-1"
+        reveal_type(super(B, self).foo())  # N: Revealed type is "T"
         return super(B, self).foo()
 
     def bar(self: U) -> U:
-        reveal_type(super(B, self).bar())  # N: Revealed type is "U`-1"
+        reveal_type(super(B, self).bar())  # N: Revealed type is "U"
         return super(B, self).bar()
 
 def foo(t: T) -> None:
@@ -133,12 +133,12 @@ class A:
 class B(A):
     @classmethod
     def foo(cls: Type[T]) -> T:
-        reveal_type(super(B, cls).foo())  # N: Revealed type is "T`-1"
+        reveal_type(super(B, cls).foo())  # N: Revealed type is "T"
         return super(B, cls).foo()
 
     @classmethod
     def bar(cls: Type[U]) -> U:
-        reveal_type(super(B, cls).foo())  # N: Revealed type is "U`-1"
+        reveal_type(super(B, cls).foo())  # N: Revealed type is "U"
         return super(B, cls).foo()
 
 def foo(t: Type[T]) -> None:

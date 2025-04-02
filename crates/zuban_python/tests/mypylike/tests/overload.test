@@ -176,8 +176,8 @@ def wrapper(arg: object) -> object: ...
 
 def case_a(x: int) -> None: pass
 
-reveal_type(case_a)           # N: Revealed type is "def (x: builtins.int)"
-reveal_type(wrapper(case_a))  # N: Revealed type is "def (x: builtins.int)"
+reveal_type(case_a)           # N: Revealed type is "def (x: int)"
+reveal_type(wrapper(case_a))  # N: Revealed type is "def (x: int)"
 
 def case_b(x: Any) -> None: pass
 
@@ -196,8 +196,8 @@ class Foo(Generic[T]):
     def __init__(self, x, y): ...
 
 u1: int | str
-reveal_type(Foo(1, "")) # N: Revealed type is "__main__.Foo[builtins.str]"
-reveal_type(Foo(1, u1)) # N: Revealed type is "__main__.Foo[builtins.int] | __main__.Foo[builtins.str]"
+reveal_type(Foo(1, "")) # N: Revealed type is "__main__.Foo[str]"
+reveal_type(Foo(1, u1)) # N: Revealed type is "__main__.Foo[int] | __main__.Foo[str]"
 
 [case overload_union_math_on_class_init_unconstrained]
 from typing import Callable, Union, overload, Generic, TypeVar
@@ -211,7 +211,7 @@ class Foo(Generic[T]):
     def __init__(self, x, y): ...
 
 u1: int | str
-reveal_type(Foo(1, "")) # N: Revealed type is "__main__.Foo[builtins.str]"
+reveal_type(Foo(1, "")) # N: Revealed type is "__main__.Foo[str]"
 reveal_type(Foo(1, u1)) # N: Revealed type is "__main__.Foo[int | str]"
 
 [case multi_dimension_union_math_issue_13595]
@@ -328,14 +328,14 @@ class AClass:
         ...
 
 def foo(x: Type[AClass]) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: int, id2: int) -> Union[int, None], def (id: __main__.AClass, id2: None =) -> Union[int, None])"
     y = x()
-    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: int, id2: int) -> Union[int, None], def (id: __main__.AClass, id2: None =) -> Union[int, None])"
     y.delete(10, 20)
     y.delete(y)
 
 def bar(x: AClass) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: int, id2: int) -> Union[int, None], def (id: __main__.AClass, id2: None =) -> Union[int, None])"
     x.delete(10, 20)
 
 [case self_type_filtering_of_classmethod_overload]

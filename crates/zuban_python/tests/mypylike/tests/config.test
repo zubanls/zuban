@@ -109,7 +109,7 @@ implicit_optional = True
 # mypy: always-false="FOO,BAR""bla",
 # mypy: "always-true=foo"
 [out]
-main:1: error: Content after quote in configuration comment
-main:3: error: Content after quote in configuration comment
-main:3: error: Quotes should not be part of the key
-main:3: error: Unrecognized option: "always_true = oo"
+__main__:1: error: Content after quote in configuration comment
+__main__:3: error: Content after quote in configuration comment
+__main__:3: error: Quotes should not be part of the key
+__main__:3: error: Unrecognized option: "always_true = oo"

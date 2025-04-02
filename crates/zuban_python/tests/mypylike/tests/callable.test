@@ -205,9 +205,9 @@ reveal_type(x(1)) # N: Revealed type is "tuple[int, Never]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
-main:7: error: Type variable "__main__.U" is unbound
-main:7: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
-main:7: note: (Hint: Use "U" in function signature to bind "U" inside a function)
+__main__:7: error: Type variable "__main__.U" is unbound
+__main__:7: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
+__main__:7: note: (Hint: Use "U" in function signature to bind "U" inside a function)
 
 [case callable_on_type_comment_tuple_with_unbound]
 from typing import Callable, TypeVar, Tuple, Generic, Any
@@ -223,9 +223,9 @@ reveal_type(x(1)) # N: Revealed type is "tuple[int, Never]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
-main:7: error: Type variable "__main__.U" is unbound
-main:7: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
-main:7: note: (Hint: Use "U" in function signature to bind "U" inside a function)
+__main__:7: error: Type variable "__main__.U" is unbound
+__main__:7: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
+__main__:7: note: (Hint: Use "U" in function signature to bind "U" inside a function)
 
 [case callable_on_cast_target]
 from typing import Callable, TypeVar, Tuple, cast
@@ -253,9 +253,9 @@ reveal_type(x(1)) # N: Revealed type is "tuple[int, Never]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
-main:6: error: Type variable "__main__.U" is unbound
-main:6: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
-main:6: note: (Hint: Use "U" in function signature to bind "U" inside a function)
+__main__:6: error: Type variable "__main__.U" is unbound
+__main__:6: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
+__main__:6: note: (Hint: Use "U" in function signature to bind "U" inside a function)
 
 [case additional_callable_params_ordering]
 from typing import Callable

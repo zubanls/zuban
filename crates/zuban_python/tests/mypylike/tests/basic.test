@@ -418,9 +418,9 @@ c''')
 baz("""ab\nc""")
 
 [out]
-main:9: error: Argument 1 to "foo" has incompatible type "Literal['ab\\\nc']"; expected "Literal['abc']"
-main:11: error: Argument 1 to "foo" has incompatible type "Literal['abc\n']"; expected "Literal['abc']"
-main:13: error: Argument 1 to "foo" has incompatible type "str"; expected "Literal['abc']"
+__main__:9: error: Argument 1 to "foo" has incompatible type "Literal['ab\\\nc']"; expected "Literal['abc']"
+__main__:11: error: Argument 1 to "foo" has incompatible type "Literal['abc\n']"; expected "Literal['abc']"
+__main__:13: error: Argument 1 to "foo" has incompatible type "str"; expected "Literal['abc']"
 
 [case fstring_unions]
 abc = int
@@ -560,7 +560,7 @@ __getattr__  # E: Name "__getattr__" is not defined
 
 # From object
 reveal_type(__doc__)  # N: Revealed type is "str | None"
-reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+reveal_type(__annotations__)  # N: Revealed type is "dict[str, Any]"
 __module__  # E: Name "__module__" is not defined
 __hash__  # E: Name "__hash__" is not defined
 __eq__  # E: Name "__eq__" is not defined
@@ -581,7 +581,7 @@ def foo() -> None:
     __getattr__  # E: Name "__getattr__" is not defined
 
     reveal_type(__doc__)  # N: Revealed type is "str | None"
-    reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(__annotations__)  # N: Revealed type is "dict[str, Any]"
     __module__  # E: Name "__module__" is not defined
     __hash__  # E: Name "__hash__" is not defined
     __eq__  # E: Name "__eq__" is not defined
@@ -600,7 +600,7 @@ class Foo:
     __getattr__  # E: Name "__getattr__" is not defined
 
     reveal_type(__doc__)  # N: Revealed type is "str | None"
-    reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(__annotations__)  # N: Revealed type is "dict[str, Any]"
     reveal_type(__module__)  # N: Revealed type is "str"
     __hash__  # E: Name "__hash__" is not defined
     __eq__  # E: Name "__eq__" is not defined
@@ -1009,3 +1009,20 @@ reveal_type(t) # N: Revealed type is "Any"
 [file m.py]
 global t  # E: Global at module level is unnecessary
 t = 1
+
+[case ellipsis_in_older_python]
+# flags: --python-version 3.8
+# Ellipsis is special in typeshed and was only introduced correctly as a type in 3.10
+
+x = undefined  # E: Name "undefined" is not defined
+reveal_type(x)  # N: Revealed type is "Any"
+if x == ...:
+    reveal_type(x)  # N: Revealed type is "ellipsis"
+
+[case ellipsis_in_newer_python]
+# flags: --python-version 3.13
+
+x = undefined  # E: Name "undefined" is not defined
+reveal_type(x)  # N: Revealed type is "Any"
+if x == ...:
+    reveal_type(x)  # N: Revealed type is "types.EllipsisType"

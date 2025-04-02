@@ -109,9 +109,9 @@ Point3D = NamedTuple("Point3D", [('x', int), ('y', int), ('z', int)])
 
 x: Union[Point2D, Point3D]
 if len(x) == 2:
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.Point2D]"
+    reveal_type(x)  # N: Revealed type is "Tuple[int, int, fallback=__main__.Point2D]"
 else:
-    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int, fallback=__main__.Point3D]"
+    reveal_type(x)  # N: Revealed type is "Tuple[int, int, int, fallback=__main__.Point3D]"
 
 [case narrowing_named_tuple_calls2]
 # Like testNarrowingLenUnionOfNamedTuples, but with direct calls instead of classes
@@ -144,9 +144,9 @@ VarTuple = Tuple[int, Unpack[Tuple[str, ...]]]
 
 x: VarTuple
 if len(x) < 30:
-    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, Unpack[Tuple[str, ...]]]"
+    reveal_type(x) # N: Revealed type is "tuple[int, Unpack[Tuple[str, ...]]]"
 else:
-    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, Unpack[Tuple[str, ...]]]"
+    reveal_type(x) # N: Revealed type is "tuple[int, Unpack[Tuple[str, ...]]]"
 
 [case narrow_attribute_split]
 class Foo:
@@ -1686,7 +1686,7 @@ import m
 
 def f(x: dict[str, tuple[int] | tuple[str, int]]) -> None:
     assert len(x["a"]) == 2
-    reveal_type(x["a"])  # N: Revealed type is "builtins.tuple[builtins.str, builtins.int]"
+    reveal_type(x["a"])  # N: Revealed type is "tuple[str, int]"
     x[m.S1]
 
 [file m.py]
