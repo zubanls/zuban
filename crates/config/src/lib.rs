@@ -680,8 +680,7 @@ fn apply_from_base_config(
         "show_error_end" => {
             diagnostic_config.show_error_end = value.as_bool(false)?;
         }
-        "platform"
-        | "show_error_context"
+        "show_error_context"
         | "show_traceback"
         | "pretty"
         | "plugins"
@@ -711,6 +710,7 @@ fn apply_from_base_config(
             settings.apply_python_executable(vfs, &p)?
         }
         "python_version" => settings.python_version = value.as_str()?.parse()?,
+        "platform" => settings.platform = Some(value.as_str()?.to_string()),
         _ => return apply_from_config_part(flags, key, value),
     };
     Ok(false)
@@ -881,6 +881,20 @@ mod tests {
     #[test]
     fn test_python_version_invalid_pyproject_toml() {
         let code = "[tool.mypy]\npython_version = false";
+        let err = project_options_err(code, false);
+        assert_eq!(err.to_string(), "Expected str, got false");
+    }
+
+    #[test]
+    fn test_platform_valid() {
+        let code = "[mypy]\nplatform = foo";
+        let opts = project_options_valid(code, true);
+        assert_eq!(opts.settings.platform.unwrap(), "foo");
+    }
+
+    #[test]
+    fn test_platform_error() {
+        let code = "[tool.mypy]\nplatform = false";
         let err = project_options_err(code, false);
         assert_eq!(err.to_string(), "Expected str, got false");
     }
