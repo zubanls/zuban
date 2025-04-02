@@ -76,20 +76,13 @@ impl Settings {
         let Some(executable_dir) = python_executable.as_ref().parent() else {
             bail!(ERR)
         };
-        let environment = executable_dir
-            .canonicalize()
-            .map_err(|err| {
-                anyhow::anyhow!(
-                    "Expected directory access to be possible for {executable_dir:?}: {err}"
-                )
-            })?
-            .parent()
-            .map(|p| {
-                let p = p.as_os_str().to_str().expect(
-                    "Should never happen, because we only put together valid unicode paths",
-                );
-                handler.unchecked_abs_path(p.to_string())
-            });
+        let environment = executable_dir.parent().map(|p| {
+            let p = p
+                .as_os_str()
+                .to_str()
+                .expect("Should never happen, because we only put together valid unicode paths");
+            handler.unchecked_abs_path(p.to_string())
+        });
         if environment.is_none() {
             bail!(ERR)
         }
@@ -845,7 +838,6 @@ mod tests {
         );
     }
 
-    /*
     #[test]
     fn test_python_executable_valid() {
         let code = "[mypy]\npython_executable = /some/path/bin/python";
@@ -853,5 +845,4 @@ mod tests {
         let path = opts.settings.environment.as_ref().unwrap();
         assert_eq!(***path, *"/some/path");
     }
-    */
 }
