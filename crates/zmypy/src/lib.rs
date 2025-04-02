@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use config::{find_cli_config, DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
-use vfs::{AbsPath, LocalFS, VfsHandler as _};
+use vfs::{AbsPath, LocalFS, VfsHandler};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -221,7 +221,10 @@ pub fn run_with_cli(
     typeshed_path: Option<Box<AbsPath>>,
 ) -> ExitCode {
     tracing::info!("Checking in {current_dir}");
-    let (mut project, diagnostic_config) = project_from_cli(cli, current_dir, typeshed_path);
+    let (mut project, diagnostic_config) =
+        project_from_cli(cli, current_dir, typeshed_path, |name| {
+            std::env::var(name).ok()
+        });
     let diagnostics = project.diagnostics();
     for diagnostic in diagnostics.issues.iter() {
         println!("{}", diagnostic.as_string(&diagnostic_config))
@@ -255,6 +258,7 @@ fn project_from_cli(
     cli: Cli,
     current_dir: String,
     typeshed_path: Option<Box<AbsPath>>,
+    lookup_env_var: impl Fn(&str) -> Option<String>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = LocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
@@ -265,6 +269,11 @@ fn project_from_cli(
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
+    if options.settings.environment.is_none() {
+        options.settings.environment =
+            lookup_env_var("VIRTUAL_ENV").map(|v| local_fs.absolute_path(&current_dir, v))
+    }
+
     apply_flags(
         &local_fs,
         &mut options,
@@ -406,11 +415,16 @@ mod tests {
 
     use super::*;
 
-    fn diagnostics(cli: Cli, directory: &str) -> Vec<String> {
+    fn diagnostics_with_env_lookup(
+        cli: Cli,
+        directory: &str,
+        lookup_env_var: impl Fn(&str) -> Option<String>,
+    ) -> Vec<String> {
         let (mut project, diagnostic_config) = project_from_cli(
             cli,
             directory.to_string(),
             Some(test_utils::typeshed_path()),
+            lookup_env_var,
         );
         let diagnostics = project.diagnostics();
         let mut diagnostics = diagnostics
@@ -420,6 +434,10 @@ mod tests {
             .collect::<Vec<_>>();
         diagnostics.sort();
         diagnostics
+    }
+
+    fn diagnostics(cli: Cli, directory: &str) -> Vec<String> {
+        diagnostics_with_env_lookup(cli, directory, |_| None)
     }
 
     #[test]
@@ -550,6 +568,12 @@ mod tests {
         // venv information via --python-executable should work
         let empty: [&str; 0] = [];
         assert_eq!(d(&["", "--python-executable", "venv/bin/python"]), empty);
+
+        // venv information via $VIRTUAL_ENV
+        let ds = diagnostics_with_env_lookup(Cli::parse_from(&[""]), test_dir.path(), |name| {
+            (name == "VIRTUAL_ENV").then(|| "venv".to_string())
+        });
+        assert_eq!(ds, empty);
     }
 
     #[test]
