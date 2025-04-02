@@ -66,6 +66,36 @@ impl Settings {
     pub fn computed_platform(&self) -> &str {
         self.platform.as_deref().unwrap_or("posix")
     }
+
+    pub fn apply_python_executable(
+        &mut self,
+        handler: &dyn VfsHandler,
+        python_executable: &AbsPath,
+    ) -> anyhow::Result<()> {
+        const ERR: &str = "Expected a python-executable to be at least two directories deep";
+        let Some(executable_dir) = python_executable.as_ref().parent() else {
+            bail!(ERR)
+        };
+        let environment = executable_dir
+            .canonicalize()
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "Expected directory access to be possible for {executable_dir:?}: {err}"
+                )
+            })?
+            .parent()
+            .map(|p| {
+                let p = p.as_os_str().to_str().expect(
+                    "Should never happen, because we only put together valid unicode paths",
+                );
+                handler.unchecked_abs_path(p.to_string())
+            });
+        if environment.is_none() {
+            bail!(ERR)
+        }
+        self.environment = environment;
+        Ok(())
+    }
 }
 
 impl ProjectOptions {
@@ -187,36 +217,6 @@ impl ProjectOptions {
         } else {
             Ok(None)
         }
-    }
-
-    pub fn apply_python_executable(
-        &mut self,
-        handler: &dyn VfsHandler,
-        python_executable: &AbsPath,
-    ) -> anyhow::Result<()> {
-        const ERR: &str = "Expected a python-executable to be at least two directories deep";
-        let Some(executable_dir) = python_executable.as_ref().parent() else {
-            bail!(ERR)
-        };
-        let environment = executable_dir
-            .canonicalize()
-            .map_err(|err| {
-                anyhow::anyhow!(
-                    "Expected directory access to be possible for {executable_dir:?}: {err}"
-                )
-            })?
-            .parent()
-            .map(|p| {
-                let p = p.as_os_str().to_str().expect(
-                    "Should never happen, because we only put together valid unicode paths",
-                );
-                handler.unchecked_abs_path(p.to_string())
-            });
-        if environment.is_none() {
-            bail!(ERR)
-        }
-        self.settings.environment = environment;
-        Ok(())
     }
 }
 
@@ -483,6 +483,16 @@ impl IniOrTomlValue<'_> {
         Ok(result != invert)
     }
 
+    fn as_str(&self) -> anyhow::Result<&str> {
+        match self {
+            Self::Toml(v) => v
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("Expected str, got {}", v.to_string().trim())),
+            Self::Ini(s) => Ok(s),
+            Self::InlineConfigNoValue => unreachable!(),
+        }
+    }
+
     fn as_str_list(&self, key: &str, split_on: &[char]) -> anyhow::Result<Vec<String>> {
         let split_str = |s| split_and_trim(s, split_on).map(|x| x.to_string()).collect();
         match self {
@@ -700,6 +710,10 @@ fn apply_from_base_config(
                 .into_iter()
                 .map(|s| vfs.absolute_path(current_dir, s)),
         ),
+        "python_executable" => {
+            let p = vfs.absolute_path(current_dir, value.as_str()?.to_string());
+            settings.apply_python_executable(vfs, &p)?
+        }
         _ => return apply_from_config_part(flags, key, value),
     };
     Ok(false)
@@ -755,10 +769,10 @@ mod tests {
 
     use super::*;
 
-    fn project_options_err(code: &str, from_ini: bool) -> anyhow::Error {
+    fn project_options(code: &str, from_ini: bool) -> anyhow::Result<Option<ProjectOptions>> {
         let local_fs = LocalFS::without_watcher();
         let current_dir = local_fs.unchecked_abs_path("/foo".to_string());
-        let opts = if from_ini {
+        if from_ini {
             ProjectOptions::from_mypy_ini(
                 &local_fs,
                 &current_dir,
@@ -772,7 +786,14 @@ mod tests {
                 code,
                 &mut DiagnosticConfig::default(),
             )
-        };
+        }
+    }
+    fn project_options_valid(code: &str, from_ini: bool) -> ProjectOptions {
+        project_options(code, from_ini).unwrap().unwrap()
+    }
+
+    fn project_options_err(code: &str, from_ini: bool) -> anyhow::Error {
+        let opts = project_options(code, from_ini);
         let Err(err) = opts else { unreachable!() };
         err
     }
@@ -806,4 +827,31 @@ mod tests {
             "Expected tool.mypy to be simple table in pyproject.toml"
         );
     }
+
+    #[test]
+    fn test_invalid_settings_type() {
+        let code = "[tool.mypy]\npython_executable=1";
+        let err = project_options_err(code, false);
+        assert_eq!(err.to_string(), "Expected str, got 1");
+    }
+
+    #[test]
+    fn test_python_executable_invalid() {
+        let code = "[mypy]\npython_executable = /settings";
+        let err = project_options_err(code, true);
+        assert_eq!(
+            err.to_string(),
+            "Expected a python-executable to be at least two directories deep"
+        );
+    }
+
+    /*
+    #[test]
+    fn test_python_executable_valid() {
+        let code = "[mypy]\npython_executable = /some/path/bin/python";
+        let opts = project_options_valid(code, true);
+        let path = opts.settings.environment.as_ref().unwrap();
+        assert_eq!(***path, *"/some/path");
+    }
+    */
 }

@@ -345,6 +345,7 @@ fn apply_flags(
     if let Some(p) = cli.python_executable {
         let p = vfs_handler.absolute_path(&current_dir, p);
         project_options
+            .settings
             .apply_python_executable(vfs_handler, &p)
             .expect("Error when applying --python-executable")
     }
