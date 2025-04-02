@@ -335,16 +335,20 @@ impl PythonVersion {
 }
 
 impl std::str::FromStr for PythonVersion {
-    type Err = String;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let error = "Expected a dot separated python version like 3.13";
         let Some((major, minor)) = s.split_once(".") else {
-            return Err(error.into());
+            bail!(error);
         };
         Ok(Self {
-            major: major.parse().map_err(|i| format!("{error} ({i})"))?,
-            minor: minor.parse().map_err(|i| format!("{error} ({i})"))?,
+            major: major
+                .parse()
+                .map_err(|i| anyhow::anyhow!("{error} ({i})"))?,
+            minor: minor
+                .parse()
+                .map_err(|i| anyhow::anyhow!("{error} ({i})"))?,
         })
     }
 }
@@ -676,8 +680,7 @@ fn apply_from_base_config(
         "show_error_end" => {
             diagnostic_config.show_error_end = value.as_bool(false)?;
         }
-        "python_version"
-        | "platform"
+        "platform"
         | "show_error_context"
         | "show_traceback"
         | "pretty"
@@ -707,6 +710,7 @@ fn apply_from_base_config(
             let p = vfs.absolute_path(current_dir, value.as_str()?.to_string());
             settings.apply_python_executable(vfs, &p)?
         }
+        "python_version" => settings.python_version = value.as_str()?.parse()?,
         _ => return apply_from_config_part(flags, key, value),
     };
     Ok(false)
@@ -844,5 +848,40 @@ mod tests {
         let opts = project_options_valid(code, true);
         let path = opts.settings.environment.as_ref().unwrap();
         assert_eq!(***path, *"/some/path");
+    }
+
+    #[test]
+    fn test_python_version_valid_mypy_ini() {
+        let code = "[mypy]\npython_version = 3.1";
+        let opts = project_options_valid(code, true);
+        let version = &opts.settings.python_version;
+        assert_eq!(version.major, 3);
+        assert_eq!(version.minor, 1);
+    }
+
+    #[test]
+    fn test_python_version_invalid_mypy_ini() {
+        let code = "[mypy]\npython_version = hello";
+        let err = project_options_err(code, true);
+        assert_eq!(
+            err.to_string(),
+            "Expected a dot separated python version like 3.13"
+        );
+    }
+
+    #[test]
+    fn test_python_version_valid_pyproject_toml() {
+        let code = "[tool.mypy]\npython_version = '3.1'";
+        let opts = project_options_valid(code, false);
+        let version = &opts.settings.python_version;
+        assert_eq!(version.major, 3);
+        assert_eq!(version.minor, 1);
+    }
+
+    #[test]
+    fn test_python_version_invalid_pyproject_toml() {
+        let code = "[tool.mypy]\npython_version = false";
+        let err = project_options_err(code, false);
+        assert_eq!(err.to_string(), "Expected str, got false");
     }
 }
