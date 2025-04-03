@@ -1026,3 +1026,24 @@ x = undefined  # E: Name "undefined" is not defined
 reveal_type(x)  # N: Revealed type is "Any"
 if x == ...:
     reveal_type(x)  # N: Revealed type is "types.EllipsisType"
+
+[case star_expr_in_older_python]
+# flags: --python-version 3.8
+
+def foo() -> None: ...
+
+try:
+    foo()
+except *Exception as x:  # E: Missing the typing symbols for star exceptions \
+                         # N: Your --python-version is probably too low.
+    reveal_type(x)  # N: Revealed type is "Any"
+
+[case star_expr_in_newer_python]
+# flags: --python-version 3.13
+
+def foo() -> None: ...
+
+try:
+    foo()
+except *Exception as x:
+    reveal_type(x)  # N: Revealed type is "ExceptionGroup[Exception]"

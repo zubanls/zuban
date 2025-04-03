@@ -21,6 +21,7 @@ pub(crate) enum IssueKind {
     InvalidSyntax,
     InvalidSyntaxInTypeComment { type_comment: Box<str> },
     InvalidSyntaxInTypeAnnotation,
+    StarExceptionWithoutTypingSupport,
     TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code: Box<str> },
     DirectiveSyntaxError(Box<str>),
 
@@ -773,6 +774,10 @@ impl<'db> Diagnostic<'db> {
                 r#"Syntax error in type comment "{type_comment}""#
             ),
             InvalidSyntaxInTypeAnnotation => "Syntax error in type annotation".to_string(),
+            StarExceptionWithoutTypingSupport => {
+                additional_notes.push("Your --python-version is probably too low.".to_string());
+                "Missing the typing symbols for star exceptions".to_string()
+            }
             TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code } => {
                 additional_notes.push(r#"Error code "syntax" not covered by "type: ignore" comment"#.to_string());
                 format!(

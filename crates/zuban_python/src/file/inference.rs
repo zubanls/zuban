@@ -3815,10 +3815,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             let (expr, name_def) = except_expr.unpack();
                             if let Some(name_def) = name_def {
                                 let inf = self.infer_expression(expr);
-                                Inferred::from_type(instantiate_except_star(
-                                    self.i_s,
-                                    &inf.as_cow_type(self.i_s),
-                                ))
+                                Inferred::from_type(
+                                    self.instantiate_except_star(
+                                        name_def,
+                                        &inf.as_cow_type(self.i_s),
+                                    ),
+                                )
                                 .maybe_save_redirect(
                                     self.i_s,
                                     self.file,
@@ -3867,6 +3869,26 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     AssignKind::Normal,
                 )
             }
+        }
+    }
+
+    pub fn instantiate_except_star(&self, name_def: NameDef, t: &Type) -> Type {
+        let result = gather_except_star(self.i_s, t);
+        // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
+        // inherits from Exception, ExceptionGroup is used.
+        let is_base_exception_group = has_base_exception(self.i_s.db, &result);
+        let group_node_ref = match is_base_exception_group {
+            false => self.i_s.db.python_state.exception_group_node_ref(),
+            true => self.i_s.db.python_state.base_exception_group_node_ref(),
+        };
+        if let Some(group_node_ref) = group_node_ref {
+            new_class!(group_node_ref.as_link(), result)
+        } else {
+            self.add_issue(
+                name_def.index(),
+                IssueKind::StarExceptionWithoutTypingSupport,
+            );
+            Type::ERROR
         }
     }
 
@@ -4201,32 +4223,6 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
         )),
         _ => Type::ERROR,
     }
-}
-
-pub fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
-    let result = gather_except_star(i_s, t);
-    // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
-    // inherits from Exception, ExceptionGroup is used.
-    let is_base_exception_group = has_base_exception(i_s.db, &result);
-    new_class!(
-        match is_base_exception_group {
-            false => i_s
-                .db
-                .python_state
-                .exception_group_node_ref()
-                .unwrap_or_else(|| unimplemented!("Star syntax without builtins.ExceptionGroup"))
-                .as_link(),
-            true => i_s
-                .db
-                .python_state
-                .base_exception_group_node_ref()
-                .unwrap_or_else(|| unimplemented!(
-                    "Star syntax without builtins.BaseExceptionGroup"
-                ))
-                .as_link(),
-        },
-        result,
-    )
 }
 
 fn has_base_exception(db: &Database, t: &Type) -> bool {

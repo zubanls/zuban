@@ -42,7 +42,7 @@ use crate::{
 
 use super::{
     first_defined_name,
-    inference::{instantiate_except, instantiate_except_star, AssignKind, Inference},
+    inference::{instantiate_except, AssignKind, Inference},
     name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
     on_argument_type_error,
     utils::func_of_self_symbol,
@@ -1964,7 +1964,7 @@ impl Inference<'_, '_, '_> {
                         if let Some(name_def) = name_def {
                             let instantiated = match is_star {
                                 false => instantiate_except(self.i_s, &inf_t),
-                                true => instantiate_except_star(self.i_s, &inf_t),
+                                true => self.instantiate_except_star(name_def, &inf_t),
                             };
                             let name_index = name_def.name_index();
                             let first = first_defined_name(self.file, name_index);
