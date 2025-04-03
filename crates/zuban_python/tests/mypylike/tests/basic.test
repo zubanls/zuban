@@ -1047,3 +1047,9 @@ try:
     foo()
 except *Exception as x:
     reveal_type(x)  # N: Revealed type is "ExceptionGroup[Exception]"
+
+[case special_types_access_in_older_python]
+# flags: --python-version 3.8
+import typing
+reveal_type(reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
+reveal_type(typing.NewType)  # N: Revealed type is "Type[typing_extensions.NewType]"

@@ -522,14 +522,14 @@ impl PythonState {
         }
         macro_rules! cache_typing_link_with_typing_extensions_fallback {
             ($attr_name:ident, $name:literal, $is_func:expr) => {
+                // NewType is special, because the fallback is a function in current
+                // Typeshed, so use TypingExtensions for now...
+                let use_new_type_from_typing_extensions = $name == "NewType"
+                    && db.project.settings.python_version < PythonVersion::new(3, 10);
                 cache_index(
                     db,
                     |db| {
-                        // NewType is special, because the fallback is a function in current
-                        // Typeshed, so use TypingExtensions for now...
-                        if $name == "NewType"
-                            && db.project.settings.python_version < PythonVersion::new(3, 10)
-                        {
+                        if use_new_type_from_typing_extensions {
                             return db.python_state.typing_extensions();
                         }
                         db.python_state.typing()
@@ -551,8 +551,12 @@ impl PythonState {
                             );
                             return;
                         };
-                        db.python_state.$attr_name =
-                            PointLink::new(db.python_state.typing().file_index, new_index);
+                        let file_index = if use_new_type_from_typing_extensions {
+                            db.python_state.typing_extensions().file_index
+                        } else {
+                            db.python_state.typing().file_index
+                        };
+                        db.python_state.$attr_name = PointLink::new(file_index, new_index);
                     },
                     $is_func,
                 );
