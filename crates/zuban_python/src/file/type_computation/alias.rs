@@ -69,11 +69,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
 
             self.ensure_cached_annotation(annotation, true);
-            is_explicit = self.file.points.get(annotation.index()).maybe_specific()
-                == Some(Specific::AnnotationTypeAlias);
-            if !is_explicit {
-                if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
-                    return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
+            match self.file.points.get(annotation.index()).maybe_specific() {
+                Some(Specific::AnnotationTypeAlias) => is_explicit = true,
+                // Final/ClassVar may not have been calculated like x: Final = 1
+                Some(
+                    Specific::AnnotationOrTypeCommentFinal
+                    | Specific::AnnotationOrTypeCommentClassVar,
+                ) => (),
+                _ => {
+                    if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
+                        return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
+                    }
                 }
             }
         }

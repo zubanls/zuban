@@ -325,3 +325,34 @@ foo = undefined()  # E: Name "undefined" is not defined
 [file o.py]
 from m import *
 from n import foo
+
+[case flow_analysis_with_final_statement_as_type_should_not_crash]
+from m import D
+
+class C:
+    def x(self, d: D) -> None:
+        reveal_type(d.x)  # N: Revealed type is "Any"
+
+[file m.py]
+from typing import Final
+
+ccc: Final = 1
+
+class D:
+    x: ccc  # E: Variable "m.ccc" is not valid as a type \
+            # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case flow_analysis_with_class_var_as_type_should_not_crash]
+from m import D
+
+class C:
+    def x(self, d: D) -> None:
+        reveal_type(d.x)  # N: Revealed type is "Any"
+
+[file m.py]
+from typing import ClassVar
+
+class D:
+    c: ClassVar = 1
+    x: c  # E: Variable "m.c" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
