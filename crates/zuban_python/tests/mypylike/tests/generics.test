@@ -1556,3 +1556,24 @@ class Pipeline(Generic[_InT, _OutT]):
 
     def str_starts_with(self: Pipeline[_InT, str], prefix: str) -> Pipeline[_InT, str]:
         return self.predicate(lambda v: v.startswith(prefix))
+
+[case no_crash_on_param_spec_type_var_tuple_alias_definitions]
+from typing import TypeVar, Generic, ParamSpec, TypeVarTuple
+T = TypeVar('T')
+P = ParamSpec('P')
+Ts = TypeVarTuple('Ts')
+
+class PandT(Generic[P, T]):
+    pass
+
+C1 = PandT[P, T]
+x1: C1[[int, str], bool]
+reveal_type(x1)
+
+C2 = PandT[[int, T], T]
+x2: C2[str]
+reveal_type(x2)
+
+C3 = PandT[[int, *Ts], T]
+x3: C3[str, bool, bytes]
+reveal_type(x3)

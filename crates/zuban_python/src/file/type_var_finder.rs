@@ -301,10 +301,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     }
                 }
             }
-            debug!(
-                "Found unbound TypeVar {} in parent scope",
-                tvl.name(self.i_s.db)
-            );
+            debug!("Found unbound TypeVar {}", tvl.name(self.i_s.db));
             let old_index = self.infos.type_var_manager.add(tvl, None);
             if let Some(force_index) = self.infos.current_generic_or_protocol_index {
                 if old_index < force_index {

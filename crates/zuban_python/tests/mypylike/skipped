@@ -6,6 +6,8 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
+no_crash_on_param_spec_type_var_tuple_alias_definitions
+
 # parser fails
 avoid_bracket_slowdown
 
