@@ -10,7 +10,7 @@ use clap::Parser;
 #[command(version, about)]
 pub struct Cli {
     /// Specify a project to only run this one.
-    #[arg()]
+    #[arg(short, long)]
     project: Option<String>,
     /// These args are passed to zmypy. You can use -- before --some-arg
     #[arg(num_args = 0..)]
