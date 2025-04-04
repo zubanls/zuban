@@ -576,6 +576,9 @@ fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str, from_mypy
                         add_comment(&comment)
                     }
                 } else {
+                    if cfg!(target_os = "windows") {
+                        comment = comment.trim_end_matches('\r')
+                    }
                     if comment.ends_with(" \\") {
                         comment = &comment[..comment.len() - 2];
                     }
