@@ -1,7 +1,7 @@
 use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_cst::{
-    Argument, ArgumentsDetails, Assignment, AssignmentContent, Atom, AtomContent, Expression,
+    ArgumentsDetails, Assignment, AssignmentContent, Atom, AtomContent, Expression,
     ExpressionContent, ExpressionPart, NameDef, NameOrPrimaryWithNames, NodeIndex, Primary,
     PrimaryContent, PrimaryOrAtom, PythonString, StarExpressionContent, Target, TypeLike,
 };

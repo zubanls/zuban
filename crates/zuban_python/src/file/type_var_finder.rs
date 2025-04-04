@@ -24,7 +24,6 @@ enum BaseLookup {
     Module(FileIndex),
     Class(PointLink),
     GenericOrProtocol,
-    Callable,
     Literal,
     TypeVarLikeClass,
     TypeVarLike(TypeVarLike),
@@ -114,7 +113,26 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 if let Argument::Positional(pos) = arg {
                     let expr = pos.expression();
                     return TypeVarFinder::find_alias_type_vars_with(i_s, file, expr, |slf| {
-                        slf.find_in_expr(expr)
+                        match expr.maybe_unpacked_atom() {
+                            Some(AtomContent::List(list)) => {
+                                slf.find_in_named_tuple_fields(list.unpack())
+                            }
+                            Some(AtomContent::Tuple(tup)) => {
+                                slf.find_in_named_tuple_fields(tup.iter())
+                            }
+                            Some(AtomContent::Dict(dict)) => {
+                                // For TypedDicts
+                                for element in dict.iter_elements() {
+                                    match element {
+                                        DictElement::KeyValue(dict_key_value) => {
+                                            slf.find_in_expr(dict_key_value.value())
+                                        }
+                                        DictElement::Star(_) => (),
+                                    }
+                                }
+                            }
+                            _ => (),
+                        }
                     });
                 }
             }
@@ -232,7 +250,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                         }
                         self.infos.current_generic_or_protocol_index = None;
                     }
-                    BaseLookup::Callable => self.find_in_callable(s),
                     BaseLookup::Literal => (), // Literals can never contain type vars
                     _ => {
                         for slice_like in s.iter() {
@@ -257,19 +274,19 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
                 PythonString::FString => (),
             },
-            AtomContent::Dict(dict) => {
-                // For TypedDicts
-                for element in dict.iter_elements() {
+            AtomContent::List(list) => {
+                for element in list.unpack() {
                     match element {
-                        DictElement::KeyValue(dict_key_value) => {
-                            self.find_in_expr(dict_key_value.value())
+                        StarLikeExpression::NamedExpression(n) => {
+                            self.find_in_expr(n.expression());
                         }
-                        DictElement::Star(_) => (),
+                        StarLikeExpression::StarNamedExpression(s) => {
+                            self.find_in_expression_part(s.expression_part());
+                        }
+                        _ => (),
                     }
                 }
             }
-            AtomContent::List(list) => self.find_in_named_tuple_fields(list.unpack()),
-            AtomContent::Tuple(tup) => self.find_in_named_tuple_fields(tup.iter()),
             _ => (),
         }
         BaseLookup::Other
@@ -347,29 +364,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         match p {
             PrimaryOrAtom::Primary(primary) => self.find_in_primary(primary),
             PrimaryOrAtom::Atom(atom) => self.find_in_atom(atom),
-        }
-    }
-
-    fn find_in_callable(&mut self, slice_type: SliceType<'d>) {
-        if slice_type.iter().count() == 2 {
-            let mut iterator = slice_type.iter();
-            if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {
-                let expression = n.named_expr.expression();
-                match expression.maybe_unpacked_atom() {
-                    Some(AtomContent::List(list)) => {
-                        for i in list.unpack() {
-                            if let StarLikeExpression::NamedExpression(n) = i {
-                                self.find_in_expr(n.expression());
-                            }
-                        }
-                    }
-                    _ => self.find_in_expr(expression),
-                }
-            }
-            let slice_or_simple = iterator.next().unwrap();
-            if let SliceOrSimple::Simple(s) = slice_or_simple {
-                self.find_in_expr(s.named_expr.expression())
-            }
         }
     }
 
@@ -484,7 +478,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         Specific::TypingGeneric | Specific::TypingProtocol => {
                             BaseLookup::GenericOrProtocol
                         }
-                        Specific::TypingCallable => BaseLookup::Callable,
                         Specific::TypingLiteral => BaseLookup::Literal,
                         _ => BaseLookup::Other,
                     };
