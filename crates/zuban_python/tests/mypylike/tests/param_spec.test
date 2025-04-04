@@ -177,3 +177,17 @@ def run(func: Callable[P, None], *args: P.args, **kwargs: P.kwargs):
         *args,  # E: Argument 1 to "with_args_kwargs" has incompatible type "*P.args"; expected "str"
         **kwargs  # E: Argument 2 to "with_args_kwargs" has incompatible type "**P.kwargs"; expected "int"
     )
+
+[case param_spec_any_inheritance]
+from typing import ParamSpec, Generic, Callable
+_P = ParamSpec("_P")
+
+class C(Generic[_P]):
+    def __init__(self, func: Callable[_P, None], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+
+class D(C):
+    pass
+
+def f(x: str) -> None: ...
+D(f, 1)
+D(f, '')

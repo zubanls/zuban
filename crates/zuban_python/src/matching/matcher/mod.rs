@@ -700,14 +700,17 @@ impl<'a> Matcher<'a> {
                 }
                 _ => unreachable!(),
             }
-        } else if let Some(class) = self.class {
-            param_spec_usage = class.nth_param_spec_usage(i_s.db, usage);
-            &param_spec_usage.params
         } else if let Some(fc) =
             self.maybe_func_class_for_usage(&TypeVarLikeUsage::ParamSpec(usage.clone()))
         {
             func_class = fc;
             param_spec_usage = func_class.nth_param_spec_usage(i_s.db, usage);
+            &param_spec_usage.params
+        } else if self
+            .class
+            .is_some_and(|c| usage.in_definition == c.node_ref.as_link())
+        {
+            param_spec_usage = self.class.unwrap().nth_param_spec_usage(i_s.db, usage);
             &param_spec_usage.params
         } else {
             return match args.as_ref() {
