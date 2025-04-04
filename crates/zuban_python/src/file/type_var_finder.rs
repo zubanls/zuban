@@ -95,10 +95,38 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         type_vars
     }
 
-    pub fn find_alias_type_vars(
+    pub(super) fn find_alias_type_vars(
+        i_s: &InferenceState,
+        file: &PythonFile,
+        expr: Expression,
+    ) -> TypeVarLikes {
+        TypeVarFinder::find_alias_type_vars_with(i_s, file, expr, |slf| slf.find_in_expr(expr))
+    }
+
+    pub(super) fn find_named_tuple_or_typed_dict_assignment_type_vars(
+        i_s: &InferenceState,
+        file: &PythonFile,
+        args: ArgumentsDetails,
+    ) -> TypeVarLikes {
+        if let ArgumentsDetails::Node(n) = args {
+            // Skip the name
+            if let Some(arg) = n.iter().nth(1) {
+                if let Argument::Positional(pos) = arg {
+                    let expr = pos.expression();
+                    return TypeVarFinder::find_alias_type_vars_with(i_s, file, expr, |slf| {
+                        slf.find_in_expr(expr)
+                    });
+                }
+            }
+        }
+        i_s.db.python_state.empty_type_var_likes.clone()
+    }
+
+    fn find_alias_type_vars_with(
         i_s: &'i_s InferenceState<'db, 'i_s>,
         file: &'file PythonFile,
         expr: Expression<'d>,
+        with: impl FnOnce(&mut TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '_>),
     ) -> TypeVarLikes {
         debug!("Finding type vars in {:?}", expr.as_code());
         let type_vars = debug_indent(|| {
@@ -107,7 +135,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 name_resolution: file.name_resolution_for_types(i_s),
                 infos: &mut infos,
             };
-            finder.find_in_expr(expr);
+            with(&mut finder);
             infos.type_var_manager.into_type_vars()
         });
         debug!(
@@ -335,7 +363,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                             }
                         }
                     }
-                    Some(AtomContent::Ellipsis) => (),
                     _ => self.find_in_expr(expression),
                 }
             }

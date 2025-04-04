@@ -413,19 +413,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
             }
             CalculatingAliasType::TypedDict(args) | CalculatingAliasType::NamedTuple(args) => {
-                if let ArgumentsDetails::Node(n) = args.details {
-                    // Skip the name
-                    if let Some(arg) = n.iter().nth(1) {
-                        if let Argument::Positional(pos) = arg {
-                            return TypeVarFinder::find_alias_type_vars(
-                                self.i_s,
-                                self.file,
-                                pos.expression(),
-                            );
-                        }
-                    }
-                }
-                self.i_s.db.python_state.empty_type_var_likes.clone()
+                TypeVarFinder::find_named_tuple_or_typed_dict_assignment_type_vars(
+                    self.i_s,
+                    self.file,
+                    args.details,
+                )
             }
             CalculatingAliasType::NewType(_) => {
                 self.i_s.db.python_state.empty_type_var_likes.clone()
