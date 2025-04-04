@@ -1965,9 +1965,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             .any(|tvl| matches!(tvl, TypeVarLike::TypeVarTuple(_)));
 
         let mut type_args = TypeArgIterator::new(iterator);
-        let mut type_var_iterator = type_var_likes.iter().enumerate().skip(generics.len());
+        let mut type_var_iterator = type_var_likes.iter().skip(generics.len());
         let mut is_single_param_spec = false;
-        'outer: for (i, type_var_like) in type_var_iterator.by_ref() {
+        'outer: for type_var_like in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some((node_ref, t)) =
@@ -1983,7 +1983,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
                 TypeVarLike::TypeVarTuple(tvt) => {
-                    for (i, type_var_like) in type_var_iterator.by_ref().rev() {
+                    let insertion_index = generics.len();
+                    // First check the rest of the TypeVar-likes in reverse order, because at this
+                    // point we do not know how many type arguments we have to fetch.
+                    for (i, type_var_like) in type_var_iterator.by_ref().rev().enumerate() {
                         let generic_item = match type_var_like {
                             TypeVarLike::TypeVar(type_var) => {
                                 if let Some((from, t)) = type_args.next_type_argument_back(self) {
@@ -2012,7 +2015,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeVarLike::TypeVarTuple(_) => unreachable!(),
                         };
 
-                        generics.insert(i - 1, generic_item);
+                        generics.insert(generics.len() - i, generic_item);
                     }
                     given += 1;
                     let args = type_args.as_type_arguments(
@@ -2020,7 +2023,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         type_var_likes.len() == 1 && slice_type.iter().count() == 1,
                     );
                     generics.insert(
-                        i,
+                        insertion_index,
                         GenericItem::TypeArgs(
                             if let Some(default) =
                                 tvt.default.as_ref().filter(|_| args.empty_not_explicit)

@@ -9,3 +9,19 @@ def foo(*args: Unpack[Ts]) -> None:
 [case unknown_unpack]
 from typing import Unpack
 def foo(*args: Unpack[Unknown]) -> None: ...  # E: Name "Unknown" is not defined
+
+[case type_var_tuple_type_application_should_not_crash]
+from typing import TypeVarTuple, TypeVar, Generic, Unpack
+Ts = TypeVarTuple('Ts')
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+
+class E(Generic[*Ts, T1, T2]): pass
+E[int, str]
+E[int, str, float]
+E[int, str, float, bool]
+
+class F(Generic[Unpack[Ts], T1, T2]): pass
+F[int, str]
+F[int, str, float]
+F[int, str, float, bool]
