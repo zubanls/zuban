@@ -515,10 +515,13 @@ fn initialize_and_return_wanted_output(
         .out
         .trim()
         .split('\n')
-        .filter_map(|s| {
+        .filter_map(|mut s| {
             if from_mypy_test_suite {
                 cleanup_mypy_issues(s)
             } else {
+                if cfg!(target_os = "windows") {
+                    s = s.trim_end_matches('\r')
+                }
                 Some(s.to_string())
             }
         })
@@ -683,6 +686,7 @@ impl Iterator for ErrorCommentsOnCode<'_> {
         None
     }
 }
+
 fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     if s.contains("See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports") {
         return None;
