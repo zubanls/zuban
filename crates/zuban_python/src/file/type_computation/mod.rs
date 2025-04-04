@@ -1468,7 +1468,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     TypeContent::NamedTuple(nt) => self.compute_type_get_item_on_named_tuple(nt, s),
                     TypeContent::TypedDictDefinition(td) => {
-                        self.compute_type_get_item_on_typed_dict(&td, s)
+                        self.compute_type_get_item_on_typed_dict(td, s)
                     }
                     TypeContent::Type(d) => match d {
                         Type::Any(_) => TypeContent::Type(d),

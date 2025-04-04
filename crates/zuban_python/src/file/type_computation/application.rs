@@ -116,7 +116,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_type_application_on_typed_dict(
         &self,
-        typed_dict: &TypedDict,
+        typed_dict: Rc<TypedDict>,
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {

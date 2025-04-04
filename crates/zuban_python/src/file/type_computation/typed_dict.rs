@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use parsa_python_cst::{Annotation, AtomContent, DictElement, Expression};
 
 use crate::{
@@ -107,7 +109,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     pub(super) fn compute_type_get_item_on_typed_dict(
         &mut self,
-        typed_dict: &TypedDict,
+        typed_dict: Rc<TypedDict>,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let db = self.i_s.db;
@@ -131,7 +133,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     slice_type.as_node_ref(),
                     IssueKind::TypeArgumentIssue {
                         class: typed_dict
-                            .name_or_fallback(&FormatData::new_short(db))
+                            .name_or_fallback(&FormatData::new_short(slf.i_s.db))
                             .into(),
                         counts,
                     },
@@ -142,8 +144,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             true => TypedDictGenerics::None,
             false => TypedDictGenerics::Generics(GenericsList::generics_from_vec(generics)),
         };
-        let new_td = typed_dict.apply_generics(db, generics);
-        TypeContent::Type(Type::TypedDict(new_td))
+        if type_var_likes.is_empty() {
+            // Issue should have been added previously, because we calculated the type_var_likes
+            TypeContent::Type(Type::TypedDict(typed_dict))
+        } else {
+            let new_td = typed_dict.apply_generics(db, generics);
+            TypeContent::Type(Type::TypedDict(new_td))
+        }
     }
 }
 

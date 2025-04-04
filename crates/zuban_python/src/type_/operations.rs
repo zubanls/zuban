@@ -551,7 +551,11 @@ impl Type {
                 Type::TypedDict(td) => slice_type
                     .file
                     .name_resolution_for_types(i_s)
-                    .compute_type_application_on_typed_dict(td, *slice_type, result_context),
+                    .compute_type_application_on_typed_dict(
+                        td.clone(),
+                        *slice_type,
+                        result_context,
+                    ),
                 _ => not_possible(true),
             },
             Type::NewType(new_type) => {
