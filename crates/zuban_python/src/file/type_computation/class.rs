@@ -1079,9 +1079,19 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 }
                 let name = name_node_ref.expect_name();
                 if let Some(assignment) = name.maybe_assignment_definition_name() {
-                    if let AssignmentContent::WithAnnotation(_, _, Some(_)) = assignment.unpack() {
-                        NodeRef::new(self.node_ref.file, point.node_index())
-                            .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
+                    if let AssignmentContent::WithAnnotation(_, annotation, Some(_)) =
+                        assignment.unpack()
+                    {
+                        // TODO this check is wrong and should do name resolution correctly.
+                        // However it is not that easy to do name resolution correctly, because the
+                        // class is not ready to do name resolution. We probably have to move this
+                        // check into EnumMemberDefinition calculation.
+                        // Mypy allows this, so we should probably as well (and enum members are
+                        // final anyway, so this is just redundance.
+                        if annotation.expression().as_code() != "Final" {
+                            NodeRef::new(self.node_ref.file, point.node_index())
+                                .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
+                        }
                     }
                 }
                 if name.is_assignment_annotation_without_definition()

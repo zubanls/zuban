@@ -199,3 +199,16 @@ Bar = Foo | int
 from enum import Enum
 
 Enum().x  # E: Too few arguments for Enum()
+
+[case final_as_enum_attr_is_fine]
+from typing import Literal
+from n import C
+
+def f(name: Literal[C.X]):
+    reveal_type(name)  # N: Revealed type is "Literal[n.C.X]"
+
+[file n.py]
+from enum import Enum
+from typing import Final
+class C(Enum):
+    X: Final = '', 1
