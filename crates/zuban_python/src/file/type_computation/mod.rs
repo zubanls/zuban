@@ -2245,7 +2245,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
                             name: previous.name,
                             has_default: previous.has_default,
-                            might_have_type_vars: true,
+                            might_have_type_vars: self.has_type_vars_or_self,
                         });
                         return;
                     }
@@ -2490,8 +2490,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             0 => Type::Never(NeverCause::Explicit),
             1 => entries.into_iter().next().unwrap().type_,
             _ => {
-                // TODO calculate this
-                let might_have_type_vars = true;
+                let might_have_type_vars = self.has_type_vars_or_self;
                 let mut t = UnionType::new(entries, might_have_type_vars);
                 t.sort_for_priority();
                 Type::Union(t)
@@ -3148,7 +3147,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 specific,
                 Specific::MypyExtensionsDefaultArg | Specific::MypyExtensionsDefaultNamedArg
             ),
-            might_have_type_vars: true,
+            might_have_type_vars: self.has_type_vars_or_self,
         })
     }
 

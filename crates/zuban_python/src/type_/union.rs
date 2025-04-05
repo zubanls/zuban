@@ -313,7 +313,21 @@ impl Hash for UnionEntry {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+impl PartialEq for UnionType {
+    fn eq(&self, other: &Self) -> bool {
+        // might_have_type_vars is a hint and should be ignored when quickly checking if two types
+        // are equal.
+        self.entries == other.entries
+    }
+}
+
+impl Hash for UnionType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.entries.hash(state)
+    }
+}
+
+#[derive(Debug, Clone, Eq)]
 pub(crate) struct UnionType {
     pub entries: Box<[UnionEntry]>,
     pub might_have_type_vars: bool,
