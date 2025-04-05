@@ -292,3 +292,13 @@ g(f)
 from typing import Generator
 def f() -> Generator[dict[str, str]]:
     yield {'': ''}
+
+[case conditional_function_definition_with_decorator]
+from typing import Any
+def dec(fun) -> Any: ...
+
+if bool():
+    def f() -> int: ...
+else:
+    @dec
+    def f() -> None: ...

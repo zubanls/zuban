@@ -422,7 +422,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let inference = self.node_ref.file.inference(i_s);
         let original = inference.infer_name_of_definition_by_index(first);
         let original_t = original.as_cow_type(i_s);
-        let redefinition = Inferred::from_saved_node_ref(self.node_ref.into());
+        let redefinition = inference
+            .check_point_cache(self.node_ref.node_index)
+            .unwrap();
 
         let redefinition_t = redefinition.as_cow_type(i_s);
         inference.narrow_or_widen_name_target(
