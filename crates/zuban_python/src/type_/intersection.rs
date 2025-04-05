@@ -67,7 +67,10 @@ impl Intersection {
                 }
                 Err(())
             } else {
-                Ok(Type::from_union_entries(new_entries))
+                Ok(Type::from_union_entries(
+                    new_entries,
+                    union.might_have_type_vars,
+                ))
             }
         };
         match (t1, t2) {

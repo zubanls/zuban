@@ -2297,7 +2297,7 @@ impl Inference<'_, '_, '_> {
             }
         }
         (base_union.entries.len() != matching_entries.len())
-            .then(|| Type::from_union_entries(matching_entries))
+            .then(|| Type::from_union_entries(matching_entries, base_union.might_have_type_vars))
     }
 
     fn propagate_parent_unions(&self, frame: &mut Frame, parent_unions: &[(FlowKey, UnionType)]) {

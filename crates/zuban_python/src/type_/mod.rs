@@ -472,11 +472,14 @@ impl Type {
 
     pub const ERROR: Self = Self::Any(AnyCause::FromError);
 
-    pub fn from_union_entries(entries: Vec<UnionEntry>) -> Self {
+    pub fn from_union_entries(
+        entries: Vec<UnionEntry>,
+        might_have_defined_type_vars: bool,
+    ) -> Self {
         match entries.len() {
             0 => Type::Never(NeverCause::Other),
             1 => entries.into_iter().next().unwrap().type_,
-            _ => Type::Union(UnionType::new(entries)),
+            _ => Type::Union(UnionType::new(entries, might_have_defined_type_vars)),
         }
     }
 
@@ -501,6 +504,7 @@ impl Type {
                             format_index: e.format_index,
                         })
                         .collect(),
+                    u.might_have_type_vars,
                 ))
             }),
             Type::RecursiveType(r) => r.calculated_type(db).maybe_union_like(db),
@@ -535,11 +539,17 @@ impl Type {
 
     pub fn remove_none(&self, db: &Database) -> Cow<Type> {
         if self.is_none_or_none_in_union(db) {
+            let might_have_defined_type_vars = match self {
+                Type::Union(u) => u.might_have_type_vars,
+                Type::None => false,
+                _ => true,
+            };
             Cow::Owned(Type::from_union_entries(
                 self.clone()
                     .into_iter_with_unpacked_unions(db, true)
                     .filter(|union_entry| !matches!(&union_entry.type_, Type::None))
                     .collect(),
+                might_have_defined_type_vars,
             ))
         } else {
             Cow::Borrowed(self)
@@ -606,7 +616,7 @@ impl Type {
                 match new_entries.len() {
                     0 => Type::Never(NeverCause::Other),
                     1 => new_entries.into_iter().next().unwrap().type_,
-                    _ => Type::Union(UnionType::new(new_entries)),
+                    _ => Type::Union(UnionType::new(new_entries, union.might_have_type_vars)),
                 }
             }
             Type::Never(cause) => Type::Never(*cause),
@@ -859,6 +869,8 @@ impl Type {
         };
         let mut t = UnionType {
             entries: entries.into_boxed_slice(),
+            // TODO should we calculated this?
+            might_have_type_vars: true,
         };
         t.sort_for_priority();
         Self::Union(t)
@@ -1202,7 +1214,10 @@ impl Type {
                     if gathered.len() == 1 {
                         return Some(gathered.into_iter().next().unwrap().type_);
                     } else {
-                        return Some(Type::Union(UnionType::new(gathered)));
+                        return Some(Type::Union(UnionType::new(
+                            gathered,
+                            union.might_have_type_vars,
+                        )));
                     }
                 }
                 None

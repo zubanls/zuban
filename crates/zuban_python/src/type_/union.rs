@@ -233,6 +233,8 @@ fn merge_simplified_union_type(
             _ => {
                 let mut union = UnionType {
                     entries: new_types.into(),
+                    // TODO should this be calculated?
+                    might_have_type_vars: true,
                 };
                 union.sort_for_priority();
                 Type::Union(union)
@@ -314,17 +316,19 @@ impl Hash for UnionEntry {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct UnionType {
     pub entries: Box<[UnionEntry]>,
+    pub might_have_type_vars: bool,
 }
 
 impl UnionType {
-    pub fn new(entries: Vec<UnionEntry>) -> Self {
+    pub fn new(entries: Vec<UnionEntry>, might_have_type_vars: bool) -> Self {
         debug_assert!(entries.len() > 1);
         Self {
             entries: entries.into_boxed_slice(),
+            might_have_type_vars,
         }
     }
 
-    pub fn from_types(types: Vec<Type>) -> Self {
+    pub fn from_types(types: Vec<Type>, might_have_type_vars: bool) -> Self {
         Self::new(
             types
                 .into_iter()
@@ -334,6 +338,7 @@ impl UnionType {
                     type_,
                 })
                 .collect(),
+            might_have_type_vars,
         )
     }
 

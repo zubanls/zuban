@@ -48,6 +48,7 @@ impl Type {
                     Type::Union(u) => {
                         let repacked = Type::Union(UnionType::from_types(
                             u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
+                            u.might_have_type_vars,
                         ));
                         repacked.matches_internal(i_s, matcher, value_type, variance)
                     }
@@ -536,6 +537,7 @@ impl Type {
                 };
                 let repacked = Type::Union(UnionType::from_types(
                     u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
+                    u.might_have_type_vars,
                 ));
                 self.matches_union(i_s, matcher, u1, &repacked, variance)
             }

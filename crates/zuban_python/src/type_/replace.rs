@@ -20,7 +20,7 @@ pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<
 pub type ReplaceSelf<'x> = &'x dyn Fn() -> Option<Type>;
 
 trait Replacer {
-    fn replace_type(&mut self, t: &Type) -> Option<Type>;
+    fn replace_type(&mut self, t: &Type) -> Option<Option<Type>>;
     fn replace_callable_params(&mut self, _: &CallableParams) -> Option<CallableParams> {
         None
     }
@@ -51,9 +51,9 @@ impl Type {
         struct NeverReplacer();
         impl Replacer for NeverReplacer {
             #[inline]
-            fn replace_type(&mut self, t: &Type) -> Option<Type> {
+            fn replace_type(&mut self, t: &Type) -> Option<Option<Type>> {
                 match t {
-                    Type::Never(NeverCause::Inference) => Some(Type::ERROR),
+                    Type::Never(NeverCause::Inference) => Some(Some(Type::ERROR)),
                     _ => None,
                 }
             }
@@ -73,15 +73,16 @@ impl Type {
         struct LateBoundReplacer<'a, X>(&'a TypeVarManager<X>);
         impl<X: CallableId> Replacer for LateBoundReplacer<'_, X> {
             #[inline]
-            fn replace_type(&mut self, t: &Type) -> Option<Type> {
+            fn replace_type(&mut self, t: &Type) -> Option<Option<Type>> {
                 match t {
-                    Type::TypeVar(t) => Some(Type::TypeVar(self.0.remap_type_var(t))),
+                    Type::TypeVar(t) => Some(Some(Type::TypeVar(self.0.remap_type_var(t)))),
                     Type::ParamSpecArgs(usage) => {
-                        Some(Type::ParamSpecArgs(self.0.remap_param_spec(usage)))
+                        Some(Some(Type::ParamSpecArgs(self.0.remap_param_spec(usage))))
                     }
                     Type::ParamSpecKwargs(usage) => {
-                        Some(Type::ParamSpecKwargs(self.0.remap_param_spec(usage)))
+                        Some(Some(Type::ParamSpecKwargs(self.0.remap_param_spec(usage))))
                     }
+                    Type::Union(u) if !u.might_have_type_vars => Some(None),
                     _ => None,
                 }
             }
@@ -155,7 +156,7 @@ impl Type {
 
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         if let Some(t) = replacer.replace_type(self) {
-            return Some(t);
+            return t;
         }
 
         match self {
@@ -173,15 +174,15 @@ impl Type {
                     c.replace_internal(replacer).map(Rc::new)
                 })?),
             )),
-            Type::Union(u) => Some(Type::Union(UnionType::new(maybe_replace_iterable(
-                u.entries.iter(),
-                |union_entry| {
+            Type::Union(u) => Some(Type::Union(UnionType::new(
+                maybe_replace_iterable(u.entries.iter(), |union_entry| {
                     Some(UnionEntry {
                         type_: union_entry.type_.replace_internal(replacer)?,
                         format_index: union_entry.format_index,
                     })
-                },
-            )?))),
+                })?,
+                u.might_have_type_vars,
+            ))),
             Type::Type(t) => Some(Type::Type(Rc::new(t.replace_internal(replacer)?))),
             Type::Tuple(content) => Some(Type::Tuple(Tuple::new(
                 content.args.replace_internal(replacer)?,
@@ -799,9 +800,12 @@ impl ReplaceTypeVarLikes<'_, '_> {
 
 impl Replacer for ReplaceTypeVarLikes<'_, '_> {
     #[inline]
-    fn replace_type(&mut self, t: &Type) -> Option<Type> {
+    fn replace_type(&mut self, t: &Type) -> Option<Option<Type>> {
         match t {
             Type::Union(u) => {
+                if !u.might_have_type_vars {
+                    return Some(None);
+                }
                 let new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
                     Some(UnionEntry {
                         // Performance: It is a bit questionable that this always clones.
@@ -823,18 +827,18 @@ impl Replacer for ReplaceTypeVarLikes<'_, '_> {
                     .map(|e| e.type_.highest_union_format_index())
                     .max()
                     .unwrap();
-                Some(simplified_union_from_iterators_with_format_index(
+                Some(Some(simplified_union_from_iterators_with_format_index(
                     &i_s,
                     new_entries.into_iter().map(|e| (e.format_index, e.type_)),
                     highest_union_format_index,
-                ))
+                )))
             }
             Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
-                GenericItem::TypeArg(t) => Some(t),
+                GenericItem::TypeArg(t) => Some(Some(t)),
                 GenericItem::TypeArgs(_) => unreachable!(),
                 GenericItem::ParamSpecArg(_) => unreachable!(),
             },
-            Type::Self_ => (self.replace_self)(),
+            Type::Self_ => Some((self.replace_self)()),
             _ => None,
         }
     }

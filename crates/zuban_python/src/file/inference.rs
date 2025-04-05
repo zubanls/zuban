@@ -4220,6 +4220,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
                     format_index: e.format_index,
                 })
                 .collect(),
+            union.might_have_type_vars,
         )),
         _ => Type::ERROR,
     }
@@ -4272,6 +4273,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                     format_index: e.format_index,
                 })
                 .collect(),
+            union.might_have_type_vars,
         )),
         _ => Type::ERROR,
     }
@@ -4297,6 +4299,7 @@ fn get_generator_return_type(db: &Database, had_issue: &impl Fn(), t: &Type) -> 
                     format_index: entry.format_index,
                 })
                 .collect(),
+            union.might_have_type_vars,
         )),
         _ => {
             had_issue();
