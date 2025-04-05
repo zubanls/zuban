@@ -40,6 +40,7 @@ use crate::{
     matching::{Generics, ResultContext},
     new_class,
     node_ref::NodeRef,
+    recoverable_error,
     type_::{
         add_param_spec_to_params, AnyCause, CallableContent, CallableParam, CallableParams,
         CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
@@ -3687,7 +3688,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     fn use_cached_annotation_internal(&self, type_storage_index: NodeIndex) -> Cow<'file, Type> {
-        let complex_index = self.file.points.get(type_storage_index).complex_index();
+        let p = self.file.points.get(type_storage_index);
+        if !p.calculated() {
+            recoverable_error!("Tried to access uncalculated annotation");
+            return Cow::Borrowed(&Type::ERROR);
+        }
+        let complex_index = p.complex_index();
         match self.file.complex_points.get(complex_index) {
             ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
             _ => unreachable!(),

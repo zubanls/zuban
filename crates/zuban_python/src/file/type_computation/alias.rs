@@ -198,8 +198,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     return Lookup::UNKNOWN_REPORTED;
                 }
                 self.ensure_cached_annotation(annotation, right.is_some());
-                if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
-                    return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
+
+                // Final/ClassVar may not have been calculated like x: Final = 1
+                if !matches!(
+                    self.file.points.get(annotation.index()).maybe_specific(),
+                    Some(
+                        Specific::AnnotationOrTypeCommentFinal
+                            | Specific::AnnotationOrTypeCommentClassVar,
+                    )
+                ) {
+                    if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
+                        return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
+                    }
                 }
             }
             Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other))

@@ -1641,3 +1641,14 @@ class C4(B): ...  # E: Name "B" is used before definition
 
 A: Any = foo()
 B: Any
+
+[case final_as_class_attr_should_not_crash_when_tuple_is_used]
+from typing import Literal
+from n import C
+
+def f(name: Literal[C.X]) -> int: ...  # E: Parameter 1 of Literal[...] is invalid
+
+[file n.py]
+from typing import Final
+class C:
+    X: Final = '', 1
