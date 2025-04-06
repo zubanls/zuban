@@ -551,6 +551,7 @@ mod tests {
     #[test]
     fn test_environment() {
         logging_config::setup_logging_for_tests();
+        // We intentionally also test that dirs with dashes are also checked.
         let test_dir = test_utils::write_files_from_fixture(
             r#"
             [file venv/bin/python]
@@ -560,7 +561,10 @@ mod tests {
             [file venv/lib/python3.12/site-packages/bar.py]
             1()
 
-            [file test.py]
+            [file m.py]
+            import foo
+
+            [file test-dir/n.py]
             import foo
             "#,
             false,
@@ -570,7 +574,8 @@ mod tests {
         // No venv information should fail to import
         assert_eq!(
             d(&[""]),
-            ["test.py:1: error: Cannot find implementation or library stub for module named \"foo\""]
+            ["m.py:1: error: Cannot find implementation or library stub for module named \"foo\"",
+             "test-dir/n.py:1: error: Cannot find implementation or library stub for module named \"foo\"",]
             );
         // venv information via --python-executable should work
         let empty: [&str; 0] = [];

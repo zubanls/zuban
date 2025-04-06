@@ -13,7 +13,7 @@ use crate::{
     VfsHandler,
 };
 
-const STUBS_SUFFIX: &str = "-stubs";
+const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
 
 pub struct LocalFS {
     watcher: Option<(RefCell<RecommendedWatcher>, Receiver<NotifyEvent>)>,
@@ -56,15 +56,9 @@ impl VfsHandler for LocalFS {
                     if is_relevant_name(name) {
                         return true;
                     }
-                    if name == "__pycache__" {
-                        return false;
-                    }
-                    // Keep potential folders around. Most punctuation characters are not allowed
-                    !name.chars().any(|c| match c {
-                        '-' => !name.ends_with(STUBS_SUFFIX),
-                        '_' => false,
-                        _ => c.is_ascii_punctuation(),
-                    })
+                    // This logic is derived from how Mypy does it. It ignores only very specific
+                    // folders: https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-exclude
+                    !GLOBALLY_IGNORED_FOLDERS.contains(&name) && !name.starts_with('.')
                 })
             });
 
