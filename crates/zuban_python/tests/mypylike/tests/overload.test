@@ -623,3 +623,38 @@ __main__:42: error: No overload variant of "func" matches argument types "a=Lite
 __main__:42: note: Possible overload variants:
 __main__:42: note:     def func(a: Literal['a', 'b', 'c', 'd', 'e', 'f'] | None, b: Literal['a', 'b', 'c', 'd', 'e', 'f'], *, c: Literal[1], d: Literal[0, 1, 2, 3, 4, 5], e: int | str | bytes | None | list[Any] | set[Any], f: int | str | bytes | None | list[Any] | set[Any], g: int | str | bytes | None | list[Any] | set[Any], h: Literal[1]) -> None
 __main__:42: note:     def func(a: Literal['a', 'b', 'c', 'd', 'e', 'f'] | None, b: Literal['a', 'b', 'c', 'd', 'e', 'f'], *, c: int, d: Literal[0, 1, 2, 3, 4, 5], e: int | str | bytes | None | list[Any] | set[Any], f: int | str | bytes | None | list[Any] | set[Any], g: int | str | bytes | None | list[Any] | set[Any], h: Literal[1]) -> None
+
+[case overload_with_empty_unpack]
+from typing import overload, Unpack, TypedDict
+
+class EmptyKwargs(TypedDict): ...
+class NotEmptyKwargs(TypedDict):
+    something: int
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(*, alias: str, **extra: Unpack[EmptyKwargs]) -> int: ...
+def f(*args, **kwargs): ...
+
+f(alias="asdf")
+
+@overload
+def g(x: int) -> int: ...
+@overload
+def g(*, alias: str, **extra: Unpack[NotEmptyKwargs]) -> int: ...
+def g(*args, **kwargs): ...
+
+g(alias="")  # E: No overload variant of "g" matches argument type "alias=str" \
+             # N: Possible overload variants: \
+             # N:     def g(x: int) -> int \
+             # N:     def g(*, alias: str, **extra: Unpack[NotEmptyKwargs]) -> int
+
+
+def f2(*, alias: str, **extra: Unpack[EmptyKwargs]) -> int: ...
+f2(alias="")
+f2(alias=1) # E: Argument "alias" to "f2" has incompatible type "int"; expected "str"
+
+def g2(*, alias: str, **extra: Unpack[NotEmptyKwargs]) -> int: ...
+
+g2(alias="") # E: Missing named argument "something" for "g2"

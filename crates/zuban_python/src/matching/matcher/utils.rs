@@ -923,10 +923,13 @@ pub(crate) fn match_arguments_against_params<
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
+        let s = "Too many positional arguments";
         if should_generate_errors {
-            let mut s = "Too many positional arguments".to_owned();
+            let mut s = s.to_owned();
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
             add_issue(IssueKind::ArgumentIssue(s.into()));
+        } else {
+            debug!("{s}");
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
@@ -1009,8 +1012,9 @@ pub(crate) fn match_arguments_against_params<
         || args_with_params
             .unused_unpack_typed_dict
             .maybe_unchecked()
-            .is_some()
+            .is_some_and(|td| !td.members(i_s.db).is_empty())
     {
+        debug!("Unpacked typed dict mismatch");
         matches = Match::new_false()
     }
     match matches {
