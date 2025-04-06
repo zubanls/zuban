@@ -16,13 +16,16 @@ pub struct Cli {
     /// specified more than once, eg. --exclude a --exclude b
     #[arg(long)]
     exclude: Vec<String>,
+    /// This is mostly for testing, to test all possible files (there shouldn't be any crashes)
+    #[arg(long, hide = true)]
+    ignore_excludes_from_config: bool,
     #[arg(num_args = 0..)]
     files: Vec<String>,
     /// Type-check module; can repeat for more modules
-    #[arg(short, long)]
+    #[arg(short, long, hide = true)]
     module_todo_unimplemented: Vec<String>,
     /// Type-check package recursively; can be repeated
-    #[arg(short, long)]
+    #[arg(short, long, hide = true)]
     package_todo_unimplemented: Vec<String>,
 
     // Config file
@@ -198,7 +201,7 @@ pub struct Cli {
     // --show-absolute-path Show absolute paths to files (inverse: --hide-absolute-path)
 
     // Additional options
-    #[arg(long)]
+    #[arg(long, hide = true)]
     no_mypy_compatible: bool,
 }
 
@@ -389,6 +392,10 @@ fn apply_flags(
         .always_false_symbols
         .extend(cli.always_false);
 
+    if cli.ignore_excludes_from_config {
+        // This is for testing, so we can test all files
+        project_options.flags.excludes.clear();
+    }
     for r in cli.exclude {
         project_options
             .flags
