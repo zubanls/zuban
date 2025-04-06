@@ -37,6 +37,9 @@ some of these projects with:
 
     cargo run --bin primer --release
 
+    # Run on all files to see if there are any panics
+    RUST_BACKTRACE=1 cargo run --bin primer --release -- -- --strict --ignore-excludes-from-config .
+
 ## Releasing
 
 Releasing is typically done by GitHub actions, which invokes `deploy/pypi/zuban/build.sh`.
