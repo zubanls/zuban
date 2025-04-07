@@ -296,3 +296,15 @@ hi
 
 # mypy: allow-untyped-defs
 def f(x): ...
+
+[case strict_init_no_return_annotation_needed]
+# flags: --strict
+class C:
+    def __init__(self): ...  # E: Function is missing a return type annotation \
+                             # N: Use "-> None" if function does not return a value
+
+class D:
+    def __init__(self, x: int): ...
+
+class E:
+    def __init__(self, x): ...  # E: Function is missing a type annotation for one or more arguments

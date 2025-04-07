@@ -1492,12 +1492,17 @@ impl Inference<'_, '_, '_> {
                 }
             }
         } else if flags.disallow_incomplete_defs {
-            function.add_issue_for_declaration(
-                i_s,
-                IssueKind::FunctionMissingReturnAnnotation {
-                    hint_return_none: false,
-                },
-            )
+            let is_init_like = function.class.is_some()
+                && ["__init__", "__init_subclass__"].contains(&name.as_code());
+            // Only add issue for __init__ if it looks like `def __init__(self): ...`
+            if !is_init_like || function.iter_non_self_args(i_s).next().is_none() {
+                function.add_issue_for_declaration(
+                    i_s,
+                    IssueKind::FunctionMissingReturnAnnotation {
+                        hint_return_none: is_init_like,
+                    },
+                )
+            }
         }
 
         let function_i_s = &i_s.with_func_and_args(&function);

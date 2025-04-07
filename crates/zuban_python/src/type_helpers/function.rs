@@ -95,7 +95,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
-    fn iter_non_self_args(&self, i_s: &InferenceState) -> ParamIterator<'a> {
+    pub fn iter_non_self_args(&self, i_s: &InferenceState) -> ParamIterator<'a> {
         let mut iterator = self.node().params().iter();
         if self.class.is_some() && self.kind(i_s) != FunctionKind::Staticmethod {
             // The param annotation is defined implicitly as Self or Type[Self]
