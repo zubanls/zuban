@@ -408,45 +408,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                self.ensure_cached_annotation(annotation, right_side.is_some());
-                let specific = self.point(annotation.index()).maybe_specific();
-                let assign_kind = AssignKind::Annotation { specific };
-                match specific {
-                    Some(Specific::AnnotationTypeAlias) => {
-                        let inf = self.compute_explicit_type_assignment(assignment);
-                        self.assign_single_target(
-                            target,
-                            node_ref,
-                            &inf,
-                            assign_kind,
-                            |index, inf| {
-                                inf.clone().save_redirect(self.i_s, self.file, index);
-                            },
-                        );
-                    }
-                    _ => {
-                        let mut checked = false;
-                        if matches!(
-                            specific,
-                            Some(
-                                Specific::AnnotationOrTypeCommentFinal
-                                    | Specific::AnnotationOrTypeCommentClassVar
-                            )
-                        ) {
-                            checked = self.fill_potentially_unfinished_final_or_class_var(
-                                NodeRef::new(self.file, annotation.index()),
-                                right_side,
-                            )
-                        }
-                        if let Some(right_side) = right_side {
-                            if !checked {
-                                let t = self.use_cached_annotation_type(annotation);
-                                self.check_right_side_against_annotation(&t, right_side);
-                            }
-                        }
-                        self.assign_for_annotation(annotation, target, node_ref)
-                    }
-                }
+                self.cache_annotation_assignment(node_ref, target, annotation, right_side)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 self.cache_aug_assign(node_ref, target, aug_assign, right_side)
@@ -456,6 +418,55 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             assignment.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
+    }
+
+    fn cache_annotation_assignment(
+        &self,
+        assignment_node_ref: NodeRef,
+        target: Target,
+        annotation: Annotation,
+        right_side: Option<AssignmentRightSide>,
+    ) {
+        self.ensure_cached_annotation(annotation, right_side.is_some());
+        let specific = self.point(annotation.index()).maybe_specific();
+        let assign_kind = AssignKind::Annotation { specific };
+        match specific {
+            Some(Specific::AnnotationTypeAlias) => {
+                let inf =
+                    self.compute_explicit_type_assignment(assignment_node_ref.expect_assignment());
+                self.assign_single_target(
+                    target,
+                    assignment_node_ref,
+                    &inf,
+                    assign_kind,
+                    |index, inf| {
+                        inf.clone().save_redirect(self.i_s, self.file, index);
+                    },
+                );
+            }
+            _ => {
+                let mut checked = false;
+                if matches!(
+                    specific,
+                    Some(
+                        Specific::AnnotationOrTypeCommentFinal
+                            | Specific::AnnotationOrTypeCommentClassVar
+                    )
+                ) {
+                    checked = self.fill_potentially_unfinished_final_or_class_var(
+                        NodeRef::new(self.file, annotation.index()),
+                        right_side,
+                    )
+                }
+                if let Some(right_side) = right_side {
+                    if !checked {
+                        let t = self.use_cached_annotation_type(annotation);
+                        self.check_right_side_against_annotation(&t, right_side);
+                    }
+                }
+                self.assign_for_annotation(annotation, target, assignment_node_ref)
+            }
+        }
     }
 
     fn cache_aug_assign(
