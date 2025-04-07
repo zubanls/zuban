@@ -129,6 +129,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let from_first_part = self.import_from_first_part(imp);
                 for as_name in as_names {
                     self.cache_import_from_part(
+                        imp,
                         &from_first_part,
                         as_name,
                         |name_def, pr, redirect_to_link| {

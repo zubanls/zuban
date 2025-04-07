@@ -172,7 +172,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     ) {
         let import_from = as_name.import_from();
         let from_first_part = self.import_from_first_part(import_from);
-        self.cache_import_from_part(&from_first_part, as_name, assign_to_name_def)
+        self.cache_import_from_part(import_from, &from_first_part, as_name, assign_to_name_def)
     }
 
     pub(super) fn resolve_import_from_name_def_without_narrowing(
@@ -373,6 +373,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub(super) fn cache_import_from_part(
         &self,
+        import_from: ImportFrom,
         from_first_part: &Option<ImportResult>,
         as_name: ImportFromAsName,
         assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
@@ -395,8 +396,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         if !self.stop_on_assignments
                             || self.is_allowed_to_assign_on_import_without_narrowing(name_def)
                         {
+                            let index = if self.i_s.db.project.settings.mypy_compatible {
+                                import_from.index()
+                            } else {
+                                import_name.index()
+                            };
                             self.add_issue(
-                                import_name.index(),
+                                index,
                                 IssueKind::ImportAttributeError {
                                     module_name: Box::from(imp.qualified_name(self.i_s.db)),
                                     name: Box::from(import_name.as_str()),

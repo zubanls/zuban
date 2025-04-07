@@ -471,3 +471,25 @@ import m.undefined as nn  # E: Cannot find implementation or library stub for mo
                           # E: Name "nn" already defined (possibly by an import)
 
 [file m/__init__.py]
+
+[case type_ignore_can_be_on_start_of_import_mypy_compatible]
+# flags: --mypy-compatible
+from m import (  # type: ignore[attr-defined]
+    undefined
+)
+from m import (  # E: Module "m" has no attribute "undefined2"
+    undefined2
+)
+
+[file m.py]
+
+[case type_ignore_not_possible_on_start_of_import_no_mypy_compatible]
+# flags: --no-mypy-compatible
+from m import (  # type: ignore[attr-defined]
+    undefined  # E: Module "m" has no attribute "undefined"
+)
+from m import (
+    undefined2  # E: Module "m" has no attribute "undefined2"
+)
+
+[file m.py]
