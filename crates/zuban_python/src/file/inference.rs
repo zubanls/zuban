@@ -344,68 +344,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         debug!("Cache assignment {}", assignment.as_code());
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
-                for target in targets.clone() {
-                    self.set_calculating_on_target(target);
-                }
-
-                let type_comment_result = self.check_for_type_comment(assignment);
-
-                let assign_kind = match type_comment_result.as_ref() {
-                    Some(r) => AssignKind::Annotation {
-                        specific: r.inferred.maybe_saved_specific(self.i_s.db),
-                    },
-                    None => AssignKind::Normal,
-                };
-                let right = if let Some(type_comment) = type_comment_result {
-                    match type_comment.type_ {
-                        TypeCommentState::Type(t) => {
-                            let right = self.infer_assignment_right_side(
-                                right_side,
-                                &mut ResultContext::Known {
-                                    type_: &t,
-                                    from_assignment_annotation: true,
-                                },
-                            );
-                            // It is very weird, but somehow type comments in Mypy are allowed to
-                            // have the form of `x = None  # type: int` in classes, even with
-                            // strict-optional. It's even weirder that the form `x: int = None` is
-                            // not allowed.
-                            // The reason for this is apparently that with type comments there is
-                            // no way to write x: int without a value. So they allowed None on type
-                            // comments.
-                            if !(self.i_s.in_class_scope().is_some()
-                                && matches!(right.as_cow_type(self.i_s).as_ref(), Type::None))
-                            {
-                                self.check_right_side_against_expected(&t, right, right_side)
-                            }
-                        }
-                        TypeCommentState::UnfinishedFinalOrClassVar(node_ref) => {
-                            self.fill_potentially_unfinished_final_or_class_var(
-                                node_ref,
-                                Some(right_side),
-                            );
-                        }
-                    }
-                    type_comment.inferred
-                } else {
-                    let inf = self.inferred_context_for_simple_assignment(targets.clone());
-                    let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
-                    let mut result_context = match &return_type {
-                        Some(t) => ResultContext::new_known(t),
-                        None => ResultContext::AssignmentNewDefinition {
-                            assignment_definition: PointLink::new(
-                                self.file.file_index,
-                                assignment.index(),
-                            ),
-                        },
-                    };
-                    self.infer_assignment_right_side(right_side, &mut result_context)
-                        .avoid_implicit_literal(self.i_s)
-                };
-                let n = NodeRef::new(self.file, right_side.index());
-                for target in targets {
-                    self.assign_targets(target, right.clone(), n, assign_kind)
-                }
+                self.cache_normal_assignment(assignment, targets, right_side)
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
                 self.cache_annotation_assignment(node_ref, target, annotation, right_side)
@@ -420,6 +359,72 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         );
     }
 
+    #[inline]
+    fn cache_normal_assignment<'x>(
+        &self,
+        assignment: Assignment,
+        targets: AssignmentTargetIterator<'x>,
+        right_side: AssignmentRightSide,
+    ) {
+        for target in targets.clone() {
+            self.set_calculating_on_target(target);
+        }
+
+        let type_comment_result = self.check_for_type_comment(assignment);
+
+        let assign_kind = match type_comment_result.as_ref() {
+            Some(r) => AssignKind::Annotation {
+                specific: r.inferred.maybe_saved_specific(self.i_s.db),
+            },
+            None => AssignKind::Normal,
+        };
+        let right = if let Some(type_comment) = type_comment_result {
+            match type_comment.type_ {
+                TypeCommentState::Type(t) => {
+                    let right = self.infer_assignment_right_side(
+                        right_side,
+                        &mut ResultContext::Known {
+                            type_: &t,
+                            from_assignment_annotation: true,
+                        },
+                    );
+                    // It is very weird, but somehow type comments in Mypy are allowed to
+                    // have the form of `x = None  # type: int` in classes, even with
+                    // strict-optional. It's even weirder that the form `x: int = None` is
+                    // not allowed.
+                    // The reason for this is apparently that with type comments there is
+                    // no way to write x: int without a value. So they allowed None on type
+                    // comments.
+                    if !(self.i_s.in_class_scope().is_some()
+                        && matches!(right.as_cow_type(self.i_s).as_ref(), Type::None))
+                    {
+                        self.check_right_side_against_expected(&t, right, right_side)
+                    }
+                }
+                TypeCommentState::UnfinishedFinalOrClassVar(node_ref) => {
+                    self.fill_potentially_unfinished_final_or_class_var(node_ref, Some(right_side));
+                }
+            }
+            type_comment.inferred
+        } else {
+            let inf = self.inferred_context_for_simple_assignment(targets.clone());
+            let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
+            let mut result_context = match &return_type {
+                Some(t) => ResultContext::new_known(t),
+                None => ResultContext::AssignmentNewDefinition {
+                    assignment_definition: PointLink::new(self.file.file_index, assignment.index()),
+                },
+            };
+            self.infer_assignment_right_side(right_side, &mut result_context)
+                .avoid_implicit_literal(self.i_s)
+        };
+        let n = NodeRef::new(self.file, right_side.index());
+        for target in targets {
+            self.assign_targets(target, right.clone(), n, assign_kind)
+        }
+    }
+
+    #[inline]
     fn cache_annotation_assignment(
         &self,
         assignment_node_ref: NodeRef,
@@ -469,6 +474,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
+    #[inline]
     fn cache_aug_assign(
         &self,
         node_ref: NodeRef,
