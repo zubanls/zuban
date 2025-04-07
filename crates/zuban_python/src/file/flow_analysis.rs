@@ -13,7 +13,7 @@ use parsa_python_cst::{
     NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
     PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
     SliceType as CSTSliceType, StarPatternContent, Target, Ternary, TryBlockType, TryStmt,
-    WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
+    WhileStmt,
 };
 
 use crate::{
@@ -1482,44 +1482,49 @@ impl Inference<'_, '_, '_> {
         self_symbol: NodeIndex,
         add_issue: &dyn Fn(IssueKind),
     ) -> Result<Inferred, ()> {
-        let name_def_node_ref = NodeRef::new(self.file, self_symbol - NAME_DEF_TO_NAME_DIFFERENCE);
-        let p = name_def_node_ref.point();
-        if p.calculating() {
-            return Err(());
-        }
-        if !p.calculated() {
-            let func_def = func_of_self_symbol(self.file, self_symbol);
-            let result = FLOW_ANALYSIS.with(|fa| {
-                // The class should have self generics within the functions
-                let c = Class::with_self_generics(self.i_s.db, c.node_ref);
-                self.ensure_func_diagnostics_for_self_attribute(
-                    fa,
-                    Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
-                )
-            });
-            if result.is_err() {
-                // It is possible that the self variable is defined in a super class and we are
-                // accessing it before definition in the current class, so use the one from the
-                // super class.
-                if let Some(inf) = c
-                    .instance()
-                    .lookup(
-                        self.i_s,
-                        name_def_node_ref.as_code(),
-                        // It seems like this is not necessary, because it is added anyway
-                        InstanceLookupOptions::new(add_issue)
-                            .with_skip_first_of_mro(self.i_s.db, &c)
-                            .with_no_check_dunder_getattr(),
-                    )
-                    .lookup
-                    .into_maybe_inferred()
-                {
-                    return Ok(inf);
-                }
+        let name_node_ref = NodeRef::new(self.file, self_symbol);
+        let name_def_node_ref = name_node_ref.name_def_ref_of_name();
+        if name_node_ref.point().needs_flow_analysis() {
+            let p = name_def_node_ref.point();
+            if p.calculating() {
                 return Err(());
             }
+            if !p.calculated() {
+                let func_def = func_of_self_symbol(self.file, self_symbol);
+                let result = FLOW_ANALYSIS.with(|fa| {
+                    // The class should have self generics within the functions
+                    let c = Class::with_self_generics(self.i_s.db, c.node_ref);
+                    self.ensure_func_diagnostics_for_self_attribute(
+                        fa,
+                        Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
+                    )
+                });
+                if result.is_err() {
+                    // It is possible that the self variable is defined in a super class and we are
+                    // accessing it before definition in the current class, so use the one from the
+                    // super class.
+                    if let Some(inf) = c
+                        .instance()
+                        .lookup(
+                            self.i_s,
+                            name_def_node_ref.as_code(),
+                            // It seems like this is not necessary, because it is added anyway
+                            InstanceLookupOptions::new(add_issue)
+                                .with_skip_first_of_mro(self.i_s.db, &c)
+                                .with_no_check_dunder_getattr(),
+                        )
+                        .lookup
+                        .into_maybe_inferred()
+                    {
+                        return Ok(inf);
+                    }
+                    return Err(());
+                }
+            }
+            Ok(self.infer_name_of_definition_by_index(self_symbol))
+        } else {
+            todo!()
         }
-        Ok(self.infer_name_of_definition_by_index(self_symbol))
     }
 
     fn ensure_func_diagnostics_for_self_attribute(

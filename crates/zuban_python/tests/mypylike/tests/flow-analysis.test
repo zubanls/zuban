@@ -356,3 +356,29 @@ class D:
     c: ClassVar = 1
     x: c  # E: Variable "m.c" is not valid as a type \
           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case flow_analysis_not_needed_for_annotated_vars]
+import n
+n.C
+
+[file n.py]
+from m import C
+reveal_type(C("").x)  # N: Revealed type is "str"
+reveal_type(C("").y)  # N: Revealed type is "int"
+
+if bool():
+    z = C("").z
+
+[file m.py]
+import n
+class C:
+    def __init__(self, x: str):
+        # Ensure flow analysis is triggered
+        def f() -> int | None: ...
+        optional = f()
+        if optional:
+            n.z
+            self.x = x
+            self.y: int = int()
+            self.z: int = 1#optional
+            self.a: int = n.z  # E: Cannot resolve name "n.z" (possible cyclic definition)

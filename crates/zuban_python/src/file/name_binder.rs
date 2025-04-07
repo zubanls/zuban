@@ -811,7 +811,8 @@ impl<'db> NameBinder<'db> {
                     let name_index = name.index();
                     self.db_infos.points.set(
                         name_index,
-                        Point::new_first_name_of_name_def(name_index, false, Locality::NameBinder),
+                        Point::new_first_name_of_name_def(name_index, false, Locality::NameBinder)
+                            .with_needs_flow_analysis(true),
                     );
                 }
             }
