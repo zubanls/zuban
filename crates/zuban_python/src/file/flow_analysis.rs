@@ -5,8 +5,8 @@ use std::{
 };
 
 use parsa_python_cst::{
-    Argument, Arguments, ArgumentsDetails, AssertStmt, Atom, AtomContent, Block, BreakStmt,
-    CaseBlock, CasePattern, CompIfIterator, ComparisonContent, Comparisons, Conjunction,
+    Argument, Arguments, ArgumentsDetails, AssertStmt, AssignmentContent, Atom, AtomContent, Block,
+    BreakStmt, CaseBlock, CasePattern, CompIfIterator, ComparisonContent, Comparisons, Conjunction,
     ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression,
     ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
     IfStmt, KeyEntryInPattern, MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression,
@@ -1484,47 +1484,67 @@ impl Inference<'_, '_, '_> {
     ) -> Result<Inferred, ()> {
         let name_node_ref = NodeRef::new(self.file, self_symbol);
         let name_def_node_ref = name_node_ref.name_def_ref_of_name();
-        if name_node_ref.point().needs_flow_analysis() {
-            let p = name_def_node_ref.point();
-            if p.calculating() {
+        if !name_node_ref.point().needs_flow_analysis() {
+            let assignment = name_node_ref
+                .expect_name()
+                .maybe_self_assignment_name()
+                .expect("Expected an assignment, because self type var without flow analysis");
+            match assignment.unpack() {
+                AssignmentContent::WithAnnotation(_, annotation, right_side) => {
+                    let c = Class::with_self_generics(self.i_s.db, c.node_ref);
+                    let func_def = func_of_self_symbol(self.file, self_symbol);
+                    let func = Function::new(NodeRef::new(self.file, func_def.index()), Some(c));
+                    let i_s = &self.i_s.with_func_and_args(&func);
+                    let inference = self.file.inference(i_s);
+                    inference.ensure_cached_annotation(annotation, right_side.is_some());
+                    if !matches!(
+                        self.file.points.get(annotation.index()).specific(),
+                        Specific::AnnotationOrTypeCommentClassVar
+                            | Specific::AnnotationOrTypeCommentFinal
+                    ) {
+                        return Ok(inference.use_cached_annotation(annotation));
+                    }
+                }
+                _ => unreachable!("For now we don't support something like this"),
+            }
+        }
+        let p = name_def_node_ref.point();
+        if p.calculating() {
+            return Err(());
+        }
+        if !p.calculated() {
+            let func_def = func_of_self_symbol(self.file, self_symbol);
+            let result = FLOW_ANALYSIS.with(|fa| {
+                // The class should have self generics within the functions
+                let c = Class::with_self_generics(self.i_s.db, c.node_ref);
+                self.ensure_func_diagnostics_for_self_attribute(
+                    fa,
+                    Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
+                )
+            });
+            if result.is_err() {
+                // It is possible that the self variable is defined in a super class and we are
+                // accessing it before definition in the current class, so use the one from the
+                // super class.
+                if let Some(inf) = c
+                    .instance()
+                    .lookup(
+                        self.i_s,
+                        name_def_node_ref.as_code(),
+                        // It seems like this is not necessary, because it is added anyway
+                        InstanceLookupOptions::new(add_issue)
+                            .with_skip_first_of_mro(self.i_s.db, &c)
+                            .with_no_check_dunder_getattr(),
+                    )
+                    .lookup
+                    .into_maybe_inferred()
+                {
+                    return Ok(inf);
+                }
                 return Err(());
             }
-            if !p.calculated() {
-                let func_def = func_of_self_symbol(self.file, self_symbol);
-                let result = FLOW_ANALYSIS.with(|fa| {
-                    // The class should have self generics within the functions
-                    let c = Class::with_self_generics(self.i_s.db, c.node_ref);
-                    self.ensure_func_diagnostics_for_self_attribute(
-                        fa,
-                        Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
-                    )
-                });
-                if result.is_err() {
-                    // It is possible that the self variable is defined in a super class and we are
-                    // accessing it before definition in the current class, so use the one from the
-                    // super class.
-                    if let Some(inf) = c
-                        .instance()
-                        .lookup(
-                            self.i_s,
-                            name_def_node_ref.as_code(),
-                            // It seems like this is not necessary, because it is added anyway
-                            InstanceLookupOptions::new(add_issue)
-                                .with_skip_first_of_mro(self.i_s.db, &c)
-                                .with_no_check_dunder_getattr(),
-                        )
-                        .lookup
-                        .into_maybe_inferred()
-                    {
-                        return Ok(inf);
-                    }
-                    return Err(());
-                }
-            }
-            Ok(self.infer_name_of_definition_by_index(self_symbol))
-        } else {
-            todo!()
         }
+        Ok(self.infer_name_of_definition_by_index(self_symbol))
     }
 
     fn ensure_func_diagnostics_for_self_attribute(

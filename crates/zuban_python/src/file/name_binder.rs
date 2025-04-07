@@ -809,10 +809,17 @@ impl<'db> NameBinder<'db> {
                 } else {
                     symbol_table.add_or_replace_symbol(name);
                     let name_index = name.index();
+                    let mut needs_flow_analysis = true;
+                    if let Some(assignment) = name.maybe_self_assignment_name() {
+                        match assignment.unpack() {
+                            AssignmentContent::WithAnnotation(..) => needs_flow_analysis = false,
+                            _ => (),
+                        }
+                    }
                     self.db_infos.points.set(
                         name_index,
                         Point::new_first_name_of_name_def(name_index, false, Locality::NameBinder)
-                            .with_needs_flow_analysis(true),
+                            .with_needs_flow_analysis(needs_flow_analysis),
                     );
                 }
             }

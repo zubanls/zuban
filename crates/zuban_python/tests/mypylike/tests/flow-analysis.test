@@ -363,7 +363,7 @@ n.C
 
 [file n.py]
 from m import C
-reveal_type(C("").x)  # N: Revealed type is "str"
+C("").x  # E: Cannot determine type of "x"
 reveal_type(C("").y)  # N: Revealed type is "int"
 
 if bool():
@@ -380,5 +380,5 @@ class C:
             n.z
             self.x = x
             self.y: int = int()
-            self.z: int = 1#optional
-            self.a: int = n.z  # E: Cannot resolve name "n.z" (possible cyclic definition)
+            self.z: int = optional
+            self.a: int = n.z

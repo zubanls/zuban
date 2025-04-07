@@ -6,8 +6,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
-flow_analysis_not_needed_for_annotated_vars
-
 # parser fails
 avoid_bracket_slowdown
 

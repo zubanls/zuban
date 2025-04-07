@@ -517,6 +517,18 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn maybe_self_assignment_name(&self) -> Option<Assignment<'db>> {
+        let node = self
+            .node
+            .parent_until(&[Nonterminal(assignment), Nonterminal(stmt)])
+            .expect("There should always be a stmt");
+        if node.is_type(Nonterminal(assignment)) {
+            Some(Assignment::new(node))
+        } else {
+            None
+        }
+    }
+
     pub fn is_assignment_annotation_without_definition(&self) -> bool {
         let node = self
             .node
