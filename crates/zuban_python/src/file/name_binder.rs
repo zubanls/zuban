@@ -51,7 +51,8 @@ enum Unresolved<'db> {
     Name(Name<'db>),
 }
 
-struct UnresolvedClass<'db> {
+// An unsaved class is not saved, because the self variables of a class are checked
+struct UnsavedClass<'db> {
     class_def: ClassDef<'db>,
     parent_scope: ParentScope,
     class_symbol_table: SymbolTable,
@@ -79,7 +80,7 @@ pub(crate) struct NameBinder<'db> {
     unordered_references: Vec<UnorderedReference<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
-    unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
+    unsaved_classes: Vec<UnsavedClass<'db>>,
     annotation_names: Vec<AnnotationName<'db>>,
     following_nodes_need_flow_analysis: bool,
     latest_return_or_yield: NodeIndex,
@@ -101,7 +102,7 @@ impl<'db> NameBinder<'db> {
             unordered_references: vec![],
             unresolved_nodes: vec![],
             names_to_be_resolved_in_parent: vec![],
-            unresolved_class_self_vars: vec![],
+            unsaved_classes: vec![],
             annotation_names: vec![],
             following_nodes_need_flow_analysis: false,
             latest_return_or_yield: 0,
@@ -117,7 +118,7 @@ impl<'db> NameBinder<'db> {
         func(&mut binder);
         binder.close();
 
-        while let Some(unresolved_class) = binder.unresolved_class_self_vars.pop() {
+        while let Some(unresolved_class) = binder.unsaved_classes.pop() {
             let class_index = unresolved_class.class_def.index();
             let self_symbol_table = binder.index_self_vars(class_index, unresolved_class.class_def);
             let mut slots = None;
@@ -172,12 +173,11 @@ impl<'db> NameBinder<'db> {
             unresolved_nodes,
             names_to_be_resolved_in_parent,
             annotation_names,
-            unresolved_class_self_vars,
+            unsaved_classes,
             symbol_table,
             ..
         } = name_binder;
-        self.unresolved_class_self_vars
-            .extend(unresolved_class_self_vars);
+        self.unsaved_classes.extend(unsaved_classes);
         self.unresolved_nodes.extend(
             names_to_be_resolved_in_parent
                 .into_iter()
@@ -775,7 +775,7 @@ impl<'db> NameBinder<'db> {
             });
 
         let abstract_attributes = self.search_abstract_method_likes(&class_symbol_table);
-        self.unresolved_class_self_vars.push(UnresolvedClass {
+        self.unsaved_classes.push(UnsavedClass {
             class_def,
             class_symbol_table,
             abstract_attributes,
