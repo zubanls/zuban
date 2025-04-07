@@ -336,7 +336,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         )
     }
 
-    pub fn cache_assignment(&self, assignment: Assignment) {
+    pub fn ensure_cached_assignment(&self, assignment: Assignment) {
         let node_ref = NodeRef::new(self.file, assignment.index());
         if node_ref.point().calculated() {
             return;
@@ -449,94 +449,97 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
-                let (inplace_method, op_infos) = aug_assign.magic_methods();
-                let right =
-                    self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
-                let lookup_and_execute = |left: Inferred| {
-                    let had_lookup_error = Cell::new(false);
-                    let mut result = left.type_lookup_and_execute(
-                        self.i_s,
-                        node_ref.file,
-                        inplace_method,
-                        &KnownArgs::new(&right, node_ref),
-                        &|_type| had_lookup_error.set(true),
-                    );
-                    if had_lookup_error.get() {
-                        result = self.infer_detailed_operation(
-                            right_side.index(),
-                            op_infos,
-                            left,
-                            &right,
-                        )
-                    }
-                    result
-                };
-                if let Some(left) = self.infer_target(target.clone(), true) {
-                    let result = lookup_and_execute(left);
-
-                    let n = NodeRef::new(self.file, right_side.index());
-                    self.assign_single_target(
-                        target.clone(),
-                        n,
-                        &result,
-                        AssignKind::AugAssign,
-                        |index, inf| {
-                            if let Target::NameExpression(_, n) = target {
-                                if !self.point(n.index()).calculated()
-                                    && first_defined_name_of_multi_def(self.file, n.name_index())
-                                        .is_none()
-                                {
-                                    // In some cases where we have a self.foo += 1 where foo is defined
-                                    // in the super class we need to save.
-                                    inf.clone().save_redirect(self.i_s, self.file, index);
-                                }
-                            }
-                            // There is no need to save this in other cases, because it's never used
-                        },
-                    )
-                } else if self
-                    .maybe_partial_aug_assignment(&target, aug_assign, &right, lookup_and_execute)
-                    .is_none()
-                {
-                    // This is essentially a bare `foo += 1` that does not have any definition and
-                    // leads to a NameError within Python.
-                    match target.clone() {
-                        Target::Name(name_def) => {
-                            debug!("Name not found for aug assignment");
-                            self.add_issue(
-                                name_def.index(),
-                                IssueKind::NameError {
-                                    name: name_def.as_code().into(),
-                                },
-                            )
-                        }
-                        Target::NameExpression(t, n) => self.add_issue(
-                            assignment.index(),
-                            IssueKind::AttributeError {
-                                name: n.as_code().into(),
-                                object: format!(
-                                    "\"{}\"",
-                                    self.infer_primary_target(t, false)
-                                        .unwrap_or_else(|| Inferred::from_type(Type::Self_))
-                                        .format_short(self.i_s)
-                                )
-                                .into(),
-                            },
-                        ),
-                        // Should probably never happen, because the target should always be
-                        // inferrable
-                        Target::IndexExpression(_) => unreachable!(),
-                        // Invalid syntax
-                        Target::Tuple(_) | Target::Starred(_) => unreachable!(),
-                    }
-                    self.assign_any_to_target(target, node_ref)
-                }
+                self.cache_aug_assign(node_ref, target, aug_assign, right_side)
             }
         }
         self.set_point(
             assignment.index(),
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
+    }
+
+    fn cache_aug_assign(
+        &self,
+        node_ref: NodeRef,
+        target: Target,
+        aug_assign: AugAssign,
+        right_side: AssignmentRightSide,
+    ) {
+        let (inplace_method, op_infos) = aug_assign.magic_methods();
+        let right = self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
+        let lookup_and_execute = |left: Inferred| {
+            let had_lookup_error = Cell::new(false);
+            let mut result = left.type_lookup_and_execute(
+                self.i_s,
+                node_ref.file,
+                inplace_method,
+                &KnownArgs::new(&right, node_ref),
+                &|_type| had_lookup_error.set(true),
+            );
+            if had_lookup_error.get() {
+                result = self.infer_detailed_operation(right_side.index(), op_infos, left, &right)
+            }
+            result
+        };
+        if let Some(left) = self.infer_target(target.clone(), true) {
+            let result = lookup_and_execute(left);
+
+            let n = NodeRef::new(self.file, right_side.index());
+            self.assign_single_target(
+                target.clone(),
+                n,
+                &result,
+                AssignKind::AugAssign,
+                |index, inf| {
+                    if let Target::NameExpression(_, n) = target {
+                        if !self.point(n.index()).calculated()
+                            && first_defined_name_of_multi_def(self.file, n.name_index()).is_none()
+                        {
+                            // In some cases where we have a self.foo += 1 where foo is defined
+                            // in the super class we need to save.
+                            inf.clone().save_redirect(self.i_s, self.file, index);
+                        }
+                    }
+                    // There is no need to save this in other cases, because it's never used
+                },
+            )
+        } else if self
+            .maybe_partial_aug_assignment(&target, aug_assign, &right, lookup_and_execute)
+            .is_none()
+        {
+            // This is essentially a bare `foo += 1` that does not have any definition and
+            // leads to a NameError within Python.
+            match target.clone() {
+                Target::Name(name_def) => {
+                    debug!("Name not found for aug assignment");
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::NameError {
+                            name: name_def.as_code().into(),
+                        },
+                    )
+                }
+                Target::NameExpression(t, n) => node_ref.add_issue(
+                    self.i_s,
+                    IssueKind::AttributeError {
+                        name: n.as_code().into(),
+                        object: format!(
+                            "\"{}\"",
+                            self.infer_primary_target(t, false)
+                                .unwrap_or_else(|| Inferred::from_type(Type::Self_))
+                                .format_short(self.i_s)
+                        )
+                        .into(),
+                    },
+                ),
+                // Should probably never happen, because the target should always be
+                // inferrable
+                Target::IndexExpression(_) => unreachable!(),
+                // Invalid syntax
+                Target::Tuple(_) | Target::Starred(_) => unreachable!(),
+            }
+            self.assign_any_to_target(target, node_ref)
+        }
     }
 
     fn maybe_partial_aug_assignment(
@@ -3762,7 +3765,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             DefiningStmt::ClassDef(cls) => cache_class_name(name_def, cls),
             DefiningStmt::Assignment(assignment) => {
-                self.cache_assignment(assignment);
+                self.ensure_cached_assignment(assignment);
             }
             DefiningStmt::ImportName(import_name) => {
                 self.cache_import_name(import_name);

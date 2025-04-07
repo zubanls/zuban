@@ -198,7 +198,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn check_assignment(&self, assignment: Assignment, class: Option<Class>) {
-        self.cache_assignment(assignment);
+        self.ensure_cached_assignment(assignment);
 
         // Check if protocol assignment is invalid
         if class.is_some_and(|cls| {
