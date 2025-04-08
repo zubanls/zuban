@@ -35,7 +35,10 @@ pub(crate) enum PointResolution<'file> {
         global_redirect: bool,
     },
     Inferred(Inferred),
-    Param(NodeRef<'file>),
+    Param {
+        node_ref: NodeRef<'file>,
+        maybe_self: bool,
+    },
     GlobalOrNonlocalName(NodeRef<'file>),
     ModuleGetattrName(NodeRef<'file>),
 }
@@ -55,7 +58,7 @@ impl PointResolution<'_> {
                 }
             ),
             Self::Inferred(inferred) => format!("Inferred: {}", inferred.debug_info(db)),
-            Self::Param(node_ref) => format!("Param: {}", node_ref.debug_info(db)),
+            Self::Param { node_ref, .. } => format!("Param: {}", node_ref.debug_info(db)),
             Self::GlobalOrNonlocalName(node_ref) => {
                 format!("GlobalOrNonlocal: {}", node_ref.debug_info(db))
             }
@@ -722,9 +725,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
             }
             PointKind::Specific => match point.specific() {
-                Specific::Param | Specific::MaybeSelfParam => {
-                    PointResolution::Param(NodeRef::new(self.file, node_index))
-                }
+                Specific::Param => PointResolution::Param {
+                    node_ref: NodeRef::new(self.file, node_index),
+                    maybe_self: false,
+                },
+                Specific::MaybeSelfParam => PointResolution::Param {
+                    node_ref: NodeRef::new(self.file, node_index),
+                    maybe_self: true,
+                },
                 Specific::GlobalVariable | Specific::NonlocalVariable => {
                     PointResolution::GlobalOrNonlocalName(NodeRef::new(self.file, node_index))
                 }

@@ -1652,3 +1652,29 @@ def f(name: Literal[C.X]) -> int: ...  # E: Parameter 1 of Literal[...] is inval
 from typing import Final
 class C:
     X: Final = '', 1
+
+[case class_with_self_type_attr_acess]
+from typing import Generic, TypeVar, Self
+T = TypeVar("T", bound="Foo")
+
+class Foo:
+    def __init__(self: T, y: int):
+        self.x: str = ''
+        self.y = y
+        self.z = ''
+
+class Bar:
+    def __init__(self: Self, y: int):
+        self.x: str = ''
+        #self.y = y
+        #self.z = ''
+
+class Baz:
+    def __init__(self: Baz, y: int):
+        self.x: str = ''
+        self.y = y
+        self.z = ''
+
+reveal_type(Foo(1).y)  # N: Revealed type is "int"
+-- reveal_type(Bar(1).y)  # N: Revealed type is "int"
+reveal_type(Baz(1).y)  # N: Revealed type is "int"

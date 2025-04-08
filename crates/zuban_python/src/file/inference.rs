@@ -1670,8 +1670,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.assign_to_name_def(name_def, from, value, assign_kind, save)
             }
             Target::NameExpression(primary_target, name_def) => {
-                let base = self.infer_primary_target_or_atom(primary_target.first());
-                if base.maybe_saved_specific(i_s.db) == Some(Specific::MaybeSelfParam) {
+                let is_self = match primary_target.first() {
+                    PrimaryTargetOrAtom::PrimaryTarget(_) => false,
+                    PrimaryTargetOrAtom::Atom(atom) => match atom.unpack() {
+                        AtomContent::Name(name) => matches!(
+                            self.resolve_name_without_narrowing(name),
+                            PointResolution::Param {
+                                maybe_self: true,
+                                ..
+                            }
+                        ),
+                        _ => false,
+                    },
+                };
+                if is_self {
                     self.assign_to_name_def_or_self_name_def(
                         name_def,
                         from,
@@ -1718,6 +1730,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         );
                     }
                 } else {
+                    let base = self.infer_primary_target_or_atom(primary_target.first());
                     self.check_assign_arbitrary_named_expr(
                         base,
                         primary_target,
@@ -3530,7 +3543,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     inference._infer_name_def(node_ref.expect_name_def())
                 }),
             PointResolution::Inferred(inferred) => inferred,
-            PointResolution::Param(node_ref) => {
+            PointResolution::Param { node_ref, .. } => {
                 debug_assert_eq!(node_ref.file_index(), self.file.file_index());
                 self.infer_param(node_ref.node_index)
             }
