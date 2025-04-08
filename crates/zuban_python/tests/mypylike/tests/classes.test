@@ -813,7 +813,7 @@ def foo(
         ):
     reveal_type(type(a))  # N: Revealed type is "Type[Any]"
     reveal_type(type(b))  # N: Revealed type is "Type[object]"
-    reveal_type(type(()))  # N: Revealed type is "Type[tuple[()]]"
+    reveal_type(type(()))  # N: Revealed type is "def (typing.Iterable[Never] =) -> tuple[()]"
     reveal_type(type(T))  # N: Revealed type is "Type[typing.TypeVar]"
 
     reveal_type(type(n))  # N: Revealed type is "Type[__main__.N]"

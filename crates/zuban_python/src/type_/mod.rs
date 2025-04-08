@@ -80,6 +80,7 @@ use crate::{
         ErrorStrs, ErrorTypes, Generic, Generics, GotType, Match, Matcher, MismatchReason,
         OnTypeError, ResultContext,
     },
+    new_class,
     node_ref::NodeRef,
     recoverable_error,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
@@ -772,20 +773,28 @@ impl Type {
                 callable.return_type = self.clone();
                 Some(CallableLike::Callable(Rc::new(callable)))
             }
-            _ => {
-                /*
-                if matches!(&c1.params, CallableParams::Any) {
-                    c1.return_type.is_super_type_of(
-                        i_s,
-                        matcher,
-                        t2,
-                    )
-                } else {
-                    None
-                }
-                */
-                None
+            Type::Tuple(tup) => {
+                // Tuple exists either as tuple() or tuple(<some iterable>), we can not force the
+                // correct length of a tuple when an iterable is provided, therefore only work with
+                // that case.
+                let iterable = new_class!(
+                    i_s.db.python_state.iterable_link(),
+                    tup.fallback_type(i_s.db).clone(),
+                );
+                let mut param = CallableParam::new_anonymous(ParamType::PositionalOnly(iterable));
+                param.has_default = true;
+                Some(CallableLike::Callable(Rc::new(
+                    CallableContent::new_simple(
+                        None,
+                        None,
+                        i_s.db.python_state.tuple_node_ref().as_link(),
+                        i_s.db.python_state.empty_type_var_likes.clone(),
+                        CallableParams::new_simple(Rc::new([param])),
+                        Type::Tuple(tup.clone()),
+                    ),
+                )))
             }
+            _ => None,
         }
     }
 
