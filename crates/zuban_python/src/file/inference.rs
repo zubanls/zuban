@@ -1670,20 +1670,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.assign_to_name_def(name_def, from, value, assign_kind, save)
             }
             Target::NameExpression(primary_target, name_def) => {
-                let is_self = match primary_target.first() {
-                    PrimaryTargetOrAtom::PrimaryTarget(_) => false,
-                    PrimaryTargetOrAtom::Atom(atom) => match atom.unpack() {
-                        AtomContent::Name(name) => matches!(
-                            self.resolve_name_without_narrowing(name),
-                            PointResolution::Param {
-                                maybe_self: true,
-                                ..
-                            }
-                        ),
-                        _ => false,
-                    },
-                };
-                if is_self {
+                if self.is_self(primary_target.first()) {
                     self.assign_to_name_def_or_self_name_def(
                         name_def,
                         from,
@@ -1816,6 +1803,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 //self.narrow_primary_target_from_assignment(primary_target, &value.as_cow_type(self.i_s))
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
+        }
+    }
+
+    fn is_self(&self, primary_target_first: PrimaryTargetOrAtom) -> bool {
+        match primary_target_first {
+            PrimaryTargetOrAtom::PrimaryTarget(_) => false,
+            PrimaryTargetOrAtom::Atom(atom) => match atom.unpack() {
+                AtomContent::Name(name) => matches!(
+                    self.resolve_name_without_narrowing(name),
+                    PointResolution::Param {
+                        maybe_self: true,
+                        ..
+                    }
+                ),
+                _ => false,
+            },
         }
     }
 
@@ -3454,9 +3457,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 return Some(inf);
             }
         }
-        let first = self.infer_primary_target_or_atom(primary_target.first());
         let second = primary_target.second();
-        if first.maybe_saved_specific(self.i_s.db) == Some(Specific::MaybeSelfParam) {
+        if self.is_self(primary_target.first()) {
             if let PrimaryContent::Attribute(attr) = second {
                 let i = attr.index();
                 if self.point(i).calculated() {
@@ -3495,6 +3497,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
         }
+        let first = self.infer_primary_target_or_atom(primary_target.first());
         Some(
             self.infer_primary_or_primary_t_content(
                 &first,

@@ -1666,8 +1666,8 @@ class Foo:
 class Bar:
     def __init__(self: Self, y: int):
         self.x: str = ''
-        #self.y = y
-        #self.z = ''
+        self.y = y
+        self.z = ''
 
 class Baz:
     def __init__(self: Baz, y: int):
@@ -1676,5 +1676,5 @@ class Baz:
         self.z = ''
 
 reveal_type(Foo(1).y)  # N: Revealed type is "int"
--- reveal_type(Bar(1).y)  # N: Revealed type is "int"
+reveal_type(Bar(1).y)  # N: Revealed type is "int"
 reveal_type(Baz(1).y)  # N: Revealed type is "int"
