@@ -302,3 +302,10 @@ if bool():
 else:
     @dec
     def f() -> None: ...
+
+[case conditional_function_is_the_same]
+from typing import Sequence, Any
+if bool():
+    def f(errors: Sequence[Any]): ...
+else:
+    def f(errors: Sequence[Any]): ...
