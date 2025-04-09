@@ -18,7 +18,7 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::SimpleArgs,
-    database::{ClassKind, Database, Locality, Point, PointKind, PointLink, Specific},
+    database::{Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::{ClassNodeRef, OtherDefinitionIterator},
@@ -28,16 +28,16 @@ use crate::{
     matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        lookup_on_enum_instance, simplified_union_from_iterators, AnyCause, CallableContent,
-        CallableLike, CallableParams, ClassGenerics, DbBytes, DbString, EnumKind, EnumMember,
-        Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause, StringSlice,
-        Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        lookup_on_enum_instance, AnyCause, CallableContent, CallableLike, CallableParams, DbBytes,
+        DbString, EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult,
+        NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
+        UnionType, WithUnpack,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
         OverloadResult, OverloadedFunction,
     },
-    utils::{debug_indent, join_with_commas},
+    utils::debug_indent,
 };
 
 use super::{
@@ -2870,7 +2870,7 @@ impl Inference<'_, '_, '_> {
         if isinstance_type.is_any() {
             // Parent unions are not narrowed, because with Any we know essentially nothing
             // about the type and its parents except that it can be anything.
-            debug!("The isinstance type is Any and there is therefore no narrowing");
+            debug!("The isinstance type is Any, we therefore do not narrow");
             return Some(FramesWithParentUnions {
                 truthy: Frame::from_type(key, isinstance_type),
                 falsey: Frame::default(),
@@ -2895,196 +2895,6 @@ impl Inference<'_, '_, '_> {
             truthy: Frame::from_type(key.clone(), truthy),
             falsey: Frame::from_type(key, falsey),
             parent_unions: input.parent_unions,
-        })
-    }
-
-    pub fn check_isinstance_or_issubclass_type(
-        &self,
-        arg: NamedExpression,
-        issubclass: bool,
-    ) -> Option<Type> {
-        let isinstance_type = self.isinstance_or_issubclass_type(arg, issubclass)?;
-        for t in isinstance_type.iter_with_unpacked_unions(self.i_s.db) {
-            let cannot_use_with = |with| {
-                self.add_issue(
-                    arg.index(),
-                    IssueKind::CannotUseIsinstanceWith {
-                        func: match issubclass {
-                            false => "isinstance",
-                            true => "issubclass",
-                        },
-                        with,
-                    },
-                )
-            };
-            match t {
-                Type::TypedDict(_) => cannot_use_with("TypedDict"),
-                Type::NewType(_) => cannot_use_with("NewType"),
-                _ => (),
-            }
-            if let Some(cls) = t.maybe_class(self.i_s.db) {
-                let class_infos = cls.use_cached_class_infos(self.i_s.db);
-                if matches!(class_infos.class_kind, ClassKind::Protocol) {
-                    if !class_infos.is_runtime_checkable {
-                        self.add_issue(arg.index(), IssueKind::ProtocolNotRuntimeCheckable)
-                    }
-                    if issubclass {
-                        let non_method_protocol_members =
-                            cls.non_method_protocol_members(self.i_s.db);
-                        if !non_method_protocol_members.is_empty() {
-                            self.add_issue(
-                                arg.index(),
-                                IssueKind::IssubcclassWithProtocolNonMethodMembers {
-                                    protocol: cls.name().into(),
-                                    non_method_members: join_with_commas(
-                                        non_method_protocol_members.into_iter(),
-                                    )
-                                    .into(),
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        Some(isinstance_type)
-    }
-
-    fn isinstance_or_issubclass_type(
-        &self,
-        arg: NamedExpression,
-        issubclass: bool,
-    ) -> Option<Type> {
-        let expr = match arg.unpack() {
-            NamedExpressionContent::Expression(expr) => expr,
-            NamedExpressionContent::Walrus(w) => w.expression(),
-        };
-
-        // One might think that we could just use type computation here for isinstance types. This
-        // is however not really working, because the types can also be inferred like
-        //
-        //     isinstance(foo, type(bar))
-
-        match expr.unpack() {
-            ExpressionContent::ExpressionPart(part) => {
-                self.isinstance_or_issubclass_type_for_expr_part(part, issubclass, false)
-            }
-            _ => None,
-        }
-    }
-
-    fn isinstance_or_issubclass_type_for_expr_part(
-        &self,
-        part: ExpressionPart,
-        issubclass: bool,
-        from_union: bool,
-    ) -> Option<Type> {
-        let cannot_use_with = |with| {
-            self.add_issue(
-                part.index(),
-                IssueKind::CannotUseIsinstanceWith {
-                    func: match issubclass {
-                        false => "isinstance",
-                        true => "issubclass",
-                    },
-                    with,
-                },
-            );
-            Some(Type::ERROR)
-        };
-        match part {
-            ExpressionPart::BitwiseOr(disjunction) => {
-                let (first, second) = disjunction.unpack();
-                let t1 =
-                    self.isinstance_or_issubclass_type_for_expr_part(first, issubclass, true)?;
-                let t2 =
-                    self.isinstance_or_issubclass_type_for_expr_part(second, issubclass, true)?;
-                Some(t1.union(t2))
-            }
-            _ => {
-                let inf = self.infer_expression_part(part);
-                match inf.maybe_saved_specific(self.i_s.db) {
-                    Some(Specific::TypingAny) => {
-                        return cannot_use_with("Any");
-                    }
-                    Some(Specific::BuiltinsType) => {
-                        if issubclass {
-                            return Some(self.i_s.db.python_state.bare_type_type());
-                        } else {
-                            return Some(self.i_s.db.python_state.type_of_any.clone());
-                        }
-                    }
-                    _ => (),
-                }
-
-                self.process_isinstance_type(part, &inf.as_cow_type(self.i_s), from_union)
-            }
-        }
-    }
-
-    fn process_isinstance_type(
-        &self,
-        part: ExpressionPart,
-        t: &Type,
-        from_union: bool,
-    ) -> Option<Type> {
-        match t {
-            Type::Tuple(tup) => match &tup.args {
-                TupleArgs::FixedLen(ts) => self.process_tuple_types(part, ts.iter()),
-                TupleArgs::ArbitraryLen(t) => self.process_isinstance_type(part, t, false),
-                TupleArgs::WithUnpack(w) => match &w.unpack {
-                    TupleUnpack::ArbitraryLen(t) => self.process_tuple_types(
-                        part,
-                        w.before
-                            .iter()
-                            .chain(w.after.iter())
-                            .chain(std::iter::once(t)),
-                    ),
-                    TupleUnpack::TypeVarTuple(_) => None,
-                },
-            },
-            Type::Type(t) => {
-                if let Type::Class(cls) = t.as_ref() {
-                    if !matches!(
-                        &cls.generics,
-                        ClassGenerics::NotDefinedYet | ClassGenerics::None
-                    ) {
-                        self.add_issue(
-                            part.index(),
-                            IssueKind::CannotUseIsinstanceWithParametrizedGenerics,
-                        );
-                        return Some(Type::ERROR);
-                    }
-                }
-                Some((**t).clone())
-            }
-            Type::Any(cause) => Some(Type::Any(*cause)),
-            /*
-            Type::Literal(l) => {
-                cannot_use_with(self, "Literal")
-            }
-            */
-            Type::None if from_union => Some(t.clone()),
-            _ => {
-                debug!("isinstance with bad type: {}", t.format_short(self.i_s.db));
-                None
-            }
-        }
-    }
-
-    fn process_tuple_types<'x>(
-        &self,
-        part: ExpressionPart,
-        types: impl Iterator<Item = &'x Type>,
-    ) -> Option<Type> {
-        let ts: Option<Vec<Type>> = types
-            .map(|t| self.process_isinstance_type(part, t, true))
-            .collect();
-        let ts = ts?;
-        Some(match ts.len() {
-            0 => Type::Never(NeverCause::Other),
-            1 => ts.into_iter().next().unwrap(),
-            _ => simplified_union_from_iterators(self.i_s, ts.iter()),
         })
     }
 
