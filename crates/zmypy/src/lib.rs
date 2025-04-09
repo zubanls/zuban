@@ -571,12 +571,15 @@ mod tests {
         );
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
 
+        let err = "error: Cannot find implementation or library stub for module named \"foo\"";
         // No venv information should fail to import
         assert_eq!(
             d(&[""]),
-            ["m.py:1: error: Cannot find implementation or library stub for module named \"foo\"",
-             "test-dir/n.py:1: error: Cannot find implementation or library stub for module named \"foo\"",]
-            );
+            [
+                format!("m.py:1: {err}"),
+                format!("test-dir{}n.py:1: {err}", std::path::MAIN_SEPARATOR),
+            ]
+        );
         // venv information via --python-executable should work
         let empty: [&str; 0] = [];
         assert_eq!(d(&["", "--python-executable", "venv/bin/python"]), empty);
