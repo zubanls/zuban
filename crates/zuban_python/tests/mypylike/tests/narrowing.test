@@ -1691,3 +1691,13 @@ def f(x: dict[str, tuple[int] | tuple[str, int]]) -> None:
 
 [file m.py]
 S1 = "hello"
+
+[case isinstance_with_type_of_something_with_any_generics]
+# flags: --show-error-codes
+from typing import Any, Tuple
+
+x = tuple([Tuple, set])
+reveal_type(x)  # Revealed types is "tuple[Type[typing.Collection[Any]], ...]"
+
+def f(value: Any) -> bool:
+    return isinstance(value, x)
