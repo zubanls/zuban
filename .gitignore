@@ -1,4 +1,5 @@
 /target
+/.vscode
 # insta creates these files
 *.snap.new
 # For cargo-about
