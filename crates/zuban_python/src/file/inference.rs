@@ -1250,11 +1250,25 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 ) {
                     name_def_ref.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
                 } else {
+                    let mut node_ref = name_def_ref;
+                    if self.i_s.db.project.settings.mypy_compatible {
+                        // Mypy adds redefiniton errors onto the whole import instead of just the
+                        // name.
+                        match name_def.maybe_import() {
+                            Some(NameImportParent::ImportFromAsName(i)) => {
+                                node_ref = NodeRef::new(self.file, i.import_from().index())
+                            }
+                            Some(NameImportParent::DottedAsName(i)) => {
+                                node_ref = NodeRef::new(self.file, i.import().index())
+                            }
+                            _ => {}
+                        };
+                    }
                     self.add_redefinition_issue(
                         first_index,
                         name_def.as_code(),
                         lookup_self_attribute_in_bases.is_some(),
-                        |issue| name_def_ref.add_issue(self.i_s, issue),
+                        |issue| node_ref.add_issue(self.i_s, issue),
                     );
                 }
             };

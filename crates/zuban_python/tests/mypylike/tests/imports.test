@@ -493,3 +493,37 @@ from m import (
 )
 
 [file m.py]
+
+
+[case type_ignore_for_redefinition_can_be_on_start_of_import_mypy_compatible]
+# flags: --mypy-compatible --show-error-codes
+if bool():
+    class C: ...
+    class D: ...
+else:
+    from m import (  # type: ignore[no-redef,attr-defined]
+        C
+    )
+    from m import (  # E: Module "m" has no attribute "D"  [attr-defined] \
+                     # E: Name "D" already defined on line 4  [no-redef]
+        D
+    )
+
+[file m.py]
+
+[case type_ignore_for_redefinition_not_possible_on_start_of_import_no_mypy_compatible]
+# flags: --no-mypy-compatible --show-error-codes
+if bool():
+    class C: ...
+    class D: ...
+else:
+    from m import (  # type: ignore[no-redef,attr-defined]
+        C  # E: Module "m" has no attribute "C"  [attr-defined] \
+           # E: Name "C" already defined on line 3  [no-redef]
+    )
+    from m import (
+        D  # E: Module "m" has no attribute "D"  [attr-defined] \
+           # E: Name "D" already defined on line 4  [no-redef]
+    )
+
+[file m.py]
