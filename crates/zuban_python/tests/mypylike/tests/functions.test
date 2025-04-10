@@ -337,11 +337,17 @@ foo(
 )
 
 [case avoid_lambda_crash_when_variable_is_used_in_lambda_again]
-from typing import Final
-
+from typing import Final, ClassVar
 from collections import defaultdict
+
+w: Final = defaultdict(lambda: len(w))
 x: dict[str, int] = defaultdict(lambda: len(x))
 y = defaultdict(lambda: len(y))
 z: list[z] = [] # E: Name "z" is not defined \
                 # E: Variable "__main__.z" is not valid as a type \
                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+class C:
+    a: Final = defaultdict(lambda: len(a)) # E: Name "a" is not defined
+    b: ClassVar = defaultdict(lambda: len(b)) # E: Name "b" is not defined
+    c: dict[str, int] = defaultdict(lambda: len(x))

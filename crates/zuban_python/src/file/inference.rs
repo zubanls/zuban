@@ -458,6 +458,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             | Specific::AnnotationOrTypeCommentClassVar
                     )
                 ) {
+                    // There can be potential cycles here like x: Final = x
+                    self.set_calculating_on_target(target.clone());
                     checked = self.fill_potentially_unfinished_final_or_class_var(
                         NodeRef::new(self.file, annotation.index()),
                         right_side,
