@@ -10,7 +10,9 @@ authors.workspace = true
 [dependencies]
 utils.workspace = true
 
+anyhow.workspace = true
 tracing.workspace = true
 crossbeam-channel.workspace = true
 notify.workspace = true
 walkdir = "*"
+glob = "*"

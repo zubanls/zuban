@@ -1,5 +1,6 @@
 // Some parts are copied from rust-analyzer
 
+mod glob_abs_path;
 mod local_fs;
 mod normalized_path;
 mod path;
@@ -12,6 +13,7 @@ use std::{borrow::Cow, path::Path};
 
 use crossbeam_channel::Receiver;
 
+pub use glob_abs_path::GlobAbsPath;
 pub use local_fs::LocalFS;
 pub use normalized_path::NormalizedPath;
 pub use path::AbsPath;
@@ -92,5 +94,9 @@ pub trait VfsHandler {
                 .into_string()
                 .unwrap(),
         )
+    }
+
+    fn is_case_sensitive(&self) -> bool {
+        cfg!(target_os = "windows")
     }
 }

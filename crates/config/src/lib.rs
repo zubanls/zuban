@@ -6,7 +6,7 @@ use anyhow::bail;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
-use vfs::{AbsPath, LocalFS, VfsHandler};
+use vfs::{AbsPath, GlobAbsPath, LocalFS, VfsHandler};
 
 pub use searcher::{find_cli_config, find_workspace_config};
 
@@ -41,7 +41,7 @@ pub struct Settings {
     pub prepended_site_packages: Vec<Box<AbsPath>>,
     pub mypy_compatible: bool,
     // These are absolute paths.
-    pub files_or_directories_to_check: Vec<Box<AbsPath>>,
+    pub files_or_directories_to_check: Vec<GlobAbsPath>,
     pub typeshed_path: Option<Box<AbsPath>>,
 }
 
@@ -692,12 +692,11 @@ fn apply_from_base_config(
             tracing::warn!("TODO ignored config value {key}");
         }
         "files" => {
-            settings.files_or_directories_to_check.extend(
-                value
-                    .as_str_list(key, &[','])?
-                    .into_iter()
-                    .map(|s| vfs.absolute_path(current_dir, s)),
-            );
+            settings.files_or_directories_to_check = value
+                .as_str_list(key, &[','])?
+                .into_iter()
+                .map(|s| GlobAbsPath::new(vfs, current_dir, s))
+                .collect::<anyhow::Result<Vec<_>>>()?;
         }
         "mypy_path" => settings.mypy_path.extend(
             value

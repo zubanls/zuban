@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use config::{find_cli_config, DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
-use vfs::{AbsPath, LocalFS, VfsHandler};
+use vfs::{AbsPath, GlobAbsPath, LocalFS, VfsHandler};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -368,7 +368,10 @@ fn apply_flags(
         project_options.settings.files_or_directories_to_check = cli
             .files
             .into_iter()
-            .map(|p| vfs_handler.absolute_path(&current_dir, p))
+            .map(|p| {
+                GlobAbsPath::new(vfs_handler, &current_dir, p)
+                    .expect("Need a valid glob path as a files argument")
+            })
             .collect();
     }
     tracing::info!(
@@ -592,6 +595,49 @@ mod tests {
     }
 
     #[test]
+    fn test_files_glob() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file foo/bar/mod1.py]
+            1()
+
+            [file foo/mod2.py]
+            1()
+
+            [file mod3.py]
+            1()
+
+            [file mypy.ini]
+            [mypy]
+            files = foo/*.py
+            "#,
+            false,
+        );
+        let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+
+        let err1 = format!(
+            "foo{sep}bar{sep}mod1.py:1: error: \"int\" not callable",
+            sep = std::path::MAIN_SEPARATOR
+        );
+        let err2 = format!(
+            "foo{}mod2.py:1: error: \"int\" not callable",
+            std::path::MAIN_SEPARATOR
+        );
+        let err3 = "mod3.py:1: error: \"int\" not callable";
+
+        assert_eq!(d(&[""]), [&*err2]);
+
+        assert_eq!(d(&["", "foo/**/mod[1-9].py"]), [&*err1, &*err2]);
+        assert_eq!(d(&["", "**/*.py"]), [&*err1, &*err2, err3]);
+        assert_eq!(d(&["", "**/mod2.py"]), [&*err2]);
+        assert_eq!(d(&["", "**/"]), [&*err1, &*err2, err3]);
+        assert_eq!(d(&["", "**/mod?.py"]), [&*err1, &*err2, err3]);
+        assert_eq!(d(&["", "*.py"]), [err3]);
+        assert_eq!(d(&["", "foo"]), [&*err1, &*err2]);
+    }
+
+    #[test]
     fn test_files_relative_paths() {
         logging_config::setup_logging_for_tests();
         let mut project_options = ProjectOptions::default();
@@ -618,7 +664,7 @@ mod tests {
             .settings
             .files_or_directories_to_check
             .iter()
-            .map(|p| &***p)
+            .map(|p| p.as_str())
             .collect();
         if cfg!(target_os = "windows") {
             // TODO it might be questionable that this replaces some slashes, but not others on
@@ -628,10 +674,10 @@ mod tests {
                 vec![
                     "/a/b/baz.py",
                     "/a/b\\bla.py",
-                    "/other",
-                    "/another",
-                    "/a/b\\blub/bla",
-                    "/a/b\\blub/baz",
+                    "/other\\**",
+                    "/another\\**",
+                    "/a/b\\blub/bla\\**",
+                    "/a/b\\blub/baz\\**",
                     //"/foo/bar/not_in_blub",
                 ]
             )
@@ -641,10 +687,10 @@ mod tests {
                 vec![
                     "/a/b/baz.py",
                     "/a/b/bla.py",
-                    "/other",
-                    "/another",
-                    "/a/b/blub/bla",
-                    "/a/b/blub/baz",
+                    "/other/**",
+                    "/another/**",
+                    "/a/b/blub/bla/**",
+                    "/a/b/blub/baz/**",
                     //"/foo/bar/not_in_blub",
                 ]
             )

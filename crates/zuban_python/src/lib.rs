@@ -88,7 +88,13 @@ impl Project {
         }
         debug!(
             "Checking the following files: {:?}",
-            &self.db.project.settings.files_or_directories_to_check
+            self.db
+                .project
+                .settings
+                .files_or_directories_to_check
+                .iter()
+                .map(|g| g.as_str())
+                .collect::<Vec<_>>()
         );
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         let mut checked_files = 0;
@@ -111,14 +117,17 @@ impl Project {
                 }
             });
 
-            let maybe_skipped = |flags: &TypeCheckerFlags, path: &str| {
+            let maybe_skipped = |flags: &TypeCheckerFlags, path: &AbsPath| {
                 // TODO the path __main__ should probably not be here.
                 if !path.ends_with(".py") && !path.ends_with(".pyi") && !path.ends_with("__main__")
                 {
                     return true;
                 }
                 let check_files = &self.db.project.settings.files_or_directories_to_check;
-                !check_files.is_empty() && !check_files.iter().any(|p| p.contains_sub_file(path))
+                !check_files.is_empty()
+                    && !check_files
+                        .iter()
+                        .any(|glob| glob.matches(&*self.db.vfs.handler, path))
                     || flags.excludes.iter().any(|e| e.regex.is_match(path))
             };
             for (file, path) in to_be_loaded {
