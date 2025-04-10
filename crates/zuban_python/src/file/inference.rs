@@ -463,13 +463,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         right_side,
                     )
                 }
+                self.assign_for_annotation(annotation, target, assignment_node_ref);
                 if let Some(right_side) = right_side {
                     if !checked {
                         let t = self.use_cached_annotation_type(annotation);
                         self.check_right_side_against_annotation(&t, right_side);
                     }
                 }
-                self.assign_for_annotation(annotation, target, assignment_node_ref)
             }
         }
     }

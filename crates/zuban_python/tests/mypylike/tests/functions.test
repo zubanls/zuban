@@ -335,3 +335,13 @@ foo(
     x="",  # E: Argument "x" to "foo" has incompatible type "str"; expected "int"
     z=1,  # E: Unexpected keyword argument "z" for "foo"
 )
+
+[case avoid_lambda_crash_when_variable_is_used_in_lambda_again]
+from typing import Final
+
+from collections import defaultdict
+x: dict[str, int] = defaultdict(lambda: len(x))
+y = defaultdict(lambda: len(y))
+z: list[z] = [] # E: Name "z" is not defined \
+                # E: Variable "__main__.z" is not valid as a type \
+                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
