@@ -1283,6 +1283,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     ComplexPoint::TypeInstance(_)
                         | ComplexPoint::IndirectFinal(_)
                         | ComplexPoint::FunctionOverload(_)
+                        | ComplexPoint::TypeAlias(_)
                 )
             );
             let assign_as_new_definition = match assign_kind {

@@ -535,3 +535,10 @@ from typing import TypeVar
 def f():
     T = TypeVar("T")
     f: T  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case conditional_type_invalid_when_any_is_assigned]
+from typing import TypeAlias, Any, Mapping
+if bool():
+    X: TypeAlias = int
+else:
+    X = Any  # E: Incompatible types in assignment (expression has type "object", variable has type "Type[int]")
