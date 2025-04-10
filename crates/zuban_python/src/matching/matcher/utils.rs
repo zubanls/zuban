@@ -919,7 +919,13 @@ pub(crate) fn match_arguments_against_params<
                 }
             }
         };
-        arg.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
+        if i_s.db.project.settings.mypy_compatible {
+            // Mypy adds these issues on top of the whole function call instead of the specific
+            // keyword argument.
+            add_issue(IssueKind::ArgumentIssue(s.into()));
+        } else {
+            arg.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
+        }
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();

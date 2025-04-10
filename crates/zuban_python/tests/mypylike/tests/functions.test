@@ -309,3 +309,29 @@ if bool():
     def f(errors: Sequence[Any]): ...
 else:
     def f(errors: Sequence[Any]): ...
+
+[case invalid_keyword_arguments_position_mypy_compatible]
+# flags: --mypy-compatible
+def foo(x: int, y: int): ...
+
+foo( # type: ignore[call-arg]
+    x="",  # E: Argument "x" to "foo" has incompatible type "str"; expected "int"
+    z=1,
+)
+foo(  # E: Unexpected keyword argument "z" for "foo"
+    x="",  # E: Argument "x" to "foo" has incompatible type "str"; expected "int"
+    z=1,
+)
+
+[case invalid_keyword_arguments_position_no_mypy_compatible]
+# flags: --no-mypy-compatible
+def foo(x: int, y: int): ...
+
+foo( # type: ignore[call-arg]
+    x="",  # E: Argument "x" to "foo" has incompatible type "str"; expected "int"
+    z=1,  # E: Unexpected keyword argument "z" for "foo"
+)
+foo(
+    x="",  # E: Argument "x" to "foo" has incompatible type "str"; expected "int"
+    z=1,  # E: Unexpected keyword argument "z" for "foo"
+)
