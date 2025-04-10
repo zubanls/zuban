@@ -1494,6 +1494,7 @@ impl Inference<'_, '_, '_> {
                     let c = Class::with_self_generics(self.i_s.db, c.node_ref);
                     let func_def = func_of_self_symbol(self.file, self_symbol);
                     let func = Function::new(NodeRef::new(self.file, func_def.index()), Some(c));
+                    func.ensure_cached_func(&InferenceState::from_class(self.i_s.db, &c));
                     let i_s = &self.i_s.with_func_and_args(&func);
                     let inference = self.file.inference(i_s);
                     inference.ensure_cached_annotation(annotation, right_side.is_some());

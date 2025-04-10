@@ -382,3 +382,18 @@ class C:
             self.y: int = int()
             self.z: int = optional
             self.a: int = n.z
+
+[case self_variable_complex_case_should_not_crash]
+from m import C
+
+def f(x: C[int]):
+    x._coro
+
+[file m.py]
+from typing import TypeVar, Generic
+
+_RetType = TypeVar("_RetType")
+
+class C(Generic[_RetType]):
+    def __init__(self, coro: _RetType) -> None:
+        self._coro: _RetType = coro

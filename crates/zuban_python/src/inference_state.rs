@@ -73,6 +73,14 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn from_class(db: &'db Database, cls: &'a Class<'a>) -> Self {
+        Self {
+            db,
+            context: Context::Class(cls),
+            mode: Mode::Normal,
+        }
+    }
+
     pub fn run_with_parent_scope<T>(
         db: &'db Database,
         file: &PythonFile,
