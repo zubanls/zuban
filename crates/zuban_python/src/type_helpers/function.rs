@@ -191,7 +191,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.is_generator() {
             // TODO
         }
-        let inner_i_s = i_s.with_func_and_args(self);
+        let inner_i_s = i_s.with_func_context(self);
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
                 ReturnOrYield::Return(ret) =>

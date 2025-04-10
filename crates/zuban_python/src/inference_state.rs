@@ -107,7 +107,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         })
     }
 
-    pub(crate) fn with_func_and_args(&self, func: &'a Function<'a, 'a>) -> Self {
+    pub(crate) fn with_func_context(&self, func: &'a Function<'a, 'a>) -> Self {
         Self {
             db: self.db,
             context: Context::Function(func),

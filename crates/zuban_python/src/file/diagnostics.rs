@@ -1505,7 +1505,7 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        let function_i_s = &i_s.with_func_and_args(&function);
+        let function_i_s = &i_s.with_func_context(&function);
         self.file
             .inference(function_i_s)
             .function_diagnostics_with_class_i_s(function, func_kind, flags, name, params, block);
