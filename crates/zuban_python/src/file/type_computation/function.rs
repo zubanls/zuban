@@ -14,6 +14,7 @@ use crate::{
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
+    recoverable_error,
     type_::{
         AnyCause, StringSlice, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
         TypeVarManager,
@@ -113,7 +114,8 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if type_var_reference.point().calculated() {
             TypeVarLikes::load_saved_type_vars(db, type_var_reference)
         } else {
-            unreachable!()
+            recoverable_error!("Function type vars accessed, but they are not yet calculated");
+            &db.python_state.empty_type_var_likes
         }
     }
 
