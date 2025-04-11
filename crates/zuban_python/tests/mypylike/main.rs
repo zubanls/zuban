@@ -104,22 +104,20 @@ struct TestCase<'name, 'code> {
 }
 
 impl TestCase<'_, '_> {
-    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
-        let steps = calculate_steps(Some(self.file_name), self.code);
-        let mut diagnostics_config = DiagnosticConfig::default();
-
-        if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
-            || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
-        {
-            return Ok(false);
-        }
+    fn initialize_flags<'p>(
+        &self,
+        projects: &'p mut ProjectsCache,
+        local_fs: &LocalFS,
+        mypy_compatible: bool,
+        steps: &test_utils::Steps,
+    ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
+        let mut diagnostic_config = DiagnosticConfig::default();
         let arg_after = |after_name| {
             let mut flag_iterator = steps.flags.iter();
             (flag_iterator.any(|x| *x == after_name))
                 .then(|| flag_iterator.next().unwrap().to_string())
         };
 
-        let local_fs = LocalFS::without_watcher();
         let mut config = TypeCheckerFlags::default();
         let mut settings = Settings::default();
         let mut project_options = None;
@@ -128,7 +126,7 @@ impl TestCase<'_, '_> {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
             let mut new = BASE_PATH.with(|base_path| {
-                ProjectOptions::from_mypy_ini(&local_fs, base_path, &ini, &mut diagnostics_config)
+                ProjectOptions::from_mypy_ini(local_fs, base_path, &ini, &mut diagnostic_config)
                     .expect("Expected there to be no errors in the mypy.ini")
                     .unwrap_or_else(Default::default)
             });
@@ -145,10 +143,10 @@ impl TestCase<'_, '_> {
             let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
             let mut new = BASE_PATH.with(|base_path| {
                 ProjectOptions::from_pyproject_toml(
-                    &local_fs,
+                    local_fs,
                     base_path,
                     &ini,
-                    &mut diagnostics_config,
+                    &mut diagnostic_config,
                 )
                 .expect("Expected there to be no errors in the pyproject.toml")
                 .unwrap_or_else(Default::default)
@@ -173,13 +171,13 @@ impl TestCase<'_, '_> {
         }
 
         if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
-            diagnostics_config.show_error_codes = true;
+            diagnostic_config.show_error_codes = true;
         }
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
-            diagnostics_config.show_column_numbers = true;
+            diagnostic_config.show_column_numbers = true;
         }
         if steps.flags.contains(&"--show-error-end") {
-            diagnostics_config.show_error_end = true;
+            diagnostic_config.show_error_end = true;
         }
 
         if steps.flags.contains(&"--strict") {
@@ -303,21 +301,32 @@ impl TestCase<'_, '_> {
         } else if self.file_name.starts_with("fine-grained") {
             config.local_partial_types = true;
         }
-
-        let mut tmp;
         let project = if let Some(mut project_options) = project_options {
             project_options.settings = settings;
             project_options.flags = config;
-            tmp = projects.try_to_reuse_project_parts(project_options);
-            &mut tmp
+            OwnedOrMut::Owned(projects.try_to_reuse_project_parts(project_options))
         } else {
-            projects.get_mut(settings, config)
+            OwnedOrMut::Mut(projects.get_mut(settings, config))
         };
+        (project, diagnostic_config)
+    }
+
+    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
+        let steps = calculate_steps(Some(self.file_name), self.code);
+        if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
+            || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
+        {
+            return Ok(false);
+        }
+        let local_fs = LocalFS::without_watcher();
+        let (mut project, diagnostic_config) =
+            self.initialize_flags(projects, &local_fs, mypy_compatible, &steps);
 
         let is_parse_test = self.file_name.starts_with("parse");
         let is_semanal_test = self.file_name.starts_with("semanal-");
 
         let mut result = Ok(true);
+        let project = project.as_mut();
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
@@ -361,7 +370,7 @@ impl TestCase<'_, '_> {
                         return None;
                     }
                     (!is_parse_test || d.mypy_error_code() == "syntax").then(|| {
-                        let mut s = d.as_string(&diagnostics_config);
+                        let mut s = d.as_string(&diagnostic_config);
                         if cfg!(target_os = "windows") {
                             // TODO this only checks the first line, but with notes there may
                             // be multiple lines.
@@ -793,6 +802,20 @@ impl ProjectsCache {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
             Project::without_watcher(options)
+        }
+    }
+}
+
+enum OwnedOrMut<'a, T> {
+    Owned(T),
+    Mut(&'a mut T),
+}
+
+impl<'a, T> OwnedOrMut<'a, T> {
+    pub fn as_mut(&mut self) -> &mut T {
+        match self {
+            OwnedOrMut::Owned(ref mut t) => t,
+            OwnedOrMut::Mut(ref mut t) => *t,
         }
     }
 }
