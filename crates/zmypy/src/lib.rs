@@ -674,9 +674,9 @@ mod tests {
                 vec![
                     "/a/b/baz.py",
                     "/a/b\\bla.py",
-                    "/other\\**",
+                    "/other/**",
                     "/another\\**",
-                    "/a/b\\blub/bla\\**",
+                    "/a/b\\blub/bla/**",
                     "/a/b\\blub/baz\\**",
                     //"/foo/bar/not_in_blub",
                 ]

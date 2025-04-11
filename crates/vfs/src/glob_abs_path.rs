@@ -15,7 +15,9 @@ impl GlobAbsPath {
             // TODO It feels very wrong to just add an arbitrary match for directories, but we have
             // no other solution for now, otherwise only a bare directory is matched and not the
             // file itself.
-            if !path.ends_with(vfs.separator()) {
+            if !(path.ends_with(vfs.separator())
+                || cfg!(target_os = "windows") && path.ends_with('/'))
+            {
                 path.push(vfs.separator());
             }
             path.push_str("**");
