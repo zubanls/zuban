@@ -274,6 +274,20 @@ disallow_untyped_defs = True
 [mypy-a.c.z]
 disallow_untyped_defs = False
 
+[case multi_files_path_in_overrides]
+[file a/x.py]
+def f(x: int): ...
+[file a/y.py]
+def f(x: int): ...
+[file a/z.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+
+[file mypy.ini]
+[mypy]
+disallow_untyped_defs = True
+[mypy-a.x,a.y]
+disallow_untyped_defs = False
+
 [case error_code_for_invalid_unpack_and_iter]
 # flags: --show-error-codes
 

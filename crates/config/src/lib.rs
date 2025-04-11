@@ -132,13 +132,15 @@ impl ProjectOptions {
                 }
             } else if let Some(rest) = name.strip_prefix("mypy-") {
                 had_relevant_section = true;
-                overrides.push(OverrideConfig {
-                    module: rest.into(),
-                    config: section
-                        .iter()
-                        .map(|(x, y)| (x.into(), OverrideIniOrTomlValue::Ini(y.into())))
-                        .collect(),
-                })
+                for rest in rest.split(',') {
+                    overrides.push(OverrideConfig {
+                        module: rest.into(),
+                        config: section
+                            .iter()
+                            .map(|(x, y)| (x.into(), OverrideIniOrTomlValue::Ini(y.into())))
+                            .collect(),
+                    })
+                }
             }
         }
         order_overrides_for_priority(&mut overrides);
@@ -526,7 +528,7 @@ fn pyproject_toml_override_module_names(table: &Table) -> anyhow::Result<Vec<Ove
             for entry in list {
                 match entry {
                     Value::String(s) => result.push(s.value().as_str().into()),
-                    _ => bail!("TODO find an error name here"),
+                    _ => bail!("Expected string in module list, but found {entry}"),
                 }
             }
             Ok(result)
