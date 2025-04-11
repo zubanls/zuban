@@ -202,6 +202,78 @@ files =
     a,
     c
 
+[case files_path_wild_cards_in_mypy_config1]
+[file a/x.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+[file a/b/y.py]
+def f(x: int): ...
+[file a/c/z.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+
+[file mypy.ini]
+[mypy-a.*]
+disallow_untyped_defs = True
+[mypy-a.b.y]
+disallow_untyped_defs = False
+
+[case files_path_wild_cards_in_mypy_config2]
+[file a/x.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+[file a/b/y.py]
+def f(x: int): ...
+[file a/c/z.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+
+[file mypy.ini]
+[mypy-a.b.y]
+disallow_untyped_defs = False
+[mypy-a.*]
+disallow_untyped_defs = True
+
+[case files_path_wild_cards_in_mypy_config3]
+[file a/x.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+[file a/b/y.py]
+def f(x: int): ...
+[file a/c/z.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+
+[file mypy.ini]
+[mypy-a.*]
+disallow_untyped_defs = True
+[mypy-a.*.y]
+disallow_untyped_defs = False
+
+[case files_path_wild_cards_in_mypy_config4]
+[file a/x.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+[file a/b/y.py]
+def f(x: int): ...
+[file a/c/z.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+
+[file mypy.ini]
+[mypy-a.*.y]
+disallow_untyped_defs = False
+[mypy-a.*]
+disallow_untyped_defs = True
+
+[case files_path_wild_cards_in_mypy_config5]
+[file a/x.py]
+def f(x: int): ...  # E: Function is missing a return type annotation
+[file a/b/y.py]
+def f(x: int): ...
+[file a/c/z.py]
+def f(x: int): ...
+
+[file mypy.ini]
+[mypy-a.*.y]
+disallow_untyped_defs = False
+[mypy-a.*]
+disallow_untyped_defs = True
+[mypy-a.c.z]
+disallow_untyped_defs = False
+
 [case error_code_for_invalid_unpack_and_iter]
 # flags: --show-error-codes
 
