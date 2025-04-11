@@ -387,68 +387,101 @@ impl std::hash::Hash for ExcludeRegex {
 }
 
 // These are the overrides with the precedence order as described in https://mypy.readthedocs.io/en/stable/config_file.html#config-file-format
-#[derive(PartialOrd, Ord, PartialEq, Eq, Copy, Clone)]
+#[derive(PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
 enum OverrideKind {
     WellStructured, // e.g. foo.bar.*
-    //Unstructured,   // e.g. foo.*.baz
-    ModuleName, // e.g. foo.bar (has the highest priority
+    Unstructured,   // e.g. foo.*.baz
+    ModuleName,     // e.g. foo.bar (has the highest priority
+}
+
+#[derive(Clone)]
+enum OverridePathPart {
+    Part(Box<str>),
+    Wildcard,
 }
 
 #[derive(Clone)]
 pub struct OverridePath {
-    path: Vec<Box<str>>,
+    path: Vec<OverridePathPart>,
     kind: OverrideKind,
 }
 
 impl From<&str> for OverridePath {
-    fn from(mut value: &str) -> Self {
-        let mut kind = OverrideKind::ModuleName;
-        if let Some(new_s) = value.strip_suffix(".*") {
-            value = new_s;
-            kind = OverrideKind::WellStructured;
-        }
-        OverridePath {
-            path: value.split('.').map(|s| s.into()).collect(),
-            kind,
-        }
+    fn from(value: &str) -> Self {
+        let mut had_star = false;
+        let mut had_name_after_star = false;
+        let path = value
+            .split('.')
+            .map(|s| match s {
+                "*" => {
+                    had_star = true;
+                    OverridePathPart::Wildcard
+                }
+                _ => {
+                    had_name_after_star |= had_star;
+                    OverridePathPart::Part(s.into())
+                }
+            })
+            .collect();
+        let kind = if had_name_after_star {
+            OverrideKind::Unstructured
+        } else if had_star {
+            OverrideKind::WellStructured
+        } else {
+            OverrideKind::ModuleName
+        };
+        OverridePath { path, kind }
     }
 }
 
 impl OverridePath {
     pub fn matches_file_path(&self, name: &str, parent_dir: Option<&Directory>) -> bool {
-        fn parent_count(dir: Option<&Directory>) -> usize {
-            if let Some(dir) = dir {
-                parent_count(dir.parent.maybe_dir().ok().as_deref()) + 1
-            } else {
-                0
-            }
-        }
-        fn nth_parent<'x>(name: &'x str, dir: Option<&Directory>, n: usize) -> &'x str {
-            if n == 0 {
-                name
-            } else {
-                let dir = dir.unwrap();
-                nth_parent(
-                    // This transmute is fine, because we're only local and the parents will not
-                    // change during the parent function.
-                    unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) },
-                    dir.parent.maybe_dir().ok().as_deref(),
-                    n - 1,
-                )
-            }
-        }
-        let actual_path_count = parent_count(parent_dir) + 1;
-        if actual_path_count != self.path.len() && matches!(&self.kind, OverrideKind::ModuleName)
-            || self.path.len() > actual_path_count
-        {
-            return false;
-        }
-        for (i, override_part) in self.path.iter().enumerate() {
-            if override_part.as_ref() != nth_parent(name, parent_dir, actual_path_count - i - 1) {
+        fn matches_file_path<'x>(
+            mut reverse_path: impl Iterator<Item = &'x OverridePathPart> + Clone,
+            name: &str,
+            parent_dir: Option<&Directory>,
+        ) -> bool {
+            let Some(part) = reverse_path.next() else {
                 return false;
+            };
+            match part {
+                OverridePathPart::Part(part) => {
+                    name == &**part && {
+                        if let Some(dir) = parent_dir {
+                            matches_file_path(
+                                reverse_path,
+                                &dir.name,
+                                dir.parent.maybe_dir().ok().as_deref(),
+                            )
+                        } else {
+                            reverse_path.next().is_none()
+                        }
+                    }
+                }
+                OverridePathPart::Wildcard => {
+                    fn check_wildcard_parents<'x>(
+                        mut reverse_path: impl Iterator<Item = &'x OverridePathPart> + Clone,
+                        name: &str,
+                        parent_dir: Option<&Directory>,
+                    ) -> bool {
+                        if matches_file_path(reverse_path.clone(), name, parent_dir) {
+                            return true;
+                        }
+                        if let Some(dir) = parent_dir {
+                            check_wildcard_parents(
+                                reverse_path,
+                                &dir.name,
+                                dir.parent.maybe_dir().ok().as_deref(),
+                            )
+                        } else {
+                            reverse_path.next().is_none()
+                        }
+                    }
+                    check_wildcard_parents(reverse_path, name, parent_dir)
+                }
             }
         }
-        true
+        matches_file_path(self.path.iter().rev(), name, parent_dir)
     }
 }
 
