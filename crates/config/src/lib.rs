@@ -141,6 +141,7 @@ impl ProjectOptions {
                 })
             }
         }
+        order_overrides_for_priority(&mut overrides);
         Ok(had_relevant_section.then(|| ProjectOptions {
             settings,
             flags,
@@ -202,6 +203,7 @@ impl ProjectOptions {
                     }
                 }
             }
+            order_overrides_for_priority(&mut overrides);
             Ok(Some(ProjectOptions {
                 settings,
                 flags,
@@ -211,6 +213,12 @@ impl ProjectOptions {
             Ok(None)
         }
     }
+}
+
+fn order_overrides_for_priority(overrides: &mut Vec<OverrideConfig>) {
+    // The overrides with the highest priorities should be last, because they overwrite the flags
+    // for a file at the end
+    overrides.sort_by_key(|o| !o.module.star);
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
