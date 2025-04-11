@@ -6,7 +6,7 @@ use anyhow::bail;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
-use vfs::{AbsPath, GlobAbsPath, LocalFS, VfsHandler};
+use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, VfsHandler};
 
 pub use searcher::{find_cli_config, find_workspace_config};
 
@@ -218,7 +218,7 @@ impl ProjectOptions {
 fn order_overrides_for_priority(overrides: &mut Vec<OverrideConfig>) {
     // The overrides with the highest priorities should be last, because they overwrite the flags
     // for a file at the end
-    overrides.sort_by_key(|o| !o.module.star);
+    overrides.sort_by_key(|o| o.module.kind);
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -386,23 +386,69 @@ impl std::hash::Hash for ExcludeRegex {
     }
 }
 
+// These are the overrides with the precedence order as described in https://mypy.readthedocs.io/en/stable/config_file.html#config-file-format
+#[derive(PartialOrd, Ord, PartialEq, Eq, Copy, Clone)]
+enum OverrideKind {
+    WellStructured, // e.g. foo.bar.*
+    //Unstructured,   // e.g. foo.*.baz
+    ModuleName, // e.g. foo.bar (has the highest priority
+}
+
 #[derive(Clone)]
 pub struct OverridePath {
-    pub path: Vec<Box<str>>,
-    pub star: bool, // For things like foo.bar.*
+    path: Vec<Box<str>>,
+    kind: OverrideKind,
 }
 
 impl From<&str> for OverridePath {
     fn from(mut value: &str) -> Self {
-        let mut star = false;
+        let mut kind = OverrideKind::ModuleName;
         if let Some(new_s) = value.strip_suffix(".*") {
             value = new_s;
-            star = true;
+            kind = OverrideKind::WellStructured;
         }
         OverridePath {
             path: value.split('.').map(|s| s.into()).collect(),
-            star,
+            kind,
         }
+    }
+}
+
+impl OverridePath {
+    pub fn matches_file_path(&self, name: &str, parent_dir: Option<&Directory>) -> bool {
+        fn parent_count(dir: Option<&Directory>) -> usize {
+            if let Some(dir) = dir {
+                parent_count(dir.parent.maybe_dir().ok().as_deref()) + 1
+            } else {
+                0
+            }
+        }
+        fn nth_parent<'x>(name: &'x str, dir: Option<&Directory>, n: usize) -> &'x str {
+            if n == 0 {
+                name
+            } else {
+                let dir = dir.unwrap();
+                nth_parent(
+                    // This transmute is fine, because we're only local and the parents will not
+                    // change during the parent function.
+                    unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) },
+                    dir.parent.maybe_dir().ok().as_deref(),
+                    n - 1,
+                )
+            }
+        }
+        let actual_path_count = parent_count(parent_dir) + 1;
+        if actual_path_count != self.path.len() && matches!(&self.kind, OverrideKind::ModuleName)
+            || self.path.len() > actual_path_count
+        {
+            return false;
+        }
+        for (i, override_part) in self.path.iter().enumerate() {
+            if override_part.as_ref() != nth_parent(name, parent_dir, actual_path_count - i - 1) {
+                return false;
+            }
+        }
+        true
     }
 }
 
