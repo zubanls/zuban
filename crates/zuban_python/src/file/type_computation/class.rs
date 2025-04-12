@@ -39,10 +39,10 @@ use super::{
     CalculatedBaseClass, FuncNodeRef, Lookup, TypeComputation, TypeComputationOrigin,
 };
 
-// Basically save the type vars on the class keyword.
-const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = 1;
-// Basically the `(` or `:` after the name
-pub(crate) const CLASS_TO_CLASS_INFO_DIFFERENCE: i64 = NAME_TO_CLASS_DIFF as i64 + 1;
+// Save the ClassInfos on the class keyword
+pub(crate) const CLASS_TO_CLASS_INFO_DIFFERENCE: i64 = 1;
+// Save the type vars on `(` or `:` or `type_params` after the name
+const CLASS_TO_TYPE_VARS_DIFFERENCE: i64 = NAME_TO_CLASS_DIFF as i64 + 1;
 
 pub(crate) const ORDERING_METHODS: [&str; 4] = ["__lt__", "__le__", "__gt__", "__ge__"];
 

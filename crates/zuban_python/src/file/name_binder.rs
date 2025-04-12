@@ -20,11 +20,11 @@ use crate::{
 // We set global/nonlocal redirects on the points of "global" or "," literals.
 pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 // Functions use the following points:
-// - "def" to redirect to the first return/yield (Function::type_var_reference)
-// - "function_def_parameters" to save calculated type vars (Function::iter_return_or_yield)
-// - "(" for the understanding of the parent scope (Function::parent_reference)
-// To save the generics just use the ( operator's storage.
-// + 1 for def; + 2 for name + 1 for (...)
+// - "def" to redirect to the first return/yield (FuncNodeRef::type_var_reference)
+// - "function_def_parameters" to save calculated type vars (FuncNodeRef::iter_return_or_yield)
+// - "(" for the understanding of the parent scope (func_parent_scope)
+// For functions with `type_params`, the indexes essentially "move". Calculated TypeVars will be on
+// `type_params` and parent scope on `function_def_parameters`.
 pub const FUNC_TO_RETURN_OR_YIELD_DIFF: u32 = 1;
 pub const FUNC_TO_TYPE_VAR_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 1;
 const FUNC_TO_PARENT_DIFF: u32 = NAME_TO_FUNCTION_DIFF + 2;

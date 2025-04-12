@@ -24,6 +24,7 @@ use crate::{
 // class.
 pub const NAME_TO_CLASS_DIFF: u32 = 3;
 pub const NAME_DEF_TO_CLASS_DIFF: u32 = NAME_TO_CLASS_DIFF - NAME_DEF_TO_NAME_DIFFERENCE;
+// + 1 for def; + 2 for name
 pub const NAME_TO_FUNCTION_DIFF: u32 = 3;
 
 macro_rules! attribute_node_ref {
