@@ -27,7 +27,8 @@ use super::{
 use crate::{
     arguments::SimpleArgs,
     database::{
-        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
+        ComplexPoint, Database, Locality, ParentScope, Point, PointKind, PointLink, Specific,
+        TypeAlias,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -47,10 +48,10 @@ use crate::{
         FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
         MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, ParamSpecArg, ParamSpecUsage,
         ParamType, RecursiveType, RecursiveTypeOrigin, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-        TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
-        WithUnpack,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeInTypeVar,
+        TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry,
+        UnionType, Variance, WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
     utils::rc_slice_into_vec,
@@ -4047,6 +4048,61 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn add_type_issue(&self, node_index: NodeIndex, kind: IssueKind) {
         let from = NodeRef::new(self.file, node_index);
         from.add_type_issue(self.i_s.db, kind);
+    }
+
+    fn compute_type_params_definition(
+        &self,
+        scope: ParentScope,
+        type_params: Option<TypeParams>,
+    ) -> TypeVarLikes {
+        let Some(type_params) = type_params else {
+            return self.i_s.db.python_state.empty_type_var_likes.clone();
+        };
+        TypeVarLikes::new(
+            type_params
+                .iter()
+                .map(|type_param| {
+                    let (name_def, kind) = type_param.unpack();
+                    let name_def_ref = NodeRef::new(self.file, name_def.index());
+                    let type_var_like = match kind {
+                        TypeParamKind::TypeVar(bound, default) => {
+                            let kind = match bound {
+                                Some(bound) => {
+                                    // TODO what about TypeVar values?
+                                    TypeVarKindInfos::Bound(TypeInTypeVar::new_lazy(
+                                        bound.expression().index(),
+                                    ))
+                                }
+                                None => TypeVarKindInfos::Unrestricted,
+                            };
+                            let default = default.map(|d| d.expression().index());
+                            TypeVarLike::TypeVar(Rc::new(TypeVar::new(
+                                name_def_ref.as_link(),
+                                scope,
+                                kind,
+                                default,
+                                // TODO implement variance inference
+                                Variance::Covariant,
+                            )))
+                        }
+                        TypeParamKind::TypeVarTuple(default) => {
+                            todo!()
+                        }
+                        TypeParamKind::ParamSpec(default) => {
+                            todo!()
+                        }
+                    };
+                    // It might feel a bit weird, that we insert the TypeVars and also return them
+                    // as a list. This is because the list is needed for class/alias/func
+                    // definitions and the individual TypeVar is used whenever a type accesses it.
+                    name_def_ref.insert_complex(
+                        ComplexPoint::TypeVarLike(type_var_like.clone()),
+                        Locality::Todo,
+                    );
+                    type_var_like
+                })
+                .collect(),
+        )
     }
 }
 

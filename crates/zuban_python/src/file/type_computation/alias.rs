@@ -617,10 +617,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub fn compute_type_alias_syntax(&self, type_alias: parsa_python_cst::TypeAlias) {
         let (name_def, type_params, expr) = type_alias.unpack();
+        let scope = self.i_s.as_parent_scope();
+        let type_var_likes = self.compute_type_params_definition(scope, type_params);
         let name_def_ref = NodeRef::new(self.file, name_def.index());
         let alias = TypeAlias::new(
-            // TODO this is wrong
-            self.i_s.db.python_state.empty_type_var_likes.clone(),
+            type_var_likes,
             name_def_ref.as_link(),
             name_def_ref.as_link(),
         );
