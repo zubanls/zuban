@@ -4076,7 +4076,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 None => TypeVarKindInfos::Unrestricted,
                             };
                             let default = default.map(|d| d.expression().index());
-                            TypeVarLike::TypeVar(Rc::new(TypeVar::new(
+                            TypeVarLike::TypeVar(Rc::new(TypeVar::new_syntax_definition(
                                 name_def_ref.as_link(),
                                 scope,
                                 kind,

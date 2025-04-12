@@ -576,7 +576,8 @@ impl Hash for TypeVarLike {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TypeVarName {
-    PointLink(PointLink),
+    InString(PointLink),
+    SyntaxNode(PointLink),
     Self_,
 }
 
@@ -619,7 +620,7 @@ impl TypeInTypeVar {
         self.t.get_or_init(|| {
             self.calculating.set(true);
             let node = self.node.unwrap();
-            let TypeVarName::PointLink(link) = name_string else {
+            let TypeVarName::InString(link) = name_string else {
                 unreachable!()
             };
             let node_ref = NodeRef::from_link(db, PointLink::new(link.file, node));
@@ -671,7 +672,23 @@ impl TypeVar {
         variance: Variance,
     ) -> Self {
         Self {
-            name_string: TypeVarName::PointLink(name_link),
+            name_string: TypeVarName::InString(name_link),
+            scope,
+            kind,
+            default: default.map(TypeInTypeVar::new_lazy),
+            variance,
+        }
+    }
+
+    pub fn new_syntax_definition(
+        name_link: PointLink,
+        scope: ParentScope,
+        kind: TypeVarKindInfos,
+        default: Option<NodeIndex>,
+        variance: Variance,
+    ) -> Self {
+        Self {
+            name_string: TypeVarName::SyntaxNode(name_link),
             scope,
             kind,
             default: default.map(TypeInTypeVar::new_lazy),
@@ -691,9 +708,10 @@ impl TypeVar {
 
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         match self.name_string {
-            TypeVarName::PointLink(link) => {
+            TypeVarName::InString(link) => {
                 NodeRef::from_link(db, link).maybe_str().unwrap().content()
             }
+            TypeVarName::SyntaxNode(link) => NodeRef::from_link(db, link).as_code(),
             TypeVarName::Self_ => "Self",
         }
     }
@@ -778,15 +796,11 @@ impl TypeVar {
 
     pub fn qualified_name(&self, db: &Database) -> Box<str> {
         match self.name_string {
-            TypeVarName::PointLink(link) => {
+            TypeVarName::InString(link) | TypeVarName::SyntaxNode(link) => {
                 let node_ref = NodeRef::from_link(db, link);
-                format!(
-                    "{}.{}",
-                    node_ref.file.qualified_name(db),
-                    node_ref.maybe_str().unwrap().content()
-                )
-                .into()
+                format!("{}.{}", node_ref.file.qualified_name(db), self.name(db)).into()
             }
+
             TypeVarName::Self_ => Box::from("Self"),
         }
     }
@@ -1051,7 +1065,8 @@ impl TypeVarLikeUsage {
     pub fn name_definition(&self) -> Option<PointLink> {
         match self {
             Self::TypeVar(t) => match t.type_var.name_string {
-                TypeVarName::PointLink(link) => Some(link),
+                TypeVarName::InString(link) => Some(link),
+                TypeVarName::SyntaxNode(link) => Some(link),
                 TypeVarName::Self_ => None,
             },
             Self::TypeVarTuple(t) => Some(t.type_var_tuple.name_string),

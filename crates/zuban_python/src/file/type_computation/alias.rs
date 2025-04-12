@@ -434,7 +434,25 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
         };
         let type_var_likes = find_type_var_likes();
+        self.check_for_alias_second_step(
+            origin,
+            cached_type_node_ref,
+            name_def,
+            type_var_likes,
+            expr,
+            is_explicit,
+        )
+    }
 
+    fn check_for_alias_second_step(
+        &self,
+        origin: CalculatingAliasType,
+        cached_type_node_ref: NodeRef<'file>,
+        name_def: NameDef,
+        type_var_likes: TypeVarLikes,
+        expr: Expression,
+        is_explicit: bool,
+    ) -> Lookup<'file, 'file> {
         let in_definition = cached_type_node_ref.as_link();
         let alias = TypeAlias::new(
             type_var_likes,
@@ -620,17 +638,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let scope = self.i_s.as_parent_scope();
         let type_var_likes = self.compute_type_params_definition(scope, type_params);
         let name_def_ref = NodeRef::new(self.file, name_def.index());
-        let alias = TypeAlias::new(
+        self.check_for_alias_second_step(
+            CalculatingAliasType::Normal,
+            name_def_ref,
+            name_def,
             type_var_likes,
-            name_def_ref.as_link(),
-            name_def_ref.as_link(),
+            expr,
+            true,
         );
-        save_alias(name_def_ref, alias);
-        let ComplexPoint::TypeAlias(alias) = name_def_ref.maybe_complex().unwrap() else {
-            unreachable!()
-        };
-        // TODO implement valid type aliases
-        alias.set_valid(Type::ERROR, false);
     }
 
     // ------------------------------------------------------------------------
