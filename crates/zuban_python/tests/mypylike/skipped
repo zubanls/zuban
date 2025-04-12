@@ -666,7 +666,6 @@ test695TypeAliasType
 testPEP695*
 testCurrentClassWorksAsBound
 # PEP 696 TypeAlias `type x = int`
-testPEP696TypeAlias
 testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple

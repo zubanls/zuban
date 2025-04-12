@@ -15,7 +15,7 @@ create_grammar!(
     enum PyNodeType, enum NonterminalType, PythonTokenizer, PyTerminal, TerminalType,
 
     soft_keywords=[
-        Name: "match" | "case" | "_"
+        Name: "match" | "case" | "_" | "type"
     ]
 
     // STARTING RULES
@@ -32,7 +32,7 @@ create_grammar!(
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
     simple_stmt:
-        | assignment | star_expressions | del_stmt | pass_stmt
+        | assignment | type_alias | star_expressions | del_stmt | pass_stmt
         | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
     async_stmt: "async" (function_def | with_stmt | for_stmt)
@@ -227,25 +227,23 @@ create_grammar!(
 
     // Type statement
     // ---------------
-    //type_alias: "type" Name [type_params] "=" expression
+
+    type_alias: "type" name_def [type_params] "=" expression
 
 
     // Type parameter declaration
     // --------------------------
-    /*
-    type_params: "[" type_param_seq  "]"
 
-    type_param_seq: ",".type_param+ [","]
+    type_params: "[" ",".type_param+ [","] "]"
 
     type_param:
-        | Name [type_param_bound]
-        | "*" Name ":" expression
-        | "*" Name
-        | "**" Name ":" expression
-        | "**" Name
+        | name_def [type_param_bound] [type_param_default]
+        | "*" name_def [type_param_starred_default]
+        | "**" name_def [type_param_default]
 
     type_param_bound: ":" expression
-    */
+    type_param_default: "=" expression
+    type_param_starred_default: "=" star_expression
 
     // EXPRESSIONS
     // -----------

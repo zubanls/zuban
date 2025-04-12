@@ -485,6 +485,15 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::YieldExpr(y) => self.index_non_block_node(&y, ordered),
                 StmtLikeContent::GlobalStmt(g) => self.index_non_block_node(&g, ordered),
                 StmtLikeContent::NonlocalStmt(n) => self.index_non_block_node(&n, ordered),
+                StmtLikeContent::TypeAlias(type_alias) => {
+                    let (name_def, type_params, expr) = type_alias.unpack();
+                    // TODO add a separate scope
+                    self.add_new_definition(name_def, Point::new_uncalculated());
+                    if let Some(type_params) = type_params {
+                        self.index_type_params(type_params)
+                    }
+                    self.index_non_block_node(&expr, ordered)
+                }
                 StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
                         func, ordered, false, // is_async
@@ -1252,6 +1261,33 @@ impl<'db> NameBinder<'db> {
             .get(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
             .maybe_calculated_and_specific()
             .is_some_and(|specific| specific == search)
+    }
+
+    fn index_type_params(&mut self, type_params: TypeParams<'db>) {
+        for type_param in type_params.iter() {
+            let (name_def, kind) = type_param.unpack();
+            self.add_new_definition(name_def, Point::new_uncalculated());
+            match kind {
+                TypeParamKind::TypeVar(bound, default) => {
+                    if let Some(bound) = bound {
+                        self.index_non_block_node(&bound, true);
+                    }
+                    if let Some(default) = default {
+                        self.index_non_block_node(&default, true);
+                    }
+                }
+                TypeParamKind::TypeVarTuple(default) => {
+                    if let Some(default) = default {
+                        self.index_non_block_node(&default, true);
+                    }
+                }
+                TypeParamKind::ParamSpec(default) => {
+                    if let Some(default) = default {
+                        self.index_non_block_node(&default, true);
+                    }
+                }
+            }
+        }
     }
 
     fn index_function_name_and_param_defaults(

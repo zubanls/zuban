@@ -418,6 +418,7 @@ impl Inference<'_, '_, '_> {
                 StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
                 StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
                 StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
+                StmtLikeContent::TypeAlias(type_alias) => {}
                 StmtLikeContent::FunctionDef(f) => {
                     self.maybe_delay_func_diagnostics(f, class, func)
                 }

@@ -324,6 +324,7 @@ create_nonterminal_structs!(
     ContinueStmt: continue_stmt
     RaiseStmt: raise_stmt
     NonlocalStmt: nonlocal_stmt
+    TypeAlias: type_alias
 
     Expressions: expressions
     StarExpressions: star_expressions
@@ -429,6 +430,12 @@ create_nonterminal_structs!(
     DoubleStarPattern: double_star_pattern
     ClassPattern: class_pattern
     KeywordPattern: keyword_pattern
+
+    TypeParams: type_params
+    TypeParam: type_param
+    TypeParamBound: type_param_bound
+    TypeParamDefault: type_param_default
+    TypeParamStarredDefault: type_param_starred_default
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -1458,6 +1465,7 @@ pub enum StmtLikeContent<'db> {
     BreakStmt(BreakStmt<'db>),
     ContinueStmt(ContinueStmt<'db>),
     DelStmt(DelStmt<'db>),
+    TypeAlias(TypeAlias<'db>),
     // From stmt
     FunctionDef(FunctionDef<'db>),
     ClassDef(ClassDef<'db>),
@@ -1504,6 +1512,8 @@ impl<'db> StmtLikeContent<'db> {
             Self::ContinueStmt(ContinueStmt::new(simple_child))
         } else if simple_child.is_type(Nonterminal(del_stmt)) {
             Self::DelStmt(DelStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(type_alias)) {
+            Self::TypeAlias(TypeAlias::new(simple_child))
         } else {
             unreachable!()
         }
@@ -3497,6 +3507,101 @@ pub enum YieldExprContent<'db> {
 impl<'db> YieldFrom<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression::new(self.node.nth_child(1))
+    }
+}
+
+impl<'db> TypeAlias<'db> {
+    pub fn unpack(&self) -> (NameDef<'db>, Option<TypeParams<'db>>, Expression<'db>) {
+        let mut iterator = self.node.iter_children().skip(1);
+        let name = NameDef::new(iterator.next().unwrap());
+        let maybe_type_params = iterator.next().unwrap();
+        let params = maybe_type_params
+            .is_type(Nonterminal(type_params))
+            .then(|| {
+                // The node after type_params is an `=`
+                iterator.next();
+                TypeParams::new(maybe_type_params)
+            });
+        (name, params, Expression::new(iterator.next().unwrap()))
+    }
+}
+
+impl<'db> TypeParams<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = TypeParam<'db>> {
+        self.node
+            .iter_children()
+            .skip(1)
+            .step_by(2)
+            .filter_map(|child| {
+                debug_assert!(matches!(
+                    child.type_(),
+                    Nonterminal(type_param) | PyNodeType::Keyword
+                ));
+                child
+                    .is_type(Nonterminal(type_param))
+                    .then(|| TypeParam::new(child))
+            })
+    }
+}
+
+pub enum TypeParamKind<'db> {
+    TypeVar(Option<TypeParamBound<'db>>, Option<TypeParamDefault<'db>>),
+    TypeVarTuple(Option<TypeParamStarredDefault<'db>>),
+    ParamSpec(Option<TypeParamDefault<'db>>),
+}
+
+impl<'db> TypeParam<'db> {
+    pub fn unpack(&self) -> (NameDef<'db>, TypeParamKind<'db>) {
+        let mut iterator = self.node.iter_children();
+        let first = iterator.next().unwrap();
+        if first.is_type(Nonterminal(name_def)) {
+            let mut bound = None;
+            let mut default = None;
+            let mut maybe_next = iterator.next();
+            if let Some(next) = maybe_next {
+                if next.is_type(Nonterminal(type_param_bound)) {
+                    bound = Some(TypeParamBound::new(next));
+                    maybe_next = iterator.next();
+                }
+            }
+            if let Some(next) = maybe_next {
+                if next.is_type(Nonterminal(type_param_default)) {
+                    default = Some(TypeParamDefault::new(next));
+                }
+            }
+            debug_assert!(iterator.next().is_none());
+            (NameDef::new(first), TypeParamKind::TypeVar(bound, default))
+        } else if first.as_code() == "*" {
+            let name_node = iterator.next().unwrap();
+            let default = iterator.next().map(TypeParamStarredDefault::new);
+            (
+                NameDef::new(name_node),
+                TypeParamKind::TypeVarTuple(default),
+            )
+        } else {
+            debug_assert_eq!(first.as_code(), "**");
+            let name_node = iterator.next().unwrap();
+            let default = iterator.next().map(TypeParamDefault::new);
+            (NameDef::new(name_node), TypeParamKind::ParamSpec(default))
+        }
+    }
+}
+
+impl<'db> TypeParamBound<'db> {
+    pub fn expression(&self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(1))
+    }
+}
+
+impl<'db> TypeParamDefault<'db> {
+    pub fn expression(&self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(1))
+    }
+}
+
+impl<'db> TypeParamStarredDefault<'db> {
+    pub fn star_expression(&self) -> StarExpression<'db> {
+        StarExpression::new(self.node.nth_child(1))
     }
 }
 
