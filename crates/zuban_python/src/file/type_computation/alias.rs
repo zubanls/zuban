@@ -615,6 +615,23 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
 
+    pub fn compute_type_alias_syntax(&self, type_alias: parsa_python_cst::TypeAlias) {
+        let (name_def, type_params, expr) = type_alias.unpack();
+        let name_def_ref = NodeRef::new(self.file, name_def.index());
+        let alias = TypeAlias::new(
+            // TODO this is wrong
+            self.i_s.db.python_state.empty_type_var_likes.clone(),
+            name_def_ref.as_link(),
+            name_def_ref.as_link(),
+        );
+        save_alias(name_def_ref, alias);
+        let ComplexPoint::TypeAlias(alias) = name_def_ref.maybe_complex().unwrap() else {
+            unreachable!()
+        };
+        // TODO implement valid type aliases
+        alias.set_valid(Type::ERROR, false);
+    }
+
     // ------------------------------------------------------------------------
     // Here comes the class precalculation
     // ------------------------------------------------------------------------

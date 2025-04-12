@@ -3885,6 +3885,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                 }
             }
+            DefiningStmt::TypeAlias(type_alias) => self.compute_type_alias_syntax(type_alias),
             DefiningStmt::DelStmt(del_stmt) => {
                 // This should basically only happen for self assignments where the del self is the
                 // first defined name in the chain.
