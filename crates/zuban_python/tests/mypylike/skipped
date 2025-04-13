@@ -699,7 +699,6 @@ testPEP695ValueRestriction
 testPEP695ValueRestrictionForwardReference
 testPEP695ValueRestrictionUndefinedName
 testPEP695ParamSpec
-testPEP695ParamSpecTypeAlias
 testPEP695TypeVarTuple
 testPEP695TypeVarTupleAlias
 testPEP695IncrementalFunction
