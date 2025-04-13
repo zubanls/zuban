@@ -14,6 +14,7 @@ use super::{
 use crate::{
     database::{ComplexPoint, Database, ParentScope, PointLink},
     diagnostics::IssueKind,
+    file::PythonFile,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::Matcher,
@@ -574,11 +575,31 @@ impl Hash for TypeVarLike {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum TypeVarName {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) enum TypeVarLikeName {
     InString(PointLink),
     SyntaxNode(PointLink),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) enum TypeVarName {
+    Name(TypeVarLikeName),
     Self_,
+}
+
+impl TypeVarLikeName {
+    fn file<'db>(self, db: &'db Database) -> &'db PythonFile {
+        match self {
+            Self::InString(link) | Self::SyntaxNode(link) => db.loaded_python_file(link.file),
+        }
+    }
+
+    fn as_str<'db>(self, db: &'db Database) -> &'db str {
+        match self {
+            Self::InString(link) => NodeRef::from_link(db, link).maybe_str().unwrap().content(),
+            Self::SyntaxNode(link) => NodeRef::from_link(db, link).as_code(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -606,10 +627,10 @@ impl<T> TypeLikeInTypeVar<T> {
     }
 
     #[inline]
-    fn get_type(
+    fn get_type_like(
         &self,
         db: &Database,
-        name_string: &TypeVarName,
+        name: TypeVarLikeName,
         scope: ParentScope,
         calculate_type: impl FnOnce(&InferenceState, NodeRef) -> T,
     ) -> Result<&T, ()> {
@@ -619,16 +640,30 @@ impl<T> TypeLikeInTypeVar<T> {
         Ok(self.t.get_or_init(|| {
             self.calculating.set(true);
             let node = self.node.unwrap();
-            let TypeVarName::InString(link) = name_string else {
-                unreachable!()
-            };
-            let node_ref = NodeRef::from_link(db, PointLink::new(link.file, node));
-            InferenceState::run_with_parent_scope(db, node_ref.file, scope, |i_s| {
+            let file = name.file(db);
+            let node_ref = NodeRef::new(file, node);
+            InferenceState::run_with_parent_scope(db, file, scope, |i_s| {
                 let t = calculate_type(&i_s, node_ref);
                 self.calculating.set(false);
                 t
             })
         }))
+    }
+}
+
+impl TypeLikeInTypeVar<Type> {
+    #[inline]
+    fn get_type(
+        &self,
+        db: &Database,
+        name: TypeVarName,
+        scope: ParentScope,
+        calculate_type: impl FnOnce(&InferenceState, NodeRef) -> Type,
+    ) -> Result<&Type, ()> {
+        let TypeVarName::Name(name) = name else {
+            return Ok(self.t.get().unwrap());
+        };
+        self.get_type_like(db, name, scope, calculate_type)
     }
 }
 
@@ -671,7 +706,7 @@ impl TypeVar {
         variance: Variance,
     ) -> Self {
         Self {
-            name_string: TypeVarName::InString(name_link),
+            name_string: TypeVarName::Name(TypeVarLikeName::InString(name_link)),
             scope,
             kind,
             default: default.map(TypeLikeInTypeVar::new_lazy),
@@ -687,7 +722,7 @@ impl TypeVar {
         variance: Variance,
     ) -> Self {
         Self {
-            name_string: TypeVarName::SyntaxNode(name_link),
+            name_string: TypeVarName::Name(TypeVarLikeName::SyntaxNode(name_link)),
             scope,
             kind,
             default: default.map(TypeLikeInTypeVar::new_lazy),
@@ -706,11 +741,8 @@ impl TypeVar {
     }
 
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
-        match self.name_string {
-            TypeVarName::InString(link) => {
-                NodeRef::from_link(db, link).maybe_str().unwrap().content()
-            }
-            TypeVarName::SyntaxNode(link) => NodeRef::from_link(db, link).as_code(),
+        match &self.name_string {
+            TypeVarName::Name(n) => n.as_str(db),
             TypeVarName::Self_ => "Self",
         }
     }
@@ -723,7 +755,7 @@ impl TypeVar {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(
                 bound
-                    .get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
+                    .get_type(db, self.name_string, self.scope, |i_s, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
@@ -734,7 +766,7 @@ impl TypeVar {
             ),
             TypeVarKindInfos::Constraints(constraints) => {
                 TypeVarKind::Constraints(constraints.iter().map(|c| {
-                    c.get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
+                    c.get_type(db, self.name_string, self.scope, |i_s, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
@@ -752,7 +784,7 @@ impl TypeVar {
         let default = self.default.as_ref()?;
         Some(
             default
-                .get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
+                .get_type(db, self.name_string, self.scope, |i_s, node_ref| {
                     let default = if let Some(t) = node_ref
                         .file
                         .name_resolution_for_types(i_s)
@@ -801,12 +833,11 @@ impl TypeVar {
 
     pub fn qualified_name(&self, db: &Database) -> Box<str> {
         match self.name_string {
-            TypeVarName::InString(link) | TypeVarName::SyntaxNode(link) => {
-                let node_ref = NodeRef::from_link(db, link);
-                format!("{}.{}", node_ref.file.qualified_name(db), self.name(db)).into()
+            TypeVarName::Name(n) => {
+                format!("{}.{}", n.file(db).qualified_name(db), self.name(db)).into()
             }
 
-            TypeVarName::Self_ => Box::from("Self"),
+            TypeVarName::Self_ => self.name(db).into(),
         }
     }
 
@@ -1070,8 +1101,9 @@ impl TypeVarLikeUsage {
     pub fn name_definition(&self) -> Option<PointLink> {
         match self {
             Self::TypeVar(t) => match t.type_var.name_string {
-                TypeVarName::InString(link) => Some(link),
-                TypeVarName::SyntaxNode(link) => Some(link),
+                TypeVarName::Name(
+                    TypeVarLikeName::InString(link) | TypeVarLikeName::SyntaxNode(link),
+                ) => Some(link),
                 TypeVarName::Self_ => None,
             },
             Self::TypeVarTuple(t) => Some(t.type_var_tuple.name_string),

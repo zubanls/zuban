@@ -55,7 +55,7 @@ pub(crate) use self::{
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,
         TypeLikeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarKindInfos, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarTuple,
+        TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarTuple,
         TypeVarTupleUsage, TypeVarUsage, Variance,
     },
     typed_dict::{

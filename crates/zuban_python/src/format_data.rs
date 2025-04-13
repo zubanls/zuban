@@ -5,8 +5,8 @@ use crate::{
     matching::{Matcher, MatcherFormatResult},
     node_ref::NodeRef,
     type_::{
-        FormatStyle, ParamSpecUsage, RecursiveType, RecursiveTypeOrigin, Type, TypeVarLikeUsage,
-        TypeVarName, TypeVarTupleUsage, TypeVarUsage,
+        FormatStyle, ParamSpecUsage, RecursiveType, RecursiveTypeOrigin, Type, TypeVarLikeName,
+        TypeVarLikeUsage, TypeVarName, TypeVarTupleUsage, TypeVarUsage,
     },
     utils::AlreadySeen,
 };
@@ -248,7 +248,9 @@ fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<NameIn
         Type::EnumMember(m) => NameInfos::new(m.enum_.name.as_str(db), m.enum_.defined_at),
         Type::NewType(n) => NameInfos::new(n.name(db), n.name_string),
         Type::TypeVar(tv) => match tv.type_var.name_string {
-            TypeVarName::InString(link) | TypeVarName::SyntaxNode(link) => NameInfos {
+            TypeVarName::Name(
+                TypeVarLikeName::InString(link) | TypeVarLikeName::SyntaxNode(link),
+            ) => NameInfos {
                 name: tv.type_var.name(db),
                 name_unique_for: tv.in_definition,
                 name_link: link,

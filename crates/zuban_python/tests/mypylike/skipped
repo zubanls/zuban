@@ -651,7 +651,6 @@ testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
 # 3.12 type var syntax
-testPEP696TypeAlias
 testPEP696GenericFunction
 testPEP696ParamSpec
 testPEP696TypeVarTuple
@@ -769,7 +768,6 @@ testPEP695TypeParameterDefaultFunctions
 testPEP695TypeParameterDefaultClass1
 testPEP695TypeParameterDefaultClass2
 testPEP695TypeParameterDefaultClass3
-testPEP695TypeParameterDefaultTypeAlias1
 testPEP695TypeParameterDefaultTypeAlias2
 testPEP695TypeParameterDefaultTypeAlias3
 testPEP695TypeAliasDep
