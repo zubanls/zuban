@@ -50,8 +50,9 @@ use crate::{
         ParamSpecUsage, ParamType, RecursiveType, RecursiveTypeOrigin, StarParamType,
         StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
         TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike,
-        TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
-        TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, Variance, WithUnpack,
+        TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTuple,
+        TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
+        Variance, WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
     utils::rc_slice_into_vec,
@@ -4089,13 +4090,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             )))
                         }
                         TypeParamKind::TypeVarTuple(default) => {
-                            /*
                             let default = default.map(|d| d.star_expression().index());
+                            // TODO use default
+                            if default.is_some() {
+                                todo!()
+                            }
                             TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
                                 name, scope, default,
                             )))
-                            */
-                            todo!()
                         }
                         TypeParamKind::ParamSpec(default) => {
                             let default = default.map(|d| d.expression().index());
