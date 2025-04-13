@@ -4081,10 +4081,28 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         TypeParamKind::TypeVar(bound, default) => {
                             let kind = match bound {
                                 Some(bound) => {
-                                    // TODO what about TypeVar values?
-                                    TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_lazy(
-                                        bound.expression().index(),
-                                    ))
+                                    let expr = bound.expression();
+                                    if let Some(tup) = expr.maybe_tuple() {
+                                        let tvls = tup
+                                            .iter()
+                                            .map(|entry| match entry {
+                                                StarLikeExpression::NamedExpression(ne) => {
+                                                    TypeLikeInTypeVar::new_lazy(
+                                                        ne.expression().index(),
+                                                    )
+                                                }
+                                                StarLikeExpression::StarNamedExpression(
+                                                    star_named_expression,
+                                                ) => todo!(),
+                                                _ => unreachable!(),
+                                            })
+                                            .collect();
+                                        TypeVarKindInfos::Constraints(tvls)
+                                    } else {
+                                        TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_lazy(
+                                            bound.expression().index(),
+                                        ))
+                                    }
                                 }
                                 None => TypeVarKindInfos::Unrestricted,
                             };
