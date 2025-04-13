@@ -3574,7 +3574,12 @@ pub enum TypeParamKind<'db> {
 
 impl<'db> TypeParam<'db> {
     pub fn name_def(&self) -> NameDef<'db> {
-        NameDef::new(self.node.nth_child(0))
+        let mut n = self.node.nth_child(0);
+        if n.is_leaf() {
+            debug_assert!(matches!(n.as_code(), "*" | "**"));
+            n = n.next_sibling().unwrap();
+        }
+        NameDef::new(n)
     }
 
     pub fn unpack(&self) -> (NameDef<'db>, TypeParamKind<'db>) {
