@@ -1337,7 +1337,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
                                 unreachable!()
                             };
-                            StarParamType::ArbitraryLen(*t)
+                            StarParamType::ArbitraryLen(Rc::unwrap_or_clone(t))
                         }
                         _ => StarParamType::UnpackedTuple(tup),
                     })

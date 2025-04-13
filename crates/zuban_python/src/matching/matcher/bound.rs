@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{super::Match, Matcher, MatcherFormatResult};
 use crate::{
     database::Database,
@@ -166,7 +168,7 @@ impl Bound {
         *self = Self::Invariant(match tv {
             TypeVarLike::TypeVar(_) => BoundKind::TypeVar(Type::Any(cause)),
             TypeVarLike::TypeVarTuple(_) => {
-                BoundKind::TypeVarTuple(TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))))
+                BoundKind::TypeVarTuple(TupleArgs::ArbitraryLen(Rc::new(Type::Any(cause))))
             }
             TypeVarLike::ParamSpec(_) => BoundKind::ParamSpec(CallableParams::Any(cause)),
         })

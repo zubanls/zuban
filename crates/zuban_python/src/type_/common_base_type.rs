@@ -585,19 +585,19 @@ impl TupleArgs {
                             .collect(),
                     )
                 } else {
-                    Self::ArbitraryLen(Box::new(common_base_type_from_iterator(
+                    Self::ArbitraryLen(Rc::new(common_base_type_from_iterator(
                         i_s,
                         ts1.iter().chain(ts2.iter()),
                         checked_recursions,
                     )))
                 }
             }
-            (Self::ArbitraryLen(t1), Self::ArbitraryLen(t2)) => Self::ArbitraryLen(Box::from(
+            (Self::ArbitraryLen(t1), Self::ArbitraryLen(t2)) => Self::ArbitraryLen(Rc::from(
                 t1.common_base_type_internal(i_s, t2, checked_recursions),
             )),
             (Self::ArbitraryLen(t), Self::FixedLen(ts))
             | (Self::FixedLen(ts), Self::ArbitraryLen(t)) => {
-                Self::ArbitraryLen(Box::new(common_base_type_from_iterator(
+                Self::ArbitraryLen(Rc::new(common_base_type_from_iterator(
                     i_s,
                     std::iter::once(t.as_ref()).chain(ts.iter()),
                     checked_recursions,

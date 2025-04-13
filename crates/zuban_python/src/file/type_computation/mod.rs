@@ -1355,7 +1355,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(rc_slice_into_vec(ts)),
             },
             TypeOrUnpack::Unknown(cause) => {
-                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(cause.into())))
+                TypeCompTupleUnpack::ArbitraryLen(Rc::new(Type::Any(cause.into())))
             }
             TypeOrUnpack::Type(t) => {
                 self.add_issue(
@@ -1364,7 +1364,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         actual: t.format_short(self.i_s.db),
                     },
                 );
-                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::ERROR))
+                TypeCompTupleUnpack::ArbitraryLen(Rc::new(Type::ERROR))
             }
         }
     }
@@ -2189,7 +2189,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
                         unreachable!();
                     };
-                    CallableParam::new_anonymous(ParamType::Star(StarParamType::ArbitraryLen(*t)))
+                    CallableParam::new_anonymous(ParamType::Star(StarParamType::ArbitraryLen(
+                        Rc::unwrap_or_clone(t),
+                    )))
                 }
                 TupleArgs::FixedLen(ts) => {
                     // TODO these should also be checked.
@@ -2220,7 +2222,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 Rc::unwrap_or_clone(tup).args
                             }
                             ParamType::Star(StarParamType::ArbitraryLen(t)) => {
-                                TupleArgs::ArbitraryLen(Box::new(t))
+                                TupleArgs::ArbitraryLen(Rc::new(t))
                             }
                             _ => unreachable!(),
                         };
@@ -2236,7 +2238,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             }
                             TupleArgs::ArbitraryLen(t) => WithUnpack {
                                 before: Rc::from([]),
-                                unpack: TupleUnpack::ArbitraryLen(*t),
+                                unpack: TupleUnpack::ArbitraryLen(Rc::unwrap_or_clone(t)),
                                 after: Rc::from([new]),
                             },
                             TupleArgs::FixedLen(_) => unreachable!(),
@@ -4110,7 +4112,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 #[derive(Debug)]
 enum TypeCompTupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
-    ArbitraryLen(Box<Type>),
+    ArbitraryLen(Rc<Type>),
     FixedLen(Vec<Type>),
     WithUnpack(WithUnpack),
 }
@@ -4370,7 +4372,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     gatherer.add_unpack(TupleUnpack::TypeVarTuple(tvt))
                 }
                 TypeCompTupleUnpack::ArbitraryLen(t) => {
-                    gatherer.add_unpack(TupleUnpack::ArbitraryLen(*t))
+                    gatherer.add_unpack(TupleUnpack::ArbitraryLen(Rc::unwrap_or_clone(t)))
                 }
                 TypeCompTupleUnpack::WithUnpack(with_unpack) => {
                     gatherer.add_with_unpack(with_unpack)

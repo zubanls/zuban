@@ -46,7 +46,7 @@ impl Tuple {
 
     pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Rc<Self> {
         Rc::new(Self {
-            args: TupleArgs::ArbitraryLen(Box::new(t)),
+            args: TupleArgs::ArbitraryLen(Rc::new(t)),
             tuple_class_generics: OnceCell::from(generics),
         })
     }
@@ -56,7 +56,7 @@ impl Tuple {
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Rc<Self> {
-        Self::new(TupleArgs::ArbitraryLen(Box::new(arg)))
+        Self::new(TupleArgs::ArbitraryLen(Rc::new(arg)))
     }
 
     pub fn new_arbitrary_length_with_any() -> Rc<Self> {
@@ -509,7 +509,7 @@ impl WithUnpack {
 pub(crate) enum TupleArgs {
     WithUnpack(WithUnpack),
     FixedLen(Rc<[Type]>),
-    ArbitraryLen(Box<Type>),
+    ArbitraryLen(Rc<Type>),
 }
 
 impl TupleArgs {
@@ -589,7 +589,7 @@ impl TupleArgs {
                 )
             }
             (ArbitraryLen(t1), ArbitraryLen(t2)) => {
-                Self::ArbitraryLen(Box::new(t1.merge_matching_parts(db, t2)))
+                Self::ArbitraryLen(Rc::new(t1.merge_matching_parts(db, t2)))
             }
             _ => Tuple::new_arbitrary_length_with_any().args.clone(),
         }
@@ -620,7 +620,7 @@ impl TupleArgs {
                 } else {
                     TupleArgs::WithUnpack(WithUnpack {
                         before: before.into(),
-                        unpack: TupleUnpack::ArbitraryLen(*t),
+                        unpack: TupleUnpack::ArbitraryLen(Rc::unwrap_or_clone(t)),
                         after: after.into(),
                     })
                 }
@@ -965,7 +965,7 @@ impl MaybeUnpackGatherer {
         match self.unpack {
             Some(unpack) => match unpack {
                 TupleUnpack::ArbitraryLen(t) if self.before.is_empty() && self.after.is_empty() => {
-                    TupleArgs::ArbitraryLen(Box::new(t))
+                    TupleArgs::ArbitraryLen(Rc::new(t))
                 }
                 _ => TupleArgs::WithUnpack(WithUnpack {
                     before: self.before.into(),

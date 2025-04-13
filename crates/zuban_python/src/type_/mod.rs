@@ -183,7 +183,7 @@ impl TypeArgs {
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self::new(TupleArgs::ArbitraryLen(Box::new(arg)))
+        Self::new(TupleArgs::ArbitraryLen(Rc::new(arg)))
     }
 
     pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {

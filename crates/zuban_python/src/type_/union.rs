@@ -75,7 +75,7 @@ impl TupleArgs {
                         .collect(),
                 })
             }
-            (_, _) => TupleArgs::ArbitraryLen(Box::new(
+            (_, _) => TupleArgs::ArbitraryLen(Rc::new(
                 self.simplified_union_of_tuple_entries(i_s)
                     .simplified_union(i_s, &other.simplified_union_of_tuple_entries(i_s)),
             )),

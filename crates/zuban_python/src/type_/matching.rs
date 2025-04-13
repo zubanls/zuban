@@ -1081,7 +1081,7 @@ fn match_unpack_internal(
                             matches &= check_type_var_tuple(
                                 matcher,
                                 tvt2,
-                                TupleArgs::ArbitraryLen(Box::new(inner_t1.clone())),
+                                TupleArgs::ArbitraryLen(Rc::new(inner_t1.clone())),
                             )
                         }
                         TupleUnpack::ArbitraryLen(inner_t2) => {

@@ -418,7 +418,7 @@ pub fn matches_simple_params<
                                             matches &= matcher.match_or_add_type_var_tuple(
                                                 i_s,
                                                 tvt,
-                                                TupleArgs::ArbitraryLen(Box::new((**t2).clone())),
+                                                TupleArgs::ArbitraryLen(Rc::new((**t2).clone())),
                                                 variance,
                                             )
                                         }

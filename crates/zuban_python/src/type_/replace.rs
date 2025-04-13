@@ -470,7 +470,9 @@ impl CallableParams {
                                         }
                                         return Some(());
                                     }
-                                    TupleArgs::ArbitraryLen(t) => StarParamType::ArbitraryLen(*t),
+                                    TupleArgs::ArbitraryLen(t) => {
+                                        StarParamType::ArbitraryLen(Rc::unwrap_or_clone(t))
+                                    }
                                     TupleArgs::WithUnpack(mut with_unpack) => {
                                         let before = std::mem::replace(
                                             &mut with_unpack.before,
@@ -651,7 +653,7 @@ impl TupleArgs {
                 })?)
             }
             TupleArgs::ArbitraryLen(t) => {
-                TupleArgs::ArbitraryLen(Box::new(t.replace_internal(replacer)?))
+                TupleArgs::ArbitraryLen(Rc::new(t.replace_internal(replacer)?))
             }
             TupleArgs::WithUnpack(unpack) => {
                 let new_before: Option<Vec<_>> =
