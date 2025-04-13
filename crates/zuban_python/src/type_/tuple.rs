@@ -27,6 +27,7 @@ use crate::{
 
 thread_local! {
     static ARBITRARY_TUPLE: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo));
+    static ARBITRARY_TUPLE_ARGS_FROM_ERROR: TupleArgs = TupleArgs::ArbitraryLen(Rc::new(Type::ERROR));
     static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::ERROR);
 }
 
@@ -513,6 +514,10 @@ pub(crate) enum TupleArgs {
 }
 
 impl TupleArgs {
+    pub fn new_arbitrary_from_error() -> Self {
+        ARBITRARY_TUPLE_ARGS_FROM_ERROR.with(|t| t.clone())
+    }
+
     pub fn is_any(&self) -> bool {
         match self {
             Self::ArbitraryLen(t) => matches!(t.as_ref(), Type::Any(_)),

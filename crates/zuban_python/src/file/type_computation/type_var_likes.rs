@@ -264,18 +264,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                     expression,
                     ..
                 }) => match key {
-                    "default" => {
-                        if let Some(type_args) = node_ref
-                            .file
-                            .name_resolution_for_types(i_s)
-                            .compute_type_var_tuple_default(expression)
-                        {
-                            default = Some(type_args);
-                        } else {
-                            node_ref.add_issue(i_s, IssueKind::TypeVarTupleInvalidDefault);
-                            return None;
-                        }
-                    }
+                    "default" => default = Some(expression.index()),
                     _ => {
                         node_ref.add_issue(
                             i_s,
@@ -306,6 +295,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             }),
+            i_s.as_parent_scope(),
             default,
         ))))
     } else {

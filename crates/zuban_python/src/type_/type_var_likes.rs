@@ -505,7 +505,7 @@ impl TypeVarLike {
                 Some(default) => GenericItem::TypeArg(default.clone()),
                 None => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
             },
-            TypeVarLike::TypeVarTuple(tvt) => match &tvt.default {
+            TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
                 Some(default) => GenericItem::TypeArgs(default.clone()),
                 None => {
                     GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
@@ -526,7 +526,7 @@ impl TypeVarLike {
                 Some(default) => GenericItem::TypeArg(default.clone()),
                 None => GenericItem::TypeArg(Type::Never(cause)),
             },
-            TypeVarLike::TypeVarTuple(tvt) => match &tvt.default {
+            TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
                 Some(default) => GenericItem::TypeArgs(default.clone()),
                 None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
             },
@@ -547,6 +547,9 @@ impl TypeVarLike {
                     // Consume the iterator for constraints to ensure it is calculated
                     constraints.for_each(|_| ())
                 }
+                tv.default(db);
+            }
+            Self::TypeVarTuple(tv) => {
                 tv.default(db);
             }
             _ => (),
@@ -857,16 +860,20 @@ impl TypeVar {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct TypeVarTuple {
     name: TypeVarLikeName,
-    // TODO calculated these lazily
-    default: Option<TypeArgs>,
+    scope: ParentScope,
+    default: Option<TypeLikeInTypeVar<TypeArgs>>,
 }
 
 impl TypeVarTuple {
-    pub fn new(name: TypeVarLikeName, default: Option<TypeArgs>) -> Self {
-        Self { name, default }
+    pub fn new(name: TypeVarLikeName, scope: ParentScope, default: Option<NodeIndex>) -> Self {
+        Self {
+            name,
+            scope,
+            default: default.map(TypeLikeInTypeVar::new_lazy),
+        }
     }
 
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
@@ -874,7 +881,7 @@ impl TypeVarTuple {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
-        if let Some(default) = &self.default {
+        if let Some(default) = self.default(format_data.db) {
             format!(
                 "{} = Unpack[tuple[{}]]",
                 self.name(format_data.db),
@@ -887,8 +894,23 @@ impl TypeVarTuple {
         }
     }
 
-    pub fn default<'a>(&'a self, db: &'a Database) -> Option<&TypeArgs> {
-        self.default.as_ref()
+    pub fn default<'a>(&'a self, db: &'a Database) -> Option<&'a TypeArgs> {
+        Some(
+            self.default
+                .as_ref()?
+                .get_type_like(db, self.name, self.scope, |i_s, node_ref| {
+                    node_ref
+                        .file
+                        .name_resolution_for_types(i_s)
+                        .compute_type_var_tuple_default(node_ref.expect_expression())
+                        .unwrap_or_else(|| {
+                            node_ref.add_issue(i_s, IssueKind::TypeVarTupleInvalidDefault);
+                            TypeArgs::new_arbitrary_from_error()
+                        })
+                })
+                // TODO add an error here
+                .unwrap_or(&db.python_state.type_args_from_err),
+        )
     }
 }
 
@@ -897,6 +919,8 @@ impl PartialEq for TypeVarTuple {
         self.name == other.name
     }
 }
+
+impl Eq for TypeVarTuple {}
 
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct ParamSpec {
@@ -926,7 +950,7 @@ impl ParamSpec {
         }
     }
 
-    pub fn default<'a>(&'a self, db: &'a Database) -> Option<&CallableParams> {
+    pub fn default(&self, db: &Database) -> Option<&CallableParams> {
         self.default.as_ref()
     }
 }

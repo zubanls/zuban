@@ -182,6 +182,12 @@ impl TypeArgs {
         Self { args }
     }
 
+    pub fn new_arbitrary_from_error() -> Self {
+        TypeArgs {
+            args: TupleArgs::new_arbitrary_from_error(),
+        }
+    }
+
     pub fn new_arbitrary_length(arg: Type) -> Self {
         Self::new(TupleArgs::ArbitraryLen(Rc::new(arg)))
     }

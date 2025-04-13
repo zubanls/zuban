@@ -13,7 +13,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
-        ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeVarLikes,
+        ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeArgs, TypeVarLikes,
     },
     type_helpers::{cache_class_name, Class, FirstParamProperties, Function, Instance},
     InferenceState,
@@ -237,6 +237,7 @@ pub(crate) struct PythonState {
     pub tuple_of_unannotated_any: Type,
     pub dict_of_str_and_obj: Type,
     pub any_callable_from_error: Rc<CallableContent>,
+    pub type_args_from_err: TypeArgs,
     pub generator_with_any_generics: Type,
     pub async_generator_with_any_generics: Type,
     pub valid_getattr_supertype: Type,
@@ -369,6 +370,7 @@ impl PythonState {
                 empty_type_var_likes.clone(),
                 AnyCause::FromError,
             )),
+            type_args_from_err: TypeArgs::new_arbitrary_from_error(),
             generator_with_any_generics: Type::None, // Will be set later
             async_generator_with_any_generics: Type::None, // Will be set later
             valid_getattr_supertype: Type::None,     // Will be set later

@@ -4037,7 +4037,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         })
     }
 
-    fn compute_type_var_tuple_default(&self, expr: Expression) -> Option<TypeArgs> {
+    pub fn compute_type_var_tuple_default(&self, expr: Expression) -> Option<TypeArgs> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| match comp.compute_type(expr) {
             TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
