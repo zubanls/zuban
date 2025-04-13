@@ -381,13 +381,6 @@ testDunderReplacePresent
 # multiline annotations
 testMultilineQuotedAnnotation
 
-# TypeAliasType
-testTypeAliasType
-testTypeAliasTypeInvalid
-testTypeAliasTypeGeneric
-testTypeAliasTypeInvalidGeneric
-testTypeAliasTypeNoUnpackInTypeParams311
-testTypeAliasTypePython311
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
 # Weird and unsound mypy cases for x: typing.TypeAlias = ...
@@ -664,7 +657,6 @@ testPEP696TypeVarTuple
 testPEP695TypeVarBasic
 testPEP695Class
 testPEP695Function
-testPEP695TypeAliasType
 testPEP695IncompleteFeatureIsAcceptedButHasNoEffect
 testPEP695GenericFunctionSyntax
 testPEP695GenericClassSyntax
@@ -788,6 +780,14 @@ testPEP695GenericFunction
 testPEP695VarianceInference
 testPEP695VarianceInferenceSpecialCaseWithTypeshed
 testCurrentClassWorksAsBound
+# TypeAliasType
+testTypeAliasType
+testTypeAliasTypeInvalid
+testTypeAliasTypeGeneric
+testTypeAliasTypeInvalidGeneric
+testTypeAliasTypeNoUnpackInTypeParams311
+testTypeAliasTypePython311
+testPEP695TypeAliasType
 
 # enum.member / enum.nonmember
 testEnumNonMemberSupport
