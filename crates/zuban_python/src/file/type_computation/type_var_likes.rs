@@ -301,13 +301,13 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                 ),
             }
         }
-        Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
-            name_string: PointLink {
+        Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
+            TypeVarLikeName::InString(PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
-            },
+            }),
             default,
-        })))
+        ))))
     } else {
         args.add_issue(
             i_s,

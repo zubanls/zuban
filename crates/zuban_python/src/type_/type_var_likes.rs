@@ -682,7 +682,7 @@ pub(crate) enum TypeVarKind<'a, I: Iterator<Item = &'a Type> + Clone> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypeVar {
-    pub name_string: TypeVarName,
+    pub name: TypeVarName,
     scope: ParentScope,
     kind: TypeVarKindInfos,
     default: Option<TypeLikeInTypeVar<Type>>,
@@ -691,7 +691,7 @@ pub(crate) struct TypeVar {
 
 impl PartialEq for TypeVar {
     fn eq(&self, other: &Self) -> bool {
-        self.name_string == other.name_string
+        self.name == other.name
     }
 }
 
@@ -706,7 +706,7 @@ impl TypeVar {
         variance: Variance,
     ) -> Self {
         Self {
-            name_string: TypeVarName::Name(name),
+            name: TypeVarName::Name(name),
             scope,
             kind,
             default: default.map(TypeLikeInTypeVar::new_lazy),
@@ -716,7 +716,7 @@ impl TypeVar {
 
     pub fn new_self(kind: TypeVarKindInfos) -> Self {
         Self {
-            name_string: TypeVarName::Self_,
+            name: TypeVarName::Self_,
             scope: ParentScope::Module,
             kind,
             default: None,
@@ -725,7 +725,7 @@ impl TypeVar {
     }
 
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
-        match &self.name_string {
+        match &self.name {
             TypeVarName::Name(n) => n.as_str(db),
             TypeVarName::Self_ => "Self",
         }
@@ -739,7 +739,7 @@ impl TypeVar {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(
                 bound
-                    .get_type(db, self.name_string, self.scope, |i_s, node_ref| {
+                    .get_type(db, self.name, self.scope, |i_s, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
@@ -750,7 +750,7 @@ impl TypeVar {
             ),
             TypeVarKindInfos::Constraints(constraints) => {
                 TypeVarKind::Constraints(constraints.iter().map(|c| {
-                    c.get_type(db, self.name_string, self.scope, |i_s, node_ref| {
+                    c.get_type(db, self.name, self.scope, |i_s, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
@@ -768,7 +768,7 @@ impl TypeVar {
         let default = self.default.as_ref()?;
         Some(
             default
-                .get_type(db, self.name_string, self.scope, |i_s, node_ref| {
+                .get_type(db, self.name, self.scope, |i_s, node_ref| {
                     let default = if let Some(t) = node_ref
                         .file
                         .name_resolution_for_types(i_s)
@@ -816,7 +816,7 @@ impl TypeVar {
     }
 
     pub fn qualified_name(&self, db: &Database) -> Box<str> {
-        match self.name_string {
+        match self.name {
             TypeVarName::Name(n) => {
                 format!("{}.{}", n.file(db).qualified_name(db), self.name(db)).into()
             }
@@ -859,17 +859,18 @@ impl TypeVar {
 
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct TypeVarTuple {
-    pub name_string: PointLink,
+    name: TypeVarLikeName,
     // TODO calculated these lazily
     pub default: Option<TypeArgs>,
 }
 
 impl TypeVarTuple {
+    pub fn new(name: TypeVarLikeName, default: Option<TypeArgs>) -> Self {
+        Self { name, default }
+    }
+
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
-        NodeRef::from_link(db, self.name_string)
-            .maybe_str()
-            .unwrap()
-            .content()
+        self.name.as_str(db)
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
@@ -889,7 +890,7 @@ impl TypeVarTuple {
 
 impl PartialEq for TypeVarTuple {
     fn eq(&self, other: &Self) -> bool {
-        self.name_string == other.name_string
+        self.name == other.name
     }
 }
 
@@ -1085,11 +1086,11 @@ impl TypeVarLikeUsage {
 
     pub fn name_definition(&self) -> Option<PointLink> {
         let name = match self {
-            Self::TypeVar(t) => match t.type_var.name_string {
+            Self::TypeVar(t) => match t.type_var.name {
                 TypeVarName::Name(name) => name,
                 TypeVarName::Self_ => return None,
             },
-            Self::TypeVarTuple(t) => return Some(t.type_var_tuple.name_string),
+            Self::TypeVarTuple(t) => t.type_var_tuple.name,
             Self::ParamSpec(p) => p.param_spec.name,
         };
         match name {

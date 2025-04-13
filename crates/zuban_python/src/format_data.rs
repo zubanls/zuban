@@ -247,7 +247,7 @@ fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<NameIn
         Type::Enum(e) => NameInfos::new(e.name.as_str(db), e.defined_at),
         Type::EnumMember(m) => NameInfos::new(m.enum_.name.as_str(db), m.enum_.defined_at),
         Type::NewType(n) => NameInfos::new(n.name(db), n.name_string),
-        Type::TypeVar(tv) => match tv.type_var.name_string {
+        Type::TypeVar(tv) => match tv.type_var.name {
             TypeVarName::Name(
                 TypeVarLikeName::InString(link) | TypeVarLikeName::SyntaxNode(link),
             ) => NameInfos {
