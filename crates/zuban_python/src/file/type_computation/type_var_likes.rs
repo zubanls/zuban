@@ -9,7 +9,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{
-        ParamSpec, TypeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarTuple, Variance,
+        ParamSpec, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarTuple,
+        Variance,
     },
 };
 
@@ -93,7 +94,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
             match arg.kind {
                 ArgKind::Positional(pos) => {
                     let expr_index = pos.node_ref.expect_named_expression().expression().index();
-                    constraints.push(TypeInTypeVar::new_lazy(expr_index));
+                    constraints.push(TypeLikeInTypeVar::new_lazy(expr_index));
                 }
                 ArgKind::Keyword(KeywordArg {
                     key,
@@ -165,7 +166,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
         }
         let kind = if let Some(bound) = bound {
             debug_assert!(constraints.is_empty());
-            TypeVarKindInfos::Bound(TypeInTypeVar::new_lazy(bound))
+            TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_lazy(bound))
         } else if !constraints.is_empty() {
             TypeVarKindInfos::Constraints(constraints.into())
         } else {

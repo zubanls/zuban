@@ -582,13 +582,13 @@ pub(crate) enum TypeVarName {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct TypeInTypeVar {
+pub(crate) struct TypeLikeInTypeVar<T> {
     node: Option<NodeIndex>,
     calculating: Cell<bool>,
-    pub t: OnceCell<Type>,
+    pub t: OnceCell<T>,
 }
 
-impl TypeInTypeVar {
+impl<T> TypeLikeInTypeVar<T> {
     pub fn new_lazy(node: NodeIndex) -> Self {
         Self {
             node: Some(node),
@@ -597,7 +597,7 @@ impl TypeInTypeVar {
         }
     }
 
-    pub fn new_known(t: Type) -> Self {
+    pub fn new_known(t: T) -> Self {
         Self {
             node: None,
             calculating: Cell::new(false),
@@ -611,13 +611,12 @@ impl TypeInTypeVar {
         db: &Database,
         name_string: &TypeVarName,
         scope: ParentScope,
-        calculate_type: impl FnOnce(&InferenceState, NodeRef) -> Type,
-    ) -> &Type {
+        calculate_type: impl FnOnce(&InferenceState, NodeRef) -> T,
+    ) -> Result<&T, ()> {
         if self.calculating.get() {
-            // TODO we should add an error here.
-            return &Type::ERROR;
+            return Err(());
         }
-        self.t.get_or_init(|| {
+        Ok(self.t.get_or_init(|| {
             self.calculating.set(true);
             let node = self.node.unwrap();
             let TypeVarName::InString(link) = name_string else {
@@ -629,15 +628,15 @@ impl TypeInTypeVar {
                 self.calculating.set(false);
                 t
             })
-        })
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) enum TypeVarKindInfos {
     Unrestricted,
-    Bound(TypeInTypeVar),
-    Constraints(Box<[TypeInTypeVar]>),
+    Bound(TypeLikeInTypeVar<Type>),
+    Constraints(Box<[TypeLikeInTypeVar<Type>]>),
 }
 
 pub(crate) enum TypeVarKind<'a, I: Iterator<Item = &'a Type> + Clone> {
@@ -651,7 +650,7 @@ pub(crate) struct TypeVar {
     pub name_string: TypeVarName,
     scope: ParentScope,
     kind: TypeVarKindInfos,
-    default: Option<TypeInTypeVar>,
+    default: Option<TypeLikeInTypeVar<Type>>,
     pub variance: Variance,
 }
 
@@ -675,7 +674,7 @@ impl TypeVar {
             name_string: TypeVarName::InString(name_link),
             scope,
             kind,
-            default: default.map(TypeInTypeVar::new_lazy),
+            default: default.map(TypeLikeInTypeVar::new_lazy),
             variance,
         }
     }
@@ -691,7 +690,7 @@ impl TypeVar {
             name_string: TypeVarName::SyntaxNode(name_link),
             scope,
             kind,
-            default: default.map(TypeInTypeVar::new_lazy),
+            default: default.map(TypeLikeInTypeVar::new_lazy),
             variance,
         }
     }
@@ -722,17 +721,17 @@ impl TypeVar {
     ) -> TypeVarKind<'a, impl Iterator<Item = &'a Type> + Clone + 'a> {
         match &self.kind {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
-            TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(bound.get_type(
-                db,
-                &self.name_string,
-                self.scope,
-                |i_s, node_ref| {
-                    node_ref
-                        .file
-                        .name_resolution_for_types(i_s)
-                        .compute_type_var_bound(node_ref.expect_expression())
-                },
-            )),
+            TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(
+                bound
+                    .get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
+                        node_ref
+                            .file
+                            .name_resolution_for_types(i_s)
+                            .compute_type_var_bound(node_ref.expect_expression())
+                    })
+                    // TODO add an error here
+                    .unwrap_or(&Type::ERROR),
+            ),
             TypeVarKindInfos::Constraints(constraints) => {
                 TypeVarKind::Constraints(constraints.iter().map(|c| {
                     c.get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
@@ -742,6 +741,8 @@ impl TypeVar {
                             .compute_type_var_value(node_ref.expect_expression())
                             .unwrap_or(Type::ERROR)
                     })
+                    // TODO add an error here
+                    .unwrap_or(&Type::ERROR)
                 }))
             }
         }
@@ -750,43 +751,47 @@ impl TypeVar {
     pub fn default(&self, db: &Database) -> Option<&Type> {
         let default = self.default.as_ref()?;
         Some(
-            default.get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
-                let default = if let Some(t) = node_ref
-                    .file
-                    .name_resolution_for_types(i_s)
-                    .compute_type_var_default(node_ref.expect_expression())
-                {
-                    t
-                } else {
-                    node_ref.add_issue(i_s, IssueKind::TypeVarInvalidDefault);
-                    Type::ERROR
-                };
-                match self.kind(db) {
-                    TypeVarKind::Unrestricted => (),
-                    TypeVarKind::Bound(bound) => {
-                        if !default.is_simple_sub_type_of(i_s, bound).bool() {
-                            node_ref.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
+            default
+                .get_type(db, &self.name_string, self.scope, |i_s, node_ref| {
+                    let default = if let Some(t) = node_ref
+                        .file
+                        .name_resolution_for_types(i_s)
+                        .compute_type_var_default(node_ref.expect_expression())
+                    {
+                        t
+                    } else {
+                        node_ref.add_issue(i_s, IssueKind::TypeVarInvalidDefault);
+                        Type::ERROR
+                    };
+                    match self.kind(db) {
+                        TypeVarKind::Unrestricted => (),
+                        TypeVarKind::Bound(bound) => {
+                            if !default.is_simple_sub_type_of(i_s, bound).bool() {
+                                node_ref
+                                    .add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
+                            }
                         }
-                    }
-                    TypeVarKind::Constraints(mut constraints) => {
-                        if !constraints.any(|constraint| {
-                            default
-                                .is_sub_type_of(
+                        TypeVarKind::Constraints(mut constraints) => {
+                            if !constraints.any(|constraint| {
+                                default
+                                    .is_sub_type_of(
+                                        i_s,
+                                        &mut Matcher::with_ignored_promotions(),
+                                        constraint,
+                                    )
+                                    .bool()
+                            }) {
+                                node_ref.add_issue(
                                     i_s,
-                                    &mut Matcher::with_ignored_promotions(),
-                                    constraint,
-                                )
-                                .bool()
-                        }) {
-                            node_ref.add_issue(
-                                i_s,
-                                IssueKind::TypeVarDefaultMustBeASubtypeOfConstraints,
-                            );
+                                    IssueKind::TypeVarDefaultMustBeASubtypeOfConstraints,
+                                );
+                            }
                         }
-                    }
-                };
-                default
-            }),
+                    };
+                    default
+                })
+                // TODO add an error here
+                .unwrap_or(&Type::ERROR),
         )
     }
 

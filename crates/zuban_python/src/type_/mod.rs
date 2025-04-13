@@ -54,7 +54,7 @@ pub(crate) use self::{
     tuple::{execute_tuple_class, MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack},
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,
-        TypeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarKindInfos, TypeVarLike,
+        TypeLikeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarKindInfos, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarTuple,
         TypeVarTupleUsage, TypeVarUsage, Variance,
     },

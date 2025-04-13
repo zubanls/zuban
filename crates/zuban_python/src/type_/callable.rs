@@ -5,8 +5,8 @@ use vfs::FileIndex;
 
 use super::{
     AnyCause, DbString, FunctionKind, NeverCause, ParamSpecUsage, RecursiveType, StringSlice,
-    Tuple, Type, TypeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
-    TypedDict,
+    Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes,
+    TypeVarUsage, TypedDict,
 };
 use crate::{
     database::{Database, PointLink},
@@ -950,7 +950,7 @@ pub fn merge_class_type_vars(
         }).unwrap_or(class_t);
         */
         let self_type_var = Rc::new(TypeVar::new_self(TypeVarKindInfos::Bound(
-            TypeInTypeVar::new_known(bound),
+            TypeLikeInTypeVar::new_known(bound),
         )));
         self_type_var_usage = Some(TypeVarUsage::new(
             self_type_var.clone(),
