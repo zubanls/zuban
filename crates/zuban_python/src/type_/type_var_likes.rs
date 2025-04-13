@@ -861,7 +861,7 @@ impl TypeVar {
 pub(crate) struct TypeVarTuple {
     name: TypeVarLikeName,
     // TODO calculated these lazily
-    pub default: Option<TypeArgs>,
+    default: Option<TypeArgs>,
 }
 
 impl TypeVarTuple {
@@ -886,6 +886,10 @@ impl TypeVarTuple {
             self.name(format_data.db).into()
         }
     }
+
+    pub fn default<'a>(&'a self, db: &'a Database) -> Option<&TypeArgs> {
+        self.default.as_ref()
+    }
 }
 
 impl PartialEq for TypeVarTuple {
@@ -898,7 +902,7 @@ impl PartialEq for TypeVarTuple {
 pub(crate) struct ParamSpec {
     name: TypeVarLikeName,
     // TODO calculated these lazily
-    pub default: Option<CallableParams>,
+    default: Option<CallableParams>,
 }
 
 impl ParamSpec {
@@ -920,6 +924,10 @@ impl ParamSpec {
         } else {
             self.name(format_data.db).into()
         }
+    }
+
+    pub fn default<'a>(&'a self, db: &'a Database) -> Option<&CallableParams> {
+        self.default.as_ref()
     }
 }
 

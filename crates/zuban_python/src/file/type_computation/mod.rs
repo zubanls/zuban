@@ -2005,7 +2005,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 if let Some(spec) = type_args.next_param_spec_back(self) {
                                     given += 1;
                                     GenericItem::ParamSpecArg(spec)
-                                } else if let Some(default) = &param_spec.default {
+                                } else if let Some(default) = param_spec.default(self.i_s.db) {
                                     GenericItem::ParamSpecArg(ParamSpecArg::new(
                                         default.clone(),
                                         None,
@@ -2028,7 +2028,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         insertion_index,
                         GenericItem::TypeArgs(
                             if let Some(default) =
-                                tvt.default.as_ref().filter(|_| args.empty_not_explicit)
+                                tvt.default(self.i_s.db).filter(|_| args.empty_not_explicit)
                             {
                                 default.clone()
                             } else {
@@ -2049,7 +2049,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
                     } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
                         GenericItem::ParamSpecArg(spec)
-                    } else if let Some(default) = &param_spec.default {
+                    } else if let Some(default) = param_spec.default(self.i_s.db) {
                         GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
                     } else {
                         break;
