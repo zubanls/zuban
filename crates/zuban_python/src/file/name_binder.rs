@@ -1304,7 +1304,8 @@ impl<'db> NameBinder<'db> {
             is_async,
         });
 
-        let (name_def, params, return_annotation, _) = func.unpack();
+        let (name_def, _, params, return_annotation, _) = func.unpack();
+
         for param in params.iter() {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
@@ -1348,8 +1349,10 @@ impl<'db> NameBinder<'db> {
 
     pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
         // Function name was indexed already.
-        let (_, params, _, block) = func.unpack();
-
+        let (_, type_params, params, _, block) = func.unpack();
+        if let Some(type_params) = type_params {
+            self.index_type_params(type_params)
+        }
         self.index_param_name_defs(params.iter().map(|param| param.name_def()), is_method);
 
         self.index_block(block, true);

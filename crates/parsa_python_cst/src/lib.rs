@@ -1941,6 +1941,7 @@ impl<'db> FunctionDef<'db> {
     pub fn end_position_of_colon(&self) -> CodeIndex {
         for child in self.node.iter_children().skip(3) {
             if child.is_leaf() {
+                debug_assert_eq!(child.as_code(), ":");
                 return child.end();
             }
         }
@@ -1948,12 +1949,12 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn return_annotation(&self) -> Option<ReturnAnnotation<'db>> {
-        let ret = self.node.nth_child(3);
-        if ret.is_type(Nonterminal(return_annotation)) {
-            Some(ReturnAnnotation::new(ret))
-        } else {
-            None
+        for child in self.node.iter_children().skip(2) {
+            if child.is_type(Nonterminal(return_annotation)) {
+                return Some(ReturnAnnotation::new(child));
+            }
         }
+        None
     }
 
     pub fn is_typed(&self) -> bool {
@@ -1962,8 +1963,18 @@ impl<'db> FunctionDef<'db> {
         self.return_annotation().is_some() || self.params().iter().any(|p| p.annotation().is_some())
     }
 
+    pub fn type_params(&self) -> Option<TypeParams<'db>> {
+        let mut n = self.node.nth_child(2);
+        n.is_type(Nonterminal(type_params))
+            .then(|| TypeParams::new(n))
+    }
+
     pub fn params(&self) -> FunctionDefParameters<'db> {
-        FunctionDefParameters::new(self.node.nth_child(2))
+        let mut n = self.node.nth_child(2);
+        if n.is_type(Nonterminal(type_params)) {
+            n = n.next_sibling().unwrap();
+        }
+        FunctionDefParameters::new(n)
     }
 
     pub fn parent(&self) -> FunctionParent<'db> {
@@ -1992,6 +2003,7 @@ impl<'db> FunctionDef<'db> {
         &self,
     ) -> (
         NameDef<'db>,
+        Option<TypeParams<'db>>,
         FunctionDefParameters<'db>,
         Option<ReturnAnnotation<'db>>,
         Block<'db>,
@@ -1999,9 +2011,15 @@ impl<'db> FunctionDef<'db> {
         // function_def: "def" name_def function_def_parameters
         //               return_annotation? ":" block
         let mut iterator = self.node.iter_children();
-        iterator.next();
+        iterator.next(); // Skip "def"
         let name_d = NameDef::new(iterator.next().unwrap());
-        let params = FunctionDefParameters::new(iterator.next().unwrap());
+        let mut next = iterator.next().unwrap();
+        let mut type_params_ = None;
+        if next.is_type(Nonterminal(type_params)) {
+            type_params_ = Some(TypeParams::new(next));
+            next = iterator.next().unwrap();
+        }
+        let params = FunctionDefParameters::new(next);
         let mut ret_annot = iterator.next();
         if ret_annot.unwrap().is_type(Nonterminal(return_annotation)) {
             iterator.next();
@@ -2010,6 +2028,7 @@ impl<'db> FunctionDef<'db> {
         }
         (
             name_d,
+            type_params_,
             params,
             ret_annot.map(ReturnAnnotation::new),
             Block::new(iterator.next().unwrap()),
@@ -2017,7 +2036,7 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn body(&self) -> Block<'db> {
-        self.unpack().3
+        Block::new(self.node.iter_children().last().unwrap())
     }
 
     pub fn is_empty_generator_function(&self) -> bool {

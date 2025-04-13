@@ -551,7 +551,7 @@ impl Inference<'_, '_, '_> {
             self.calc_untyped_block_diagnostics(class.block(), from_type_var_value)
         };
         let check_func = |func: FunctionDef| {
-            self.calc_untyped_block_diagnostics(func.unpack().3, from_type_var_value)
+            self.calc_untyped_block_diagnostics(func.body(), from_type_var_value)
         };
         let check_for = |for_stmt: ForStmt| {
             let (_, _, block, else_block) = for_stmt.unpack();
@@ -1304,7 +1304,7 @@ impl Inference<'_, '_, '_> {
 
         let func_kind = function.kind(i_s);
 
-        let (name, params, return_annotation, block) = func_node.unpack();
+        let (name, _, params, return_annotation, block) = func_node.unpack();
         if !is_overload_member {
             // Check defaults here.
             for param in params.iter() {

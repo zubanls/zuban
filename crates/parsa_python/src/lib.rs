@@ -89,7 +89,7 @@ create_grammar!(
     // --------------------
 
     async_function_def: "async" function_def
-    function_def: "def" name_def function_def_parameters return_annotation? ":" block
+    function_def: "def" name_def [type_params] function_def_parameters return_annotation? ":" block
     return_annotation: "->" expression
 
     // Function parameters

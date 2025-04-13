@@ -6,7 +6,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    database::{ComplexPoint, Database, Locality, Point, PointLink, Specific},
+    database::{ComplexPoint, Database, Locality, ParentScope, Point, PointLink, Specific},
     diagnostics::{Issue, IssueKind},
     file::{
         func_parent_scope, FuncParentScope, PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF,
@@ -210,6 +210,19 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         class: Option<ClassNodeRef>,
     ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
         let func_node = self.node();
+        let type_params = func_node.type_params();
+        let mut known_type_vars = None;
+        if type_params.is_some() {
+            known_type_vars = Some(
+                self.file
+                    .name_resolution_for_types(i_s)
+                    .compute_type_params_definition(
+                        ParentScope::Function(self.node_index),
+                        type_params,
+                    ),
+            );
+        } else {
+        }
         let implicit_optional = self.file.flags(i_s.db).implicit_optional;
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
@@ -217,6 +230,11 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                                manager: &TypeVarManager<PointLink>,
                                type_var: TypeVarLike,
                                current_callable: Option<_>| {
+            if let Some(known_type_vars) = &known_type_vars {
+                if let Some(usage) = known_type_vars.find(type_var.clone(), self.as_link()) {
+                    return TypeVarCallbackReturn::TypeVarLike(usage);
+                }
+            }
             class
                 .and_then(|class| {
                     class
@@ -303,6 +321,13 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
             }
         });
+        let type_vars = if let Some(known_type_vars) = known_type_vars {
+            // TODO these are probably not always empty
+            debug_assert!(type_vars.is_empty());
+            known_type_vars
+        } else {
+            type_vars
+        };
         if !unbound_type_vars.is_empty() {
             if let Type::TypeVar(t) = self.return_type(i_s).as_ref() {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
