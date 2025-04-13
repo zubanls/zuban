@@ -671,6 +671,7 @@ pub enum TypeLike<'db> {
     ParamName(Option<Annotation<'db>>),
     ImportFromAsName(ImportFromAsName<'db>),
     DottedAsName(DottedAsName<'db>),
+    TypeParam(TypeParam<'db>),
     Other,
 }
 
@@ -1964,7 +1965,7 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn type_params(&self) -> Option<TypeParams<'db>> {
-        let mut n = self.node.nth_child(2);
+        let n = self.node.nth_child(2);
         n.is_type(Nonterminal(type_params))
             .then(|| TypeParams::new(n))
     }
@@ -3572,6 +3573,10 @@ pub enum TypeParamKind<'db> {
 }
 
 impl<'db> TypeParam<'db> {
+    pub fn name_def(&self) -> NameDef<'db> {
+        NameDef::new(self.node.nth_child(0))
+    }
+
     pub fn unpack(&self) -> (NameDef<'db>, TypeParamKind<'db>) {
         let mut iterator = self.node.iter_children();
         let first = iterator.next().unwrap();
@@ -3792,6 +3797,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(dotted_as_name),
                 Nonterminal(stmt),
                 Nonterminal(walrus),
+                Nonterminal(type_param),
                 Nonterminal(param_no_default),
                 Nonterminal(param_with_default),
                 Nonterminal(param_maybe_default),
@@ -3811,6 +3817,8 @@ impl<'db> NameDef<'db> {
             TypeLike::ImportFromAsName(ImportFromAsName::new(node))
         } else if node.is_type(Nonterminal(dotted_as_name)) {
             TypeLike::DottedAsName(DottedAsName::new(node))
+        } else if node.is_type(Nonterminal(type_param)) {
+            TypeLike::TypeParam(TypeParam::new(node))
         } else {
             debug_assert!(matches!(
                 node.type_(),

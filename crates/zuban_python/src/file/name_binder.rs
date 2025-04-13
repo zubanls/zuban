@@ -397,6 +397,7 @@ impl<'db> NameBinder<'db> {
                             self.index_annotation_expr(
                                 &annotation.expression(),
                                 target.maybe_name_def().map(|n| n.name_index()),
+                                None,
                             );
                             self.index_target(target, ordered, cause)
                         }
@@ -922,12 +923,14 @@ impl<'db> NameBinder<'db> {
         &mut self,
         node: &Expression<'db>,
         definition_name_index: Option<NodeIndex>,
+        type_params: Option<NodeIndex>,
     ) {
         self.index_non_block_node_full(
             node,
             true,
             IndexingCause::Annotation {
                 definition_name_index,
+                type_params,
             },
         )
     }
@@ -951,18 +954,28 @@ impl<'db> NameBinder<'db> {
                         NameParent::Atom => {
                             if let IndexingCause::Annotation {
                                 definition_name_index,
+                                type_params,
                             } = cause
                             {
-                                // We check for annotation_names here, which we recheck later. But
-                                // in that case only certain types are possible (e.g. not
-                                // functions)
-                                // This is a bit weird, but comes from the fact that it's possible
-                                // to index types that are defined after the current name, but
-                                // prior names are preferred over e.g. the current name.
-                                if !(matches!(self.kind, NameBinderKind::Class)
-                                    && self
-                                        .try_to_process_class_annotation_reference_in_parents(name))
-                                {
+                                if let Some(type_params) = type_params {
+                                    let type_params =
+                                        TypeParams::by_index(&self.db_infos.tree, type_params);
+                                    if self.try_to_process_type_params(type_params, name) {
+                                        continue;
+                                    }
+                                }
+                                let was_handled = if matches!(self.kind, NameBinderKind::Class) {
+                                    // We check for annotation_names here, which we recheck later. But
+                                    // in that case only certain types are possible (e.g. not
+                                    // functions)
+                                    // This is a bit weird, but comes from the fact that it's possible
+                                    // to index types that are defined after the current name, but
+                                    // prior names are preferred over e.g. the current name.
+                                    self.try_to_process_class_annotation_reference_in_parents(name)
+                                } else {
+                                    self.try_to_process_type_params_in_parents(name)
+                                };
+                                if !was_handled {
                                     self.annotation_names.push(AnnotationName {
                                         name,
                                         definition_name_index,
@@ -1304,8 +1317,9 @@ impl<'db> NameBinder<'db> {
             is_async,
         });
 
-        let (name_def, _, params, return_annotation, _) = func.unpack();
+        let (name_def, type_params, params, return_annotation, _) = func.unpack();
 
+        let type_params = type_params.map(|tp| tp.index());
         for param in params.iter() {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
@@ -1316,9 +1330,10 @@ impl<'db> NameBinder<'db> {
                         true,
                         IndexingCause::Annotation {
                             definition_name_index: None,
+                            type_params,
                         },
                     ),
-                    Err(expr) => self.index_annotation_expr(&expr, None),
+                    Err(expr) => self.index_annotation_expr(&expr, None, type_params),
                 };
             }
             if let Some(expression) = param.default() {
@@ -1327,7 +1342,7 @@ impl<'db> NameBinder<'db> {
         }
         if let Some(return_annotation) = return_annotation {
             // This is the -> annotation
-            self.index_annotation_expr(&return_annotation.expression(), None);
+            self.index_annotation_expr(&return_annotation.expression(), None, type_params);
         }
 
         let parent_node_index = match self.kind {
@@ -1429,6 +1444,37 @@ impl<'db> NameBinder<'db> {
         self.parent.is_some_and(|parent| {
             unsafe { &mut *parent }.try_to_process_class_annotation_reference_in_parents(name)
         })
+    }
+
+    fn try_to_process_type_params_in_parents(&mut self, name: Name) -> bool {
+        match self.kind {
+            NameBinderKind::Function { .. } => {
+                let func_def = FunctionDef::by_index(&self.db_infos.tree, self.scope_node);
+                if let Some(type_params) = func_def.type_params() {
+                    // TODO
+                    // self.try_to_process_type_params(type_params, name)
+                }
+                false
+            }
+            _ => false,
+        }
+    }
+
+    fn try_to_process_type_params(&mut self, type_params: TypeParams, name: Name) -> bool {
+        let wanted = name.as_code();
+        for type_param in type_params.iter() {
+            let name_def = type_param.name_def();
+            if name_def.as_code() == wanted {
+                let point = Point::new_redirect(
+                    self.db_infos.file_index,
+                    name_def.name_index(),
+                    Locality::NameBinder,
+                );
+                self.db_infos.points.set(name.index(), point);
+                return true;
+            }
+        }
+        false
     }
 
     #[inline]
@@ -1975,6 +2021,7 @@ struct UnorderedReference<'db> {
 enum IndexingCause {
     Annotation {
         definition_name_index: Option<NodeIndex>,
+        type_params: Option<NodeIndex>,
     },
     FunctionName,
     ClassName,

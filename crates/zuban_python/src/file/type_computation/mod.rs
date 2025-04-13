@@ -3475,6 +3475,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let func_node_ref = NodeRef::new(node_ref.file, f.index());
                 Self::func_is_invalid_type(i_s.db, func_node_ref)
             }
+            TypeLike::TypeParam(tp) => {
+                let name_def = tp.name_def();
+                let Some(ComplexPoint::TypeVarLike(tvl)) =
+                    NodeRef::new(node_ref.file, name_def.index()).maybe_complex()
+                else {
+                    unreachable!("Expected a calculated TypeVarLike in TypeParam")
+                };
+                Lookup::TypeVarLike(tvl.clone())
+            }
             TypeLike::ParamName(annotation) => Lookup::T(TypeContent::InvalidVariable({
                 let as_base_class_any = annotation
                     .map(
