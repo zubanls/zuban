@@ -511,7 +511,7 @@ impl TypeVarLike {
                     GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
                 }
             },
-            TypeVarLike::ParamSpec(param_spec) => match &param_spec.default {
+            TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
                 Some(default) => {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
                 }
@@ -530,7 +530,7 @@ impl TypeVarLike {
                 Some(default) => GenericItem::TypeArgs(default.clone()),
                 None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
             },
-            TypeVarLike::ParamSpec(param_spec) => match &param_spec.default {
+            TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
                 Some(default) => {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
                 }
@@ -552,7 +552,9 @@ impl TypeVarLike {
             Self::TypeVarTuple(tv) => {
                 tv.default(db);
             }
-            _ => (),
+            Self::ParamSpec(p) => {
+                p.default(db);
+            }
         }
     }
 }
@@ -922,16 +924,20 @@ impl PartialEq for TypeVarTuple {
 
 impl Eq for TypeVarTuple {}
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct ParamSpec {
     name: TypeVarLikeName,
-    // TODO calculated these lazily
-    default: Option<CallableParams>,
+    scope: ParentScope,
+    default: Option<TypeLikeInTypeVar<CallableParams>>,
 }
 
 impl ParamSpec {
-    pub fn new(name: TypeVarLikeName, default: Option<CallableParams>) -> Self {
-        Self { name, default }
+    pub fn new(name: TypeVarLikeName, scope: ParentScope, default: Option<NodeIndex>) -> Self {
+        Self {
+            name,
+            scope,
+            default: default.map(TypeLikeInTypeVar::new_lazy),
+        }
     }
 
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
@@ -939,7 +945,7 @@ impl ParamSpec {
     }
 
     fn format(&self, format_data: &FormatData) -> String {
-        if let Some(default) = &self.default {
+        if let Some(default) = self.default(format_data.db) {
             format!(
                 "{} = [{}]",
                 self.name(format_data.db),
@@ -951,7 +957,21 @@ impl ParamSpec {
     }
 
     pub fn default(&self, db: &Database) -> Option<&CallableParams> {
-        self.default.as_ref()
+        Some(
+            self.default
+                .as_ref()?
+                .get_type_like(db, self.name, self.scope, |i_s, node_ref| {
+                    node_ref
+                        .file
+                        .name_resolution_for_types(i_s)
+                        .compute_param_spec_default(node_ref.expect_expression())
+                        .unwrap_or_else(|| {
+                            node_ref.add_issue(i_s, IssueKind::ParamSpecInvalidDefault);
+                            CallableParams::ERROR
+                        })
+                })
+                .unwrap_or(&CallableParams::ERROR),
+        )
     }
 }
 
@@ -960,6 +980,7 @@ impl PartialEq for ParamSpec {
         self.name == other.name
     }
 }
+impl Eq for ParamSpec {}
 
 #[derive(Debug, Eq, Clone)]
 pub(crate) struct TypeVarUsage {

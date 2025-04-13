@@ -359,20 +359,10 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
             match arg.kind {
                 ArgKind::Keyword(KeywordArg {
                     key: "default",
-                    node_ref,
                     expression,
                     ..
                 }) => {
-                    if let Some(c) = node_ref
-                        .file
-                        .name_resolution_for_types(i_s)
-                        .compute_param_spec_default(expression)
-                    {
-                        default = Some(c)
-                    } else {
-                        node_ref.add_issue(i_s, IssueKind::ParamSpecInvalidDefault);
-                        return None;
-                    }
+                    default = Some(expression.index());
                 }
                 ArgKind::Positional { .. } => {
                     arg.add_issue(
@@ -401,6 +391,7 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             }),
+            i_s.as_parent_scope(),
             default,
         ))))
     } else {

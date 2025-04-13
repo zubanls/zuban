@@ -294,6 +294,8 @@ pub(crate) enum CallableParams {
 }
 
 impl CallableParams {
+    pub const ERROR: CallableParams = CallableParams::Any(AnyCause::FromError);
+
     pub fn new_simple(params: Rc<[CallableParam]>) -> Self {
         Self::Simple(params)
     }

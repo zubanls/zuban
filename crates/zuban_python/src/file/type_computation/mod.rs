@@ -4030,7 +4030,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         })
     }
 
-    fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
+    pub fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             comp.calculate_callable_params_for_expr(expr, false, false)
