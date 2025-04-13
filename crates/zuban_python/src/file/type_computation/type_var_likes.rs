@@ -406,13 +406,13 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                 _ => arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" }),
             }
         }
-        Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {
-            name_string: PointLink {
+        Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec::new(
+            TypeVarLikeName::InString(PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
-            },
+            }),
             default,
-        })))
+        ))))
     } else {
         args.add_issue(
             i_s,

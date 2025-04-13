@@ -895,17 +895,18 @@ impl PartialEq for TypeVarTuple {
 
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct ParamSpec {
-    pub name_string: PointLink,
+    name: TypeVarLikeName,
     // TODO calculated these lazily
     pub default: Option<CallableParams>,
 }
 
 impl ParamSpec {
+    pub fn new(name: TypeVarLikeName, default: Option<CallableParams>) -> Self {
+        Self { name, default }
+    }
+
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
-        NodeRef::from_link(db, self.name_string)
-            .maybe_str()
-            .unwrap()
-            .content()
+        self.name.as_str(db)
     }
 
     fn format(&self, format_data: &FormatData) -> String {
@@ -923,7 +924,7 @@ impl ParamSpec {
 
 impl PartialEq for ParamSpec {
     fn eq(&self, other: &Self) -> bool {
-        self.name_string == other.name_string
+        self.name == other.name
     }
 }
 
@@ -1083,15 +1084,16 @@ impl TypeVarLikeUsage {
     }
 
     pub fn name_definition(&self) -> Option<PointLink> {
-        match self {
+        let name = match self {
             Self::TypeVar(t) => match t.type_var.name_string {
-                TypeVarName::Name(
-                    TypeVarLikeName::InString(link) | TypeVarLikeName::SyntaxNode(link),
-                ) => Some(link),
-                TypeVarName::Self_ => None,
+                TypeVarName::Name(name) => name,
+                TypeVarName::Self_ => return None,
             },
-            Self::TypeVarTuple(t) => Some(t.type_var_tuple.name_string),
-            Self::ParamSpec(p) => Some(p.param_spec.name_string),
+            Self::TypeVarTuple(t) => return Some(t.type_var_tuple.name_string),
+            Self::ParamSpec(p) => p.param_spec.name,
+        };
+        match name {
+            TypeVarLikeName::InString(link) | TypeVarLikeName::SyntaxNode(link) => Some(link),
         }
     }
 
