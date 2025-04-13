@@ -699,30 +699,14 @@ impl Eq for TypeVar {}
 
 impl TypeVar {
     pub fn new(
-        name_link: PointLink,
+        name: TypeVarLikeName,
         scope: ParentScope,
         kind: TypeVarKindInfos,
         default: Option<NodeIndex>,
         variance: Variance,
     ) -> Self {
         Self {
-            name_string: TypeVarName::Name(TypeVarLikeName::InString(name_link)),
-            scope,
-            kind,
-            default: default.map(TypeLikeInTypeVar::new_lazy),
-            variance,
-        }
-    }
-
-    pub fn new_syntax_definition(
-        name_link: PointLink,
-        scope: ParentScope,
-        kind: TypeVarKindInfos,
-        default: Option<NodeIndex>,
-        variance: Variance,
-    ) -> Self {
-        Self {
-            name_string: TypeVarName::Name(TypeVarLikeName::SyntaxNode(name_link)),
+            name_string: TypeVarName::Name(name),
             scope,
             kind,
             default: default.map(TypeLikeInTypeVar::new_lazy),

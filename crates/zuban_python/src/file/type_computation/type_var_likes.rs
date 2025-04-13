@@ -9,8 +9,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{
-        ParamSpec, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarTuple,
-        Variance,
+        ParamSpec, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikeName,
+        TypeVarTuple, Variance,
     },
 };
 
@@ -173,10 +173,10 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
             TypeVarKindInfos::Unrestricted
         };
         Some(TypeVarLike::TypeVar(Rc::new(TypeVar::new(
-            PointLink {
+            TypeVarLikeName::InString(PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
-            },
+            }),
             i_s.as_parent_scope(),
             kind,
             default,

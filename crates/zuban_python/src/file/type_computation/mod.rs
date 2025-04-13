@@ -49,8 +49,8 @@ use crate::{
         MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, ParamSpecArg, ParamSpecUsage,
         ParamType, RecursiveType, RecursiveTypeOrigin, StarParamType, StarStarParamType,
         StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo,
-        TypeLikeInTypeVar, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypeLikeInTypeVar, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
@@ -4064,6 +4064,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .map(|type_param| {
                     let (name_def, kind) = type_param.unpack();
                     let name_def_ref = NodeRef::new(self.file, name_def.index());
+                    let name = TypeVarLikeName::SyntaxNode(name_def_ref.as_link());
                     let type_var_like = match kind {
                         TypeParamKind::TypeVar(bound, default) => {
                             let kind = match bound {
@@ -4076,8 +4077,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 None => TypeVarKindInfos::Unrestricted,
                             };
                             let default = default.map(|d| d.expression().index());
-                            TypeVarLike::TypeVar(Rc::new(TypeVar::new_syntax_definition(
-                                name_def_ref.as_link(),
+                            TypeVarLike::TypeVar(Rc::new(TypeVar::new(
+                                name,
                                 scope,
                                 kind,
                                 default,
