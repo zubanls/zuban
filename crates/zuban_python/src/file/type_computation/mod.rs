@@ -638,7 +638,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 _ => {
                     // Now that we know we have a **P.kwargs, is there a P.args before it?
-                    let new_t = Type::Tuple(Tuple::new_arbitrary_length(Type::ERROR));
+                    let new_t = Type::Tuple(Tuple::new_arbitrary_length_with_any_from_error());
                     let star_annotation = previous_param_annotation
                         .unwrap()
                         .maybe_starred()
