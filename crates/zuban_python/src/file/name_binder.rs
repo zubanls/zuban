@@ -493,7 +493,8 @@ impl<'db> NameBinder<'db> {
                     if let Some(type_params) = type_params {
                         self.index_type_params(type_params)
                     }
-                    self.index_non_block_node(&expr, ordered)
+                    // This is not an actual annotation, but behaves like one
+                    self.index_annotation_expr(&expr, None, type_params.map(|tp| tp.index()))
                 }
                 StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
