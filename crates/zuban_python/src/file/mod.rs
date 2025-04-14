@@ -26,7 +26,8 @@ pub(crate) use type_computation::{
     use_cached_annotation_or_type_comment, use_cached_annotation_type,
     use_cached_param_annotation_type, use_cached_simple_generic_type, ClassInitializer,
     ClassNodeRef, FuncNodeRef, FuncParent, GenericCounts, TypeVarCallbackReturn,
-    ANNOTATION_TO_EXPR_DIFFERENCE, CLASS_TO_CLASS_INFO_DIFFERENCE, ORDERING_METHODS,
+    TypeVarTupleDefaultOrigin, ANNOTATION_TO_EXPR_DIFFERENCE, CLASS_TO_CLASS_INFO_DIFFERENCE,
+    ORDERING_METHODS,
 };
 pub(crate) use type_var_finder::TypeVarFinder;
 pub(crate) use utils::{infer_index, infer_string_index, on_argument_type_error};

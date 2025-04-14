@@ -4047,13 +4047,31 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         })
     }
 
-    pub fn compute_type_var_tuple_default(&self, expr: Expression) -> Option<TypeArgs> {
-        let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, |mut comp| match comp.compute_type(expr) {
-            TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
+    pub fn compute_type_var_tuple_default(
+        &self,
+        origin: TypeVarTupleDefaultOrigin,
+    ) -> Option<TypeArgs> {
+        let node_ref = NodeRef::new(
+            self.file,
+            match origin {
+                TypeVarTupleDefaultOrigin::OldSchool(expr) => expr.index(),
+                TypeVarTupleDefaultOrigin::TypeParam(star_expr) => star_expr.index(),
+            },
+        );
+        self.within_type_var_like_definition(node_ref, |mut comp| {
+            let unpacked = match origin {
+                TypeVarTupleDefaultOrigin::OldSchool(expr) => match comp.compute_type(expr) {
+                    TypeContent::Unpacked(unpacked) => unpacked,
+                    _ => return None,
+                },
+                TypeVarTupleDefaultOrigin::TypeParam(star_expr) => {
+                    let tc = comp.compute_type_expression_part(star_expr.expression_part());
+                    comp.wrap_in_unpack(tc, NodeRef::new(self.file, star_expr.index()))
+                }
+            };
+            Some(TypeArgs::new(
                 comp.use_tuple_unpack(unpacked, node_ref).into_tuple_args(),
-            )),
-            _ => None,
+            ))
         })
     }
 
@@ -4115,10 +4133,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                         TypeParamKind::TypeVarTuple(default) => {
                             let default = default.map(|d| d.star_expression().index());
-                            // TODO use default
-                            if default.is_some() {
-                                todo!()
-                            }
                             TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
                                 name, scope, default,
                             )))
@@ -4592,6 +4606,13 @@ pub(crate) fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
         return Some(t);
     }
     None
+}
+
+pub enum TypeVarTupleDefaultOrigin<'x> {
+    // Ts = TypeVarTuple("Ts", Unpack[...])
+    OldSchool(Expression<'x>),
+    // def f[*Ts = *tuple[str]](): ...
+    TypeParam(StarExpression<'x>),
 }
 
 struct TupleArgsDetails {

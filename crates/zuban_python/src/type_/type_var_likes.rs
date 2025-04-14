@@ -14,7 +14,7 @@ use super::{
 use crate::{
     database::{ComplexPoint, Database, ParentScope, PointLink},
     diagnostics::IssueKind,
-    file::PythonFile,
+    file::{PythonFile, TypeVarTupleDefaultOrigin},
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::Matcher,
@@ -901,10 +901,16 @@ impl TypeVarTuple {
             self.default
                 .as_ref()?
                 .get_type_like(db, self.name, self.scope, |i_s, node_ref| {
+                    let origin = match node_ref.maybe_expression() {
+                        Some(expr) => TypeVarTupleDefaultOrigin::OldSchool(expr),
+                        None => {
+                            TypeVarTupleDefaultOrigin::TypeParam(node_ref.expect_star_expression())
+                        }
+                    };
                     node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_type_var_tuple_default(node_ref.expect_expression())
+                        .compute_type_var_tuple_default(origin)
                         .unwrap_or_else(|| {
                             node_ref.add_issue(i_s, IssueKind::TypeVarTupleInvalidDefault);
                             TypeArgs::new_arbitrary_from_error()
