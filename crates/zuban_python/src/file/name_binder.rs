@@ -775,7 +775,10 @@ impl<'db> NameBinder<'db> {
     }
 
     fn index_class(&mut self, class_def: ClassDef<'db>) {
-        let (arguments, block) = class_def.unpack();
+        let (type_params, arguments, block) = class_def.unpack();
+        if let Some(type_params) = type_params {
+            self.index_type_params(type_params)
+        }
         if let Some(arguments) = arguments {
             self.index_non_block_node(&arguments, true);
         }

@@ -1866,25 +1866,37 @@ impl<'db> ClassDef<'db> {
     }
 
     pub fn arguments(&self) -> Option<Arguments<'db>> {
-        let args = self.node.nth_child(3);
+        let mut args = self.node.nth_child(3);
+        if args.is_type(Nonterminal(type_params)) {
+            args = args.next_sibling().unwrap();
+        }
         args.is_type(Nonterminal(arguments))
             .then(|| Arguments::new(args))
     }
 
-    pub fn unpack(&self) -> (Option<Arguments<'db>>, Block<'db>) {
+    pub fn unpack(&self) -> (Option<TypeParams<'db>>, Option<Arguments<'db>>, Block<'db>) {
         let mut args = None;
+        let mut type_params_ = None;
         for child in self.node.iter_children().skip(3) {
             if child.is_type(Nonterminal(arguments)) {
                 args = Some(Arguments::new(child));
+            } else if child.is_type(Nonterminal(type_params)) {
+                type_params_ = Some(TypeParams::new(child));
             } else if child.is_type(Nonterminal(block)) {
-                return (args, Block::new(child));
+                return (type_params_, args, Block::new(child));
             }
         }
         unreachable!()
     }
 
+    pub fn type_params(&self) -> Option<TypeParams<'db>> {
+        let n = self.node.nth_child(2);
+        n.is_type(Nonterminal(type_params))
+            .then(|| TypeParams::new(n))
+    }
+
     pub fn block(&self) -> Block<'db> {
-        self.unpack().1
+        Block::new(self.node.iter_children().last().unwrap())
     }
 
     pub fn search_potential_self_assignments(&self) -> PotentialSelfAssignments<'db> {

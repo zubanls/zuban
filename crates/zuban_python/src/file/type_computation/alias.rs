@@ -636,7 +636,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub fn compute_type_alias_syntax(&self, type_alias: parsa_python_cst::TypeAlias) {
         let (name_def, type_params, expr) = type_alias.unpack();
         let scope = self.i_s.as_parent_scope();
-        let type_var_likes = self.compute_type_params_definition(scope, type_params);
+        let type_var_likes = if let Some(type_params) = type_params {
+            self.compute_type_params_definition(scope, type_params)
+        } else {
+            self.i_s.db.python_state.empty_type_var_likes.clone()
+        };
         let name_def_ref = NodeRef::new(self.file, name_def.index());
         self.check_for_alias_second_step(
             CalculatingAliasType::Normal,

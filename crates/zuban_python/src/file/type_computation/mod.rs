@@ -4065,11 +4065,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn compute_type_params_definition(
         &self,
         scope: ParentScope,
-        type_params: Option<TypeParams>,
+        type_params: TypeParams,
     ) -> TypeVarLikes {
-        let Some(type_params) = type_params else {
-            return self.i_s.db.python_state.empty_type_var_likes.clone();
-        };
         TypeVarLikes::new(
             type_params
                 .iter()

@@ -83,7 +83,7 @@ create_grammar!(
     // Class definitions
     // -----------------
 
-    class_def: "class" name_def ["(" [arguments] ")"] ":" block
+    class_def: "class" name_def [type_params] ["(" [arguments] ")"] ":" block
 
     // Function definitions
     // --------------------

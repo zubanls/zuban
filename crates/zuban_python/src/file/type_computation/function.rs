@@ -212,7 +212,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let func_node = self.node();
         let type_params = func_node.type_params();
         let mut known_type_vars = None;
-        if type_params.is_some() {
+        if let Some(type_params) = type_params {
             known_type_vars = Some(
                 self.file
                     .name_resolution_for_types(i_s)

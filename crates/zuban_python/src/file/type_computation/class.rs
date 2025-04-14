@@ -159,12 +159,18 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         if point.calculated() {
             return TypeVarLikes::load_saved_type_vars(i_s.db, node_ref);
         }
+        let type_var_likes = if let Some(type_params) = self.node().type_params() {
+            self.file
+                .name_resolution_for_types(i_s)
+                .compute_type_params_definition(ParentScope::Class(self.node_index), type_params)
+        } else {
+            TypeVarFinder::find_class_type_vars(i_s, self)
+        };
 
-        let type_vars = TypeVarFinder::find_class_type_vars(i_s, self);
-        if type_vars.is_empty() {
+        if type_var_likes.is_empty() {
             node_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
         } else {
-            node_ref.insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo);
+            node_ref.insert_complex(ComplexPoint::TypeVarLikes(type_var_likes), Locality::Todo);
         }
         self.type_vars(i_s)
     }

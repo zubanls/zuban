@@ -771,7 +771,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn calc_class_diagnostics_internal(&self, class: ClassDef) {
-        let (arguments, block) = class.unpack();
+        let (_, arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
         let class_node_ref = ClassNodeRef::new(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
