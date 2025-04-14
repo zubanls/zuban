@@ -1877,7 +1877,7 @@ impl<'db> ClassDef<'db> {
     pub fn unpack(&self) -> (Option<TypeParams<'db>>, Option<Arguments<'db>>, Block<'db>) {
         let mut args = None;
         let mut type_params_ = None;
-        for child in self.node.iter_children().skip(3) {
+        for child in self.node.iter_children().skip(2) {
             if child.is_type(Nonterminal(arguments)) {
                 args = Some(Arguments::new(child));
             } else if child.is_type(Nonterminal(type_params)) {

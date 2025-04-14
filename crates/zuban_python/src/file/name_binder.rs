@@ -1434,6 +1434,9 @@ impl<'db> NameBinder<'db> {
 
     #[inline]
     fn try_to_process_class_annotation_reference_in_parents(&mut self, name: Name<'db>) -> bool {
+        if self.try_to_process_type_params_in_scope(name) {
+            return true;
+        }
         if try_to_process_reference_for_symbol_table(
             &self.symbol_table,
             self.db_infos.file_index,
@@ -1449,18 +1452,33 @@ impl<'db> NameBinder<'db> {
         })
     }
 
-    fn try_to_process_type_params_in_parents(&mut self, name: Name) -> bool {
+    fn try_to_process_type_params_in_scope(&mut self, name: Name) -> bool {
         match self.kind {
             NameBinderKind::Function { .. } => {
                 let func_def = FunctionDef::by_index(&self.db_infos.tree, self.scope_node);
                 if let Some(type_params) = func_def.type_params() {
-                    // TODO
-                    // self.try_to_process_type_params(type_params, name)
+                    if self.try_to_process_type_params(type_params, name) {
+                        return true;
+                    }
                 }
-                false
             }
-            _ => false,
+            NameBinderKind::Class { .. } => {
+                let class_def = ClassDef::by_index(&self.db_infos.tree, self.scope_node);
+                if let Some(type_params) = class_def.type_params() {
+                    if self.try_to_process_type_params(type_params, name) {
+                        return true;
+                    }
+                }
+            }
+            _ => (),
         }
+        false
+    }
+    fn try_to_process_type_params_in_parents(&mut self, name: Name) -> bool {
+        self.try_to_process_type_params_in_scope(name)
+            || self.parent.is_some_and(|parent| {
+                unsafe { &mut *parent }.try_to_process_type_params_in_parents(name)
+            })
     }
 
     fn try_to_process_type_params(&mut self, type_params: TypeParams, name: Name) -> bool {
