@@ -259,6 +259,7 @@ enum TypeContent<'db, 'a> {
     NamedTuple(Rc<NamedTuple>),
     TypedDictDefinition(Rc<TypedDict>),
     TypeAlias(&'db TypeAlias),
+    TypeAliasWithAppliedGenerics(Type),
     Type(Type),
     SpecialCase(Specific),
     RecursiveAlias(PointLink),
@@ -461,6 +462,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::TypeAlias(alias) if alias.from_type_syntax => {
                 CalculatedBaseClass::TypeAliasSyntax
             }
+            TypeContent::TypeAliasWithAppliedGenerics(_) => CalculatedBaseClass::TypeAliasSyntax,
             _ => {
                 let type_ = self.as_type(calculated, NodeRef::new(self.file, expr.index()));
                 self.compute_base_class_for_type(expr, type_)
@@ -1047,6 +1049,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.is_recursive_alias |= a.is_recursive();
                 return Some(a.as_type_and_set_type_vars_any(db));
             }
+            TypeContent::TypeAliasWithAppliedGenerics(t) => return Some(t),
             TypeContent::SpecialCase(specific) => match specific {
                 Specific::TypingAny => return Some(Type::Any(AnyCause::Explicit)),
                 Specific::TypingNeverOrNoReturn => return Some(Type::Never(NeverCause::Explicit)),
@@ -2573,23 +2576,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
 
         self.is_recursive_alias |= alias.is_recursive();
-        TypeContent::Type(
-            alias
-                .replace_type_var_likes(self.i_s.db, false, &mut |usage| {
-                    if usage.in_definition() == alias.location {
-                        if let Some(generic) = generics.get(usage.index().as_usize()) {
-                            generic.clone()
-                        } else {
-                            // Can happen when a generic is not available, because it's defined in e.g.
-                            // X = dict[T1, T2], where T2 has a default, but T1 has not.
-                            usage.as_any_generic_item(self.i_s.db)
-                        }
+        let t = alias
+            .replace_type_var_likes(self.i_s.db, false, &mut |usage| {
+                if usage.in_definition() == alias.location {
+                    if let Some(generic) = generics.get(usage.index().as_usize()) {
+                        generic.clone()
                     } else {
-                        usage.into_generic_item()
+                        // Can happen when a generic is not available, because it's defined in e.g.
+                        // X = dict[T1, T2], where T2 has a default, but T1 has not.
+                        usage.as_any_generic_item(self.i_s.db)
                     }
-                })
-                .into_owned(),
-        )
+                } else {
+                    usage.into_generic_item()
+                }
+            })
+            .into_owned();
+        if alias.from_type_syntax {
+            TypeContent::TypeAliasWithAppliedGenerics(t)
+        } else {
+            TypeContent::Type(t)
+        }
     }
 
     fn compute_type_get_item_on_final(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
