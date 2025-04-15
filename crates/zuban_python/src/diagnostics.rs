@@ -192,6 +192,7 @@ pub(crate) enum IssueKind {
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
     TypeVarLikeBoundByOuterClass { type_var_like: TypeVarLike },
+    TypeParametersShouldBeDeclared { type_var_like: TypeVarLike },
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
     TypeVarBoundViolation { actual: Box<str>, of: Box<str>, expected: Box<str> },
@@ -1386,6 +1387,10 @@ impl<'db> Diagnostic<'db> {
             }
             TypeVarLikeBoundByOuterClass{type_var_like} => format!(
                 r#"Type variable "{}" is bound by an outer class"#,
+                type_var_like.name(self.db)
+            ),
+            TypeParametersShouldBeDeclared { type_var_like } => format!(
+                r#"All type parameters should be declared ("{}" not declared)"#,
                 type_var_like.name(self.db)
             ),
             IncompleteGenericOrProtocolTypeVars =>

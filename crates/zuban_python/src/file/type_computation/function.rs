@@ -228,27 +228,30 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &InferenceState,
                                manager: &TypeVarManager<PointLink>,
-                               type_var: TypeVarLike,
+                               type_var_like: TypeVarLike,
                                current_callable: Option<_>| {
             if let Some(known_type_vars) = &known_type_vars {
-                if let Some(usage) = known_type_vars.find(type_var.clone(), self.as_link()) {
+                if let Some(usage) = known_type_vars.find(type_var_like.clone(), self.as_link()) {
                     return TypeVarCallbackReturn::TypeVarLike(usage);
                 }
+                return TypeVarCallbackReturn::AddIssue(
+                    IssueKind::TypeParametersShouldBeDeclared { type_var_like },
+                );
             }
             class
                 .and_then(|class| {
                     class
                         .use_cached_type_vars(i_s.db)
-                        .find(type_var.clone(), class.as_link())
+                        .find(type_var_like.clone(), class.as_link())
                         .map(TypeVarCallbackReturn::TypeVarLike)
                 })
-                .or_else(|| i_s.find_parent_type_var(&type_var))
+                .or_else(|| i_s.find_parent_type_var(&type_var_like))
                 .unwrap_or_else(|| {
                     if in_result_type.get()
-                        && manager.position(&type_var).is_none()
+                        && manager.position(&type_var_like).is_none()
                         && current_callable.is_none()
                     {
-                        unbound_type_vars.push(type_var);
+                        unbound_type_vars.push(type_var_like);
                     }
                     TypeVarCallbackReturn::NotFound {
                         allow_late_bound_callables: in_result_type.get(),
