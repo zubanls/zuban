@@ -230,14 +230,6 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                                manager: &TypeVarManager<PointLink>,
                                type_var_like: TypeVarLike,
                                current_callable: Option<_>| {
-            if let Some(known_type_vars) = &known_type_vars {
-                if let Some(usage) = known_type_vars.find(type_var_like.clone(), self.as_link()) {
-                    return TypeVarCallbackReturn::TypeVarLike(usage);
-                }
-                return TypeVarCallbackReturn::AddIssue(
-                    IssueKind::TypeParametersShouldBeDeclared { type_var_like },
-                );
-            }
             class
                 .and_then(|class| {
                     class
@@ -247,6 +239,16 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 })
                 .or_else(|| i_s.find_parent_type_var(&type_var_like))
                 .unwrap_or_else(|| {
+                    if let Some(known_type_vars) = &known_type_vars {
+                        if let Some(usage) =
+                            known_type_vars.find(type_var_like.clone(), self.as_link())
+                        {
+                            return TypeVarCallbackReturn::TypeVarLike(usage);
+                        }
+                        return TypeVarCallbackReturn::AddIssue(
+                            IssueKind::TypeParametersShouldBeDeclared { type_var_like },
+                        );
+                    }
                     if in_result_type.get()
                         && manager.position(&type_var_like).is_none()
                         && current_callable.is_none()

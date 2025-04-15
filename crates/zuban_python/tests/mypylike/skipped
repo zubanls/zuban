@@ -651,7 +651,6 @@ testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
 # 3.12 type var syntax
-testPEP695ReuseNameInSameScope
 testPEP695Function
 testPEP695UpperBoundWithMultipleParams
 check-python312:testPEP695ParamSpec
