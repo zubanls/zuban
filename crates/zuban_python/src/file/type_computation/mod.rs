@@ -4130,21 +4130,29 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 Some(bound) => {
                                     let expr = bound.expression();
                                     if let Some(tup) = expr.maybe_tuple() {
-                                        let tvls = tup
-                                            .iter()
-                                            .map(|entry| match entry {
-                                                StarLikeExpression::NamedExpression(ne) => {
-                                                    TypeLikeInTypeVar::new_lazy(
-                                                        ne.expression().index(),
-                                                    )
-                                                }
-                                                StarLikeExpression::StarNamedExpression(
-                                                    star_named_expression,
-                                                ) => todo!(),
-                                                _ => unreachable!(),
-                                            })
-                                            .collect();
-                                        TypeVarKindInfos::Constraints(tvls)
+                                        if tup.iter().count() < 2 {
+                                            NodeRef::new(self.file, name_def.index()).add_issue(
+                                                self.i_s,
+                                                IssueKind::TypeVarValuesNeedsAtLeastTwo,
+                                            );
+                                            TypeVarKindInfos::Unrestricted
+                                        } else {
+                                            let tvls = tup
+                                                .iter()
+                                                .map(|entry| match entry {
+                                                    StarLikeExpression::NamedExpression(ne) => {
+                                                        TypeLikeInTypeVar::new_lazy(
+                                                            ne.expression().index(),
+                                                        )
+                                                    }
+                                                    StarLikeExpression::StarNamedExpression(
+                                                        star_named_expression,
+                                                    ) => todo!(),
+                                                    _ => unreachable!(),
+                                                })
+                                                .collect();
+                                            TypeVarKindInfos::Constraints(tvls)
+                                        }
                                     } else {
                                         TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_lazy(
                                             bound.expression().index(),

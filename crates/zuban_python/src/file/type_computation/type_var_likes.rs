@@ -161,7 +161,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
             }
         }
         if constraints.len() == 1 {
-            args.add_issue(i_s, IssueKind::TypeVarOnlySingleRestriction);
+            args.add_issue(i_s, IssueKind::TypeVarValuesNeedsAtLeastTwo);
             return None;
         }
         let kind = if let Some(bound) = bound {

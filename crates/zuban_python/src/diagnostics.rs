@@ -199,7 +199,7 @@ pub(crate) enum IssueKind {
     InvalidTypeVarValue { type_var_name: Box<str>, of: Box<str>, actual: Box<str> },
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
-    TypeVarOnlySingleRestriction,
+    TypeVarValuesNeedsAtLeastTwo,
     UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
     InvalidAssignmentForm { class_name: &'static str },
     TypeVarLikeTooFewArguments { class_name: &'static str },
@@ -1406,7 +1406,7 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar cannot be both covariant and contravariant".to_string(),
             TypeVarValuesAndUpperBound =>
                 "TypeVar cannot have both values and an upper bound".to_string(),
-            TypeVarOnlySingleRestriction =>
+            TypeVarValuesNeedsAtLeastTwo =>
                  "Type variable must have at least two constrained types".to_string(),
             UnexpectedArgument{class_name, argument_name} => format!(
                  "Unexpected argument to \"{class_name}()\": \"{argument_name}\""),
