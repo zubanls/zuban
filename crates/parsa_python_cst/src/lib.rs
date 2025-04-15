@@ -1868,7 +1868,7 @@ impl<'db> ClassDef<'db> {
 
     pub fn arguments(&self) -> Option<Arguments<'db>> {
         let mut args = self.node.nth_child(3);
-        if args.is_type(Nonterminal(type_params)) {
+        if args.is_leaf() {
             args = args.next_sibling().unwrap();
         }
         args.is_type(Nonterminal(arguments))
