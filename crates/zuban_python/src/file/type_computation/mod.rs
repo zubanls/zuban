@@ -4003,11 +4003,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         callback(comp)
     }
 
-    pub(crate) fn compute_type_var_bound(&self, expr: Expression) -> Type {
+    pub(crate) fn compute_type_var_bound(
+        &self,
+        expr: Expression,
+        from_type_var_syntax: bool,
+    ) -> Type {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             match comp.compute_type(expr) {
-                TypeContent::InvalidVariable(_) => {
+                TypeContent::InvalidVariable(_) if !from_type_var_syntax => {
                     // TODO this is a bit weird and should probably generate other errors
                     node_ref.add_issue(comp.i_s, IssueKind::TypeVarBoundMustBeType);
                     Type::ERROR
@@ -4016,7 +4020,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
         })
     }
-    pub(crate) fn compute_type_var_value(&self, expr: Expression) -> Option<Type> {
+
+    pub(crate) fn compute_type_var_value(
+        &self,
+        expr: Expression,
+        from_type_var_syntax: bool,
+    ) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _| {
             if i_s.find_parent_type_var(&type_var_like).is_some() {
@@ -4032,21 +4041,26 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             &mut on_type_var,
             TypeComputationOrigin::Other,
         );
-        match comp.compute_type(expr) {
-            TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
-                invalid.add_issue(
-                    comp.i_s.db,
-                    |t| node_ref.add_issue(comp.i_s, t),
-                    comp.origin,
-                );
-                None
+        let tc = comp.compute_type(expr);
+        if from_type_var_syntax {
+            Some(comp.as_type(tc, node_ref))
+        } else {
+            match tc {
+                TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
+                    invalid.add_issue(
+                        comp.i_s.db,
+                        |t| node_ref.add_issue(comp.i_s, t),
+                        comp.origin,
+                    );
+                    None
+                }
+                TypeContent::InvalidVariable(_) => {
+                    // TODO this is a bit weird and should probably generate other errors
+                    node_ref.add_issue(comp.i_s, IssueKind::TypeVarTypeExpected);
+                    None
+                }
+                t => Some(comp.as_type(t, node_ref)),
             }
-            TypeContent::InvalidVariable(_) => {
-                // TODO this is a bit weird and should probably generate other errors
-                node_ref.add_issue(comp.i_s, IssueKind::TypeVarTypeExpected);
-                None
-            }
-            t => Some(comp.as_type(t, node_ref)),
         }
     }
 

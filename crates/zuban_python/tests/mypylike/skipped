@@ -651,6 +651,7 @@ testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
 # 3.12 type var syntax
+testPEP695ReuseNameInSameScope
 testPEP695Function
 testPEP695UpperBoundWithMultipleParams
 check-python312:testPEP695ParamSpec
@@ -676,7 +677,6 @@ testPEP695TypeAliasInvalidGenericConstraint
 testPEP695MultiDefinitionsForTypeAlias
 testPEP695WrongNumberOfConstrainedTypes
 testPEP695UsingTypeVariableInOwnBoundOrConstraint
-testPEP695InvalidType
 testPEP695GenericNamedTuple
 testPEP695UsingIncorrectExpressionsInTypeVariableBound
 testPEP695UsingIncorrectExpressionsInTypeAlias

@@ -736,6 +736,13 @@ impl TypeVar {
         }
     }
 
+    fn from_type_var_syntax(&self) -> bool {
+        matches!(
+            &self.name,
+            TypeVarName::Name(TypeVarLikeName::SyntaxNode(_))
+        )
+    }
+
     pub fn kind<'a>(
         &'a self,
         db: &'a Database,
@@ -748,7 +755,10 @@ impl TypeVar {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
-                            .compute_type_var_bound(node_ref.expect_expression())
+                            .compute_type_var_bound(
+                                node_ref.expect_expression(),
+                                self.from_type_var_syntax(),
+                            )
                     })
                     // TODO add an error here
                     .unwrap_or(&Type::ERROR),
@@ -759,7 +769,10 @@ impl TypeVar {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
-                            .compute_type_var_value(node_ref.expect_expression())
+                            .compute_type_var_value(
+                                node_ref.expect_expression(),
+                                self.from_type_var_syntax(),
+                            )
                             .unwrap_or(Type::ERROR)
                     })
                     // TODO add an error here
