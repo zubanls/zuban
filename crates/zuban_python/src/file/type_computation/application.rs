@@ -144,12 +144,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .add_issue(self.i_s, IssueKind::OnlyClassTypeApplication);
             return Inferred::new_any_from_error();
         }
-        compute_type_application!(
+        let result = compute_type_application!(
             self,
             slice_type,
             result_context,
             compute_type_get_item_on_alias(alias, slice_type)
-        )
+        );
+        if alias.from_type_syntax {
+            Inferred::from_type(self.i_s.db.python_state.type_alias_type_type())
+        } else {
+            result
+        }
     }
 
     pub(crate) fn compute_type_application_on_typing_class(
