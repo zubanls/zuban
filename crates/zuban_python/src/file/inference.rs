@@ -2122,7 +2122,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    fn add_redefinition_issue(
+    pub(super) fn add_redefinition_issue(
         &self,
         first_index_of_definition: NodeIndex,
         name: &str,

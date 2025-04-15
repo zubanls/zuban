@@ -3546,6 +3546,10 @@ impl<'db> YieldFrom<'db> {
 }
 
 impl<'db> TypeAlias<'db> {
+    pub fn name_def(&self) -> NameDef<'db> {
+        NameDef::new(self.node.nth_child(1))
+    }
+
     pub fn unpack(&self) -> (NameDef<'db>, Option<TypeParams<'db>>, Expression<'db>) {
         let mut iterator = self.node.iter_children().skip(1);
         let name = NameDef::new(iterator.next().unwrap());
