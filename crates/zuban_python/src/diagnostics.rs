@@ -127,6 +127,7 @@ pub(crate) enum IssueKind {
     NameDefinedInLocalScopeBeforeNonlocal { name: Box<str> },
     OnlyClassTypeApplication,
     InvalidBaseClass,
+    TypeAliasSyntaxInBaseClassIsInvalid,
     CannotInheritFromFinalClass { class_name: Box<str> },
     FinalClassHasAbstractAttributes { class_name: Box<str>, attributes: Box<str> },
     FinalMethodIsAbstract { name: Box<str> },
@@ -1244,6 +1245,8 @@ impl<'db> Diagnostic<'db> {
                 r#"Name "{name}" is already defined in local scope before nonlocal declaration"#
             ),
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
+            TypeAliasSyntaxInBaseClassIsInvalid =>
+                "Type alias defined using \"type\" statement not valid as base class".to_string(),
             CannotInheritFromFinalClass { class_name } => format!(
                 r#"Cannot inherit from final class "{class_name}""#
             ),

@@ -47,7 +47,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         assignment: Assignment<'file>,
     ) -> Lookup<'file, 'file> {
-        let mut is_explicit = false;
+        let mut cause = AliasCause::Implicit;
         if let AssignmentContent::WithAnnotation(target, annotation, _) = assignment.unpack() {
             // We have to ensure that if this assignment is used as an invalid type within the
             // annotation again that we don't get cycles. Therefore we add calculating to the
@@ -70,7 +70,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
             self.ensure_cached_annotation(annotation, true);
             match self.file.points.get(annotation.index()).maybe_specific() {
-                Some(Specific::AnnotationTypeAlias) => is_explicit = true,
+                Some(Specific::AnnotationTypeAlias) => cause = AliasCause::TypingTypeAlias,
                 // Final/ClassVar may not have been calculated like x: Final = 1
                 Some(
                     Specific::AnnotationOrTypeCommentFinal
@@ -83,13 +83,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
         }
-        self.compute_type_assignment_internal(assignment, is_explicit)
+        self.compute_type_assignment_internal(assignment, cause)
     }
 
     fn compute_type_assignment_internal(
         &self,
         assignment: Assignment,
-        is_explicit: bool,
+        cause: AliasCause,
     ) -> Lookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
@@ -100,7 +100,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         cached_type_node_ref.set_point(Point::new_calculating());
 
-        if !is_explicit {
+        if matches!(cause, AliasCause::Implicit) {
             // Only non-explicit TypeAliases are allowed here.
             if let Some(name_or_prim) = assignment.maybe_simple_type_reassignment() {
                 // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
@@ -152,11 +152,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             Specific::AnyDueToError,
                             Locality::Todo,
                         ));
-                        return self.compute_type_assignment_internal(assignment, is_explicit);
+                        return self.compute_type_assignment_internal(assignment, cause);
                     }
                 }
             }
-            if !is_explicit
+            if matches!(cause, AliasCause::Implicit)
                 && (expr.maybe_single_string_literal().is_some() || annotation.is_some())
             {
                 return Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
@@ -171,10 +171,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if cached_type_node_ref.point().calculated() {
                     return load_cached_type(cached_type_node_ref);
                 }
-                self.check_for_alias(origin, cached_type_node_ref, name_def, expr, is_explicit)
+                self.check_for_alias(origin, cached_type_node_ref, name_def, expr, cause)
             };
 
-            if is_explicit {
+            if !matches!(cause, AliasCause::Implicit) {
                 return check_for_alias(CalculatingAliasType::Normal);
             }
 
@@ -283,7 +283,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             name_def.index(),
             Locality::Todo,
         ));
-        return Ok(self.compute_type_assignment_internal(assignment, false));
+        return Ok(self.compute_type_assignment_internal(assignment, AliasCause::Implicit));
     }
 
     pub(super) fn check_special_type_definition(node_ref: NodeRef) -> Option<Lookup> {
@@ -411,7 +411,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         cached_type_node_ref: NodeRef<'file>,
         name_def: NameDef,
         expr: Expression,
-        is_explicit: bool,
+        cause: AliasCause,
     ) -> Lookup<'file, 'file> {
         // Here we avoid all late bound type var calculation for callable, which is how
         // mypy works. The default behavior without a type_var_callback would be to
@@ -440,7 +440,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             name_def,
             type_var_likes,
             expr,
-            is_explicit,
+            cause,
         )
     }
 
@@ -451,13 +451,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name_def: NameDef,
         type_var_likes: TypeVarLikes,
         expr: Expression,
-        is_explicit: bool,
+        cause: AliasCause,
     ) -> Lookup<'file, 'file> {
         let in_definition = cached_type_node_ref.as_link();
         let alias = TypeAlias::new(
             type_var_likes,
             in_definition,
             PointLink::new(self.file.file_index, name_def.name().index()),
+            matches!(cause, AliasCause::SyntaxOrTypeAliasType),
         );
         save_alias(cached_type_node_ref, alias);
         let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.maybe_complex().unwrap() else {
@@ -506,7 +507,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 match tc {
                     TypeContent::InvalidVariable(_)
                     | TypeContent::Unknown(UnknownCause::UnknownName(_))
-                        if !is_explicit =>
+                        if matches!(cause, AliasCause::Implicit) =>
                     {
                         alias.set_invalid();
                     }
@@ -623,7 +624,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
-        let name_lookup = self.compute_type_assignment_internal(assignment, true);
+        let name_lookup =
+            self.compute_type_assignment_internal(assignment, AliasCause::TypingTypeAlias);
         if matches!(
             name_lookup,
             Lookup::T(TypeContent::Unknown(_) | TypeContent::InvalidVariable(_))
@@ -648,7 +650,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             name_def,
             type_var_likes,
             expr,
-            true,
+            AliasCause::SyntaxOrTypeAliasType,
         );
     }
 
@@ -911,11 +913,19 @@ fn is_invalid_recursive_alias(db: &Database, seen: &SeenRecursiveAliases, t: &Ty
             false
         })
 }
+
 enum CalculatingAliasType<'tree> {
     Normal,
     TypedDict(ArgsContent<'tree>),
     NamedTuple(ArgsContent<'tree>),
     NewType(ArgsContent<'tree>),
+}
+
+#[derive(Copy, Clone)]
+enum AliasCause {
+    TypingTypeAlias, // `X: typing.TypeAlias = int`
+    Implicit,
+    SyntaxOrTypeAliasType, // `type X = int` or `X = TypeAliasType(int)`
 }
 
 enum SpecialAssignmentKind<'db, 'tree> {
@@ -973,7 +983,12 @@ fn check_for_and_replace_type_type_in_finished_alias(
         })
     {
         alias_origin.add_issue(i_s, IssueKind::CannotContainType { name: "Type" });
-        let alias = TypeAlias::new(alias.type_vars.clone(), alias.location, alias.name);
+        let alias = TypeAlias::new(
+            alias.type_vars.clone(),
+            alias.location,
+            alias.name,
+            alias.from_type_syntax,
+        );
         alias.set_valid(Type::ERROR, false);
         save_alias(alias_origin, alias)
     }

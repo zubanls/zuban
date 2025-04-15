@@ -318,6 +318,7 @@ enum CalculatedBaseClass {
     Generic,
     Invalid,
     InvalidEnum(Rc<Enum>),
+    TypeAliasSyntax,
     Unknown,
 }
 
@@ -457,6 +458,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             | TypeContent::InvalidVariable(_)
             | TypeContent::SpecialCase(Specific::TypingType) => CalculatedBaseClass::Invalid,
             TypeContent::Type(Type::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
+            TypeContent::TypeAlias(alias) if alias.from_type_syntax => {
+                CalculatedBaseClass::TypeAliasSyntax
+            }
             _ => {
                 let type_ = self.as_type(calculated, NodeRef::new(self.file, expr.index()));
                 self.compute_base_class_for_type(expr, type_)

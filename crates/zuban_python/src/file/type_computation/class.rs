@@ -926,6 +926,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     .add_type_issue(db, IssueKind::InvalidBaseClass);
                                 incomplete_mro = true;
                             }
+                            CalculatedBaseClass::TypeAliasSyntax => {
+                                NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                    db,
+                                    IssueKind::TypeAliasSyntaxInBaseClassIsInvalid,
+                                );
+                                incomplete_mro = true;
+                            }
                         };
                     }
                     _ => (),

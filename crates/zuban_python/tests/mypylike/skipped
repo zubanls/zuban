@@ -653,7 +653,6 @@ testOtherVarArgs
 # 3.12 type var syntax
 testPEP695Function
 testPEP695TypeAliasNotValidAsBaseClass
-testPEP695TypeAliasForwardReference4
 testPEP695TypeAliasBoundForwardReference
 testPEP695UpperBoundForwardReference1
 testPEP695UpperBoundForwardReference3

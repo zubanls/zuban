@@ -730,17 +730,24 @@ pub(crate) struct TypeAlias {
     pub type_vars: TypeVarLikes,
     pub location: PointLink,
     pub name: PointLink,
+    pub from_type_syntax: bool, // `type X = int` or `X = TypeAlias(int)
     // The two attributes around is_recursive are calculated after the TypeAlias is
     // added to the DB.
     state: OnceCell<TypeAliasState>,
 }
 
 impl TypeAlias {
-    pub fn new(type_vars: TypeVarLikes, location: PointLink, name: PointLink) -> Self {
+    pub fn new(
+        type_vars: TypeVarLikes,
+        location: PointLink,
+        name: PointLink,
+        from_type_syntax: bool,
+    ) -> Self {
         Self {
             type_vars,
             location,
             name,
+            from_type_syntax,
             state: OnceCell::new(),
         }
     }
