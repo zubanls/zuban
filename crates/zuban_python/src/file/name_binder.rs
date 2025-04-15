@@ -923,9 +923,9 @@ impl<'db> NameBinder<'db> {
         self.index_non_block_node_full(node, ordered, IndexingCause::Other)
     }
 
-    fn index_annotation_expr(
+    fn index_annotation_expr<T: InterestingNodeSearcher<'db>>(
         &mut self,
-        node: &Expression<'db>,
+        node: &T,
         definition_name_index: Option<NodeIndex>,
         type_params: Option<NodeIndex>,
     ) {
@@ -1287,20 +1287,20 @@ impl<'db> NameBinder<'db> {
             match kind {
                 TypeParamKind::TypeVar(bound, default) => {
                     if let Some(bound) = bound {
-                        self.index_non_block_node(&bound, true);
+                        self.index_annotation_expr(&bound, None, None)
                     }
                     if let Some(default) = default {
-                        self.index_non_block_node(&default, true);
+                        self.index_annotation_expr(&default, None, None)
                     }
                 }
                 TypeParamKind::TypeVarTuple(default) => {
                     if let Some(default) = default {
-                        self.index_non_block_node(&default, true);
+                        self.index_annotation_expr(&default, None, None)
                     }
                 }
                 TypeParamKind::ParamSpec(default) => {
                     if let Some(default) = default {
-                        self.index_non_block_node(&default, true);
+                        self.index_annotation_expr(&default, None, None)
                     }
                 }
             }

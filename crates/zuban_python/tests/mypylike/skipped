@@ -652,8 +652,6 @@ testOtherVarArgs
 
 # 3.12 type var syntax
 testPEP695Function
-testPEP695TypeAliasBoundForwardReference
-testPEP695UpperBoundForwardReference1
 testPEP695UpperBoundForwardReference3
 testPEP695UpperBoundWithMultipleParams
 check-python312:testPEP695ParamSpec
@@ -696,7 +694,6 @@ testPEP695TypeParameterDefaultInvalid2
 testPEP695TypeParameterDefaultInvalid3
 testPEP695TypeParameterDefaultClass2
 testPEP695TypeParameterDefaultTypeAlias2
-testPEP695TypeAliasDep
 testPEP695ChangeOldStyleToNewStyleTypeAlias
 testCurrentClassWorksAsBound
 # type var syntax infer variance
