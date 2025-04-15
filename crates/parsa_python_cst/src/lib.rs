@@ -671,6 +671,7 @@ pub enum TypeLike<'db> {
     ParamName(Option<Annotation<'db>>),
     ImportFromAsName(ImportFromAsName<'db>),
     DottedAsName(DottedAsName<'db>),
+    TypeAlias(TypeAlias<'db>),
     TypeParam(TypeParam<'db>),
     Other,
 }
@@ -3814,6 +3815,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(dotted_as_name),
                 Nonterminal(stmt),
                 Nonterminal(walrus),
+                Nonterminal(type_alias),
                 Nonterminal(type_param),
                 Nonterminal(param_no_default),
                 Nonterminal(param_with_default),
@@ -3834,6 +3836,8 @@ impl<'db> NameDef<'db> {
             TypeLike::ImportFromAsName(ImportFromAsName::new(node))
         } else if node.is_type(Nonterminal(dotted_as_name)) {
             TypeLike::DottedAsName(DottedAsName::new(node))
+        } else if node.is_type(Nonterminal(type_alias)) {
+            TypeLike::TypeAlias(TypeAlias::new(node))
         } else if node.is_type(Nonterminal(type_param)) {
             TypeLike::TypeParam(TypeParam::new(node))
         } else {

@@ -3481,6 +3481,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     name_resolution.resolve_import_name_name_def_without_narrowing(dotted_as_name),
                 )
             }
+            TypeLike::TypeAlias(type_alias) => {
+                let name_resolution = node_ref.file.name_resolution_for_types(i_s);
+                name_resolution.compute_type_alias_syntax(type_alias);
+                let Some(ComplexPoint::TypeAlias(alias)) = node_ref.maybe_complex() else {
+                    unreachable!()
+                };
+                Lookup::T(TypeContent::TypeAlias(alias))
+            }
             TypeLike::Function(f) => {
                 let func_node_ref = NodeRef::new(node_ref.file, f.index());
                 Self::func_is_invalid_type(i_s.db, func_node_ref)
