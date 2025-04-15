@@ -199,6 +199,7 @@ pub(crate) struct PythonState {
     typing_container_index: NodeIndex,
     typing_special_form_index: NodeIndex,
     typing_no_type_check_index: NodeIndex,
+    type_alias_type_link: PointLink,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
     types_none_type_index: Option<NodeIndex>,
@@ -309,6 +310,7 @@ impl PythonState {
             typinglike_namedtuple_link: PointLink::new(FileIndex(0), 0),
             new_type_link: PointLink::new(FileIndex(0), 0),
             reveal_type_link: PointLink::new(FileIndex(0), 0),
+            type_alias_type_link: PointLink::new(FileIndex(0), 0),
             typing_cast_index: 0,
             typing_overload_index: 0,
             typing_override_index: None,
@@ -668,6 +670,11 @@ impl PythonState {
         );
         cache_typing_link_with_typing_extensions_fallback!(new_type_link, "NewType", false);
         cache_typing_link_with_typing_extensions_fallback!(reveal_type_link, "reveal_type", true);
+        cache_typing_link_with_typing_extensions_fallback!(
+            type_alias_type_link,
+            "TypeAliasType",
+            false
+        );
         cache_index!(typing_cast_index, typing, "cast", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
@@ -1051,13 +1058,13 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
     node_ref_to_type_class_without_generic!(pub type_var_type, type_var_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_special_form_type, typing_special_form_node_ref);
-
     node_ref_to_type_class_without_generic!(pub supports_index_type, supports_index_node_ref);
 
     link_to_type_class_without_generic!(pub type_var_tuple_type, type_var_tuple_link);
     link_to_type_class_without_generic!(pub param_spec_type, param_spec_link);
     link_to_type_class_without_generic!(pub new_type_type, new_type_link);
     link_to_type_class_without_generic!(pub typing_named_tuple_type, typinglike_namedtuple_link);
+    link_to_type_class_without_generic!(pub type_alias_type_type, type_alias_type_link);
 
     pub fn typing_named_tuple_class<'db>(&self, db: &'db Database) -> Class<'db> {
         Class::from_position(

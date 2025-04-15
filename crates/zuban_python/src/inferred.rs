@@ -2064,7 +2064,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     );
                                 }
                             }
-                            ComplexPoint::TypeAlias(alias) => {
+                            ComplexPoint::TypeAlias(alias) if !alias.from_type_syntax => {
                                 if !alias.type_vars.is_empty() {
                                     if let Some(file) = args.in_file() {
                                         if file.flags(i_s.db).disallow_any_generics {
@@ -2588,6 +2588,9 @@ fn type_of_complex<'db: 'x, 'x>(
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         ComplexPoint::TypeAlias(alias) => Cow::Owned({
+            if alias.from_type_syntax {
+                return Cow::Owned(i_s.db.python_state.type_alias_type_type());
+            }
             let t = alias.type_if_valid();
             if t.is_subclassable(i_s.db) || matches!(t, Type::TypedDict(_) | Type::Any(_)) {
                 Type::Type(Rc::new(alias.as_type_and_set_type_vars_any(i_s.db)))
