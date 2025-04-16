@@ -3391,7 +3391,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 return Self::ensure_cached_class(i_s, c_node_ref);
                             }
                             ComplexPoint::TypeAlias(a) => {
-                                return Lookup::T(TypeContent::TypeAlias(a))
+                                if a.calculating() {
+                                    debug!("Found a recursive type definition");
+                                    return Lookup::T(TypeContent::RecursiveAlias(
+                                        i_node_ref.as_link(),
+                                    ));
+                                } else {
+                                    return Lookup::T(TypeContent::TypeAlias(a));
+                                }
                             }
                             _ => (),
                         };
