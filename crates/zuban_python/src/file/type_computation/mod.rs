@@ -1726,7 +1726,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                     }
                 }
-                if !constraints.any(|t| t.is_simple_super_type_of(i_s, &t2).bool()) {
+                if !constraints.any(|t| t.is_simple_same_type(i_s, &t2).bool()) {
                     node_ref.add_issue(
                         i_s,
                         IssueKind::InvalidTypeVarValue {
