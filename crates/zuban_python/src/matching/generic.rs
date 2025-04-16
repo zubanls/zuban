@@ -57,7 +57,7 @@ impl<'a> Generic<'a> {
                         )
                         .into()
                     }),
-                CallableParams::Any(_) => Box::from("Any"),
+                CallableParams::Any(_) => Box::from("[*Any, **Any]"),
                 CallableParams::Never(_) => Box::from("Never"),
             }),
         }
