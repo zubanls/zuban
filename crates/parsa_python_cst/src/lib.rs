@@ -2279,6 +2279,15 @@ pub enum StarAnnotationContent<'db> {
     StarExpression(StarExpression<'db>),
 }
 
+impl StarAnnotationContent<'_> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            StarAnnotationContent::Expression(e) => e.index(),
+            StarAnnotationContent::StarExpression(s) => s.index(),
+        }
+    }
+}
+
 impl<'db> StarAnnotation<'db> {
     pub fn unpack(&self) -> StarAnnotationContent<'db> {
         let n = self.node.nth_child(1);
@@ -3648,8 +3657,14 @@ impl<'db> TypeParamDefault<'db> {
 }
 
 impl<'db> TypeParamStarredDefault<'db> {
-    pub fn star_expression(&self) -> StarExpression<'db> {
-        StarExpression::new(self.node.nth_child(1))
+    pub fn unpack(&self) -> StarAnnotationContent<'db> {
+        let n = self.node.nth_child(1);
+        if n.is_type(Nonterminal(expression)) {
+            StarAnnotationContent::Expression(Expression::new(n))
+        } else {
+            debug_assert_eq!(n.type_(), Nonterminal(star_expression));
+            StarAnnotationContent::StarExpression(StarExpression::new(n))
+        }
     }
 }
 

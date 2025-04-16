@@ -4179,7 +4179,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             )))
                         }
                         TypeParamKind::TypeVarTuple(default) => {
-                            let default = default.map(|d| d.star_expression().index());
+                            let default = default.map(|d| d.unpack().index());
                             TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
                                 name, scope, default,
                             )))

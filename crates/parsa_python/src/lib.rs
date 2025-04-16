@@ -243,7 +243,7 @@ create_grammar!(
 
     type_param_bound: ":" expression
     type_param_default: "=" expression
-    type_param_starred_default: "=" star_expression
+    type_param_starred_default: "=" (expression|star_expression)
 
     // EXPRESSIONS
     // -----------
