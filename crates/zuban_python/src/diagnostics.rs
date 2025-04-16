@@ -143,6 +143,8 @@ pub(crate) enum IssueKind {
     InvalidTypeCycle,
     CurrentlyUnsupportedBaseClassCycle,
     EnsureSingleGenericOrProtocol,
+    GenericWithTypeParamsIsRedundant,
+    ProtocolWithTypeParamsNoBracketsExpected,
 
     InvalidType(Box<str>),
     InvalidTypeDeclaration,
@@ -1280,6 +1282,9 @@ impl<'db> Diagnostic<'db> {
                 "This base class/alias cycle is currently unsupported".to_string(),
             EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
+            GenericWithTypeParamsIsRedundant => "Generic[...] base class is redundant".to_string(),
+            ProtocolWithTypeParamsNoBracketsExpected =>
+                r#"No arguments expected for "Protocol" base class"#.to_string(),
 
             InvalidTypeDeclaration =>
                 "Type cannot be declared in assignment to non-self attribute".to_string(),

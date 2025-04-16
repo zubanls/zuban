@@ -859,7 +859,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 }
                             }
                             // TODO this might overwrite other class types
-                            CalculatedBaseClass::Protocol => {
+                            CalculatedBaseClass::Protocol { with_brackets } => {
+                                if self.node().type_params().is_some() && with_brackets {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                        db,
+                                        IssueKind::ProtocolWithTypeParamsNoBracketsExpected,
+                                    );
+                                }
                                 class_kind = ClassKind::Protocol;
                                 metaclass = MetaclassState::Some(db.python_state.abc_meta_link())
                             }
@@ -893,7 +899,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     }
                                 }
                             }
-                            CalculatedBaseClass::Generic => (),
+                            CalculatedBaseClass::Generic => {
+                                if self.node().type_params().is_some() {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
+                                        db,
+                                        IssueKind::GenericWithTypeParamsIsRedundant,
+                                    );
+                                }
+                            }
                             CalculatedBaseClass::Unknown => {
                                 if self.node_ref.file.flags(db).disallow_subclassing_any {
                                     NodeRef::new(self.node_ref.file, n.index()).add_type_issue(

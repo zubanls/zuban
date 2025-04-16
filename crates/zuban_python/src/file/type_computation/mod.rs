@@ -312,7 +312,7 @@ impl Lookup<'_, '_> {
 #[derive(Debug)]
 enum CalculatedBaseClass {
     Type(Type),
-    Protocol,
+    Protocol { with_brackets: bool },
     NamedTuple(Rc<NamedTuple>),
     TypedDict,
     NewNamedTuple,
@@ -439,8 +439,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let calculated = self.compute_type(expr);
         match calculated {
             TypeContent::GenericWithGenerics => CalculatedBaseClass::Generic,
-            TypeContent::SpecialCase(Specific::TypingProtocol) => CalculatedBaseClass::Protocol,
-            TypeContent::ProtocolWithGenerics => CalculatedBaseClass::Protocol,
+            TypeContent::SpecialCase(Specific::TypingProtocol) => CalculatedBaseClass::Protocol {
+                with_brackets: false,
+            },
+            TypeContent::ProtocolWithGenerics => CalculatedBaseClass::Protocol {
+                with_brackets: true,
+            },
             TypeContent::SpecialCase(Specific::TypingNamedTuple) => {
                 CalculatedBaseClass::NewNamedTuple
             }
