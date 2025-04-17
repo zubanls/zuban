@@ -291,6 +291,8 @@ testSlotsAssignmentWithMethodReassign
 # --enable-error-code unused-awaitable
 testUnusedAwaitable
 testForwardRefToBadAsyncShouldNotCrash_newsemanal
+# "Are you missing an await?", but unused-coroutine
+testPEP695Function
 # Crazy types.coroutine types/async await matrix
 testFullCoroutineMatrix
 
@@ -662,18 +664,12 @@ testPEP695MultiDefinitionsForTypeAlias
 testPEP695UsingTypeVariableInOwnBoundOrConstraint
 testPEP695NestedGenericClass3
 testPEP695MultipleNestedGenericClass3
-# Recursive Alias matching
-testPEP695RecursiveTypeAliasForwardReference
 # ""T" already defined as a type parameter"
 testPEP695RedefineTypeParameterInScope
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
 testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec
 testPEP695MixNewAndOldStyleGenericsInTypeAlias
-# mostly formatting differences
-testPEP695Function
-testPEP695UsingIncorrectExpressionsInTypeVariableBound
-testPEP695UsingIncorrectExpressionsInTypeAlias
 # type var syntax infer variance
 testPEP695GenericMethodInGenericClass
 testPEP695FinalAttribute
@@ -699,6 +695,7 @@ testPEP695VarianceChangesDueToDependency
 testPEP695VarianceInference
 testPEP695VarianceInferenceSpecialCaseWithTypeshed
 testPEP695InvalidGenericOrProtocolBaseClass
+testPEP695RecursiveTypeAliasForwardReference
 testCurrentClassWorksAsBound
 # type var syntax values
 testPEP695ValueRestriction
