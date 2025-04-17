@@ -662,10 +662,6 @@ testPEP695MultiDefinitionsForTypeAlias
 testPEP695UsingTypeVariableInOwnBoundOrConstraint
 testPEP695NestedGenericClass3
 testPEP695MultipleNestedGenericClass3
-# Default type errors
-testPEP695TypeParameterDefaultInvalid
-testPEP695TypeParameterDefaultInvalid2
-testPEP695TypeParameterDefaultInvalid3
 # Recursive Alias matching
 testPEP695RecursiveTypeAliasForwardReference
 # ""T" already defined as a type parameter"
@@ -676,11 +672,6 @@ testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec
 testPEP695MixNewAndOldStyleGenericsInTypeAlias
 # mostly formatting differences
 testPEP695Function
-testPEP695UpperBoundWithMultipleParams
-check-python312:testPEP695ParamSpec
-testPEP695TypeAliasBoundAndValueChecking
-testPEP695CannotUseTypeVarFromOuterClass
-testPEP695ArgumentDefault
 testPEP695UsingIncorrectExpressionsInTypeVariableBound
 testPEP695UsingIncorrectExpressionsInTypeAlias
 # type var syntax infer variance
