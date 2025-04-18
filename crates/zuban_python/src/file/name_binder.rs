@@ -401,7 +401,6 @@ impl<'db> NameBinder<'db> {
                             self.index_annotation_expr(
                                 &annotation.expression(),
                                 target.maybe_name_def().map(|n| n.name_index()),
-                                None,
                             );
                             self.index_target(target, ordered, cause)
                         }
@@ -499,7 +498,7 @@ impl<'db> NameBinder<'db> {
                     }
                     self.with_latest_type_params(type_params, |slf| {
                         // This is not an actual annotation, but behaves like one
-                        slf.index_annotation_expr(&expr, None, type_params.map(|tp| tp.index()));
+                        slf.index_annotation_expr(&expr, None);
                     });
                 }
                 StmtLikeContent::FunctionDef(func) => {
@@ -954,14 +953,12 @@ impl<'db> NameBinder<'db> {
         &mut self,
         node: &T,
         definition_name_index: Option<NodeIndex>,
-        type_params: Option<NodeIndex>,
     ) {
         self.index_non_block_node_full(
             node,
             true,
             IndexingCause::Annotation {
                 definition_name_index,
-                type_params,
             },
         )
     }
@@ -990,21 +987,18 @@ impl<'db> NameBinder<'db> {
                         NameParent::Atom => {
                             if let IndexingCause::Annotation {
                                 definition_name_index,
-                                type_params,
                             } = cause
                             {
-                                let was_handled = if matches!(self.kind, NameBinderKind::Class) {
-                                    // We check for annotation_names here, which we recheck later. But
-                                    // in that case only certain types are possible (e.g. not
-                                    // functions)
-                                    // This is a bit weird, but comes from the fact that it's possible
-                                    // to index types that are defined after the current name, but
-                                    // prior names are preferred over e.g. the current name.
-                                    self.try_to_process_class_annotation_reference_in_parents(name)
-                                } else {
-                                    self.try_to_process_type_params_in_parents(name)
-                                };
-                                if !was_handled {
+                                // We check for annotation_names here, which we recheck later. But
+                                // in that case only certain types are possible (e.g. not
+                                // functions)
+                                // This is a bit weird, but comes from the fact that it's possible
+                                // to index types that are defined after the current name, but
+                                // prior names are preferred over e.g. the current name.
+                                if !(matches!(self.kind, NameBinderKind::Class)
+                                    && self
+                                        .try_to_process_class_annotation_reference_in_parents(name))
+                                {
                                     self.annotation_names.push(AnnotationName {
                                         name,
                                         definition_name_index,
@@ -1312,20 +1306,20 @@ impl<'db> NameBinder<'db> {
             match kind {
                 TypeParamKind::TypeVar(bound, default) => {
                     if let Some(bound) = bound {
-                        self.index_annotation_expr(&bound, None, None)
+                        self.index_annotation_expr(&bound, None)
                     }
                     if let Some(default) = default {
-                        self.index_annotation_expr(&default, None, None)
+                        self.index_annotation_expr(&default, None)
                     }
                 }
                 TypeParamKind::TypeVarTuple(default) => {
                     if let Some(default) = default {
-                        self.index_annotation_expr(&default, None, None)
+                        self.index_annotation_expr(&default, None)
                     }
                 }
                 TypeParamKind::ParamSpec(default) => {
                     if let Some(default) = default {
-                        self.index_annotation_expr(&default, None, None)
+                        self.index_annotation_expr(&default, None)
                     }
                 }
             }
@@ -1359,7 +1353,6 @@ impl<'db> NameBinder<'db> {
         // Needs to be reset at the of this function
         let old_latest_type_params = std::mem::replace(&mut self.latest_type_params, type_params);
 
-        let type_params = type_params.map(|tp| tp.index());
         for param in params.iter() {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
@@ -1370,16 +1363,15 @@ impl<'db> NameBinder<'db> {
                         true,
                         IndexingCause::Annotation {
                             definition_name_index: None,
-                            type_params,
                         },
                     ),
-                    Err(expr) => self.index_annotation_expr(&expr, None, type_params),
+                    Err(expr) => self.index_annotation_expr(&expr, None),
                 };
             }
         }
         if let Some(return_annotation) = return_annotation {
             // This is the -> annotation
-            self.index_annotation_expr(&return_annotation.expression(), None, type_params);
+            self.index_annotation_expr(&return_annotation.expression(), None);
         }
 
         let parent_node_index = match self.kind {
@@ -1477,9 +1469,6 @@ impl<'db> NameBinder<'db> {
 
     #[inline]
     fn try_to_process_class_annotation_reference_in_parents(&mut self, name: Name<'db>) -> bool {
-        if self.try_to_process_type_params_in_scope(name) {
-            return true;
-        }
         if try_to_process_reference_for_symbol_table(
             &self.symbol_table,
             self.db_infos.file_index,
@@ -1493,35 +1482,6 @@ impl<'db> NameBinder<'db> {
         self.parent.is_some_and(|parent| {
             unsafe { &mut *parent }.try_to_process_class_annotation_reference_in_parents(name)
         })
-    }
-
-    fn try_to_process_type_params_in_scope(&mut self, name: Name) -> bool {
-        match self.kind {
-            NameBinderKind::Function { .. } => {
-                let func_def = FunctionDef::by_index(&self.db_infos.tree, self.scope_node);
-                if let Some(type_params) = func_def.type_params() {
-                    if self.try_to_process_type_params(type_params, name) {
-                        return true;
-                    }
-                }
-            }
-            NameBinderKind::Class { .. } => {
-                let class_def = ClassDef::by_index(&self.db_infos.tree, self.scope_node);
-                if let Some(type_params) = class_def.type_params() {
-                    if self.try_to_process_type_params(type_params, name) {
-                        return true;
-                    }
-                }
-            }
-            _ => (),
-        }
-        false
-    }
-    fn try_to_process_type_params_in_parents(&mut self, name: Name) -> bool {
-        self.try_to_process_type_params_in_scope(name)
-            || self.parent.is_some_and(|parent| {
-                unsafe { &mut *parent }.try_to_process_type_params_in_parents(name)
-            })
     }
 
     fn try_to_process_type_params(&mut self, type_params: TypeParams, name: Name) -> bool {
@@ -2085,7 +2045,6 @@ struct UnorderedReference<'db> {
 enum IndexingCause {
     Annotation {
         definition_name_index: Option<NodeIndex>,
-        type_params: Option<NodeIndex>,
     },
     FunctionName,
     ClassName,
