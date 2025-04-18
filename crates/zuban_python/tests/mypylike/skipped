@@ -654,12 +654,10 @@ testOtherVarArgs
 
 # 3.12 type var syntax
 # scoping
-testPEP695ScopingBasics
 testPEP695ClassScoping
 testPEP695NonLocalAndGlobal
 testPEP695NestedScopingSpecialCases
 testPEP695TypeAliasInClassBodyOrFunction
-testPEP695TypeAliasInvalidGenericConstraint
 testPEP695UsingTypeVariableInOwnBoundOrConstraint
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
