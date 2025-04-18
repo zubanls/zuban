@@ -36,6 +36,7 @@ enum NameBinderKind {
     Class,
     Lambda,
     Comprehension,
+    TypeAlias,
 }
 
 enum Unresolved<'db> {
@@ -491,14 +492,15 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::NonlocalStmt(n) => self.index_non_block_node(&n, ordered),
                 StmtLikeContent::TypeAlias(type_alias) => {
                     let (name_def, type_params, expr) = type_alias.unpack();
-                    // TODO add a separate scope
                     self.add_new_definition(name_def, Point::new_uncalculated());
-                    if let Some(type_params) = type_params {
-                        self.index_type_params(type_params)
-                    }
-                    self.with_latest_type_params(type_params, |slf| {
-                        // This is not an actual annotation, but behaves like one
-                        slf.index_annotation_expr(&expr, None);
+                    self.with_nested(NameBinderKind::TypeAlias, type_alias.index(), |binder| {
+                        binder.with_latest_type_params(type_params, |slf| {
+                            if let Some(type_params) = type_params {
+                                slf.index_type_params(type_params)
+                            }
+                            // This is not an actual annotation, but behaves like one
+                            slf.index_annotation_expr(&expr, None);
+                        });
                     });
                 }
                 StmtLikeContent::FunctionDef(func) => {
@@ -1378,7 +1380,9 @@ impl<'db> NameBinder<'db> {
             NameBinderKind::Global | NameBinderKind::Function { .. } | NameBinderKind::Class => {
                 self.scope_node
             }
-            NameBinderKind::Lambda | NameBinderKind::Comprehension => unreachable!(),
+            NameBinderKind::Lambda | NameBinderKind::Comprehension | NameBinderKind::TypeAlias => {
+                unreachable!()
+            }
         };
         self.db_infos.points.set(
             func.index() + FUNC_TO_PARENT_DIFF,
@@ -1393,14 +1397,6 @@ impl<'db> NameBinder<'db> {
     }
 
     fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
-        /*
-            self.with_latest_type_params(func.type_params(), |slf| {
-                slf.index_function_body_internal(func, is_method)
-            })
-        }
-
-        pub(crate) fn index_function_body_internal(&mut self, func: FunctionDef<'db>, is_method: bool) {
-        */
         // Function name was indexed already.
         let (_, type_params, params, _, block) = func.unpack();
         if let Some(type_params) = type_params {
