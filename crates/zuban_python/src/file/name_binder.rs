@@ -1009,8 +1009,7 @@ impl<'db> NameBinder<'db> {
                                 // to index types that are defined after the current name, but
                                 // prior names are preferred over e.g. the current name.
                                 if !(matches!(self.kind, NameBinderKind::Class)
-                                    && self
-                                        .try_to_process_class_annotation_reference_in_parents(name))
+                                    && self.try_to_process_class_annotation_reference(name))
                                 {
                                     self.annotation_names.push(AnnotationName {
                                         name,
@@ -1475,23 +1474,15 @@ impl<'db> NameBinder<'db> {
     }
 
     #[inline]
-    fn try_to_process_class_annotation_reference_in_parents(&mut self, name: Name<'db>) -> bool {
-        if try_to_process_reference_for_symbol_table(
+    fn try_to_process_class_annotation_reference(&mut self, name: Name<'db>) -> bool {
+        try_to_process_reference_for_symbol_table(
             &self.symbol_table,
             self.db_infos.file_index,
             self.db_infos.points,
             name,
             false,
             self.in_global_scope(),
-        ) {
-            return true;
-        }
-        /*
-        self.parent.is_some_and(|parent| {
-            unsafe { &mut *parent }.try_to_process_class_annotation_reference_in_parents(name)
-        })
-        */
-        false
+        )
     }
 
     fn try_to_process_type_params(&mut self, type_params: TypeParams, name: Name) -> bool {
