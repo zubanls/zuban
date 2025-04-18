@@ -506,13 +506,12 @@ impl<'db> NameBinder<'db> {
                     self.add_new_definition(name_def, Point::new_uncalculated());
                     self.with_nested(NameBinderKind::TypeAlias, type_alias.index(), |binder| {
                         binder.with_latest_type_params(type_params, |slf| {
-                            if let Some(type_params) = type_params {
-                                slf.index_type_params(type_params)
-                            }
+                            slf.index_type_param_names(type_params);
                             // This is not an actual annotation, but behaves like one
                             slf.index_annotation_expr(&expr, None);
                         });
                     });
+                    self.index_type_param_bounds(type_params);
                 }
                 StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
@@ -809,9 +808,9 @@ impl<'db> NameBinder<'db> {
     }
 
     fn index_class(&mut self, class_def: ClassDef<'db>) {
-        self.with_latest_type_params(class_def.type_params(), |slf| {
-            slf.index_class_internal(class_def)
-        })
+        let type_params = class_def.type_params();
+        self.index_type_param_bounds(type_params);
+        self.with_latest_type_params(type_params, |slf| slf.index_class_internal(class_def))
     }
 
     fn index_class_internal(&mut self, class_def: ClassDef<'db>) {
@@ -821,9 +820,7 @@ impl<'db> NameBinder<'db> {
         }
         let class_symbol_table =
             self.with_nested(NameBinderKind::Class, class_def.index(), |binder| {
-                if let Some(type_params) = type_params {
-                    binder.index_type_params(type_params)
-                }
+                binder.index_type_param_names(type_params);
                 binder.index_block(block, true);
             });
 
@@ -1311,29 +1308,38 @@ impl<'db> NameBinder<'db> {
             .is_some_and(|specific| specific == search)
     }
 
-    fn index_type_params(&mut self, type_params: TypeParams<'db>) {
-        for type_param in type_params.iter() {
-            let (name_def, kind) = type_param.unpack();
-            self.add_new_definition(name_def, Point::new_uncalculated());
-            match kind {
-                TypeParamKind::TypeVar(bound, default) => {
-                    if let Some(bound) = bound {
-                        self.index_annotation_expr(&bound, None)
+    fn index_type_param_bounds(&mut self, type_params: Option<TypeParams<'db>>) {
+        if let Some(type_params) = type_params {
+            for type_param in type_params.iter() {
+                let (_, kind) = type_param.unpack();
+                match kind {
+                    TypeParamKind::TypeVar(bound, default) => {
+                        if let Some(bound) = bound {
+                            self.index_annotation_expr(&bound, None)
+                        }
+                        if let Some(default) = default {
+                            self.index_annotation_expr(&default, None)
+                        }
                     }
-                    if let Some(default) = default {
-                        self.index_annotation_expr(&default, None)
+                    TypeParamKind::TypeVarTuple(default) => {
+                        if let Some(default) = default {
+                            self.index_annotation_expr(&default, None)
+                        }
+                    }
+                    TypeParamKind::ParamSpec(default) => {
+                        if let Some(default) = default {
+                            self.index_annotation_expr(&default, None)
+                        }
                     }
                 }
-                TypeParamKind::TypeVarTuple(default) => {
-                    if let Some(default) = default {
-                        self.index_annotation_expr(&default, None)
-                    }
-                }
-                TypeParamKind::ParamSpec(default) => {
-                    if let Some(default) = default {
-                        self.index_annotation_expr(&default, None)
-                    }
-                }
+            }
+        }
+    }
+
+    fn index_type_param_names(&mut self, type_params: Option<TypeParams<'db>>) {
+        if let Some(type_params) = type_params {
+            for type_param in type_params.iter() {
+                self.add_new_definition(type_param.name_def(), Point::new_uncalculated());
             }
         }
     }
@@ -1354,6 +1360,7 @@ impl<'db> NameBinder<'db> {
         });
 
         let (name_def, type_params, params, return_annotation, _) = func.unpack();
+        self.index_type_param_bounds(type_params);
 
         for param in params.iter() {
             // Defaults don't have access to the type params
@@ -1409,9 +1416,7 @@ impl<'db> NameBinder<'db> {
     fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
         // Function name was indexed already.
         let (_, type_params, params, _, block) = func.unpack();
-        if let Some(type_params) = type_params {
-            self.index_type_params(type_params)
-        }
+        self.index_type_param_names(type_params);
         self.index_param_name_defs(params.iter().map(|param| param.name_def()), is_method);
 
         self.index_block(block, true);
