@@ -121,6 +121,7 @@ pub(crate) enum IssueKind {
     ReturnInAsyncGenerator,
     NonlocalAtModuleLevel,
     NonlocalNoBindingFound { name: Box<str> },
+    NonlocalBindingDisallowedForTypeParams { name: Box<str> },
     GlobalAtModuleLevel,
     NonlocalAndGlobal { name: Box<str> },
     NameAssignedBeforeGlobalDeclaration { name: Box<str> },
@@ -1240,6 +1241,9 @@ impl<'db> Diagnostic<'db> {
             ReturnInAsyncGenerator => r#""return" with value in async generator is not allowed"#.to_string(),
             NonlocalAtModuleLevel => "nonlocal declaration not allowed at module level".to_string(),
             NonlocalNoBindingFound { name } => format!(r#"No binding for nonlocal "{name}" found"#),
+            NonlocalBindingDisallowedForTypeParams { name } => format!(
+                r#"nonlocal binding not allowed for type parameter "{name}""#
+            ),
             GlobalAtModuleLevel => format!(r#"Global at module level is unnecessary"#),
             NonlocalAndGlobal { name } => format!(r#"Name "{name}" is nonlocal and global"#),
             NameAssignedBeforeGlobalDeclaration { name } => format!(

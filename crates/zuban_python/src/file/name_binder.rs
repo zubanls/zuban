@@ -1087,6 +1087,10 @@ impl<'db> NameBinder<'db> {
                                                 IssueKind::NonlocalAndGlobal {
                                                     name: name_str.into(),
                                                 }
+                                            } else if self.is_nonlocal_type_param(local_index) {
+                                                IssueKind::NonlocalBindingDisallowedForTypeParams {
+                                                    name: name_str.into(),
+                                                }
                                             } else {
                                                 IssueKind::NameDefinedInLocalScopeBeforeNonlocal {
                                                     name: name_str.into(),
@@ -1296,6 +1300,13 @@ impl<'db> NameBinder<'db> {
             self.add_issue(name.index(), IssueKind::NonlocalAtModuleLevel);
             None
         }
+    }
+
+    fn is_nonlocal_type_param(&self, pointing_to_name: NodeIndex) -> bool {
+        matches!(
+            Name::by_index(&self.db_infos.tree, pointing_to_name).expect_type(),
+            TypeLike::TypeParam(_)
+        )
     }
 
     fn has_specific_on_name_def(&self, name_index: NodeIndex, search: Specific) -> bool {
