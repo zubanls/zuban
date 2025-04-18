@@ -41,6 +41,7 @@ enum NameBinderKind {
 enum Unresolved<'db> {
     FunctionDef {
         func: FunctionDef<'db>,
+        latest_type_params: Option<TypeParams<'db>>,
         is_method: bool,
         is_async: bool,
     },
@@ -77,6 +78,7 @@ pub(crate) struct NameBinder<'db> {
     kind: NameBinderKind,
     scope_node: NodeIndex,
     symbol_table: SymbolTable,
+    latest_type_params: Option<TypeParams<'db>>,
     unordered_references: Vec<UnorderedReference<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
@@ -99,6 +101,7 @@ impl<'db> NameBinder<'db> {
             kind,
             scope_node,
             symbol_table: SymbolTable::default(),
+            latest_type_params: None,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             names_to_be_resolved_in_parent: vec![],
@@ -167,6 +170,7 @@ impl<'db> NameBinder<'db> {
     ) -> SymbolTable {
         let mut name_binder = Self::new(self.db_infos, kind, scope_node, Some(self));
         name_binder.following_nodes_need_flow_analysis = self.following_nodes_need_flow_analysis;
+        name_binder.latest_type_params = self.latest_type_params;
         func(&mut name_binder);
         name_binder.close();
         let NameBinder {
@@ -493,8 +497,10 @@ impl<'db> NameBinder<'db> {
                     if let Some(type_params) = type_params {
                         self.index_type_params(type_params)
                     }
-                    // This is not an actual annotation, but behaves like one
-                    self.index_annotation_expr(&expr, None, type_params.map(|tp| tp.index()))
+                    self.with_latest_type_params(type_params, |slf| {
+                        // This is not an actual annotation, but behaves like one
+                        slf.index_annotation_expr(&expr, None, type_params.map(|tp| tp.index()));
+                    });
                 }
                 StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
@@ -619,13 +625,18 @@ impl<'db> NameBinder<'db> {
                     }
                     Unresolved::FunctionDef {
                         func,
+                        latest_type_params,
                         is_method,
                         is_async,
                     } => {
                         self.with_nested(
                             NameBinderKind::Function { is_async },
                             func.index(),
-                            |binder| binder.index_function_body(func, is_method),
+                            |binder| {
+                                binder.with_latest_type_params(latest_type_params, |slf| {
+                                    slf.index_function_body(func, is_method)
+                                })
+                            },
                         );
                     }
                     Unresolved::Lambda(lambda) => {
@@ -775,16 +786,32 @@ impl<'db> NameBinder<'db> {
         self.index_block(block, ordered);
     }
 
+    fn with_latest_type_params(
+        &mut self,
+        type_params: Option<TypeParams<'db>>,
+        callback: impl FnOnce(&mut Self),
+    ) {
+        let old_latest_type_params = std::mem::replace(&mut self.latest_type_params, type_params);
+        callback(self);
+        self.latest_type_params = old_latest_type_params;
+    }
+
     fn index_class(&mut self, class_def: ClassDef<'db>) {
+        self.with_latest_type_params(class_def.type_params(), |slf| {
+            slf.index_class_internal(class_def)
+        })
+    }
+
+    fn index_class_internal(&mut self, class_def: ClassDef<'db>) {
         let (type_params, arguments, block) = class_def.unpack();
-        if let Some(type_params) = type_params {
-            self.index_type_params(type_params)
-        }
         if let Some(arguments) = arguments {
             self.index_non_block_node(&arguments, true);
         }
         let class_symbol_table =
             self.with_nested(NameBinderKind::Class, class_def.index(), |binder| {
+                if let Some(type_params) = type_params {
+                    binder.index_type_params(type_params)
+                }
                 binder.index_block(block, true);
             });
 
@@ -954,6 +981,11 @@ impl<'db> NameBinder<'db> {
             };
             match n {
                 InterestingNode::Name(name) => {
+                    if let Some(type_params) = self.latest_type_params {
+                        if self.try_to_process_type_params(type_params, name) {
+                            continue;
+                        }
+                    }
                     match name.parent() {
                         NameParent::Atom => {
                             if let IndexingCause::Annotation {
@@ -961,13 +993,6 @@ impl<'db> NameBinder<'db> {
                                 type_params,
                             } = cause
                             {
-                                if let Some(type_params) = type_params {
-                                    let type_params =
-                                        TypeParams::by_index(&self.db_infos.tree, type_params);
-                                    if self.try_to_process_type_params(type_params, name) {
-                                        continue;
-                                    }
-                                }
                                 let was_handled = if matches!(self.kind, NameBinderKind::Class) {
                                     // We check for annotation_names here, which we recheck later. But
                                     // in that case only certain types are possible (e.g. not
@@ -1317,11 +1342,22 @@ impl<'db> NameBinder<'db> {
         // now we just do.
         self.unresolved_nodes.push(Unresolved::FunctionDef {
             func,
+            latest_type_params: self.latest_type_params,
             is_method: self.kind == NameBinderKind::Class,
             is_async,
         });
 
         let (name_def, type_params, params, return_annotation, _) = func.unpack();
+
+        for param in params.iter() {
+            // Defaults don't have access to the type params
+            if let Some(expression) = param.default() {
+                self.index_non_block_node(&expression, ordered);
+            }
+        }
+
+        // Needs to be reset at the of this function
+        let old_latest_type_params = std::mem::replace(&mut self.latest_type_params, type_params);
 
         let type_params = type_params.map(|tp| tp.index());
         for param in params.iter() {
@@ -1339,9 +1375,6 @@ impl<'db> NameBinder<'db> {
                     ),
                     Err(expr) => self.index_annotation_expr(&expr, None, type_params),
                 };
-            }
-            if let Some(expression) = param.default() {
-                self.index_non_block_node(&expression, ordered);
             }
         }
         if let Some(return_annotation) = return_annotation {
@@ -1364,9 +1397,18 @@ impl<'db> NameBinder<'db> {
             Point::new_uncalculated(),
             IndexingCause::FunctionName,
         );
+        self.latest_type_params = old_latest_type_params;
     }
 
-    pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
+    fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
+        /*
+            self.with_latest_type_params(func.type_params(), |slf| {
+                slf.index_function_body_internal(func, is_method)
+            })
+        }
+
+        pub(crate) fn index_function_body_internal(&mut self, func: FunctionDef<'db>, is_method: bool) {
+        */
         // Function name was indexed already.
         let (_, type_params, params, _, block) = func.unpack();
         if let Some(type_params) = type_params {
