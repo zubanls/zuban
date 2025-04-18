@@ -1419,7 +1419,7 @@ class Nested:
 
 
 def foo(b: Nested.A):
-    reveal_type(b.m)  # N: Revealed type is "bytes"
+    reveal_type(b.m)  # N: Revealed type is "m.C"
     reveal_type(b.a)  # N: Revealed type is "int"
 
 [file m.py]
@@ -1678,3 +1678,14 @@ class Baz:
 reveal_type(Foo(1).y)  # N: Revealed type is "int"
 reveal_type(Bar(1).y)  # N: Revealed type is "int"
 reveal_type(Baz(1).y)  # N: Revealed type is "int"
+
+[case nested_class_func_definition_scoping]
+class X:
+    x = 1
+    z = int
+    class Y:
+        x  # E: Name "x" is not defined
+        y: z  # E: Name "z" is not defined
+    def f(self) -> None:
+        x  # E: Name "x" is not defined
+        y: z  # E: Name "z" is not defined

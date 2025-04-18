@@ -661,10 +661,10 @@ testPEP695NestedScopingSpecialCases
 testPEP695TypeAliasInClassBodyOrFunction
 testPEP695TypeAliasInvalidGenericConstraint
 testPEP695UsingTypeVariableInOwnBoundOrConstraint
-testPEP695NestedGenericClass3
-testPEP695MultipleNestedGenericClass3
 # ""T" already defined as a type parameter"
 testPEP695RedefineTypeParameterInScope
+testPEP695NestedGenericClass3
+testPEP695MultipleNestedGenericClass3
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
 testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec
