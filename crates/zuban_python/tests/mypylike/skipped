@@ -590,6 +590,9 @@ testGenericFunctionMemberExpand
 testTypeVarValuesNarrowing
 testConstrainedGenericSuper
 testTypingSelfOnSuperTypeVarValues
+# type var values syntax
+testPEP695ValueRestriction
+testPEP695ValueRestrictionForwardReference
 
 # ini config multiline
 mypy_ini_exclude_multi_line_verbose_regex
@@ -654,7 +657,6 @@ testOtherVarArgs
 
 # 3.12 type var syntax
 # scoping
-testPEP695NestedScopingSpecialCases
 testPEP695TypeAliasInClassBodyOrFunction
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
@@ -687,9 +689,6 @@ testPEP695VarianceInferenceSpecialCaseWithTypeshed
 testPEP695InvalidGenericOrProtocolBaseClass
 testPEP695RecursiveTypeAliasForwardReference
 testCurrentClassWorksAsBound
-# type var syntax values
-testPEP695ValueRestriction
-testPEP695ValueRestrictionForwardReference
 # TypeAliasType
 testTypeAliasType
 testTypeAliasTypeInvalid

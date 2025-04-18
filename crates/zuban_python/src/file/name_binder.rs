@@ -1074,7 +1074,7 @@ impl<'db> NameBinder<'db> {
                                     }
                                 }
                                 NameDefParent::NonlocalStmt => {
-                                    if let Some(parent) = self.lookup_nonlocal_in_parent(name) {
+                                    if let Some(parent) = self.lookup_nonlocal_in_parents(name) {
                                         let name_str = name.as_code();
                                         // If there is no parent, an error was added
                                         if let Some(local_index) =
@@ -1282,20 +1282,34 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn lookup_nonlocal_in_parent(&self, name: Name) -> Option<NodeIndex> {
+    fn lookup_nonlocal_in_parents(&self, name: Name) -> Option<NodeIndex> {
         if let Some(parent) = self.parent {
             let parent = unsafe { &*parent };
             let name_str = name.as_code();
-            let result = parent.symbol_table.lookup_symbol(name_str);
-            if result.is_none() || !matches!(parent.kind, NameBinderKind::Function { .. }) {
+            if !matches!(parent.kind, NameBinderKind::Function { .. }) {
                 self.add_issue(
                     name.index(),
                     IssueKind::NonlocalNoBindingFound {
                         name: name_str.into(),
                     },
                 );
+                return None;
             }
-            result
+            let result = parent.symbol_table.lookup_symbol(name_str);
+            if let Some(index) = result {
+                if self.is_nonlocal_type_param(index) {
+                    self.add_issue(
+                        name.index(),
+                        IssueKind::NonlocalBindingDisallowedForTypeParams {
+                            name: name_str.into(),
+                        },
+                    );
+                    return None;
+                }
+                result
+            } else {
+                parent.lookup_nonlocal_in_parents(name)
+            }
         } else {
             self.add_issue(name.index(), IssueKind::NonlocalAtModuleLevel);
             None
@@ -1306,7 +1320,7 @@ impl<'db> NameBinder<'db> {
         matches!(
             Name::by_index(&self.db_infos.tree, pointing_to_name).expect_type(),
             TypeLike::TypeParam(_)
-        )
+        ) && self.db_infos.points.get(pointing_to_name).node_index() == pointing_to_name
     }
 
     fn has_specific_on_name_def(&self, name_index: NodeIndex, search: Specific) -> bool {
