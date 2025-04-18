@@ -10,13 +10,13 @@ use parsa_python_cst::*;
 
 use super::{
     first_defined_name, first_defined_name_of_multi_def, flow_analysis::FLOW_ANALYSIS,
-    inference::await_, ClassNodeRef,
+    inference::await_, ClassNodeRef, FuncNodeRef,
 };
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
-        ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation, Point,
-        Specific,
+        ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation,
+        ParentScope, Point, Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -759,6 +759,37 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    fn check_type_params_redefinitions(&self, parent_scope: ParentScope, type_params: TypeParams) {
+        let type_vars = match parent_scope {
+            ParentScope::Module => return,
+            ParentScope::Function(index) => {
+                let func = FuncNodeRef::new(self.file, index);
+                // TODO
+                //self.check_type_params_redefinitions(parent_scope, type_params);
+                func.type_vars(self.i_s.db)
+            }
+            ParentScope::Class(index) => {
+                let class = ClassNodeRef::new(self.file, index);
+                let storage = class.class_storage();
+                self.check_type_params_redefinitions(storage.parent_scope, type_params);
+                class.type_vars(self.i_s)
+            }
+        };
+        for type_param in type_params.iter() {
+            for parent_type_var in type_vars.iter() {
+                let name_def = type_param.name_def();
+                if name_def.as_code() == parent_type_var.name(self.i_s.db) {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::AlreadyDefinedTypeParameter {
+                            name: name_def.as_code().into(),
+                        },
+                    )
+                }
+            }
+        }
+    }
+
     pub(crate) fn calc_block_diagnostics(
         &self,
         block: Block,
@@ -787,7 +818,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn calc_class_diagnostics_internal(&self, class: ClassDef) {
-        let (_, arguments, block) = class.unpack();
+        let (type_params, arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
         let class_node_ref = ClassNodeRef::new(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
@@ -835,6 +866,10 @@ impl Inference<'_, '_, '_> {
 
         let class_infos = class_node_ref.use_cached_class_infos(db);
         let c = Class::with_self_generics(db, class_node_ref);
+
+        if let Some(type_params) = type_params {
+            self.check_type_params_redefinitions(c.class_storage.parent_scope, type_params);
+        }
 
         if matches!(class_infos.class_kind, ClassKind::TypedDict) {
             // TypedDicts are special, because they really only contain annotations and no methods.
