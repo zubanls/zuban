@@ -898,12 +898,12 @@ impl<'db> NameBinder<'db> {
                 else {
                     unreachable!();
                 };
-                let FuncParentScope::ClassDef(c) =
+                let ParentScope::Class(parent_class_index) =
                     func_parent_scope(self.db_infos.tree, self.db_infos.points, func.index())
                 else {
                     unreachable!()
                 };
-                if c.index() == class_index {
+                if parent_class_index == class_index {
                     return true;
                 }
             }
@@ -2012,29 +2012,19 @@ pub fn is_expr_part_reachable_for_name_binder(
     Truthiness::Unknown
 }
 
-pub fn func_parent_scope<'tree>(
-    tree: &'tree Tree,
-    points: &Points,
-    func_index: NodeIndex,
-) -> FuncParentScope<'tree> {
+pub fn func_parent_scope(tree: &Tree, points: &Points, func_index: NodeIndex) -> ParentScope {
     debug_assert!(FunctionDef::maybe_by_index(tree, func_index).is_some());
     let parent_index = func_index + FUNC_TO_PARENT_DIFF;
     let p = points.get(parent_index);
     let to = p.node_index();
     if to == 0 {
-        return FuncParentScope::Module;
+        return ParentScope::Module;
     }
-    if let Some(class_def) = ClassDef::maybe_by_index(tree, to) {
-        FuncParentScope::ClassDef(class_def)
+    if FunctionDef::maybe_by_index(tree, to).is_some() {
+        ParentScope::Function(to)
     } else {
-        FuncParentScope::FunctionDef(FunctionDef::by_index(tree, to))
+        ParentScope::Class(to)
     }
-}
-
-pub(crate) enum FuncParentScope<'db> {
-    Module,
-    FunctionDef(FunctionDef<'db>),
-    ClassDef(ClassDef<'db>),
 }
 
 struct UnorderedReference<'db> {

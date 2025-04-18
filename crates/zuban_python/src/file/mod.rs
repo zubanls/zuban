@@ -16,7 +16,7 @@ pub(crate) use flow_analysis::{process_unfinished_partials, FLOW_ANALYSIS};
 use inference::Inference;
 pub(crate) use inference::{first_defined_name, first_defined_name_of_multi_def};
 pub(crate) use name_binder::{
-    func_parent_scope, FuncParentScope, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF,
+    func_parent_scope, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF,
 };
 pub(crate) use python_file::{
     dotted_path_from_dir, ComplexValues, OtherDefinitionIterator, PythonFile,

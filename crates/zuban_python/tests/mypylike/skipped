@@ -661,8 +661,6 @@ testPEP695NestedScopingSpecialCases
 testPEP695TypeAliasInClassBodyOrFunction
 testPEP695TypeAliasInvalidGenericConstraint
 testPEP695UsingTypeVariableInOwnBoundOrConstraint
-# ""T" already defined as a type parameter"
-testPEP695RedefineTypeParameterInScope
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
 testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec

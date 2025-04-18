@@ -8,10 +8,7 @@ use parsa_python_cst::{
 use crate::{
     database::{ComplexPoint, Database, Locality, ParentScope, Point, PointLink, Specific},
     diagnostics::{Issue, IssueKind},
-    file::{
-        func_parent_scope, FuncParentScope, PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF,
-        FUNC_TO_TYPE_VAR_DIFF,
-    },
+    file::{func_parent_scope, PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF},
     inference_state::InferenceState,
     node_ref::NodeRef,
     recoverable_error,
@@ -170,15 +167,19 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         format!("{base}.{}", self.name())
     }
 
+    pub fn parent_scope(&self) -> ParentScope {
+        func_parent_scope(&self.file.tree, &self.file.points, self.node_index)
+    }
+
     pub(crate) fn parent(&self, db: &'db Database) -> FuncParent<'db> {
-        match func_parent_scope(&self.file.tree, &self.file.points, self.node_index) {
-            FuncParentScope::Module => FuncParent::Module,
-            FuncParentScope::ClassDef(c) => {
-                let n = ClassNodeRef::new(self.file, c.index()).to_db_lifetime(db);
+        match self.parent_scope() {
+            ParentScope::Module => FuncParent::Module,
+            ParentScope::Class(class_index) => {
+                let n = ClassNodeRef::new(self.file, class_index).to_db_lifetime(db);
                 FuncParent::Class(Class::with_self_generics(db, n))
             }
-            FuncParentScope::FunctionDef(f) => {
-                let n = NodeRef::new(self.file, f.index()).to_db_lifetime(db);
+            ParentScope::Function(func_index) => {
+                let n = NodeRef::new(self.file, func_index).to_db_lifetime(db);
                 FuncParent::Function(Function::new_with_unknown_parent(db, n))
             }
         }

@@ -760,18 +760,38 @@ impl Inference<'_, '_, '_> {
     }
 
     fn check_type_params_redefinitions(&self, parent_scope: ParentScope, type_params: TypeParams) {
+        for (i, type_param) in type_params.iter().enumerate() {
+            for other in type_params.iter().skip(i + 1) {
+                let name_def = type_param.name_def();
+                if name_def.as_code() == other.name_def().as_code() {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::AlreadyDefinedTypeParameter {
+                            name: name_def.as_code().into(),
+                        },
+                    )
+                }
+            }
+        }
+        self.check_parent_type_params_redefinitions(parent_scope, type_params)
+    }
+
+    fn check_parent_type_params_redefinitions(
+        &self,
+        parent_scope: ParentScope,
+        type_params: TypeParams,
+    ) {
         let type_vars = match parent_scope {
             ParentScope::Module => return,
             ParentScope::Function(index) => {
                 let func = FuncNodeRef::new(self.file, index);
-                // TODO
-                //self.check_type_params_redefinitions(parent_scope, type_params);
+                self.check_parent_type_params_redefinitions(func.parent_scope(), type_params);
                 func.type_vars(self.i_s.db)
             }
             ParentScope::Class(index) => {
                 let class = ClassNodeRef::new(self.file, index);
                 let storage = class.class_storage();
-                self.check_type_params_redefinitions(storage.parent_scope, type_params);
+                self.check_parent_type_params_redefinitions(storage.parent_scope, type_params);
                 class.type_vars(self.i_s)
             }
         };
@@ -1355,7 +1375,12 @@ impl Inference<'_, '_, '_> {
 
         let func_kind = function.kind(i_s);
 
-        let (name, _, params, return_annotation, block) = func_node.unpack();
+        let (name, type_params, params, return_annotation, block) = func_node.unpack();
+
+        if let Some(type_params) = type_params {
+            self.check_type_params_redefinitions(function.parent_scope(), type_params);
+        }
+
         if !is_overload_member {
             // Check defaults here.
             for param in params.iter() {
