@@ -505,11 +505,9 @@ impl<'db> NameBinder<'db> {
                     let (name_def, type_params, expr) = type_alias.unpack();
                     self.add_new_definition(name_def, Point::new_uncalculated());
                     self.with_nested(NameBinderKind::TypeAlias, type_alias.index(), |binder| {
-                        binder.with_latest_type_params(type_params, |slf| {
-                            slf.index_type_param_names(type_params);
-                            // This is not an actual annotation, but behaves like one
-                            slf.index_annotation_expr(&expr, None);
-                        });
+                        binder.index_type_param_names(type_params);
+                        // This is not an actual annotation, but behaves like one
+                        binder.index_annotation_expr(&expr, None);
                     });
                     self.index_type_param_bounds(type_params);
                 }

@@ -656,8 +656,6 @@ testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
 # 3.12 type var syntax
-# scoping
-testPEP695TypeAliasInClassBodyOrFunction
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
 testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec

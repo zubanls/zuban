@@ -637,6 +637,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub fn compute_type_alias_syntax(&self, type_alias: parsa_python_cst::TypeAlias) {
         let (name_def, type_params, expr) = type_alias.unpack();
+        if self.file.points.get(name_def.index()).calculated() {
+            return;
+        }
         let scope = self.i_s.as_parent_scope();
         let type_var_likes = if let Some(type_params) = type_params {
             self.compute_type_params_definition(scope, type_params)
