@@ -1107,9 +1107,9 @@ impl<'db> Diagnostic<'db> {
                 r#"You may not have a custom "{method_name}" method when "order" is True"#
             ),
             DataclassCannotInheritNonFrozenFromFrozen =>
-                "Cannot inherit non-frozen dataclass from a frozen one".to_string(),
+                "Non-frozen dataclass cannot inherit from a frozen dataclass".to_string(),
             DataclassCannotInheritFrozenFromNonFrozen =>
-                "Cannot inherit frozen dataclass from a non-frozen one".to_string(),
+                "Frozen dataclass cannot inherit from a non-frozen dataclass".to_string(),
             DataclassReplaceExpectedDataclass { got } => format!(
                 r#"Argument 1 to "replace" has incompatible type "{got}"; expected a dataclass"#,
             ),
