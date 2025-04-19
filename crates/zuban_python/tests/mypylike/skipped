@@ -27,8 +27,6 @@ testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled
 testAbstractOverloadsWithoutImplementationAllowed
 testNamedTupleAsClassMemberNoCrash
 testRunParamSpecDuplicateArgsKwargs
-testLambdaInExceptStarBlock
-testTypeVarTupleJoinInstanceTypeVar
 # lambda override inference
 testLambdaInOverrideInference
 # Mypy upgrade Enum
@@ -590,6 +588,7 @@ testMatchNamedTupleSequence
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1
 testReturnInExceptStarBlock2
+testLambdaInExceptStarBlock
 testContinueInExceptBlockNestedInExceptStarBlock
 testReturnInExceptBlockNestedInExceptStarBlock
 testBreakContinueReturnInExceptStarBlock1

@@ -573,6 +573,11 @@ impl TupleArgs {
         if self == other {
             return self.clone();
         }
+        if self.is_any() {
+            return self.clone();
+        } else if other.is_any() {
+            return other.clone();
+        }
         match (self, other) {
             (Self::FixedLen(ts1), Self::FixedLen(ts2)) => {
                 if ts1.len() == ts2.len() {

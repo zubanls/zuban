@@ -441,6 +441,10 @@ pub(crate) enum TupleUnpack {
 }
 
 impl TupleUnpack {
+    pub fn is_any(&self) -> bool {
+        matches!(self, Self::ArbitraryLen(Type::Any(_)))
+    }
+
     fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
             Self::TypeVarTuple(t) => format_data.format_type_var_tuple(t),

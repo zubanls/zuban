@@ -65,7 +65,15 @@ impl TupleArgs {
                         {
                             TupleUnpack::TypeVarTuple(tvt1.clone())
                         }
-                        _ => TupleUnpack::ArbitraryLen(i_s.db.python_state.object_type()),
+                        _ => {
+                            if w1.unpack.is_any() {
+                                w1.unpack.clone()
+                            } else if w2.unpack.is_any() {
+                                w2.unpack.clone()
+                            } else {
+                                TupleUnpack::ArbitraryLen(i_s.db.python_state.object_type())
+                            }
+                        }
                     },
                     after: w1
                         .after
