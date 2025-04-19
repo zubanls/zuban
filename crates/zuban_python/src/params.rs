@@ -457,7 +457,7 @@ pub fn matches_simple_params<
                         }
                         _ => {
                             if !matcher.precise_matching
-                                && is_trivial_suffix(i_s.db, specific1, params1.next())
+                                && is_trivial_suffix(i_s.db, specific1, params1.next(), params2)
                             {
                                 debug!("Matched because of trivial suffix");
                                 return matches;
@@ -556,7 +556,7 @@ pub fn matches_simple_params<
                 }
                 specific1 => {
                     if !matcher.precise_matching
-                        && is_trivial_suffix(i_s.db, specific1, params1.next())
+                        && is_trivial_suffix(i_s.db, specific1, params1.next(), params2)
                     {
                         debug!("Matched because of trivial suffix (too few params)");
                         return matches;
@@ -592,34 +592,47 @@ pub fn matches_simple_params<
         if !param2.has_default()
             && !matches!(param2.kind(i_s.db), ParamKind::Star | ParamKind::StarStar)
         {
-            debug!("Params mismatch, because the other side had an additional param");
+            debug!(
+                "Params mismatch, because the other side had an additional param, {:?}",
+                param2.kind(i_s.db)
+            );
             return Match::new_false();
         }
     }
     matches
 }
 
-fn is_trivial_suffix<'x, P1: Param<'x>>(
-    db: &'x Database,
+fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
+    db: &'db Database,
     p1: WrappedParamType,
     p2: Option<P1>,
+    mut params2: Peekable<impl Iterator<Item = P2> + Clone>,
 ) -> bool {
     // Mypy allows matching anything if the function ends with *args: Any, **kwargs: Any
     // This is described in Mypy's commit f41e24c8b31a110c2f01a753acba458977e41bfc
     let WrappedParamType::Star(WrappedStar::ArbitraryLen(star_t)) = p1 else {
         return false;
     };
+    let is_any = |t: &Option<Cow<Type>>| match t {
+        Some(t) => matches!(t.as_ref(), Type::Any(_)),
+        None => true,
+    };
+
     let Some(p2) = p2 else {
-        return false;
+        // Mypy also allows *args: Any to be overwritten by positional arguments
+        return is_any(&star_t)
+            && params2.all(|p| {
+                matches!(
+                    p.specific(db),
+                    WrappedParamType::PositionalOnly(_)
+                        | WrappedParamType::PositionalOrKeyword(_)
+                        | WrappedParamType::Star(_)
+                )
+            });
     };
     let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = p2.specific(db)
     else {
         return false;
-    };
-
-    let is_any = |t: &Option<Cow<Type>>| match t {
-        Some(t) => matches!(t.as_ref(), Type::Any(_)),
-        None => true,
     };
 
     is_any(&star_t) && is_any(&star_star_t)

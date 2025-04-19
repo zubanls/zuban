@@ -28,9 +28,6 @@ testAbstractOverloadsWithoutImplementationAllowed
 testNamedTupleAsClassMemberNoCrash
 testRunParamSpecDuplicateArgsKwargs
 testLambdaInExceptStarBlock
-testTypedDictAliasGeneric
-testTypeGuardedTypeDoesNotLeak
-testAliasToCallableWithUnpack
 testTypeVarTupleJoinInstanceTypeVar
 # lambda override inference
 testLambdaInOverrideInference
@@ -709,6 +706,7 @@ testOtherVarArgs
 testPEP695TypeAliasNotReadyClass
 testPEP695TypeAliasRecursiveOuterClass
 testPEP695TypeAliasRecursiveInvalid
+testTypedDictAliasGeneric
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
 testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec
@@ -1024,6 +1022,7 @@ testUnsafeOverlappingNotWithAny
 
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
+testTypeGuardedTypeDoesNotLeak
 # Enum Dict value inferred is int instead of Literal[1]
 testFunctionalEnumListOfPairs
 # "Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership
