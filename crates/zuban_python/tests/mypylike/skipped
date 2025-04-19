@@ -655,6 +655,14 @@ testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
+# typeshed upgrade __getitem__ with generics
+testGetSlice
+testSliceSupportsIndex
+testUnionOfTupleIndexMixed
+testListMethods
+testListOperators
+testListSetitemTuple
+
 # 3.12 type var syntax
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
