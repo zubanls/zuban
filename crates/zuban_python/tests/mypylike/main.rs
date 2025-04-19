@@ -15,9 +15,11 @@ use test_utils::{calculate_steps, Step};
 use vfs::{AbsPath, LocalFS, VfsHandler as _};
 use zuban_python::Project;
 
-const SKIP_MYPY_TEST_FILES: [&str; 27] = [
+const SKIP_MYPY_TEST_FILES: [&str; 28] = [
     // --allow-redefinition tests
     "check-redefine.test",
+    // --allow-redefinition-new
+    "check-redefine2.test",
     // Python special features
     "check-formatting.test",
     "check-plugin-attrs.test",
