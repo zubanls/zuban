@@ -26,12 +26,8 @@ testDynamicWithMemberAccess
 testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled
 testAbstractOverloadsWithoutImplementationAllowed
 testNamedTupleAsClassMemberNoCrash
-testForwardBaseDeferAttr
-testOptionalAssignAny2
 testRunParamSpecDuplicateArgsKwargs
 testLambdaInExceptStarBlock
-testPropertyLongTupleReturnTypeMismatchUnion
-testPropertyLongTupleReturnTypeMismatchUnionWiderExpected
 testTypedDictAliasGeneric
 testTypeGuardedTypeDoesNotLeak
 testAliasToCallableWithUnpack
@@ -54,6 +50,7 @@ testSubtypingWithAny
 testIsinstanceNarrowAnyExplicit
 testIsinstanceNarrowAnyImplicit
 testNarrowingTypeVarMultiple
+testOptionalAssignAny2
 
 # parser fails
 avoid_bracket_slowdown
@@ -798,6 +795,8 @@ testCallableFastParseBadArgArgName
 testIncompatibleAssignmentAmbiguousShortnames
 # for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"
 testAssigningWithLongTupleInitializer
+testPropertyLongTupleReturnTypeMismatchUnion
+testPropertyLongTupleReturnTypeMismatchUnionWiderExpected
 # large union formatting like "Incompatible types in assignment (expression has type "C1 | C2 | C3 | C4 | C5 | <6 more items>", variable has type "int")"
 testLargeUnionsShort
 testLargeUnionsLongIfNeeded
