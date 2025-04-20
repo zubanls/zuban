@@ -456,6 +456,18 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             let _ = class_infos
                 .undefined_generics_type
                 .set(Rc::new(Type::Dataclass(dataclass.clone())));
+            if let Some(was) = match class_infos.class_kind {
+                ClassKind::Normal => None,
+                ClassKind::Protocol => Some("A Protocol"),
+                ClassKind::Enum => Some("An Enum"),
+                ClassKind::TypedDict => Some("A TypedDict"),
+                ClassKind::Tuple => Some("A Tuple"),
+                ClassKind::NamedTuple => Some("A NamedTuple"),
+            } {
+                NodeRef::new(self.node_ref.file, self.node().name_def().index())
+                    .add_type_issue(db, IssueKind::DataclassCannotBe { kind: was.into() });
+            }
+            class_infos.class_kind = ClassKind::Normal;
         }
         if dataclass_transform.is_some() {
             class_infos.dataclass_transform = dataclass_transform;

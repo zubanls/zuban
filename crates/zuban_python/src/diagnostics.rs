@@ -416,6 +416,7 @@ pub(crate) enum IssueKind {
     EnumMembersAttributeOverwritten,
     EnumMemberAnnotationDisallowed,
 
+    DataclassCannotBe { kind: Box<str> },
     DataclassMultipleKwOnly,
     DataclassNoDefaultAfterDefault,
     DataclassOrderEnabledButNotEq,
@@ -1097,6 +1098,7 @@ impl<'db> Diagnostic<'db> {
                 r#"Enum members must be left unannotated"#.to_string()
             }
 
+            DataclassCannotBe { kind: kind_name } => format!("{kind_name} cannot be a dataclass"),
             DataclassMultipleKwOnly =>
                 "There may not be more than one field with the KW_ONLY type".to_string(),
             DataclassNoDefaultAfterDefault =>

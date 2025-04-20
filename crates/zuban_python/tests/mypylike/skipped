@@ -21,12 +21,9 @@ testPropertySetterDecorated
 testClassVarUnionBoundOnInstance
 testDataclassWithMatchArgsAndKwOnly
 testFrozenWithFinal
-testNoCrashForDataclassNamedTupleCombination
 testDynamicWithMemberAccess
 testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled
 testAbstractOverloadsWithoutImplementationAllowed
-testNamedTupleAsClassMemberNoCrash
-testRunParamSpecDuplicateArgsKwargs
 # lambda override inference
 testLambdaInOverrideInference
 # Mypy upgrade Enum
@@ -123,6 +120,7 @@ testRunParamSpecInsufficientArgs
 testRunParamSpecConcatenateInsufficientArgs
 testRunParamSpecConcatenateInsufficientArgsInDecorator
 testParamSpecScoping
+testRunParamSpecDuplicateArgsKwargs
 
 # union math vs. type var
 testOverloadDetectsPossibleMatchesWithGenerics
@@ -652,6 +650,7 @@ testEnvvar_MYPY_CONFIG_FILE_DIR
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
+testNamedTupleAsClassMemberNoCrash
 # "Enum type as attribute is not supported"
 testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"

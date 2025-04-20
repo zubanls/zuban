@@ -421,7 +421,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 @dataclass
-class C(Enum):
+class C(Enum):  # E: An Enum cannot be a dataclass
     x = 1
     y: str
 
@@ -432,7 +432,7 @@ from typing import TypedDict
 from dataclasses import dataclass
 
 @dataclass
-class C(TypedDict):
+class C(TypedDict):  # E: A TypedDict cannot be a dataclass
     x = 1  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
     y: str
 
