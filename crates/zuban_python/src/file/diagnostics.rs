@@ -2996,10 +2996,18 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                                 &second,
                             )
                             .bool()
-                            || !inst1_lookup.attr_kind.is_writable()
-                                && inst2_lookup.attr_kind.is_writable()
                         {
                             add_multi_inheritance_issue()
+                        } else if !inst1_lookup.attr_kind.is_writable()
+                            && inst2_lookup.attr_kind.is_writable()
+                        {
+                            add_issue(
+                                IssueKind::CannotOverrideWritableAttributeWithReadOnlyProperty {
+                                    name: name.into(),
+                                    base_class: base2.name(db).into(),
+                                    other_class: base1.name(db).into(),
+                                },
+                            );
                         }
                     }
                 }

@@ -15,10 +15,8 @@ testListOperators
 testListSetitemTuple
 
 # mypy upgrade
-testMixinTypedPropertyReversed
 testPropertySetterDecorated
 testClassVarUnionBoundOnInstance
-testDynamicWithMemberAccess
 # lambda override inference
 testLambdaInOverrideInference
 # Mypy upgrade Enum
@@ -38,6 +36,7 @@ testIsinstanceNarrowAnyExplicit
 testIsinstanceNarrowAnyImplicit
 testNarrowingTypeVarMultiple
 testOptionalAssignAny2
+testDynamicWithMemberAccess
 
 # parser fails
 avoid_bracket_slowdown
