@@ -16,7 +16,6 @@ testListSetitemTuple
 
 # mypy upgrade
 testMixinTypedPropertyReversed
-testClassOneErrorPerLine
 testPropertySetterDecorated
 testClassVarUnionBoundOnInstance
 testDynamicWithMemberAccess
