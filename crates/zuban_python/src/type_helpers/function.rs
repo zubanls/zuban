@@ -1078,6 +1078,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else if implementation.is_none()
             && !in_stub
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
+            && !has_abstract
         {
             name_def_node_ref(functions.last().unwrap().defined_at)
                 .add_issue(i_s, IssueKind::OverloadImplementationNeeded);

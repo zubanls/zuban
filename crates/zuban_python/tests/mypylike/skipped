@@ -22,8 +22,6 @@ testClassVarUnionBoundOnInstance
 testDataclassWithMatchArgsAndKwOnly
 testFrozenWithFinal
 testDynamicWithMemberAccess
-testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled
-testAbstractOverloadsWithoutImplementationAllowed
 # lambda override inference
 testLambdaInOverrideInference
 # Mypy upgrade Enum
@@ -816,6 +814,7 @@ testEmptyBodyNoSuperWarningWithoutStrict
 testEmptyBodyNoSuperWarningOptionalReturn
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
 testMixinProtocolSuper
+testAbstractOverloadsWithoutImplementationAllowed
 # "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
 testAbstractTypeInADict
@@ -912,6 +911,7 @@ testErrorCodeWarnUnusedIgnores3
 testErrorCodeWarnUnusedIgnores4
 testErrorCodeWarnUnusedIgnores5
 testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode
+testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled
 testMethodAssignCoveredByAssignmentUnused
 testUnusedIgnoreTryExcept
 testUnusedIgnoreEnableCode
