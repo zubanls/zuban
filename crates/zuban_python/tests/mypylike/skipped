@@ -16,18 +16,6 @@ testListSetitemTuple
 
 # mypy upgrade
 testPropertySetterDecorated
-testClassVarUnionBoundOnInstance
-# lambda override inference
-testLambdaInOverrideInference
-# Mypy upgrade Enum
-testEnumImplicitlyFinalForSubclassingWithCallableMember
-testEnumCanExtendEnumsWithNonMembers
-testLambdaIsNotEnumMember
-testEnumMemberAndNonMemberSupport
-testEnumAsClassMemberNoCrash
-testLiteralUnionEnumAliasAssignable
-testEnumAsClassMemberNoCrash
-testTypeIsEnumOverlappingUnionExcludesIrrelevant
 # Narrowing
 testForLoopIndexVaribaleNarrowing1
 testForLoopIndexVaribaleNarrowing2
@@ -164,6 +152,8 @@ testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
+# TypeIs removes entries that can never be relevant
+testTypeIsEnumOverlappingUnionExcludesIrrelevant
 # "Function "property_decorator_missing" could always be true in boolean context"
 testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus
@@ -309,6 +299,8 @@ testGenericDictWithOverload
 # ClassVar/Final changes
 testFinalUsedWithClassVarAfterPy313
 testNamedTupleFinalAndClassVar
+# ClassVar binding of callable with union
+testClassVarUnionBoundOnInstance
 # Final not allowed in loop
 testFinalNotInLoops
 final_with_getitem_in_loop
@@ -452,6 +444,8 @@ testUninferableLambda
 testUninferableLambdaWithTypeError
 # lambda inferred: Cannot use a covariant type variable as a parameter
 testRejectCovariantArgumentInLambda
+# lambda override inference fails because of context given an instance callable
+testLambdaInOverrideInference
 
 # match statement
 testMatchLiteralPatternNarrows
@@ -647,6 +641,7 @@ testNoCrashUnsupportedNamedTuple
 testNamedTupleAsClassMemberNoCrash
 # "Enum type as attribute is not supported"
 testAssignEnumAsAttribute
+testEnumAsClassMemberNoCrash
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
@@ -742,6 +737,9 @@ testPEP695TypeAliasType
 # enum.member / enum.nonmember
 testEnumNonMemberSupport
 testEnumMemberSupport
+testEnumCanExtendEnumsWithNonMembers
+testEnumMemberAndNonMemberSupport
+testEnumImplicitlyFinalForSubclassingWithCallableMember
 
 # Forward name binder reference in class
 testNewAnalyzerNamedTupleCallNested
@@ -1017,6 +1015,7 @@ testUnsafeOverlappingNotWithAny
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
 testTypeGuardedTypeDoesNotLeak
+testLiteralUnionEnumAliasAssignable
 # Enum Dict value inferred is int instead of Literal[1]
 testFunctionalEnumListOfPairs
 # "Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership
