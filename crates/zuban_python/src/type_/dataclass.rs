@@ -953,6 +953,9 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             )))),
             AttributeKind::Attribute,
         );
+    } else if name == "__match_args__" && dataclass.options.match_args {
+        let (lookup, attr_kind) = dunder_match_args_tuple(dataclass.clone(), i_s);
+        return LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind);
     }
     dataclass.class(i_s.db).lookup(
         i_s,
@@ -975,20 +978,8 @@ pub fn lookup_symbol_internal(
             )),
             AttributeKind::ClassVar,
         );
-    } else if name == "__match_args__" && self_.options.match_args {
-        let __init__ = dataclass_init_func(&self_, i_s.db);
-        let tup = Tuple::new_fixed_length(
-            __init__
-                .expect_simple_params()
-                .iter()
-                .take_while(|p| p.type_.maybe_positional_type().is_some())
-                .map(|p| Type::Literal(Literal::new(LiteralKind::String(p.name.clone().unwrap()))))
-                .collect(),
-        );
-        return (
-            LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup))),
-            AttributeKind::DefMethod { is_final: false },
-        );
+    } else if name == "__match_args__" && dbg!(self_.options.match_args) {
+        return dunder_match_args_tuple(self_, i_s);
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
         return (
@@ -1005,6 +996,25 @@ pub fn lookup_symbol_internal(
         );
     }
     (LookupResult::None, AttributeKind::Attribute)
+}
+
+fn dunder_match_args_tuple(
+    self_: Rc<Dataclass>,
+    i_s: &InferenceState<'_, '_>,
+) -> (LookupResult, AttributeKind) {
+    let __init__ = dataclass_init_func(&self_, i_s.db);
+    let tup = Tuple::new_fixed_length(
+        __init__
+            .expect_simple_params()
+            .iter()
+            .take_while(|p| p.type_.maybe_positional_type().is_some())
+            .map(|p| Type::Literal(Literal::new(LiteralKind::String(p.name.clone().unwrap()))))
+            .collect(),
+    );
+    (
+        LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup))),
+        AttributeKind::DefMethod { is_final: false },
+    )
 }
 
 pub fn lookup_dataclass_symbol<'db: 'a, 'a>(

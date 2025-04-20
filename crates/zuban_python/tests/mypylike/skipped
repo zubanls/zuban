@@ -19,8 +19,6 @@ testMixinTypedPropertyReversed
 testClassOneErrorPerLine
 testPropertySetterDecorated
 testClassVarUnionBoundOnInstance
-testDataclassWithMatchArgsAndKwOnly
-testFrozenWithFinal
 testDynamicWithMemberAccess
 # lambda override inference
 testLambdaInOverrideInference
