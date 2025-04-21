@@ -20,7 +20,6 @@ testPropertySetterDecorated
 testSubtypingWithAny
 testNarrowingTypeVarMultiple
 testOptionalAssignAny2
-testDynamicWithMemberAccess
 
 # parser fails
 avoid_bracket_slowdown

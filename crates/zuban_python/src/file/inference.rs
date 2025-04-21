@@ -1668,7 +1668,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 },
             );
         }
-        if matches!(assign_kind, AssignKind::Normal) && save_narrowed {
+        if matches!(assign_kind, AssignKind::Normal)
+            && save_narrowed
+            // It seems like on explicit Any Mypy does not narrow
+            // TODO it should not narrow on all Any declaration, not just base
+            && !matches!(base.as_ref(), Type::Any(AnyCause::Explicit))
+        {
             self.save_narrowed_primary_target(primary_target, &value.as_cow_type(self.i_s));
         }
     }
