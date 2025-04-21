@@ -1683,7 +1683,7 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         let (condition, block, else_block) = while_stmt.unpack();
-        self.process_loop(Some(condition), block, else_block, class, func)
+        self.process_loop(Some(condition), block, else_block, class, func, || ())
     }
 
     fn process_loop(
@@ -1693,6 +1693,7 @@ impl Inference<'_, '_, '_> {
         else_block: Option<ElseBlock>,
         class: Option<Class>,
         func: Option<&Function>,
+        assign_for_stmt_names: impl FnOnce(),
     ) {
         FLOW_ANALYSIS.with(|fa| {
             let (true_frame, false_frame) = if let Some(if_expr) = if_expr {
@@ -1702,6 +1703,7 @@ impl Inference<'_, '_, '_> {
                 (Frame::default(), Frame::default())
             };
             let (mut after_frame, loop_details) = fa.with_new_loop_frame(true_frame, || {
+                assign_for_stmt_names();
                 self.calc_block_diagnostics(block, class, func);
             });
             for continue_frame in loop_details.continue_frames {
@@ -1761,8 +1763,9 @@ impl Inference<'_, '_, '_> {
         is_async: bool,
     ) {
         let (star_targets, star_exprs, block, else_block) = for_stmt.unpack();
-        self.cache_for_stmt_names(star_targets, star_exprs, is_async);
-        self.process_loop(None, block, else_block, class, func)
+        self.process_loop(None, block, else_block, class, func, || {
+            self.cache_for_stmt_names(star_targets, star_exprs, is_async)
+        })
     }
 
     fn process_ifs(

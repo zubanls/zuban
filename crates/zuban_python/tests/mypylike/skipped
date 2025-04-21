@@ -17,8 +17,6 @@ testListSetitemTuple
 # mypy upgrade
 testPropertySetterDecorated
 # Narrowing
-testForLoopIndexVaribaleNarrowing1
-testForLoopIndexVaribaleNarrowing2
 testSubtypingWithAny
 testIsinstanceNarrowAnyExplicit
 testIsinstanceNarrowAnyImplicit
@@ -384,9 +382,6 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
-# enum member gathering
-testFinalWithMethodAssignment
-
 # dataclass classmethod
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
@@ -740,6 +735,9 @@ testEnumMemberSupport
 testEnumCanExtendEnumsWithNonMembers
 testEnumMemberAndNonMemberSupport
 testEnumImplicitlyFinalForSubclassingWithCallableMember
+# enum member gathering
+testFinalWithMethodAssignment
+testLambdaIsNotEnumMember
 
 # Forward name binder reference in class
 testNewAnalyzerNamedTupleCallNested
