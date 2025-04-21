@@ -4118,6 +4118,10 @@ fn split_and_intersect(
                 true_type = isinstance_type.clone();
                 other_side.union_in_place(t.clone())
             }
+            Type::TypeVar(tv) if matches!(tv.type_var.kind(i_s.db), TypeVarKind::Unrestricted) => {
+                true_type = isinstance_type.clone();
+                other_side.union_in_place(t.clone())
+            }
             _ => split(t),
         }
     }
