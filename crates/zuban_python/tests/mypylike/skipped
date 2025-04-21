@@ -16,9 +16,6 @@ testListSetitemTuple
 
 # mypy upgrade
 testPropertySetterDecorated
-# Narrowing
-testSubtypingWithAny
-testOptionalAssignAny2
 
 # parser fails
 avoid_bracket_slowdown
@@ -137,6 +134,8 @@ testOverloadedNewAndInitNoReturn
 # TypeGuard/TypeIs narrowing with Any
 testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
+# Inferred assignments are valid for Any, see also Mypy commit b50f3a1a44
+testSubtypingWithAny
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics

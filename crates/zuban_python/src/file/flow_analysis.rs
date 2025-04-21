@@ -1371,11 +1371,7 @@ impl Inference<'_, '_, '_> {
             return;
         }
         if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-            let lookup = FLOW_ANALYSIS
-                .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key.clone()));
-            if lookup.is_some_and(|(result, deleted)| {
-                !deleted && matches!(result.as_cow_type(self.i_s).as_ref(), Type::None)
-            }) {
+            if declaration_t.is_none_or_none_in_union(self.i_s.db) {
                 // This is a special case like
                 //
                 //     def foo(x: int | None) -> None:
