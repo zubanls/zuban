@@ -1361,13 +1361,13 @@ impl Inference<'_, '_, '_> {
         check_for_error: impl FnOnce() -> bool,
     ) {
         let widens = false;
-        if declaration_t.is_any() {
+        // It seems like explicit Any is treated in a special way, see tests
+        // testIsinstanceNarrowAnyExplicit and testIsinstanceNarrowAnyImplicit
+        if let Type::Any(AnyCause::Explicit) = declaration_t {
             // Still check for stuff like Final reassignments
             check_for_error();
             // Remove the key
-            if new_t.is_any_or_any_in_union(self.i_s.db) {
-                FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
-            }
+            FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
             return;
         }
         if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {

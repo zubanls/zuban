@@ -18,8 +18,6 @@ testListSetitemTuple
 testPropertySetterDecorated
 # Narrowing
 testSubtypingWithAny
-testIsinstanceNarrowAnyExplicit
-testIsinstanceNarrowAnyImplicit
 testNarrowingTypeVarMultiple
 testOptionalAssignAny2
 testDynamicWithMemberAccess
@@ -269,8 +267,6 @@ testIntersectionUsingPromotion6
 testIsInstanceWithUnknownType
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
-# narrowing with Any weird cases
-testIsinstanceNarrowAny
 # isinstance with alias and union literals `isinstance(x, A | B)`
 testTypeAliasWithNewUnionIsInstance
 testStartUsingPEP604Union
