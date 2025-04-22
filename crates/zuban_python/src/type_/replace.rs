@@ -736,9 +736,7 @@ impl TypedDict {
             TypedDictGenerics::NotDefinedYet(_) => self.generics.clone(),
             TypedDictGenerics::None => return None,
         };
-        Some(self.replace(generics, &mut |t| {
-            t.replace_internal(replacer).unwrap_or_else(|| t.clone())
-        }))
+        Some(self.replace(generics, &mut |t| t.replace_internal(replacer)))
     }
 }
 

@@ -1028,9 +1028,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 },
                             );
                         }
-                        Type::TypedDict(td).replace_type_var_likes(db, &mut |usage| {
-                            Some(usage.as_any_generic_item(db))
-                        })
+                        Some(Type::TypedDict(td.replace_type_vars_with_any(db)))
                     }
                     TypedDictGenerics::Generics(_) => unreachable!(),
                 }

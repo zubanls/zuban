@@ -76,7 +76,7 @@ def foo(x: type[TD[int]], y: type[TD[str]]) -> None:
     if bool():
         w = x
     if bool():
-        w = y  # E: Incompatible types in assignment (expression has type "Type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], TD]")
+        w = y  # E: Incompatible types in assignment (expression has type "Type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], __main__.TD[Any]]")
     w = TD
 
 [case invalid_typed_dict]
@@ -222,3 +222,17 @@ class InvalidGeneric(TypedDict):
 B = InvalidGeneric[int]  # E: "InvalidGeneric" expects no type arguments, but 1 given
 reveal_type(B(a=1))  # N: Revealed type is "TypedDict('__main__.InvalidGeneric', {'a': Any})"
 B(a='')
+
+[case typed_dict_alias_and_access]
+# Like testTypedDictAliasGeneric, but with type access and a type alias from syntax
+from typing import TypedDict
+
+class A[T](TypedDict):
+    x: T
+
+A0 = A
+class B(A0[str]):  # E: Bad number of arguments for type alias, expected 0, given 1
+    y: int
+
+def f(x: B) -> None:
+    reveal_type(x['x'])  # N: Revealed type is "Any"

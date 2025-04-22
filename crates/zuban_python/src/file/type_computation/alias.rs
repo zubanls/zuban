@@ -124,13 +124,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
                         }
                     }
-                    // It seems like Mypy is ignoring this?
-                    Some(Lookup::T(TypeContent::SpecialCase(_))) => (),
+                    // It seems like Mypy is handling these differently?
+                    Some(Lookup::T(
+                        TypeContent::SpecialCase(_) | TypeContent::TypedDictDefinition(_),
+                    )) => (),
                     Some(lookup) => {
                         debug!("Alias can be redirected: {lookup:?}");
                         return lookup;
                     }
-                    _ => {
+                    None => {
                         debug!("Alias can not be redirected");
                     }
                 }

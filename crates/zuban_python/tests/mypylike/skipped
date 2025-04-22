@@ -681,7 +681,6 @@ testOtherVarArgs
 testPEP695TypeAliasNotReadyClass
 testPEP695TypeAliasRecursiveOuterClass
 testPEP695TypeAliasRecursiveInvalid
-testTypedDictAliasGeneric
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
 testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec

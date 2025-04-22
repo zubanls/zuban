@@ -32,10 +32,10 @@ pub(crate) struct TypedDictMember {
 }
 
 impl TypedDictMember {
-    pub fn replace_type(&self, callable: impl FnOnce(&Type) -> Type) -> Self {
+    pub fn replace_type(&self, callable: impl FnOnce(&Type) -> Option<Type>) -> Self {
         Self {
             name: self.name,
-            type_: callable(&self.type_),
+            type_: callable(&self.type_).unwrap_or_else(|| self.type_.clone()),
             required: self.required,
             read_only: self.read_only,
         }
@@ -153,11 +153,9 @@ impl TypedDict {
             .iter()
             .map(|m| {
                 m.replace_type(|_| {
-                    m.type_
-                        .replace_type_var_likes(db, &mut |usage| {
-                            Some(generics[usage.index()].clone())
-                        })
-                        .unwrap_or_else(|| m.type_.clone())
+                    m.type_.replace_type_var_likes(db, &mut |usage| {
+                        Some(generics[usage.index()].clone())
+                    })
                 })
             })
             .collect()
@@ -362,7 +360,7 @@ impl TypedDict {
     pub fn replace(
         &self,
         generics: TypedDictGenerics,
-        mut callable: &mut impl FnMut(&Type) -> Type,
+        mut callable: &mut impl FnMut(&Type) -> Option<Type>,
     ) -> Rc<Self> {
         Rc::new(TypedDict {
             name: self.name,
@@ -379,6 +377,16 @@ impl TypedDict {
             defined_at: self.defined_at,
             generics,
             is_final: self.is_final,
+        })
+    }
+
+    pub fn replace_type_vars_with_any(&self, db: &Database) -> Rc<Self> {
+        let TypedDictGenerics::NotDefinedYet(type_var_likes) = &self.generics else {
+            unreachable!()
+        };
+        let generics = TypedDictGenerics::Generics(type_var_likes.as_any_generic_list(db));
+        self.replace(generics, &mut |t| {
+            t.replace_type_var_likes(db, &mut |u| Some(u.as_any_generic_item(db)))
         })
     }
 
