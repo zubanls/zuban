@@ -3461,25 +3461,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 cache_class_name(node_ref, c);
                 Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c.index()))
             }
-            TypeLike::Assignment(assignment) => {
-                if node_ref.point().calculated() {
-                    if let Some(PointResolution::Inferred(inf)) = node_ref
-                        .file
-                        .name_resolution_for_types(i_s)
-                        .resolve_point_without_narrowing(node_ref.node_index)
-                    {
-                        if let Some(n) = inf.maybe_saved_node_ref(i_s.db) {
-                            if let Some(tnl) = Self::check_special_type_definition(n) {
-                                return tnl;
-                            }
-                        }
-                    }
-                }
-                node_ref
-                    .file
-                    .name_resolution_for_types(i_s)
-                    .compute_type_assignment(assignment)
-            }
+            TypeLike::Assignment(assignment) => node_ref
+                .file
+                .name_resolution_for_types(i_s)
+                .compute_type_assignment(assignment),
             TypeLike::ImportFromAsName(from_as_name) => {
                 let name_resolution = node_ref.file.name_resolution_for_types(i_s);
                 name_resolution.point_resolution_to_type_name_lookup(

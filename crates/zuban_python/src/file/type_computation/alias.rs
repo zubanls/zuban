@@ -262,6 +262,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 SpecialAssignmentKind::ParamSpec(a) => self.compute_param_spec_assignment(
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 ),
+                SpecialAssignmentKind::TypeOf(_) => todo!(),
             };
             inf.save_redirect(self.i_s, self.file, name_def.index());
             // Since this sets the name def, we need to imitate the inference, which sets the name
@@ -394,6 +395,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     ArgsContent::new(primary.index(), details),
                 ))
             }
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::BuiltinsType))) => Ok(
+                SpecialAssignmentKind::TypeOf(ArgsContent::new(primary.index(), details)),
+            ),
             Some(Lookup::T(TypeContent::Class { node_ref, .. }))
                 if node_ref.use_cached_class_infos(self.i_s.db).class_kind == ClassKind::Enum =>
             {
@@ -952,6 +956,7 @@ enum SpecialAssignmentKind<'db, 'tree> {
     TypeVar(ArgsContent<'tree>),
     TypeVarTuple(ArgsContent<'tree>),
     ParamSpec(ArgsContent<'tree>),
+    TypeOf(ArgsContent<'tree>), // e.g. type(None)
 }
 
 struct ArgsContent<'tree> {
