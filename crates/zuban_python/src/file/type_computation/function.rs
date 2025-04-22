@@ -4,6 +4,7 @@ use parsa_python_cst::{
     Decorated, FunctionDef, FunctionParent, NodeIndex, ParamAnnotation, ParamKind,
     ReturnAnnotation, ReturnOrYield,
 };
+use utils::FastHashSet;
 
 use crate::{
     database::{ComplexPoint, Database, Locality, ParentScope, Point, PointLink, Specific},
@@ -222,11 +223,11 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                         type_params,
                     ),
             );
-        } else {
         }
         let implicit_optional = self.file.flags(i_s.db).implicit_optional;
         let in_result_type = Cell::new(false);
-        let mut unbound_type_vars = vec![];
+        let mut unbound_in_params = vec![];
+        let mut unbound_type_vars = FastHashSet::default();
         let mut on_type_var = |i_s: &InferenceState,
                                manager: &TypeVarManager<PointLink>,
                                type_var_like: TypeVarLike,
@@ -246,15 +247,14 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                         {
                             return TypeVarCallbackReturn::TypeVarLike(usage);
                         }
-                        return TypeVarCallbackReturn::AddIssue(
-                            IssueKind::TypeParametersShouldBeDeclared { type_var_like },
-                        );
+                        unbound_type_vars.insert(type_var_like);
+                        return TypeVarCallbackReturn::AnyDueToError;
                     }
                     if in_result_type.get()
                         && manager.position(&type_var_like).is_none()
                         && current_callable.is_none()
                     {
-                        unbound_type_vars.push(type_var_like);
+                        unbound_in_params.push(type_var_like.clone());
                     }
                     TypeVarCallbackReturn::NotFound {
                         allow_late_bound_callables: in_result_type.get(),
@@ -334,12 +334,12 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         } else {
             type_vars
         };
-        if !unbound_type_vars.is_empty() {
-            if let Type::TypeVar(t) = self.return_type(i_s).as_ref() {
-                if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
+        if !unbound_in_params.is_empty() {
+            if let Type::TypeVar(usage) = self.return_type(i_s).as_ref() {
+                if unbound_in_params.contains(&TypeVarLike::TypeVar(usage.type_var.clone())) {
                     let node_ref = self.expect_return_annotation_node_ref();
                     node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
-                    if let TypeVarKind::Bound(bound) = t.type_var.kind(i_s.db) {
+                    if let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db) {
                         node_ref.add_issue(
                             i_s,
                             IssueKind::Note(
@@ -353,6 +353,12 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                     }
                 }
             }
+        }
+        for type_var_like in unbound_type_vars.into_iter() {
+            self.add_issue_for_declaration(
+                i_s,
+                IssueKind::TypeParametersShouldBeDeclared { type_var_like },
+            );
         }
         (type_vars, type_guard, star_annotation)
     }

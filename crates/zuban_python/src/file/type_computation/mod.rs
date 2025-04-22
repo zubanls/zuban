@@ -66,6 +66,7 @@ pub(crate) enum TypeVarCallbackReturn {
     UnboundTypeVar,
     AddIssue(IssueKind),
     NotFound { allow_late_bound_callables: bool },
+    AnyDueToError,
 }
 
 type MapAnnotationTypeCallback<'a> = Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> Type>;
@@ -3077,6 +3078,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             ),
                         }
                     }
+                    TypeVarCallbackReturn::AnyDueToError => TypeContent::UNKNOWN_REPORTED,
                 }
             }
         }

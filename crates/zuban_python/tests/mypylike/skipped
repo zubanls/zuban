@@ -677,13 +677,12 @@ testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
-# 3.12 type var syntax
+# 3.12 type alias name binding in Mypy is special (maybe not wanted)
 testPEP695TypeAliasNotReadyClass
 testPEP695TypeAliasRecursiveOuterClass
 testPEP695TypeAliasRecursiveInvalid
 # "All type parameters should be declared" where to implement?
 testPEP695MixNewAndOldStyleGenerics
-testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec
 testPEP695MixNewAndOldStyleGenericsInTypeAlias
 # type var syntax infer variance
 testPEP695GenericMethodInGenericClass
