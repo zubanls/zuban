@@ -4133,15 +4133,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                         } else {
                                             let tvls = tup
                                                 .iter()
-                                                .map(|entry| match entry {
+                                                .filter_map(|entry| match entry {
                                                     StarLikeExpression::NamedExpression(ne) => {
-                                                        TypeLikeInTypeVar::new_lazy(
+                                                        Some(TypeLikeInTypeVar::new_lazy(
                                                             ne.expression().index(),
-                                                        )
+                                                        ))
                                                     }
                                                     StarLikeExpression::StarNamedExpression(
-                                                        star_named_expression,
-                                                    ) => todo!(),
+                                                        s,
+                                                    ) => {
+                                                        self.add_type_issue(s.index(), IssueKind::UnpackOnlyValidInVariadicPosition);
+                                                        None
+                                                    }
                                                     _ => unreachable!(),
                                                 })
                                                 .collect();

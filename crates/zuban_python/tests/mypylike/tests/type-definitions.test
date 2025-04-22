@@ -542,3 +542,6 @@ if bool():
     X: TypeAlias = int
 else:
     X = Any  # E: Incompatible types in assignment (expression has type "object", variable has type "Type[int]")
+
+[case type_alias_invalid_star_in_type_var_bounds]
+def f[T: (int, *str)](t: T) -> list[T]: ...  # E: Unpack is only valid in a variadic position
