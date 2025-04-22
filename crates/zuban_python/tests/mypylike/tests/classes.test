@@ -1689,3 +1689,12 @@ class X:
     def f(self) -> None:
         x  # E: Name "x" is not defined
         y: z  # E: Name "z" is not defined
+
+[case class_type_var_in_literal_base_class_should_error]
+from typing import Generic, TypeVar, Self, Literal
+T = TypeVar("T")
+
+class Foo(list[Literal[T]]): ...  # E: Parameter 1 of Literal[...] is invalid
+
+def f(x: Foo):
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"

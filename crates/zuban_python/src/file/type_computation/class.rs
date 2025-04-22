@@ -647,6 +647,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         };
         let arguments = self.node().arguments();
         if let Some(arguments) = arguments {
+            let has_type_params = self.node().type_params().is_some();
             // Check metaclass before checking all the arguments, because it has a preference over
             // the metaclasses of the subclasses.
             let mut unbound_type_vars = FastHashSet::default();
@@ -660,8 +661,15 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             self.node_ref.file,
                             self.node_ref.as_link(),
                             &mut |_, _: &_, tvl: TypeVarLike, _| {
-                                unbound_type_vars.insert(tvl);
-                                TypeVarCallbackReturn::AnyDueToError
+                                if has_type_params {
+                                    // This can happen if two type var likes are used.
+                                    unbound_type_vars.insert(tvl);
+                                    TypeVarCallbackReturn::AnyDueToError
+                                } else {
+                                    TypeVarCallbackReturn::NotFound {
+                                        allow_late_bound_callables: false,
+                                    }
+                                }
                             },
                             TypeComputationOrigin::BaseClass,
                         )
@@ -741,10 +749,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     self.maybe_type_var_like_in_parent(db, &type_var_like)
                                 {
                                     usage
-                                } else {
+                                } else if has_type_params {
                                     // This can happen if two type var likes are used.
                                     unbound_type_vars.insert(type_var_like);
                                     TypeVarCallbackReturn::AnyDueToError
+                                } else {
+                                    TypeVarCallbackReturn::NotFound {
+                                        allow_late_bound_callables: false,
+                                    }
                                 }
                             },
                             TypeComputationOrigin::BaseClass,
@@ -874,7 +886,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             }
                             // TODO this might overwrite other class types
                             CalculatedBaseClass::Protocol { with_brackets } => {
-                                if self.node().type_params().is_some() && with_brackets {
+                                if has_type_params && with_brackets {
                                     NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
                                         db,
                                         IssueKind::ProtocolWithTypeParamsNoBracketsExpected,
@@ -914,7 +926,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 }
                             }
                             CalculatedBaseClass::Generic => {
-                                if self.node().type_params().is_some() {
+                                if has_type_params {
                                     NodeRef::new(self.node_ref.file, n.index()).add_type_issue(
                                         db,
                                         IssueKind::GenericWithTypeParamsIsRedundant,
@@ -965,13 +977,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     _ => (),
                 }
             }
-            if !unbound_type_vars.is_empty() && self.node().type_params().is_some() {
-                for type_var_like in unbound_type_vars.into_iter() {
-                    NodeRef::new(self.node_ref.file, arguments.index()).add_type_issue(
-                        db,
-                        IssueKind::TypeParametersShouldBeDeclared { type_var_like },
-                    );
-                }
+            for type_var_like in unbound_type_vars.into_iter() {
+                NodeRef::new(self.node_ref.file, arguments.index()).add_type_issue(
+                    db,
+                    IssueKind::TypeParametersShouldBeDeclared { type_var_like },
+                );
             }
         }
         match class_kind {
