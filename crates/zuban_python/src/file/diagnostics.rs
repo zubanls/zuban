@@ -9,8 +9,7 @@ use config::TypeCheckerFlags;
 use parsa_python_cst::*;
 
 use super::{
-    first_defined_name, first_defined_name_of_multi_def, flow_analysis::FLOW_ANALYSIS,
-    inference::await_, ClassNodeRef, FuncNodeRef,
+    first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, ClassNodeRef, FuncNodeRef,
 };
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
@@ -422,20 +421,8 @@ impl Inference<'_, '_, '_> {
                 StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
                 StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
                 StmtLikeContent::TypeAlias(type_alias) => {
-                    self.compute_type_alias_syntax(type_alias);
-                    let name_def = type_alias.name_def();
-                    if let Some(first_index) =
-                        first_defined_name_of_multi_def(self.file, name_def.name_index())
-                    {
-                        self.add_redefinition_issue(
-                            first_index,
-                            name_def.as_code(),
-                            false,
-                            |issue| {
-                                NodeRef::new(self.file, name_def.index()).add_issue(self.i_s, issue)
-                            },
-                        );
-                    }
+                    self.ensure_compute_type_alias_from_syntax(type_alias);
+                    self.assign_type_alias_name(type_alias);
                 }
                 StmtLikeContent::FunctionDef(f) => {
                     self.maybe_delay_func_diagnostics(f, class, func)

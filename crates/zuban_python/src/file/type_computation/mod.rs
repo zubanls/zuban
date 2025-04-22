@@ -3494,11 +3494,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             TypeLike::TypeAlias(type_alias) => {
                 let name_resolution = node_ref.file.name_resolution_for_types(i_s);
-                name_resolution.compute_type_alias_syntax(type_alias);
-                let Some(ComplexPoint::TypeAlias(alias)) = node_ref.maybe_complex() else {
-                    unreachable!()
-                };
-                Lookup::T(TypeContent::TypeAlias(alias))
+                name_resolution.compute_type_alias_syntax(type_alias)
             }
             TypeLike::Function(f) => {
                 let func_node_ref = NodeRef::new(node_ref.file, f.index());

@@ -527,3 +527,15 @@ else:
     )
 
 [file m.py]
+
+[case type_alias_overrides_star_import]
+from m import *
+type X = str  # E: Incompatible types in assignment (expression has type "TypeAliasType", variable has type "Type[C]")
+
+reveal_type(X)  # N: Revealed type is "def () -> m.C"
+def f(x: X) -> None:
+    reveal_type(x)  # N: Revealed type is "str"
+
+[file m.py]
+class C: ...
+X = C

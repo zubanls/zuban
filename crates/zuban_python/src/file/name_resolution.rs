@@ -745,7 +745,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         let defining = node_ref.expect_name_def().expect_defining_stmt();
                         if matches!(
                             defining,
-                            DefiningStmt::Assignment(_) | DefiningStmt::FunctionDef(_)
+                            DefiningStmt::Assignment(_)
+                                | DefiningStmt::FunctionDef(_)
+                                | DefiningStmt::TypeAlias(_)
                         ) {
                             return PointResolution::NameDef {
                                 node_ref,

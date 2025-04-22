@@ -41,6 +41,7 @@ use crate::{
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
+const ALIAS_TYPE_CACHE_OFFSET: u32 = 1;
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(super) fn compute_type_assignment(
@@ -635,10 +636,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
 
-    pub fn compute_type_alias_syntax(&self, type_alias: parsa_python_cst::TypeAlias) {
+    pub(super) fn compute_type_alias_syntax(
+        &self,
+        type_alias: parsa_python_cst::TypeAlias,
+    ) -> Lookup<'file, 'file> {
         let (name_def, type_params, expr) = type_alias.unpack();
-        if self.file.points.get(name_def.index()).calculated() {
-            return;
+        let alias_type_ref = type_alias_type_node_ref(self.file, type_alias);
+        if alias_type_ref.point().calculated() {
+            return load_cached_type(alias_type_ref);
         }
         let scope = self.i_s.as_parent_scope();
         let type_var_likes = if let Some(type_params) = type_params {
@@ -646,15 +651,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         } else {
             self.i_s.db.python_state.empty_type_var_likes.clone()
         };
-        let name_def_ref = NodeRef::new(self.file, name_def.index());
         self.check_for_alias_second_step(
             CalculatingAliasType::Normal,
-            name_def_ref,
+            alias_type_ref,
             name_def,
             type_var_likes,
             expr,
             AliasCause::SyntaxOrTypeAliasType,
-        );
+        )
+    }
+
+    pub fn ensure_compute_type_alias_from_syntax(&self, type_alias: parsa_python_cst::TypeAlias) {
+        self.compute_type_alias_syntax(type_alias);
     }
 
     // ------------------------------------------------------------------------
@@ -874,6 +882,13 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
 
 fn assignment_type_node_ref<'x>(file: &'x PythonFile, assignment: Assignment) -> NodeRef<'x> {
     NodeRef::new(file, assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET)
+}
+
+fn type_alias_type_node_ref<'x>(
+    file: &'x PythonFile,
+    type_alias: parsa_python_cst::TypeAlias,
+) -> NodeRef<'x> {
+    NodeRef::new(file, type_alias.index() + ALIAS_TYPE_CACHE_OFFSET)
 }
 
 fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type) -> bool {

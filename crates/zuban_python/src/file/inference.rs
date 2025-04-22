@@ -3541,6 +3541,18 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
+    pub(super) fn assign_type_alias_name(&self, alias: TypeAlias) {
+        let name_def = alias.name_def();
+        self.assign_to_name_def_simple(
+            name_def,
+            NodeRef::new(self.file, name_def.index()),
+            &Inferred::from_type(self.i_s.db.python_state.type_alias_type_type()),
+            // This is not an actual annotation but generates similar errors, when e.g. multiple
+            // annotation assignments are used for the same name
+            AssignKind::Annotation { specific: None },
+        );
+    }
+
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
     fn _infer_name_reference(&self, name: Name) -> Inferred {
         self.infer_name_by_str(name.as_code(), name.index())
@@ -3890,7 +3902,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                 }
             }
-            DefiningStmt::TypeAlias(type_alias) => self.compute_type_alias_syntax(type_alias),
+            DefiningStmt::TypeAlias(type_alias) => self.assign_type_alias_name(type_alias),
             DefiningStmt::DelStmt(del_stmt) => {
                 // This should basically only happen for self assignments where the del self is the
                 // first defined name in the chain.
