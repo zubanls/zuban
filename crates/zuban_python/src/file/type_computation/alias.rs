@@ -5,6 +5,7 @@ use parsa_python_cst::{
     ExpressionContent, ExpressionPart, NameDef, NameOrPrimaryWithNames, NodeIndex, Primary,
     PrimaryContent, PrimaryOrAtom, PythonString, StarExpressionContent, Target, TypeLike,
 };
+use utils::FastHashSet;
 
 use super::{
     super::name_resolution::NameResolution, ClassNodeRef, InvalidVariableType, Lookup, TypeContent,
@@ -472,6 +473,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             unreachable!()
         };
 
+        let mut unbound_type_vars = FastHashSet::default();
         let mut type_var_callback = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
                 if let TypeVarCallbackReturn::TypeVarLike(_) = &result {
@@ -483,10 +485,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 return result;
             }
-            if let Some(usage) = alias.type_vars.find(type_var_like, alias.location) {
+            if let Some(usage) = alias.type_vars.find(type_var_like.clone(), alias.location) {
                 TypeVarCallbackReturn::TypeVarLike(usage)
             } else if let CalculatingAliasType::NewType(_) = &origin {
                 TypeVarCallbackReturn::UnboundTypeVar
+            } else if matches!(cause, AliasCause::SyntaxOrTypeAliasType) {
+                unbound_type_vars.insert(type_var_like);
+                TypeVarCallbackReturn::AnyDueToError
             } else {
                 TypeVarCallbackReturn::NotFound {
                     allow_late_bound_callables: false,
@@ -570,6 +575,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                     }
                 };
+                if matches!(cause, AliasCause::SyntaxOrTypeAliasType) {
+                    for type_var_like in unbound_type_vars.into_iter() {
+                        node_ref.add_type_issue(
+                            self.i_s.db,
+                            IssueKind::TypeParametersShouldBeDeclared { type_var_like },
+                        );
+                    }
+                }
             }
             CalculatingAliasType::TypedDict(args) => {
                 match new_typed_dict_with_execution_syntax(
