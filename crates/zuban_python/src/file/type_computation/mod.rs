@@ -2957,7 +2957,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             if !matches!(
                 result,
-                TypeContent::ParamSpec(_) | TypeContent::Unknown(UnknownCause::ReportedIssue)
+                TypeContent::ParamSpec(_)
+                    | TypeContent::Unknown(UnknownCause::ReportedIssue)
+                    | TypeContent::Unpacked(TypeOrUnpack::Unknown(UnknownCause::ReportedIssue))
             ) && !matches!(
                 result,
                 TypeContent::Type(Type::TypeVar(usage))

@@ -6,6 +6,7 @@ use parsa_python_cst::{
     NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator,
     Target, TypeLike,
 };
+use utils::FastHashSet;
 
 use crate::{
     database::{
@@ -648,6 +649,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         if let Some(arguments) = arguments {
             // Check metaclass before checking all the arguments, because it has a preference over
             // the metaclasses of the subclasses.
+            let mut unbound_type_vars = FastHashSet::default();
             for argument in arguments.iter() {
                 if let Argument::Keyword(kwarg) = argument {
                     let (name, expr) = kwarg.unpack();
@@ -657,8 +659,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             i_s,
                             self.node_ref.file,
                             self.node_ref.as_link(),
-                            &mut |_, _: &_, _: TypeVarLike, _| TypeVarCallbackReturn::NotFound {
-                                allow_late_bound_callables: false,
+                            &mut |_, _: &_, tvl: TypeVarLike, _| {
+                                unbound_type_vars.insert(tvl);
+                                TypeVarCallbackReturn::AnyDueToError
                             },
                             TypeComputationOrigin::BaseClass,
                         )
@@ -740,9 +743,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     usage
                                 } else {
                                     // This can happen if two type var likes are used.
-                                    TypeVarCallbackReturn::NotFound {
-                                        allow_late_bound_callables: false,
-                                    }
+                                    unbound_type_vars.insert(type_var_like);
+                                    TypeVarCallbackReturn::AnyDueToError
                                 }
                             },
                             TypeComputationOrigin::BaseClass,
@@ -961,6 +963,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         };
                     }
                     _ => (),
+                }
+            }
+            if !unbound_type_vars.is_empty() && self.node().type_params().is_some() {
+                for type_var_like in unbound_type_vars.into_iter() {
+                    NodeRef::new(self.node_ref.file, arguments.index()).add_type_issue(
+                        db,
+                        IssueKind::TypeParametersShouldBeDeclared { type_var_like },
+                    );
                 }
             }
         }
