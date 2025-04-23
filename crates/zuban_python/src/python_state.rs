@@ -1189,6 +1189,7 @@ fn typing_changes(
     set_typing_inference(typing, "NamedTuple", Specific::TypingNamedTuple);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
+    set_typing_inference(typing, "TypeAliasType", Specific::TypingTypeAliasType);
     set_typing_inference(typing, "Self", Specific::TypingSelf);
     set_typing_inference(typing, "Annotated", Specific::TypingAnnotated);
     set_typing_inference(typing, "Never", Specific::TypingNeverOrNoReturn);
@@ -1251,6 +1252,7 @@ fn typing_changes(
     set_typing_inference(t, "TypeGuard", Specific::TypingTypeGuard);
     set_typing_inference(t, "TypeIs", Specific::TypingTypeIs);
     set_typing_inference(t, "Self", Specific::TypingSelf);
+    set_typing_inference(t, "TypeAliasType", Specific::TypingTypeAliasType);
     setup_type_alias(typing_extensions, "final", typing, "final");
     // Not needed, because there's an import?
     //set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);

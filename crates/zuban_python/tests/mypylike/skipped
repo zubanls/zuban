@@ -710,10 +710,7 @@ testPEP695RecursiveTypeAliasForwardReference
 testCurrentClassWorksAsBound
 # TypeAliasType
 testTypeAliasTypeInvalid
-testTypeAliasTypeGeneric
 testTypeAliasTypeInvalidGeneric
-testTypeAliasTypeNoUnpackInTypeParams311
-testPEP695TypeAliasType
 
 # enum.member / enum.nonmember
 testEnumNonMemberSupport

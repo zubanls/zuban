@@ -13,7 +13,7 @@ use super::{
     TypeVarFinder, UnknownCause,
 };
 use crate::{
-    arguments::SimpleArgs,
+    arguments::{Args, SimpleArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
         TypeAlias,
@@ -36,7 +36,7 @@ use crate::{
     recoverable_error,
     type_::{
         AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
-        TypedDict,
+        TypeVarManager, TypedDict,
     },
     type_helpers::{cache_class_name, Class},
     utils::{debug_indent, AlreadySeen},
@@ -435,6 +435,54 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
+    pub fn execute_type_alias_from_type_alias_type(
+        &self,
+        args: &dyn Args,
+        assignment: Assignment,
+    ) -> Option<Inferred> {
+        let Some(simple_args) = args.maybe_simple_args() else {
+            debug!(
+                "Found no simple args, but {args:?}, \
+                   aborting TypeAliasType computation"
+            );
+            return None;
+        };
+        let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
+        let name_def = match assignment.unpack() {
+            AssignmentContent::Normal(mut targets, ..) => {
+                let first = targets.next().unwrap();
+                if targets.next().is_some() {
+                    debug!(
+                        "Expected a single name def, but found multiple, \
+                           aborting TypeAliasType computation"
+                    );
+                    return None;
+                }
+                match first {
+                    Target::Name(name_def) => name_def,
+                    _ => {
+                        debug!(
+                            "Expected a name target, but found another target, \
+                               aborting TypeAliasType computation"
+                        );
+                        return None;
+                    }
+                }
+            }
+            _ => {
+                debug!(
+                    "Expected a simple assignment, but found another target, \
+                       aborting TypeAliasType computation"
+                );
+                return None;
+            }
+        };
+        self.type_alias_from_type_alias_type(cached_type_node_ref, name_def, simple_args.details)?;
+        Some(Inferred::from_type(
+            self.i_s.db.python_state.type_alias_type_type(),
+        ))
+    }
+
     fn type_alias_from_type_alias_type(
         &self,
         cached_type_node_ref: NodeRef<'file>,
@@ -454,22 +502,70 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     } else if value.is_none() {
                         value = Some(n.expression());
                     } else {
+                        debug!("Found an additional argument, aborting TypeAliasType computation");
                         return None;
                     }
                 }
                 ArgOrComprehension::Arg(Argument::Keyword(kw)) => {
                     let (key, val) = kw.unpack();
                     match key.as_code() {
-                        "name" => name = Some(val),
-                        "value" => value = Some(val),
+                        "name" if name.is_none() => name = Some(val),
+                        "value" if value.is_none() => value = Some(val),
                         "type_params" => {
-                            todo!()
+                            let Some(tuple) = val.maybe_tuple() else {
+                                debug!(
+                                    "Expected a tuple literal for the keyword argument \
+                                        type_params, aborting TypeAliasType computation"
+                                );
+                                return None;
+                            };
+                            let mut type_var_manager = TypeVarManager::<PointLink>::default();
+                            for entry in tuple.iter() {
+                                match entry {
+                                    parsa_python_cst::StarLikeExpression::NamedExpression(n) => {
+                                        match self.lookup_type_expr_if_only_names(n.expression()) {
+                                            Some(Lookup::TypeVarLike(tvl)) => {
+                                                type_var_manager.add(tvl, None);
+                                            }
+                                            _ => {
+                                                let c = n.as_code();
+                                                self.add_type_issue(n.index(), IssueKind::FreeTypeVariableExpectInTypeAliasTypeTypeParams {
+                                                    // TODO this is very imprecise
+                                                    is_unpack: c.starts_with("Unpack[")
+                                                    || c.starts_with("typing.Unpack[")
+                                                }
+                                                )
+                                            }
+                                        };
+                                    }
+                                    parsa_python_cst::StarLikeExpression::StarNamedExpression(
+                                        s,
+                                    ) => self.add_type_issue(
+                                        s.index(),
+                                        IssueKind::StarredExpressionOnlyNoTarget,
+                                    ),
+                                    _ => unreachable!(),
+                                }
+                            }
+                            type_params = type_var_manager.into_type_vars();
                         }
-                        _ => return None,
+                        key => {
+                            debug!(
+                                "Found an additional keyword \"{key}\" argument, \
+                                    aborting TypeAliasType computation"
+                            );
+                            return None;
+                        }
                     }
                 }
-                _ => return None,
+                _ => {
+                    debug!("Found a special keyword argument, aborting TypeAliasType computation");
+                    return None;
+                }
             }
+        }
+        if name.is_none() || value.is_none() {
+            debug!("Missing a name or value, aborting TypeAliasType computation");
         }
         let name = name?;
         let value = value?;

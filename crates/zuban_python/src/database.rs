@@ -512,6 +512,7 @@ pub(crate) enum Specific {
     TypingLiteralString,
     TypingUnpack,
     TypingTypeAlias,
+    TypingTypeAliasType,
     TypingFinal,
     TypingLiteral,
     TypingSelf,

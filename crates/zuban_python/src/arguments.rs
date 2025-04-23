@@ -100,6 +100,10 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         }
         first.maybe_positional_arg(i_s, context)
     }
+
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs> {
+        None
+    }
 }
 
 #[derive(Debug)]
@@ -108,7 +112,7 @@ pub(crate) struct SimpleArgs<'db, 'a> {
     // primary "(" [arguments | comprehension] ")"
     file: &'a PythonFile,
     primary_node_index: NodeIndex,
-    details: ArgumentsDetails<'a>,
+    pub details: ArgumentsDetails<'a>,
     i_s: InferenceState<'db, 'a>,
 }
 
@@ -195,6 +199,10 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         // Details is empty when no arguments are provided (e.g. `foo()`), which means we do not
         // have to reset the cache.
         self.file.points.reset_from_backup(backup.as_ref().unwrap());
+    }
+
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs> {
+        Some(self)
     }
 }
 

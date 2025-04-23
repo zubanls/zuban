@@ -1899,7 +1899,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 match point.kind() {
                     PointKind::Specific => {
                         macro_rules! return_on_type_def {
-                            ($name:ident $(, $args:ident )?) => {
+                            ($name:ident $(, $args:expr )?) => {
                                 if let ResultContext::AssignmentNewDefinition {
                                     assignment_definition,
                                 } = &result_context
@@ -1985,6 +1985,24 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             Specific::AssertTypeFunction => {
                                 return execute_assert_type(i_s, args, result_context)
+                            }
+                            Specific::TypingTypeAliasType => {
+                                if let ResultContext::AssignmentNewDefinition {
+                                    assignment_definition,
+                                } = &result_context
+                                {
+                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
+                                    if let Some(inf) = n
+                                        .file
+                                        .name_resolution_for_types(i_s)
+                                        .execute_type_alias_from_type_alias_type(
+                                            args,
+                                            n.expect_assignment(),
+                                        )
+                                    {
+                                        return inf;
+                                    }
+                                }
                             }
                             Specific::TypingAny => {
                                 args.add_issue(i_s, IssueKind::AnyNotCallable);
@@ -2782,6 +2800,9 @@ pub fn specific_to_type<'db>(
         Specific::MypyExtensionsFlexibleAlias => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
         // TODO dataclass transforms should probably be handled properly
         Specific::TypingDataclassTransform => Cow::Owned(i_s.db.python_state.function_type()),
+        Specific::TypingTypeAliasType => Cow::Owned(Type::Type(Rc::new(
+            i_s.db.python_state.type_alias_type_type(),
+        ))),
         actual => unreachable!("{actual:?}"),
     }
 }

@@ -198,6 +198,7 @@ pub(crate) enum IssueKind {
     TypeParametersShouldBeDeclared { type_var_like: TypeVarLike },
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
+    FreeTypeVariableExpectInTypeAliasTypeTypeParams { is_unpack: bool },
     TypeVarBoundViolation { actual: Box<str>, of: Box<str>, expected: Box<str> },
     InvalidTypeVarValue { type_var_name: Box<str>, of: Box<str>, actual: Box<str> },
     TypeVarCoAndContravariant,
@@ -1409,6 +1410,12 @@ impl<'db> Diagnostic<'db> {
             IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_string(),
             TypeVarExpected{class} => format!("Free type variable expected in {class}[...]"),
+            FreeTypeVariableExpectInTypeAliasTypeTypeParams  { is_unpack } => {
+                if *is_unpack {
+                    additional_notes.push("Don't Unpack type variables in type_params".to_string());
+                }
+                "Free type variable expected in type_params argument to TypeAliasType".to_string()
+            }
             TypeVarBoundViolation{actual, of, expected} => format!(
                 "Type argument \"{actual}\" of \"{of}\" must be a subtype of \"{expected}\"",
             ),
