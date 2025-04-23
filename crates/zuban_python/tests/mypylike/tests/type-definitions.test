@@ -545,3 +545,18 @@ else:
 
 [case type_alias_invalid_star_in_type_var_bounds]
 def f[T: (int, *str)](t: T) -> list[T]: ...  # E: Unpack is only valid in a variadic position
+
+[case type_of_none_alias_in_different_module]
+import m
+def f(
+    x: m.void,
+    y: m.void,
+    a: m.int_literal,  # E: Variable "m.int_literal" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    b: m.int_literal,  # E: Variable "m.int_literal" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+):
+    reveal_type(x)  # N: Revealed type is "Type[None]"
+    reveal_type(m.void)  # N: Revealed type is "Type[None]"
+
+[file m.py]
+void = type(None)
+int_literal = type(1)

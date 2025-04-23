@@ -1,9 +1,10 @@
 use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_cst::{
-    ArgumentsDetails, Assignment, AssignmentContent, Atom, AtomContent, Expression,
-    ExpressionContent, ExpressionPart, NameDef, NameOrPrimaryWithNames, NodeIndex, Primary,
-    PrimaryContent, PrimaryOrAtom, PythonString, StarExpressionContent, Target, TypeLike,
+    ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent, Atom,
+    AtomContent, Expression, ExpressionContent, ExpressionPart, NameDef, NameOrPrimaryWithNames,
+    NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, PythonString, StarExpressionContent, Target,
+    TypeLike,
 };
 use utils::FastHashSet;
 
@@ -265,7 +266,20 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 SpecialAssignmentKind::ParamSpec(a) => self.compute_param_spec_assignment(
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 ),
-                SpecialAssignmentKind::TypeOf(_) => todo!(),
+                SpecialAssignmentKind::TypeOf(args) => {
+                    if let Some(ArgOrComprehension::Arg(Argument::Positional(arg))) =
+                        args.details.iter().next()
+                    {
+                        if arg.expression().is_none_literal() {
+                            return Ok(Lookup::T(TypeContent::Type(Type::Type(Rc::new(
+                                Type::None,
+                            )))));
+                        }
+                    }
+                    return Ok(Lookup::T(TypeContent::InvalidVariable(
+                        InvalidVariableType::Variable(NodeRef::new(self.file, name_def.index())),
+                    )));
+                }
             };
             inf.save_redirect(self.i_s, self.file, name_def.index());
             // Since this sets the name def, we need to imitate the inference, which sets the name
@@ -965,6 +979,7 @@ enum AliasCause {
     SyntaxOrTypeAliasType, // `type X = int` or `X = TypeAliasType(int)`
 }
 
+#[derive(Debug)]
 enum SpecialAssignmentKind<'db, 'tree> {
     Enum(Class<'db>, ArgsContent<'tree>),
     CollectionsNamedTuple(ArgsContent<'tree>),
@@ -974,6 +989,7 @@ enum SpecialAssignmentKind<'db, 'tree> {
     TypeOf(ArgsContent<'tree>), // e.g. type(None)
 }
 
+#[derive(Debug)]
 struct ArgsContent<'tree> {
     primary_index: NodeIndex,
     details: ArgumentsDetails<'tree>,
