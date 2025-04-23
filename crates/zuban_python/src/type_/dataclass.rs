@@ -978,7 +978,7 @@ pub fn lookup_symbol_internal(
             )),
             AttributeKind::ClassVar,
         );
-    } else if name == "__match_args__" && dbg!(self_.options.match_args) {
+    } else if name == "__match_args__" && self_.options.match_args {
         return dunder_match_args_tuple(self_, i_s);
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
