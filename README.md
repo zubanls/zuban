@@ -65,7 +65,7 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 
 - 2022-09-27:  1170 /  2547 (0.08s -> 14625 tests/s 44b39e90299909bb1672a0a64699c42145efda35)
 - 2023-01-20:  1622 /  2989 (0.13s -> 12476 tests/s 914aede21d716bd80b9a790c213b6d54024b8b79)
-- 2023-02-23:  1750 /  3104 (0.27s ->  6481 tests/s a8d9592a77286caa42501c69ea8b7b89c430c4a8)
+- 2023-02-23:  1750 /  3104 (0.27s ->  6481 tests/s a8d9592a77286caa42501c69ea8b7b89c430c4a8) (note: Cache typeshed multiple times)
 - 2023-03-22:  2106 /  3866 (0.30s ->  7262 tests/s d5b94d4a3dcb75fbdb2abb7c6feb41dd7bd287ec)
 - 2023-04-23:  2328 /  4006 (0.31s ->  7510 tests/s 515d90a4a5c12af68cd885db0bf2b79afe88f54d)
 - 2023-05-23:  2881 /  4845 (0.34s ->  8473 tests/s 2653b7365e335a51adc3eb7dcfede26fe7c7d3d0)
@@ -80,15 +80,16 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 - 2024-02-23:  5927 /  7739 (1.05s ->  5645 tests/s d718904967d63839be27a8822cba5a48ea186a6a)
 - 2024-03-23:  6128 /  8248 (1.13s ->  5423 tests/s c1ac728e33fd3034887bf39c34edf3047e903e8a)
 - 2024-04-23:  6414 /  8417 (1.24s ->  5173 tests/s e70c61aa9ec0ce2735dd0890f8803537ae4ba115)
-- 2024-05-23:  6826 /  8674 (0.80s ->  8533 tests/s 98753cd9964134f07e66079a650c1966905a7e40)
+- 2024-05-23:  6826 /  8674 (0.80s ->  8533 tests/s 98753cd9964134f07e66079a650c1966905a7e40) (note: Reuse typeshed caches
 - 2024-06-23:  7129 /  8778 (1.17s ->  6093 tests/s fad9c939a769eb1129ea73581822f559c9d482ed)
 - 2024-07-23:  7425 /  8955 (1.38s ->  5380 tests/s b770518b210c23cfb116ecd943f7aefc8e95e8e7)
 - 2024-08-23:  7725 /  9082 (1.47s ->  5255 tests/s 1d580b30e1b0712182c9c827ef79edd682994dac)
 - 2024-09-23:  7945 /  9150 (1.51s ->  5262 tests/s 17da15d9c0a208848aad501b83ebb875d1a4bb5f)
 - 2024-10-23:  8143 /  9344 (1.60s ->  5089 tests/s 1540a3062b529d99b04fc5865def01482822872b)
-- 2024-11-23:  8480 /  9668 (1.65s ->  5139 tests/s 0dac1c48911dffc925c03b81a79d3f099bae6ffb)
+- 2024-11-23:  8480 /  9668 (1.65s ->  5139 tests/s 0dac1c48911dffc925c03b81a79d3f099bae6ffb) (note: Avoided union replacing)
 - 2025-02-23:  8812 / 10128 (1.25s ->  7050 tests/s b65d5256011792e807562f366168a3d3b7845eaa)
 - 2025-03-23:  8968 / 10369 (1.27s ->  7061 tests/s 4d34f7bc9aaa82ed1b64c54479a29932953a8eb8)
+- 2025-04-23:  9272 / 10582 (1.62s ->  5723 tests/s b068ac600aff0dd46bf9e97c4889339ec99fc763) (note: tests cannot reuse Python versions sometimes)
 
 ## Unsound?
 
