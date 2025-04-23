@@ -569,6 +569,30 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         let name = name?;
         let value = value?;
+
+        match name.maybe_single_string_literal() {
+            Some(py_string) => {
+                if name_def.as_code() != py_string.content() {
+                    self.add_issue(
+                        name.index(),
+                        IssueKind::VarNameMismatch {
+                            class_name: "TypeAliasType".into(),
+                            string_name: Box::from(py_string.content()),
+                            variable_name: Box::from(name_def.as_code()),
+                        },
+                    );
+                }
+            }
+            None => {
+                self.add_type_issue(
+                    name.index(),
+                    IssueKind::ArgumentIssue(Box::from(
+                        "Argument 1 to TypeAliasType(...) must be a string literal",
+                    )),
+                );
+            }
+        };
+
         Some(self.check_for_alias_second_step(
             CalculatingAliasType::Normal,
             cached_type_node_ref,

@@ -560,3 +560,12 @@ def f(
 [file m.py]
 void = type(None)
 int_literal = type(1)
+
+[case type_alias_type_without_string_literal]
+from typing import TypeAliasType
+
+s = str()
+TA = TypeAliasType(s, int)  # E: Argument 1 to TypeAliasType(...) must be a string literal
+
+def f(x: TA) -> None:
+    reveal_type(x)  # N: Revealed type is "int"

@@ -709,7 +709,6 @@ testPEP695InvalidGenericOrProtocolBaseClass
 testPEP695RecursiveTypeAliasForwardReference
 testCurrentClassWorksAsBound
 # TypeAliasType
-testTypeAliasTypeInvalid
 testTypeAliasTypeInvalidGeneric
 
 # enum.member / enum.nonmember
