@@ -709,12 +709,10 @@ testPEP695InvalidGenericOrProtocolBaseClass
 testPEP695RecursiveTypeAliasForwardReference
 testCurrentClassWorksAsBound
 # TypeAliasType
-testTypeAliasType
 testTypeAliasTypeInvalid
 testTypeAliasTypeGeneric
 testTypeAliasTypeInvalidGeneric
 testTypeAliasTypeNoUnpackInTypeParams311
-testTypeAliasTypePython311
 testPEP695TypeAliasType
 
 # enum.member / enum.nonmember

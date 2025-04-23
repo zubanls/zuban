@@ -199,7 +199,7 @@ pub(crate) struct PythonState {
     typing_container_index: NodeIndex,
     typing_special_form_index: NodeIndex,
     typing_no_type_check_index: NodeIndex,
-    type_alias_type_link: PointLink,
+    pub type_alias_type_link: PointLink,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
     types_none_type_index: Option<NodeIndex>,

@@ -423,8 +423,64 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     SpecialAssignmentKind::Enum(class, ArgsContent::new(primary.index(), details))
                 })
             }
+            Some(Lookup::T(TypeContent::Class { node_ref, .. }))
+                if node_ref.as_link() == self.i_s.db.python_state.type_alias_type_link =>
+            {
+                Err(CalculatingAliasType::TypeAliasType(ArgsContent::new(
+                    primary.index(),
+                    details,
+                )))
+            }
             _ => Err(CalculatingAliasType::Normal),
         }
+    }
+
+    fn type_alias_from_type_alias_type(
+        &self,
+        cached_type_node_ref: NodeRef<'file>,
+        name_def: NameDef,
+        args: ArgumentsDetails,
+    ) -> Option<Lookup<'file, 'file>> {
+        // For `X = TypeAliasType('X', int)`. Errors return None and are checked by the type
+        // checker in the normal way.
+        let mut name = None;
+        let mut value = None;
+        let mut type_params = self.i_s.db.python_state.empty_type_var_likes.clone();
+        for arg in args.iter() {
+            match arg {
+                ArgOrComprehension::Arg(Argument::Positional(n)) => {
+                    if name.is_none() {
+                        name = Some(n.expression());
+                    } else if value.is_none() {
+                        value = Some(n.expression());
+                    } else {
+                        return None;
+                    }
+                }
+                ArgOrComprehension::Arg(Argument::Keyword(kw)) => {
+                    let (key, val) = kw.unpack();
+                    match key.as_code() {
+                        "name" => name = Some(val),
+                        "value" => value = Some(val),
+                        "type_params" => {
+                            todo!()
+                        }
+                        _ => return None,
+                    }
+                }
+                _ => return None,
+            }
+        }
+        let name = name?;
+        let value = value?;
+        Some(self.check_for_alias_second_step(
+            CalculatingAliasType::Normal,
+            cached_type_node_ref,
+            name_def,
+            type_params,
+            value,
+            AliasCause::SyntaxOrTypeAliasType,
+        ))
     }
 
     fn check_for_alias(
@@ -440,7 +496,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // just calculate all late bound type vars, but that would mean that something
         // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
         // generally how type aliases work.
-        let find_type_var_likes = || match &origin {
+        let type_var_likes = match &origin {
             CalculatingAliasType::Normal => {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
             }
@@ -454,8 +510,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             CalculatingAliasType::NewType(_) => {
                 self.i_s.db.python_state.empty_type_var_likes.clone()
             }
+            CalculatingAliasType::TypeAliasType(args) => {
+                return self
+                    .type_alias_from_type_alias_type(cached_type_node_ref, name_def, args.details)
+                    .unwrap_or_else(|| {
+                        return Lookup::T(TypeContent::InvalidVariable(
+                            InvalidVariableType::Variable(NodeRef::new(
+                                self.file,
+                                name_def.index(),
+                            )),
+                        ));
+                    })
+            }
         };
-        let type_var_likes = find_type_var_likes();
         self.check_for_alias_second_step(
             origin,
             cached_type_node_ref,
@@ -523,6 +590,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 CalculatingAliasType::TypedDict { .. } => TypeComputationOrigin::TypedDictMember,
                 CalculatingAliasType::NamedTuple(_) => TypeComputationOrigin::NamedTupleMember,
                 CalculatingAliasType::NewType(_) => TypeComputationOrigin::Other,
+                CalculatingAliasType::TypeAliasType(_) => unreachable!(), // Remapped previously
             },
         );
         match &origin {
@@ -646,6 +714,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 None => alias.set_valid(Type::ERROR, false),
             },
+            CalculatingAliasType::TypeAliasType(_) => unreachable!(), // Remapped previously
         };
         debug!(
             "Alias {}={} on #{} is valid? {}",
@@ -970,13 +1039,14 @@ enum CalculatingAliasType<'tree> {
     TypedDict(ArgsContent<'tree>),
     NamedTuple(ArgsContent<'tree>),
     NewType(ArgsContent<'tree>),
+    TypeAliasType(ArgsContent<'tree>), // e.g. X = TypeAliasType('X', int)
 }
 
 #[derive(Copy, Clone)]
 enum AliasCause {
     TypingTypeAlias, // `X: typing.TypeAlias = int`
     Implicit,
-    SyntaxOrTypeAliasType, // `type X = int` or `X = TypeAliasType(int)`
+    SyntaxOrTypeAliasType, // `type X = int` or `X = TypeAliasType('X', int)`
 }
 
 #[derive(Debug)]
@@ -986,7 +1056,7 @@ enum SpecialAssignmentKind<'db, 'tree> {
     TypeVar(ArgsContent<'tree>),
     TypeVarTuple(ArgsContent<'tree>),
     ParamSpec(ArgsContent<'tree>),
-    TypeOf(ArgsContent<'tree>), // e.g. type(None)
+    TypeOf(ArgsContent<'tree>), // e.g. void = type(None)
 }
 
 #[derive(Debug)]
