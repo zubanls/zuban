@@ -448,34 +448,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return None;
         };
         let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
-        let name_def = match assignment.unpack() {
-            AssignmentContent::Normal(mut targets, ..) => {
-                let first = targets.next().unwrap();
-                if targets.next().is_some() {
-                    debug!(
-                        "Expected a single name def, but found multiple, \
-                           aborting TypeAliasType computation"
-                    );
-                    return None;
-                }
-                match first {
-                    Target::Name(name_def) => name_def,
-                    _ => {
-                        debug!(
-                            "Expected a name target, but found another target, \
-                               aborting TypeAliasType computation"
-                        );
-                        return None;
-                    }
-                }
-            }
-            _ => {
-                debug!(
-                    "Expected a simple assignment, but found another target, \
-                       aborting TypeAliasType computation"
-                );
-                return None;
-            }
+        let Some((name_def, _, _)) = assignment.maybe_simple_type_expression_assignment() else {
+            debug!(
+                "Expected a simple assignment, but found {}, \
+                   aborting TypeAliasType computation",
+                assignment.as_code()
+            );
+            return None;
         };
         self.type_alias_from_type_alias_type(cached_type_node_ref, name_def, simple_args.details)?;
         Some(Inferred::from_type(
