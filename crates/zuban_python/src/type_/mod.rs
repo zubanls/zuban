@@ -56,7 +56,7 @@ pub(crate) use self::{
         CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,
         TypeLikeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarKindInfos, TypeVarLike,
         TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarTuple,
-        TypeVarTupleUsage, TypeVarUsage, Variance,
+        TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, Variance,
     },
     typed_dict::{
         check_typed_dict_call, infer_typed_dict_arg, initialize_typed_dict, lookup_on_typed_dict,

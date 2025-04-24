@@ -34,7 +34,8 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, Variance,
+        LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, TypeVarVariance,
+        Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
@@ -1491,7 +1492,7 @@ impl Inference<'_, '_, '_> {
         for param in params_iterator {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
-                if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Covariant)
+                if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Covariant))
                     && !["__init__", "__new__", "__post_init__"].contains(&name.as_code())
                 {
                     NodeRef::new(self.file, annotation.index())
@@ -1536,7 +1537,7 @@ impl Inference<'_, '_, '_> {
 
         if let Some(return_annotation) = return_annotation {
             let t = self.use_cached_return_annotation_type(return_annotation);
-            if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Contravariant)
+            if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Contravariant))
             {
                 NodeRef::new(self.file, return_annotation.index())
                     .add_issue(i_s, IssueKind::TypeVarContravariantInReturnType);
@@ -2818,6 +2819,9 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
         let TypeVarLike::TypeVar(tv) = tv_like else {
             continue;
         };
+        let TypeVarVariance::Known(tv_variance) = tv.variance else {
+            continue;
+        };
         let replace_protocol = |is_upper: bool| {
             Type::new_class(
                 class.node_ref.as_link(),
@@ -2856,12 +2860,12 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
         } else if match_protocol(&p_lower_bound, &p_upper_bound) {
             expected_variance = Variance::Contravariant
         }
-        if tv.variance != expected_variance {
+        if tv_variance != expected_variance {
             NodeRef::new(class.node_ref.file, class.node().name().index()).add_issue(
                 i_s,
                 IssueKind::ProtocolWrongVariance {
                     type_var_name: tv.name(i_s.db).into(),
-                    actual_variance: tv.variance,
+                    actual_variance: tv_variance,
                     expected_variance,
                 },
             )
@@ -2892,8 +2896,10 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
             if let Generic::TypeArg(t) = arg {
                 if let Type::TypeVar(tv) = t.as_ref() {
                     if let TypeVarLike::TypeVar(tv_def) = type_var_like {
-                        if tv.type_var.variance != Variance::Invariant
-                            && tv.type_var.variance != tv_def.variance
+                        if matches!(
+                            tv.type_var.variance,
+                            TypeVarVariance::Known(Variance::Covariant | Variance::Contravariant)
+                        ) && tv.type_var.variance != tv_def.variance
                         {
                             add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
                                 type_var_name: tv.type_var.name(db).into(),

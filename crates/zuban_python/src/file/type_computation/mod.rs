@@ -51,8 +51,8 @@ use crate::{
         StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
         TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike,
         TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTuple,
-        TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
-        Variance, WithUnpack,
+        TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, TypedDict, TypedDictGenerics, UnionEntry,
+        UnionType, WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
     utils::rc_slice_into_vec,
@@ -4166,8 +4166,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 scope,
                                 kind,
                                 default,
-                                // TODO implement variance inference
-                                Variance::Invariant,
+                                TypeVarVariance::Inferred,
                             )))
                         }
                         TypeParamKind::TypeVarTuple(default) => {

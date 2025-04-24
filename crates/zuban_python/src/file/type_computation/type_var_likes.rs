@@ -10,7 +10,7 @@ use crate::{
     inferred::Inferred,
     type_::{
         ParamSpec, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikeName,
-        TypeVarTuple, Variance,
+        TypeVarTuple, TypeVarVariance, Variance,
     },
 };
 
@@ -180,7 +180,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
             i_s.as_parent_scope(),
             kind,
             default,
-            match (covariant, contravariant) {
+            TypeVarVariance::Known(match (covariant, contravariant) {
                 (false, false) => Variance::Invariant,
                 (true, false) => Variance::Covariant,
                 (false, true) => Variance::Contravariant,
@@ -188,7 +188,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
                     args.add_issue(i_s, IssueKind::TypeVarCoAndContravariant);
                     return None;
                 }
-            },
+            }),
         ))))
     } else {
         args.add_issue(

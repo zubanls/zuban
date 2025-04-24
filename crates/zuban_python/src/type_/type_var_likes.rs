@@ -19,6 +19,7 @@ use crate::{
     inference_state::InferenceState,
     matching::Matcher,
     node_ref::NodeRef,
+    type_helpers::Class,
     utils::join_with_commas,
 };
 
@@ -346,6 +347,12 @@ impl Variance {
             Variance::Invariant => Variance::Invariant,
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) enum TypeVarVariance {
+    Known(Variance),
+    Inferred,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -691,7 +698,7 @@ pub(crate) struct TypeVar {
     scope: ParentScope,
     kind: TypeVarKindInfos,
     default: Option<TypeLikeInTypeVar<Type>>,
-    pub variance: Variance,
+    pub variance: TypeVarVariance,
 }
 
 impl PartialEq for TypeVar {
@@ -708,7 +715,7 @@ impl TypeVar {
         scope: ParentScope,
         kind: TypeVarKindInfos,
         default: Option<NodeIndex>,
-        variance: Variance,
+        variance: TypeVarVariance,
     ) -> Self {
         Self {
             name: TypeVarName::Name(name),
@@ -725,7 +732,17 @@ impl TypeVar {
             scope: ParentScope::Module,
             kind,
             default: None,
-            variance: Variance::Invariant,
+            variance: TypeVarVariance::Known(Variance::Invariant),
+        }
+    }
+
+    pub fn inferred_variance(&self, class: &Class) -> Variance {
+        match self.variance {
+            TypeVarVariance::Known(variance) => variance,
+            TypeVarVariance::Inferred => {
+                // TODO use inferred variance
+                Variance::Invariant
+            }
         }
     }
 

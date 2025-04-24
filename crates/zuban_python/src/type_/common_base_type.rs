@@ -177,7 +177,7 @@ fn common_base_class_basic(
             TypeVarLike::TypeVar(type_var) => {
                 let inner_t1 = generic1.expect_type_argument();
                 let inner_t2 = generic2.expect_type_argument();
-                match type_var.variance {
+                match type_var.inferred_variance(&c1) {
                     Variance::Invariant => {
                         let matches = inner_t1.is_simple_same_type(i_s, &inner_t2);
                         // TODO this with_any check is not very precise and a structure
