@@ -525,16 +525,38 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                     parsa_python_cst::StarLikeExpression::NamedExpression(n) => {
                                         match self.lookup_type_expr_if_only_names(n.expression()) {
                                             Some(Lookup::TypeVarLike(tvl)) => {
-                                                type_var_manager.add(tvl, None);
+                                                if type_var_manager.position(&tvl).is_some() {
+                                                    self.add_type_issue(
+                                                        n.index(),
+                                                        IssueKind::DuplicateTypeVarInTypeAliasType {
+                                                            name: tvl.name(self.i_s.db).into()
+                                                        }
+                                                    )
+                                                } else if matches!(
+                                                    tvl,
+                                                    TypeVarLike::TypeVarTuple(_)
+                                                ) && type_var_manager
+                                                    .has_type_var_tuples()
+                                                {
+                                                    self.add_type_issue(
+                                                        n.index(),
+                                                        IssueKind::MultipleTypeVarTupleDisallowedInTypeParams {
+                                                            in_type_alias_type: true,
+                                                        }
+                                                    )
+                                                } else {
+                                                    type_var_manager.add(tvl, None);
+                                                }
                                             }
                                             _ => {
                                                 let c = n.as_code();
-                                                self.add_type_issue(n.index(), IssueKind::FreeTypeVariableExpectInTypeAliasTypeTypeParams {
+                                                self.add_type_issue(
+                                                    n.index(),
+                                                    IssueKind::FreeTypeVariableExpectInTypeAliasTypeTypeParams {
                                                     // TODO this is very imprecise
                                                     is_unpack: c.starts_with("Unpack[")
                                                     || c.starts_with("typing.Unpack[")
-                                                }
-                                                )
+                                                })
                                             }
                                         };
                                     }
@@ -869,7 +891,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         let scope = self.i_s.as_parent_scope();
         let type_var_likes = if let Some(type_params) = type_params {
-            self.compute_type_params_definition(scope, type_params)
+            self.compute_type_params_definition(scope, type_params, false)
         } else {
             self.i_s.db.python_state.empty_type_var_likes.clone()
         };

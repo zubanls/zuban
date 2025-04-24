@@ -254,6 +254,8 @@ pub(crate) enum IssueKind {
     TypeVarTupleCannotBeSplit,
     TypeVarDefaultWrongOrder { type_var1: Box<str>, type_var2: Box<str> },
     AlreadyDefinedTypeParameter { name: Box<str> },
+    DuplicateTypeVarInTypeAliasType { name: Box<str> },
+    MultipleTypeVarTupleDisallowedInTypeParams { in_type_alias_type: bool },
 
     CannotUseIsinstanceWith { func: &'static str, with: &'static str },
     CannotUseIsinstanceWithParametrizedGenerics,
@@ -1540,6 +1542,16 @@ impl<'db> Diagnostic<'db> {
             AlreadyDefinedTypeParameter { name } => format!(
                 r#""{name}" already defined as a type parameter"#
             ),
+            DuplicateTypeVarInTypeAliasType { name } => format!(
+                r#"Duplicate type variable "{name}" in type_params argument to TypeAliasType"#
+            ),
+            MultipleTypeVarTupleDisallowedInTypeParams { in_type_alias_type } => {
+                if *in_type_alias_type {
+                    "Can only use one TypeVarTuple in type_params argument to TypeAliasType".to_string()
+                } else {
+                    "Can only use one TypeVarTuple in type params".to_string()
+                }
+            }
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),
             CannotUseIsinstanceWithParametrizedGenerics =>

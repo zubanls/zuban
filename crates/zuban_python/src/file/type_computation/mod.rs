@@ -4110,11 +4110,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         scope: ParentScope,
         type_params: TypeParams,
+        allow_multi_type_var_tuples: bool,
     ) -> TypeVarLikes {
+        let mut type_var_tuple_count = 0;
         TypeVarLikes::new(
             type_params
                 .iter()
-                .map(|type_param| {
+                .filter_map(|type_param| {
                     let (name_def, kind) = type_param.unpack();
                     let name_def_ref = NodeRef::new(self.file, name_def.index());
                     let name = TypeVarLikeName::SyntaxNode(name_def_ref.as_link());
@@ -4170,9 +4172,26 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                         TypeParamKind::TypeVarTuple(default) => {
                             let default = default.map(|d| d.unpack().index());
-                            TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
+                            type_var_tuple_count +=1;
+                            let tvl = TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
                                 name, scope, default,
-                            )))
+                            )));
+                            if !allow_multi_type_var_tuples && type_var_tuple_count == 2 {
+                                self.add_type_issue(
+                                    name_def.index(),
+                                    IssueKind::MultipleTypeVarTupleDisallowedInTypeParams {
+                                        in_type_alias_type: false,
+                                    }
+                                );
+                                // We still have to insert so the TypeVarTuple exists as a name and
+                                // can be assigned
+                                name_def_ref.insert_complex(
+                                    ComplexPoint::TypeVarLike(tvl),
+                                    Locality::Todo,
+                                );
+                                return None;
+                            }
+                            tvl
                         }
                         TypeParamKind::ParamSpec(default) => {
                             let default = default.map(|d| d.expression().index());
@@ -4186,7 +4205,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         ComplexPoint::TypeVarLike(type_var_like.clone()),
                         Locality::Todo,
                     );
-                    type_var_like
+                    Some(type_var_like)
                 })
                 .collect(),
         )

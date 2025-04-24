@@ -221,6 +221,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                     .compute_type_params_definition(
                         ParentScope::Function(self.node_index),
                         type_params,
+                        true,
                     ),
             );
         }

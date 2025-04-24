@@ -569,3 +569,21 @@ TA = TypeAliasType(s, int)  # E: Argument 1 to TypeAliasType(...) must be a stri
 
 def f(x: TA) -> None:
     reveal_type(x)  # N: Revealed type is "int"
+
+[case type_param_with_multiple_type_var_tuples]
+# Ok
+def x[*Ts, *Ts2](x: tuple[*Ts], *y: *Ts2) -> tuple[tuple[*Ts], tuple[*Ts2]]:
+    reveal_type(x)  # N: Revealed type is "tuple[Unpack[Ts]]"
+    reveal_type(y)  # N: Revealed type is "tuple[Unpack[Ts2]]"
+    return (x, y)
+
+x((1, 2), "", b'')
+
+type A[*Ts, *Ts2] = tuple[tuple[*Ts], tuple[*Ts2]]  # E: Can only use one TypeVarTuple in type params \
+                                                    # E: All type parameters should be declared ("Ts2" not declared)
+class C[*Ts, *Ts2](tuple[tuple[*Ts], tuple[*Ts2]]): ...  # E: Can only use one TypeVarTuple in type params \
+                                                         # E: All type parameters should be declared ("Ts2" not declared)
+
+def f(a: A[int, str, bytes], c: C[int, str, bytes]):
+    reveal_type(a)  # N: Revealed type is "tuple[tuple[int, str, bytes], tuple[Any, ...]]"
+    reveal_type(c)  # N: Revealed type is "tuple[tuple[int, str, bytes], tuple[Any, ...], fallback=__main__.C[int, str, bytes]]"
