@@ -22,7 +22,8 @@ use crate::{
     type_::{
         CallableContent, DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem,
         GenericsList, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarName, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        Variance,
     },
     type_helpers::{Class, Function},
     utils::SymbolTable,
@@ -1332,6 +1333,8 @@ pub(crate) struct ClassInfos {
     pub is_runtime_checkable: bool,
     pub abstract_attributes: Box<[PointLink]>,
     pub dataclass_transform: Option<Box<DataclassTransformObj>>,
+    // Does not need to be a HashMap, because this is typically the size of 1-2
+    pub variance_map: Vec<(TypeVarName, OnceCell<Variance>)>,
     // We have this less for caching and more to be able to have different types.
     pub undefined_generics_type: OnceCell<Rc<Type>>,
 }
@@ -1365,7 +1368,7 @@ mod tests {
         assert_eq!(size_of::<Type>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
         assert_eq!(size_of::<ComplexPoint>(), size_of::<Type>());
         assert_eq!(size_of::<ClassStorage>(), 152);
-        assert_eq!(size_of::<ClassInfos>(), 88);
+        assert_eq!(size_of::<ClassInfos>(), 112);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<StringSlice>(), 12);
     }

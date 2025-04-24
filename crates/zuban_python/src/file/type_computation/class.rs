@@ -29,7 +29,8 @@ use crate::{
         dataclass_init_func, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, Dataclass, DataclassOptions, DataclassTransformObj, DbString, Enum,
         EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType, StringSlice,
-        Tuple, Type, TypeVarLike, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+        Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict, TypedDictMember,
+        Variance,
     },
     type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
@@ -116,7 +117,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     #[inline]
-    fn class_info_node_ref(&self) -> NodeRef {
+    fn class_info_node_ref(&self) -> NodeRef<'file> {
         self.0.add_to_node_index(CLASS_TO_CLASS_INFO_DIFFERENCE)
     }
 
@@ -140,6 +141,15 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         }
         match node_ref.to_db_lifetime(db).maybe_complex().unwrap() {
             ComplexPoint::ClassInfos(class_infos) => Some(class_infos),
+            _ => unreachable!(),
+        }
+    }
+
+    // Like maybe_cached_class_infos, but does not provide the db lifetime
+    pub fn use_cached_class_infos_simple(&self) -> &'file ClassInfos {
+        let node_ref = self.class_info_node_ref();
+        match node_ref.maybe_complex().unwrap() {
+            ComplexPoint::ClassInfos(class_infos) => class_infos.as_ref(),
             _ => unreachable!(),
         }
     }
@@ -1052,6 +1062,15 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 has_slots,
                 protocol_members,
                 is_final,
+                variance_map: type_vars
+                    .iter()
+                    .filter_map(|tvl| match tvl {
+                        TypeVarLike::TypeVar(tv) if tv.variance == TypeVarVariance::Inferred => {
+                            Some((tv.name, OnceCell::new()))
+                        }
+                        _ => None,
+                    })
+                    .collect(),
                 total_ordering: false,
                 is_runtime_checkable: true,
                 abstract_attributes,

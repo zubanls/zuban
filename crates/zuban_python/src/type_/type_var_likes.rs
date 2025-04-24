@@ -740,8 +740,13 @@ impl TypeVar {
         match self.variance {
             TypeVarVariance::Known(variance) => variance,
             TypeVarVariance::Inferred => {
-                // TODO use inferred variance
-                Variance::Invariant
+                let variance = class
+                    .use_cached_class_infos_simple()
+                    .variance_map
+                    .iter()
+                    .find_map(|(n, variance)| (self.name == *n).then_some(variance))
+                    .unwrap();
+                variance.get().copied().unwrap_or(Variance::Invariant)
             }
         }
     }
