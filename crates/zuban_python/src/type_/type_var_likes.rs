@@ -746,7 +746,9 @@ impl TypeVar {
                     .iter()
                     .find_map(|(n, variance)| (self.name == *n).then_some(variance))
                     .unwrap();
-                variance.get().copied().unwrap_or(Variance::Invariant)
+                // Fallback to Covariant if it was not calculated yet. Mypy also falls back to it
+                // while calculating.
+                variance.get().copied().unwrap_or(Variance::Covariant)
             }
         }
     }

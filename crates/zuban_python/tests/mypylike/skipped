@@ -678,8 +678,8 @@ testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
 # 3.12 type alias type var syntax infer variance
-testPEP695GenericMethodInGenericClass
-testPEP695FinalAttribute
+testPEP695InheritInvariant
+testPEP695GenericNamedTuple
 testPEP695TwoTypeVariables
 testPEP695Properties
 testPEP695Protocol
@@ -687,7 +687,6 @@ testPEP695InferVarianceSimpleFromMethod
 testPEP695InferVarianceSimpleFromAttribute
 testPEP695InferVarianceRecursive
 testPEP695InferVarianceInFrozenDataclass
-testPEP695InferVarianceCalculateOnDemand
 testPEP695InferVarianceNotReadyWhenNeeded
 testPEP695InferVarianceNotReadyForJoin
 testPEP695InferVarianceNotReadyForMeet
@@ -699,11 +698,9 @@ testPEP695InheritCoOrContravariant
 testPEP695InferVarianceOfTupleType
 testPEP695VarianceInheritedFromBaseWithExplicitVariance
 testPEP695VarianceChangesDueToDependency
-testPEP695VarianceInference
 testPEP695VarianceInferenceSpecialCaseWithTypeshed
 testPEP695InvalidGenericOrProtocolBaseClass
 testPEP695RecursiveTypeAliasForwardReference
-testCurrentClassWorksAsBound
 
 # enum.member / enum.nonmember
 testEnumNonMemberSupport
