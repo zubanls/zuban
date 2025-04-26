@@ -31,8 +31,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, FormatStyle,
         FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause,
-        ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarIndex, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
     },
     utils::debug_indent,
 };
@@ -1336,6 +1336,107 @@ impl<'db: 'a, 'a> Class<'a> {
                 from_type_type,
             )
         })
+    }
+
+    pub fn infer_variance_for_index(
+        &self,
+        db: &Database,
+        type_var_index: TypeVarIndex,
+    ) -> Variance {
+        let mut co = true;
+        let mut contra = true;
+        let i_s = &InferenceState::new(db, self.node_ref.file);
+
+        let instance = self.instance();
+        let in_definition = self.node_ref.as_link();
+        for (_, base) in self.mro(db) {
+            let cls = match base {
+                TypeOrClass::Class(c) => c,
+                TypeOrClass::Type(_) => {
+                    // It seems like special types are not needed for inference calculation
+                    continue;
+                }
+            };
+            for table in [
+                &cls.class_storage.class_symbol_table,
+                &cls.class_storage.self_symbol_table,
+            ] {
+                for (name, _) in table.iter() {
+                    if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
+                        continue;
+                    }
+                    let lookup = instance.lookup(
+                        i_s,
+                        name,
+                        InstanceLookupOptions::new(&|issue| {
+                            debug!(
+                                "Issue while inferring variance on name {name}: {issue:?}. \
+                                   This should probably not be a problem."
+                            );
+                        })
+                        // object has no generics and is therefore not relevant.
+                        .without_object(),
+                    );
+                    let inf = lookup.lookup.into_inferred();
+                    let t = inf.as_cow_type(i_s);
+                    if let Some(with_object_t) = t.replace_type_var_likes(db, &mut |usage| {
+                        (usage.index() == type_var_index && usage.in_definition() == in_definition)
+                            .then(|| usage.as_object_generic_item(db))
+                    }) {
+                        if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
+                            co = false
+                        }
+                        if !with_object_t.is_simple_sub_type_of(i_s, &t).bool() {
+                            contra = false;
+                            if lookup.attr_kind.is_writable() {
+                                co = false;
+                            }
+                        }
+                        if !co && !contra {
+                            return Variance::Invariant;
+                        }
+                    }
+                }
+            }
+            /*
+            if let Some(inner) = name.strip_prefix("__") {
+                if inner.strip_suffix("__").is_some() {
+                    if IGNORED_INHERITANCE_NAMES.contains(&name) {
+                        return;
+                    }
+                } else {
+                    // This is a private name
+                    return;
+                }
+            }
+
+            if inst2_lookup.attr_kind.is_final() {
+            }
+            if inst2_lookup.attr_kind.is_writable() && inst1_lookup.attr_kind.is_final()
+            {
+            }
+            let first = first.as_cow_type(i_s);
+            if !first
+                .is_sub_type_of(
+                    i_s,
+                    &mut Matcher::default().with_ignore_positional_param_names(),
+                    &second,
+                )
+                .bool()
+            {
+                add_multi_inheritance_issue()
+            } else if !inst1_lookup.attr_kind.is_writable()
+                && inst2_lookup.attr_kind.is_writable()
+            {
+                //
+            }
+            */
+        }
+        match (co, contra) {
+            (false, true) => Variance::Contravariant,
+            (false, false) => unreachable!("Should have returned above"),
+            _ => Variance::Covariant,
+        }
     }
 
     pub(crate) fn simple_lookup(

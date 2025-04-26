@@ -1230,6 +1230,14 @@ impl TypeVarLikeUsage {
         self.as_type_var_like().as_any_generic_item(db)
     }
 
+    pub fn as_object_generic_item(&self, db: &Database) -> GenericItem {
+        match self {
+            TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArg(db.python_state.object_type()),
+            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
+            TypeVarLikeUsage::ParamSpec(_) => todo!(),
+        }
+    }
+
     pub fn into_generic_item(self) -> GenericItem {
         match self {
             TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArg(Type::TypeVar(usage)),

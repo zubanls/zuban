@@ -974,6 +974,22 @@ impl Inference<'_, '_, '_> {
             );
             return;
         }
+        if type_params.is_some() {
+            let type_var_likes = class_node_ref.use_cached_type_vars(i_s.db);
+            for (name, lazy_variance) in class_infos.variance_map.iter() {
+                let type_var_index = type_var_likes
+                    .iter()
+                    .position(|tvl| {
+                        if let TypeVarLike::TypeVar(tv) = tvl {
+                            tv.name == *name
+                        } else {
+                            false
+                        }
+                    })
+                    .unwrap();
+                lazy_variance.get_or_init(|| c.infer_variance_for_index(db, type_var_index.into()));
+            }
+        }
 
         check_multiple_inheritance(
             self.i_s,
@@ -1030,7 +1046,9 @@ impl Inference<'_, '_, '_> {
                     )
                 }
             }
-            check_protocol_type_var_variances(self.i_s, c)
+            if type_params.is_none() {
+                check_protocol_type_var_variances(self.i_s, c)
+            }
         }
     }
 
