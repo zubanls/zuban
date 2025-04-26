@@ -1384,11 +1384,8 @@ impl<'db: 'a, 'a> Class<'a> {
 
         // We intentionally don't use self.bases(db) here, because we want the bare type objects to
         // work with.
-        let bases = self
-            .use_cached_class_infos(db)
-            .mro
-            .iter()
-            .filter(|&b| b.is_direct_base);
+        let class_infos = self.use_cached_class_infos(db);
+        let bases = class_infos.mro.iter().filter(|&b| b.is_direct_base);
         for base in bases {
             let base_t = &base.type_;
             if let Some(with_object_t) = replace_type_var_with_object(base_t) {
@@ -1407,6 +1404,40 @@ impl<'db: 'a, 'a> Class<'a> {
         // Infer variance for members
 
         let instance = self.instance();
+        let lookup_member = |name| {
+            let mut lookup = instance.lookup(
+                i_s,
+                name,
+                InstanceLookupOptions::new(&|issue| {
+                    debug!(
+                        "Issue while inferring variance on name {name}: {issue:?}. \
+                            This should probably not be a problem."
+                    );
+                })
+                // object has no generics and is therefore not relevant.
+                .without_object(),
+            );
+            match class_infos
+                .undefined_generics_type
+                .get()
+                .map(|t| t.as_ref())
+            {
+                Some(Type::Dataclass(_)) => {
+                    if let AttributeKind::AnnotatedAttribute = lookup.attr_kind {
+                        lookup.attr_kind = AttributeKind::Property {
+                            setter_type: None,
+                            is_final: false,
+                            is_abstract: true,
+                        };
+                    }
+                }
+                Some(Type::TypedDict(td)) => match &td.generics {
+                    _ => todo!("{:?}", self.generics),
+                },
+                _ => (),
+            }
+            lookup
+        };
         for table in [
             &self.class_storage.class_symbol_table,
             &self.class_storage.self_symbol_table,
@@ -1415,18 +1446,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
                     continue;
                 }
-                let lookup = instance.lookup(
-                    i_s,
-                    name,
-                    InstanceLookupOptions::new(&|issue| {
-                        debug!(
-                            "Issue while inferring variance on name {name}: {issue:?}. \
-                                   This should probably not be a problem."
-                        );
-                    })
-                    // object has no generics and is therefore not relevant.
-                    .without_object(),
-                );
+                let lookup = lookup_member(name);
                 let inf = lookup.lookup.into_inferred();
                 let t = inf.as_cow_type(i_s);
                 if let Some(with_object_t) = replace_type_var_with_object(&t) {

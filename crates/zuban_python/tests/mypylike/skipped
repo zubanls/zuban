@@ -679,8 +679,6 @@ testOtherVarArgs
 
 # 3.12 type alias type var syntax infer variance
 testPEP695InferVarianceRecursive
-testPEP695InferVarianceInFrozenDataclass
-testPEP695GenericNamedTuple
 testPEP695InferVarianceNotReadyWhenNeeded
 testPEP695InferVarianceNotReadyForJoin
 testPEP695InferVarianceNotReadyForMeet
