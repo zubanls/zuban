@@ -30,9 +30,9 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, FormatStyle,
-        FunctionOverload, GenericClass, GenericsList, LookupResult, NamedTuple, NeverCause,
-        ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarIndex, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        FunctionOverload, GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple,
+        NeverCause, ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarIndex,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
     },
     utils::debug_indent,
 };
@@ -1381,7 +1381,14 @@ impl<'db: 'a, 'a> Class<'a> {
                     let t = inf.as_cow_type(i_s);
                     if let Some(with_object_t) = t.replace_type_var_likes(db, &mut |usage| {
                         (usage.index() == type_var_index && usage.in_definition() == in_definition)
-                            .then(|| usage.as_object_generic_item(db))
+                            .then(|| match usage {
+                                TypeVarLikeUsage::TypeVar(_) => {
+                                    GenericItem::TypeArg(db.python_state.object_type())
+                                }
+                                _ => unreachable!(
+                                    "Variance should never be inferred for ParamSpec/TypeVarTuple"
+                                ),
+                            })
                     }) {
                         if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
                             co = false
