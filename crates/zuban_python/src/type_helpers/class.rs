@@ -1347,8 +1347,49 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut contra = true;
         let i_s = &InferenceState::new(db, self.node_ref.file);
 
-        let instance = self.instance();
         let in_definition = self.node_ref.as_link();
+        let replace_type_var_with_object = |t: &Type| {
+            t.replace_type_var_likes(db, &mut |usage| {
+                (usage.index() == type_var_index && usage.in_definition() == in_definition).then(
+                    || match usage {
+                        TypeVarLikeUsage::TypeVar(_) => {
+                            GenericItem::TypeArg(db.python_state.object_type())
+                        }
+                        _ => {
+                            unreachable!(
+                                "Variance should never be inferred for ParamSpec/TypeVarTuple"
+                            )
+                        }
+                    },
+                )
+            })
+        };
+
+        let instance = self.instance();
+        // Infer variance from base classes
+
+        // We intentionally don't use self.bases(db) here, because we want the bare type objects to
+        // work with.
+        let bases = self
+            .use_cached_class_infos(db)
+            .mro
+            .iter()
+            .filter(|&b| b.is_direct_base);
+        for base in bases {
+            let base_t = &base.type_;
+            if let Some(with_object_t) = replace_type_var_with_object(base_t) {
+                if !base_t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
+                    co = false
+                }
+                if !with_object_t.is_simple_sub_type_of(i_s, &base_t).bool() {
+                    contra = false;
+                }
+                if !co && !contra {
+                    return Variance::Invariant;
+                }
+            }
+        }
+
         for (_, base) in self.mro(db) {
             let cls = match base {
                 TypeOrClass::Class(c) => c,
@@ -1379,17 +1420,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     );
                     let inf = lookup.lookup.into_inferred();
                     let t = inf.as_cow_type(i_s);
-                    if let Some(with_object_t) = t.replace_type_var_likes(db, &mut |usage| {
-                        (usage.index() == type_var_index && usage.in_definition() == in_definition)
-                            .then(|| match usage {
-                                TypeVarLikeUsage::TypeVar(_) => {
-                                    GenericItem::TypeArg(db.python_state.object_type())
-                                }
-                                _ => unreachable!(
-                                    "Variance should never be inferred for ParamSpec/TypeVarTuple"
-                                ),
-                            })
-                    }) {
+                    if let Some(with_object_t) = replace_type_var_with_object(&t) {
                         if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
                             co = false
                         }
