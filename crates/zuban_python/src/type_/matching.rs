@@ -570,6 +570,7 @@ impl Type {
         }
         let type_vars = class1.type_vars(i_s);
         if !type_vars.is_empty() {
+            class1.ensure_calculated_variance(i_s.db);
             let mut matches = Match::new_true();
             for ((t1, t2), tv) in class1
                 .generics()

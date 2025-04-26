@@ -1338,6 +1338,21 @@ impl<'db: 'a, 'a> Class<'a> {
         })
     }
 
+    pub fn ensure_calculated_variance(&self, db: &Database) {
+        if self.use_cached_class_infos(db).has_uncalculated_variances() {
+            let file = self.node_ref.file;
+            // It is very possible that the diagnostics are already calculating and the result will
+            // error, but this does not matter, because we cannot guarantee that all variances are
+            // calculated. This is a best effort thing.
+            // It also feels strange that we have to type check a whole file to know the variance
+            // of a class. But we at least need to do narrowing for the file, because the variance
+            // may depend on self variables, which may depend on inferred file state.
+            let _ = file
+                .inference(&InferenceState::new(db, file))
+                .calculate_diagnostics();
+        }
+    }
+
     pub fn infer_variance_for_index(
         &self,
         db: &Database,

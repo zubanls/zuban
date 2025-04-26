@@ -1346,6 +1346,12 @@ impl ClassInfos {
             _ => db.python_state.bare_type_class(),
         }
     }
+
+    pub fn has_uncalculated_variances(&self) -> bool {
+        self.variance_map
+            .iter()
+            .any(|(_, lazy_variance)| lazy_variance.get().is_none())
+    }
 }
 
 impl std::cmp::PartialEq for ClassStorage {
