@@ -1380,7 +1380,6 @@ impl<'db: 'a, 'a> Class<'a> {
             })
         };
 
-        let instance = self.instance();
         // Infer variance from base classes
 
         // We intentionally don't use self.bases(db) here, because we want the bare type objects to
@@ -1405,88 +1404,49 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
 
-        for (_, base) in self.mro(db) {
-            let cls = match base {
-                TypeOrClass::Class(c) => c,
-                TypeOrClass::Type(_) => {
-                    // It seems like special types are not needed for inference calculation
+        // Infer variance for members
+
+        let instance = self.instance();
+        for table in [
+            &self.class_storage.class_symbol_table,
+            &self.class_storage.self_symbol_table,
+        ] {
+            for (name, _) in table.iter() {
+                if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
                     continue;
                 }
-            };
-            for table in [
-                &cls.class_storage.class_symbol_table,
-                &cls.class_storage.self_symbol_table,
-            ] {
-                for (name, _) in table.iter() {
-                    if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
-                        continue;
-                    }
-                    let lookup = instance.lookup(
-                        i_s,
-                        name,
-                        InstanceLookupOptions::new(&|issue| {
-                            debug!(
-                                "Issue while inferring variance on name {name}: {issue:?}. \
-                                   This should probably not be a problem."
-                            );
-                        })
-                        // object has no generics and is therefore not relevant.
-                        .without_object(),
-                    );
-                    let inf = lookup.lookup.into_inferred();
-                    let t = inf.as_cow_type(i_s);
-                    if let Some(with_object_t) = replace_type_var_with_object(&t) {
-                        if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
-                            co = false
-                        }
-                        if !with_object_t.is_simple_sub_type_of(i_s, &t).bool() {
-                            contra = false;
-                            // Attributes starting with _ are considered private and the variance
-                            // of them are inferred as such.
-                            let is_underscored = || name.starts_with('_') && !is_magic_method(name);
-                            if lookup.attr_kind.is_writable() && !is_underscored() {
-                                co = false;
-                            }
-                        }
-                        if !co && !contra {
-                            return Variance::Invariant;
-                        }
-                    }
-                }
-            }
-            /*
-            if let Some(inner) = name.strip_prefix("__") {
-                if inner.strip_suffix("__").is_some() {
-                    if IGNORED_INHERITANCE_NAMES.contains(&name) {
-                        return;
-                    }
-                } else {
-                    // This is a private name
-                    return;
-                }
-            }
-
-            if inst2_lookup.attr_kind.is_final() {
-            }
-            if inst2_lookup.attr_kind.is_writable() && inst1_lookup.attr_kind.is_final()
-            {
-            }
-            let first = first.as_cow_type(i_s);
-            if !first
-                .is_sub_type_of(
+                let lookup = instance.lookup(
                     i_s,
-                    &mut Matcher::default().with_ignore_positional_param_names(),
-                    &second,
-                )
-                .bool()
-            {
-                add_multi_inheritance_issue()
-            } else if !inst1_lookup.attr_kind.is_writable()
-                && inst2_lookup.attr_kind.is_writable()
-            {
-                //
+                    name,
+                    InstanceLookupOptions::new(&|issue| {
+                        debug!(
+                            "Issue while inferring variance on name {name}: {issue:?}. \
+                                   This should probably not be a problem."
+                        );
+                    })
+                    // object has no generics and is therefore not relevant.
+                    .without_object(),
+                );
+                let inf = lookup.lookup.into_inferred();
+                let t = inf.as_cow_type(i_s);
+                if let Some(with_object_t) = replace_type_var_with_object(&t) {
+                    if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
+                        co = false
+                    }
+                    if !with_object_t.is_simple_sub_type_of(i_s, &t).bool() {
+                        contra = false;
+                        // Attributes starting with _ are considered private and the variance
+                        // of them are inferred as such.
+                        let is_underscored = || name.starts_with('_') && !is_magic_method(name);
+                        if lookup.attr_kind.is_writable() && !is_underscored() {
+                            co = false;
+                        }
+                    }
+                    if !co && !contra {
+                        return Variance::Invariant;
+                    }
+                }
             }
-            */
         }
         match (co, contra) {
             (false, true) => Variance::Contravariant,
