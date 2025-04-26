@@ -2926,6 +2926,9 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                         return;
                     }
                 }
+                if !should_check(name) {
+                    return;
+                }
                 let had_lookup_issue = Cell::new(false);
                 let inst2_lookup = instance2.lookup(
                     i_s,
@@ -2950,9 +2953,6 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                     return;
                 }
                 if let Some(inf) = inst2_lookup.lookup.into_maybe_inferred() {
-                    if !should_check(name) {
-                        return;
-                    }
                     let second = inf.as_cow_type(i_s);
                     let inst1_lookup = instance1.lookup(
                         i_s,
