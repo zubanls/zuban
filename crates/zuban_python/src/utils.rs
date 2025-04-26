@@ -237,3 +237,8 @@ impl<'a, T> Iterator for AlreadySeenIterator<'a, T> {
         result
     }
 }
+
+#[inline]
+pub fn is_magic_method(name: &str) -> bool {
+    name.starts_with("__") && name.ends_with("__")
+}

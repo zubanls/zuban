@@ -14,7 +14,7 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
-    utils::AlreadySeen,
+    utils::{is_magic_method, AlreadySeen},
 };
 
 use super::{inference::StarImportResult, python_file::StarImport, ClassInitializer, PythonFile};
@@ -1111,7 +1111,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 }
 
 fn is_valid_builtins_export(name: &str) -> bool {
-    !name.starts_with('_') || name.starts_with("__") && name.ends_with("__")
+    !name.starts_with('_') || is_magic_method(name)
 }
 
 fn is_reexport_issue(db: &Database, name_ref: NodeRef) -> bool {

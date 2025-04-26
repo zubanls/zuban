@@ -966,7 +966,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     )
 }
 
-pub fn lookup_symbol_internal(
+fn lookup_symbol_internal(
     self_: Rc<Dataclass>,
     i_s: &InferenceState<'_, '_>,
     name: &str,

@@ -34,7 +34,7 @@ use crate::{
         NeverCause, ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarIndex,
         TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
     },
-    utils::debug_indent,
+    utils::{debug_indent, is_magic_method},
 };
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
@@ -390,7 +390,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     // ignores all self attributes. This is especially the case if Enums classes
                     // are passed. However it feels a bit weird here and might need to be changed
                     // in the future.
-                    if name.starts_with("__") && name.ends_with("__") {
+                    if is_magic_method(name) {
                         LookupKind::OnlyType
                     } else {
                         LookupKind::Normal
@@ -1441,7 +1441,10 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                         if !with_object_t.is_simple_sub_type_of(i_s, &t).bool() {
                             contra = false;
-                            if lookup.attr_kind.is_writable() {
+                            // Attributes starting with _ are considered private and the variance
+                            // of them are inferred as such.
+                            let is_underscored = || name.starts_with('_') && !is_magic_method(name);
+                            if lookup.attr_kind.is_writable() && !is_underscored() {
                                 co = false;
                             }
                         }
