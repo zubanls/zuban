@@ -58,34 +58,33 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         class: &'c ClassNodeRef<'file>,
     ) -> TypeVarLikes {
         debug!("Finding type vars for class {:?}", class.name());
-        let type_vars = debug_indent(|| {
-            let mut infos = Infos {
-                class: Some(class),
-                ..Default::default()
-            };
-            let mut finder = TypeVarFinder {
-                name_resolution: class.file.name_resolution_for_types(i_s),
-                infos: &mut infos,
-            };
+        let _indent = debug_indent();
+        let mut infos = Infos {
+            class: Some(class),
+            ..Default::default()
+        };
+        let mut finder = TypeVarFinder {
+            name_resolution: class.file.name_resolution_for_types(i_s),
+            infos: &mut infos,
+        };
 
-            if let Some(arguments) = class.node().arguments() {
-                for argument in arguments.iter() {
-                    match argument {
-                        Argument::Positional(n) => {
-                            finder.find_in_expr(n.expression());
-                        }
-                        Argument::Keyword(_) => (), // Ignore for now -> part of meta class
-                        Argument::Star(_) | Argument::StarStar(_) => (), // Nobody probably cares about this
+        if let Some(arguments) = class.node().arguments() {
+            for argument in arguments.iter() {
+                match argument {
+                    Argument::Positional(n) => {
+                        finder.find_in_expr(n.expression());
                     }
+                    Argument::Keyword(_) => (), // Ignore for now -> part of meta class
+                    Argument::Star(_) | Argument::StarStar(_) => (), // Nobody probably cares about this
                 }
             }
-            if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
-                if !finder.infos.had_generic_or_protocol_issue {
-                    finder.check_generic_or_protocol_length(slice_type)
-                }
+        }
+        if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
+            if !finder.infos.had_generic_or_protocol_issue {
+                finder.check_generic_or_protocol_length(slice_type)
             }
-            infos.type_var_manager.into_type_vars()
-        });
+        }
+        let type_vars = infos.type_var_manager.into_type_vars();
         debug!(
             "Found type vars for class {:?}: {:?}",
             class.name(),
@@ -147,15 +146,14 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         with: impl FnOnce(&mut TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '_>),
     ) -> TypeVarLikes {
         debug!("Finding type vars in {:?}", expr.as_code());
-        let type_vars = debug_indent(|| {
-            let mut infos = Infos::default();
-            let mut finder = TypeVarFinder {
-                name_resolution: file.name_resolution_for_types(i_s),
-                infos: &mut infos,
-            };
-            with(&mut finder);
-            infos.type_var_manager.into_type_vars()
-        });
+        let _indent = debug_indent();
+        let mut infos = Infos::default();
+        let mut finder = TypeVarFinder {
+            name_resolution: file.name_resolution_for_types(i_s),
+            infos: &mut infos,
+        };
+        with(&mut finder);
+        let type_vars = infos.type_var_manager.into_type_vars();
         debug!(
             "Found type vars in {:?}: {:?}",
             expr.as_code(),

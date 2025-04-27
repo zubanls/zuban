@@ -146,19 +146,18 @@ impl Inference<'_, '_, '_> {
             );
             debug_assert!(self.i_s.is_file_context());
             FLOW_ANALYSIS.with(|fa| {
-                debug_indent(|| {
-                    fa.with_new_empty_and_process_delayed_funcs(self.i_s, || {
-                        fa.with_new_frame_and_return_unreachable(|| {
-                            self.calc_stmts_diagnostics(
-                                self.file.tree.root().iter_stmt_likes(),
-                                None,
-                                None,
-                            );
-                        });
-                        if self.flags().local_partial_types {
-                            fa.check_for_unfinished_partials(self.i_s);
-                        }
-                    })
+                let _indent = debug_indent();
+                fa.with_new_empty_and_process_delayed_funcs(self.i_s, || {
+                    fa.with_new_frame_and_return_unreachable(|| {
+                        self.calc_stmts_diagnostics(
+                            self.file.tree.root().iter_stmt_likes(),
+                            None,
+                            None,
+                        );
+                    });
+                    if self.flags().local_partial_types {
+                        fa.check_for_unfinished_partials(self.i_s);
+                    }
                 })
             });
             // TODO this unsafe feels very wrong, because a bit lower we might modify the complex
@@ -822,10 +821,8 @@ impl Inference<'_, '_, '_> {
             class.index(),
             NodeRef::new(self.file, class.index()).line()
         );
-        debug_indent(|| self.calc_class_diagnostics_internal(class));
-    }
+        let _indent = debug_indent();
 
-    fn calc_class_diagnostics_internal(&self, class: ClassDef) {
         let (type_params, arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
         let class_node_ref = ClassNodeRef::new(self.file, class.index());
@@ -1194,7 +1191,8 @@ impl Inference<'_, '_, '_> {
                 func_node.index(),
                 function.node_ref.line()
             );
-            debug_indent(|| self.calc_func_diagnostics(function, func_node));
+            let _indent = debug_indent();
+            self.calc_func_diagnostics(function, func_node);
         })
     }
 

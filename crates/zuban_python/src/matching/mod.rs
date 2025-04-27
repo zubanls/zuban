@@ -112,7 +112,8 @@ pub fn avoid_protocol_mismatch(
                 t2.format_short(db),
                 had_type_var_matcher,
             );
-            let result = debug_indent(callable);
+            let _indent = debug_indent();
+            let result = callable();
             if !had_type_var_matcher {
                 cache
                     .cached

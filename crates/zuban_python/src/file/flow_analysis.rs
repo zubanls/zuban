@@ -1853,16 +1853,13 @@ impl Inference<'_, '_, '_> {
             del_targets.as_code(),
             NodeRef::new(self.file, del_targets.index()).debug_info(self.i_s.db)
         );
-        debug_indent(|| {
-            for del_target in del_targets.iter() {
-                match del_target {
-                    DelTarget::Target(target) => self.flow_analysis_for_del_target(target),
-                    DelTarget::DelTargets(del_targets) => {
-                        self.flow_analysis_for_del_stmt(del_targets)
-                    }
-                }
+        let _indent = debug_indent();
+        for del_target in del_targets.iter() {
+            match del_target {
+                DelTarget::Target(target) => self.flow_analysis_for_del_target(target),
+                DelTarget::DelTargets(del_targets) => self.flow_analysis_for_del_stmt(del_targets),
             }
-        })
+        }
     }
 
     pub fn delete_name(&self, name_def: NameDef) {
@@ -3023,66 +3020,65 @@ impl Inference<'_, '_, '_> {
                 let had_non_guard_match = Cell::new(false);
                 let union_guard_result = Cell::<Option<FramesWithParentUnions>>::new(None);
 
-                let matching = debug_indent(|| {
-                    overload.find_matching_function(
-                        self.i_s,
-                        simple_args,
-                        false,
-                        None,
-                        false,
-                        &mut ResultContext::Unknown,
-                        OnTypeError::new(&on_argument_type_error),
-                        &|c, calculated_type_args| {
-                            let Some(guard) = &c.content.guard else {
-                                had_non_guard_match.set(true);
-                                return Type::Never(NeverCause::Other);
-                            };
-                            let resolved_t = calculated_type_args
-                                .into_return_type(self.i_s, &guard.type_, None, &|| None)
-                                .as_type(self.i_s);
-                            if let Some(y) = self.check_type_guard_callable(
-                                simple_args,
-                                args,
-                                c.content,
-                                Some(resolved_t),
-                            ) {
-                                union_guard_result.set(Some(
-                                    if let Some(found) = union_guard_result.take() {
-                                        FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
-                                            truthy: fa.merge_or(
-                                                self.i_s,
-                                                found.truthy,
-                                                y.truthy,
-                                                false,
-                                            ),
-                                            falsey: {
-                                                // TODO this merging is a bit weird, because it
-                                                // should not merge TypeGuard/TypeIn combinations,
-                                                // but use a common_sub_type when it's two TypeIn
-                                                // narrowing the same values. This should probably
-                                                // hold for 99.999% of cases.
-                                                if found.falsey.entries.is_empty()
-                                                    || y.falsey.entries.is_empty()
-                                                {
-                                                    Frame::default()
-                                                } else {
-                                                    merge_and(self.i_s, found.falsey, y.falsey)
-                                                }
-                                            },
-                                            //falsey: merge_and(self.i_s, found.falsey, y.falsey),
-                                            parent_unions: Default::default(),
-                                        })
-                                    } else {
-                                        y
-                                    },
-                                ));
-                            } else {
-                                had_non_guard_match.set(true);
-                            }
-                            Type::Never(NeverCause::Other)
-                        },
-                    )
-                });
+                let _indent = debug_indent();
+                let matching = overload.find_matching_function(
+                    self.i_s,
+                    simple_args,
+                    false,
+                    None,
+                    false,
+                    &mut ResultContext::Unknown,
+                    OnTypeError::new(&on_argument_type_error),
+                    &|c, calculated_type_args| {
+                        let Some(guard) = &c.content.guard else {
+                            had_non_guard_match.set(true);
+                            return Type::Never(NeverCause::Other);
+                        };
+                        let resolved_t = calculated_type_args
+                            .into_return_type(self.i_s, &guard.type_, None, &|| None)
+                            .as_type(self.i_s);
+                        if let Some(y) = self.check_type_guard_callable(
+                            simple_args,
+                            args,
+                            c.content,
+                            Some(resolved_t),
+                        ) {
+                            union_guard_result.set(Some(
+                                if let Some(found) = union_guard_result.take() {
+                                    FLOW_ANALYSIS.with(|fa| FramesWithParentUnions {
+                                        truthy: fa.merge_or(
+                                            self.i_s,
+                                            found.truthy,
+                                            y.truthy,
+                                            false,
+                                        ),
+                                        falsey: {
+                                            // TODO this merging is a bit weird, because it
+                                            // should not merge TypeGuard/TypeIn combinations,
+                                            // but use a common_sub_type when it's two TypeIn
+                                            // narrowing the same values. This should probably
+                                            // hold for 99.999% of cases.
+                                            if found.falsey.entries.is_empty()
+                                                || y.falsey.entries.is_empty()
+                                            {
+                                                Frame::default()
+                                            } else {
+                                                merge_and(self.i_s, found.falsey, y.falsey)
+                                            }
+                                        },
+                                        //falsey: merge_and(self.i_s, found.falsey, y.falsey),
+                                        parent_unions: Default::default(),
+                                    })
+                                } else {
+                                    y
+                                },
+                            ));
+                        } else {
+                            had_non_guard_match.set(true);
+                        }
+                        Type::Never(NeverCause::Other)
+                    },
+                );
                 match matching {
                     OverloadResult::Single(c) => {
                         self.check_type_guard_callable(simple_args, args, c.content, None)

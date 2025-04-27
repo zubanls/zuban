@@ -365,7 +365,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             self.class_storage.parent_scope,
             |i_s| {
                 debug!("Calculate class infos for {}", self.name());
-                debug_indent(|| self.insert_class_infos(&i_s))
+                let _indent = debug_indent();
+                self.insert_class_infos(&i_s)
             },
         )
     }

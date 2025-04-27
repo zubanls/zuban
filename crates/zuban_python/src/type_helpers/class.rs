@@ -1325,17 +1325,16 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         debug!("Check {} __init__", self.name());
-        debug_indent(|| {
-            self.type_check_dunder_init_func(
-                i_s,
-                constructor.constructor,
-                constructor.init_class,
-                args,
-                result_context,
-                on_type_error,
-                from_type_type,
-            )
-        })
+        let _indent = debug_indent();
+        self.type_check_dunder_init_func(
+            i_s,
+            constructor.constructor,
+            constructor.init_class,
+            args,
+            result_context,
+            on_type_error,
+            from_type_type,
+        )
     }
 
     pub fn ensure_calculated_variance(&self, db: &Database) {

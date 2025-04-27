@@ -86,9 +86,8 @@ macro_rules! check_point_cache_with {
                     self.file.qualified_name(self.i_s.db),
                     self.file.byte_to_line_column(node.start()).0,
                 );
-                debug_indent(|| {
-                    $func(self, node $(, $result_context)?)
-                })
+                let _indent = debug_indent();
+                $func(self, node $(, $result_context)?)
             }
         }
     }
@@ -1000,17 +999,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             self.file.byte_to_line_column(name_def.start()).0,
             value.debug_info(self.i_s.db),
         );
-        debug_indent(|| self.assign_to_name_def_internal(name_def, from, value, assign_kind, save))
-    }
+        let _indent = debug_indent();
 
-    fn assign_to_name_def_internal(
-        &self,
-        name_def: NameDef,
-        from: NodeRef,
-        value: &Inferred,
-        assign_kind: AssignKind,
-        save: impl FnOnce(NodeIndex, &Inferred),
-    ) {
         let i_s = self.i_s;
         if let Some(class) = i_s.in_class_scope() {
             let name_str = name_def.as_code();

@@ -12,16 +12,24 @@ use parsa_python_cst::{Name, NodeIndex};
 thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = const { Cell::new(0) });
 
 #[inline]
-pub fn debug_indent<C: FnOnce() -> T, T>(f: C) -> T {
+#[must_use]
+pub fn debug_indent() -> DebugIndent {
     if cfg!(feature = "zuban_debug") {
         DEBUG_INDENTATION.with(|i| {
             i.set(i.get() + 1);
-            let result = f();
-            i.set(i.get() - 1);
-            result
         })
-    } else {
-        f()
+    }
+    DebugIndent()
+}
+
+pub struct DebugIndent();
+
+impl Drop for DebugIndent {
+    #[inline]
+    fn drop(&mut self) {
+        if cfg!(feature = "zuban_debug") {
+            DEBUG_INDENTATION.with(|i| i.set(i.get() - 1));
+        }
     }
 }
 
