@@ -230,6 +230,31 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             _ => unreachable!("Probably an issue with indexing: {complex:?}"),
         }
     }
+
+    pub fn infer_variance(self, db: &Database) {
+        let type_var_likes = self.use_cached_type_vars(db);
+        let class = Class::with_self_generics(db, self);
+        for (name, lazy_variance) in class.use_cached_class_infos(db).variance_map.iter() {
+            let type_var_index = type_var_likes
+                .iter()
+                .position(|tvl| {
+                    if let TypeVarLike::TypeVar(tv) = tvl {
+                        tv.name == *name
+                    } else {
+                        false
+                    }
+                })
+                .unwrap();
+            lazy_variance.get_or_init(|| {
+                debug!("Infer variance for TypeVar #{type_var_index:?}");
+                let indent = debug_indent();
+                let variance = class.infer_variance_for_index(db, type_var_index.into());
+                drop(indent);
+                debug!("Variance for TypeVar #{type_var_index:?} inferred as {variance:?}");
+                variance
+            });
+        }
+    }
 }
 
 impl<'a> std::ops::Deref for ClassNodeRef<'a> {

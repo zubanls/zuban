@@ -147,7 +147,7 @@ impl Inference<'_, '_, '_> {
             debug_assert!(self.i_s.is_file_context());
             FLOW_ANALYSIS.with(|fa| {
                 let _indent = debug_indent();
-                fa.with_new_empty_and_process_delayed_funcs(self.i_s, || {
+                fa.with_new_empty_and_process_delayed_diagnostics(self.i_s, || {
                     fa.with_new_frame_and_return_unreachable(|| {
                         self.calc_stmts_diagnostics(
                             self.file.tree.root().iter_stmt_likes(),
@@ -874,6 +874,9 @@ impl Inference<'_, '_, '_> {
 
         if let Some(type_params) = type_params {
             self.check_type_params_redefinitions(c.class_storage.parent_scope, type_params);
+            // We have to delay type variance inference, because we only know it after all the
+            // functions have been dealt with.
+            FLOW_ANALYSIS.with(|fa| fa.add_delayed_type_params_variance_inference(class_node_ref))
         }
 
         if matches!(class_infos.class_kind, ClassKind::TypedDict) {
@@ -970,29 +973,6 @@ impl Inference<'_, '_, '_> {
                 self.file_path()
             );
             return;
-        }
-        if type_params.is_some() {
-            let type_var_likes = class_node_ref.use_cached_type_vars(i_s.db);
-            for (name, lazy_variance) in class_infos.variance_map.iter() {
-                let type_var_index = type_var_likes
-                    .iter()
-                    .position(|tvl| {
-                        if let TypeVarLike::TypeVar(tv) = tvl {
-                            tv.name == *name
-                        } else {
-                            false
-                        }
-                    })
-                    .unwrap();
-                lazy_variance.get_or_init(|| {
-                    debug!("Infer variance for TypeVar #{type_var_index:?}");
-                    let indent = debug_indent();
-                    let variance = c.infer_variance_for_index(db, type_var_index.into());
-                    drop(indent);
-                    debug!("Variance for TypeVar #{type_var_index:?} inferred as {variance:?}");
-                    variance
-                });
-            }
         }
 
         check_multiple_inheritance(

@@ -1142,6 +1142,10 @@ impl<'db: 'a, 'a> Class<'a> {
                     td.apply_generics(db, TypedDictGenerics::Generics((*list).clone()))
                 }
                 Generics::None => td.clone(),
+                Generics::Self_ { class_ref } => {
+                    let generics = class_ref.use_cached_type_vars(db).as_any_generic_list(db);
+                    td.apply_generics(db, TypedDictGenerics::Generics(generics))
+                }
                 _ => unreachable!("{:?}", self.generics),
             }),
             Some(t) => t.clone(),
@@ -1431,7 +1435,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
                 Some(Type::TypedDict(td)) => match &td.generics {
-                    _ => todo!("{:?}", self.generics),
+                    _ => (), // TODO
                 },
                 _ => (),
             }

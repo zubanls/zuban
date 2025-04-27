@@ -31,7 +31,7 @@ use crate::{
         lookup_on_enum_instance, AnyCause, CallableContent, CallableLike, CallableParams, DbBytes,
         DbString, EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult,
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
-        UnionType, WithUnpack,
+        TypeVarLike, UnionType, WithUnpack,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
@@ -273,6 +273,12 @@ struct LoopDetails {
 }
 
 #[derive(Debug)]
+pub(crate) enum DelayedDiagnostic {
+    Func(DelayedFunc),
+    ClassTypeParams { class_link: PointLink },
+}
+
+#[derive(Debug)]
 pub(crate) struct DelayedFunc {
     pub func: PointLink,
     pub class: Option<PointLink>,
@@ -290,7 +296,7 @@ pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     try_frames: RefCell<Vec<Entries>>,
     loop_details: RefCell<Option<LoopDetails>>,
-    delayed_func_diagnostics: RefCell<Vec<DelayedFunc>>,
+    delayed_diagnostics: RefCell<Vec<DelayedDiagnostic>>,
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
     accumulating_types: Cell<usize>, // Can accumulate nested and thereore use this counter like a stack
@@ -306,14 +312,14 @@ impl FlowAnalysis {
         result
     }
 
-    pub fn with_new_empty_and_process_delayed_funcs(
+    pub fn with_new_empty_and_process_delayed_diagnostics(
         &self,
         i_s: &InferenceState,
         callable: impl FnOnce(),
     ) {
         self.with_new_empty(i_s, || {
             callable();
-            self.process_delayed_funcs(i_s.db, |func| {
+            self.process_delayed_diagnostics(i_s.db, |func| {
                 let result = func
                     .node_ref
                     .file
@@ -323,20 +329,17 @@ impl FlowAnalysis {
             });
         })
     }
-    pub fn with_new_empty_and_delay_functions_further<T>(
+    pub fn with_new_empty_and_delay_further<T>(
         &self,
         i_s: &InferenceState,
         callable: impl FnOnce() -> T,
     ) -> T {
-        let (result, delayed_funcs) = self.with_new_empty(i_s, || {
+        let (result, delayed) = self.with_new_empty(i_s, || {
             let result = callable();
-            let delayed_funcs: Vec<_> =
-                std::mem::take(&mut self.delayed_func_diagnostics.borrow_mut());
-            (result, delayed_funcs)
+            let delayed: Vec<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
+            (result, delayed)
         });
-        self.delayed_func_diagnostics
-            .borrow_mut()
-            .extend(delayed_funcs);
+        self.delayed_diagnostics.borrow_mut().extend(delayed);
         result
     }
 
@@ -355,7 +358,7 @@ impl FlowAnalysis {
         let old_frames = self.frames.take();
         let try_frames = self.try_frames.take();
         let loop_details = self.loop_details.take();
-        let delayed = self.delayed_func_diagnostics.take();
+        let delayed = self.delayed_diagnostics.take();
         let partials = self.partials_in_module.take();
         let in_type_checking_only_block = self.in_type_checking_only_block.take();
         let accumulating_types = self.accumulating_types.take();
@@ -369,7 +372,7 @@ impl FlowAnalysis {
         *self.frames.borrow_mut() = old_frames;
         *self.try_frames.borrow_mut() = try_frames;
         *self.loop_details.borrow_mut() = loop_details;
-        *self.delayed_func_diagnostics.borrow_mut() = delayed;
+        *self.delayed_diagnostics.borrow_mut() = delayed;
         *self.partials_in_module.borrow_mut() = partials;
         self.in_type_checking_only_block
             .set(in_type_checking_only_block);
@@ -415,16 +418,14 @@ impl FlowAnalysis {
                 })
                 .collect(),
         );
-        self.with_new_empty_and_delay_functions_further(i_s, || {
-            self.with_frame(reused_narrowings, callable)
-        });
+        self.with_new_empty_and_delay_further(i_s, || self.with_frame(reused_narrowings, callable));
     }
 
     pub fn debug_assert_is_empty(&self) {
         debug_assert!(self.frames.borrow().is_empty());
         debug_assert!(self.try_frames.borrow().is_empty());
         debug_assert!(self.loop_details.borrow().is_none());
-        debug_assert!(self.delayed_func_diagnostics.borrow().is_empty());
+        debug_assert!(self.delayed_diagnostics.borrow().is_empty());
         debug_assert!(self.partials_in_module.borrow().is_empty());
         debug_assert!(!self.in_type_checking_only_block.get());
         debug_assert!(!self.in_type_checking_only_block.get());
@@ -711,35 +712,50 @@ impl FlowAnalysis {
     }
 
     pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
-        self.delayed_func_diagnostics
+        self.delayed_diagnostics
             .borrow_mut()
-            .push(DelayedFunc {
+            .push(DelayedDiagnostic::Func(DelayedFunc {
                 func,
                 class,
                 in_type_checking_only_block: self.in_type_checking_only_block.get(),
+            }))
+    }
+
+    pub fn add_delayed_type_params_variance_inference(&self, class: ClassNodeRef) {
+        self.delayed_diagnostics
+            .borrow_mut()
+            .push(DelayedDiagnostic::ClassTypeParams {
+                class_link: class.as_link(),
             })
     }
 
-    pub fn process_delayed_funcs(&self, db: &Database, callback: impl Fn(Function)) {
+    pub fn process_delayed_diagnostics(&self, db: &Database, callback: impl Fn(Function)) {
         while let Some(delayed) = {
-            let mut borrowed = self.delayed_func_diagnostics.borrow_mut();
+            let mut borrowed = self.delayed_diagnostics.borrow_mut();
             let result = borrowed.pop();
             drop(borrowed);
             result
         } {
-            let func = Function::new(
-                NodeRef::from_link(db, delayed.func),
-                delayed
-                    .class
-                    .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
-            );
-            if delayed.in_type_checking_only_block {
-                self.with_in_type_checking_only_block(|| callback(func))
-            } else {
-                callback(func)
+            match delayed {
+                DelayedDiagnostic::Func(delayed_func) => {
+                    let func = Function::new(
+                        NodeRef::from_link(db, delayed_func.func),
+                        delayed_func
+                            .class
+                            .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
+                    );
+                    if delayed_func.in_type_checking_only_block {
+                        self.with_in_type_checking_only_block(|| callback(func))
+                    } else {
+                        callback(func)
+                    }
+                }
+                DelayedDiagnostic::ClassTypeParams { class_link } => {
+                    ClassNodeRef::from_link(db, class_link).infer_variance(db);
+                }
             }
         }
-        debug_assert!(self.delayed_func_diagnostics.borrow().is_empty())
+        debug_assert!(self.delayed_diagnostics.borrow().is_empty())
     }
 
     pub fn start_accumulating_types(&self) {
@@ -1566,7 +1582,7 @@ impl Inference<'_, '_, '_> {
                         .inference(&InferenceState::new(self.i_s.db, self.file))
                         .calculate_diagnostics()?;
                 }
-                fa.with_new_empty_and_delay_functions_further(self.i_s, || {
+                fa.with_new_empty_and_delay_further(self.i_s, || {
                     let new_i_s = self.i_s.with_class_context(&class);
                     let inference = self.file.inference(&new_i_s);
                     fa.with_frame_and_result(Frame::default(), || {
@@ -1580,9 +1596,7 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        fa.with_new_empty_and_delay_functions_further(self.i_s, || {
-            self.ensure_func_diagnostics(function)
-        })
+        fa.with_new_empty_and_delay_further(self.i_s, || self.ensure_func_diagnostics(function))
     }
 
     pub fn flow_analysis_for_ternary(
