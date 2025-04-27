@@ -984,7 +984,14 @@ impl Inference<'_, '_, '_> {
                         }
                     })
                     .unwrap();
-                lazy_variance.get_or_init(|| c.infer_variance_for_index(db, type_var_index.into()));
+                lazy_variance.get_or_init(|| {
+                    debug!("Infer variance for TypeVar #{type_var_index:?}");
+                    let indent = debug_indent();
+                    let variance = c.infer_variance_for_index(db, type_var_index.into());
+                    drop(indent);
+                    debug!("Variance for TypeVar #{type_var_index:?} inferred as {variance:?}");
+                    variance
+                });
             }
         }
 
