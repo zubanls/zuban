@@ -678,11 +678,9 @@ testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
 # 3.12 type alias type var syntax infer variance
-testPEP695InferVarianceRecursive
 testPEP695InferVarianceNotReadyWhenNeeded
 testPEP695InferVarianceNotReadyForJoin
 testPEP695InferVarianceNotReadyForMeet
-testPEP695InferVarianceWithReturnSelf
 testPEP695InvalidGenericOrProtocolBaseClass
 testPEP695RecursiveTypeAliasForwardReference
 

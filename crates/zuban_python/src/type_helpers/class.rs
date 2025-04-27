@@ -1448,7 +1448,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 let lookup = lookup_member(name);
                 let inf = lookup.lookup.into_inferred();
-                let t = inf.as_cow_type(i_s);
+                // Mypy allows return types to be the current class.
+                let t = self.erase_return_self_type(inf.as_cow_type(i_s));
                 if let Some(with_object_t) = replace_type_var_with_object(&t) {
                     if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
                         co = false
@@ -1472,6 +1473,48 @@ impl<'db: 'a, 'a> Class<'a> {
             (false, true) => Variance::Contravariant,
             (false, false) => unreachable!("Should have returned above"),
             _ => Variance::Covariant,
+        }
+    }
+
+    fn erase_return_self_type<'t>(&self, t: Cow<'t, Type>) -> Cow<'t, Type> {
+        let replace_callable = |c: &CallableContent| match &c.return_type {
+            Type::Class(class) if class.link == self.node_ref.as_link() => {
+                let mut new_c = c.clone();
+                new_c.return_type = Type::Any(AnyCause::Internal);
+                Some(Rc::new(new_c))
+            }
+            _ => None,
+        };
+        match t.as_ref() {
+            Type::Callable(c) => {
+                if let Some(c) = replace_callable(c) {
+                    Cow::Owned(Type::Callable(c))
+                } else {
+                    t
+                }
+            }
+            Type::FunctionOverload(o) => {
+                let mut overloads = vec![];
+                for (i, c) in o.iter_functions().enumerate() {
+                    if let Some(new_c) = replace_callable(c) {
+                        if overloads.is_empty() {
+                            // We have to backfill
+                            overloads.extend(o.iter_functions().take(i).cloned())
+                        }
+                        overloads.push(new_c)
+                    } else if !overloads.is_empty() {
+                        overloads.push(c.clone())
+                    }
+                }
+                if overloads.is_empty() {
+                    t
+                } else {
+                    Cow::Owned(Type::FunctionOverload(FunctionOverload::new(
+                        overloads.into_boxed_slice(),
+                    )))
+                }
+            }
+            _ => t,
         }
     }
 
