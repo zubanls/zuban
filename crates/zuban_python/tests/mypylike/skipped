@@ -677,10 +677,6 @@ testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
-# 3.12 type alias type var syntax infer variance
-testPEP695InferVarianceNotReadyForJoin
-testPEP695InferVarianceNotReadyForMeet
-
 # enum.member / enum.nonmember
 testEnumNonMemberSupport
 testEnumMemberSupport

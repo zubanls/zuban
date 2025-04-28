@@ -1698,3 +1698,18 @@ class Foo(list[Literal[T]]): ...  # E: Parameter 1 of Literal[...] is invalid
 
 def f(x: Foo):
     reveal_type(x)  # N: Revealed type is "__main__.Foo"
+
+[case common_base_type_variance_not_ready]
+# Like testPEP695InferVarianceNotReadyForJoin, but adapted a bit
+from m import Invariant
+
+# TODO: this should actually not be invariant, because the file is finished and
+# the variance that was initially wrong, could just be recalculated.
+reveal_type([Invariant(1), Invariant(object())])   # N: Revealed type is "list[m.Invariant[object]]"
+
+[file m.py]
+class Invariant[T]:
+    def __init__(self, x: T) -> None:
+        # At this point the variance is definitely not ready
+        reveal_type([Invariant(1), Invariant(object())])  # N: Revealed type is "list[m.Invariant[object]]"
+        self.x = x or None
