@@ -31,7 +31,7 @@ use crate::{
         lookup_on_enum_instance, AnyCause, CallableContent, CallableLike, CallableParams, DbBytes,
         DbString, EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult,
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
-        TypeVarLike, UnionType, WithUnpack,
+        UnionType, WithUnpack,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
@@ -751,7 +751,7 @@ impl FlowAnalysis {
                     }
                 }
                 DelayedDiagnostic::ClassTypeParams { class_link } => {
-                    ClassNodeRef::from_link(db, class_link).infer_variance(db);
+                    ClassNodeRef::from_link(db, class_link).infer_variance_of_type_params(db, true);
                 }
             }
         }

@@ -1350,9 +1350,20 @@ impl<'db: 'a, 'a> Class<'a> {
             // It also feels strange that we have to type check a whole file to know the variance
             // of a class. But we at least need to do narrowing for the file, because the variance
             // may depend on self variables, which may depend on inferred file state.
-            let _ = file
+            if let Err(()) = file
                 .inference(&InferenceState::new(db, file))
-                .calculate_diagnostics();
+                .calculate_diagnostics()
+            {
+                let class_block_ref = NodeRef::new(file, self.node().block().index());
+                // If the class block is calculating it means we are already trying to calculate
+                // diagnostics for this class. To avoid recursions, we stop calculating here. We
+                // also make sure to set the current class to calculating to avoid looping.
+                if !class_block_ref.point().calculating() {
+                    class_block_ref.set_point(Point::new_calculating());
+                    self.infer_variance_of_type_params(db, false);
+                    class_block_ref.set_point(Point::new_uncalculated());
+                }
+            }
         }
     }
 
@@ -1360,6 +1371,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         db: &Database,
         type_var_index: TypeVarIndex,
+        check_narrowed: bool,
     ) -> Variance {
         let mut co = true;
         let mut contra = true;
@@ -1441,34 +1453,42 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             lookup
         };
+        let file = self.node_ref.file;
         for table in [
             &self.class_storage.class_symbol_table,
             &self.class_storage.self_symbol_table,
         ] {
-            for (name, _) in table.iter() {
+            for (name, node_index) in table.iter() {
                 if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
                     continue;
                 }
-                let lookup = lookup_member(name);
-                let inf = lookup.lookup.into_inferred();
-                // Mypy allows return types to be the current class.
-                let t = self.erase_return_self_type(inf.as_cow_type(i_s));
-                if let Some(with_object_t) = replace_type_var_with_object(&t) {
-                    if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
-                        co = false
-                    }
-                    if !with_object_t.is_simple_sub_type_of(i_s, &t).bool() {
-                        contra = false;
-                        // Attributes starting with _ are considered private and the variance
-                        // of them are inferred as such.
-                        let is_underscored = || name.starts_with('_') && !is_magic_method(name);
-                        if lookup.attr_kind.is_writable() && !is_underscored() {
-                            co = false;
+                if check_narrowed || !file.points.get(*node_index).needs_flow_analysis() {
+                    let lookup = lookup_member(name);
+                    let inf = lookup.lookup.into_inferred();
+                    // Mypy allows return types to be the current class.
+                    let t = self.erase_return_self_type(inf.as_cow_type(i_s));
+                    if let Some(with_object_t) = replace_type_var_with_object(&t) {
+                        if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
+                            co = false
+                        }
+                        if !with_object_t.is_simple_sub_type_of(i_s, &t).bool() {
+                            contra = false;
+                            // Attributes starting with _ are considered private and the variance
+                            // of them are inferred as such.
+                            let is_underscored = || name.starts_with('_') && !is_magic_method(name);
+                            if lookup.attr_kind.is_writable() && !is_underscored() {
+                                co = false;
+                            }
+                        }
+                        if !co && !contra {
+                            return Variance::Invariant;
                         }
                     }
-                    if !co && !contra {
-                        return Variance::Invariant;
-                    }
+                } else {
+                    debug!(
+                        "Ignored attribute {name} because we need to calculate the variance \
+                            before the end of a module"
+                    );
                 }
             }
         }
