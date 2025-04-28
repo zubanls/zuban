@@ -1068,8 +1068,9 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
             if redirected_to.point().kind() == PointKind::Redirect {
                 return load_cached_type(redirected_to);
             }
-            return NameResolution::check_special_type_definition(redirected_to)
-                .unwrap_or_else(|| panic!("{redirected_to:?}"));
+            return NameResolution::check_special_type_definition(redirected_to).unwrap_or_else(
+                || Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other)),
+            );
         }
     }
     match node_ref.maybe_complex() {

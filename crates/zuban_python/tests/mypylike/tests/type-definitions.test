@@ -587,3 +587,8 @@ class C[*Ts, *Ts2](tuple[tuple[*Ts], tuple[*Ts2]]): ...  # E: Can only use one T
 def f(a: A[int, str, bytes], c: C[int, str, bytes]):
     reveal_type(a)  # N: Revealed type is "tuple[tuple[int, str, bytes], tuple[Any, ...]]"
     reveal_type(c)  # N: Revealed type is "tuple[tuple[int, str, bytes], tuple[Any, ...], fallback=__main__.C[int, str, bytes]]"
+
+[case type_of_complex_type_definition]
+X = type(list[int])
+
+def f(x: X) -> None: ... # E: Invalid type comment or annotation
