@@ -234,6 +234,11 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     pub fn infer_variance_of_type_params(self, db: &Database, check_narrowed: bool) {
         let type_var_likes = self.use_cached_type_vars(db);
         let class = Class::with_self_generics(db, self);
+        debug!(
+            "Infer variances of TypeVars in {}",
+            ClassInitializer::from_node_ref(self).qualified_name(db)
+        );
+        let _indent = debug_indent();
         for (name, lazy_variance) in class.use_cached_class_infos(db).variance_map.iter() {
             let type_var_index = type_var_likes
                 .iter()
