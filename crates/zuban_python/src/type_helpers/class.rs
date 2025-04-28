@@ -5,14 +5,14 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_cst::{Assignment, ClassDef, TypeLike};
+use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Name, TypeLike};
 
 use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
 use crate::{
     arguments::Args,
     database::{
         BaseClass, ClassKind, ClassStorage, ComplexPoint, Database, Locality, MetaclassState,
-        Point, PointLink, Specific,
+        Point, PointKind, PointLink, Specific,
     },
     debug,
     diagnostics::IssueKind,
@@ -1375,7 +1375,8 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> Variance {
         let mut co = true;
         let mut contra = true;
-        let i_s = &InferenceState::new(db, self.node_ref.file);
+        let file = self.node_ref.file;
+        let i_s = &InferenceState::new(db, file);
 
         let in_definition = self.node_ref.as_link();
         let replace_type_var_with_object = |t: &Type| {
@@ -1419,27 +1420,68 @@ impl<'db: 'a, 'a> Class<'a> {
         // Infer variance for members
 
         let instance = self.instance();
-        let lookup_member = |name| {
-            let mut lookup = instance.lookup(
-                i_s,
-                name,
-                InstanceLookupOptions::new(&|issue| {
-                    debug!(
-                        "Issue while inferring variance on name {name}: {issue:?}. \
+        let lookup_member = |name, node_index, is_self_attr| {
+            let lookup = if check_narrowed || !file.points.get(node_index).needs_flow_analysis() {
+                instance.lookup(
+                    i_s,
+                    name,
+                    InstanceLookupOptions::new(&|issue| {
+                        debug!(
+                            "Issue while inferring variance on name {name}: {issue:?}. \
                             This should probably not be a problem."
-                    );
-                })
-                // object has no generics and is therefore not relevant.
-                .without_object(),
-            );
+                        );
+                    })
+                    // object has no generics and is therefore not relevant.
+                    .without_object(),
+                )
+            } else {
+                if is_self_attr {
+                    // Check simple assignments like self.x = x. This solves most of the simple
+                    // cases to improve variance inference.
+                    let search_simple_name_assignments = || {
+                        let n = Name::by_index(&file.tree, node_index);
+                        let assignment = n.maybe_self_assignment_name_on_self_like()?;
+                        let AssignmentContent::Normal(_, right_side) = assignment.unpack() else {
+                            return None;
+                        };
+                        let expr = right_side.maybe_simple_expression()?;
+                        let AtomContent::Name(assign_name) = expr.maybe_unpacked_atom()? else {
+                            return None;
+                        };
+                        let p = file.points.get(assign_name.index());
+                        if !p.calculated() || p.kind() != PointKind::Redirect {
+                            return None;
+                        }
+                        let redirected_to = p.as_redirected_node_ref(db);
+                        if redirected_to.point().needs_flow_analysis()
+                            || redirected_to.file.file_index != file.file_index
+                        {
+                            return None;
+                        }
+                        Some(redirected_to.infer_name_of_definition_by_index(
+                            &InferenceState::from_class(db, self),
+                        ))
+                    };
+                    if let Some(inf) = search_simple_name_assignments() {
+                        return Some((inf, AttributeKind::Attribute));
+                    }
+                }
+                debug!(
+                    "Ignored attribute {name} because we need to calculate the variance \
+                        before the end of a module"
+                );
+                return None;
+            };
+            let mut attr_kind = lookup.attr_kind;
+            let inf = lookup.lookup.into_inferred();
             match class_infos
                 .undefined_generics_type
                 .get()
                 .map(|t| t.as_ref())
             {
                 Some(Type::Dataclass(_)) => {
-                    if let AttributeKind::AnnotatedAttribute = lookup.attr_kind {
-                        lookup.attr_kind = AttributeKind::Property {
+                    if let AttributeKind::AnnotatedAttribute = attr_kind {
+                        attr_kind = AttributeKind::Property {
                             setter_type: None,
                             is_final: false,
                             is_abstract: true,
@@ -1451,20 +1493,20 @@ impl<'db: 'a, 'a> Class<'a> {
                 },
                 _ => (),
             }
-            lookup
+            Some((inf, attr_kind))
         };
-        let file = self.node_ref.file;
-        for table in [
+        for (i, table) in [
             &self.class_storage.class_symbol_table,
             &self.class_storage.self_symbol_table,
-        ] {
+        ]
+        .into_iter()
+        .enumerate()
+        {
             for (name, node_index) in table.iter() {
                 if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
                     continue;
                 }
-                if check_narrowed || !file.points.get(*node_index).needs_flow_analysis() {
-                    let lookup = lookup_member(name);
-                    let inf = lookup.lookup.into_inferred();
+                if let Some((inf, attr_kind)) = lookup_member(name, *node_index, i == 1) {
                     // Mypy allows return types to be the current class.
                     let t = self.erase_return_self_type(inf.as_cow_type(i_s));
                     if let Some(with_object_t) = replace_type_var_with_object(&t) {
@@ -1476,7 +1518,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             // Attributes starting with _ are considered private and the variance
                             // of them are inferred as such.
                             let is_underscored = || name.starts_with('_') && !is_magic_method(name);
-                            if lookup.attr_kind.is_writable() && !is_underscored() {
+                            if attr_kind.is_writable() && !is_underscored() {
                                 co = false;
                             }
                         }
@@ -1484,11 +1526,6 @@ impl<'db: 'a, 'a> Class<'a> {
                             return Variance::Invariant;
                         }
                     }
-                } else {
-                    debug!(
-                        "Ignored attribute {name} because we need to calculate the variance \
-                            before the end of a module"
-                    );
                 }
             }
         }

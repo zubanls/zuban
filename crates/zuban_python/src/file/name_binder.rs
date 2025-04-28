@@ -858,7 +858,7 @@ impl<'db> NameBinder<'db> {
                     symbol_table.add_or_replace_symbol(name);
                     let name_index = name.index();
                     let mut needs_flow_analysis = true;
-                    if let Some(assignment) = name.maybe_self_assignment_name() {
+                    if let Some(assignment) = name.maybe_self_assignment_name_on_self_like() {
                         match assignment.unpack() {
                             AssignmentContent::WithAnnotation(..) => needs_flow_analysis = false,
                             _ => (),

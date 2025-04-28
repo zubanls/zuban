@@ -1499,7 +1499,7 @@ impl Inference<'_, '_, '_> {
         if !name_node_ref.point().needs_flow_analysis() {
             let assignment = name_node_ref
                 .expect_name()
-                .maybe_self_assignment_name()
+                .maybe_self_assignment_name_on_self_like()
                 .expect("Expected an assignment, because self type var without flow analysis");
             match assignment.unpack() {
                 AssignmentContent::WithAnnotation(_, annotation, right_side) => {

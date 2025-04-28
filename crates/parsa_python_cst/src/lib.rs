@@ -524,7 +524,7 @@ impl<'db> Name<'db> {
         }
     }
 
-    pub fn maybe_self_assignment_name(&self) -> Option<Assignment<'db>> {
+    pub fn maybe_self_assignment_name_on_self_like(&self) -> Option<Assignment<'db>> {
         let node = self
             .node
             .parent_until(&[Nonterminal(assignment), Nonterminal(stmt)])
