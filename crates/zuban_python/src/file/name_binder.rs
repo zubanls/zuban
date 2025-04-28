@@ -304,7 +304,7 @@ impl<'db> NameBinder<'db> {
                         matches!(
                             cause,
                             IndexingCause::FunctionName
-                                | IndexingCause::ClassName
+                                | IndexingCause::NonFlowAnalysisName
                                 | IndexingCause::Annotation { .. }
                                 | IndexingCause::ConstantAssignment
                         )
@@ -354,10 +354,16 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn add_point_definition(&mut self, name_def: NameDef<'db>, specific: Specific) {
-        self.add_new_definition(
+    fn add_point_definition(
+        &mut self,
+        name_def: NameDef<'db>,
+        specific: Specific,
+        cause: IndexingCause,
+    ) {
+        self.add_new_definition_with_cause(
             name_def,
             Point::new_specific(specific, Locality::NameBinder),
+            cause,
         );
     }
 
@@ -839,7 +845,7 @@ impl<'db> NameBinder<'db> {
         self.add_new_definition_with_cause(
             class_def.name_def(),
             Point::new_uncalculated(),
-            IndexingCause::ClassName,
+            IndexingCause::NonFlowAnalysisName,
         );
     }
 
@@ -1068,6 +1074,7 @@ impl<'db> NameBinder<'db> {
                                         self.add_point_definition(
                                             name.name_def().unwrap(),
                                             Specific::GlobalVariable,
+                                            IndexingCause::Other,
                                         );
                                     }
                                 }
@@ -1099,6 +1106,7 @@ impl<'db> NameBinder<'db> {
                                             self.add_point_definition(
                                                 name.name_def().unwrap(),
                                                 Specific::NonlocalVariable,
+                                                IndexingCause::Other,
                                             );
                                             self.db_infos.points.set(
                                                 name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
@@ -1457,11 +1465,21 @@ impl<'db> NameBinder<'db> {
     ) {
         if is_method {
             if let Some(name_def) = names.next() {
-                self.add_point_definition(name_def, Specific::MaybeSelfParam);
+                self.add_point_definition(
+                    name_def,
+                    Specific::MaybeSelfParam,
+                    // Params cause no flow analysis, because they are always the first name to
+                    // bind to.
+                    IndexingCause::NonFlowAnalysisName,
+                );
             }
         }
         for name_def in names {
-            self.add_point_definition(name_def, Specific::Param);
+            self.add_point_definition(
+                name_def,
+                Specific::Param,
+                IndexingCause::NonFlowAnalysisName,
+            );
         }
     }
 
@@ -2066,7 +2084,7 @@ enum IndexingCause {
         definition_name_index: Option<NodeIndex>,
     },
     FunctionName,
-    ClassName,
+    NonFlowAnalysisName,
     AugAssignment,
     ConstantAssignment,
     Other,

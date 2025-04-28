@@ -677,14 +677,9 @@ testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
-testPEP695InferVarianceSimpleFromAttribute
-testPEP695InferVarianceUnderscorePrefix
 # 3.12 type alias type var syntax infer variance
-testPEP695InferVarianceNotReadyWhenNeeded
 testPEP695InferVarianceNotReadyForJoin
 testPEP695InferVarianceNotReadyForMeet
-testPEP695InvalidGenericOrProtocolBaseClass
-testPEP695RecursiveTypeAliasForwardReference
 
 # enum.member / enum.nonmember
 testEnumNonMemberSupport
