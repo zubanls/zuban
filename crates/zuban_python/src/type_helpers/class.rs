@@ -1354,15 +1354,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 .inference(&InferenceState::new(db, file))
                 .calculate_diagnostics()
             {
-                let class_block_ref = NodeRef::new(file, self.node().block().index());
-                // If the class block is calculating it means we are already trying to calculate
-                // diagnostics for this class. To avoid recursions, we stop calculating here. We
-                // also make sure to set the current class to calculating to avoid looping.
-                if !class_block_ref.point().calculating() {
-                    class_block_ref.set_point(Point::new_calculating());
-                    self.infer_variance_of_type_params(db, false);
-                    class_block_ref.set_point(Point::new_uncalculated());
-                }
+                // If the file is already being type checked, we simply try to infer the variance
+                // without the narrowed types.
+                self.infer_variance_of_type_params(db, false);
             }
         }
     }

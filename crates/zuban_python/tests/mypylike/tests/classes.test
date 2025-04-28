@@ -1713,3 +1713,10 @@ class Invariant[T]:
         # At this point the variance is definitely not ready
         reveal_type([Invariant(1), Invariant(object())])  # N: Revealed type is "list[m.Invariant[object]]"
         self.x = x or None
+
+[case type_variance_should_not_recurse_with_decorator]
+def callback[CT](func: CT) -> CT: ...
+
+class C[T]:
+    @callback
+    def f(self, x: T) -> T: ...
