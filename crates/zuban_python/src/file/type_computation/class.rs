@@ -145,15 +145,6 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         }
     }
 
-    // Like maybe_cached_class_infos, but does not provide the db lifetime
-    pub fn use_cached_class_infos_simple(&self) -> &'file ClassInfos {
-        let node_ref = self.class_info_node_ref();
-        match node_ref.maybe_complex().unwrap() {
-            ComplexPoint::ClassInfos(class_infos) => class_infos.as_ref(),
-            _ => unreachable!(),
-        }
-    }
-
     pub(crate) fn add_issue_on_name(&self, db: &Database, kind: IssueKind) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         self.file.add_type_issue(db, issue)

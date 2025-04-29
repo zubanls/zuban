@@ -580,10 +580,10 @@ impl Type {
             {
                 let v = match tv {
                     TypeVarLike::TypeVar(t) if variance == Variance::Covariant => {
-                        t.inferred_variance(class1)
+                        t.inferred_variance(i_s.db, class1)
                     }
                     TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
-                        t.inferred_variance(class1).invert()
+                        t.inferred_variance(i_s.db, class1).invert()
                     }
                     TypeVarLike::TypeVar(_) => Variance::Invariant,
                     TypeVarLike::TypeVarTuple(_) | TypeVarLike::ParamSpec(_) => Variance::Covariant,

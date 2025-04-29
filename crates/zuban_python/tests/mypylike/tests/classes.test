@@ -1720,3 +1720,19 @@ def callback[CT](func: CT) -> CT: ...
 class C[T]:
     @callback
     def f(self, x: T) -> T: ...
+
+
+[case type_variance_recursive_definitions_should_not_crash]
+from typing import TypeVar, Generic, Any
+
+class C[DT](tuple[DT, "E"]):
+    x: DT
+
+class D[CT: "C"]:
+    y: CT
+
+class E(D[C[Any]]):
+    def f(self, x: C[object], y: C[int]) -> None:
+        if bool():
+            x = y  # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[object]")
+        y = x  # E: Incompatible types in assignment (expression has type "C[object]", variable has type "C[int]")

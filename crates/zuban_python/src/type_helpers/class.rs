@@ -1342,7 +1342,14 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn ensure_calculated_variance(&self, db: &Database) {
-        if self.use_cached_class_infos(db).has_uncalculated_variances() {
+        let Some(class_infos) = self.maybe_cached_class_infos(db) else {
+            debug!(
+                "Avoid calculating variance, because the class infos are not ready. \
+                    This is presumably because there are recursive type definitions"
+            );
+            return;
+        };
+        if class_infos.has_uncalculated_variances() {
             let file = self.node_ref.file;
             // It is very possible that the diagnostics are already calculating and the result will
             // error, but this does not matter, because we cannot guarantee that all variances are

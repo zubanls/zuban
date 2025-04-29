@@ -13,6 +13,7 @@ use super::{
 };
 use crate::{
     database::{ComplexPoint, Database, ParentScope, PointLink},
+    debug,
     diagnostics::IssueKind,
     file::{PythonFile, TypeVarTupleDefaultOrigin},
     format_data::{FormatData, ParamsStyle},
@@ -736,19 +737,31 @@ impl TypeVar {
         }
     }
 
-    pub fn inferred_variance(&self, class: &Class) -> Variance {
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
         match self.variance {
             TypeVarVariance::Known(variance) => variance,
             TypeVarVariance::Inferred => {
-                let variance = class
-                    .use_cached_class_infos_simple()
+                let Some(class_infos) = class.maybe_cached_class_infos(db) else {
+                    debug!(
+                        "Using covariant variance for TypeVar {}, because of uncalculated class infos",
+                        self.name(db)
+                    );
+                    return Variance::Covariant;
+                };
+                let variance = class_infos
                     .variance_map
                     .iter()
                     .find_map(|(n, variance)| (self.name == *n).then_some(variance))
                     .unwrap();
-                // Fallback to Covariant if it was not calculated yet. Mypy also falls back to it
-                // while calculating.
-                variance.get().copied().unwrap_or(Variance::Covariant)
+                variance.get().copied().unwrap_or_else(|| {
+                    // Fallback to Covariant if it was not calculated yet. Mypy also falls back to it
+                    // while calculating.
+                    debug!(
+                        "Using covariant variance for TypeVar {}, because the variance is not yet ready",
+                        self.name(db)
+                    );
+                    Variance::Covariant
+                })
             }
         }
     }
