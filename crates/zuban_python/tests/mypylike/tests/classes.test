@@ -1736,3 +1736,19 @@ class E(D[C[Any]]):
         if bool():
             x = y  # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[object]")
         y = x  # E: Incompatible types in assignment (expression has type "C[object]", variable has type "C[int]")
+
+[case override_error_code]
+# flags: --show-error-codes
+
+class C:
+    x = 1
+
+class D:
+    @property
+    def x(self) -> int: ...
+
+class E(C):
+    @property
+    def x(self) -> int: ...  # E: Cannot override writeable attribute with read-only property  [override]
+
+class F(D, C): ...  # E: Cannot override writeable attribute "x" in base "C" with read-only property in base "D"  [override]

@@ -536,7 +536,9 @@ impl IssueKind {
             | ArgumentIncompatibleWithSupertype { .. }
             | OverloadOrderMustMatchSupertype { .. }
             | IncompatiblePropertySetterOverride { .. }
-            | ReturnTypeIncompatibleWithSupertype { .. } => "override",
+            | ReturnTypeIncompatibleWithSupertype { .. }
+            | CannotOverrideWritableAttributeWithReadOnlyProperty { .. }
+            | ReadOnlyPropertyCannotOverwriteWritableAttribute => "override",
             IncorrectExitReturn => "exit-return",
             FunctionIsDynamic
             | FunctionMissingReturnAnnotation { .. }
