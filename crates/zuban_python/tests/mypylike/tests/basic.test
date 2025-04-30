@@ -1053,3 +1053,7 @@ except *Exception as x:
 import typing
 reveal_type(reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
 reveal_type(typing.NewType)  # N: Revealed type is "Type[typing_extensions.NewType]"
+
+[case set_item_error_code]
+# flags: --show-error-codes
+x: set[str] = {1}  # E: Set item 0 has incompatible type "int"; expected "str"  [arg-type]

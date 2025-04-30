@@ -528,7 +528,7 @@ impl IssueKind {
                 }
             }
             ListItemMismatch { .. } => "list-item",
-            SetItemMismatch { .. } => "call-arg", // This has no error code in Mypy currently.
+            SetItemMismatch { .. } => "arg-type", // This has no error code in Mypy currently.
             DictMemberMismatch { .. } | UnpackedDictMemberMismatch { .. } => "dict-item",
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",

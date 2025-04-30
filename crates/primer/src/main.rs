@@ -57,6 +57,8 @@ fn main() -> ExitCode {
     }
 
     let start = Instant::now();
+    let mut file_count = 0;
+    let mut issue_count = 0;
 
     for dir in projects {
         println!("Start checking {dir}");
@@ -87,6 +89,8 @@ fn main() -> ExitCode {
                 for diagnostic in diagnostics.issues.iter() {
                     println!("{}", diagnostic.as_string(config))
                 }
+                file_count += diagnostics.checked_files;
+                issue_count += diagnostics.issues.len();
                 println!("{}", diagnostics.summary());
                 if !diagnostics.issues.is_empty() {
                     println!(
@@ -101,7 +105,12 @@ fn main() -> ExitCode {
             project_start.elapsed()
         );
     }
-    println!("Full time taken: {:?}", start.elapsed());
+    println!(
+        "Full time taken: {:?} for {} files and found {} issues",
+        start.elapsed(),
+        file_count,
+        issue_count
+    );
 
     ExitCode::SUCCESS
 }
