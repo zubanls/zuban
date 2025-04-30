@@ -1073,6 +1073,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             NodeRef::new(node_ref.file, name_def.index())
         };
         if let Some(kind) = inconsistent_function_kind {
+            let kind = match kind {
+                FunctionKind::Classmethod { .. } => "classmethod",
+                FunctionKind::Staticmethod { .. } => "staticmethod",
+                FunctionKind::Property { .. } => "property",
+                FunctionKind::Function { .. } => unreachable!(),
+            };
             NodeRef::new(self.node_ref.file, self.expect_decorated_node().index())
                 .add_issue(i_s, IssueKind::OverloadInconsistentKind { kind })
         }

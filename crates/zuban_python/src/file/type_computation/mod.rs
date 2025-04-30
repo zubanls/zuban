@@ -4694,7 +4694,7 @@ impl TypeCommentDetails<'_> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub(crate) struct GenericCounts {
     pub expected: usize,
     pub expected_minimum: Option<usize>,

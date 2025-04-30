@@ -403,3 +403,33 @@ pub struct Diagnostics<'a> {
     pub files_with_errors: usize,
     pub issues: Box<[diagnostics::Diagnostic<'a>]>,
 }
+
+impl Diagnostics<'_> {
+    pub fn summary(&self) -> String {
+        let s_if_plural = |n| match n {
+            1 => "",
+            _ => "s",
+        };
+        if self.issues.is_empty() {
+            format!(
+                "Success: no issues found in {checked} source file{checked_s}",
+                checked = self.checked_files,
+                checked_s = s_if_plural(self.checked_files),
+            )
+        } else {
+            format!(
+                "Found {e} error{e_s} in {fwe} file{fwe_s} (checked {checked} source file{checked_s})",
+                e = self.issues.len(),
+                e_s = s_if_plural(self.issues.len()),
+                fwe = self.files_with_errors,
+                fwe_s = s_if_plural(self.files_with_errors),
+                checked = self.checked_files,
+                checked_s = s_if_plural(self.checked_files),
+            )
+        }
+    }
+
+    pub fn sort_issues_by_kind(&mut self) {
+        self.issues.sort_by_key(|issue| &issue.issue.kind)
+    }
+}

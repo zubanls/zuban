@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use config::{find_cli_config, DiagnosticConfig, ExcludeRegex, ProjectOptions, PythonVersion};
+pub use config::DiagnosticConfig;
+pub use zuban_python::Diagnostics;
+
+use config::{find_cli_config, ExcludeRegex, ProjectOptions, PythonVersion};
 use vfs::{AbsPath, GlobAbsPath, LocalFS, VfsHandler};
 use zuban_python::Project;
 
@@ -215,46 +218,28 @@ pub fn run(cli: Cli) -> ExitCode {
     const CWD_ERROR: &str = "Expected valid unicode in working directory";
     let current_dir = current_dir.into_os_string().into_string().expect(CWD_ERROR);
 
-    run_with_cli(cli, current_dir, None)
+    with_diagnostics_from_cli(cli, current_dir, None, |diagnostics, config| {
+        for diagnostic in diagnostics.issues.iter() {
+            println!("{}", diagnostic.as_string(config))
+        }
+        println!("{}", diagnostics.summary());
+        ExitCode::from(diagnostics.issues.is_empty() as u8)
+    })
 }
 
-pub fn run_with_cli(
+pub fn with_diagnostics_from_cli<T>(
     cli: Cli,
     current_dir: String,
     typeshed_path: Option<Box<AbsPath>>,
-) -> ExitCode {
+    callback: impl FnOnce(Diagnostics, &DiagnosticConfig) -> T,
+) -> T {
     tracing::info!("Checking in {current_dir}");
     let (mut project, diagnostic_config) =
         project_from_cli(cli, current_dir, typeshed_path, |name| {
             std::env::var(name).ok()
         });
     let diagnostics = project.diagnostics();
-    for diagnostic in diagnostics.issues.iter() {
-        println!("{}", diagnostic.as_string(&diagnostic_config))
-    }
-    let had_diagnostics = !diagnostics.issues.is_empty();
-    let s_if_plural = |n| match n {
-        1 => "",
-        _ => "s",
-    };
-    if had_diagnostics {
-        println!(
-            "Found {e} error{e_s} in {fwe} file{fwe_s} (checked {checked} source file{checked_s})",
-            e = diagnostics.issues.len(),
-            e_s = s_if_plural(diagnostics.issues.len()),
-            fwe = diagnostics.files_with_errors,
-            fwe_s = s_if_plural(diagnostics.files_with_errors),
-            checked = diagnostics.checked_files,
-            checked_s = s_if_plural(diagnostics.checked_files),
-        )
-    } else {
-        println!(
-            "Success: no issues found in {checked} source file{checked_s}",
-            checked = diagnostics.checked_files,
-            checked_s = s_if_plural(diagnostics.checked_files),
-        )
-    }
-    ExitCode::from(had_diagnostics as u8)
+    callback(diagnostics, &diagnostic_config)
 }
 
 fn project_from_cli(

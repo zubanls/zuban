@@ -5,7 +5,7 @@ use std::{
 
 use crate::{utils::VecRefWrapper, AbsPath, VfsHandler};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileIndex(pub u32);
 
 impl std::fmt::Display for FileIndex {

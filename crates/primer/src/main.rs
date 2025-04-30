@@ -78,10 +78,23 @@ fn main() -> ExitCode {
         let mut v = vec!["".into(), "--python-executable".into(), executable];
         v.extend_from_slice(&cli.mypy_args);
         let cli = zmypy::Cli::parse_from(v);
-        let code = zmypy::run_with_cli(cli, pth, Some(test_utils::typeshed_path()));
-        if code == ExitCode::FAILURE {
-            println!("Mypy generated diagnostics, which leads to an error code that was ignored");
-        }
+        zmypy::with_diagnostics_from_cli(
+            cli,
+            pth,
+            Some(test_utils::typeshed_path()),
+            |mut diagnostics, config| {
+                diagnostics.sort_issues_by_kind();
+                for diagnostic in diagnostics.issues.iter() {
+                    println!("{}", diagnostic.as_string(config))
+                }
+                println!("{}", diagnostics.summary());
+                if !diagnostics.issues.is_empty() {
+                    println!(
+                        "Mypy generated diagnostics, which leads to an error code that was ignored"
+                    );
+                }
+            },
+        );
 
         println!(
             "Time taken for project {dir}: {:?}",

@@ -592,7 +592,7 @@ pub(crate) enum Locality {
     Todo,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct PointLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,

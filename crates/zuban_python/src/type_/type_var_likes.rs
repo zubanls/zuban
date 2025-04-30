@@ -324,7 +324,7 @@ impl CallableId for Rc<CallableContent> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
 #[repr(u32)]
 pub(crate) enum Variance {
     Invariant = 0,
@@ -463,7 +463,7 @@ impl std::ops::Index<usize> for TypeVarLikes {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarLike {
     TypeVar(Rc<TypeVar>),
     TypeVarTuple(Rc<TypeVarTuple>),
@@ -588,13 +588,13 @@ impl Hash for TypeVarLike {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarLikeName {
     InString(PointLink),
     SyntaxNode(PointLink),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarName {
     Name(TypeVarLikeName),
     Self_,
@@ -705,6 +705,17 @@ pub(crate) struct TypeVar {
 impl PartialEq for TypeVar {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
+    }
+}
+
+impl PartialOrd for TypeVar {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.name.cmp(&other.name))
+    }
+}
+impl Ord for TypeVar {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
     }
 }
 
@@ -978,6 +989,17 @@ impl PartialEq for TypeVarTuple {
     }
 }
 
+impl PartialOrd for TypeVarTuple {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.name.cmp(&other.name))
+    }
+}
+impl Ord for TypeVarTuple {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
 impl Eq for TypeVarTuple {}
 
 #[derive(Debug, Clone)]
@@ -1034,6 +1056,18 @@ impl ParamSpec {
 impl PartialEq for ParamSpec {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
+    }
+}
+
+impl Ord for ParamSpec {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for ParamSpec {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.name.cmp(&other.name))
     }
 }
 impl Eq for ParamSpec {}

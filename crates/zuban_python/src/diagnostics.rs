@@ -9,12 +9,15 @@ use crate::{
     file::{GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::FilePosition,
     node_ref::NodeRef,
-    type_::{FunctionKind, TypeVarLike, Variance},
+    type_::{TypeVarLike, Variance},
     utils::join_with_commas,
     PythonVersion, TypeCheckerFlags,
 };
 
-#[derive(Debug, Clone)]
+// Ord/PartialOrd are not important, but we ideally have something to support by IssueKind entry to
+// know which issue arises often. Since there is no other way to get the "current" entry so we can
+// sort by that
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(dead_code)]  // TODO remove this
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueKind {
@@ -385,7 +388,7 @@ pub(crate) enum IssueKind {
     OverloadIncompatibleReturnTypes { first_signature_index: usize, second_signature_index: usize },
     OverloadImplementationReturnTypeIncomplete { signature_index: usize },
     OverloadImplementationParamsNotBroadEnough { signature_index: usize },
-    OverloadInconsistentKind { kind: FunctionKind },
+    OverloadInconsistentKind { kind: &'static str },
     OverloadedPropertyNotSupported,
     OverloadWithAbstractAndNonAbstract,
     OverloadTooManyUnions,
@@ -1898,13 +1901,7 @@ impl<'db> Diagnostic<'db> {
                 "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
             ),
             OverloadInconsistentKind { kind } => format!(
-                "Overload does not consistently use the \"@{}\" decorator on all function signatures.",
-                match kind {
-                    FunctionKind::Classmethod { .. } => "classmethod",
-                    FunctionKind::Staticmethod { .. } => "staticmethod",
-                    FunctionKind::Property { .. } => "property",
-                    FunctionKind::Function { .. } => unreachable!()
-                }
+                "Overload does not consistently use the \"@{kind}\" decorator on all function signatures.",
             ),
             OverloadedPropertyNotSupported =>
                 "An overload can not be a property".to_string(),
