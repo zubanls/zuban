@@ -1492,31 +1492,7 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        let has_param_annotations = function.has_param_annotations(i_s);
-        let has_return_type = return_annotation.is_some()
-            || function.class.is_some()
-                && ["__init__", "__init_subclass__"].contains(&name.as_code());
-        let has_explicit_annotation = has_return_type || has_param_annotations;
-        if flags.disallow_untyped_defs || flags.disallow_incomplete_defs && has_explicit_annotation
-        {
-            let has_args = || function.iter_non_self_args(i_s).next().is_some();
-            if !has_return_type && !has_param_annotations && has_args() {
-                function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped)
-            } else {
-                if !has_return_type || return_annotation.is_none() && !has_args() {
-                    function.add_issue_for_declaration(
-                        i_s,
-                        IssueKind::FunctionMissingReturnAnnotation {
-                            hint_return_none: function.might_be_missing_none_return_annotation(i_s),
-                        },
-                    );
-                }
-                if function.is_missing_param_annotations(i_s) {
-                    function
-                        .add_issue_for_declaration(i_s, IssueKind::FunctionMissingParamAnnotations);
-                }
-            }
-        }
+        check_for_missing_annotations(i_s, flags, function, name, return_annotation);
 
         for param in params_iterator {
             if let Some(annotation) = param.annotation() {
@@ -2994,6 +2970,38 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                     }
                 }
             });
+        }
+    }
+}
+
+#[inline]
+fn check_for_missing_annotations(
+    i_s: &InferenceState,
+    flags: &TypeCheckerFlags,
+    function: Function,
+    name: NameDef,
+    return_annotation: Option<ReturnAnnotation>,
+) {
+    let has_param_annotations = function.has_param_annotations(i_s);
+    let has_return_type = return_annotation.is_some()
+        || function.class.is_some() && ["__init__", "__init_subclass__"].contains(&name.as_code());
+    let has_explicit_annotation = has_return_type || has_param_annotations;
+    if flags.disallow_untyped_defs || flags.disallow_incomplete_defs && has_explicit_annotation {
+        let has_args = || function.iter_non_self_args(i_s).next().is_some();
+        if !has_return_type && !has_param_annotations && has_args() {
+            function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped)
+        } else {
+            if !has_return_type || return_annotation.is_none() && !has_args() {
+                function.add_issue_for_declaration(
+                    i_s,
+                    IssueKind::FunctionMissingReturnAnnotation {
+                        hint_return_none: function.might_be_missing_none_return_annotation(i_s),
+                    },
+                );
+            }
+            if function.is_missing_param_annotations(i_s) {
+                function.add_issue_for_declaration(i_s, IssueKind::FunctionMissingParamAnnotations);
+            }
         }
     }
 }
