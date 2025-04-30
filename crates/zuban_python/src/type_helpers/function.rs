@@ -104,6 +104,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         iterator
     }
 
+    pub fn has_param_annotations(&self, i_s: &InferenceState) -> bool {
+        self.iter_non_self_args(i_s)
+            .any(|p| p.annotation().is_some())
+    }
     pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
         self.iter_non_self_args(i_s)
             .any(|p| p.annotation().is_none())

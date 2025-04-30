@@ -1407,7 +1407,6 @@ impl Inference<'_, '_, '_> {
             }
         }
         let flags = self.flags();
-        let mut had_missing_annotation = false;
         let mut params_iterator = params.iter().peekable();
         if let Some(class) = function.class {
             if func_kind != FunctionKind::Staticmethod || function.is_dunder_new() {
@@ -1492,6 +1491,33 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+
+        let has_param_annotations = function.has_param_annotations(i_s);
+        let has_return_type = return_annotation.is_some()
+            || function.class.is_some()
+                && ["__init__", "__init_subclass__"].contains(&name.as_code());
+        let has_explicit_annotation = has_return_type || has_param_annotations;
+        if flags.disallow_untyped_defs || flags.disallow_incomplete_defs && has_explicit_annotation
+        {
+            let has_args = || function.iter_non_self_args(i_s).next().is_some();
+            if !has_return_type && !has_param_annotations && has_args() {
+                function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped)
+            } else {
+                if !has_return_type || return_annotation.is_none() && !has_args() {
+                    function.add_issue_for_declaration(
+                        i_s,
+                        IssueKind::FunctionMissingReturnAnnotation {
+                            hint_return_none: function.might_be_missing_none_return_annotation(i_s),
+                        },
+                    );
+                }
+                if function.is_missing_param_annotations(i_s) {
+                    function
+                        .add_issue_for_declaration(i_s, IssueKind::FunctionMissingParamAnnotations);
+                }
+            }
+        }
+
         for param in params_iterator {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
@@ -1528,14 +1554,7 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
-            } else if flags.disallow_incomplete_defs {
-                had_missing_annotation = true;
             }
-        }
-        if had_missing_annotation {
-            function
-                .node_ref
-                .add_issue(i_s, IssueKind::FunctionMissingParamAnnotations);
         }
 
         if let Some(return_annotation) = return_annotation {
@@ -1560,18 +1579,6 @@ impl Inference<'_, '_, '_> {
                             .add_issue(i_s, IssueKind::InvalidGeneratorReturnType);
                     }
                 }
-            }
-        } else if flags.disallow_incomplete_defs {
-            let is_init_like = function.class.is_some()
-                && ["__init__", "__init_subclass__"].contains(&name.as_code());
-            // Only add issue for __init__ if it looks like `def __init__(self): ...`
-            if !is_init_like || function.iter_non_self_args(i_s).next().is_none() {
-                function.add_issue_for_declaration(
-                    i_s,
-                    IssueKind::FunctionMissingReturnAnnotation {
-                        hint_return_none: is_init_like,
-                    },
-                )
             }
         }
 
@@ -1609,27 +1616,6 @@ impl Inference<'_, '_, '_> {
             }
         } else {
             self.calc_untyped_block_diagnostics(block, false)
-        }
-        if flags.disallow_untyped_defs && !flags.disallow_incomplete_defs {
-            match (
-                function.is_missing_param_annotations(i_s),
-                function.return_annotation().is_none(),
-            ) {
-                (true, true) => {
-                    function.add_issue_for_declaration(i_s, IssueKind::FunctionIsDynamic)
-                }
-                (true, false) => function
-                    .add_issue_for_declaration(i_s, IssueKind::FunctionMissingParamAnnotations),
-                (false, true) => {
-                    function.add_issue_for_declaration(
-                        i_s,
-                        IssueKind::FunctionMissingReturnAnnotation {
-                            hint_return_none: function.might_be_missing_none_return_annotation(i_s),
-                        },
-                    );
-                }
-                (false, false) => (),
-            }
         }
 
         if function.is_dunder_new() {

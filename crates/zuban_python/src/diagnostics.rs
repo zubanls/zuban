@@ -439,7 +439,7 @@ pub(crate) enum IssueKind {
     DataclassTransformFieldAliasParamMustBeString,
 
     // From --disallow-untyped-defs
-    FunctionIsDynamic,
+    FunctionIsUntyped,
     FunctionMissingReturnAnnotation { hint_return_none: bool }, // Also from --disallow-incomplete-defs
     FunctionMissingParamAnnotations, // Also from --disallow-incomplete-defs
 
@@ -540,7 +540,7 @@ impl IssueKind {
             | CannotOverrideWritableAttributeWithReadOnlyProperty { .. }
             | ReadOnlyPropertyCannotOverwriteWritableAttribute => "override",
             IncorrectExitReturn => "exit-return",
-            FunctionIsDynamic
+            FunctionIsUntyped
             | FunctionMissingReturnAnnotation { .. }
             | FunctionMissingParamAnnotations => "no-untyped-def",
             DoesNotReturnAValue(_) => "func-returns-value",
@@ -1143,7 +1143,7 @@ impl<'db> Diagnostic<'db> {
             DataclassTransformFieldAliasParamMustBeString =>
                 r#""alias" argument to dataclass field must be a string literal"#.to_string(),
 
-            FunctionIsDynamic => "Function is missing a type annotation".to_string(),
+            FunctionIsUntyped => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation { hint_return_none } => {
                 if *hint_return_none {
                     additional_notes.push(r#"Use "-> None" if function does not return a value"#.into());

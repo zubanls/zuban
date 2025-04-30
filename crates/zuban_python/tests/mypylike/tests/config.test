@@ -113,3 +113,28 @@ __main__:1: error: Content after quote in configuration comment
 __main__:3: error: Content after quote in configuration comment
 __main__:3: error: Quotes should not be part of the key
 __main__:3: error: Unrecognized option: "always_true = oo"
+
+[case untyped_defs_correct_errors]
+[file checked.py]
+def x(y):  # E: Function is missing a type annotation  [no-untyped-def]
+    1()  # E: "int" not callable  [operator]
+
+def y(z: int): ...  # E: Function is missing a return type annotation  [no-untyped-def]
+
+[file unchecked.py]
+def x(y):
+    1()
+
+def y(z: int): ...  # E: Function is missing a return type annotation  [no-untyped-def]
+
+# mypy: allow-untyped-defs, no-check-untyped-defs
+
+[file mypy.ini]
+[mypy]
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+show_error_codes = true
+
+[mypy-unchecked]
+no_implicit_reexport = true
