@@ -1752,3 +1752,43 @@ class E(C):
     def x(self) -> int: ...  # E: Cannot override writeable attribute with read-only property  [override]
 
 class F(D, C): ...  # E: Cannot override writeable attribute "x" in base "C" with read-only property in base "D"  [override]
+
+[case override_cached_property_mypy_compatible]
+# flags: --mypy-compatible --show-error-codes
+from functools import cached_property
+
+class X:
+    @cached_property
+    def x(self) -> int: return 1
+
+    @property
+    def y(self) -> int: return 1
+    @y.setter
+    def y(self, other) -> None: ...
+
+class Y(X):
+    @property
+    def x(self) -> int: return 1
+
+    @property  # E: Read-only property cannot override read-write property  [misc]
+    def y(self) -> int: return 1
+
+[case override_cached_property_no_mypy_compatible]
+# flags: --no-mypy-compatible --show-error-codes
+from functools import cached_property
+
+class X:
+    @cached_property
+    def x(self) -> int: return 1
+
+    @property
+    def y(self) -> int: return 1
+    @y.setter
+    def y(self, other) -> None: ...
+
+class Y(X):
+    @property  # E: Read-only property cannot override read-write property  [misc]
+    def x(self) -> int: return 1
+
+    @property  # E: Read-only property cannot override read-write property  [misc]
+    def y(self) -> int: return 1

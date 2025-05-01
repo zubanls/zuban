@@ -1839,7 +1839,7 @@ fn infer_decorator_details(
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
-                        setter_type: Some(Rc::new(PropertySetter::SameType)),
+                        setter_type: Some(Rc::new(PropertySetter::SameTypeFromCachedProperty)),
                     },
                     is_abstract: false,
                 };

@@ -182,7 +182,9 @@ impl<'a> Instance<'a> {
                         setter_type: Some(wanted),
                         ..
                     } => match wanted.as_ref() {
-                        PropertySetter::SameType => check_compatible(&c.return_type, value),
+                        PropertySetter::SameTypeFromCachedProperty => {
+                            check_compatible(&c.return_type, value)
+                        }
                         PropertySetter::OtherType(t) => {
                             check_compatible(t, value);
                             false

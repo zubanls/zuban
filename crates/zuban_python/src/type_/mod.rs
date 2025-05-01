@@ -1624,7 +1624,7 @@ impl Tuple {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PropertySetter {
-    SameType,
+    SameTypeFromCachedProperty, // This happens when @functools.cached_property is used
     OtherType(Type),
 }
 

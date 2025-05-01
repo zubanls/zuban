@@ -34,8 +34,8 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, TypeVarVariance,
-        Variance,
+        LookupResult, NeverCause, ParamType, PropertySetter, Type, TypeVarKind, TypeVarLike,
+        TypeVarVariance, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
@@ -2407,11 +2407,20 @@ pub(super) fn check_override(
                 setter_type: None, ..
             },
         ) if original.is_writable() => {
-            if matches!(original, AttributeKind::Property { .. }) {
-                from.add_issue_onto_start_including_decorator(
-                    i_s,
-                    IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
-                )
+            if let AttributeKind::Property { setter_type, .. } = original {
+                // This happens when @cached_property is overwritten with @property. This is
+                // allowed in Mypy (probably due to a logic error).
+                if !i_s.db.project.settings.mypy_compatible
+                    || !matches!(
+                        setter_type.as_deref(),
+                        Some(PropertySetter::SameTypeFromCachedProperty)
+                    )
+                {
+                    from.add_issue_onto_start_including_decorator(
+                        i_s,
+                        IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
+                    )
+                }
             // TODO we should not need to check if we are in a frozen dataclass, the attr kind
             // should never be writable in the first place!
             } else if !original_class.is_frozen_dataclass() {

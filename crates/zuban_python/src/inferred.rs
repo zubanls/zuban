@@ -2951,7 +2951,7 @@ impl AttributeKind {
         if let Self::Property { setter_type, .. } = self {
             match setter_type.as_ref()?.as_ref() {
                 PropertySetter::OtherType(t) => Some(t),
-                PropertySetter::SameType => None,
+                PropertySetter::SameTypeFromCachedProperty => None,
             }
         } else {
             None

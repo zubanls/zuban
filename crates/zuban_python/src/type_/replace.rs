@@ -408,7 +408,7 @@ impl FunctionKind {
                 setter_type: Some(setter_type),
                 had_first_self_or_class_annotation,
             } => match setter_type.as_ref() {
-                PropertySetter::SameType => None,
+                PropertySetter::SameTypeFromCachedProperty => None,
                 PropertySetter::OtherType(type_) => Some(FunctionKind::Property {
                     setter_type: Some(Rc::new(PropertySetter::OtherType(
                         type_.replace_internal(replacer)?,
