@@ -212,3 +212,13 @@ from enum import Enum
 from typing import Final
 class C(Enum):
     X: Final = '', 1
+
+[case func_with_enum_default_and_underscore]
+from enum import Enum
+class UndefinedType(Enum):
+    _singleton = 0
+
+UNDEFINED = UndefinedType._singleton
+reveal_type(UNDEFINED)  # N: Revealed type is "__main__.UndefinedType"
+
+def x(z: str | UndefinedType = UNDEFINED): ...

@@ -1153,7 +1153,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut members = vec![];
         let mut name_indexes = vec![];
         for (name, name_index) in self.class_storage.class_symbol_table.iter() {
-            if name.starts_with('_') {
+            // It seems like Enums treat private, "dunder" and "sunder" names special.
+            // See also https://github.com/python/cpython/blob/4701ff92d747002d04b67688c7a581b1952773ac/Lib/enum.py#L353-L385
+            if name.starts_with('_') && (name.ends_with('_') || name.starts_with("__")) {
                 if name == "__members__" {
                     let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
                     if !name_node_ref
