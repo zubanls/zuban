@@ -385,9 +385,6 @@ testDataclassWithSlotsArg
 testDataclassInitVarCannotBeSet
 # dataclass weird replace case
 testReplaceIsDataclass
-# dataclass_transform used with overload
-testDataclassTransformOverloadsDecoratorOnOverload
-testDataclassTransformOverloadsDecoratorOnImpl
 # dataclass_transform __set__ descriptor needs to be type checked
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__

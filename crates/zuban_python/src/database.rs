@@ -678,6 +678,7 @@ pub(crate) struct OverloadDefinition {
     pub functions: Rc<FunctionOverload>,
     pub is_final: bool,    // Had @final
     pub is_override: bool, // Had @override
+    pub dataclass_transform: Option<DataclassTransformObj>,
 }
 
 impl OverloadDefinition {

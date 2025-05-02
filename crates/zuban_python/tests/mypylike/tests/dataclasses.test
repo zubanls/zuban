@@ -416,6 +416,40 @@ from typing import dataclass_transform
 # This is not correct, but for now we don't support it in a better way
 reveal_type(dataclass_transform())  # N: Revealed type is "object"
 
+[case dataclass_transform_wrong_args]
+from typing import dataclass_transform
+@dataclass_transform(order_default=True)
+def foo(x: int): ...
+
+@foo(order=False)  # E: Unexpected keyword argument "order" for "foo"
+class D:
+    x: int
+
+[case dataclass_transform_on_first_overload]
+# Copied from testDataclassTransformOverloadsDecoratorOnOverload, but with
+# dataclass_transform on first overload
+from typing import dataclass_transform, overload, Callable, Type
+
+@dataclass_transform(frozen_default=True)
+@overload
+def my_dataclass(*, foo: str) -> Callable[[Type], Type]: ...
+@overload
+def my_dataclass(*, foo: int) -> Callable[[Type], Type]: ...
+def my_dataclass(*, foo) -> Callable[[Type], Type]:
+    return lambda cls: cls
+@my_dataclass(foo="hello")
+class A:
+    a: int
+@my_dataclass(foo=5)
+class B:
+    b: int
+
+reveal_type(A)  # N: Revealed type is "def (a: int) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (b: int) -> __main__.B"
+A(1, "hello")  # E: Too many arguments for "A"
+a = A(1)
+a.a = 2  # E: Property "a" defined in "A" is read-only
+
 [case dataclass_enum_combination]
 from dataclasses import dataclass
 from enum import Enum

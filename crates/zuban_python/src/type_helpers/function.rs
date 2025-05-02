@@ -33,9 +33,10 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
-        ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        NeverCause, ParamType, PropertySetter, ReplaceSelf, StarParamType, StarStarParamType,
-        StringSlice, TupleArgs, Type, TypeVarLike, TypeVarLikes, WrongPositionalCount,
+        ClassGenerics, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
+        GenericClass, GenericItem, NeverCause, ParamType, PropertySetter, ReplaceSelf,
+        StarParamType, StarStarParamType, StringSlice, TupleArgs, Type, TypeVarLike, TypeVarLikes,
+        WrongPositionalCount,
     },
     type_helpers::Class,
 };
@@ -648,6 +649,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_abstract = false;
         let mut is_final = false;
         let mut is_override = false;
+        let mut dataclass_transform = None;
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
@@ -748,6 +750,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         used_with_a_non_method("override")
                     }
                 }
+                InferredDecorator::DataclassTransform(transform) => {
+                    dataclass_transform = Some(transform);
+                }
             }
         }
         if is_abstract && is_final {
@@ -804,6 +809,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             kind,
             is_overload,
             is_override,
+            dataclass_transform,
             has_decorator: true,
         })
     }
@@ -917,6 +923,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut has_abstract = false;
         let mut has_non_abstract = false;
         let mut is_override = details.is_override;
+        let mut dataclass_transform = details.dataclass_transform;
         let should_error_out = Cell::new(false);
         let mut add_func = |func: &Function, inf: Inferred, is_first: bool| {
             let base = inf.as_cow_type(i_s);
@@ -1004,6 +1011,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         },
                         is_overload: false,
                         is_override: false,
+                        dataclass_transform: None,
                         has_decorator: false,
                     }
                 }
@@ -1066,6 +1074,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                 }
             }
+            if next_details.dataclass_transform.is_some() {
+                // TODO PEP 681 says: If the function has overloads, the dataclass_transform decorator
+                // can be applied to the implementation of the function or any one, but not more than
+                // one, of the overloads.
+                // We whould therefore add an error here
+                dataclass_transform = next_details.dataclass_transform;
+            }
         }
         let name_def_node_ref = |link| {
             let node_ref = NodeRef::from_link(i_s.db, link);
@@ -1123,6 +1138,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             implementation,
             is_final,
             is_override,
+            dataclass_transform,
         })
     }
 
@@ -1784,8 +1800,8 @@ fn infer_decorator_details(
     had_first_annotation: bool,
 ) -> InferredDecorator {
     let inference = file.inference(i_s);
-    let redirect = inference.infer_decorator(decorator);
-    if let Some(saved_link) = redirect.maybe_saved_link() {
+    let inf = inference.infer_decorator(decorator);
+    if let Some(saved_link) = inf.maybe_saved_link() {
         if saved_link == i_s.db.python_state.overload_link() {
             return InferredDecorator::Overload;
         }
@@ -1846,7 +1862,12 @@ fn infer_decorator_details(
             }
         }
     }
-    InferredDecorator::Inferred(redirect)
+    if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(transform))) =
+        inf.maybe_complex_point(i_s.db)
+    {
+        return InferredDecorator::DataclassTransform(transform.clone());
+    }
+    InferredDecorator::Inferred(inf)
 }
 
 #[derive(Debug)]
@@ -1857,6 +1878,7 @@ enum InferredDecorator {
     },
     Inferred(Inferred),
     Overload,
+    DataclassTransform(DataclassTransformObj),
     Abstractmethod,
     Override,
     Final,
@@ -1867,6 +1889,7 @@ struct FunctionDetails {
     kind: FunctionKind,
     is_overload: bool,
     is_override: bool,
+    dataclass_transform: Option<DataclassTransformObj>,
     has_decorator: bool,
 }
 

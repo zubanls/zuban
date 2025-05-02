@@ -1880,33 +1880,40 @@ fn maybe_dataclass_transform_func(
     func: FuncNodeRef,
 ) -> Option<DataclassTransformObj> {
     let decorated = func.node().maybe_decorated()?;
-    for decorator in decorated.decorators().iter() {
-        let expr = decorator.named_expression().expression();
-        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
-            let primary_node_ref = NodeRef::new(func.file, primary.index());
-            if primary_node_ref.point().calculated() {
-                if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
-                    primary_node_ref.maybe_complex()
-                {
-                    return Some(dto.clone());
-                }
-            } else if let PrimaryContent::Execution(exec) = primary.second() {
-                let i_s = &InferenceState::new(db, func.file);
-                let name_resolution = func.file.name_resolution_for_types(i_s);
-                if let Some(Lookup::T(TypeContent::SpecialCase(
-                    Specific::TypingDataclassTransform,
-                ))) = name_resolution.lookup_type_primary_or_atom_if_only_names(primary.first())
-                {
-                    return Some(
-                        name_resolution
-                            .insert_dataclass_transform(primary, exec)
-                            .clone(),
-                    );
+    if let Some(ComplexPoint::FunctionOverload(overload)) = func.maybe_complex() {
+        overload.dataclass_transform.clone()
+    } else {
+        for decorator in decorated.decorators().iter() {
+            let expr = decorator.named_expression().expression();
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
+                expr.unpack()
+            {
+                let primary_node_ref = NodeRef::new(func.file, primary.index());
+                if primary_node_ref.point().calculated() {
+                    if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(dto))) =
+                        primary_node_ref.maybe_complex()
+                    {
+                        return Some(dto.clone());
+                    }
+                } else if let PrimaryContent::Execution(exec) = primary.second() {
+                    let i_s = &InferenceState::new(db, func.file);
+                    let name_resolution = func.file.name_resolution_for_types(i_s);
+                    if let Some(Lookup::T(TypeContent::SpecialCase(
+                        Specific::TypingDataclassTransform,
+                    ))) =
+                        name_resolution.lookup_type_primary_or_atom_if_only_names(primary.first())
+                    {
+                        return Some(
+                            name_resolution
+                                .insert_dataclass_transform(primary, exec)
+                                .clone(),
+                        );
+                    }
                 }
             }
         }
+        None
     }
-    None
 }
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
