@@ -1130,15 +1130,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .is_some_and(|implementation| implementation.callable.is_final)
         };
 
-        (!should_error_out.get()).then(|| OverloadDefinition {
-            functions: {
-                debug_assert!(functions.len() > 1);
-                FunctionOverload::new(functions.into_boxed_slice())
-            },
-            implementation,
-            is_final,
-            is_override,
-            dataclass_transform,
+        (!should_error_out.get()).then(|| {
+            if dataclass_transform.is_some() {
+                debug!("Found dataclass transform overload");
+            }
+            OverloadDefinition {
+                functions: {
+                    debug_assert!(functions.len() > 1);
+                    FunctionOverload::new(functions.into_boxed_slice())
+                },
+                implementation,
+                is_final,
+                is_override,
+                dataclass_transform,
+            }
         })
     }
 

@@ -592,3 +592,10 @@ def f(a: A[int, str, bytes], c: C[int, str, bytes]):
 X = type(list[int])
 
 def f(x: X) -> None: ... # E: Invalid type comment or annotation
+
+[case type_reassignment_multiple_times]
+x = y = int
+
+def foo(a: x, b: y):
+    reveal_type(a)  # N: Revealed type is "int"
+    reveal_type(b)  # N: Revealed type is "int"

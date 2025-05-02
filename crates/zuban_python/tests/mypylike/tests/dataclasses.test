@@ -450,6 +450,26 @@ A(1, "hello")  # E: Too many arguments for "A"
 a = A(1)
 a.a = 2  # E: Property "a" defined in "A" is read-only
 
+[case dataclass_transform_on_overload_with_reassignment]
+from typing import dataclass_transform, overload, Callable, Type
+
+@dataclass_transform(frozen_default=True)
+@overload
+def my_dataclass(*, foo: str) -> Callable[[Type], Type]: ...
+@overload
+def my_dataclass(*, foo: int) -> Callable[[Type], Type]: ...
+def my_dataclass(*, foo) -> Callable[[Type], Type]: ...
+
+# This needs to work, because attrs uses something like this
+reassignment = other = my_dataclass
+
+@reassignment(foo="hello")
+class A:
+    a: int
+
+A(1, "hello")  # E: Too many arguments for "A"
+a = A(1)
+
 [case dataclass_transform_invalid_usage]
 from typing import dataclass_transform
 
@@ -457,7 +477,7 @@ x = dataclass_transform(frozen_default=True)
 x()  # E: "object" not callable
 x.y # E: "object" has no attribute "y"
 x[0]  # E: Value of type "object" is not indexable
-reveal_type(x)
+reveal_type(x)  # N: Revealed type is "object"
 
 [case dataclass_enum_combination]
 from dataclasses import dataclass

@@ -441,6 +441,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         args: &dyn Args,
         assignment: Assignment,
     ) -> Option<Inferred> {
+        // For X = TypeAliasType("X", int) assignments
+
         let Some(simple_args) = args.maybe_simple_args() else {
             debug!(
                 "Found no simple args, but {args:?}, \

@@ -2430,21 +2430,31 @@ impl<'db> Assignment<'db> {
     pub fn maybe_simple_type_expression_assignment(
         &self,
     ) -> Option<(NameDef<'db>, Option<Annotation<'db>>, Expression<'db>)> {
-        match self.unpack() {
-            AssignmentContent::Normal(mut targets_, right) => {
-                let first_target = targets_.next().unwrap();
-                if targets_.next().is_some() {
-                    return None;
-                }
+        let (mut targets, annot, expr) = self.maybe_simple_targets_expression_assignment()?;
+        let first = targets.next().unwrap();
+        if targets.next().is_some() {
+            return None;
+        }
+        Some((first, annot, expr))
+    }
 
-                let name_d = if let Target::Name(name_d) = first_target {
-                    name_d
-                } else {
-                    return None;
-                };
+    fn maybe_simple_targets_expression_assignment(
+        &self,
+    ) -> Option<(
+        impl Iterator<Item = NameDef<'db>>,
+        Option<Annotation<'db>>,
+        Expression<'db>,
+    )> {
+        match self.unpack() {
+            AssignmentContent::Normal(targets_, right) => {
+                for target in targets_.clone() {
+                    if !matches!(target, Target::Name(_)) {
+                        return None;
+                    }
+                }
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_d, None, expr));
+                        return Some((SimpleNameIterator::Targets(targets_), None, expr));
                     }
                 }
                 None
@@ -2457,7 +2467,11 @@ impl<'db> Assignment<'db> {
                 };
                 if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_d, Some(annotation_), expr));
+                        return Some((
+                            SimpleNameIterator::AnnotationName(name_d),
+                            Some(annotation_),
+                            expr,
+                        ));
                     }
                 }
                 None
@@ -2467,7 +2481,7 @@ impl<'db> Assignment<'db> {
     }
 
     pub fn maybe_simple_type_reassignment(&self) -> Option<NameOrPrimaryWithNames<'db>> {
-        self.maybe_simple_type_expression_assignment()
+        self.maybe_simple_targets_expression_assignment()
             .and_then(|(_, annot, expr)| match annot {
                 None => expr.maybe_name_or_last_primary_name(),
                 Some(_) => None,
@@ -2485,14 +2499,31 @@ pub enum AssignmentContent<'db> {
     AugAssign(Target<'db>, AugAssign<'db>, AssignmentRightSide<'db>),
 }
 
-pub enum AssignmentContentWithSimpleTargets<'db> {
-    Normal(StarTargetsIterator<'db>, AssignmentRightSide<'db>),
-    WithAnnotation(
-        SingleTarget<'db>,
-        Annotation<'db>,
-        Option<AssignmentRightSide<'db>>,
-    ),
-    AugAssign(SingleTarget<'db>, AugAssign<'db>, AssignmentRightSide<'db>),
+pub enum SimpleNameIterator<'db> {
+    AnnotationName(NameDef<'db>),
+    Done,
+    Targets(AssignmentTargetIterator<'db>),
+}
+
+impl<'db> Iterator for SimpleNameIterator<'db> {
+    type Item = NameDef<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            SimpleNameIterator::AnnotationName(nd) => {
+                let nd = *nd;
+                *self = SimpleNameIterator::Done;
+                Some(nd)
+            }
+            SimpleNameIterator::Targets(target_iterator) => {
+                let Target::Name(name_d) = target_iterator.next()? else {
+                    return None;
+                };
+                Some(name_d)
+            }
+            SimpleNameIterator::Done => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
