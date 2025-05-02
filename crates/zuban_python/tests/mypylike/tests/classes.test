@@ -1766,12 +1766,21 @@ class X:
     @y.setter
     def y(self, other) -> None: ...
 
-class Y(X):
+class Y:
+    @property
+    def x(self) -> int: return 1
+    @property
+    def y(self) -> int: return 1
+
+class Z(X):
     @property
     def x(self) -> int: return 1
 
     @property  # E: Read-only property cannot override read-write property  [misc]
     def y(self) -> int: return 1
+
+class Multi1(X, Y): ...
+class Multi2(Y, X): ...  # E: Cannot override writeable attribute "y" in base "X" with read-only property in base "Y"  [override]
 
 [case override_cached_property_no_mypy_compatible]
 # flags: --no-mypy-compatible --show-error-codes
@@ -1786,9 +1795,19 @@ class X:
     @y.setter
     def y(self, other) -> None: ...
 
-class Y(X):
+class Y:
+    @property
+    def x(self) -> int: return 1
+    @property
+    def y(self) -> int: return 1
+
+class Z(X):
     @property  # E: Read-only property cannot override read-write property  [misc]
     def x(self) -> int: return 1
 
     @property  # E: Read-only property cannot override read-write property  [misc]
     def y(self) -> int: return 1
+
+class Multi1(X, Y): ...
+class Multi2(Y, X): ...  # E: Cannot override writeable attribute "x" in base "X" with read-only property in base "Y"  [override] \
+                         # E: Cannot override writeable attribute "y" in base "X" with read-only property in base "Y"  [override]

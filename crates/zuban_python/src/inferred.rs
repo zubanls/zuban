@@ -2957,4 +2957,15 @@ impl AttributeKind {
             None
         }
     }
+
+    pub fn is_cached_property(&self) -> bool {
+        if let Self::Property { setter_type, .. } = self {
+            matches!(
+                setter_type.as_deref(),
+                Some(PropertySetter::SameTypeFromCachedProperty)
+            )
+        } else {
+            false
+        }
+    }
 }
