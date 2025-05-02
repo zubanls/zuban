@@ -450,6 +450,15 @@ A(1, "hello")  # E: Too many arguments for "A"
 a = A(1)
 a.a = 2  # E: Property "a" defined in "A" is read-only
 
+[case dataclass_transform_invalid_usage]
+from typing import dataclass_transform
+
+x = dataclass_transform(frozen_default=True)
+x()  # E: "object" not callable
+x.y # E: "object" has no attribute "y"
+x[0]  # E: Value of type "object" is not indexable
+reveal_type(x)
+
 [case dataclass_enum_combination]
 from dataclasses import dataclass
 from enum import Enum
