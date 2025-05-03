@@ -498,6 +498,28 @@ impl TypeVarLike {
         }
     }
 
+    pub fn add_any_default(&self) -> Self {
+        match self {
+            TypeVarLike::TypeVar(tv) => {
+                let mut new_tv = tv.as_ref().clone();
+                new_tv.default = Some(TypeLikeInTypeVar::new_known(Type::ERROR));
+                Self::TypeVar(Rc::new(new_tv))
+            }
+            TypeVarLike::TypeVarTuple(tvt) => {
+                let mut new_tvt = tvt.as_ref().clone();
+                new_tvt.default = Some(TypeLikeInTypeVar::new_known(
+                    TypeArgs::new_arbitrary_from_error(),
+                ));
+                Self::TypeVarTuple(Rc::new(new_tvt))
+            }
+            TypeVarLike::ParamSpec(param_spec) => {
+                let mut new_p = param_spec.as_ref().clone();
+                new_p.default = Some(TypeLikeInTypeVar::new_known(CallableParams::ERROR));
+                Self::ParamSpec(Rc::new(new_p))
+            }
+        }
+    }
+
     pub fn as_type_var_like_usage(
         &self,
         index: TypeVarIndex,

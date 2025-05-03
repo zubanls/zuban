@@ -319,7 +319,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         }
     }
 
-    fn handle_type_var_like(&mut self, tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
+    fn handle_type_var_like(&mut self, mut tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
         if let Some(_) = self.i_s.find_parent_type_var(&tvl) {
             debug!(
                 "Found bound TypeVar {} in parent scope",
@@ -337,6 +337,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             if !tvl.has_default() {
                 if let Some(previous) = self.infos.type_var_manager.last() {
                     if previous.has_default() {
+                        tvl = tvl.add_any_default();
                         add_issue(IssueKind::TypeVarDefaultWrongOrder {
                             type_var1: tvl.name(self.i_s.db).into(),
                             type_var2: previous.name(self.i_s.db).into(),
