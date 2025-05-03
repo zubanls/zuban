@@ -345,7 +345,18 @@ impl TypeVarMatcher {
                 let temporary_matcher_id = usage.temporary_matcher_id();
                 if temporary_matcher_id == 0 || temporary_matcher_id == matcher_index {
                     let current = &mut self.calculating_type_args[usage.index().as_usize()];
-                    if !current.calculated() {
+                    if current.calculated() {
+                        if let Bound::Upper(upper) = &current.type_ {
+                            // This is a bit of a special case, but happens typically when the
+                            // context is provided like `x: int = type_var_return(<any>)`.
+                            // If we do not add the lower bound, the calculation will return the
+                            // upper bound instead of the correct Any lower bound.
+                            current.type_ = Bound::UpperAndLower(
+                                upper.clone(),
+                                BoundKind::new_any(&usage.as_type_var_like(), cause),
+                            )
+                        }
+                    } else {
                         current.type_.set_to_any(&usage.as_type_var_like(), cause)
                     }
                 }

@@ -1701,3 +1701,20 @@ reveal_type(x)  # Revealed types is "tuple[Type[typing.Collection[Any]], ...]"
 
 def f(value: Any) -> bool:
     return isinstance(value, x)
+
+[case narrowing_with_simple_type_var_fallback]
+from typing import overload, Protocol
+
+def r1[T](x: T) -> T: ...
+
+def f1(x: int | None, default):
+    if x is None:
+        x = r1(default)
+    reveal_type(x)  # N: Revealed type is "int | Any"
+
+def r2[T](x: list[T]) -> T: ...
+
+def f2(x: int | None, default):
+    if x is None:
+        x = r2(default)
+    reveal_type(x)  # N: Revealed type is "int | Any"

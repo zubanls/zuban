@@ -165,13 +165,7 @@ impl Bound {
     }
 
     pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
-        *self = Self::Invariant(match tv {
-            TypeVarLike::TypeVar(_) => BoundKind::TypeVar(Type::Any(cause)),
-            TypeVarLike::TypeVarTuple(_) => {
-                BoundKind::TypeVarTuple(TupleArgs::ArbitraryLen(Rc::new(Type::Any(cause))))
-            }
-            TypeVarLike::ParamSpec(_) => BoundKind::ParamSpec(CallableParams::Any(cause)),
-        })
+        *self = Self::Invariant(BoundKind::new_any(tv, cause))
     }
 
     pub fn avoid_type_vars_from_class_self_arguments(&mut self, class: Class) {
@@ -243,6 +237,16 @@ impl Bound {
 }
 
 impl BoundKind {
+    pub fn new_any(tv: &TypeVarLike, cause: AnyCause) -> Self {
+        match tv {
+            TypeVarLike::TypeVar(_) => Self::TypeVar(Type::Any(cause)),
+            TypeVarLike::TypeVarTuple(_) => {
+                Self::TypeVarTuple(TupleArgs::ArbitraryLen(Rc::new(Type::Any(cause))))
+            }
+            TypeVarLike::ParamSpec(_) => Self::ParamSpec(CallableParams::Any(cause)),
+        }
+    }
+
     fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
         match &self {
             Self::TypeVar(bound) => bound.format(format_data),
