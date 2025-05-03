@@ -1057,3 +1057,7 @@ reveal_type(typing.NewType)  # N: Revealed type is "Type[typing_extensions.NewTy
 [case set_item_error_code]
 # flags: --show-error-codes
 x: set[str] = {1}  # E: Set item 0 has incompatible type "int"; expected "str"  [arg-type]
+
+[case list_slice_access]
+def f(x: list[int]):
+    reveal_type(x[:1]) # N: Revealed type is "list[int]"

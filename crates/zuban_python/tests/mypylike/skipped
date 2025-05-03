@@ -415,12 +415,6 @@ testNewAnalyzerImportOverExistingInCycleStar2
 
 # TypeVar defaults
 testTypeVarDefaultsInvalid3
-testTypeVarDefaultsClassRecursive1
-testTypeVarDefaultsClassRecursiveMultipleFiles
-testTypeVarDefaultsTypeAliasRecursive1
-testTypeVarDefaultsTypeAliasRecursive2
-# dataclass circles with bound
-testDataclassGenericWithBound
 
 # lambda with generics
 testInferenceAgainstGenericLambdas

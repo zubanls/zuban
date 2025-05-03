@@ -521,11 +521,15 @@ impl TypeVarLike {
     pub fn as_any_generic_item(&self, db: &Database) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
-                Some(default) => GenericItem::TypeArg(default.clone()),
+                Some(default) => {
+                    GenericItem::TypeArg(default.clone()).resolve_recursive_defaults(db)
+                }
                 None => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
-                Some(default) => GenericItem::TypeArgs(default.clone()),
+                Some(default) => {
+                    GenericItem::TypeArgs(default.clone()).resolve_recursive_defaults(db)
+                }
                 None => {
                     GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
                 }
@@ -533,6 +537,7 @@ impl TypeVarLike {
             TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
                 Some(default) => {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                        .resolve_recursive_defaults(db)
                 }
                 None => GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
             },
@@ -542,16 +547,21 @@ impl TypeVarLike {
     pub fn as_never_generic_item(&self, db: &Database, cause: NeverCause) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
-                Some(default) => GenericItem::TypeArg(default.clone()),
+                Some(default) => {
+                    GenericItem::TypeArg(default.clone()).resolve_recursive_defaults(db)
+                }
                 None => GenericItem::TypeArg(Type::Never(cause)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
-                Some(default) => GenericItem::TypeArgs(default.clone()),
+                Some(default) => {
+                    GenericItem::TypeArgs(default.clone()).resolve_recursive_defaults(db)
+                }
                 None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
             },
             TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
                 Some(default) => {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                        .resolve_recursive_defaults(db)
                 }
                 // TODO ParamSpec: this feels wrong, should maybe be never?
                 None => GenericItem::ParamSpecArg(ParamSpecArg::new_never(cause)),
