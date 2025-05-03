@@ -487,6 +487,17 @@ impl TypeVarLike {
         }
     }
 
+    pub fn default(&self, db: &Database) -> Option<GenericItem> {
+        match self {
+            TypeVarLike::TypeVar(tv) => tv.default(db).cloned().map(GenericItem::TypeArg),
+            TypeVarLike::TypeVarTuple(tvt) => tvt.default(db).cloned().map(GenericItem::TypeArgs),
+            TypeVarLike::ParamSpec(p) => p
+                .default(db)
+                .cloned()
+                .map(|default| GenericItem::ParamSpecArg(ParamSpecArg::new(default, None))),
+        }
+    }
+
     pub fn as_type_var_like_usage(
         &self,
         index: TypeVarIndex,

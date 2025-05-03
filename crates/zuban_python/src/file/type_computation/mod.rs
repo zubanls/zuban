@@ -1980,6 +1980,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_args = TypeArgIterator::new(iterator);
         let mut type_var_iterator = type_var_likes.iter().skip(generics.len());
         let mut is_single_param_spec = false;
+        let db = self.i_s.db;
+        let resolve_default = |generics: &[_], g: GenericItem| {
+            g.replace_recursive_defaults(db, type_var_likes, generics)
+        };
         'outer: for type_var_like in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
@@ -1989,8 +1993,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         given += 1;
                         self.check_constraints(type_var, node_ref, |_| t.clone(), get_of);
                         GenericItem::TypeArg(t)
-                    } else if let Some(default) = type_var.default(self.i_s.db) {
-                        GenericItem::TypeArg(default.clone())
+                    } else if let Some(default) = type_var.default(db) {
+                        resolve_default(generics, GenericItem::TypeArg(default.clone()))
                     } else {
                         break;
                     }
@@ -2006,8 +2010,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     given += 1;
                                     self.check_constraints(type_var, from, |_| t.clone(), get_of);
                                     GenericItem::TypeArg(t)
-                                } else if let Some(default) = type_var.default(self.i_s.db) {
-                                    GenericItem::TypeArg(default.clone())
+                                } else if let Some(default) = type_var.default(db) {
+                                    resolve_default(generics, GenericItem::TypeArg(default.clone()))
                                 } else {
                                     break 'outer;
                                 }
@@ -2016,11 +2020,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 if let Some(spec) = type_args.next_param_spec_back(self) {
                                     given += 1;
                                     GenericItem::ParamSpecArg(spec)
-                                } else if let Some(default) = param_spec.default(self.i_s.db) {
-                                    GenericItem::ParamSpecArg(ParamSpecArg::new(
-                                        default.clone(),
-                                        None,
-                                    ))
+                                } else if let Some(default) = param_spec.default(db) {
+                                    resolve_default(
+                                        generics,
+                                        GenericItem::ParamSpecArg(ParamSpecArg::new(
+                                            default.clone(),
+                                            None,
+                                        )),
+                                    )
                                 } else {
                                     break 'outer;
                                 }
@@ -2037,15 +2044,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     generics.insert(
                         insertion_index,
-                        GenericItem::TypeArgs(
-                            if let Some(default) =
-                                tvt.default(self.i_s.db).filter(|_| args.empty_not_explicit)
-                            {
-                                default.clone()
-                            } else {
-                                TypeArgs { args: args.args }
-                            },
-                        ),
+                        if let Some(default) = tvt.default(db).filter(|_| args.empty_not_explicit) {
+                            resolve_default(generics, GenericItem::TypeArgs(default.clone()))
+                        } else {
+                            GenericItem::TypeArgs(TypeArgs { args: args.args })
+                        },
                     );
                     break;
                 }
@@ -2060,8 +2063,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
                     } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
                         GenericItem::ParamSpecArg(spec)
-                    } else if let Some(default) = param_spec.default(self.i_s.db) {
-                        GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                    } else if let Some(default) = param_spec.default(db) {
+                        resolve_default(
+                            generics,
+                            GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None)),
+                        )
                     } else {
                         break;
                     }
@@ -2104,7 +2110,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             generics.clear();
             for missing_type_var in type_var_likes.iter() {
-                generics.push(missing_type_var.as_any_generic_item(self.i_s.db))
+                generics.push(missing_type_var.as_any_generic_item(db))
             }
         }
     }

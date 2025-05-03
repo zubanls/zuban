@@ -313,6 +313,41 @@ impl GenericItem {
             replace_self,
         })
     }
+
+    pub fn replace_recursive_defaults(
+        self,
+        db: &Database,
+        type_var_likes: &TypeVarLikes,
+        given: &[GenericItem],
+    ) -> Self {
+        self.replace_type_var_likes_and_self(
+            db,
+            &mut |usage| {
+                let tvl_found = usage.as_type_var_like();
+                for (given_item, tvl) in given.iter().zip(type_var_likes.iter()) {
+                    if tvl == &tvl_found {
+                        return Some(given_item.clone());
+                    }
+                }
+                /*
+                dbg!(&tvl_found);
+                let default = tvl_found.default(db)?;
+                if type_var_likes
+                    .iter()
+                    .position(|tvl| tvl == &tvl_found)
+                    .is_some()
+                {
+                    Some(default.replace_recursive_defaults(db, type_var_likes, given))
+                } else {
+                    None
+                }
+                */
+                None
+            },
+            &|| None,
+        )
+        .unwrap_or(self)
+    }
 }
 
 impl ParamSpecArg {
