@@ -15,7 +15,7 @@ use crate::{
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
     node_ref::NodeRef,
-    type_::{ReplaceTypeVarLikes, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
+    type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
     utils::debug_indent,
 };
 
@@ -334,27 +334,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
                 return;
             }
-            if let Some(default) = tvl.default(self.i_s.db) {
-                let mut had_issue = false;
-                default.replace_type_var_likes_and_self(
+            if tvl.has_default() {
+                tvl = tvl.replace_type_var_like_defaults_that_are_out_of_scope(
                     self.i_s.db,
-                    &mut |usage| {
-                        let tvl_found = usage.as_type_var_like();
-                        if self.infos.type_var_manager.position(&tvl_found).is_some() {
-                            None
-                        } else {
-                            had_issue = true;
-                            Some(usage.as_any_generic_item(self.i_s.db))
-                        }
-                    },
-                    &|| None,
-                );
-                if had_issue {
-                    add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
-                        type_var: tvl.name(self.i_s.db).into(),
-                    });
-                    tvl = tvl.set_any_default();
-                }
+                    self.infos.type_var_manager.iter(),
+                    &add_issue,
+                )
             } else {
                 if let Some(previous) = self.infos.type_var_manager.last() {
                     if previous.has_default() {

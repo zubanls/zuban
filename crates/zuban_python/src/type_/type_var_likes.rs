@@ -9,7 +9,7 @@ use parsa_python_cst::NodeIndex;
 
 use super::{
     AnyCause, CallableContent, CallableParams, FormatStyle, GenericItem, GenericsList, NeverCause,
-    TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
+    ReplaceTypeVarLikes, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
     database::{ComplexPoint, Database, ParentScope, PointLink},
@@ -149,7 +149,7 @@ impl<T: CallableId> TypeVarManager<T> {
         )
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &TypeVarLike> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &TypeVarLike> + Clone {
         self.type_vars.iter().map(|u| &u.type_var_like)
     }
 
@@ -613,6 +613,37 @@ impl TypeVarLike {
                 p.default(db);
             }
         }
+    }
+
+    pub fn replace_type_var_like_defaults_that_are_out_of_scope<'x>(
+        self,
+        db: &Database,
+        previous_type_vars: impl Iterator<Item = &'x TypeVarLike> + Clone,
+        add_issue: impl Fn(IssueKind),
+    ) -> Self {
+        let mut had_issue = false;
+        if let Some(default) = self.default(db) {
+            default.replace_type_var_likes(db, &mut |usage| {
+                let tvl_found = usage.as_type_var_like();
+                if previous_type_vars
+                    .clone()
+                    .position(|tvl| tvl == &tvl_found)
+                    .is_some()
+                {
+                    None
+                } else {
+                    had_issue = true;
+                    Some(usage.as_any_generic_item(db))
+                }
+            });
+            if had_issue {
+                add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
+                    type_var: self.name(db).into(),
+                });
+                return self.set_any_default();
+            }
+        }
+        self
     }
 }
 
