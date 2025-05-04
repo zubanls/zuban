@@ -614,15 +614,6 @@ impl TypeVarLike {
             }
         }
     }
-
-    pub fn matches_name(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => t1 == t2,
-            (Self::TypeVarTuple(t1), Self::TypeVarTuple(t2)) => t1 == t2,
-            (Self::ParamSpec(p1), Self::ParamSpec(p2)) => p1 == p2,
-            _ => false,
-        }
-    }
 }
 
 impl Hash for TypeVarLike {
