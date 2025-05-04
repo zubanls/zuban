@@ -4119,101 +4119,109 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         allow_multi_type_var_tuples: bool,
     ) -> TypeVarLikes {
         let mut type_var_tuple_count = 0;
-        TypeVarLikes::new(
-            type_params
-                .iter()
-                .filter_map(|type_param| {
-                    let (name_def, kind) = type_param.unpack();
-                    let name_def_ref = NodeRef::new(self.file, name_def.index());
-                    let name = TypeVarLikeName::SyntaxNode(name_def_ref.as_link());
-                    let type_var_like = match kind {
-                        TypeParamKind::TypeVar(bound, default) => {
-                            let kind = match bound {
-                                Some(bound) => {
-                                    let expr = bound.expression();
-                                    if let Some(tup) = expr.maybe_tuple() {
-                                        if tup.iter().count() < 2 {
-                                            NodeRef::new(self.file, name_def.index()).add_issue(
-                                                self.i_s,
-                                                IssueKind::TypeVarValuesNeedsAtLeastTwo,
-                                            );
-                                            TypeVarKindInfos::Unrestricted
-                                        } else {
-                                            let tvls = tup
-                                                .iter()
-                                                .filter_map(|entry| match entry {
-                                                    StarLikeExpression::NamedExpression(ne) => {
-                                                        Some(TypeLikeInTypeVar::new_lazy(
-                                                            ne.expression().index(),
-                                                        ))
-                                                    }
-                                                    StarLikeExpression::StarNamedExpression(
-                                                        s,
-                                                    ) => {
-                                                        self.add_type_issue(s.index(), IssueKind::UnpackOnlyValidInVariadicPosition);
-                                                        None
-                                                    }
-                                                    _ => unreachable!(),
-                                                })
-                                                .collect();
-                                            TypeVarKindInfos::Constraints(tvls)
-                                        }
-                                    } else {
-                                        TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_lazy(
-                                            bound.expression().index(),
-                                        ))
-                                    }
+        let mut type_var_likes: Vec<TypeVarLike> = vec![];
+        for type_param in type_params.iter() {
+            let (name_def, kind) = type_param.unpack();
+            let name_def_ref = NodeRef::new(self.file, name_def.index());
+            let name = TypeVarLikeName::SyntaxNode(name_def_ref.as_link());
+            let mut type_var_like = match kind {
+                TypeParamKind::TypeVar(bound, default) => {
+                    let kind = match bound {
+                        Some(bound) => {
+                            let expr = bound.expression();
+                            if let Some(tup) = expr.maybe_tuple() {
+                                if tup.iter().count() < 2 {
+                                    NodeRef::new(self.file, name_def.index()).add_issue(
+                                        self.i_s,
+                                        IssueKind::TypeVarValuesNeedsAtLeastTwo,
+                                    );
+                                    TypeVarKindInfos::Unrestricted
+                                } else {
+                                    let tvls = tup
+                                        .iter()
+                                        .filter_map(|entry| match entry {
+                                            StarLikeExpression::NamedExpression(ne) => {
+                                                Some(TypeLikeInTypeVar::new_lazy(
+                                                    ne.expression().index(),
+                                                ))
+                                            }
+                                            StarLikeExpression::StarNamedExpression(s) => {
+                                                self.add_type_issue(
+                                                    s.index(),
+                                                    IssueKind::UnpackOnlyValidInVariadicPosition,
+                                                );
+                                                None
+                                            }
+                                            _ => unreachable!(),
+                                        })
+                                        .collect();
+                                    TypeVarKindInfos::Constraints(tvls)
                                 }
-                                None => TypeVarKindInfos::Unrestricted,
-                            };
-                            let default = default.map(|d| d.expression().index());
-                            TypeVarLike::TypeVar(Rc::new(TypeVar::new(
-                                name,
-                                scope,
-                                kind,
-                                default,
-                                TypeVarVariance::Inferred,
-                            )))
-                        }
-                        TypeParamKind::TypeVarTuple(default) => {
-                            let default = default.map(|d| d.unpack().index());
-                            type_var_tuple_count +=1;
-                            let tvl = TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
-                                name, scope, default,
-                            )));
-                            if !allow_multi_type_var_tuples && type_var_tuple_count == 2 {
-                                self.add_type_issue(
-                                    name_def.index(),
-                                    IssueKind::MultipleTypeVarTupleDisallowedInTypeParams {
-                                        in_type_alias_type: false,
-                                    }
-                                );
-                                // We still have to insert so the TypeVarTuple exists as a name and
-                                // can be assigned
-                                name_def_ref.insert_complex(
-                                    ComplexPoint::TypeVarLike(tvl),
-                                    Locality::Todo,
-                                );
-                                return None;
+                            } else {
+                                TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_lazy(
+                                    bound.expression().index(),
+                                ))
                             }
-                            tvl
                         }
-                        TypeParamKind::ParamSpec(default) => {
-                            let default = default.map(|d| d.expression().index());
-                            TypeVarLike::ParamSpec(Rc::new(ParamSpec::new(name, scope, default)))
-                        }
+                        None => TypeVarKindInfos::Unrestricted,
                     };
-                    // It might feel a bit weird, that we insert the TypeVars and also return them
-                    // as a list. This is because the list is needed for class/alias/func
-                    // definitions and the individual TypeVar is used whenever a type accesses it.
-                    name_def_ref.insert_complex(
-                        ComplexPoint::TypeVarLike(type_var_like.clone()),
-                        Locality::Todo,
-                    );
-                    Some(type_var_like)
-                })
-                .collect(),
-        )
+                    let default = default.map(|d| d.expression().index());
+                    TypeVarLike::TypeVar(Rc::new(TypeVar::new(
+                        name,
+                        scope,
+                        kind,
+                        default,
+                        TypeVarVariance::Inferred,
+                    )))
+                }
+                TypeParamKind::TypeVarTuple(default) => {
+                    let default = default.map(|d| d.unpack().index());
+                    type_var_tuple_count += 1;
+                    let tvl =
+                        TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(name, scope, default)));
+                    if !allow_multi_type_var_tuples && type_var_tuple_count == 2 {
+                        self.add_type_issue(
+                            name_def.index(),
+                            IssueKind::MultipleTypeVarTupleDisallowedInTypeParams {
+                                in_type_alias_type: false,
+                            },
+                        );
+                        // We still have to insert so the TypeVarTuple exists as a name and
+                        // can be assigned
+                        name_def_ref.insert_complex(ComplexPoint::TypeVarLike(tvl), Locality::Todo);
+                        continue;
+                    }
+                    tvl
+                }
+                TypeParamKind::ParamSpec(default) => {
+                    let default = default.map(|d| d.expression().index());
+                    TypeVarLike::ParamSpec(Rc::new(ParamSpec::new(name, scope, default)))
+                }
+            };
+            // It might feel a bit weird, that we insert the TypeVars and also return them
+            // as a list. This is because the list is needed for class/alias/func
+            // definitions and the individual TypeVar is used whenever a type accesses it.
+            name_def_ref.insert_complex(
+                ComplexPoint::TypeVarLike(type_var_like.clone()),
+                Locality::Todo,
+            );
+            if !type_var_like.has_default() {
+                if let Some(previous) = type_var_likes.last() {
+                    if previous.has_default() {
+                        type_var_like = type_var_like.set_any_default();
+                        name_def_ref.add_issue(
+                            self.i_s,
+                            IssueKind::TypeVarDefaultWrongOrder {
+                                type_var1: type_var_like.name(self.i_s.db).into(),
+                                type_var2: previous.name(self.i_s.db).into(),
+                            },
+                        );
+                    }
+                }
+            }
+            type_var_likes.push(type_var_like)
+        }
+        TypeVarLikes::from_vec(type_var_likes)
     }
 }
 
