@@ -8,7 +8,6 @@ self_instance_variable1
 
 # type var defaults cleanup
 invalid_type_var_default_usage_with_default_syntax
-type_var_default_fallback_with_syntax
 
 # typeshed upgrade __getitem__ with generics
 testGetSlice

@@ -1339,31 +1339,39 @@ impl<'db> NameBinder<'db> {
             .is_some_and(|specific| specific == search)
     }
 
-    fn index_type_param_bounds(&mut self, type_params: Option<TypeParams<'db>>) {
-        if let Some(type_params) = type_params {
+    fn index_type_param_bounds(&mut self, maybe_type_params: Option<TypeParams<'db>>) {
+        if let Some(type_params) = maybe_type_params {
             for type_param in type_params.iter() {
                 let (_, kind) = type_param.unpack();
-                match kind {
-                    TypeParamKind::TypeVar(bound, default) => {
-                        if let Some(bound) = bound {
-                            self.index_annotation_expr(&bound, None)
-                        }
-                        if let Some(default) = default {
-                            self.index_annotation_expr(&default, None)
-                        }
-                    }
-                    TypeParamKind::TypeVarTuple(default) => {
-                        if let Some(default) = default {
-                            self.index_annotation_expr(&default, None)
-                        }
-                    }
-                    TypeParamKind::ParamSpec(default) => {
-                        if let Some(default) = default {
-                            self.index_annotation_expr(&default, None)
-                        }
+                if let TypeParamKind::TypeVar(bound, _) = kind {
+                    if let Some(bound) = bound {
+                        self.index_annotation_expr(&bound, None)
                     }
                 }
             }
+            // TypeVar defaults can access the other type vars, while bounds cannot
+            self.with_latest_type_params(maybe_type_params, |slf| {
+                for type_param in type_params.iter() {
+                    let (_, kind) = type_param.unpack();
+                    match kind {
+                        TypeParamKind::TypeVar(_, default) => {
+                            if let Some(default) = default {
+                                slf.index_annotation_expr(&default, None)
+                            }
+                        }
+                        TypeParamKind::TypeVarTuple(default) => {
+                            if let Some(default) = default {
+                                slf.index_annotation_expr(&default, None)
+                            }
+                        }
+                        TypeParamKind::ParamSpec(default) => {
+                            if let Some(default) = default {
+                                slf.index_annotation_expr(&default, None)
+                            }
+                        }
+                    }
+                }
+            })
         }
     }
 
