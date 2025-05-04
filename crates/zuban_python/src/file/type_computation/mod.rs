@@ -1981,8 +1981,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_var_iterator = type_var_likes.iter().skip(generics.len());
         let mut is_single_param_spec = false;
         let db = self.i_s.db;
-        let resolve_default = |generics: &[_], g: GenericItem| {
-            g.replace_recursive_defaults(db, type_var_likes, generics)
+        let resolve_default = |generics: &[GenericItem], g: GenericItem| {
+            g.replace_type_var_likes_and_self(
+                db,
+                &mut |usage| {
+                    let tvl_found = usage.as_type_var_like();
+                    for (given_item, tvl) in generics.iter().zip(type_var_likes.iter()) {
+                        if tvl == &tvl_found {
+                            return Some(given_item.clone());
+                        }
+                    }
+                    None
+                },
+                &|| None,
+            )
+            .unwrap_or(g)
         };
         'outer: for type_var_like in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {

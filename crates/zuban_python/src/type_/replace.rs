@@ -314,28 +314,6 @@ impl GenericItem {
         })
     }
 
-    pub fn replace_recursive_defaults(
-        self,
-        db: &Database,
-        type_var_likes: &TypeVarLikes,
-        given: &[GenericItem],
-    ) -> Self {
-        self.replace_type_var_likes_and_self(
-            db,
-            &mut |usage| {
-                let tvl_found = usage.as_type_var_like();
-                for (given_item, tvl) in given.iter().zip(type_var_likes.iter()) {
-                    if tvl == &tvl_found {
-                        return Some(given_item.clone());
-                    }
-                }
-                None
-            },
-            &|| None,
-        )
-        .unwrap_or(self)
-    }
-
     pub fn resolve_recursive_defaults(self, db: &Database) -> Self {
         self.replace_type_var_likes_and_self(
             db,

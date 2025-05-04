@@ -1453,6 +1453,66 @@ class Sub(Base[str]): ...
 Sub.make_some(1)  # E: Invalid self argument "Type[Sub]" to attribute function "make_some" with type "overloaded function"
 Sub.make_some("")
 
+[case type_var_default_fallback_with_syntax]
+class C[T=bytes, U=str, V=U, W=V]: ...
+
+def f(
+    a: C,
+    b: C[int],
+    c: C[int, float],
+    d: C[int, float, bytes],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.C[bytes, str, str, str]"
+    reveal_type(b)  # N: Revealed type is "__main__.C[int, str, str, str]"
+    reveal_type(c)  # N: Revealed type is "__main__.C[int, float, float, float]"
+    reveal_type(d)  # N: Revealed type is "__main__.C[int, float, bytes, bytes]"
+
+type A[T=bytes, U=str, V=U, W=V] = tuple[T, U, V, W]
+
+def g(
+    a: A,
+    b: A[int],
+    c: A[int, float],
+    d: A[int, float, bytes],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "tuple[bytes, str, str, str]"
+    reveal_type(b)  # N: Revealed type is "tuple[int, str, str, str]"
+    reveal_type(c)  # N: Revealed type is "tuple[int, float, float, float]"
+    reveal_type(d)  # N: Revealed type is "tuple[int, float, bytes, bytes]"
+
+[case type_var_default_fallback_with_old_style]
+from typing import Generic, TypeVar
+
+T = TypeVar("T", default=bytes)
+U = TypeVar("U", default=str)
+V = TypeVar("V", default=U)
+W = TypeVar("W", default=V)
+class C(Generic[T, U, V, W]): ...
+
+def f(
+    a: C,
+    b: C[int],
+    c: C[int, float],
+    d: C[int, float, bytes],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.C[bytes, str, str, str]"
+    reveal_type(b)  # N: Revealed type is "__main__.C[int, str, str, str]"
+    reveal_type(c)  # N: Revealed type is "__main__.C[int, float, float, float]"
+    reveal_type(d)  # N: Revealed type is "__main__.C[int, float, bytes, bytes]"
+
+A = tuple[T, U, V, W]
+
+def g(
+    a: A,
+    b: A[int],
+    c: A[int, float],
+    d: A[int, float, bytes],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "tuple[bytes, str, str, str]"
+    reveal_type(b)  # N: Revealed type is "tuple[int, str, str, str]"
+    reveal_type(c)  # N: Revealed type is "tuple[int, float, float, float]"
+    reveal_type(d)  # N: Revealed type is "tuple[int, float, bytes, bytes]"
+
 [case invalid_type_var_default_usage_with_default_syntax]
 class ClassError1[T3=str, T1]: ...  # E: "T1" cannot appear after "T3" in type parameter list because it has no default type
 
