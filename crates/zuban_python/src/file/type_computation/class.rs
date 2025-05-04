@@ -164,11 +164,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         let type_var_likes = if let Some(type_params) = self.node().type_params() {
             self.file
                 .name_resolution_for_types(i_s)
-                .compute_type_params_definition(
-                    ParentScope::Class(self.node_index),
-                    type_params,
-                    false,
-                )
+                .compute_type_params_definition(i_s.as_parent_scope(), type_params, false)
         } else {
             TypeVarFinder::find_class_type_vars(i_s, self)
         };

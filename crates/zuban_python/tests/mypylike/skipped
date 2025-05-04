@@ -6,9 +6,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
-# type var defaults cleanup
-invalid_type_var_default_usage_with_default_syntax
-
 # typeshed upgrade __getitem__ with generics
 testGetSlice
 testSliceSupportsIndex
@@ -1152,6 +1149,9 @@ testTypingSelfConflict
 testPEP695TypeAliasNotReadyClass
 testPEP695TypeAliasRecursiveOuterClass
 testPEP695TypeAliasRecursiveInvalid
+# 3.12 Nested class Type Vars in bounds disallowed, in old-style classes this is possible
+testPEP695CannotUseTypeVarFromOuterClass
+
 
 # ------------------- start of low-prio/won't do tests -----------------------
 

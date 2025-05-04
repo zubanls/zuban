@@ -1521,16 +1521,16 @@ def func_error1(
     b: ClassError1[int],
     c: ClassError1[int, float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassError1[builtins.str, Any]"
-    reveal_type(b)  # N: Revealed type is "__main__.ClassError1[builtins.int, Any]"
-    reveal_type(c)  # N: Revealed type is "__main__.ClassError1[builtins.int, builtins.float]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassError1[str, Any]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError1[int, Any]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassError1[int, float]"
 
     k = ClassError1()
-    reveal_type(k)  # N: Revealed type is "__main__.ClassError1[builtins.str, Any]"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassError1[str, Any]"
     l = ClassError1[int]()
-    reveal_type(l)  # N: Revealed type is "__main__.ClassError1[builtins.int, Any]"
+    reveal_type(l)  # N: Revealed type is "__main__.ClassError1[int, Any]"
     m = ClassError1[int, float]()
-    reveal_type(m)  # N: Revealed type is "__main__.ClassError1[builtins.int, builtins.float]"
+    reveal_type(m)  # N: Revealed type is "__main__.ClassError1[int, float]"
 
 class ClassError2[T4=T3, T3=str]: ...  # E: Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
 
@@ -1539,16 +1539,16 @@ def func_error2(
     b: ClassError2[int],
     c: ClassError2[int, float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassError2[Any, builtins.str]"
-    reveal_type(b)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.str]"
-    reveal_type(c)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.float]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassError2[Any, str]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError2[int, str]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassError2[int, float]"
 
     k = ClassError2()
-    reveal_type(k)  # N: Revealed type is "__main__.ClassError2[Any, builtins.str]"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassError2[Any, str]"
     l = ClassError2[int]()
-    reveal_type(l)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.str]"
+    reveal_type(l)  # N: Revealed type is "__main__.ClassError2[int, str]"
     m = ClassError2[int, float]()
-    reveal_type(m)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.float]"
+    reveal_type(m)  # N: Revealed type is "__main__.ClassError2[int, float]"
 
 type TERR1[T3=str, T1] = dict[T3, T1]  # E: "T1" cannot appear after "T3" in type parameter list because it has no default type
 
@@ -1557,9 +1557,9 @@ def func_error_alias1(
     b: TERR1[int],
     c: TERR1[int, float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
-    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, Any]"
-    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
+    reveal_type(a)  # N: Revealed type is "dict[str, Any]"
+    reveal_type(b)  # N: Revealed type is "dict[int, Any]"
+    reveal_type(c)  # N: Revealed type is "dict[int, float]"
 
 type TERR2[T4=T3, T3=str] = dict[T4, T3]  # E: Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
 
@@ -1568,9 +1568,9 @@ def func_error_alias2(
     b: TERR2[int],
     c: TERR2[int, float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, builtins.str]"
-    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
-    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
+    reveal_type(a)  # N: Revealed type is "dict[Any, str]"
+    reveal_type(b)  # N: Revealed type is "dict[int, str]"
+    reveal_type(c)  # N: Revealed type is "dict[int, float]"
 
 [case different_file_class_should_not_crash]
 from m import P

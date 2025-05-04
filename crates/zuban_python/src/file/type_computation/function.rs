@@ -218,11 +218,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             known_type_vars = Some(
                 self.file
                     .name_resolution_for_types(i_s)
-                    .compute_type_params_definition(
-                        ParentScope::Function(self.node_index),
-                        type_params,
-                        true,
-                    ),
+                    .compute_type_params_definition(i_s.as_parent_scope(), type_params, true),
             );
         }
         let implicit_optional = self.file.flags(i_s.db).implicit_optional;
