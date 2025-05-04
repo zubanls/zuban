@@ -256,6 +256,7 @@ pub(crate) enum IssueKind {
     MoreThanOneUnpackTypeIsNotAllowed,
     TypeVarTupleCannotBeSplit,
     TypeVarDefaultWrongOrder { type_var1: Box<str>, type_var2: Box<str> },
+    TypeVarDefaultTypeVarOutOfScope { type_var: Box<str> },
     AlreadyDefinedTypeParameter { name: Box<str> },
     DuplicateTypeVarInTypeAliasType { name: Box<str> },
     MultipleTypeVarTupleDisallowedInTypeParams { in_type_alias_type: bool },
@@ -1543,6 +1544,9 @@ impl<'db> Diagnostic<'db> {
             TypeVarTupleCannotBeSplit => "TypeVarTuple cannot be split".to_string(),
             TypeVarDefaultWrongOrder { type_var1, type_var2 } => format!(
                 r#""{type_var1}" cannot appear after "{type_var2}" in type parameter list because it has no default type"#
+            ),
+            TypeVarDefaultTypeVarOutOfScope { type_var } => format!(
+                r#"Type parameter "{type_var}" has a default type that refers to one or more type variables that are out of scope"#
             ),
             AlreadyDefinedTypeParameter { name } => format!(
                 r#""{name}" already defined as a type parameter"#

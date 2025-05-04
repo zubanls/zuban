@@ -498,7 +498,7 @@ impl TypeVarLike {
         }
     }
 
-    pub fn add_any_default(&self) -> Self {
+    pub fn set_any_default(&self) -> Self {
         match self {
             TypeVarLike::TypeVar(tv) => {
                 let mut new_tv = tv.as_ref().clone();
@@ -606,6 +606,15 @@ impl TypeVarLike {
             Self::ParamSpec(p) => {
                 p.default(db);
             }
+        }
+    }
+
+    pub fn matches_name(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::TypeVar(t1), Self::TypeVar(t2)) => t1 == t2,
+            (Self::TypeVarTuple(t1), Self::TypeVarTuple(t2)) => t1 == t2,
+            (Self::ParamSpec(p1), Self::ParamSpec(p2)) => p1 == p2,
+            _ => false,
         }
     }
 }

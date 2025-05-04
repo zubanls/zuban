@@ -329,19 +329,6 @@ impl GenericItem {
                         return Some(given_item.clone());
                     }
                 }
-                /*
-                dbg!(&tvl_found);
-                let default = tvl_found.default(db)?;
-                if type_var_likes
-                    .iter()
-                    .position(|tvl| tvl == &tvl_found)
-                    .is_some()
-                {
-                    Some(default.replace_recursive_defaults(db, type_var_likes, given))
-                } else {
-                    None
-                }
-                */
                 None
             },
             &|| None,

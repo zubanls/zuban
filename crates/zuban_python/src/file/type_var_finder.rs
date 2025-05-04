@@ -34,6 +34,7 @@ enum BaseLookup {
 struct Infos<'c, 'd> {
     class: Option<&'c ClassNodeRef<'c>>,
     type_var_manager: TypeVarManager<PointLink>,
+    changed_type_vars: bool,
     generic_or_protocol_slice: Option<SliceType<'d>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
     had_generic_or_protocol_issue: bool,
@@ -97,7 +98,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         i_s: &InferenceState,
         file: &PythonFile,
         expr: Expression,
-    ) -> TypeVarLikes {
+    ) -> (TypeVarLikes, bool) {
         TypeVarFinder::find_alias_type_vars_with(i_s, file, expr, |slf| slf.find_in_expr(expr))
     }
 
@@ -105,7 +106,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         i_s: &InferenceState,
         file: &PythonFile,
         args: ArgumentsDetails,
-    ) -> TypeVarLikes {
+    ) -> (TypeVarLikes, bool) {
         if let ArgumentsDetails::Node(n) = args {
             // Skip the name
             if let Some(arg) = n.iter().nth(1) {
@@ -136,7 +137,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
             }
         }
-        i_s.db.python_state.empty_type_var_likes.clone()
+        (i_s.db.python_state.empty_type_var_likes.clone(), false)
     }
 
     fn find_alias_type_vars_with(
@@ -144,7 +145,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         file: &'file PythonFile,
         expr: Expression<'d>,
         with: impl FnOnce(&mut TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '_>),
-    ) -> TypeVarLikes {
+    ) -> (TypeVarLikes, bool) {
         debug!("Finding type vars in {:?}", expr.as_code());
         let _indent = debug_indent();
         let mut infos = Infos::default();
@@ -159,7 +160,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             expr.as_code(),
             type_vars.debug_info(i_s.db)
         );
-        type_vars
+        (type_vars, infos.changed_type_vars)
     }
 
     fn find_in_slice_like(&mut self, slice_like: SliceOrSimple<'d>) {
@@ -334,10 +335,33 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
                 return;
             }
-            if !tvl.has_default() {
+            if let Some(default) = tvl.default(self.i_s.db) {
+                let mut had_issue = false;
+                default.replace_type_var_likes_and_self(
+                    self.i_s.db,
+                    &mut |usage| {
+                        let tvl_found = usage.as_type_var_like();
+                        if self.infos.type_var_manager.position(&tvl_found).is_some() {
+                            None
+                        } else {
+                            add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
+                                type_var: tvl_found.name(self.i_s.db).into(),
+                            });
+                            had_issue = true;
+                            Some(usage.as_any_generic_item(self.i_s.db))
+                        }
+                    },
+                    &|| None,
+                );
+                if had_issue {
+                    tvl = tvl.set_any_default();
+                    self.infos.changed_type_vars = true;
+                }
+            } else {
                 if let Some(previous) = self.infos.type_var_manager.last() {
                     if previous.has_default() {
-                        tvl = tvl.add_any_default();
+                        tvl = tvl.set_any_default();
+                        self.infos.changed_type_vars = true;
                         add_issue(IssueKind::TypeVarDefaultWrongOrder {
                             type_var1: tvl.name(self.i_s.db).into(),
                             type_var2: previous.name(self.i_s.db).into(),

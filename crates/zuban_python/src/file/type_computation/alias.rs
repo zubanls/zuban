@@ -35,8 +35,9 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
-        TypeVarManager, TypedDict,
+        AnyCause, GenericItem, NamedTuple, ParamSpecUsage, TupleArgs, TupleUnpack, Type,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
+        TypeVarUsage, TypedDict,
     },
     type_helpers::{cache_class_name, Class},
     utils::{debug_indent, AlreadySeen},
@@ -604,6 +605,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             type_params,
             value,
             AliasCause::SyntaxOrTypeAliasType,
+            false,
         ))
     }
 
@@ -620,7 +622,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // just calculate all late bound type vars, but that would mean that something
         // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
         // generally how type aliases work.
-        let type_var_likes = match &origin {
+        let (type_var_likes, changed_type_vars) = match &origin {
             CalculatingAliasType::Normal => {
                 TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr)
             }
@@ -632,18 +634,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 )
             }
             CalculatingAliasType::NewType(_) => {
-                self.i_s.db.python_state.empty_type_var_likes.clone()
+                (self.i_s.db.python_state.empty_type_var_likes.clone(), false)
             }
             CalculatingAliasType::TypeAliasType(args) => {
                 return self
                     .type_alias_from_type_alias_type(cached_type_node_ref, name_def, args.details)
                     .unwrap_or_else(|| {
-                        return Lookup::T(TypeContent::InvalidVariable(
-                            InvalidVariableType::Variable(NodeRef::new(
-                                self.file,
-                                name_def.index(),
-                            )),
-                        ));
+                        Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
+                            NodeRef::new(self.file, name_def.index()),
+                        )))
                     })
             }
         };
@@ -654,6 +653,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             type_var_likes,
             expr,
             cause,
+            changed_type_vars,
         )
     }
 
@@ -665,6 +665,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         type_var_likes: TypeVarLikes,
         expr: Expression,
         cause: AliasCause,
+        changed_type_vars: bool,
     ) -> Lookup<'file, 'file> {
         let in_definition = cached_type_node_ref.as_link();
         let alias = TypeAlias::new(
@@ -717,6 +718,46 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 CalculatingAliasType::TypeAliasType(_) => unreachable!(), // Remapped previously
             },
         );
+        let cleanup = |mut t: Type| {
+            if changed_type_vars {
+                t = t
+                    .replace_type_var_likes(self.i_s.db, &mut |usage| {
+                        let found_tvl = usage.as_type_var_like();
+                        let actual = alias
+                            .type_vars
+                            .iter()
+                            .find(|tvl| tvl.matches_name(&found_tvl))?;
+                        Some(
+                            match actual {
+                                TypeVarLike::TypeVar(tv) => {
+                                    TypeVarLikeUsage::TypeVar(TypeVarUsage::new(
+                                        tv.clone(),
+                                        usage.in_definition(),
+                                        usage.index(),
+                                    ))
+                                }
+                                TypeVarLike::TypeVarTuple(tvt) => {
+                                    TypeVarLikeUsage::TypeVarTuple(TypeVarTupleUsage::new(
+                                        tvt.clone(),
+                                        usage.in_definition(),
+                                        usage.index(),
+                                    ))
+                                }
+                                TypeVarLike::ParamSpec(p) => {
+                                    TypeVarLikeUsage::ParamSpec(ParamSpecUsage::new(
+                                        p.clone(),
+                                        usage.in_definition(),
+                                        usage.index(),
+                                    ))
+                                }
+                            }
+                            .into_generic_item(),
+                        )
+                    })
+                    .unwrap_or(t)
+            }
+            t
+        };
         match &origin {
             CalculatingAliasType::Normal => {
                 comp.errors_already_calculated = p.calculated();
@@ -766,7 +807,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         if had_error {
                             alias.set_valid(Type::ERROR, false);
                         } else {
-                            alias.set_valid(type_, is_recursive_alias);
+                            alias.set_valid(cleanup(type_), is_recursive_alias);
                         }
                         if is_recursive_alias {
                             // Since the type aliases are not finished at the time of the type
@@ -798,12 +839,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 ) {
                     Some((name, members, _)) => {
                         alias.set_valid(
-                            Type::TypedDict(TypedDict::new_definition(
+                            cleanup(Type::TypedDict(TypedDict::new_definition(
                                 name,
                                 members,
                                 alias.location,
                                 alias.type_vars.clone(),
-                            )),
+                            ))),
                             comp.is_recursive_alias,
                         );
                     }
@@ -818,12 +859,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 ) {
                     Some((name, params)) => {
                         alias.set_valid(
-                            Type::NamedTuple(NamedTuple::from_params(
+                            cleanup(Type::NamedTuple(NamedTuple::from_params(
                                 alias.location,
                                 name,
                                 alias.type_vars.clone(),
                                 params,
-                            )),
+                            ))),
                             comp.is_recursive_alias,
                         );
                     }
@@ -834,7 +875,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
             ) {
                 Some(new_type) => {
-                    alias.set_valid(Type::NewType(Rc::new(new_type)), comp.is_recursive_alias);
+                    alias.set_valid(
+                        cleanup(Type::NewType(Rc::new(new_type))),
+                        comp.is_recursive_alias,
+                    );
                 }
                 None => alias.set_valid(Type::ERROR, false),
             },
@@ -884,6 +928,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             type_var_likes,
             expr,
             AliasCause::SyntaxOrTypeAliasType,
+            false,
         )
     }
 

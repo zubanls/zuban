@@ -1475,7 +1475,7 @@ def f(
     z: AliasErr[int, float],
 ) -> None:
     reveal_type(a)  # N: Revealed type is "__main__.ClassError[str, Any]"
-    reveal_type(b)  # N: Revealed type is "__main__.ClassError[int]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError[int, Any]"
     reveal_type(c)  # N: Revealed type is "__main__.ClassError[int, float]"
 
     reveal_type(x)  # N: Revealed type is "dict[str, Any]"
