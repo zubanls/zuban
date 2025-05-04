@@ -413,11 +413,6 @@ testNewAnalyzerImportStarForwardRef2
 testNewAnalyzerImportOverExistingInCycleStar1
 testNewAnalyzerImportOverExistingInCycleStar2
 
-# TypeVar defaults
-testTypeVarDefaultsInvalid3
-testContextManager
-invalid_type_var_default_usage_no_crash
-
 # lambda with generics
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash

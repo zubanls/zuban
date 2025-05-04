@@ -346,7 +346,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     ) -> Option<TypeVarCallbackReturn> {
         if let Some(tvl) = self
             .use_cached_type_vars(db)
-            .find(type_var_like.clone(), self.node_ref.as_link())
+            .find(&type_var_like, self.node_ref.as_link())
         {
             if class_seen {
                 return Some(TypeVarCallbackReturn::AddIssue(
@@ -788,7 +788,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             self.node_ref.as_link(),
                             &mut |_, _: &_, type_var_like: TypeVarLike, _| {
                                 if let Some(usage) =
-                                    type_vars.find(type_var_like.clone(), self.node_ref.as_link())
+                                    type_vars.find(&type_var_like, self.node_ref.as_link())
                                 {
                                     TypeVarCallbackReturn::TypeVarLike(usage)
                                 } else if let Some(usage) =

@@ -691,7 +691,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 return result;
             }
-            if let Some(usage) = alias.type_vars.find(type_var_like.clone(), alias.location) {
+            if let Some(usage) = alias.type_vars.find(&type_var_like, alias.location) {
                 TypeVarCallbackReturn::TypeVarLike(usage)
             } else if let CalculatingAliasType::NewType(_) = &origin {
                 TypeVarCallbackReturn::UnboundTypeVar
@@ -720,6 +720,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         );
         let cleanup = |mut t: Type| {
             if changed_type_vars {
+                /*
                 t = t
                     .replace_type_var_likes(self.i_s.db, &mut |usage| {
                         let found_tvl = usage.as_type_var_like();
@@ -755,6 +756,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         )
                     })
                     .unwrap_or(t)
+                */
             }
             t
         };

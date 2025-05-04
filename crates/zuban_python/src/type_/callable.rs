@@ -975,7 +975,7 @@ pub fn merge_class_type_vars(
         if usage.in_definition() == attribute_class.node_ref.as_link() {
             Some(
                 type_vars
-                    .find(usage.as_type_var_like(), callable.defined_at)?
+                    .find(&usage.as_type_var_like(), callable.defined_at)?
                     .into_generic_item(),
             )
         } else {

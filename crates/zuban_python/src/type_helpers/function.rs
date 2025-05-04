@@ -236,10 +236,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         type_var: &TypeVarLike,
         class_seen: bool,
     ) -> Option<TypeVarCallbackReturn> {
-        if let Some(tvl) = self
-            .type_vars(db)
-            .find(type_var.clone(), self.node_ref.as_link())
-        {
+        if let Some(tvl) = self.type_vars(db).find(type_var, self.node_ref.as_link()) {
             return Some(TypeVarCallbackReturn::TypeVarLike(tvl));
         }
         match self.parent(db) {

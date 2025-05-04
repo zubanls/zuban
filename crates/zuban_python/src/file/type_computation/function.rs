@@ -237,15 +237,13 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 .and_then(|class| {
                     class
                         .use_cached_type_vars(i_s.db)
-                        .find(type_var_like.clone(), class.as_link())
+                        .find(&type_var_like, class.as_link())
                         .map(TypeVarCallbackReturn::TypeVarLike)
                 })
                 .or_else(|| i_s.find_parent_type_var(&type_var_like))
                 .unwrap_or_else(|| {
                     if let Some(known_type_vars) = &known_type_vars {
-                        if let Some(usage) =
-                            known_type_vars.find(type_var_like.clone(), self.as_link())
-                        {
+                        if let Some(usage) = known_type_vars.find(&type_var_like, self.as_link()) {
                             return TypeVarCallbackReturn::TypeVarLike(usage);
                         }
                         unbound_type_vars.insert(type_var_like);

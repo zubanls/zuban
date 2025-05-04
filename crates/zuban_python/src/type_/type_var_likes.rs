@@ -393,24 +393,30 @@ impl TypeVarLikes {
 
     pub fn find(
         &self,
-        type_var_like: TypeVarLike,
+        type_var_like: &TypeVarLike,
         in_definition: PointLink,
     ) -> Option<TypeVarLikeUsage> {
         self.0
             .iter()
-            .position(|t| t == &type_var_like)
-            .map(|index| match type_var_like {
+            .enumerate()
+            .find(|(_, t)| *t == type_var_like)
+            // We have to use the found TypeVarLike and not the one given, because the type vars
+            // might have been changed (e.g. an invalid default might have changed from the
+            // original definition)
+            .map(|(index, tvl)| match tvl {
                 TypeVarLike::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(TypeVarUsage::new(
-                    type_var,
+                    type_var.clone(),
                     in_definition,
                     index.into(),
                 )),
-                TypeVarLike::TypeVarTuple(type_var_tuple) => TypeVarLikeUsage::TypeVarTuple(
-                    TypeVarTupleUsage::new(type_var_tuple, in_definition, index.into()),
+                TypeVarLike::TypeVarTuple(tvt) => TypeVarLikeUsage::TypeVarTuple(
+                    TypeVarTupleUsage::new(tvt.clone(), in_definition, index.into()),
                 ),
-                TypeVarLike::ParamSpec(param_spec) => TypeVarLikeUsage::ParamSpec(
-                    ParamSpecUsage::new(param_spec, in_definition, index.into()),
-                ),
+                TypeVarLike::ParamSpec(p) => TypeVarLikeUsage::ParamSpec(ParamSpecUsage::new(
+                    p.clone(),
+                    in_definition,
+                    index.into(),
+                )),
             })
     }
 
@@ -463,7 +469,7 @@ impl std::ops::Index<usize> for TypeVarLikes {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq)]
 pub(crate) enum TypeVarLike {
     TypeVar(Rc<TypeVar>),
     TypeVarTuple(Rc<TypeVarTuple>),
@@ -614,17 +620,6 @@ impl TypeVarLike {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => t1 == t2,
             (Self::TypeVarTuple(t1), Self::TypeVarTuple(t2)) => t1 == t2,
             (Self::ParamSpec(p1), Self::ParamSpec(p2)) => p1 == p2,
-            _ => false,
-        }
-    }
-}
-
-impl std::cmp::PartialEq for TypeVarLike {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => Rc::ptr_eq(t1, t2),
-            (Self::TypeVarTuple(t1), Self::TypeVarTuple(t2)) => Rc::ptr_eq(t1, t2),
-            (Self::ParamSpec(p1), Self::ParamSpec(p2)) => Rc::ptr_eq(p1, p2),
             _ => false,
         }
     }
