@@ -1453,51 +1453,64 @@ class Sub(Base[str]): ...
 Sub.make_some(1)  # E: Invalid self argument "Type[Sub]" to attribute function "make_some" with type "overloaded function"
 Sub.make_some("")
 
-[case invalid_type_var_default_usage_no_crash]
-# Copied from testTypeVarDefaultsInvalid3, but only used the crashing parts
-from typing import Dict, Generic, TypeVar
+[case invalid_type_var_default_usage_with_default_syntax]
+class ClassError1[T3=str, T1]: ...  # E: "T1" cannot appear after "T3" in type parameter list because it has no default type
 
-T1 = TypeVar("T1")
-T2 = TypeVar("T2", default=str)
-
-class ClassOk(Generic[T1, T2]): ...
-class ClassError(Generic[T2, T1]): ...  # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
-AliasOk = Dict[T1, T2]
-AliasErr = Dict[T2, T1]  # E: "T1" cannot appear after "T2" in type parameter list because it has no default type
-
-def f(
-    a: ClassError,
-    b: ClassError[int],
-    c: ClassError[int, float],
-
-    x: AliasErr,
-    y: AliasErr[int],
-    z: AliasErr[int, float],
+def func_error1(
+    a: ClassError1,
+    b: ClassError1[int],
+    c: ClassError1[int, float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassError[str, Any]"
-    reveal_type(b)  # N: Revealed type is "__main__.ClassError[int, Any]"
-    reveal_type(c)  # N: Revealed type is "__main__.ClassError[int, float]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassError1[builtins.str, Any]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError1[builtins.int, Any]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassError1[builtins.int, builtins.float]"
 
-    reveal_type(x)  # N: Revealed type is "dict[str, Any]"
-    reveal_type(y)  # N: Revealed type is "dict[int, Any]"
-    reveal_type(z)  # N: Revealed type is "dict[int, float]"
+    k = ClassError1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassError1[builtins.str, Any]"
+    l = ClassError1[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassError1[builtins.int, Any]"
+    m = ClassError1[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassError1[builtins.int, builtins.float]"
 
-def g(
-    a: ClassOk,
-    b: ClassOk[int],
-    c: ClassOk[int, float],
+class ClassError2[T4=T3, T3=str]: ...  # E: Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
 
-    x: AliasOk,
-    y: AliasOk[int],
-    z: AliasOk[int, float],
+def func_error2(
+    a: ClassError2,
+    b: ClassError2[int],
+    c: ClassError2[int, float],
 ) -> None:
-    reveal_type(a)  # N: Revealed type is "__main__.ClassOk[Any, str]"
-    reveal_type(b)  # N: Revealed type is "__main__.ClassOk[int, str]"
-    reveal_type(c)  # N: Revealed type is "__main__.ClassOk[int, float]"
+    reveal_type(a)  # N: Revealed type is "__main__.ClassError2[Any, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.float]"
 
-    reveal_type(x)  # N: Revealed type is "dict[Any, str]"
-    reveal_type(y)  # N: Revealed type is "dict[int, str]"
-    reveal_type(z)  # N: Revealed type is "dict[int, float]"
+    k = ClassError2()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassError2[Any, builtins.str]"
+    l = ClassError2[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.str]"
+    m = ClassError2[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.float]"
+
+type TERR1[T3=str, T1] = dict[T3, T1]  # E: "T1" cannot appear after "T3" in type parameter list because it has no default type
+
+def func_error_alias1(
+    a: TERR1,
+    b: TERR1[int],
+    c: TERR1[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, Any]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
+
+type TERR2[T4=T3, T3=str] = dict[T4, T3]  # E: Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
+
+def func_error_alias2(
+    a: TERR2,
+    b: TERR2[int],
+    c: TERR2[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
 
 [case different_file_class_should_not_crash]
 from m import P

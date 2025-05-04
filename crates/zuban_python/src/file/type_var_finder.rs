@@ -343,9 +343,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                         if self.infos.type_var_manager.position(&tvl_found).is_some() {
                             None
                         } else {
-                            add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
-                                type_var: tvl.name(self.i_s.db).into(),
-                            });
                             had_issue = true;
                             Some(usage.as_any_generic_item(self.i_s.db))
                         }
@@ -353,6 +350,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     &|| None,
                 );
                 if had_issue {
+                    add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
+                        type_var: tvl.name(self.i_s.db).into(),
+                    });
                     tvl = tvl.set_any_default();
                 }
             } else {
