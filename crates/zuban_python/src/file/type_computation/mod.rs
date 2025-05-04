@@ -1012,7 +1012,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let defined_at = nt.__new__.defined_at;
                         Type::NamedTuple(nt).replace_type_var_likes(db, &mut |usage| {
                             (usage.in_definition() == defined_at)
-                                .then(|| usage.as_any_generic_item(db))
+                                .then(|| usage.as_default_or_any_generic_item(db))
                         })
                     }
                 };
@@ -1029,7 +1029,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 },
                             );
                         }
-                        Some(Type::TypedDict(td.replace_type_vars_with_any(db)))
+                        Some(Type::TypedDict(td.with_any_generics(db)))
                     }
                     TypedDictGenerics::Generics(_) => unreachable!(),
                 }
@@ -1225,7 +1225,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return Some(Type::RecursiveType(Rc::new(RecursiveType::new(
                     link,
                     (!type_var_likes.is_empty())
-                        .then(|| type_var_likes.as_any_generic_list(self.i_s.db)),
+                        .then(|| type_var_likes.as_default_or_any_generic_list(self.i_s.db)),
                 ))));
             }
             TypeContent::RecursiveClass(class_ref) => {
@@ -1234,7 +1234,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return Some(Type::RecursiveType(Rc::new(RecursiveType::new(
                     class_ref.as_link(),
                     (!type_var_likes.is_empty())
-                        .then(|| type_var_likes.as_any_generic_list(self.i_s.db)),
+                        .then(|| type_var_likes.as_default_or_any_generic_list(self.i_s.db)),
                 ))));
             }
             TypeContent::TypeGuardInfo(_) => return Some(self.i_s.db.python_state.bool_type()),
@@ -2123,7 +2123,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             generics.clear();
             for missing_type_var in type_var_likes.iter() {
-                generics.push(missing_type_var.as_any_generic_item(db))
+                generics.push(missing_type_var.as_default_or_any_generic_item(db))
             }
         }
     }
@@ -2606,7 +2606,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } else {
                         // Can happen when a generic is not available, because it's defined in e.g.
                         // X = dict[T1, T2], where T2 has a default, but T1 has not.
-                        usage.as_any_generic_item(self.i_s.db)
+                        //usage.as_any_generic_item(self.i_s.db)
+                        todo!()
                     }
                 } else {
                     usage.into_generic_item()

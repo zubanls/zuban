@@ -298,7 +298,7 @@ impl CalculatingTypeArg {
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         if self.uninferrable {
-            return type_var_like.as_any_generic_item(db);
+            return type_var_like.as_any_generic_item();
         }
         self.type_.into_generic_item(db, |fallback| {
             if let Some(fallback) = fallback {

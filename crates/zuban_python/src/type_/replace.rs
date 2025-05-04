@@ -323,7 +323,7 @@ impl GenericItem {
                 if let Some(default) = tvl_found.default(db) {
                     Some(default.resolve_recursive_defaults_or_set_any(db))
                 } else {
-                    Some(usage.as_any_generic_item(db))
+                    Some(usage.as_any_generic_item())
                 }
             },
             &|| None,

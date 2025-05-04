@@ -168,7 +168,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let type_var_likes = self.type_vars(i_s);
             return ClassExecutionResult::ClassGenerics(match type_var_likes.is_empty() {
-                false => ClassGenerics::List(type_var_likes.as_any_generic_list(i_s.db)),
+                false => ClassGenerics::List(type_var_likes.as_any_generic_list()),
                 true => ClassGenerics::None,
             });
         };
@@ -1099,7 +1099,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 Generics::NotDefinedYet { .. } => ClassGenerics::List(GenericsList::new_generics(
                     type_var_likes
                         .iter()
-                        .map(|t| t.as_any_generic_item(db))
+                        .map(|t| t.as_default_or_any_generic_item(db))
                         .collect(),
                 )),
                 Generics::ExpressionWithClassType(file, expr) => {
@@ -1144,7 +1144,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 Generics::None => td.clone(),
                 Generics::Self_ { class_ref } => {
-                    let generics = class_ref.use_cached_type_vars(db).as_any_generic_list(db);
+                    let generics = class_ref
+                        .use_cached_type_vars(db)
+                        .as_default_or_any_generic_list(db);
                     td.apply_generics(db, TypedDictGenerics::Generics(generics))
                 }
                 _ => unreachable!("{:?}", self.generics),

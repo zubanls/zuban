@@ -380,13 +380,14 @@ impl TypedDict {
         })
     }
 
-    pub fn replace_type_vars_with_any(&self, db: &Database) -> Rc<Self> {
+    pub fn with_any_generics(&self, db: &Database) -> Rc<Self> {
         let TypedDictGenerics::NotDefinedYet(type_var_likes) = &self.generics else {
             unreachable!()
         };
-        let generics = TypedDictGenerics::Generics(type_var_likes.as_any_generic_list(db));
+        let generics =
+            TypedDictGenerics::Generics(type_var_likes.as_default_or_any_generic_list(db));
         self.replace(generics, &mut |t| {
-            t.replace_type_var_likes(db, &mut |u| Some(u.as_any_generic_item(db)))
+            t.replace_type_var_likes(db, &mut |u| Some(u.as_default_or_any_generic_item(db)))
         })
     }
 

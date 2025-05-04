@@ -92,7 +92,7 @@ impl<'a> Generics<'a> {
             }
             Self::NotDefinedYet { class_ref } => {
                 let type_var_like = &class_ref.use_cached_type_vars(db)[n];
-                Generic::owned(type_var_like.as_any_generic_item(db))
+                Generic::owned(type_var_like.as_default_or_any_generic_item(db))
             }
             Self::Self_ { class_ref } => Generic::owned(
                 class_ref.use_cached_type_vars(db)[n]
@@ -192,7 +192,9 @@ impl<'a> Iterator for GenericsIterator<'a> {
                 )
             }),
             GenericsIteratorItem::AnyTypeVars(type_var_likes) => Some(Generic::owned(
-                type_var_likes.next()?.as_any_generic_item(self.db),
+                type_var_likes
+                    .next()?
+                    .as_default_or_any_generic_item(self.db),
             )),
             GenericsIteratorItem::None => None,
         }

@@ -420,8 +420,16 @@ impl TypeVarLikes {
             })
     }
 
-    pub fn as_any_generic_list(&self, db: &Database) -> GenericsList {
-        GenericsList::new_generics(self.iter().map(|tv| tv.as_any_generic_item(db)).collect())
+    pub fn as_any_generic_list(&self) -> GenericsList {
+        GenericsList::new_generics(self.iter().map(|tv| tv.as_any_generic_item()).collect())
+    }
+
+    pub fn as_default_or_any_generic_list(&self, db: &Database) -> GenericsList {
+        GenericsList::new_generics(
+            self.iter()
+                .map(|tv| tv.as_default_or_any_generic_item(db))
+                .collect(),
+        )
     }
 
     pub fn iter(&self) -> std::slice::Iter<TypeVarLike> {
@@ -546,7 +554,19 @@ impl TypeVarLike {
         }
     }
 
-    pub fn as_any_generic_item(&self, db: &Database) -> GenericItem {
+    pub fn as_any_generic_item(&self) -> GenericItem {
+        match self {
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
+            TypeVarLike::TypeVarTuple(_) => {
+                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
+            }
+            TypeVarLike::ParamSpec(_) => {
+                GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
+            }
+        }
+    }
+
+    pub fn as_default_or_any_generic_item(&self, db: &Database) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
                 Some(default) => {
@@ -633,7 +653,7 @@ impl TypeVarLike {
                     None
                 } else {
                     had_issue = true;
-                    Some(usage.as_any_generic_item(db))
+                    Some(usage.as_any_generic_item())
                 }
             });
             if had_issue {
@@ -1342,8 +1362,12 @@ impl TypeVarLikeUsage {
         }
     }
 
-    pub fn as_any_generic_item(&self, db: &Database) -> GenericItem {
-        self.as_type_var_like().as_any_generic_item(db)
+    pub fn as_any_generic_item(&self) -> GenericItem {
+        self.as_type_var_like().as_any_generic_item()
+    }
+
+    pub fn as_default_or_any_generic_item(&self, db: &Database) -> GenericItem {
+        self.as_type_var_like().as_default_or_any_generic_item(db)
     }
 
     pub fn into_generic_item(self) -> GenericItem {

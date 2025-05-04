@@ -814,7 +814,7 @@ impl TypeAlias {
                     GenericsList::new_generics(
                         self.type_vars
                             .iter()
-                            .map(|tv| tv.as_any_generic_item(db))
+                            .map(|tv| tv.as_default_or_any_generic_item(db))
                             .collect(),
                     )
                 }),
@@ -826,7 +826,8 @@ impl TypeAlias {
         } else {
             type_
                 .replace_type_var_likes(db, &mut |t| {
-                    (t.in_definition() == self.location).then(|| t.as_any_generic_item(db))
+                    (t.in_definition() == self.location)
+                        .then(|| t.as_default_or_any_generic_item(db))
                 })
                 .unwrap_or_else(|| type_.clone())
         }

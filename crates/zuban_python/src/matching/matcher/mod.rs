@@ -894,7 +894,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, |usage| Some(usage.as_any_generic_item(db)))
+        self.replace_type_var_likes(db, t, |usage| Some(usage.as_any_generic_item()))
     }
 
     pub fn replace_type_var_likes_for_nested_context_in_tuple_args(
@@ -904,7 +904,7 @@ impl<'a> Matcher<'a> {
     ) -> TupleArgs {
         ts.replace_type_var_likes(
             db,
-            &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item(db))),
+            &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
         )
         .unwrap_or(ts)
     }
@@ -917,7 +917,7 @@ impl<'a> Matcher<'a> {
         p.params
             .replace_type_var_likes_and_self(
                 db,
-                &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item(db))),
+                &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
                 &|| None,
             )
             .map(|p| ParamSpecArg::new(p, None))

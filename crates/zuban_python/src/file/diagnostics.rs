@@ -1453,7 +1453,7 @@ impl Inference<'_, '_, '_> {
                         let erased = original
                             .replace_type_var_likes_and_self(
                                 i_s.db,
-                                &mut |u| Some(u.as_any_generic_item(self.i_s.db)),
+                                &mut |u| Some(u.as_any_generic_item()),
                                 &|| Some(class_t.clone()),
                             )
                             .map(Cow::Owned)
@@ -2807,7 +2807,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                                     Type::Never(NeverCause::Other)
                                 })
                             } else {
-                                tv_like.as_any_generic_item(i_s.db)
+                                tv_like.as_any_generic_item()
                             }
                         })
                         .collect(),
