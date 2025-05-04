@@ -34,8 +34,8 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, Type, TypeVarKind, TypeVarLike, TypeVarVariance,
-        Variance,
+        LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
+        TypeVarVariance, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,

@@ -6,7 +6,9 @@ use crate::{
     debug,
     format_data::FormatData,
     inference_state::InferenceState,
-    type_::{CallableContent, GenericItem, ReplaceSelf, Type, TypeVarLikeUsage},
+    type_::{
+        CallableContent, GenericItem, ReplaceSelf, ReplaceTypeVarLikes, Type, TypeVarLikeUsage,
+    },
     type_helpers::Class,
 };
 

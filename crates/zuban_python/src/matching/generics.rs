@@ -5,7 +5,10 @@ use crate::{
     database::{Database, PointLink},
     file::{use_cached_simple_generic_type, ClassNodeRef, PythonFile},
     node_ref::NodeRef,
-    type_::{ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage},
+    type_::{
+        ClassGenerics, GenericItem, GenericsList, ReplaceTypeVarLikes, TypeVarLike,
+        TypeVarLikeUsage,
+    },
 };
 
 macro_rules! replace_class_vars {

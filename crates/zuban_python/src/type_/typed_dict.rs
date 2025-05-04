@@ -7,7 +7,7 @@ use std::{
 use super::{
     utils::method_with_fallback, CallableContent, CallableParam, CallableParams, CustomBehavior,
     DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType, RecursiveType,
-    StringSlice, Type, TypeVarLikeUsage, TypeVarLikes,
+    ReplaceTypeVarLikes, StringSlice, Type, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},

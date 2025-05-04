@@ -9,7 +9,7 @@ use vfs::FileIndex;
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
     DbString, FormatStyle, FunctionKind, Literal, LiteralKind, LookupResult, ParamType,
-    StringSlice, Tuple, Type, TypeVarLikes,
+    ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeVarLikes,
 };
 use crate::{
     database::{Database, PointLink},

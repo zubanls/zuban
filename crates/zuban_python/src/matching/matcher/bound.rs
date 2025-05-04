@@ -9,8 +9,8 @@ use crate::{
     params::matches_params_with_variance,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
-        ParamSpecArg, ParamType, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
+        ParamSpecArg, ParamType, ReplaceTypeVarLikes, StarStarParamType, TupleArgs, TupleUnpack,
+        Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
     },
     type_helpers::Class,
 };
@@ -105,7 +105,7 @@ impl Bound {
         t.search_type_vars(found_type_var)
     }
 
-    pub fn replace_type_var_likes(
+    pub(super) fn replace_type_var_likes(
         &self,
         db: &Database,
         on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,

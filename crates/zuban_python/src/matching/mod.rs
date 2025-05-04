@@ -30,7 +30,7 @@ use crate::{
     format_data::{find_similar_types, FormatData},
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::{AnyCause, Tuple, TupleUnpack, Type, WithUnpack},
+    type_::{AnyCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
     utils::debug_indent,
 };
 

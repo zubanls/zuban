@@ -20,8 +20,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue, AnyCause,
-        IterCause, Literal, LiteralKind, LiteralValue, NeverCause, Type, TypedDict,
-        TypedDictGenerics,
+        IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes, Type,
+        TypedDict, TypedDictGenerics,
     },
     Inferred,
 };

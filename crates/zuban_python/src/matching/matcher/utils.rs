@@ -27,8 +27,8 @@ use crate::{
     type_::{
         match_arbitrary_len_vs_unpack, match_unpack, CallableContent, CallableParams,
         CallableWithParent, ClassGenerics, GenericItem, GenericsList, MaybeUnpackGatherer,
-        NeverCause, ParamSpecTypeVars, ReplaceSelf, Tuple, TupleArgs, TupleUnpack, Type,
-        TypeVarLikes, TypeVarManager, Variance,
+        NeverCause, ParamSpecTypeVars, ReplaceSelf, ReplaceTypeVarLikes, Tuple, TupleArgs,
+        TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };

@@ -16,8 +16,8 @@ use crate::{
     utils::rc_slice_into_vec,
 };
 
-pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<GenericItem>;
-pub type ReplaceSelf<'x> = &'x dyn Fn() -> Option<Type>;
+pub(crate) type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<GenericItem>;
+pub(crate) type ReplaceSelf<'x> = &'x dyn Fn() -> Option<Type>;
 
 trait Replacer {
     fn replace_type(&mut self, t: &Type) -> Option<Option<Type>>;
@@ -38,6 +38,26 @@ trait Replacer {
         _p: &ParamSpecUsage,
     ) -> Option<ReplacedParamSpec> {
         None
+    }
+}
+
+pub(crate) trait ReplaceTypeVarLikes
+where
+    Self: Sized,
+{
+    fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Option<Self>;
+
+    fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Option<Self> {
+        self.replace_type_var_likes_and_self(db, callable, &|| None)
     }
 }
 
@@ -141,19 +161,6 @@ impl Type {
             .unwrap_or_else(|| self.clone())
     }
 
-    pub fn replace_type_var_likes_and_self(
-        &self,
-        db: &Database,
-        callable: ReplaceTypeVarLike,
-        replace_self: ReplaceSelf,
-    ) -> Option<Self> {
-        self.replace_internal(&mut ReplaceTypeVarLikes {
-            db,
-            callable,
-            replace_self,
-        })
-    }
-
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         if let Some(t) = replacer.replace_type(self) {
             return t;
@@ -251,13 +258,20 @@ impl Type {
             | Type::ParamSpecKwargs(_) => None,
         }
     }
+}
 
-    pub fn replace_type_var_likes(
+impl ReplaceTypeVarLikes for Type {
+    fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
     ) -> Option<Self> {
-        self.replace_type_var_likes_and_self(db, callable, &|| None)
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
+            db,
+            callable,
+            replace_self,
+        })
     }
 }
 
@@ -301,19 +315,6 @@ impl GenericItem {
         }
     }
 
-    pub fn replace_type_var_likes_and_self(
-        &self,
-        db: &Database,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
-        replace_self: ReplaceSelf,
-    ) -> Option<Self> {
-        self.replace_internal(&mut ReplaceTypeVarLikes {
-            db,
-            callable,
-            replace_self,
-        })
-    }
-
     pub fn resolve_recursive_defaults_or_set_any(self, db: &Database) -> Self {
         self.replace_type_var_likes_and_self(
             db,
@@ -328,6 +329,21 @@ impl GenericItem {
             &|| None,
         )
         .unwrap_or(self)
+    }
+}
+
+impl ReplaceTypeVarLikes for GenericItem {
+    fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Option<Self> {
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
+            db,
+            callable,
+            replace_self,
+        })
     }
 }
 
@@ -378,7 +394,7 @@ impl CallableContent {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Self {
-        let replacer = &mut ReplaceTypeVarLikes {
+        let replacer = &mut ReplaceTypeVarLikesHelper {
             db,
             callable,
             replace_self,
@@ -395,7 +411,7 @@ impl CallableContent {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> CallableContent {
-        let replacer = &mut ReplaceTypeVarLikes {
+        let replacer = &mut ReplaceTypeVarLikesHelper {
             db,
             callable,
             replace_self,
@@ -574,15 +590,17 @@ impl CallableParams {
             CallableParams::Never(cause) => Some((CallableParams::Never(*cause), None)),
         }
     }
+}
 
-    pub fn replace_type_var_likes_and_self(
+impl ReplaceTypeVarLikes for CallableParams {
+    fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> Option<CallableParams> {
+    ) -> Option<Self> {
         self.replace_internal(
-            &mut ReplaceTypeVarLikes {
+            &mut ReplaceTypeVarLikesHelper {
                 db,
                 callable,
                 replace_self,
@@ -663,15 +681,11 @@ fn replace_param_spec_inner_type_var_likes(
 impl TupleArgs {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         Some(match self {
-            TupleArgs::FixedLen(ts) => {
-                TupleArgs::FixedLen(maybe_replace_iterable(ts.iter(), |t| {
-                    t.replace_internal(replacer)
-                })?)
-            }
-            TupleArgs::ArbitraryLen(t) => {
-                TupleArgs::ArbitraryLen(Rc::new(t.replace_internal(replacer)?))
-            }
-            TupleArgs::WithUnpack(unpack) => {
+            Self::FixedLen(ts) => Self::FixedLen(maybe_replace_iterable(ts.iter(), |t| {
+                t.replace_internal(replacer)
+            })?),
+            Self::ArbitraryLen(t) => Self::ArbitraryLen(Rc::new(t.replace_internal(replacer)?)),
+            Self::WithUnpack(unpack) => {
                 let new_before: Option<Vec<_>> =
                     maybe_replace_iterable(unpack.before.iter(), |t| t.replace_internal(replacer));
                 let new_after: Option<Vec<_>> =
@@ -699,7 +713,7 @@ impl TupleArgs {
                 if inner.is_none() && new_before.is_none() && new_after.is_none() {
                     return None;
                 }
-                TupleArgs::WithUnpack(WithUnpack {
+                Self::WithUnpack(WithUnpack {
                     before: new_before
                         .map(|v| v.into())
                         .unwrap_or_else(|| unpack.before.clone()),
@@ -711,23 +725,26 @@ impl TupleArgs {
             }
         })
     }
+}
 
-    pub fn replace_type_var_likes(
+impl ReplaceTypeVarLikes for TupleArgs {
+    fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
     ) -> Option<Self> {
-        self.replace_internal(&mut ReplaceTypeVarLikes {
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
             db,
             callable,
-            replace_self: &|| None,
+            replace_self,
         })
     }
 }
 
 impl GenericsList {
     pub fn replace_type_var_likes(self, db: &Database, callable: ReplaceTypeVarLike) -> Self {
-        self.replace_internal(&mut ReplaceTypeVarLikes {
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
             db,
             callable,
             replace_self: &|| None,
@@ -756,13 +773,13 @@ impl TypedDict {
     }
 }
 
-struct ReplaceTypeVarLikes<'db, 'a> {
+struct ReplaceTypeVarLikesHelper<'db, 'a> {
     db: &'db Database,
     callable: ReplaceTypeVarLike<'a>,
     replace_self: ReplaceSelf<'a>,
 }
 
-impl ReplaceTypeVarLikes<'_, '_> {
+impl ReplaceTypeVarLikesHelper<'_, '_> {
     #[inline]
     fn replace_callable_without_rc(&mut self, c: &CallableContent) -> Option<CallableContent> {
         let has_type_vars = !c.type_vars.is_empty();
@@ -814,7 +831,7 @@ impl ReplaceTypeVarLikes<'_, '_> {
     }
 }
 
-impl Replacer for ReplaceTypeVarLikes<'_, '_> {
+impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
     #[inline]
     fn replace_type(&mut self, t: &Type) -> Option<Option<Type>> {
         match t {

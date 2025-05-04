@@ -4,9 +4,9 @@ use parsa_python_cst::ParamKind;
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, DbString, FunctionKind, NeverCause, ParamSpecUsage, RecursiveType, StringSlice,
-    Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes,
-    TypeVarUsage, TypedDict,
+    AnyCause, DbString, FunctionKind, NeverCause, ParamSpecUsage, RecursiveType,
+    ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos,
+    TypeVarLike, TypeVarLikes, TypeVarUsage, TypedDict,
 };
 use crate::{
     database::{Database, PointLink},

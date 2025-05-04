@@ -28,9 +28,9 @@ use crate::{
     type_::{
         dataclass_init_func, AnyCause, CallableContent, CallableParam, CallableParams,
         ClassGenerics, Dataclass, DataclassOptions, DataclassTransformObj, DbString, Enum,
-        EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType, StringSlice,
-        Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict, TypedDictMember,
-        Variance,
+        EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType,
+        ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance,
+        TypedDict, TypedDictMember, Variance,
     },
     type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},

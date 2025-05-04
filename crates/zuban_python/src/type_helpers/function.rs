@@ -35,8 +35,8 @@ use crate::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
         GenericClass, GenericItem, NeverCause, ParamType, PropertySetter, ReplaceSelf,
-        StarParamType, StarStarParamType, StringSlice, TupleArgs, Type, TypeVarLike, TypeVarLikes,
-        WrongPositionalCount,
+        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
+        TypeVarLike, TypeVarLikes, WrongPositionalCount,
     },
     type_helpers::Class,
 };

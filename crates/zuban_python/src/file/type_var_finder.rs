@@ -15,7 +15,7 @@ use crate::{
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
     node_ref::NodeRef,
-    type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
+    type_::{ReplaceTypeVarLikes, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
     utils::debug_indent,
 };
 

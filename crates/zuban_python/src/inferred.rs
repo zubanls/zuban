@@ -29,7 +29,7 @@ use crate::{
         CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
         IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
-        PropertySetter, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        PropertySetter, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,

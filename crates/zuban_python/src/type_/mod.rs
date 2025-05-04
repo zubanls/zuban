@@ -50,7 +50,7 @@ pub(crate) use self::{
     named_tuple::NamedTuple,
     operations::{execute_type_of_type, IterCause, IterInfos},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
-    replace::{replace_param_spec, ReplaceSelf},
+    replace::{replace_param_spec, ReplaceSelf, ReplaceTypeVarLikes},
     tuple::{execute_tuple_class, MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack},
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,

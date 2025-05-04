@@ -15,7 +15,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, NamedTuple, ParamType,
-        StringSlice, Type,
+        ReplaceTypeVarLikes, StringSlice, Type,
     },
 };
 

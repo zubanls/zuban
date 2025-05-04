@@ -30,7 +30,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
-    type_::CallableLike,
+    type_::{CallableLike, ReplaceTypeVarLikes},
     type_helpers::{
         Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
         OverloadResult, OverloadedFunction, TypeOrClass,

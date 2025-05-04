@@ -31,8 +31,9 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, FormatStyle,
         FunctionOverload, GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple,
-        NeverCause, ParamSpecArg, ParamSpecUsage, Tuple, TupleArgs, Type, TypeVarIndex,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        NeverCause, ParamSpecArg, ParamSpecUsage, ReplaceTypeVarLikes, Tuple, TupleArgs, Type,
+        TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
+        Variance,
     },
     utils::{debug_indent, is_magic_method},
 };
