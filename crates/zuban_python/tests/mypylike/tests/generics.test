@@ -1586,6 +1586,18 @@ T = TypeVar("T", bound=str | None)
 class A(Generic[T]): ...
 class P(A[T]): ...
 
+[case type_var_default_complex_fallback]
+class C[T=list[U], U=str]: ...  # E: Type parameter "T" has a default type that refers to one or more type variables that are out of scope
+
+def func_error2(
+    a: C,
+    b: C[int],
+    c: C[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.C[list[Any], str]"
+    reveal_type(b)  # N: Revealed type is "__main__.C[int, str]"
+    reveal_type(c)  # N: Revealed type is "__main__.C[int, float]"
+
 [case no_crash_on_self_access_for_class_with_type_var_values]
 import typing
 T = typing.TypeVar("T", str, bytes)

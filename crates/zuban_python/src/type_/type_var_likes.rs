@@ -534,6 +534,35 @@ impl TypeVarLike {
         }
     }
 
+    fn replace_default_with_generic_item(&self, item: GenericItem) -> Self {
+        match self {
+            TypeVarLike::TypeVar(tv) => {
+                let mut new_tv = tv.as_ref().clone();
+                let GenericItem::TypeArg(t) = item else {
+                    unreachable!()
+                };
+                new_tv.default = Some(TypeLikeInTypeVar::new_known(t));
+                Self::TypeVar(Rc::new(new_tv))
+            }
+            TypeVarLike::TypeVarTuple(tvt) => {
+                let mut new_tvt = tvt.as_ref().clone();
+                let GenericItem::TypeArgs(ts) = item else {
+                    unreachable!()
+                };
+                new_tvt.default = Some(TypeLikeInTypeVar::new_known(ts));
+                Self::TypeVarTuple(Rc::new(new_tvt))
+            }
+            TypeVarLike::ParamSpec(param_spec) => {
+                let mut new_p = param_spec.as_ref().clone();
+                let GenericItem::ParamSpecArg(pa) = item else {
+                    unreachable!()
+                };
+                new_p.default = Some(TypeLikeInTypeVar::new_known(pa.params));
+                Self::ParamSpec(Rc::new(new_p))
+            }
+        }
+    }
+
     pub fn as_type_var_like_usage(
         &self,
         index: TypeVarIndex,
@@ -641,9 +670,9 @@ impl TypeVarLike {
         previous_type_vars: impl Iterator<Item = &'x TypeVarLike> + Clone,
         add_issue: impl Fn(IssueKind),
     ) -> Self {
-        let mut had_issue = false;
         if let Some(default) = self.default(db) {
-            default.replace_type_var_likes(db, &mut |usage| {
+            let mut had_issue = false;
+            let replaced = default.replace_type_var_likes(db, &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
                 if previous_type_vars
                     .clone()
@@ -656,11 +685,15 @@ impl TypeVarLike {
                     Some(usage.as_any_generic_item())
                 }
             });
-            if had_issue {
-                add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
-                    type_var: self.name(db).into(),
-                });
-                return self.set_any_default();
+            if let Some(replaced) = replaced {
+                // It is possible that something was replaced especially due to bugs, so we filter
+                // and check if there was an actual issue.
+                if had_issue {
+                    add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
+                        type_var: self.name(db).into(),
+                    });
+                    return self.replace_default_with_generic_item(replaced);
+                }
             }
         }
         self

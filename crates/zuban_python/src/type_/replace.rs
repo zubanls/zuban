@@ -586,8 +586,8 @@ impl CallableParams {
                         .then(|| (CallableParams::new_simple(new_params.into()), replace_data))
                 }
             }
-            CallableParams::Any(cause) => Some((CallableParams::Any(*cause), None)),
-            CallableParams::Never(cause) => Some((CallableParams::Never(*cause), None)),
+            CallableParams::Any(cause) => None,
+            CallableParams::Never(cause) => None,
         }
     }
 }
@@ -847,10 +847,7 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                         // Perhaps we should find a way to check whether this we are in a
                         // simplified union case. But this is generally tricky. And might
                         // also intensify workloads.
-                        type_: u
-                            .type_
-                            .replace_internal(self)
-                            .unwrap_or_else(|| u.type_.clone()),
+                        type_: u.type_.replace_internal(self)?,
                         format_index: u.format_index,
                     })
                 })?;
