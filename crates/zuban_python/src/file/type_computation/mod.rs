@@ -2604,10 +2604,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if let Some(generic) = generics.get(usage.index().as_usize()) {
                         generic.clone()
                     } else {
-                        // Can happen when a generic is not available, because it's defined in e.g.
-                        // X = dict[T1, T2], where T2 has a default, but T1 has not.
-                        //usage.as_any_generic_item(self.i_s.db)
-                        todo!()
+                        recoverable_error!("There was an unexpected TypeVar in the alias");
+                        usage.as_any_generic_item()
                     }
                 } else {
                     usage.into_generic_item()
