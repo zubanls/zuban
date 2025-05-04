@@ -314,13 +314,13 @@ impl GenericItem {
         })
     }
 
-    pub fn resolve_recursive_defaults(self, db: &Database) -> Self {
+    pub fn resolve_recursive_defaults_or_set_any(self, db: &Database) -> Self {
         self.replace_type_var_likes_and_self(
             db,
             &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
                 if let Some(default) = tvl_found.default(db) {
-                    Some(default.resolve_recursive_defaults(db))
+                    Some(default.resolve_recursive_defaults_or_set_any(db))
                 } else {
                     Some(usage.as_any_generic_item(db))
                 }
