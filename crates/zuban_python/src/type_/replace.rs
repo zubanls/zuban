@@ -586,8 +586,8 @@ impl CallableParams {
                         .then(|| (CallableParams::new_simple(new_params.into()), replace_data))
                 }
             }
-            CallableParams::Any(cause) => None,
-            CallableParams::Never(cause) => None,
+            CallableParams::Any(_) => None,
+            CallableParams::Never(_) => None,
         }
     }
 }

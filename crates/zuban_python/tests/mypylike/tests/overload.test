@@ -658,3 +658,18 @@ f2(alias=1) # E: Argument "alias" to "f2" has incompatible type "int"; expected 
 def g2(*, alias: str, **extra: Unpack[NotEmptyKwargs]) -> int: ...
 
 g2(alias="") # E: Missing named argument "something" for "g2"
+
+[case overload_with_getitem_and_issue_should_report]
+from typing import overload
+
+class D[T]:
+    @overload
+    def __getitem__(self, x: int) -> int: ...
+    @overload
+    def __getitem__(self, x: slice) -> str: ...
+    def __getitem__(self, x): ...
+
+D()[1()]  # E: "int" not callable
+D()[1]
+D()[1():]  # E: "int" not callable
+D()[1:]

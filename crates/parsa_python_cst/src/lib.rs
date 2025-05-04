@@ -3349,6 +3349,16 @@ impl<'db> SliceType<'db> {
             Self::StarredExpression(s) => s.index(),
         }
     }
+
+    pub fn last_leaf_index(&self) -> NodeIndex {
+        let node = match self {
+            SliceType::Slices(s) => s.node,
+            SliceType::Slice(s) => s.node,
+            SliceType::NamedExpression(n) => n.node,
+            SliceType::StarredExpression(s) => s.node,
+        };
+        node.last_leaf_in_subtree().index
+    }
 }
 
 impl<'db> Slices<'db> {

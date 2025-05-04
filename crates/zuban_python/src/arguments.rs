@@ -196,8 +196,6 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
     }
 
     fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
-        // Details is empty when no arguments are provided (e.g. `foo()`), which means we do not
-        // have to reset the cache.
         self.file.points.reset_from_backup(backup.as_ref().unwrap());
     }
 
@@ -327,8 +325,10 @@ impl<'db> Args<'db> for CombinedArgs<'db, '_> {
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
-        debug_assert!(self.args1.points_backup().is_none());
-        self.args2.points_backup()
+        let first = self.args1.points_backup();
+        let second = self.args2.points_backup();
+        debug_assert!(!(first.is_some() && second.is_some()));
+        first.or(second)
     }
 
     fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {

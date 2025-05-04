@@ -6,7 +6,6 @@ use parsa_python_cst::{
 use crate::{
     arguments::{ArgIterator, Args},
     database::{Database, PointsBackup},
-    debug,
     diagnostics::IssueKind,
     file::{infer_index, PythonFile},
     inference_state::{InferenceState, Mode},
@@ -345,11 +344,19 @@ impl<'db> Args<'db> for SliceArguments<'db, '_> {
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
-        debug!("TODO implement points_backup for SliceArguments");
-        None
+        let end = self.slice_type.cst_node.last_leaf_index();
+        Some(
+            self.slice_type
+                .file
+                .points
+                .backup(self.slice_type.node_index..end + 1),
+        )
     }
 
-    fn reset_points_from_backup(&self, _backup: &Option<PointsBackup>) {
-        debug!("TODO implement reset_from_backup for SliceArguments");
+    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
+        self.slice_type
+            .file
+            .points
+            .reset_from_backup(backup.as_ref().unwrap());
     }
 }
