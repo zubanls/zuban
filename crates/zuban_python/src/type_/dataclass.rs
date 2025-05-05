@@ -883,7 +883,23 @@ pub(crate) fn dataclass_initialize<'db>(
                 |issue| args.add_issue(i_s, issue),
                 false,
                 result_context,
-                Some(&|| Some(Type::Dataclass(dataclass.clone()))),
+                Some(&|| {
+                    if matches!(dataclass.class.generics, ClassGenerics::NotDefinedYet) {
+                        let type_vars = dataclass.class(i_s.db).use_cached_type_vars(i_s.db);
+                        if !type_vars.is_empty() {
+                            // Generics that are not defined yet generally resolve to Any, which is
+                            // not what we want here. The Self that we want to receive here should
+                            // have the exact same generics than this one.
+                            let mut dc = dataclass.as_ref().clone();
+                            dc.class.generics = ClassGenerics::List(
+                                type_vars.as_self_generic_list(dataclass.class.link),
+                            );
+
+                            return Some(Type::Dataclass(Rc::new(dc)));
+                        }
+                    }
+                    Some(Type::Dataclass(dataclass.clone()))
+                }),
                 Some(on_type_error),
             )
         };

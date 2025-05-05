@@ -555,7 +555,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             },
         ) {
             OverloadResult::Single(callable) => {
-                dbg!(callable, replace_self());
                 let result = callable.execute_internal(
                     i_s,
                     args,

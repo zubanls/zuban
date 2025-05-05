@@ -14,7 +14,6 @@ testListMethods
 testListOperators
 testListSetitemTuple
 
-testDataclassSelfType
 # mypy upgrade
 testPropertySetterDecorated
 

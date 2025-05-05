@@ -424,6 +424,18 @@ impl TypeVarLikes {
         GenericsList::new_generics(self.iter().map(|tv| tv.as_any_generic_item()).collect())
     }
 
+    pub fn as_self_generic_list(&self, defined_at: PointLink) -> GenericsList {
+        GenericsList::new_generics(
+            self.iter()
+                .enumerate()
+                .map(|(i, tv)| {
+                    tv.as_type_var_like_usage(i.into(), defined_at)
+                        .into_generic_item()
+                })
+                .collect(),
+        )
+    }
+
     pub fn as_default_or_any_generic_list(&self, db: &Database) -> GenericsList {
         GenericsList::new_generics(
             self.iter()
