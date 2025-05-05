@@ -496,3 +496,87 @@ class Container(Generic[T]): ...
 class C(Base):
     def __init__(self, g: Container[int]):
         super().__init__(g) # E: Argument 1 to "__init__" of "Base" has incompatible type "Container[int]"; expected "Container[Self]"
+
+[case overload_with_self]
+from typing import Self, overload, Any
+
+class C:
+    @overload
+    def __sub__(self, other: Self) -> bool: ...
+    @overload
+    def __sub__(self, other: int) -> bool: ...
+    def __sub__(self: Any, other) -> bool: ...  # TODO remove Any
+
+    @overload
+    def other(self, other: Self) -> Self: ...
+    @overload
+    def other(self, other: int) -> Self: ...
+    def other(self: Any, other) -> Self: ...  # TODO remove Any
+
+def f(c: C):
+    c - c
+    c.__sub__(c)
+
+    reveal_type(c.other(c))  # N: Revealed type is "__main__.C"
+    reveal_type(c.other(c))  # N: Revealed type is "__main__.C"
+
+class D(C): ...
+
+def g(d: D):
+    d - d
+    d.__sub__(d)
+
+    reveal_type(d.other(d))  # N: Revealed type is "__main__.D"
+    reveal_type(d.other(d))  # N: Revealed type is "__main__.D"
+
+[case overload_with_self__init__]
+from typing import Self, overload
+
+class C:
+    @overload
+    def __init__(self, other: Self): ...
+    @overload
+    def __init__(self, other: int): ...
+    def __init__(self, other): ...
+
+C(1)
+C(C(1))
+
+class D(C): ...
+
+D(1)
+D(D(1))
+
+[case dataclass_self_init_with_overload]
+from typing import Self, overload
+from dataclasses import dataclass
+
+@dataclass
+class C:
+    x: None | Self
+
+class D(C): ...
+
+def f(c: C, d: D):
+    C(c)
+    C(d)
+    C(None)
+    C(C(None))
+
+    D(d)
+    D(c)  # E: Argument 1 to "D" has incompatible type "C"; expected "None | Self"
+    D(None)
+    D(D(None))
+
+@dataclass(init=False)
+class E:
+    @overload
+    def __init__(self, other: Self): ...
+    @overload
+    def __init__(self, other: int): ...
+    def __init__(self, other): ...
+
+    x: str
+
+E(1)
+E(E(1))

@@ -24,7 +24,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, maybe_class_usage, replace_class_type_vars,
+        calculate_callable_type_vars_and_return2, maybe_class_usage, replace_class_type_vars,
         Generics, LookupKind, OnTypeError, ResultContext,
     },
     new_class,
@@ -876,13 +876,14 @@ pub(crate) fn dataclass_initialize<'db>(
                     .collect(),
             );
         } else {
-            calculate_callable_type_vars_and_return(
+            calculate_callable_type_vars_and_return2(
                 i_s,
                 Callable::new(__init__, Some(class)),
                 args.iter(i_s.mode),
                 |issue| args.add_issue(i_s, issue),
                 false,
                 result_context,
+                Some(&|| Some(Type::Dataclass(dataclass.clone()))),
                 Some(on_type_error),
             )
         };
