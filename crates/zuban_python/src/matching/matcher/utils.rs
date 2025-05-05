@@ -354,27 +354,6 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     add_issue: impl Fn(IssueKind),
     skip_first_param: bool,
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError>,
-) -> CalculatedTypeArgs {
-    calculate_callable_type_vars_and_return2(
-        i_s,
-        callable,
-        args,
-        add_issue,
-        skip_first_param,
-        result_context,
-        None,
-        on_type_error,
-    )
-}
-
-pub(crate) fn calculate_callable_type_vars_and_return2<'db: 'a, 'a>(
-    i_s: &InferenceState<'db, '_>,
-    callable: Callable<'a>,
-    args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
-    skip_first_param: bool,
-    result_context: &mut ResultContext,
     replace_self: Option<ReplaceSelf>,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {

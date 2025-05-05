@@ -12,9 +12,9 @@ pub(crate) use generics::Generics;
 pub(crate) use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
     calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_callable_type_vars_and_return2, calculate_class_dunder_init_type_vars_and_return,
-    calculate_function_type_vars_and_return, CalculatedTypeArgs, CheckedTypeRecursion,
-    FunctionOrCallable, Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
+    calculate_class_dunder_init_type_vars_and_return, calculate_function_type_vars_and_return,
+    CalculatedTypeArgs, CheckedTypeRecursion, FunctionOrCallable, Matcher, MatcherFormatResult,
+    ReplaceSelfInMatcher,
 };
 pub(crate) use result_context::{CouldBeALiteral, ResultContext};
 pub(crate) use utils::{

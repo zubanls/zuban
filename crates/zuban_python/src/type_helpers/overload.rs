@@ -12,7 +12,7 @@ use crate::{
     inferred::Inferred,
     matching::{
         calculate_callable_dunder_init_type_vars_and_return,
-        calculate_callable_type_vars_and_return2, replace_class_type_vars_in_callable,
+        calculate_callable_type_vars_and_return, replace_class_type_vars_in_callable,
         ArgumentIndexWithParam, CalculatedTypeArgs, FunctionOrCallable, Generics, OnTypeError,
         ResultContext, SignatureMatch,
     },
@@ -75,7 +75,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     None,
                 )
             } else {
-                calculate_callable_type_vars_and_return2(
+                calculate_callable_type_vars_and_return(
                     i_s,
                     callable,
                     args.iter(i_s.mode),
@@ -407,7 +407,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         None,
                     )
                 } else {
-                    calculate_callable_type_vars_and_return2(
+                    calculate_callable_type_vars_and_return(
                         i_s,
                         callable,
                         non_union_args.clone().into_iter(),

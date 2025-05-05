@@ -1038,6 +1038,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 |issue| args.add_issue(i_s, issue),
                 true,
                 &mut ResultContext::Unknown,
+                None,
                 Some(on_type_error),
             );
             Inferred::from_type(Type::NamedTuple(if nt.__new__.type_vars.is_empty() {
