@@ -23,7 +23,7 @@ use crate::{
     inferred::{AttributeKind, FunctionOrOverload, Inferred, MroIndex},
     matching::{
         calculate_callable_dunder_init_type_vars_and_return,
-        calculate_callable_type_vars_and_return, calculate_class_dunder_init_type_vars_and_return,
+        calculate_callable_type_vars_and_return2, calculate_class_dunder_init_type_vars_and_return,
         format_got_expected, maybe_class_usage, ErrorStrs, FunctionOrCallable, Generic, Generics,
         LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
     },
@@ -212,13 +212,14 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                     }
                     // Happens for example when NamedTuples are involved.
-                    None => calculate_callable_type_vars_and_return(
+                    None => calculate_callable_type_vars_and_return2(
                         i_s,
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(i_s.mode),
                         |issue| args.add_issue(i_s, issue),
                         false,
                         result_context,
+                        None,
                         Some(on_type_error),
                     ),
                 };

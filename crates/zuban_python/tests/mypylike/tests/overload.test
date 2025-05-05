@@ -705,3 +705,21 @@ def g(d: D):
 
     reveal_type(d.other(d))  # N: Revealed type is "__main__.D"
     reveal_type(d.other(d))  # N: Revealed type is "__main__.D"
+
+[case overload_with_self__init__]
+from typing import Self, overload
+
+class C:
+    @overload
+    def __init__(self, other: Self): ...
+    @overload
+    def __init__(self, other: int): ...
+    def __init__(self, other): ...
+
+C(1)
+C(C(1))
+
+class D(C): ...
+
+D(1)
+D(D(1))
