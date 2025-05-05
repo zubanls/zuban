@@ -12,7 +12,7 @@ use crate::{
     inferred::Inferred,
     matching::{
         calculate_callable_dunder_init_type_vars_and_return,
-        calculate_callable_type_vars_and_return, replace_class_type_vars_in_callable,
+        calculate_callable_type_vars_and_return2, replace_class_type_vars_in_callable,
         ArgumentIndexWithParam, CalculatedTypeArgs, FunctionOrCallable, Generics, OnTypeError,
         ResultContext, SignatureMatch,
     },
@@ -56,6 +56,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
+        replace_self: Option<ReplaceSelf>,
         on_type_error: OnTypeError,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
@@ -74,13 +75,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     None,
                 )
             } else {
-                calculate_callable_type_vars_and_return(
+                calculate_callable_type_vars_and_return2(
                     i_s,
                     callable,
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
                     result_context,
+                    replace_self,
                     None,
                 )
             }
@@ -183,6 +185,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 &|issue| args.add_issue(i_s, issue),
                 search_init,
                 class,
+                replace_self,
                 as_union_math_type,
                 0,
             ) {
@@ -222,6 +225,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 class,
                 search_init,
                 &mut ResultContext::Unknown,
+                replace_self,
                 on_type_error,
                 as_union_math_type,
             );
@@ -276,6 +280,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         add_issue: &impl Fn(IssueKind),
         search_init: bool,
         class: Option<&Class>,
+        replace_self: Option<ReplaceSelf>,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
         recursion_depth: usize,
     ) -> UnionMathResult {
@@ -297,6 +302,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     add_issue,
                     search_init,
                     class,
+                    replace_self,
                     as_union_math_type,
                     recursion_depth,
                 );
@@ -331,6 +337,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         add_issue,
                         search_init,
                         class,
+                        replace_self,
                         as_union_math_type,
                         recursion_depth + 1,
                     );
@@ -379,6 +386,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     add_issue,
                     search_init,
                     class,
+                    replace_self,
                     as_union_math_type,
                     recursion_depth,
                 )
@@ -399,13 +407,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         None,
                     )
                 } else {
-                    calculate_callable_type_vars_and_return(
+                    calculate_callable_type_vars_and_return2(
                         i_s,
                         callable,
                         non_union_args.clone().into_iter(),
                         add_issue,
                         skip_first_argument,
                         result_context,
+                        replace_self,
                         None,
                     )
                 };
@@ -521,7 +530,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         skip_first_argument: bool,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
-        replace_self_type: ReplaceSelf,
+        replace_self: ReplaceSelf,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name(i_s.db));
         let _indent = debug_indent();
@@ -532,6 +541,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             None,
             false,
             result_context,
+            Some(replace_self),
             on_type_error,
             &|callable, calculated_type_args| {
                 calculated_type_args
@@ -539,19 +549,20 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         i_s,
                         &callable.content.return_type,
                         self.class.as_ref(),
-                        replace_self_type,
+                        replace_self,
                     )
                     .as_type(i_s)
             },
         ) {
             OverloadResult::Single(callable) => {
+                dbg!(callable, replace_self());
                 let result = callable.execute_internal(
                     i_s,
                     args,
                     skip_first_argument,
                     on_type_error,
                     result_context,
-                    Some(replace_self_type),
+                    Some(replace_self),
                 );
                 if callable.content.return_type.is_never() {
                     FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())

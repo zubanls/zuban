@@ -3042,6 +3042,7 @@ impl Inference<'_, '_, '_> {
                     None,
                     false,
                     &mut ResultContext::Unknown,
+                    None,
                     OnTypeError::new(&on_argument_type_error),
                     &|c, calculated_type_args| {
                         let Some(guard) = &c.content.guard else {

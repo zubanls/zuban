@@ -6,7 +6,7 @@ use crate::{
     file::FLOW_ANALYSIS,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext},
+    matching::{calculate_callable_type_vars_and_return2, OnTypeError, ResultContext},
     type_::{CallableContent, NeverCause, ReplaceSelf, Type},
 };
 
@@ -90,13 +90,14 @@ impl<'a> Callable<'a> {
         result_context: &mut ResultContext,
         as_self_type: Option<ReplaceSelf>,
     ) -> Inferred {
-        let calculated_type_vars = calculate_callable_type_vars_and_return(
+        let calculated_type_vars = calculate_callable_type_vars_and_return2(
             i_s,
             *self,
             args.iter(i_s.mode),
             |issue| args.add_issue(i_s, issue),
             skip_first_argument,
             result_context,
+            as_self_type,
             Some(on_type_error),
         );
         calculated_type_vars.into_return_type(
