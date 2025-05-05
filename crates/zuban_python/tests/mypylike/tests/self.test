@@ -580,3 +580,27 @@ class E:
 
 E(1)
 E(E(1))
+
+[case namedtuple_self_init]
+from typing import Self, NamedTuple
+
+X = NamedTuple("X", [('x', Self | None)])  # E: Self type cannot be used in NamedTuple item type
+
+X(None)
+X(X(None))
+
+class C(NamedTuple):
+    x: None | Self  # E: Self type cannot be used in NamedTuple item type
+
+class D(C): ...
+
+def f(c: C, d: D):
+    C(c)
+    C(d)
+    C(None)
+    C(C(None))
+
+    D(d)
+    D(c)
+    D(None)
+    D(D(None))
