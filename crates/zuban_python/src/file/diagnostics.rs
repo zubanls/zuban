@@ -1279,29 +1279,32 @@ impl Inference<'_, '_, '_> {
         if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
             is_overload_member = true;
             if let Some(implementation) = &o.implementation {
-                let mut c_impl = Cow::Borrowed(&implementation.callable);
-                let remap = |class: Class, c: &CallableContent| {
-                    let mut cls = class;
-                    cls.generics = Generics::NotDefinedYet {
-                        class_ref: class.node_ref,
-                    };
-                    merge_class_type_vars(i_s.db, c, cls, cls, &TypeOrClass::Class(class))
-                };
-                let needs_remap = |class: &Class, c: &CallableContent| {
-                    c.has_self_type(self.i_s.db)
+                let maybe_remap = |class: Class, c: &mut Cow<CallableContent>| {
+                    if c.has_self_type(self.i_s.db)
                         || !class.use_cached_type_vars(self.i_s.db).is_empty()
-                };
-                if let Some(class) = function.class {
-                    if needs_remap(&class, &c_impl) {
-                        c_impl = Cow::Owned(remap(class, &c_impl));
+                    {
+                        let mut cls = class;
+                        cls.generics = Generics::NotDefinedYet {
+                            class_ref: class.node_ref,
+                        };
+                        *c = Cow::Owned(merge_class_type_vars(
+                            i_s.db,
+                            c,
+                            cls,
+                            cls,
+                            &TypeOrClass::Class(class),
+                        ));
                     }
+                };
+
+                let mut c_impl = Cow::Borrowed(&implementation.callable);
+                if let Some(class) = function.class {
+                    maybe_remap(class, &mut c_impl)
                 }
                 for (i, c1) in o.iter_functions().enumerate() {
                     let mut c1 = Cow::Borrowed(c1.as_ref());
                     if let Some(class) = function.class {
-                        if needs_remap(&class, &c1) {
-                            c1 = Cow::Owned(remap(class, &c1));
-                        }
+                        maybe_remap(class, &mut c1)
                     }
                     self.calc_overload_implementation_diagnostics(
                         &c1,
