@@ -32,10 +32,10 @@ use crate::{
     params::{matches_params, Param, WrappedParamType, WrappedStar},
     recoverable_error,
     type_::{
-        format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
-        FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
-        TypeVarVariance, Variance,
+        format_callable_params, merge_class_type_vars, AnyCause, CallableContent, CallableParams,
+        ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericItem, GenericsList,
+        IterCause, Literal, LiteralKind, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes,
+        Type, TypeVarKind, TypeVarLike, TypeVarVariance, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
@@ -1289,33 +1289,24 @@ impl Inference<'_, '_, '_> {
                                 FunctionKind::Function {
                                     had_first_self_or_class_annotation: true
                                 }
-                            )
+                            ) || c.has_self_type(self.i_s.db)
                         };
                         if needs_remap(&c1) || needs_remap(&c_impl) {
                             let remap = |c: &CallableContent| {
-                                let mut matcher = Matcher::new_callable_matcher(c);
-                                let first_type = c.first_positional_type()?;
-                                if !first_type
-                                    .is_super_type_of(
-                                        i_s,
-                                        &mut matcher,
-                                        &Class::with_undefined_generics(class.node_ref)
-                                            .as_type(i_s.db),
-                                    )
-                                    .bool()
-                                {
-                                    return None;
-                                }
-                                let c = c.remove_first_positional_param()?;
-                                Some(matcher.remove_self_from_callable(i_s, c))
+                                let mut cls = class;
+                                cls.generics = Generics::NotDefinedYet {
+                                    class_ref: class.node_ref,
+                                };
+                                merge_class_type_vars(
+                                    i_s.db,
+                                    c,
+                                    cls,
+                                    cls,
+                                    &TypeOrClass::Class(class),
+                                )
                             };
-                            // Try to remove the self signatures and if it doesn't work, we just
-                            // don't remove the signatures. We assume that if we cannot remap that
-                            // an error was raised in a different place.
-                            if let Some((new_c1, new_c2)) = remap(&c1).zip(remap(&c_impl)) {
-                                c1 = Cow::Owned(new_c1);
-                                c_impl = Cow::Owned(new_c2);
-                            }
+                            c1 = Cow::Owned(remap(&c1));
+                            c_impl = Cow::Owned(remap(&c_impl));
                         }
                     }
                     self.calc_overload_implementation_diagnostics(
@@ -1323,7 +1314,6 @@ impl Inference<'_, '_, '_> {
                         &c_impl,
                         implementation,
                         i + 1,
-                        function.class,
                     )
                 }
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
@@ -1709,11 +1699,10 @@ impl Inference<'_, '_, '_> {
         implementation_callable: &CallableContent,
         implementation: &OverloadImplementation,
         signature_index: usize,
-        class: Option<Class>,
     ) {
         create_matcher_with_independent_type_vars(
             self.i_s.db,
-            Some(&|| class.unwrap().as_type(self.i_s.db)),
+            None,
             implementation_callable,
             overload_item,
             |mut matcher, implementation_callable, overload_item| {

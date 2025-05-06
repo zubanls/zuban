@@ -498,20 +498,20 @@ class C(Base):
         super().__init__(g) # E: Argument 1 to "__init__" of "Base" has incompatible type "Container[int]"; expected "Container[Self]"
 
 [case overload_with_self]
-from typing import Self, overload, Any
+from typing import Self, overload
 
 class C:
     @overload
     def __sub__(self, other: Self) -> bool: ...
     @overload
     def __sub__(self, other: int) -> bool: ...
-    def __sub__(self: Any, other) -> bool: ...  # TODO remove Any
+    def __sub__(self, other) -> bool: ...
 
     @overload
     def other(self, other: Self) -> Self: ...
     @overload
     def other(self, other: int) -> Self: ...
-    def other(self: Any, other) -> Self: ...  # TODO remove Any
+    def other(self, other) -> Self: ...
 
 def f(c: C):
     c - c

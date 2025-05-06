@@ -927,11 +927,11 @@ pub fn format_params_as_param_spec(
 
 pub fn merge_class_type_vars(
     db: &Database,
-    callable: Rc<CallableContent>,
+    callable: &CallableContent,
     class: Class,
     attribute_class: Class,
     func_class_type: &TypeOrClass,
-) -> Rc<CallableContent> {
+) -> CallableContent {
     let mut attribute_class = attribute_class; // A lifetime issue
     let needs_self_type_variable = callable.has_self_type_after_first_param(db);
 
@@ -1011,7 +1011,7 @@ pub fn merge_class_type_vars(
         },
     );
     callable.type_vars = type_vars;
-    Rc::new(callable)
+    callable
 }
 
 pub fn add_param_spec_to_params(params: &mut Vec<CallableParam>, p: ParamSpecUsage) {
