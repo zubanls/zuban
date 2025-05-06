@@ -1278,35 +1278,29 @@ impl Inference<'_, '_, '_> {
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
             is_overload_member = true;
-            for (i, c1) in o.iter_functions().enumerate() {
-                if let Some(implementation) = &o.implementation {
+            if let Some(implementation) = &o.implementation {
+                let mut c_impl = Cow::Borrowed(&implementation.callable);
+                let remap = |class: Class, c: &CallableContent| {
+                    let mut cls = class;
+                    cls.generics = Generics::NotDefinedYet {
+                        class_ref: class.node_ref,
+                    };
+                    merge_class_type_vars(i_s.db, c, cls, cls, &TypeOrClass::Class(class))
+                };
+                let needs_remap = |class: &Class, c: &CallableContent| {
+                    c.has_self_type(self.i_s.db)
+                        || !class.use_cached_type_vars(self.i_s.db).is_empty()
+                };
+                if let Some(class) = function.class {
+                    if needs_remap(&class, &c_impl) {
+                        c_impl = Cow::Owned(remap(class, &c_impl));
+                    }
+                }
+                for (i, c1) in o.iter_functions().enumerate() {
                     let mut c1 = Cow::Borrowed(c1.as_ref());
-                    let mut c_impl = Cow::Borrowed(&implementation.callable);
                     if let Some(class) = function.class {
-                        let needs_remap = |c: &CallableContent| {
-                            matches!(
-                                c.kind,
-                                FunctionKind::Function {
-                                    had_first_self_or_class_annotation: true
-                                }
-                            ) || c.has_self_type(self.i_s.db)
-                        };
-                        if needs_remap(&c1) || needs_remap(&c_impl) {
-                            let remap = |c: &CallableContent| {
-                                let mut cls = class;
-                                cls.generics = Generics::NotDefinedYet {
-                                    class_ref: class.node_ref,
-                                };
-                                merge_class_type_vars(
-                                    i_s.db,
-                                    c,
-                                    cls,
-                                    cls,
-                                    &TypeOrClass::Class(class),
-                                )
-                            };
-                            c1 = Cow::Owned(remap(&c1));
-                            c_impl = Cow::Owned(remap(&c_impl));
+                        if needs_remap(&class, &c1) {
+                            c1 = Cow::Owned(remap(class, &c1));
                         }
                     }
                     self.calc_overload_implementation_diagnostics(
@@ -1316,6 +1310,9 @@ impl Inference<'_, '_, '_> {
                         i + 1,
                     )
                 }
+            }
+
+            for (i, c1) in o.iter_functions().enumerate() {
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
                     if is_overload_unmatchable(i_s, c1, c2) {
                         NodeRef::from_link(i_s.db, c2.defined_at).add_issue(
@@ -1706,7 +1703,22 @@ impl Inference<'_, '_, '_> {
             implementation_callable,
             overload_item,
             |mut matcher, implementation_callable, overload_item| {
-                //let self_binding = OnceCell::new();
+                let match_ = matches_params(
+                    self.i_s,
+                    &mut matcher,
+                    &overload_item.params,
+                    &implementation_callable.params,
+                );
+                if !match_.bool() {
+                    implementation
+                        .function(self.i_s.db, None)
+                        .add_issue_onto_start_including_decorator(
+                            self.i_s,
+                            IssueKind::OverloadImplementationParamsNotBroadEnough {
+                                signature_index,
+                            },
+                        );
+                }
                 let implementation_result = &implementation_callable.return_type;
                 let item_result = &overload_item.return_type;
                 // This is bivariant matching. This is how Mypy allows subtyping.
@@ -1722,23 +1734,6 @@ impl Inference<'_, '_, '_> {
                         .add_issue_onto_start_including_decorator(
                             self.i_s,
                             IssueKind::OverloadImplementationReturnTypeIncomplete {
-                                signature_index,
-                            },
-                        );
-                }
-
-                let match_ = matches_params(
-                    self.i_s,
-                    &mut matcher,
-                    &overload_item.params,
-                    &implementation_callable.params,
-                );
-                if !match_.bool() {
-                    implementation
-                        .function(self.i_s.db, None)
-                        .add_issue_onto_start_including_decorator(
-                            self.i_s,
-                            IssueKind::OverloadImplementationParamsNotBroadEnough {
                                 signature_index,
                             },
                         );
