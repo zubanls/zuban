@@ -6,8 +6,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
-testOverloadAndSelfTypesGenericNoOverlap
-
 # typeshed upgrade __getitem__ with generics
 testGetSlice
 testSliceSupportsIndex

@@ -1292,7 +1292,7 @@ impl Inference<'_, '_, '_> {
                             c,
                             cls,
                             cls,
-                            &TypeOrClass::Class(class),
+                            &TypeOrClass::Class(cls),
                         ));
                     }
                 };
