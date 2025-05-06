@@ -1811,3 +1811,74 @@ class Z(X):
 class Multi1(X, Y): ...
 class Multi2(Y, X): ...  # E: Cannot override writeable attribute "x" in base "X" with read-only property in base "Y"  [override] \
                          # E: Cannot override writeable attribute "y" in base "X" with read-only property in base "Y"  [override]
+
+[case override_cached_property_with_final_mypy_compatible]
+# flags: --mypy-compatible --show-error-codes
+from typing import final
+from functools import cached_property
+
+class X:
+    @cached_property
+    def x(self) -> int: return 1
+
+    @property
+    def y(self) -> int: return 1
+    @y.setter
+    def y(self, other) -> None: ...
+
+class Y:
+    @final
+    @cached_property
+    def x(self) -> int: return 1
+    @cached_property
+    @final
+    def y(self) -> int: return 1
+
+class Z(X):
+    @cached_property
+    @final
+    def x(self) -> int: return 1
+
+    @final
+    @cached_property
+    def y(self) -> int: return 1  # E: Cannot override writable attribute "y" with a final one  [misc]
+
+class Multi1(X, Y): ...  # E: Cannot override final attribute "x" (previously declared in base class "Y")  [misc] \
+                         # E: Cannot override final attribute "y" (previously declared in base class "Y")  [misc]
+class Multi2(Y, X): ...  # E: Cannot override writable attribute "y" with a final one  [misc]
+
+[case override_cached_property_with_final_no_mypy_compatible]
+# flags: --no-mypy-compatible --show-error-codes
+from typing import final
+from functools import cached_property
+
+class X:
+    @cached_property
+    def x(self) -> int: return 1
+
+    @property
+    def y(self) -> int: return 1
+    @y.setter
+    def y(self, other) -> None: ...
+
+class Y:
+    @final
+    @cached_property
+    def x(self) -> int: return 1
+    @cached_property
+    @final
+    def y(self) -> int: return 1
+
+class Z(X):
+    @final
+    @cached_property
+    def x(self) -> int: return 1  # E: Cannot override writable attribute "x" with a final one  [misc]
+
+    @final
+    @cached_property
+    def y(self) -> int: return 1  # E: Cannot override writable attribute "y" with a final one  [misc]
+
+class Multi1(X, Y): ...  # E: Cannot override final attribute "x" (previously declared in base class "Y")  [misc] \
+                         # E: Cannot override final attribute "y" (previously declared in base class "Y")  [misc]
+class Multi2(Y, X): ...  # E: Cannot override writable attribute "x" with a final one  [misc] \
+                         # E: Cannot override writable attribute "y" with a final one  [misc]

@@ -2436,6 +2436,8 @@ pub(super) fn check_override(
     if matched {
         if original_lookup_details.attr_kind.is_writable()
             && override_lookup_details.attr_kind.is_final()
+            && (!i_s.db.project.settings.mypy_compatible
+                || !original_lookup_details.attr_kind.is_cached_property())
         {
             let issue = IssueKind::CannotOverrideWritableWithFinalAttribute { name: name.into() };
             if let Some(func) = maybe_func() {
@@ -2930,7 +2932,10 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                             });
                             return;
                         }
-                        if inst2_lookup.attr_kind.is_writable() && inst1_lookup.attr_kind.is_final()
+                        if inst2_lookup.attr_kind.is_writable()
+                            && inst1_lookup.attr_kind.is_final()
+                            && (!i_s.db.project.settings.mypy_compatible
+                                || !inst2_lookup.attr_kind.is_cached_property())
                         {
                             add_issue(IssueKind::CannotOverrideWritableWithFinalAttribute {
                                 name: name.into(),
