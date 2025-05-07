@@ -6,9 +6,8 @@ use utils::InsertOnlyVec;
 
 use crate::{
     database::{Database, PointLink},
-    file::{GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
+    file::{FilePosition, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     lines::PositionInfos,
-    name::FilePosition,
     node_ref::NodeRef,
     type_::{TypeVarLike, Variance},
     utils::join_with_commas,

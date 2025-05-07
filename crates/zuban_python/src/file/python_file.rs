@@ -12,7 +12,7 @@ use utils::InsertOnlyVec;
 use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 
 use super::{
-    file_state::{File, Leaf},
+    file_state::{File, FilePosition, Leaf},
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
     name_resolution::NameResolution,
@@ -27,7 +27,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     lines::{NewlineIndices, PositionInfos},
-    name::{FilePosition, Names, TreeName},
+    name::{Names, TreeName},
     node_ref::NodeRef,
     type_::{DbString, LookupResult, Type},
     utils::SymbolTable,

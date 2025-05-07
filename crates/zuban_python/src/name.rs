@@ -2,43 +2,15 @@
 
 use std::fmt;
 
-use parsa_python_cst::{CodeIndex, Name as CSTName};
+use parsa_python_cst::Name as CSTName;
 
 use crate::{
     database::Database,
     file::{File, PythonFile},
-    PositionInfos,
 };
 
 type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
-
-#[derive(Debug)]
-pub(crate) struct FilePosition<'db> {
-    file: &'db dyn File,
-    position: CodeIndex,
-}
-
-impl<'db> FilePosition<'db> {
-    pub(crate) fn new(file: &'db dyn File, position: CodeIndex) -> Self {
-        Self { file, position }
-    }
-
-    pub(crate) fn wrap_sub_file(self, file: &'db dyn File, offset: CodeIndex) -> Self {
-        Self {
-            file,
-            position: self.position + offset,
-        }
-    }
-
-    pub fn byte_position(&self) -> CodeIndex {
-        self.position
-    }
-
-    pub fn position_infos(&self) -> PositionInfos<'db> {
-        self.file.byte_to_position_infos(self.position)
-    }
-}
 
 pub trait Name<'db>: fmt::Debug {
     fn name(&self) -> &str;

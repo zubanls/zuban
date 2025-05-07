@@ -11,7 +11,7 @@ use crate::{
     file::PythonFile,
     inferred::Inferred,
     lines::PositionInfos,
-    name::{FilePosition, Name, Names},
+    name::{Name, Names},
     PythonProject,
 };
 
@@ -46,4 +46,31 @@ pub trait File: std::fmt::Debug {
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
     fn invalidate_full_db(&mut self, project: &PythonProject);
     fn has_super_file(&self) -> bool;
+}
+
+#[derive(Debug)]
+pub(crate) struct FilePosition<'db> {
+    file: &'db dyn File,
+    position: CodeIndex,
+}
+
+impl<'db> FilePosition<'db> {
+    pub(crate) fn new(file: &'db dyn File, position: CodeIndex) -> Self {
+        Self { file, position }
+    }
+
+    pub(crate) fn wrap_sub_file(self, file: &'db dyn File, offset: CodeIndex) -> Self {
+        Self {
+            file,
+            position: self.position + offset,
+        }
+    }
+
+    pub fn byte_position(&self) -> CodeIndex {
+        self.position
+    }
+
+    pub fn position_infos(&self) -> PositionInfos<'db> {
+        self.file.byte_to_position_infos(self.position)
+    }
 }
