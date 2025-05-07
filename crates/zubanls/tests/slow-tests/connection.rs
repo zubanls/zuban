@@ -69,13 +69,21 @@ impl Connection {
         }
     }
 
-    pub(crate) fn initialized(panic_should_message_not_abort: bool, roots: &[&str]) -> Self {
+    pub(crate) fn initialized(
+        panic_should_message_not_abort: bool,
+        roots: &[&str],
+        position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
+    ) -> Self {
         let slf = Self::new_internal(panic_should_message_not_abort);
-        slf.initialize(roots);
+        slf.initialize(roots, position_encodings);
         slf
     }
 
-    pub(crate) fn initialize(&self, roots: &[&str]) -> InitializeResult {
+    pub(crate) fn initialize(
+        &self,
+        roots: &[&str],
+        position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
+    ) -> InitializeResult {
         let initialize_params = lsp_types::InitializeParams {
             workspace_folders: Some(
                 roots
@@ -107,6 +115,10 @@ impl Connection {
                         ]),
                         ..Default::default()
                     }),
+                    ..Default::default()
+                }),
+                general: Some(lsp_types::GeneralClientCapabilities {
+                    position_encodings,
                     ..Default::default()
                 }),
                 ..Default::default()

@@ -30,7 +30,7 @@ use support::Project;
 #[test]
 fn basic_server_setup() {
     let con = Connection::new();
-    let response = con.initialize(&["/foo/bar"]);
+    let response = con.initialize(&["/foo/bar"], None);
 
     // Check diagnostic capabilities
     {
@@ -56,7 +56,7 @@ fn basic_server_setup() {
 
 #[test]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(false, &["/foo/bar"]);
+    let con = Connection::initialized(false, &["/foo/bar"], None);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -87,7 +87,7 @@ fn request_after_shutdown_is_invalid() {
 
 #[test]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(false, &["/foo/bar"]);
+    let con = Connection::initialized(false, &["/foo/bar"], None);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
@@ -486,9 +486,44 @@ fn symlink_dir_loop() {
 }
 
 #[test]
+fn diagnostics_positions() {
+    use PositionEncodingKind as P;
+    for (start_column, len, client_encodings) in [
+        (11, 2, None),
+        (7, 2, Some(vec![P::UTF8])),
+        (11, 2, Some(vec![P::UTF16])),
+        (6, 1, Some(vec![P::UTF32])),
+        (7, 2, Some(vec![P::UTF8, P::UTF16, P::UTF32])),
+    ] {
+        let server = Project::with_fixture(
+            r#"
+            [file m.py]
+            'ä'; ä
+            "#,
+        )
+        .into_server_detailed(client_encodings.clone());
+        let diagnostics = server.full_diagnostics_for_file("m.py");
+        assert_eq!(diagnostics.len(), 1);
+        let diagnostic = diagnostics.into_iter().next().unwrap();
+        assert_eq!(diagnostic.message, "Name \"ä\" is not defined");
+        assert_eq!(diagnostic.range.start.line, 1);
+        assert_eq!(diagnostic.range.end.line, 1);
+        assert_eq!(
+            diagnostic.range.start.character, start_column,
+            "{client_encodings:?}"
+        );
+        assert_eq!(
+            diagnostic.range.end.character,
+            start_column + len,
+            "{client_encodings:?}"
+        );
+    }
+}
+
+#[test]
 fn check_panic_recovery() {
     let con = Connection::with_avoids_panics_and_messages_instead();
-    con.initialize(&["/foo/bar"]);
+    con.initialize(&["/foo/bar"], None);
 
     con.send(lsp_server::Notification::new("test-panic".to_string(), ()));
     let message = con.expect_notification_message();

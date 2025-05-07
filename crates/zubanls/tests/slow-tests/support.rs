@@ -48,6 +48,13 @@ impl<'a> Project<'a> {
     }
 
     pub(crate) fn into_server(self) -> Server {
+        self.into_server_detailed(None)
+    }
+
+    pub(crate) fn into_server_detailed(
+        self,
+        client_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
+    ) -> Server {
         // TODO let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
         let tmp_dir = write_files_from_fixture(self.fixture, self.root_dir_contains_symlink);
         let tmp_dir_path = tmp_dir.path();
@@ -71,6 +78,7 @@ impl<'a> Project<'a> {
             connection: Connection::initialized(
                 false,
                 &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
+                client_encodings,
             ),
         }
     }
@@ -126,6 +134,11 @@ impl Server {
     }
 
     pub(crate) fn diagnostics_for_file(&self, rel_path: &str) -> Vec<String> {
+        let items = self.full_diagnostics_for_file(rel_path);
+        items.into_iter().map(|d| d.message).collect()
+    }
+
+    pub(crate) fn full_diagnostics_for_file(&self, rel_path: &str) -> Vec<lsp_types::Diagnostic> {
         let res = self.request::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
             text_document: self.doc_id(rel_path),
             identifier: None,
@@ -138,8 +151,7 @@ impl Server {
             unreachable!()
         };
         assert!(report.related_documents.is_none());
-        let items = report.full_document_diagnostic_report.items;
-        items.into_iter().map(|d| d.message).collect()
+        report.full_document_diagnostic_report.items
     }
 
     fn with_wait(&self, callback: impl FnOnce()) {

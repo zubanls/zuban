@@ -73,7 +73,7 @@ impl PositionInfos<'_> {
     }
 
     pub fn utf16_bytes_column(&self) -> usize {
-        self.line_part().encode_utf16().count() + 1
+        self.line_part().encode_utf16().count() * 2 + 1
     }
 
     pub fn code_points_column(&self) -> usize {
