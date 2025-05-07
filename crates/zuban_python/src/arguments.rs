@@ -33,11 +33,11 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
             .expect("Otherwise add_issue should be implemented")
             .add_issue(i_s, issue)
     }
-    fn starting_line(&self) -> String {
+    fn starting_line(&self, db: &Database) -> String {
         let Some(node_ref) = self.as_node_ref_internal() else {
             return "<unkown line>".into();
         };
-        node_ref.line().to_string()
+        node_ref.line(db).to_string()
     }
     fn points_backup(&self) -> Option<PointsBackup> {
         None
@@ -316,8 +316,8 @@ impl<'db> Args<'db> for CombinedArgs<'db, '_> {
         self.args2.as_node_ref_internal()
     }
 
-    fn starting_line(&self) -> String {
-        self.args2.starting_line()
+    fn starting_line(&self, db: &Database) -> String {
+        self.args2.starting_line(db)
     }
 
     fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {

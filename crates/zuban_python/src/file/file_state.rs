@@ -36,7 +36,11 @@ pub trait File: std::fmt::Debug {
     fn node_start_position(&self, n: NodeIndex) -> FilePosition;
     fn node_end_position(&self, n: NodeIndex) -> FilePosition;
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
-    fn byte_to_position_infos(&self, byte: CodeIndex) -> PositionInfos;
+    fn byte_to_position_infos<'db>(
+        &'db self,
+        db: &'db Database,
+        byte: CodeIndex,
+    ) -> PositionInfos<'db>;
 
     fn file_path<'db>(&self, db: &'db Database) -> &'db str {
         db.file_path(self.file_index())
@@ -62,15 +66,11 @@ impl<'db> FilePosition<'db> {
     pub(crate) fn wrap_sub_file(self, file: &'db dyn File, offset: CodeIndex) -> Self {
         Self {
             file,
-            position: self.position + offset,
+            position: self.position,
         }
     }
 
-    pub fn byte_position(&self) -> CodeIndex {
-        self.position
-    }
-
-    pub fn position_infos(&self) -> PositionInfos<'db> {
-        self.file.byte_to_position_infos(self.position)
+    pub fn position_infos(&self, db: &'db Database) -> PositionInfos<'db> {
+        self.file.byte_to_position_infos(db, self.position)
     }
 }

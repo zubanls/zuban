@@ -117,7 +117,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         debug!(
                             "Decided overload for {} (called on #{}): {:?}",
                             self.name(i_s.db),
-                            args.starting_line(),
+                            args.starting_line(i_s.db),
                             callable.content.format(&FormatData::new_short(i_s.db))
                         );
                         args.reset_points_from_backup(&points_backup);
@@ -160,7 +160,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             debug!(
                 "Decided overload with any fallback for {} (called on #{}): {:?}",
                 self.name(i_s.db),
-                args.starting_line(),
+                args.starting_line(i_s.db),
                 callable.content.format(&FormatData::new_short(i_s.db))
             );
             return OverloadResult::Single(callable);
@@ -169,7 +169,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             debug!(
                 "Decided overload with arbitrary length not handled for {} (called on #{}): {:?}",
                 self.name(i_s.db),
-                args.starting_line(),
+                args.starting_line(i_s.db),
                 callable.content.format(&FormatData::new_short(i_s.db))
             );
             return OverloadResult::Single(callable);
@@ -193,7 +193,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     debug!(
                         "Decided overload as union math result {} (called on #{}): {:?}",
                         self.name(i_s.db),
-                        args.starting_line(),
+                        args.starting_line(i_s.db),
                         result.format(&FormatData::new_short(i_s.db))
                     );
                     return OverloadResult::Union(result);
@@ -237,7 +237,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             debug!(
                 "Decided overload as first similar: {} (called on #{}): {:?}",
                 self.name(i_s.db),
-                args.starting_line(),
+                args.starting_line(i_s.db),
                 callable.content.format(&FormatData::new_short(i_s.db))
             );
             return OverloadResult::Single(callable);

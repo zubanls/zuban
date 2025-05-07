@@ -666,7 +666,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     debug!(
                         "Found a cycle at {}:#{} on name {:?}",
                         self.file.qualified_name(self.i_s.db),
-                        node_ref.line(),
+                        node_ref.line(self.i_s.db),
                         node_ref.as_code()
                     );
                     node_ref.set_point(Point::new_specific(Specific::Cycle, Locality::Todo));
@@ -978,7 +978,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         if let Some(super_file) = &self.file.super_file {
             // This sub file currently means we're in a type definition.
             // Here we prefer modules, which is a debatable choice.
-            let super_file = self.i_s.db.loaded_python_file(*super_file);
+            let super_file = super_file.file(self.i_s.db);
             if let Some(name_ref) = super_file.lookup_symbol(name) {
                 return Some(StarImportResult::Link(name_ref.as_link()));
             }

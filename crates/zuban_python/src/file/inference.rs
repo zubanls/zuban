@@ -67,7 +67,7 @@ macro_rules! check_point_cache_with {
                     stringify!($name),
                     node.short_debug(),
                     self.file.qualified_name(self.i_s.db),
-                    self.file.byte_to_position_infos(node.start()).line,
+                    self.file.byte_to_position_infos(self.i_s.db, node.start()).line,
                     {
                         let point = self.point(node.index());
                         match point.kind() {
@@ -84,7 +84,7 @@ macro_rules! check_point_cache_with {
                     stringify!($name),
                     node.short_debug(),
                     self.file.qualified_name(self.i_s.db),
-                    self.file.byte_to_position_infos(node.start()).line,
+                    self.file.byte_to_position_infos(self.i_s.db, node.start()).line,
                 );
                 let _indent = debug_indent();
                 $func(self, node $(, $result_context)?)
@@ -996,7 +996,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             "Assign to name {} ({}:#{}): {}",
             name_def.as_code(),
             self.file.qualified_name(self.i_s.db),
-            self.file.byte_to_position_infos(name_def.start()).line,
+            self.file
+                .byte_to_position_infos(self.i_s.db, name_def.start())
+                .line,
             value.debug_info(self.i_s.db),
         );
         let _indent = debug_indent();
@@ -2125,7 +2127,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         add_issue: impl FnOnce(IssueKind),
     ) {
         let first_ref = NodeRef::new(self.file, first_index_of_definition);
-        let mut line = first_ref.line();
+        let mut line = first_ref.line(self.i_s.db);
         let i_s = self.i_s;
         if i_s.db.project.settings.mypy_compatible {
             // Mypy uses the line of the first decorator as the definition line. This feels
@@ -2135,7 +2137,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .maybe_name_of_function()
                 .and_then(|func| func.maybe_decorated())
             {
-                line = NodeRef::new(self.file, decorated.index()).line();
+                line = NodeRef::new(self.file, decorated.index()).line(self.i_s.db);
             }
         }
         let first_name_def = first_ref.expect_name().name_def().unwrap();
@@ -3810,7 +3812,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             "Infer name {} of stmt ({}:#{})",
             name_def.as_code(),
             self.file.qualified_name(self.i_s.db),
-            name_def.line(),
+            name_def.line(self.i_s.db),
         );
         match defining_stmt {
             DefiningStmt::FunctionDef(func_def) => {

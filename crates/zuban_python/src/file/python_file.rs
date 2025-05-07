@@ -67,6 +67,19 @@ impl ComplexValues {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct SuperFile {
+    file: FileIndex,
+    // This is is the offset where the sub file starts
+    offset: CodeIndex,
+}
+
+impl SuperFile {
+    pub fn file<'db>(&self, db: &'db Database) -> &'db PythonFile {
+        db.loaded_python_file(self.file)
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
@@ -79,7 +92,7 @@ pub(crate) struct PythonFile {
     pub issues: Diagnostics,
     pub star_imports: Box<[StarImport]>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
-    pub(crate) super_file: Option<FileIndex>,
+    pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
     flags: Option<TypeCheckerFlags>,
@@ -138,8 +151,18 @@ impl File for PythonFile {
             .line_column_to_byte(self.tree.code(), line, column)
     }
 
-    fn byte_to_position_infos(&self, byte: CodeIndex) -> PositionInfos {
-        self.newline_indices.position_infos(self.tree.code(), byte)
+    fn byte_to_position_infos<'db>(
+        &'db self,
+        db: &'db Database,
+        byte: CodeIndex,
+    ) -> PositionInfos<'db> {
+        if let Some(super_file) = self.super_file {
+            super_file
+                .file(db)
+                .byte_to_position_infos(db, super_file.offset + byte)
+        } else {
+            self.newline_indices.position_infos(self.tree.code(), byte)
+        }
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
@@ -497,7 +520,10 @@ impl<'db> PythonFile {
                 &db.project,
                 self.ignore_type_errors,
             );
-            file.super_file = Some(self.file_index);
+            file.super_file = Some(SuperFile {
+                file: self.file_index,
+                offset: start,
+            });
             file
         });
         // TODO just saving this in the cache and forgetting about it is a bad idea
@@ -737,7 +763,7 @@ impl<'db> PythonFile {
     pub fn flags<'x>(&'x self, db: &'x Database) -> &'x TypeCheckerFlags {
         if let Some(super_file) = self.super_file {
             debug_assert!(self.flags.is_none());
-            db.loaded_python_file(super_file).flags(db)
+            super_file.file(db).flags(db)
         } else {
             self.flags.as_ref().unwrap_or(&db.project.flags)
         }

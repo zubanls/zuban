@@ -273,7 +273,7 @@ impl<'file> NodeRef<'file> {
             "{}({}):#{}",
             self.file.qualified_name(db),
             self.file_index(),
-            self.line(),
+            self.line(db),
         )
     }
 
@@ -386,9 +386,9 @@ impl<'file> NodeRef<'file> {
         self.file.tree.node_start_position(self.node_index)
     }
 
-    pub fn line(&self) -> usize {
+    pub fn line(&self, db: &Database) -> usize {
         self.file
-            .byte_to_position_infos(self.node_start_position())
+            .byte_to_position_infos(db, self.node_start_position())
             .line
     }
 
@@ -441,7 +441,6 @@ impl fmt::Debug for NodeRef<'_> {
         }
         s.field("file_index", &self.file.file_index);
         s.field("node_index", &self.node_index);
-        s.field("line", &self.line());
         s.finish()
     }
 }

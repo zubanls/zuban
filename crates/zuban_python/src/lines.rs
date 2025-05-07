@@ -66,7 +66,7 @@ pub struct PositionInfos<'code> {
     pub byte_position: usize,
 }
 
-impl PositionInfos<'_> {
+impl<'code> PositionInfos<'code> {
     // All columns are one based
     pub fn utf8_bytes_column(&self) -> usize {
         self.byte_position - self.line_offset_in_code + 1
@@ -82,5 +82,9 @@ impl PositionInfos<'_> {
 
     fn line_part(&self) -> &str {
         &self.code[self.line_offset_in_code..self.byte_position]
+    }
+
+    pub(crate) fn code_until(&self, end_pos: PositionInfos) -> &'code str {
+        &self.code[self.byte_position..end_pos.byte_position]
     }
 }

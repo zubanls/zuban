@@ -714,16 +714,12 @@ impl<'db> Diagnostic<'db> {
     }
 
     pub fn start_position(&self) -> PositionInfos<'db> {
-        self.account_for_sub_file(FilePosition::new(
-            self.node_file(),
-            self.issue.start_position,
-        ))
-        .position_infos()
+        FilePosition::new(self.node_file(), self.issue.start_position).position_infos(self.db)
     }
 
     pub fn end_position(&self) -> PositionInfos<'db> {
         self.account_for_sub_file(FilePosition::new(self.node_file(), self.issue.end_position))
-            .position_infos()
+            .position_infos(self.db)
     }
 
     pub fn severity(&self) -> Severity {
@@ -734,8 +730,7 @@ impl<'db> Diagnostic<'db> {
     }
 
     fn code_under_issue(&self) -> &'db str {
-        &self.file.tree.code()
-            [self.start_position().byte_position..self.end_position().byte_position]
+        self.start_position().code_until(self.end_position())
     }
 
     fn node_file(&self) -> &'db PythonFile {
