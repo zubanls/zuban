@@ -26,7 +26,7 @@ use crate::{
     imports::{python_import_with_needs_exact_case, ImportResult, STUBS_SUFFIX},
     inference_state::InferenceState,
     inferred::Inferred,
-    lines::NewlineIndices,
+    lines::{NewlineIndices, PositionInfos},
     name::{FilePosition, Names, TreeName},
     node_ref::NodeRef,
     type_::{DbString, LookupResult, Type},
@@ -138,9 +138,8 @@ impl File for PythonFile {
             .line_column_to_byte(self.tree.code(), line, column)
     }
 
-    fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
-        self.newline_indices
-            .byte_to_line_column(self.tree.code(), byte)
+    fn byte_to_position_infos(&self, byte: CodeIndex) -> PositionInfos {
+        self.newline_indices.position_infos(self.tree.code(), byte)
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {

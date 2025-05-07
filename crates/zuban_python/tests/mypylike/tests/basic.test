@@ -1061,3 +1061,9 @@ x: set[str] = {1}  # E: Set item 0 has incompatible type "int"; expected "str"  
 [case list_slice_access]
 def f(x: list[int]):
     reveal_type(x[:1]) # N: Revealed type is "list[int]"
+
+[case unicode_column_positions]
+# flags: --show-column-numbers --show-error-end
+'ä'; ä
+[out]
+__main__:2:6:2:7: error: Name "ä" is not defined

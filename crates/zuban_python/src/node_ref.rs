@@ -387,7 +387,9 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn line(&self) -> usize {
-        self.file.byte_to_line_column(self.node_start_position()).0
+        self.file
+            .byte_to_position_infos(self.node_start_position())
+            .line
     }
 
     pub fn maybe_redirect<'db>(&self, db: &'db Database) -> Option<NodeRef<'db>> {

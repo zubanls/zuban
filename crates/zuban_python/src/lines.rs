@@ -39,13 +39,48 @@ impl NewlineIndices {
         byte + column as CodeIndex
     }
 
-    pub fn byte_to_line_column(&self, code: &str, byte: CodeIndex) -> (usize, usize) {
+    pub fn position_infos<'code>(
+        &self,
+        code: &'code str,
+        byte_position: CodeIndex,
+    ) -> PositionInfos<'code> {
         let lines = self.lines(code);
-        let line = lines.partition_point(|&l| l <= byte as CodeIndex);
-        if line == 0 {
-            (line + 1, byte as usize + 1)
-        } else {
-            (line + 1, (byte - lines[line - 1] + 1) as usize)
+        let line = lines.partition_point(|&l| l <= byte_position as CodeIndex);
+        PositionInfos {
+            line: line + 1,
+            code,
+            line_offset_in_code: line
+                .checked_sub(1)
+                .map(|line| lines[line] as usize)
+                .unwrap_or(0),
+            byte_position: byte_position as usize,
         }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct PositionInfos<'code> {
+    pub line: usize, // 1-based line number
+    pub line_offset_in_code: usize,
+    code: &'code str,
+    pub byte_position: usize,
+}
+
+impl PositionInfos<'_> {
+    // All columns are one based
+    pub fn utf8_bytes_column(&self) -> usize {
+        self.byte_position - self.line_offset_in_code + 1
+    }
+
+    pub fn utf16_bytes_column(&self) -> usize {
+        self.line_part().encode_utf16().count() + 1
+    }
+
+    pub fn code_points_column(&self) -> usize {
+        self.line_part().chars().count() + 1
+    }
+
+    fn line_part(&self) -> &str {
+        &self.code[self.line_offset_in_code..self.byte_position]
     }
 }

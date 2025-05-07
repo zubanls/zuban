@@ -67,7 +67,7 @@ macro_rules! check_point_cache_with {
                     stringify!($name),
                     node.short_debug(),
                     self.file.qualified_name(self.i_s.db),
-                    self.file.byte_to_line_column(node.start()).0,
+                    self.file.byte_to_position_infos(node.start()).line,
                     {
                         let point = self.point(node.index());
                         match point.kind() {
@@ -84,7 +84,7 @@ macro_rules! check_point_cache_with {
                     stringify!($name),
                     node.short_debug(),
                     self.file.qualified_name(self.i_s.db),
-                    self.file.byte_to_line_column(node.start()).0,
+                    self.file.byte_to_position_infos(node.start()).line,
                 );
                 let _indent = debug_indent();
                 $func(self, node $(, $result_context)?)
@@ -996,7 +996,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             "Assign to name {} ({}:#{}): {}",
             name_def.as_code(),
             self.file.qualified_name(self.i_s.db),
-            self.file.byte_to_line_column(name_def.start()).0,
+            self.file.byte_to_position_infos(name_def.start()).line,
             value.debug_info(self.i_s.db),
         );
         let _indent = debug_indent();

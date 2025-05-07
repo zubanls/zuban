@@ -30,8 +30,8 @@ pub use diagnostics::Severity;
 use file::{File, Leaf, PythonFile};
 use inference_state::InferenceState;
 use inferred::Inferred;
+pub use lines::PositionInfos;
 use matching::invalidate_protocol_cache;
-pub use name::FilePosition;
 use name::Names;
 
 pub struct Project {

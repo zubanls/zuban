@@ -7,13 +7,14 @@ use parsa_python_cst::{CodeIndex, Name as CSTName};
 use crate::{
     database::Database,
     file::{File, PythonFile},
+    PositionInfos,
 };
 
 type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
 
 #[derive(Debug)]
-pub struct FilePosition<'db> {
+pub(crate) struct FilePosition<'db> {
     file: &'db dyn File,
     position: CodeIndex,
 }
@@ -34,8 +35,8 @@ impl<'db> FilePosition<'db> {
         self.position
     }
 
-    pub fn line_and_column(&self) -> (usize, usize) {
-        self.file.byte_to_line_column(self.position)
+    pub fn position_infos(&self) -> PositionInfos<'db> {
+        self.file.byte_to_position_infos(self.position)
     }
 }
 
@@ -43,10 +44,6 @@ pub trait Name<'db>: fmt::Debug {
     fn name(&self) -> &str;
 
     fn file_path(&self) -> &str;
-
-    fn start_position(&self) -> FilePosition<'db>;
-
-    fn end_position(&self) -> FilePosition<'db>;
 
     // TODO
     //fn definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
@@ -106,20 +103,6 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
 
     fn file_path(&self) -> &str {
         self.db.file_path(self.file.file_index)
-    }
-
-    fn start_position(&self) -> FilePosition<'db> {
-        FilePosition {
-            file: self.file,
-            position: self.cst_name.start(),
-        }
-    }
-
-    fn end_position(&self) -> FilePosition<'db> {
-        FilePosition {
-            file: self.file,
-            position: self.cst_name.end(),
-        }
     }
 
     fn documentation(&self) -> String {

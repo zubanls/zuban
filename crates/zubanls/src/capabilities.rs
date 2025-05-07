@@ -8,46 +8,52 @@ use lsp_types::{
     WorkspaceServerCapabilities,
 };
 
-pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> ServerCapabilities {
-    ServerCapabilities {
-        position_encoding: Some(client_capabilities.negotiated_encoding()),
-        text_document_sync: Some(TextDocumentSyncCapability::Options(
-            TextDocumentSyncOptions {
-                open_close: Some(true),
-                change: Some(TextDocumentSyncKind::FULL),
-                will_save: None,
-                will_save_wait_until: None,
-                save: None, // Currently not needed
-            },
-        )),
-        workspace: Some(WorkspaceServerCapabilities {
-            workspace_folders: Some(WorkspaceFoldersServerCapabilities {
-                supported: Some(true),
-                change_notifications: Some(OneOf::Left(true)),
-            }),
-            file_operations: Some(WorkspaceFileOperationsServerCapabilities {
-                did_create: None,
-                will_create: None,
-                did_rename: None,
-                // TODO do we need this?
-                will_rename: None,
-                did_delete: None,
-                will_delete: None,
-            }),
-        }),
-        diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
-            lsp_types::DiagnosticOptions {
-                identifier: None,
-                inter_file_dependencies: true,
-                // FIXME
-                workspace_diagnostics: false,
-                work_done_progress_options: WorkDoneProgressOptions {
-                    work_done_progress: None,
+pub(crate) fn server_capabilities(
+    client_capabilities: &ClientCapabilities,
+) -> (ServerCapabilities, NegotiatedEncoding) {
+    let negotiated_encoding = client_capabilities.negotiated_encoding();
+    (
+        ServerCapabilities {
+            position_encoding: Some(negotiated_encoding.into()),
+            text_document_sync: Some(TextDocumentSyncCapability::Options(
+                TextDocumentSyncOptions {
+                    open_close: Some(true),
+                    change: Some(TextDocumentSyncKind::FULL),
+                    will_save: None,
+                    will_save_wait_until: None,
+                    save: None, // Currently not needed
                 },
-            },
-        )),
-        ..Default::default()
-    }
+            )),
+            workspace: Some(WorkspaceServerCapabilities {
+                workspace_folders: Some(WorkspaceFoldersServerCapabilities {
+                    supported: Some(true),
+                    change_notifications: Some(OneOf::Left(true)),
+                }),
+                file_operations: Some(WorkspaceFileOperationsServerCapabilities {
+                    did_create: None,
+                    will_create: None,
+                    did_rename: None,
+                    // TODO do we need this?
+                    will_rename: None,
+                    did_delete: None,
+                    will_delete: None,
+                }),
+            }),
+            diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
+                lsp_types::DiagnosticOptions {
+                    identifier: None,
+                    inter_file_dependencies: true,
+                    // FIXME
+                    workspace_diagnostics: false,
+                    work_done_progress_options: WorkDoneProgressOptions {
+                        work_done_progress: None,
+                    },
+                },
+            )),
+            ..Default::default()
+        },
+        negotiated_encoding,
+    )
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -60,7 +66,7 @@ impl ClientCapabilities {
         Self { caps }
     }
 
-    pub(crate) fn negotiated_encoding(&self) -> PositionEncodingKind {
+    pub(crate) fn negotiated_encoding(&self) -> NegotiatedEncoding {
         let client_encodings = match &self.caps.general {
             Some(general) => general.position_encodings.as_deref().unwrap_or_default(),
             None => &[],
@@ -68,14 +74,14 @@ impl ClientCapabilities {
 
         for enc in client_encodings {
             if enc == &PositionEncodingKind::UTF8 {
-                return PositionEncodingKind::UTF8;
+                return NegotiatedEncoding::UTF8;
             } else if enc == &PositionEncodingKind::UTF32 {
-                return PositionEncodingKind::UTF32;
+                return NegotiatedEncoding::UTF32;
             }
             // NB: intentionally prefer just about anything else to utf-16.
         }
 
-        PositionEncodingKind::UTF16
+        NegotiatedEncoding::UTF16
     }
 
     pub(crate) fn workspace_edit_resource_operations(
@@ -265,5 +271,22 @@ impl ClientCapabilities {
                 .insert_replace_support
         })()
         .unwrap_or_default()
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum NegotiatedEncoding {
+    UTF8,
+    UTF16,
+    UTF32,
+}
+
+impl From<NegotiatedEncoding> for PositionEncodingKind {
+    fn from(value: NegotiatedEncoding) -> Self {
+        match value {
+            NegotiatedEncoding::UTF8 => PositionEncodingKind::UTF8,
+            NegotiatedEncoding::UTF16 => PositionEncodingKind::UTF16,
+            NegotiatedEncoding::UTF32 => PositionEncodingKind::UTF32,
+        }
     }
 }

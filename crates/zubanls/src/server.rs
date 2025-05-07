@@ -15,7 +15,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use vfs::{AbsPath, LocalFS, NotifyEvent, VfsHandler as _};
 use zuban_python::Project;
 
-use crate::capabilities::{server_capabilities, ClientCapabilities};
+use crate::capabilities::{server_capabilities, ClientCapabilities, NegotiatedEncoding};
 use crate::notification_handlers::TestPanic;
 use crate::panic_hooks;
 
@@ -85,7 +85,7 @@ pub fn run_server_with_custom_connection(
     };
 
     let client_capabilities = ClientCapabilities::new(capabilities);
-    let server_capabilities = server_capabilities(&client_capabilities);
+    let (server_capabilities, negotiated_encoding) = server_capabilities(&client_capabilities);
 
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
@@ -148,7 +148,7 @@ pub fn run_server_with_custom_connection(
 
     let mut global_state = GlobalState::new(
         &connection.sender,
-        &client_capabilities,
+        negotiated_encoding,
         workspace_roots.clone(),
         typeshed_path,
     );
@@ -165,13 +165,6 @@ pub fn run_server() -> anyhow::Result<()> {
     run_server_with_custom_connection(connection, None, || Ok(io_threads.join()?))
 }
 
-/*
-let client_capabilities = init_params.capabilities;
-let position_encoding = Self::find_best_position_encoding(&client_capabilities);
-let server_capabilities = Self::server_capabilities(position_encoding);
-
-*/
-
 struct NotificationDispatcher<'a, 'sender> {
     not: Option<lsp_server::Notification>,
     global_state: &'a mut GlobalState<'sender>,
@@ -182,6 +175,7 @@ pub(crate) struct GlobalState<'sender> {
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
     typeshed_path: Option<Box<AbsPath>>,
+    pub negotiated_encoding: NegotiatedEncoding,
     project: Option<Project>,
     pub shutdown_requested: bool,
 }
@@ -189,7 +183,7 @@ pub(crate) struct GlobalState<'sender> {
 impl<'sender> GlobalState<'sender> {
     fn new(
         sender: &'sender Sender<lsp_server::Message>,
-        _capabilities: &ClientCapabilities,
+        negotiated_encoding: NegotiatedEncoding,
         roots: Rc<[String]>,
         typeshed_path: Option<Box<AbsPath>>,
     ) -> Self {
@@ -198,6 +192,7 @@ impl<'sender> GlobalState<'sender> {
             sender,
             roots,
             typeshed_path,
+            negotiated_encoding,
             project: None,
             shutdown_requested: false,
         }

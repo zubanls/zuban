@@ -6,13 +6,17 @@ use lsp_types::{
 };
 use zuban_python::Severity;
 
-use crate::server::{GlobalState, LspError};
+use crate::{
+    capabilities::NegotiatedEncoding,
+    server::{GlobalState, LspError},
+};
 
 impl GlobalState<'_> {
     pub(crate) fn handle_document_diagnostics(
         &mut self,
         params: DocumentDiagnosticParams,
     ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
+        let encoding = self.negotiated_encoding;
         let project = self.project();
         let path = Self::uri_to_path(project, params.text_document.uri);
         let Some(mut document) = project.document(&path) else {
@@ -27,9 +31,13 @@ impl GlobalState<'_> {
             .iter()
             .map(|issue| Diagnostic {
                 range: {
-                    let to_lsp_position = |pos: zuban_python::FilePosition| {
-                        let (line, column) = pos.line_and_column();
-                        Position::new(line as u32, column as u32)
+                    let to_lsp_position = |pos: zuban_python::PositionInfos| {
+                        let column = match encoding {
+                            NegotiatedEncoding::UTF8 => pos.utf8_bytes_column(),
+                            NegotiatedEncoding::UTF16 => pos.utf16_bytes_column(),
+                            NegotiatedEncoding::UTF32 => pos.code_points_column(),
+                        };
+                        Position::new(pos.line as u32, column as u32)
                     };
                     lsp_types::Range {
                         start: to_lsp_position(issue.start_position()),

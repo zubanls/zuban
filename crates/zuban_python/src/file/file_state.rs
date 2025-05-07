@@ -10,6 +10,7 @@ use crate::{
     diagnostics::Diagnostic,
     file::PythonFile,
     inferred::Inferred,
+    lines::PositionInfos,
     name::{FilePosition, Name, Names},
     PythonProject,
 };
@@ -35,7 +36,7 @@ pub trait File: std::fmt::Debug {
     fn node_start_position(&self, n: NodeIndex) -> FilePosition;
     fn node_end_position(&self, n: NodeIndex) -> FilePosition;
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
-    fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
+    fn byte_to_position_infos(&self, byte: CodeIndex) -> PositionInfos;
 
     fn file_path<'db>(&self, db: &'db Database) -> &'db str {
         db.file_path(self.file_index())

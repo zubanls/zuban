@@ -7,6 +7,7 @@ use utils::InsertOnlyVec;
 use crate::{
     database::{Database, PointLink},
     file::{GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
+    lines::PositionInfos,
     name::FilePosition,
     node_ref::NodeRef,
     type_::{TypeVarLike, Variance},
@@ -713,15 +714,17 @@ impl<'db> Diagnostic<'db> {
         }
     }
 
-    pub fn start_position(&self) -> FilePosition<'db> {
+    pub fn start_position(&self) -> PositionInfos<'db> {
         self.account_for_sub_file(FilePosition::new(
             self.node_file(),
             self.issue.start_position,
         ))
+        .position_infos()
     }
 
-    pub fn end_position(&self) -> FilePosition<'db> {
+    pub fn end_position(&self) -> PositionInfos<'db> {
         self.account_for_sub_file(FilePosition::new(self.node_file(), self.issue.end_position))
+            .position_infos()
     }
 
     pub fn severity(&self) -> Severity {
@@ -732,8 +735,8 @@ impl<'db> Diagnostic<'db> {
     }
 
     fn code_under_issue(&self) -> &'db str {
-        &self.file.tree.code()[self.start_position().byte_position() as usize
-            ..self.end_position().byte_position() as usize]
+        &self.file.tree.code()
+            [self.start_position().byte_position..self.end_position().byte_position]
     }
 
     fn node_file(&self) -> &'db PythonFile {
@@ -1980,10 +1983,11 @@ impl<'db> Diagnostic<'db> {
             .handler
             .strip_separator_prefix(path)
             .unwrap_or(path);
-        let line_column = self.start_position().line_and_column();
+        let start = self.start_position();
+        let end = self.end_position();
         let mut additional_notes = vec![];
         let error = self.message_with_notes(&mut additional_notes);
-        let mut result = fmt_line(config, path, line_column, self.end_position(), kind, &error);
+        let mut result = fmt_line(config, path, start, end, kind, &error);
         if config.show_error_codes {
             if let Some(mypy_error_code) = self.issue.kind.mypy_error_code() {
                 result += &format!("  [{mypy_error_code}]");
@@ -1991,14 +1995,7 @@ impl<'db> Diagnostic<'db> {
         }
         for note in additional_notes {
             result += "\n";
-            result += &fmt_line(
-                config,
-                path,
-                line_column,
-                self.end_position(),
-                "note",
-                &note,
-            );
+            result += &fmt_line(config, path, start, end, "note", &note);
         }
         result
     }
@@ -2007,22 +2004,21 @@ impl<'db> Diagnostic<'db> {
 fn fmt_line(
     config: &DiagnosticConfig,
     path: &str,
-    (line, column): (usize, usize),
-    end_position: FilePosition,
+    start: PositionInfos,
+    end: PositionInfos,
     type_: &str,
     error: &str,
 ) -> String {
     let mut line_number_infos = String::with_capacity(32);
     let mut add_part = |n| line_number_infos.push_str(&format!(":{n}"));
-    add_part(line);
+    add_part(start.line);
     if config.show_column_numbers {
-        add_part(column);
+        add_part(start.code_points_column());
     }
     if config.show_error_end {
-        let (line, column) = end_position.line_and_column();
-        add_part(line);
+        add_part(end.line);
         if config.show_column_numbers {
-            add_part(column);
+            add_part(end.code_points_column());
         }
     }
     format!("{path}{line_number_infos}: {type_}: {error}")
