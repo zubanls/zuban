@@ -33,8 +33,6 @@ pub trait File: std::fmt::Debug {
     fn infer_operator_leaf<'db>(&'db self, db: &'db Database, keyword: Keyword<'db>) -> Inferred;
     fn file_index(&self) -> FileIndex;
 
-    fn node_start_position(&self, n: NodeIndex) -> FilePosition;
-    fn node_end_position(&self, n: NodeIndex) -> FilePosition;
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_position_infos<'db>(
         &'db self,
@@ -50,27 +48,4 @@ pub trait File: std::fmt::Debug {
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
     fn invalidate_full_db(&mut self, project: &PythonProject);
     fn has_super_file(&self) -> bool;
-}
-
-#[derive(Debug)]
-pub(crate) struct FilePosition<'db> {
-    file: &'db dyn File,
-    position: CodeIndex,
-}
-
-impl<'db> FilePosition<'db> {
-    pub(crate) fn new(file: &'db dyn File, position: CodeIndex) -> Self {
-        Self { file, position }
-    }
-
-    pub(crate) fn wrap_sub_file(self, file: &'db dyn File, offset: CodeIndex) -> Self {
-        Self {
-            file,
-            position: self.position,
-        }
-    }
-
-    pub fn position_infos(&self, db: &'db Database) -> PositionInfos<'db> {
-        self.file.byte_to_position_infos(db, self.position)
-    }
 }

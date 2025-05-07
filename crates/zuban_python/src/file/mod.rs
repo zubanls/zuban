@@ -11,7 +11,7 @@ mod type_var_finder;
 mod utils;
 
 pub(crate) use diagnostics::{check_multiple_inheritance, OVERLAPPING_REVERSE_TO_NORMAL_METHODS};
-pub(crate) use file_state::{File, FilePosition, Leaf};
+pub(crate) use file_state::{File, Leaf};
 pub(crate) use flow_analysis::{process_unfinished_partials, FLOW_ANALYSIS};
 use inference::Inference;
 pub(crate) use inference::{first_defined_name, first_defined_name_of_multi_def};

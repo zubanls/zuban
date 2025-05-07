@@ -12,7 +12,7 @@ use utils::InsertOnlyVec;
 use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 
 use super::{
-    file_state::{File, FilePosition, Leaf},
+    file_state::{File, Leaf},
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
     name_resolution::NameResolution,
@@ -138,14 +138,6 @@ impl File for PythonFile {
         self.tree.code()
     }
 
-    fn node_start_position(&self, n: NodeIndex) -> FilePosition {
-        FilePosition::new(self, self.tree.node_start_position(n))
-    }
-
-    fn node_end_position(&self, n: NodeIndex) -> FilePosition {
-        FilePosition::new(self, self.tree.node_end_position(n))
-    }
-
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
         self.newline_indices
             .line_column_to_byte(self.tree.code(), line, column)
@@ -181,14 +173,9 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
-        for (code_index, file_index) in self.sub_files.borrow().iter() {
+        for (_, file_index) in self.sub_files.borrow().iter() {
             let file = db.loaded_python_file(*file_index);
-            vec.extend(
-                file.diagnostics(db)
-                    .into_vec()
-                    .into_iter()
-                    .map(|d| d.wrap_subfile(self, *code_index)),
-            );
+            vec.extend(file.diagnostics(db).into_vec().into_iter());
         }
         vec.sort_by_key(|diag| diag.issue.start_position);
         vec.into_boxed_slice()
@@ -783,6 +770,13 @@ impl<'db> PythonFile {
                     .star_import_file(&star_import)
                     .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
+    }
+
+    pub fn original_file(&'db self, db: &'db Database) -> &'db Self {
+        match self.super_file {
+            Some(super_file) => db.loaded_python_file(super_file.file).original_file(db),
+            None => self,
+        }
     }
 }
 

@@ -6,8 +6,6 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 
-testInvalidNestedClassReferenceInDecl
-invalid_nested_class_forward_reference
 # typeshed upgrade __getitem__ with generics
 testGetSlice
 testSliceSupportsIndex

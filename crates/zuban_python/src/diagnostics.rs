@@ -6,7 +6,7 @@ use utils::InsertOnlyVec;
 
 use crate::{
     database::{Database, PointLink},
-    file::{FilePosition, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
+    file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     lines::PositionInfos,
     node_ref::NodeRef,
     type_::{TypeVarLike, Variance},
@@ -650,12 +650,6 @@ impl Issue {
     }
 }
 
-#[derive(Copy, Clone)]
-struct SubFileOffset<'db> {
-    file: &'db PythonFile,
-    offset: CodeIndex,
-}
-
 // These roughly correspond to LSP DiagnosticSeverity:
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
 pub enum Severity {
@@ -668,58 +662,22 @@ pub enum Severity {
 pub struct Diagnostic<'db> {
     db: &'db Database,
     file: &'db PythonFile,
-    in_sub_file: Option<SubFileOffset<'db>>,
     pub(crate) issue: &'db Issue,
 }
 
 impl<'db> Diagnostic<'db> {
     pub(crate) fn new(db: &'db Database, file: &'db PythonFile, issue: &'db Issue) -> Self {
-        Self {
-            db,
-            file,
-            issue,
-            in_sub_file: None,
-        }
-    }
-
-    pub(crate) fn wrap_subfile(self, file: &'db PythonFile, offset: CodeIndex) -> Self {
-        Self {
-            db: self.db,
-            file,
-            issue: self.issue,
-            in_sub_file: Some(match self.in_sub_file {
-                None => SubFileOffset {
-                    file: self.file,
-                    offset,
-                },
-                Some(other) => {
-                    return Diagnostic {
-                        file: other.file,
-                        db: self.db,
-                        in_sub_file: None,
-                        issue: self.issue,
-                    }
-                    .wrap_subfile(file, offset + other.offset);
-                }
-            }),
-        }
-    }
-
-    fn account_for_sub_file(&self, pos: FilePosition<'db>) -> FilePosition<'db> {
-        if let Some(s) = &self.in_sub_file {
-            pos.wrap_sub_file(self.file, s.offset)
-        } else {
-            pos
-        }
+        Self { db, file, issue }
     }
 
     pub fn start_position(&self) -> PositionInfos<'db> {
-        FilePosition::new(self.node_file(), self.issue.start_position).position_infos(self.db)
+        self.file
+            .byte_to_position_infos(self.db, self.issue.start_position)
     }
 
     pub fn end_position(&self) -> PositionInfos<'db> {
-        self.account_for_sub_file(FilePosition::new(self.node_file(), self.issue.end_position))
-            .position_infos(self.db)
+        self.file
+            .byte_to_position_infos(self.db, self.issue.end_position)
     }
 
     pub fn severity(&self) -> Severity {
@@ -731,13 +689,6 @@ impl<'db> Diagnostic<'db> {
 
     fn code_under_issue(&self) -> &'db str {
         self.start_position().code_until(self.end_position())
-    }
-
-    fn node_file(&self) -> &'db PythonFile {
-        self.in_sub_file
-            .as_ref()
-            .map(|f| f.file)
-            .unwrap_or(self.file)
     }
 
     pub fn mypy_error_code(&self) -> &'static str {
@@ -1967,10 +1918,11 @@ impl<'db> Diagnostic<'db> {
             | IssueKind::InvariantNote { .. } => "note",
             _ => "error",
         };
+        let original_file = self.file.original_file(self.db);
         let path = self
             .db
-            .file_path(self.file.file_index)
-            .trim_start_matches(&**self.file.file_entry(self.db).parent.workspace_path());
+            .file_path(original_file.file_index)
+            .trim_start_matches(&**original_file.file_entry(self.db).parent.workspace_path());
         let path = self
             .db
             .vfs

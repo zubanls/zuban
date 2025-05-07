@@ -14,34 +14,21 @@ pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
 
 pub trait Name<'db>: fmt::Debug {
     fn name(&self) -> &str;
-
     fn file_path(&self) -> &str;
-
-    // TODO
-    //fn definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
-
     fn documentation(&self) -> String;
-
     fn description(&self) -> String;
-
     fn qualified_names(&self) -> Option<Vec<String>>;
-
     fn is_implementation(&self) -> bool {
         true
     }
-
     fn type_hint(&self) -> Option<String> {
         None
     }
-
     fn signatures(&self) -> Signatures {
         vec![]
     }
-
     fn infer(&self);
-
     fn goto(&self) -> Names<'db>;
-
     fn is_definition(&self) -> bool {
         false
     }
