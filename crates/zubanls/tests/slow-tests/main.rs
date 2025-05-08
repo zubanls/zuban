@@ -127,11 +127,11 @@ fn diagnostics_for_saved_files() {
                   "range": {
                     "start": {
                       "line": 2,
-                      "character": 21,
+                      "character": 41,
                     },
                     "end": {
                       "line": 2,
-                      "character": 24,
+                      "character": 47,
                     },
                   },
                   "severity": 1,
@@ -147,7 +147,7 @@ fn diagnostics_for_saved_files() {
                     },
                     "end": {
                       "line": 4,
-                      "character": 4,
+                      "character": 7,
                     },
                   },
                   "severity": 1,
