@@ -18,7 +18,7 @@ pub use local_fs::LocalFS;
 pub use normalized_path::NormalizedPath;
 pub use path::AbsPath;
 pub use tree::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
-pub use vfs::{InvalidationResult, Vfs, VfsFile};
+pub use vfs::{InvalidationResult, Vfs, VfsFile, VfsPanicRecovery};
 pub use workspaces::{Workspace, WorkspaceKind};
 
 pub type NotifyEvent = notify::Result<notify::Event>;

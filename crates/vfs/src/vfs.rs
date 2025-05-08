@@ -11,8 +11,15 @@ use crate::{
 };
 
 pub trait VfsFile: Unpin {
+    type Artifacts;
     fn code(&self) -> &str;
+    fn into_recoverable_artifacts(self) -> Self::Artifacts;
     fn invalidate_references_to(&mut self, file_index: FileIndex);
+}
+
+pub struct VfsPanicRecovery<T> {
+    files: Vec<Option<(Box<NormalizedPath>, T)>>,
+    in_memory_files: HashMap<Box<NormalizedPath>, FileIndex>,
 }
 
 pub struct Vfs<F: VfsFile> {
@@ -99,6 +106,23 @@ impl<F: VfsFile> Vfs<F> {
             workspaces,
             files: files.into(),
             in_memory_files: Default::default(),
+        }
+    }
+
+    pub fn into_panic_recovery(self) -> VfsPanicRecovery<F::Artifacts> {
+        VfsPanicRecovery {
+            files: self
+                .files
+                .into_iter()
+                .map(|f| {
+                    let file_state = Pin::into_inner(f);
+                    Some((
+                        file_state.path,
+                        file_state.file.into_inner()?.into_recoverable_artifacts(),
+                    ))
+                })
+                .collect(),
+            in_memory_files: self.in_memory_files,
         }
     }
 

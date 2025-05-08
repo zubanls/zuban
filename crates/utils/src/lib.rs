@@ -83,6 +83,10 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
     pub fn as_vec_mut(&mut self) -> &mut Vec<Pin<Box<T>>> {
         self.vec.get_mut()
     }
+
+    pub fn into_iter(self) -> impl Iterator<Item = Pin<Box<T>>> {
+        self.vec.into_inner().into_iter()
+    }
 }
 
 impl<T: fmt::Debug> fmt::Debug for InsertOnlyVec<T> {

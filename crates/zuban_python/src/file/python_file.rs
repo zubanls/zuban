@@ -205,8 +205,14 @@ impl File for PythonFile {
 }
 
 impl vfs::VfsFile for PythonFile {
+    type Artifacts = Tree;
+
     fn code(&self) -> &str {
         self.tree.code()
+    }
+
+    fn into_recoverable_artifacts(self) -> Tree {
+        self.tree
     }
 
     fn invalidate_references_to(&mut self, file_index: FileIndex) {
@@ -248,18 +254,18 @@ impl<'db> PythonFile {
     ) -> Self {
         debug!("Initialize {} ({file_index})", file_entry.name);
         let is_stub = file_entry.name.ends_with(".pyi");
-        PythonFile::new(project, file_index, file_entry, code, is_stub)
+        let tree = Tree::parse(code);
+        PythonFile::new(project, file_index, file_entry, tree, is_stub)
     }
 
     pub fn new(
         project_options: &PythonProject,
         file_index: FileIndex,
         file_entry: &FileEntry,
-        code: Box<str>,
+        tree: Tree,
         is_stub: bool,
     ) -> Self {
         let issues = Diagnostics::default();
-        let tree = Tree::parse(code);
         let mut ignore_type_errors =
             tree.has_type_ignore_at_start()
                 .unwrap_or_else(|ignore_code| {

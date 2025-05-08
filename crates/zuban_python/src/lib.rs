@@ -21,7 +21,7 @@ mod type_;
 mod type_helpers;
 mod utils;
 
-use parsa_python_cst::CodeIndex;
+use parsa_python_cst::{CodeIndex, Tree};
 use vfs::{AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
@@ -51,6 +51,12 @@ impl Project {
 
     pub fn invalidate_path(&mut self, path: &AbsPath) {
         self.db.invalidate_path(path)
+    }
+
+    pub fn into_panic_recovery(self) -> PanicRecovery {
+        PanicRecovery {
+            vfs: self.db.vfs.into_panic_recovery(),
+        }
     }
 
     pub fn search(&self, _string: &str, _all_scopes: bool) {}
@@ -432,4 +438,8 @@ impl Diagnostics<'_> {
     pub fn sort_issues_by_kind(&mut self) {
         self.issues.sort_by_key(|issue| &issue.issue.kind)
     }
+}
+
+pub struct PanicRecovery {
+    vfs: vfs::VfsPanicRecovery<Tree>,
 }
