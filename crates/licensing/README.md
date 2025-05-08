@@ -12,7 +12,7 @@ services.
 To create a license use a command like
 
 ```
-ZUBAN_SIGNING_KEY=`cat` cargo run create --name Dave --email info@zubanls.com --company Squirrels
+ZUBAN_SIGNING_KEY=`cat` cargo run -p licensing create --name Dave --email info@zubanls.com --company Squirrels
 ```
 
 Make sure to **never** leak the private key. It should **never** be part of the **shell history** or somehow be provided **as an argument to a process** (which would leak it when looking at processes).

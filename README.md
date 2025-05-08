@@ -8,6 +8,20 @@ Copyright (c) 2020-2025 Dave Halter. All rights reserved.
 Use `pip install zuban` to install it.
 
 
+## Licensing
+
+Create a license with (see also licensing README):
+
+```
+ZUBAN_SIGNING_KEY=`cat` cargo run -p licensing create --name Dave --email info@zubanls.com --company Squirrels
+```
+
+and store it at:
+
+- Linux: `/home/<user>/.config/zuban/license.json`
+- Windows: `C:\Users\<User>\AppData\Roaming\zuban\license.json`
+- Mac: `/Users/<User>/Library/Application Support/zuban/license.json`
+
 ## Development
 
 You might want to run `cargo install cargo-insta` and run `cargo insta` for
