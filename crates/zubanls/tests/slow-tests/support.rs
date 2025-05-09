@@ -208,7 +208,7 @@ impl Server {
         let message = self.connection.expect_notification_message();
         assert_eq!(message.typ, lsp_types::MessageType::ERROR);
         assert!(
-            message.message.starts_with("ZubanLS test paniced"),
+            message.message.starts_with("ZubanLS paniced"),
             "{}",
             message.message
         );

@@ -553,7 +553,7 @@ fn check_panic_recovery() {
 
     // Check that the files (especially in memory files) are still working
     assert_eq!(req("foo.py"), vec![r#""bytes" not callable"#]);
-    assert_eq!(req("bar.py"), vec![r#""bytes" not callable"#]);
+    assert_eq!(req("bar.py"), vec![r#""str" not callable"#]);
     assert_eq!(req("in_mem.py"), vec![r#""int" not callable"#]);
 
     // Check that in memory files can be changed after a panic

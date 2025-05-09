@@ -141,6 +141,11 @@ impl<F: VfsFile> Vfs<F> {
         debug_assert!(self.in_memory_files.is_empty());
         debug_assert!(self.files.is_empty());
         for recoverable_file in recovery.files.into_iter() {
+            tracing::debug!(
+                "Load recovered file {} (is in memory file: {})",
+                &recoverable_file.path,
+                recoverable_file.is_in_memory_file
+            );
             let ensured =
                 self.workspaces
                     .ensure_file(&*self.handler, case_sensitive, &recoverable_file.path);

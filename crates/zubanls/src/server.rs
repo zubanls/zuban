@@ -284,7 +284,12 @@ impl<'sender> GlobalState<'sender> {
                 .collect();
             config.settings.typeshed_path = self.typeshed_path.clone();
 
-            *project = Some(Project::new(Box::new(vfs_handler), config));
+            let vfs = Box::new(vfs_handler);
+            *project = Some(if let Some(recovery) = self.panic_recovery.take() {
+                Project::from_recovery(vfs, config, recovery)
+            } else {
+                Project::new(vfs, config)
+            });
             project.as_mut().unwrap()
         }
     }
