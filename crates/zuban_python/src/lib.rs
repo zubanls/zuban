@@ -44,6 +44,15 @@ impl Project {
         Self { db }
     }
 
+    pub fn from_recovery(
+        vfs: Box<dyn VfsHandler>,
+        options: ProjectOptions,
+        recovery: PanicRecovery,
+    ) -> Self {
+        let db = Database::from_recovery(vfs, options, recovery.vfs);
+        Self { db }
+    }
+
     pub fn without_watcher(options: ProjectOptions) -> Self {
         let db = Database::new(Box::new(LocalFS::without_watcher()), options);
         Self { db }

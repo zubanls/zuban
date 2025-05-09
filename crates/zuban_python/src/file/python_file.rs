@@ -253,9 +253,8 @@ impl<'db> PythonFile {
         code: Box<str>,
     ) -> Self {
         debug!("Initialize {} ({file_index})", file_entry.name);
-        let is_stub = file_entry.name.ends_with(".pyi");
         let tree = Tree::parse(code);
-        PythonFile::new(project, file_index, file_entry, tree, is_stub)
+        PythonFile::new(project, file_index, file_entry, tree)
     }
 
     pub fn new(
@@ -263,8 +262,8 @@ impl<'db> PythonFile {
         file_index: FileIndex,
         file_entry: &FileEntry,
         tree: Tree,
-        is_stub: bool,
     ) -> Self {
+        let is_stub = file_entry.name.ends_with(".pyi");
         let issues = Diagnostics::default();
         let mut ignore_type_errors =
             tree.has_type_ignore_at_start()

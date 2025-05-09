@@ -25,10 +25,6 @@ impl Connection {
         Self::new_internal(false)
     }
 
-    pub(crate) fn with_avoids_panics_and_messages_instead() -> Self {
-        Self::new_internal(true)
-    }
-
     fn new_internal(panic_should_message_not_abort: bool) -> Self {
         logging_config::setup_logging_for_tests();
         let (connection1, connection2) = lsp_server::Connection::memory();

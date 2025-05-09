@@ -48,12 +48,13 @@ impl<'a> Project<'a> {
     }
 
     pub(crate) fn into_server(self) -> Server {
-        self.into_server_detailed(None)
+        self.into_server_detailed(None, false)
     }
 
     pub(crate) fn into_server_detailed(
         self,
         client_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
+        panic_should_message_not_abort: bool,
     ) -> Server {
         // TODO let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
         let tmp_dir = write_files_from_fixture(self.fixture, self.root_dir_contains_symlink);
@@ -76,7 +77,7 @@ impl<'a> Project<'a> {
         Server {
             tmp_dir,
             connection: Connection::initialized(
-                false,
+                panic_should_message_not_abort,
                 &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
                 client_encodings,
             ),
@@ -175,6 +176,42 @@ impl Server {
             }
         }
         unreachable!("Reached a timeout");
+    }
+
+    pub(crate) fn raise_and_recover_panic_in_language_server(&self) {
+        self.connection
+            .send(lsp_server::Notification::new("test-panic".to_string(), ()));
+
+        let message = self.connection.expect_notification_message();
+        assert_eq!(message.typ, lsp_types::MessageType::ERROR);
+        let message = message.message;
+
+        // Check the hook
+        assert!(
+            message
+                .starts_with("ZubanLS paniced, please open an issue on GitHub with the details:"),
+            "{message}"
+        );
+        // Check the message
+        assert!(message.contains("Test Panic"), "{message}");
+        // Check for traceback occurrence
+        assert!(
+            message.contains("zubanls::server::GlobalState::event_loop"),
+            "{message}"
+        );
+        assert!(
+            message.contains("zubanls::notification_handlers::"),
+            "{message}"
+        );
+
+        // Catch the "redirected" panic, which is now a message
+        let message = self.connection.expect_notification_message();
+        assert_eq!(message.typ, lsp_types::MessageType::ERROR);
+        assert!(
+            message.message.starts_with("ZubanLS test paniced"),
+            "{}",
+            message.message
+        );
     }
 
     pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {

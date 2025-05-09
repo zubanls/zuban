@@ -501,7 +501,7 @@ fn diagnostics_positions() {
             'ä'; ä
             "#,
         )
-        .into_server_detailed(client_encodings.clone());
+        .into_server_detailed(client_encodings.clone(), false);
         let diagnostics = server.full_diagnostics_for_file("m.py");
         assert_eq!(diagnostics.len(), 1);
         let diagnostic = diagnostics.into_iter().next().unwrap();
@@ -522,37 +522,51 @@ fn diagnostics_positions() {
 
 #[test]
 fn check_panic_recovery() {
-    let con = Connection::with_avoids_panics_and_messages_instead();
-    con.initialize(&["/foo/bar"], None);
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        b''()
+        [file bar.py]
+        ""()
+        "#,
+    )
+    .into_server_detailed(None, false);
 
-    con.send(lsp_server::Notification::new("test-panic".to_string(), ()));
-    let message = con.expect_notification_message();
-    assert_eq!(message.typ, lsp_types::MessageType::ERROR);
-    let message = message.message;
+    let req = |name| server.diagnostics_for_file(name);
 
-    // Check the hook
-    assert!(
-        message.starts_with("ZubanLS paniced, please open an issue on GitHub with the details:"),
-        "{message}"
-    );
-    // Check the message
-    assert!(message.contains("Test Panic"), "{message}");
-    // Check for traceback occurrence
-    assert!(
-        message.contains("zubanls::server::GlobalState::event_loop"),
-        "{message}"
-    );
-    assert!(
-        message.contains("zubanls::notification_handlers::"),
-        "{message}"
-    );
+    // Open an in memory file that doesn't otherwise exist
+    server.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: server.doc_id("in_mem.py").uri,
+            language_id: "python".to_owned(),
+            version: 0,
+            text: "1()".to_owned(),
+        },
+    });
 
-    // Catch the "redirected" panic, which is now a message
-    let message = con.expect_notification_message();
-    assert_eq!(message.typ, lsp_types::MessageType::ERROR);
-    assert!(
-        message.message.starts_with("ZubanLS test paniced"),
-        "{}",
-        message.message
-    );
+    // Check before panic (bar.py is intentionally not checked!)
+    assert_eq!(req("foo.py"), vec![r#""bytes" not callable"#]);
+    assert_eq!(req("in_mem.py"), vec![r#""int" not callable"#]);
+
+    // Introduce a panic
+    server.raise_and_recover_panic_in_language_server();
+
+    // Check that the files (especially in memory files) are still working
+    assert_eq!(req("foo.py"), vec![r#""bytes" not callable"#]);
+    assert_eq!(req("bar.py"), vec![r#""bytes" not callable"#]);
+    assert_eq!(req("in_mem.py"), vec![r#""int" not callable"#]);
+
+    // Check that in memory files can be changed after a panic
+    server.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
+        text_document: VersionedTextDocumentIdentifier {
+            uri: server.doc_id("in_mem.py").uri,
+            version: 1,
+        },
+        content_changes: vec![TextDocumentContentChangeEvent {
+            text: "".into(),
+            range: None,
+            range_length: None,
+        }],
+    });
+    assert!(req("in_mem.py").is_empty());
 }

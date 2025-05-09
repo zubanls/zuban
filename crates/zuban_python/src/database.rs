@@ -7,7 +7,7 @@ use std::{
 };
 
 use config::{OverrideConfig, Settings};
-use parsa_python_cst::NodeIndex;
+use parsa_python_cst::{NodeIndex, Tree};
 use vfs::{
     AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Vfs,
     VfsHandler, WorkspaceKind,
@@ -906,6 +906,14 @@ pub(crate) struct Database {
 
 impl Database {
     pub fn new(vfs_handler: Box<dyn VfsHandler>, options: ProjectOptions) -> Self {
+        Self::new_internal(vfs_handler, options, None)
+    }
+
+    pub fn new_internal(
+        vfs_handler: Box<dyn VfsHandler>,
+        options: ProjectOptions,
+        recovery: Option<vfs::VfsPanicRecovery<Tree>>,
+    ) -> Self {
         let project = PythonProject {
             sys_path: sys_path::create_sys_path(&*vfs_handler, &options.settings),
             settings: options.settings,
@@ -939,13 +947,30 @@ impl Database {
             vfs.add_workspace(p.clone(), WorkspaceKind::SitePackages)
         }
 
+        if let Some(recovery) = recovery {
+            vfs.load_panic_recovery(
+                project.flags.case_sensitive,
+                recovery,
+                |index, file_entry, tree| PythonFile::new(&project, index, file_entry, tree),
+            );
+        }
+
         let mut this = Self {
             vfs,
             python_state: PythonState::reserve(),
             project,
         };
+
         this.generate_python_state();
         this
+    }
+
+    pub fn from_recovery(
+        vfs_handler: Box<dyn VfsHandler>,
+        options: ProjectOptions,
+        recovery: vfs::VfsPanicRecovery<Tree>,
+    ) -> Self {
+        Database::new_internal(vfs_handler, options, Some(recovery))
     }
 
     pub fn try_to_reuse_project_resources_for_tests(&mut self, options: ProjectOptions) -> Self {

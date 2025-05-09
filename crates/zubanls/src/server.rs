@@ -13,7 +13,7 @@ use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
 use vfs::{AbsPath, LocalFS, NotifyEvent, VfsHandler as _};
-use zuban_python::Project;
+use zuban_python::{PanicRecovery, Project};
 
 use crate::capabilities::{server_capabilities, ClientCapabilities, NegotiatedEncoding};
 use crate::notification_handlers::TestPanic;
@@ -108,42 +108,7 @@ pub fn run_server_with_custom_connection(
     let hook_sender = connection.sender.clone();
     // On panic, notify the client.
     let _hook = panic_hooks::enter(Box::new(move |panic_info| {
-        use std::io::Write;
-
-        let backtrace = std::backtrace::Backtrace::force_capture();
-        tracing::error!("Panic hook: {panic_info}\n{backtrace}");
-
-        // Currently std::panic::get_backtrace_style is unstable:
-        // https://github.com/rust-lang/rust/issues/93346
-        let use_backtrace = match std::env::var_os("RUST_BACKTRACE") {
-            Some(x) if &x == "0" => false,
-            None => false,
-            _ => true,
-        };
-
-        // We also generally want to print to stderr when a panic happens.
-        // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
-        let mut stderr = std::io::stderr().lock();
-        if use_backtrace {
-            writeln!(stderr, "Panic hook: {panic_info}\n{backtrace}").ok();
-        } else {
-            writeln!(stderr, "Panic hook: {panic_info}").ok();
-        }
-
-        // It's not guaranteed that we can notify the client, but we try to.
-        let _ = hook_sender.send(lsp_server::Message::Notification(
-            lsp_server::Notification {
-                method: lsp_types::notification::ShowMessage::METHOD.into(),
-                params: serde_json::to_value(lsp_types::ShowMessageParams {
-                    typ: lsp_types::MessageType::ERROR,
-                    message: format!(
-                        "ZubanLS paniced, please open an issue on GitHub with the details:\n\
-                         {panic_info}\n\n{backtrace}"
-                    ),
-                })
-                .unwrap(),
-            },
-        ));
+        on_panic(&hook_sender, panic_info)
     }));
 
     let mut global_state = GlobalState::new(
@@ -156,6 +121,45 @@ pub fn run_server_with_custom_connection(
     cleanup()?;
     tracing::info!("Server did successfully shut down");
     Ok(())
+}
+
+fn on_panic(hook_sender: &Sender<Message>, panic_info: impl std::fmt::Display) {
+    use std::io::Write;
+
+    let backtrace = std::backtrace::Backtrace::force_capture();
+    tracing::error!("Panic hook: {panic_info}\n{backtrace}");
+
+    // Currently std::panic::get_backtrace_style is unstable:
+    // https://github.com/rust-lang/rust/issues/93346
+    let use_backtrace = match std::env::var_os("RUST_BACKTRACE") {
+        Some(x) if &x == "0" => false,
+        None => false,
+        _ => true,
+    };
+
+    // We also generally want to print to stderr when a panic happens.
+    // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
+    let mut stderr = std::io::stderr().lock();
+    if use_backtrace {
+        writeln!(stderr, "Panic hook: {panic_info}\n{backtrace}").ok();
+    } else {
+        writeln!(stderr, "Panic hook: {panic_info}").ok();
+    }
+
+    // It's not guaranteed that we can notify the client, but we try to.
+    let _ = hook_sender.send(lsp_server::Message::Notification(
+        lsp_server::Notification {
+            method: lsp_types::notification::ShowMessage::METHOD.into(),
+            params: serde_json::to_value(lsp_types::ShowMessageParams {
+                typ: lsp_types::MessageType::ERROR,
+                message: format!(
+                    "ZubanLS paniced, please open an issue on GitHub with the details:\n\
+                     {panic_info}\n\n{backtrace}"
+                ),
+            })
+            .unwrap(),
+        },
+    ));
 }
 
 pub fn run_server() -> anyhow::Result<()> {
@@ -177,6 +181,7 @@ pub(crate) struct GlobalState<'sender> {
     typeshed_path: Option<Box<AbsPath>>,
     pub negotiated_encoding: NegotiatedEncoding,
     project: Option<Project>,
+    panic_recovery: Option<PanicRecovery>,
     pub shutdown_requested: bool,
 }
 
@@ -194,6 +199,7 @@ impl<'sender> GlobalState<'sender> {
             typeshed_path,
             negotiated_encoding,
             project: None,
+            panic_recovery: None,
             shutdown_requested: false,
         }
     }
@@ -324,18 +330,33 @@ impl<'sender> GlobalState<'sender> {
     }
 
     fn on_lsp_message_and_return_on_shutdown(&mut self, msg: Message) -> bool {
-        use lsp_types::notification::Notification;
-        match msg {
-            Message::Request(r) => self.on_request(r),
-            Message::Notification(n) => {
-                if n.method == lsp_types::notification::Exit::METHOD {
-                    return true;
+        // It is a bit questionable that we use AssertUnwindSafe here. But the data is mostly in
+        // self.project and will be cleaned up if it panics.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            use lsp_types::notification::Notification;
+            match msg {
+                Message::Request(r) => self.on_request(r),
+                Message::Notification(n) => {
+                    if n.method == lsp_types::notification::Exit::METHOD {
+                        return true;
+                    }
+                    self.on_notification(n)
                 }
-                self.on_notification(n)
+                Message::Response(r) => self.complete_request(r),
             }
-            Message::Response(r) => self.complete_request(r),
+            false
+        }));
+        result.unwrap_or_else(|err| {
+            on_panic(&self.sender, format!("{err:?}"));
+            self.recover_from_panic();
+            false
+        })
+    }
+
+    fn recover_from_panic(&mut self) {
+        if let Some(project) = self.project.take() {
+            self.panic_recovery = Some(project.into_panic_recovery());
         }
-        false
     }
 
     fn on_notify_events(&mut self, event: NotifyEvent) {

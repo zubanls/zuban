@@ -17,9 +17,14 @@ pub trait VfsFile: Unpin {
     fn invalidate_references_to(&mut self, file_index: FileIndex);
 }
 
+struct RecoveryFile<T> {
+    path: Box<NormalizedPath>,
+    artifacts: T,
+    invalidates_db: bool,
+    is_in_memory_file: bool,
+}
 pub struct VfsPanicRecovery<T> {
-    files: Vec<Option<(Box<NormalizedPath>, T)>>,
-    in_memory_files: HashMap<Box<NormalizedPath>, FileIndex>,
+    files: Vec<RecoveryFile<T>>,
 }
 
 pub struct Vfs<F: VfsFile> {
@@ -114,15 +119,42 @@ impl<F: VfsFile> Vfs<F> {
             files: self
                 .files
                 .into_iter()
-                .map(|f| {
+                .filter_map(|f| {
                     let file_state = Pin::into_inner(f);
-                    Some((
-                        file_state.path,
-                        file_state.file.into_inner()?.into_recoverable_artifacts(),
-                    ))
+                    Some(RecoveryFile {
+                        is_in_memory_file: self.in_memory_files.contains_key(&file_state.path),
+                        path: file_state.path,
+                        invalidates_db: file_state.file_entry.invalidations.invalidates_db(),
+                        artifacts: file_state.file.into_inner()?.into_recoverable_artifacts(),
+                    })
                 })
                 .collect(),
-            in_memory_files: self.in_memory_files,
+        }
+    }
+
+    pub fn load_panic_recovery(
+        &mut self,
+        case_sensitive: bool,
+        recovery: VfsPanicRecovery<F::Artifacts>,
+        new_file: impl Fn(FileIndex, &FileEntry, F::Artifacts) -> F,
+    ) {
+        debug_assert!(self.in_memory_files.is_empty());
+        debug_assert!(self.files.is_empty());
+        for recoverable_file in recovery.files.into_iter() {
+            let ensured =
+                self.workspaces
+                    .ensure_file(&*self.handler, case_sensitive, &recoverable_file.path);
+            let file_index = self.with_added_file(
+                ensured.file_entry.clone(),
+                recoverable_file.path,
+                recoverable_file.invalidates_db,
+                |file_index| new_file(file_index, &ensured.file_entry, recoverable_file.artifacts),
+            );
+            ensured.set_file_index(file_index);
+            if recoverable_file.is_in_memory_file {
+                let fs = self.file_state(file_index);
+                self.in_memory_files.insert(fs.path.clone(), file_index);
+            }
         }
     }
 
