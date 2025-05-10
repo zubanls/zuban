@@ -203,15 +203,6 @@ impl Server {
             message.contains("zubanls::notification_handlers::"),
             "{message}"
         );
-
-        // Catch the "redirected" panic, which is now a message
-        let message = self.connection.expect_notification_message();
-        assert_eq!(message.typ, lsp_types::MessageType::ERROR);
-        assert!(
-            message.message.starts_with("ZubanLS paniced"),
-            "{}",
-            message.message
-        );
     }
 
     pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {

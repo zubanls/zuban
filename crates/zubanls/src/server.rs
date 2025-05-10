@@ -108,7 +108,42 @@ pub fn run_server_with_custom_connection(
     let hook_sender = connection.sender.clone();
     // On panic, notify the client.
     let _hook = panic_hooks::enter(Box::new(move |panic_info| {
-        on_panic(&hook_sender, panic_info)
+        use std::io::Write;
+
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        tracing::error!("Panic hook: {panic_info}\n{backtrace}");
+
+        // Currently std::panic::get_backtrace_style is unstable:
+        // https://github.com/rust-lang/rust/issues/93346
+        let use_backtrace = match std::env::var_os("RUST_BACKTRACE") {
+            Some(x) if &x == "0" => false,
+            None => false,
+            _ => true,
+        };
+
+        // We also generally want to print to stderr when a panic happens.
+        // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
+        let mut stderr = std::io::stderr().lock();
+        if use_backtrace {
+            writeln!(stderr, "Panic hook: {panic_info}\n{backtrace}").ok();
+        } else {
+            writeln!(stderr, "Panic hook: {panic_info}").ok();
+        }
+
+        // It's not guaranteed that we can notify the client, but we try to.
+        let _ = hook_sender.send(lsp_server::Message::Notification(
+            lsp_server::Notification {
+                method: lsp_types::notification::ShowMessage::METHOD.into(),
+                params: serde_json::to_value(lsp_types::ShowMessageParams {
+                    typ: lsp_types::MessageType::ERROR,
+                    message: format!(
+                        "ZubanLS paniced, please open an issue on GitHub with the details:\n\
+                     {panic_info}\n\n{backtrace}"
+                    ),
+                })
+                .unwrap(),
+            },
+        ));
     }));
 
     let mut global_state = GlobalState::new(
@@ -121,45 +156,6 @@ pub fn run_server_with_custom_connection(
     cleanup()?;
     tracing::info!("Server did successfully shut down");
     Ok(())
-}
-
-fn on_panic(hook_sender: &Sender<Message>, panic_info: impl std::fmt::Display) {
-    use std::io::Write;
-
-    let backtrace = std::backtrace::Backtrace::force_capture();
-    tracing::error!("Panic hook: {panic_info}\n{backtrace}");
-
-    // Currently std::panic::get_backtrace_style is unstable:
-    // https://github.com/rust-lang/rust/issues/93346
-    let use_backtrace = match std::env::var_os("RUST_BACKTRACE") {
-        Some(x) if &x == "0" => false,
-        None => false,
-        _ => true,
-    };
-
-    // We also generally want to print to stderr when a panic happens.
-    // But don't use `eprintln` because `eprintln` itself may panic if the pipe is broken.
-    let mut stderr = std::io::stderr().lock();
-    if use_backtrace {
-        writeln!(stderr, "Panic hook: {panic_info}\n{backtrace}").ok();
-    } else {
-        writeln!(stderr, "Panic hook: {panic_info}").ok();
-    }
-
-    // It's not guaranteed that we can notify the client, but we try to.
-    let _ = hook_sender.send(lsp_server::Message::Notification(
-        lsp_server::Notification {
-            method: lsp_types::notification::ShowMessage::METHOD.into(),
-            params: serde_json::to_value(lsp_types::ShowMessageParams {
-                typ: lsp_types::MessageType::ERROR,
-                message: format!(
-                    "ZubanLS paniced, please open an issue on GitHub with the details:\n\
-                     {panic_info}\n\n{backtrace}"
-                ),
-            })
-            .unwrap(),
-        },
-    ));
 }
 
 pub fn run_server() -> anyhow::Result<()> {
@@ -351,8 +347,9 @@ impl<'sender> GlobalState<'sender> {
             }
             false
         }));
-        result.unwrap_or_else(|err| {
-            on_panic(&self.sender, format!("{err:?}"));
+        result.unwrap_or_else(|_| {
+            tracing::warn!("Recovered from panic");
+            // The error was reported
             self.recover_from_panic();
             false
         })
