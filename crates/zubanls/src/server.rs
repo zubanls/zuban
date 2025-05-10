@@ -178,6 +178,7 @@ pub(crate) struct GlobalState<'sender> {
     pub negotiated_encoding: NegotiatedEncoding,
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
+    pub diagnostic_request_count: usize,
     pub shutdown_requested: bool,
 }
 
@@ -196,6 +197,7 @@ impl<'sender> GlobalState<'sender> {
             negotiated_encoding,
             project: None,
             panic_recovery: None,
+            diagnostic_request_count: 0,
             shutdown_requested: false,
         }
     }

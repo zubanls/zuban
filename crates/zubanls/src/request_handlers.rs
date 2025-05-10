@@ -16,6 +16,12 @@ impl GlobalState<'_> {
         &mut self,
         params: DocumentDiagnosticParams,
     ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
+        self.diagnostic_request_count += 1;
+        tracing::info!(
+            "Diagnostics for {} (#{} overall)",
+            params.text_document.uri.as_str(),
+            self.diagnostic_request_count
+        );
         let encoding = self.negotiated_encoding;
         let project = self.project();
         let path = Self::uri_to_path(project, params.text_document.uri);
