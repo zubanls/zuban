@@ -382,7 +382,17 @@ impl<'sender> GlobalState<'sender> {
                             tracing::info!("Notify Event: {event:?}");
                             for path in event.paths.into_iter() {
                                 if self.paths_that_invalidate_whole_project.contains(&path) {
-                                    self.project = None;
+                                    // Since invalidating the whole project is as bad as a panic we
+                                    // just use that mechanism to recover from such a worst case
+                                    // change. This might be something like changing the used
+                                    // python version.
+
+                                    // TODO this ignores a few events in the vec that might
+                                    // invalidate additional files that get caught in the panic
+                                    // recovery and reused. Currently this is not handled
+                                    // correctly. If the VFS rechecks files, then it could be fine,
+                                    // BUT we should document that here.
+                                    self.recover_from_panic();
                                     return;
                                 }
                                 if let Some(p) = path.to_str() {

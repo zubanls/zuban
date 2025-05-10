@@ -311,14 +311,23 @@ fn change_config_file() {
     )
     .into_server();
 
-    let expect_diagnostics = |id, expected: Vec<String>| {
-        assert_eq!(
-            server.diagnostics_for_file("foo.py"),
-            expected,
-            "in request {id:?} (foo.py)"
-        );
+    let req = |name| server.diagnostics_for_file(name);
+    let expect_diagnostics = |id, expected_foo: Vec<String>| {
+        assert_eq!(req("foo.py"), expected_foo, "in request {id:?} (foo.py)");
     };
 
+    // Open an in memory file that doesn't otherwise exist
+    server.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: server.doc_id("in_mem.py").uri,
+            language_id: "python".to_owned(),
+            version: 0,
+            text: "def f(x: int): x()".to_owned(),
+        },
+    });
+
+    const NOT_CALLABLE: &str = r#""int" not callable"#;
+    assert_eq!(req("in_mem.py"), vec![NOT_CALLABLE]);
     expect_diagnostics("initially", vec![]);
 
     server.write_file_and_wait("mypy.ini", "[mypy]\nstrict = True");
@@ -328,18 +337,22 @@ fn change_config_file() {
 
     const MISSING: &str = "Function is missing a return type annotation";
     expect_diagnostics("After modifying", vec![MISSING.to_string()]);
+    assert_eq!(req("in_mem.py"), vec![MISSING, NOT_CALLABLE]);
 
     server.remove_file_and_wait("mypy.ini");
 
     expect_diagnostics("After deleting", vec![]);
+    assert_eq!(req("in_mem.py"), vec![NOT_CALLABLE]);
 
     server.write_file_and_wait(".mypy.ini", "[mypy]\nstrict = True\n");
 
     expect_diagnostics("After creating a new .mypy.ini", vec![MISSING.to_string()]);
+    assert_eq!(req("in_mem.py"), vec![MISSING, NOT_CALLABLE]);
 
     server.write_file_and_wait("mypy.ini", "");
 
     expect_diagnostics("After overwriting .mypy.ini with mypy.ini", vec![]);
+    assert_eq!(req("in_mem.py"), vec![NOT_CALLABLE]);
 }
 
 #[test]
