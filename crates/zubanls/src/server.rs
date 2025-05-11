@@ -15,7 +15,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use vfs::{AbsPath, LocalFS, NotifyEvent, VfsHandler as _};
 use zuban_python::{PanicRecovery, Project};
 
-use crate::capabilities::{server_capabilities, ClientCapabilities, NegotiatedEncoding};
+use crate::capabilities::{server_capabilities, ClientCapabilities};
 use crate::notification_handlers::TestPanic;
 use crate::panic_hooks;
 
@@ -85,7 +85,7 @@ pub fn run_server_with_custom_connection(
     };
 
     let client_capabilities = ClientCapabilities::new(capabilities);
-    let (server_capabilities, negotiated_encoding) = server_capabilities(&client_capabilities);
+    let server_capabilities = server_capabilities(&client_capabilities);
 
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
@@ -148,7 +148,7 @@ pub fn run_server_with_custom_connection(
 
     let mut global_state = GlobalState::new(
         &connection.sender,
-        negotiated_encoding,
+        client_capabilities,
         workspace_roots.clone(),
         typeshed_path,
     );
@@ -175,7 +175,7 @@ pub(crate) struct GlobalState<'sender> {
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
     typeshed_path: Option<Box<AbsPath>>,
-    pub negotiated_encoding: NegotiatedEncoding,
+    pub client_capabilities: ClientCapabilities,
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub diagnostic_request_count: usize,
@@ -185,7 +185,7 @@ pub(crate) struct GlobalState<'sender> {
 impl<'sender> GlobalState<'sender> {
     fn new(
         sender: &'sender Sender<lsp_server::Message>,
-        negotiated_encoding: NegotiatedEncoding,
+        client_capabilities: ClientCapabilities,
         roots: Rc<[String]>,
         typeshed_path: Option<Box<AbsPath>>,
     ) -> Self {
@@ -194,7 +194,7 @@ impl<'sender> GlobalState<'sender> {
             sender,
             roots,
             typeshed_path,
-            negotiated_encoding,
+            client_capabilities,
             project: None,
             panic_recovery: None,
             diagnostic_request_count: 0,

@@ -8,66 +8,65 @@ use lsp_types::{
     WorkspaceServerCapabilities,
 };
 
-pub(crate) fn server_capabilities(
-    client_capabilities: &ClientCapabilities,
-) -> (ServerCapabilities, NegotiatedEncoding) {
-    let negotiated_encoding = client_capabilities.negotiated_encoding();
-    (
-        ServerCapabilities {
-            position_encoding: Some(negotiated_encoding.into()),
-            text_document_sync: Some(TextDocumentSyncCapability::Options(
-                TextDocumentSyncOptions {
-                    open_close: Some(true),
-                    change: Some(TextDocumentSyncKind::FULL),
-                    will_save: None,
-                    will_save_wait_until: None,
-                    save: None, // Currently not needed
-                },
-            )),
-            workspace: Some(WorkspaceServerCapabilities {
-                workspace_folders: Some(WorkspaceFoldersServerCapabilities {
-                    supported: Some(true),
-                    change_notifications: Some(OneOf::Left(true)),
-                }),
-                file_operations: Some(WorkspaceFileOperationsServerCapabilities {
-                    did_create: None,
-                    will_create: None,
-                    did_rename: None,
-                    // TODO do we need this?
-                    will_rename: None,
-                    did_delete: None,
-                    will_delete: None,
-                }),
+pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> ServerCapabilities {
+    ServerCapabilities {
+        position_encoding: Some(client_capabilities.negotiated_encoding().into()),
+        text_document_sync: Some(TextDocumentSyncCapability::Options(
+            TextDocumentSyncOptions {
+                open_close: Some(true),
+                change: Some(TextDocumentSyncKind::FULL),
+                will_save: None,
+                will_save_wait_until: None,
+                save: None, // Currently not needed
+            },
+        )),
+        workspace: Some(WorkspaceServerCapabilities {
+            workspace_folders: Some(WorkspaceFoldersServerCapabilities {
+                supported: Some(true),
+                change_notifications: Some(OneOf::Left(true)),
             }),
-            diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
-                lsp_types::DiagnosticOptions {
-                    identifier: None,
-                    inter_file_dependencies: true,
-                    // FIXME
-                    workspace_diagnostics: false,
-                    work_done_progress_options: WorkDoneProgressOptions {
-                        work_done_progress: None,
-                    },
+            file_operations: Some(WorkspaceFileOperationsServerCapabilities {
+                did_create: None,
+                will_create: None,
+                did_rename: None,
+                // TODO do we need this?
+                will_rename: None,
+                did_delete: None,
+                will_delete: None,
+            }),
+        }),
+        diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
+            lsp_types::DiagnosticOptions {
+                identifier: None,
+                inter_file_dependencies: true,
+                // FIXME
+                workspace_diagnostics: false,
+                work_done_progress_options: WorkDoneProgressOptions {
+                    work_done_progress: None,
                 },
-            )),
-            ..Default::default()
-        },
-        negotiated_encoding,
-    )
+            },
+        )),
+        ..Default::default()
+    }
 }
 
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) struct ClientCapabilities {
     caps: lsp_types::ClientCapabilities,
+    negotiated_encoding: NegotiatedEncoding,
 }
 
 impl ClientCapabilities {
     pub(crate) fn new(caps: lsp_types::ClientCapabilities) -> Self {
-        Self { caps }
+        let negotiated_encoding = Self::negotiate_encoding(&caps);
+        Self {
+            caps,
+            negotiated_encoding,
+        }
     }
 
-    pub(crate) fn negotiated_encoding(&self) -> NegotiatedEncoding {
-        let client_encodings = match &self.caps.general {
+    fn negotiate_encoding(caps: &lsp_types::ClientCapabilities) -> NegotiatedEncoding {
+        let client_encodings = match &caps.general {
             Some(general) => general.position_encodings.as_deref().unwrap_or_default(),
             None => &[],
         };
@@ -82,6 +81,10 @@ impl ClientCapabilities {
         }
 
         NegotiatedEncoding::UTF16
+    }
+
+    pub fn negotiated_encoding(&self) -> NegotiatedEncoding {
+        self.negotiated_encoding
     }
 
     pub(crate) fn workspace_edit_resource_operations(
@@ -274,7 +277,7 @@ impl ClientCapabilities {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub(crate) enum NegotiatedEncoding {
     UTF8,
     UTF16,
