@@ -6,12 +6,17 @@ use lsp_types::{notification::Notification as _, InitializeResult, Uri, Workspac
 use serde::{de::DeserializeOwned, Serialize};
 
 pub(crate) fn path_to_uri(path: &str) -> Uri {
-    if cfg!(target_os = "windows") {
+    assert!(!path.starts_with("file:"));
+    // URI's are always absolute within LSP
+    let path = format!("file://{path}");
+    let uri = if cfg!(target_os = "windows") {
         Uri::from_str(&path.replace('\\', "/"))
     } else {
-        Uri::from_str(path)
+        Uri::from_str(&path)
     }
-    .unwrap()
+    .unwrap();
+    assert!(!uri.is_relative());
+    uri
 }
 
 pub(crate) struct Connection {

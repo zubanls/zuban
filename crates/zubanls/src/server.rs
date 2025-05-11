@@ -434,7 +434,7 @@ impl<'sender> GlobalState<'sender> {
     pub(crate) fn uri_to_path(project: &Project, uri: lsp_types::Uri) -> Box<AbsPath> {
         project
             .vfs_handler()
-            .unchecked_abs_path(uri.as_str().into())
+            .unchecked_abs_path(uri_to_path(&uri).to_string())
     }
 }
 
@@ -601,7 +601,7 @@ impl std::fmt::Display for LspError {
 impl std::error::Error for LspError {}
 
 fn patch_path_prefix(path: &Uri) -> String {
-    let path = path.as_str();
+    let path = uri_to_path(path);
     use std::path::{Component, Prefix};
     if cfg!(windows) {
         // This might not be relevant for Zuban, it's from rust-analyzer, but we keep this code, it
@@ -636,6 +636,11 @@ fn patch_path_prefix(path: &Uri) -> String {
     } else {
         path.to_string()
     }
+}
+
+fn uri_to_path(uri: &lsp_types::Uri) -> &str {
+    let uri = uri.as_str();
+    uri.strip_prefix("file://").unwrap_or(uri)
 }
 
 #[test]
