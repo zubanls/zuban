@@ -11,10 +11,7 @@ impl GlobalState<'_> {
         params: DidOpenTextDocumentParams,
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_open_text_document").entered();
-        let project = self.project();
-        let path = Self::uri_to_path(project, params.text_document.uri);
-        tracing::info!("Opening {path}");
-        project.load_in_memory_file(path, params.text_document.text.into());
+        self.load_in_memory_file(params.text_document.uri, params.text_document.text.into());
         Ok(())
     }
 
@@ -23,9 +20,6 @@ impl GlobalState<'_> {
         params: DidChangeTextDocumentParams,
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_change_text_document").entered();
-        let project = self.project();
-        let path = Self::uri_to_path(project, params.text_document.uri);
-        tracing::info!("Changing {path}");
 
         let len = params.content_changes.len();
         if len == 0 {
@@ -45,8 +39,21 @@ impl GlobalState<'_> {
                    don't support TextDocumentSyncKind::INCREMENTAL yet"
             )
         }
-        project.load_in_memory_file(path, change.text.into());
+        self.load_in_memory_file(params.text_document.uri, change.text.into());
         Ok(())
+    }
+
+    fn load_in_memory_file(&mut self, uri: lsp_types::Uri, code: Box<str>) {
+        let should_push_diagnostics = self.client_capabilities.should_push_diagnostics();
+        let project = self.project();
+        let path = Self::uri_to_path(project, uri);
+        tracing::info!("Loading {path}");
+        let mut changed_files = vec![];
+        if should_push_diagnostics {
+            changed_files.push(path.clone());
+        }
+        project.load_in_memory_file(path, code);
+        self.changed_in_memory_files.extend(changed_files);
     }
 
     pub(crate) fn handle_did_close_text_document(

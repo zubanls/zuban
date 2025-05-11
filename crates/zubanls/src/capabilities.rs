@@ -54,14 +54,17 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
 pub(crate) struct ClientCapabilities {
     caps: lsp_types::ClientCapabilities,
     negotiated_encoding: NegotiatedEncoding,
+    should_push_diagnostics: bool,
 }
 
 impl ClientCapabilities {
     pub(crate) fn new(caps: lsp_types::ClientCapabilities) -> Self {
         let negotiated_encoding = Self::negotiate_encoding(&caps);
+        let should_push_diagnostics = Self::text_document_diagnostic(&caps);
         Self {
             caps,
             negotiated_encoding,
+            should_push_diagnostics,
         }
     }
 
@@ -100,13 +103,13 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn did_save_text_document_dynamic_registration(&self) -> bool {
-        let caps = (|| -> _ { self.caps.text_document.as_ref()?.synchronization.clone() })()
-            .unwrap_or_default();
+        let caps =
+            (|| self.caps.text_document.as_ref()?.synchronization.clone())().unwrap_or_default();
         caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
     }
 
     pub(crate) fn did_change_watched_files_dynamic_registration(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .workspace
                 .as_ref()?
@@ -118,7 +121,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn did_change_watched_files_relative_pattern_support(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .workspace
                 .as_ref()?
@@ -130,12 +133,11 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn location_link(&self) -> bool {
-        (|| -> _ { self.caps.text_document.as_ref()?.definition?.link_support })()
-            .unwrap_or_default()
+        (|| self.caps.text_document.as_ref()?.definition?.link_support)().unwrap_or_default()
     }
 
     pub(crate) fn line_folding_only(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .text_document
                 .as_ref()?
@@ -147,7 +149,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn hierarchical_symbols(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .text_document
                 .as_ref()?
@@ -159,7 +161,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn code_action_literals(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .text_document
                 .as_ref()?
@@ -172,11 +174,11 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn work_done_progress(&self) -> bool {
-        (|| -> _ { self.caps.window.as_ref()?.work_done_progress })().unwrap_or_default()
+        (|| self.caps.window.as_ref()?.work_done_progress)().unwrap_or_default()
     }
 
     pub(crate) fn will_rename(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .workspace
                 .as_ref()?
@@ -188,7 +190,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn change_annotation_support(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .workspace
                 .as_ref()?
@@ -201,7 +203,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn code_action_resolve(&self) -> bool {
-        (|| -> _ {
+        (|| {
             Some(
                 self.caps
                     .text_document
@@ -220,7 +222,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn signature_help_label_offsets(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .text_document
                 .as_ref()?
@@ -235,12 +237,16 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
-    pub(crate) fn text_document_diagnostic(&self) -> bool {
-        (|| -> _ { self.caps.text_document.as_ref()?.diagnostic.as_ref() })().is_some()
+    fn text_document_diagnostic(caps: &lsp_types::ClientCapabilities) -> bool {
+        (|| caps.text_document.as_ref()?.diagnostic.as_ref())().is_some()
+    }
+
+    pub fn should_push_diagnostics(&self) -> bool {
+        self.should_push_diagnostics
     }
 
     pub(crate) fn text_document_diagnostic_related_document_support(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .text_document
                 .as_ref()?
@@ -251,7 +257,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn diagnostics_refresh(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .workspace
                 .as_ref()?
@@ -263,7 +269,7 @@ impl ClientCapabilities {
     }
 
     pub(crate) fn insert_replace_support(&self) -> bool {
-        (|| -> _ {
+        (|| {
             self.caps
                 .text_document
                 .as_ref()?

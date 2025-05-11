@@ -179,6 +179,7 @@ pub(crate) struct GlobalState<'sender> {
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub diagnostic_request_count: usize,
+    pub changed_in_memory_files: Vec<Box<AbsPath>>,
     pub shutdown_requested: bool,
 }
 
@@ -197,6 +198,7 @@ impl<'sender> GlobalState<'sender> {
             client_capabilities,
             project: None,
             panic_recovery: None,
+            changed_in_memory_files: vec![],
             diagnostic_request_count: 0,
             shutdown_requested: false,
         }
