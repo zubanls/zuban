@@ -454,10 +454,11 @@ impl<'sender> GlobalState<'sender> {
                 );
                 continue;
             };
+            let path = format!("file://{path}");
             let not = lsp_server::Notification::new(
                 <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
                 lsp_types::PublishDiagnosticsParams {
-                    uri: Uri::from_str(&format!("file://{path}")).unwrap(),
+                    uri: Uri::from_str(&path).expect(&path),
                     diagnostics: Self::diagnostics_for_file(&mut document, encoding),
                     version: None,
                 }
