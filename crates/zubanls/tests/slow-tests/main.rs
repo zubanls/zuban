@@ -301,7 +301,7 @@ fn change_config_file() {
         // Somehow this test is failing a bit too often on GitHub, so for now ignore it.
         return;
     }
-    let server = Project::with_fixture(
+    let mut server = Project::with_fixture(
         r#"
         [file mypy.ini]
 
@@ -311,20 +311,13 @@ fn change_config_file() {
     )
     .into_server();
 
+    // Open an in memory file that doesn't otherwise exist
+    server.open_in_memory_file("in_mem.py", "def f(x: int): x()");
+
     let req = |name| server.diagnostics_for_file(name);
     let expect_diagnostics = |id, expected_foo: Vec<String>| {
         assert_eq!(req("foo.py"), expected_foo, "in request {id:?} (foo.py)");
     };
-
-    // Open an in memory file that doesn't otherwise exist
-    server.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
-        text_document: TextDocumentItem {
-            uri: server.doc_id("in_mem.py").uri,
-            language_id: "python".to_owned(),
-            version: 0,
-            text: "def f(x: int): x()".to_owned(),
-        },
-    });
 
     const NOT_CALLABLE: &str = r#""int" not callable"#;
     assert_eq!(req("in_mem.py"), vec![NOT_CALLABLE]);
@@ -563,18 +556,8 @@ fn check_panic_recovery() {
     assert_eq!(req("in_mem.py"), vec![r#""int" not callable"#]);
 
     // Check that in memory files can be changed after a panic
-    server.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-        text_document: VersionedTextDocumentIdentifier {
-            uri: server.doc_id("in_mem.py").uri,
-            version: 1,
-        },
-        content_changes: vec![TextDocumentContentChangeEvent {
-            text: "".into(),
-            range: None,
-            range_length: None,
-        }],
-    });
-    assert!(req("in_mem.py").is_empty());
+    server.update_in_memory_file("in_mem.py", "");
+    assert!(server.diagnostics_for_file("in_mem.py").is_empty());
 }
 
 #[test]
