@@ -611,4 +611,9 @@ fn publish_diagnostics() {
         wait_for_diags("exists_in_fs.py"),
         [ATTR_MISSING, NOT_CALLABLE]
     );
+    server.remove_file_and_wait("m.py");
+    assert_eq!(
+        wait_for_diags("exists_in_fs.py"),
+        [MODULE_MISSING, NOT_CALLABLE]
+    );
 }
