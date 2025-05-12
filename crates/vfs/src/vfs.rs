@@ -406,15 +406,6 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn unload_all_in_memory_files(&mut self, case_sensitive: bool) -> InvalidationResult {
-        let in_memory_files = std::mem::take(&mut self.in_memory_files);
-        let mut result = InvalidationResult::InvalidatedFiles;
-        for (_path, file_index) in in_memory_files.into_iter() {
-            result |= self.invalidate_and_unload_in_memory_file(case_sensitive, file_index);
-        }
-        result
-    }
-
     pub fn delete_in_memory_files_directory(
         &mut self,
         case_sensitive: bool,

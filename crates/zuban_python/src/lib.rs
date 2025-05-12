@@ -89,11 +89,6 @@ impl Project {
         self.db.close_in_memory_file(path)
     }
 
-    pub fn unload_all_in_memory_files(&mut self) {
-        // Mostly used for testing
-        self.db.unload_all_in_memory_files()
-    }
-
     pub fn diagnostics(&mut self) -> Diagnostics<'_> {
         if self.db.project.settings.mypy_path.len() > 1 {
             debug!(

@@ -1171,13 +1171,6 @@ impl Database {
         Ok(())
     }
 
-    pub fn unload_all_in_memory_files(&mut self) {
-        let result = self
-            .vfs
-            .unload_all_in_memory_files(self.project.flags.case_sensitive);
-        self.handle_invalidation(result);
-    }
-
     pub fn invalidate_path(&mut self, path: &AbsPath) {
         let invalidation = self
             .vfs
