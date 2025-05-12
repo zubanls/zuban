@@ -163,6 +163,23 @@ impl Server {
         report.full_document_diagnostic_report.items
     }
 
+    pub fn expect_publish_diagnostics(&self) -> (String, Vec<String>) {
+        let publish = self.expect_notification::<lsp_types::notification::PublishDiagnostics>();
+        (
+            publish
+                .uri
+                .as_str()
+                .strip_prefix("file://")
+                .unwrap()
+                .strip_prefix(&self.tmp_dir.path())
+                .unwrap()
+                .strip_prefix('/')
+                .unwrap()
+                .to_string(),
+            publish.diagnostics.into_iter().map(|d| d.message).collect(),
+        )
+    }
+
     fn with_wait(&self, callback: impl FnOnce()) {
         // We need the lock to be able to use the global notify counter and be sure that no other
         // thread modifies it.

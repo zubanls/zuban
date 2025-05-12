@@ -192,18 +192,16 @@ impl Connection {
         }
     }
 
-    fn expect_notification(&self) -> lsp_server::Notification {
+    pub fn expect_notification<N: lsp_types::notification::Notification>(&self) -> N::Params {
         match self.recv_timeout() {
-            Ok(Message::Notification(not)) => not,
+            Ok(Message::Notification(not)) => not.extract::<N::Params>(N::METHOD).unwrap(),
             Ok(msg) => panic!("Unexpected message, expected notification: {msg:?}"),
             Err(err) => panic!("Expected a message, but got: {err:?}"),
         }
     }
 
     pub(crate) fn expect_notification_message(&self) -> lsp_types::ShowMessageParams {
-        let not = self.expect_notification();
-        not.extract::<lsp_types::ShowMessageParams>(lsp_types::notification::ShowMessage::METHOD)
-            .unwrap()
+        self.expect_notification::<lsp_types::notification::ShowMessage>()
     }
 
     fn recv_timeout(&self) -> Result<Message, RecvTimeoutError> {
