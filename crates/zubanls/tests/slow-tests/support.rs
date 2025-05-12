@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     ops::Deref,
     path::{Path, PathBuf},
     str::FromStr,
@@ -6,11 +7,11 @@ use std::{
 };
 
 use lsp_types::{
-    notification::{DidChangeTextDocument, DidOpenTextDocument},
+    notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument},
     request::DocumentDiagnosticRequest,
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentDiagnosticParams,
-    DocumentDiagnosticReport, DocumentDiagnosticReportResult, PartialResultParams,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
+    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
+    PartialResultParams, TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
     VersionedTextDocumentIdentifier, WorkDoneProgressParams,
 };
 use serde::Serialize;
@@ -92,7 +93,7 @@ impl<'a> Project<'a> {
                 client_encodings,
                 !self.push_diagnostics,
             ),
-            version_incrementor: 0,
+            version_incrementor: Default::default(),
         }
     }
 }
@@ -100,7 +101,7 @@ impl<'a> Project<'a> {
 pub(crate) struct Server {
     pub tmp_dir: TestDir,
     connection: Connection,
-    version_incrementor: i32,
+    version_incrementor: Cell<i32>,
 }
 
 impl Deref for Server {
@@ -235,12 +236,13 @@ impl Server {
         );
     }
 
-    pub fn change_in_memory_file(&mut self, path: &str, code: &str) {
-        self.version_incrementor += 1;
+    pub fn change_in_memory_file(&self, path: &str, code: &str) {
+        self.version_incrementor
+            .set(self.version_incrementor.get() + 1);
         self.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier {
                 uri: self.doc_id(path).uri,
-                version: self.version_incrementor,
+                version: self.version_incrementor.get(),
             },
             content_changes: vec![TextDocumentContentChangeEvent {
                 text: code.to_string(),
@@ -250,7 +252,7 @@ impl Server {
         });
     }
 
-    pub fn open_in_memory_file(&mut self, path: &str, code: &str) {
+    pub fn open_in_memory_file(&self, path: &str, code: &str) {
         self.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: self.doc_id(path).uri,
@@ -259,6 +261,12 @@ impl Server {
                 text: code.to_owned(),
             },
         })
+    }
+
+    pub fn close_in_memory_file(&self, path: &str) {
+        self.notify::<DidCloseTextDocument>(DidCloseTextDocumentParams {
+            text_document: self.doc_id(path),
+        });
     }
 
     pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {

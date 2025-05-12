@@ -11,13 +11,9 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument},
-    request::DocumentDiagnosticRequest,
-    DiagnosticServerCapabilities, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, NumberOrString, PartialResultParams, PositionEncodingKind,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem, Uri,
-    VersionedTextDocumentIdentifier, WorkDoneProgressParams,
+    request::DocumentDiagnosticRequest, DiagnosticServerCapabilities, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, NumberOrString, PartialResultParams,
+    PositionEncodingKind, TextDocumentIdentifier, Uri, WorkDoneProgressParams,
 };
 
 mod connection;
@@ -230,38 +226,17 @@ fn in_memory_file_changes() {
     let revealed_type_any = "Revealed type is \"Any\"".to_string();
     expect_request("initially", vec![revealed_type_int.clone()], vec![]);
 
-    server.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
-        text_document: TextDocumentItem {
-            uri: server.doc_id(FOO_PATH).uri,
-            language_id: "python".to_owned(),
-            version: 0,
-            text: "x = ''\n".to_owned(),
-        },
-    });
+    server.open_in_memory_file(FOO_PATH, "x = ''\n");
 
     expect_request("after opening", vec![revealed_type_str.clone()], vec![]);
     server.write_file_and_wait(FOO_PATH, "x = 1()\n");
     expect_request("after FS write", vec![revealed_type_str], vec![]);
 
-    let change_foo_to = |text, version| {
-        server.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier {
-                uri: server.doc_id(FOO_PATH).uri,
-                version,
-            },
-            content_changes: vec![TextDocumentContentChangeEvent {
-                text,
-                range: None,
-                range_length: None,
-            }],
-        });
-    };
-
-    change_foo_to("x=b''\n".to_string(), 1);
+    server.change_in_memory_file(FOO_PATH, "x=b''\n");
 
     expect_request("after first DidChange", vec![revealed_type_bytes], vec![]);
 
-    change_foo_to("x=1\n1.0()\n".to_string(), 2);
+    server.change_in_memory_file(FOO_PATH, "x=1\n1.0()\n");
 
     expect_request(
         "after second DidChange",
@@ -269,9 +244,7 @@ fn in_memory_file_changes() {
         vec!["\"float\" not callable".to_string()],
     );
 
-    server.notify::<DidCloseTextDocument>(DidCloseTextDocumentParams {
-        text_document: server.doc_id(FOO_PATH),
-    });
+    server.close_in_memory_file(FOO_PATH);
     expect_request(
         "after close",
         vec![revealed_type_any],
@@ -301,7 +274,7 @@ fn change_config_file() {
         // Somehow this test is failing a bit too often on GitHub, so for now ignore it.
         return;
     }
-    let mut server = Project::with_fixture(
+    let server = Project::with_fixture(
         r#"
         [file mypy.ini]
 
@@ -528,7 +501,7 @@ fn diagnostics_positions() {
 
 #[test]
 fn check_panic_recovery() {
-    let mut server = Project::with_fixture(
+    let server = Project::with_fixture(
         r#"
         [file foo.py]
         b''()
@@ -564,7 +537,7 @@ fn check_panic_recovery() {
 fn publish_diagnostics() {
     // Check PublishDiagnostics where the client is not requesting diagnostics, but receiving them
     // each time a change is made
-    let mut server = Project::with_fixture(
+    let server = Project::with_fixture(
         r#"
             [file exists_in_fs.py]
             [file unrelated.py]
