@@ -556,6 +556,7 @@ fn publish_diagnostics() {
     const NOT_CALLABLE2: &str = r#""str" not callable"#;
     const MODULE_MISSING: &str =
         r#"Cannot find implementation or library stub for module named "m""#;
+    const ATTR_MISSING: &str = r#"Module "m" has no attribute "C""#;
 
     server.open_in_memory_file("exists_in_fs.py", "import m");
     assert_eq!(wait_for_diags("exists_in_fs.py"), [MODULE_MISSING]);
@@ -566,27 +567,48 @@ fn publish_diagnostics() {
     // Writing this file does not do anything, because it exists as an in memory file
     server.write_file_and_wait("not_exists_in_fs.py", "");
 
-    server.change_in_memory_file("exists_in_fs.py", "import m\n1()\n");
+    server.change_in_memory_file("exists_in_fs.py", "from m import C\n1()\n");
     assert_eq!(
         wait_for_diags("exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE]
     );
 
-    server.change_in_memory_file("not_exists_in_fs.py", "import m\n''()\n");
+    server.change_in_memory_file("not_exists_in_fs.py", "from m import C\n''()\n");
     assert_eq!(
         wait_for_diags("not_exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE2]
     );
 
     server.write_file_and_wait("m.py", "class C: ...");
-    /*
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
+    // TODO I don't think this order is guaranteed
     assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE2]);
+    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
 
-    server.write_file_and_wait("not_exists_in_fs.py", "1()");
-    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE]);
+    // Should not generate a diagnostic
+    server.write_file_and_wait("exists_in_fs.py", "['']()");
+
+    server.open_in_memory_file("m.py", "");
+    assert_eq!(
+        wait_for_diags("not_exists_in_fs.py"),
+        [ATTR_MISSING, NOT_CALLABLE2]
+    );
+    assert_eq!(
+        wait_for_diags("exists_in_fs.py"),
+        [ATTR_MISSING, NOT_CALLABLE]
+    );
+    assert!(wait_for_diags("m.py").is_empty());
+
+    server.close_in_memory_file("m.py");
+    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE2]);
+    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
+
+    // Should not generate a diagnostic
+    server.write_file_and_wait("not_exists_in_fs.py", "[1]()");
+    server.close_in_memory_file("not_exists_in_fs.py");
 
     server.write_file_and_wait("m.py", "");
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
-    */
+    assert_eq!(
+        wait_for_diags("exists_in_fs.py"),
+        [ATTR_MISSING, NOT_CALLABLE]
+    );
 }

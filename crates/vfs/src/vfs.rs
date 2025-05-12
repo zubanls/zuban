@@ -14,7 +14,7 @@ pub trait VfsFile: Unpin {
     type Artifacts;
     fn code(&self) -> &str;
     fn into_recoverable_artifacts(self) -> Self::Artifacts;
-    fn invalidate_references_to(&mut self, file_index: FileIndex);
+    fn invalidate_references_to(&mut self, file_index: Option<FileIndex>);
 }
 
 struct RecoveryFile<T> {
@@ -174,41 +174,54 @@ impl<F: VfsFile> Vfs<F> {
 
     fn invalidate_files(
         &mut self,
-        original_file_index: FileIndex,
+        original_file_index: Option<FileIndex>,
         invalidations: Invalidations,
     ) -> InvalidationResult {
         let InvalidationDetail::Some(invalidations) = invalidations.into_iter() else {
             // This means that the file was created with `invalidates_db = true`, which
             // means we have to invalidate the whole database.
             tracing::info!(
-                "Invalidate whole db because we have invalidated {}",
-                self.file_state(original_file_index).path
+                "Invalidate whole db because we have invalidated {:?}",
+                original_file_index.map(|f| &self.file_state(f).path)
             );
             return InvalidationResult::InvalidatedDb;
         };
         for invalid_index in invalidations {
-            let file = self.file_state_mut(invalid_index);
-            let new_invalidations = file.file_entry.invalidations.take();
-            file.invalidate_references_to(original_file_index);
-
-            if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
-                for invalidation in &invs {
-                    let p = &self.file_state(*invalidation).path;
-                    tracing::debug!(
-                        "Invalidate {p} because we have invalidated {}",
-                        self.file_state(invalid_index).path
-                    );
-                }
-            }
-            if self.invalidate_files(original_file_index, new_invalidations)
+            if self.invalidate_file_by_index(original_file_index, invalid_index)
                 == InvalidationResult::InvalidatedDb
             {
                 return InvalidationResult::InvalidatedDb;
             }
-            let file = self.file_state(invalid_index);
-            if self.in_memory_files.get(&file.path).is_some() {
-                self.handler.on_invalidated_in_memory_file(&file.path);
+        }
+        InvalidationResult::InvalidatedFiles
+    }
+
+    fn invalidate_file_by_index(
+        &mut self,
+        original_file_index: Option<FileIndex>,
+        invalid_index: FileIndex,
+    ) -> InvalidationResult {
+        let file = self.file_state_mut(invalid_index);
+        let new_invalidations = file.file_entry.invalidations.take();
+        file.invalidate_references_to(original_file_index);
+
+        if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
+            for invalidation in &invs {
+                let p = &self.file_state(*invalidation).path;
+                tracing::debug!(
+                    "Invalidate {p} because we have invalidated {}",
+                    self.file_state(invalid_index).path
+                );
             }
+        }
+        if self.invalidate_files(original_file_index, new_invalidations)
+            == InvalidationResult::InvalidatedDb
+        {
+            return InvalidationResult::InvalidatedDb;
+        }
+        let file = self.file_state(invalid_index);
+        if self.in_memory_files.get(&file.path).is_some() {
+            self.handler.on_invalidated_in_memory_file(&file.path);
         }
         InvalidationResult::InvalidatedFiles
     }
@@ -343,7 +356,7 @@ impl<F: VfsFile> Vfs<F> {
                 }
             }
         }
-        result |= self.invalidate_files(file_index, ensured.invalidations);
+        result |= self.invalidate_files(Some(file_index), ensured.invalidations);
         (file_index, result)
     }
 
@@ -362,7 +375,7 @@ impl<F: VfsFile> Vfs<F> {
         let file_state = &mut self.files[file_index.0 as usize];
         file_state.unload();
         let invalidations = file_state.file_entry.invalidations.take();
-        self.invalidate_files(file_index, invalidations)
+        self.invalidate_files(Some(file_index), invalidations)
     }
 
     pub fn unload_in_memory_file(
@@ -440,7 +453,8 @@ impl<F: VfsFile> Vfs<F> {
             return InvalidationResult::InvalidatedFiles;
         }
         let mut invalidates_db = false;
-        let mut all_invalidations = FastHashSet::default();
+        let mut all_unloads = FastHashSet::default();
+        let mut all_invalidations = FastHashSet::<FileIndex>::default();
 
         if let Some((workspace, parent, replace_name)) = self
             .workspaces
@@ -450,7 +464,7 @@ impl<F: VfsFile> Vfs<F> {
             let mut check_invalidations_for_dir_entry = |e: &_| match e {
                 DirectoryEntry::File(f) => {
                     if let Some(file_index) = f.get_file_index() {
-                        all_invalidations.insert(file_index);
+                        all_unloads.insert(file_index);
                     }
                 }
                 DirectoryEntry::MissingEntry(missing) => match missing.invalidations.iter() {
@@ -479,18 +493,24 @@ impl<F: VfsFile> Vfs<F> {
             }
         }
 
-        let len = all_invalidations.len();
+        let invalidation_len = all_invalidations.len();
+        let unload_len = all_unloads.len();
         if invalidates_db {
             tracing::debug!("caused an invalidated db");
             return InvalidationResult::InvalidatedDb;
         }
-        for inv in all_invalidations.into_iter() {
+        for inv in all_unloads.into_iter() {
             if self.invalidate_and_unload_file(inv) == InvalidationResult::InvalidatedDb {
                 tracing::debug!("caused an invalidated db");
                 return InvalidationResult::InvalidatedDb;
             }
         }
-        tracing::debug!("caused {len} direct invalidations");
+        for inv in all_invalidations.into_iter() {
+            if self.invalidate_file_by_index(None, inv) == InvalidationResult::InvalidatedDb {
+                return InvalidationResult::InvalidatedDb;
+            }
+        }
+        tracing::debug!("Caused {unload_len} unloads and {invalidation_len} direct invalidations");
         InvalidationResult::InvalidatedFiles
     }
 
@@ -607,7 +627,7 @@ impl<F: VfsFile> FileState<F> {
         self.file.take();
     }
 
-    fn invalidate_references_to(&mut self, file_index: FileIndex) {
+    fn invalidate_references_to(&mut self, file_index: Option<FileIndex>) {
         if let Some(f) = self.file_mut() {
             f.invalidate_references_to(file_index)
         }

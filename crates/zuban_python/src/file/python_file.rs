@@ -215,7 +215,7 @@ impl vfs::VfsFile for PythonFile {
         self.tree
     }
 
-    fn invalidate_references_to(&mut self, file_index: FileIndex) {
+    fn invalidate_references_to(&mut self, file_index: Option<FileIndex>) {
         self.points.invalidate_references_to(file_index);
         self.issues.clear();
         if let Some(cache) = self.stub_cache.as_mut() {

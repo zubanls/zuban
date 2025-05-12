@@ -388,10 +388,10 @@ impl Points {
         self.0[index as usize].set(point);
     }
 
-    pub fn invalidate_references_to(&mut self, file_index: FileIndex) {
+    pub fn invalidate_references_to(&mut self, file_index: Option<FileIndex>) {
         for cell in &self.0 {
             let locality = cell.get().locality();
-            if locality == Locality::DirectExtern && cell.get().file_index() == file_index {
+            if locality == Locality::DirectExtern && Some(cell.get().file_index()) == file_index {
                 cell.set(Point::new_uncalculated());
             } else if locality as u32 >= Locality::Complex as u32 {
                 cell.set(Point::new_uncalculated())
