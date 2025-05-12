@@ -546,7 +546,7 @@ fn publish_diagnostics() {
     .with_push_diagnostics()
     .into_server();
 
-    let wait_for_diags = |server: &support::Server, name| {
+    let wait_for_diags = |name| {
         let (file, diags) = server.expect_publish_diagnostics();
         assert_eq!(name, file);
         diags
@@ -558,41 +558,35 @@ fn publish_diagnostics() {
         r#"Cannot find implementation or library stub for module named "m""#;
 
     server.open_in_memory_file("exists_in_fs.py", "import m");
-    assert_eq!(wait_for_diags(&server, "exists_in_fs.py"), [MODULE_MISSING]);
+    assert_eq!(wait_for_diags("exists_in_fs.py"), [MODULE_MISSING]);
 
     server.open_in_memory_file("not_exists_in_fs.py", "import m");
-    assert_eq!(
-        wait_for_diags(&server, "not_exists_in_fs.py"),
-        [MODULE_MISSING]
-    );
+    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [MODULE_MISSING]);
 
     // Writing this file does not do anything, because it exists as an in memory file
     server.write_file_and_wait("not_exists_in_fs.py", "");
 
     server.change_in_memory_file("exists_in_fs.py", "import m\n1()\n");
     assert_eq!(
-        wait_for_diags(&server, "exists_in_fs.py"),
+        wait_for_diags("exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE]
     );
 
     server.change_in_memory_file("not_exists_in_fs.py", "import m\n''()\n");
     assert_eq!(
-        wait_for_diags(&server, "not_exists_in_fs.py"),
+        wait_for_diags("not_exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE2]
     );
 
-    /*
     server.write_file_and_wait("m.py", "class C: ...");
-
-    assert_eq!(wait_for_diags(&server, "exists_in_fs.py"), [NOT_CALLABLE]);
-    assert_eq!(wait_for_diags(&server, "not_exists_in_fs.py"), [NOT_CALLABLE2]);
+    /*
+    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
+    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE2]);
 
     server.write_file_and_wait("not_exists_in_fs.py", "1()");
-
-    assert_eq!(wait_for_diags(&server, "not_exists_in_fs.py"), [NOT_CALLABLE]);
+    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE]);
 
     server.write_file_and_wait("m.py", "");
-
-    assert_eq!(wait_for_diags(&server, "exists_in_fs.py"), [NOT_CALLABLE]);
+    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
     */
 }
