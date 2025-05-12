@@ -281,7 +281,7 @@ impl<F: VfsFile> Vfs<F> {
             .cloned()
     }
 
-    pub fn load_in_memory_file(
+    pub fn store_in_memory_file(
         &mut self,
         case_sensitive: bool,
         path: Box<AbsPath>,
@@ -378,7 +378,7 @@ impl<F: VfsFile> Vfs<F> {
         self.invalidate_files(Some(file_index), invalidations)
     }
 
-    pub fn unload_in_memory_file(
+    pub fn close_in_memory_file(
         &mut self,
         case_sensitive: bool,
         path: &AbsPath,
@@ -435,7 +435,7 @@ impl<F: VfsFile> Vfs<F> {
         let mut invalidation_result = InvalidationResult::InvalidatedFiles;
         for path in in_mem_paths {
             invalidation_result |= self
-                .unload_in_memory_file(case_sensitive, &path, &to_file)
+                .close_in_memory_file(case_sensitive, &path, &to_file)
                 .unwrap();
         }
         self.workspaces

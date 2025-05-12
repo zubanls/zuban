@@ -11,7 +11,7 @@ impl GlobalState<'_> {
         params: DidOpenTextDocumentParams,
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_open_text_document").entered();
-        self.load_in_memory_file(params.text_document.uri, params.text_document.text.into());
+        self.store_in_memory_file(params.text_document.uri, params.text_document.text.into());
         Ok(())
     }
 
@@ -39,15 +39,15 @@ impl GlobalState<'_> {
                    don't support TextDocumentSyncKind::INCREMENTAL yet"
             )
         }
-        self.load_in_memory_file(params.text_document.uri, change.text.into());
+        self.store_in_memory_file(params.text_document.uri, change.text.into());
         Ok(())
     }
 
-    fn load_in_memory_file(&mut self, uri: lsp_types::Uri, code: Box<str>) {
+    fn store_in_memory_file(&mut self, uri: lsp_types::Uri, code: Box<str>) {
         let project = self.project();
         let path = Self::uri_to_path(project, uri);
         tracing::info!("Loading {path}");
-        project.load_in_memory_file(path, code);
+        project.store_in_memory_file(path, code);
     }
 
     pub(crate) fn handle_did_close_text_document(
@@ -60,7 +60,7 @@ impl GlobalState<'_> {
         tracing::info!("Closing {path}");
 
         project
-            .unload_in_memory_file(&path)
+            .close_in_memory_file(&path)
             .map_err(|err| anyhow::anyhow!("{err}"))
     }
 

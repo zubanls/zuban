@@ -72,8 +72,8 @@ impl Project {
 
     pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}
 
-    pub fn load_in_memory_file(&mut self, path: Box<AbsPath>, code: Box<str>) {
-        self.db.load_in_memory_file(path, code);
+    pub fn store_in_memory_file(&mut self, path: Box<AbsPath>, code: Box<str>) {
+        self.db.store_in_memory_file(path, code);
     }
 
     pub fn code_of_in_memory_file(&mut self, path: &AbsPath) -> Option<&str> {
@@ -85,8 +85,8 @@ impl Project {
         self.db.delete_directory_of_in_memory_files(path)
     }
 
-    pub fn unload_in_memory_file(&mut self, path: &AbsPath) -> Result<(), &'static str> {
-        self.db.unload_in_memory_file(path)
+    pub fn close_in_memory_file(&mut self, path: &AbsPath) -> Result<(), &'static str> {
+        self.db.close_in_memory_file(path)
     }
 
     pub fn unload_all_in_memory_files(&mut self) {
@@ -255,7 +255,7 @@ impl<'a> Script<'a> {
         let file_index = match path {
             Some(path) => {
                 if let Some(code) = code {
-                    db.load_in_memory_file(path, code)
+                    db.store_in_memory_file(path, code)
                 } else {
                     db.vfs
                         .in_memory_file(&path)

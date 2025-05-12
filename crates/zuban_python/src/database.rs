@@ -1096,8 +1096,8 @@ impl Database {
         )
     }
 
-    pub fn load_in_memory_file(&mut self, path: Box<AbsPath>, code: Box<str>) -> FileIndex {
-        let (file_index, invalidation) = self.vfs.load_in_memory_file(
+    pub fn store_in_memory_file(&mut self, path: Box<AbsPath>, code: Box<str>) -> FileIndex {
+        let (file_index, invalidation) = self.vfs.store_in_memory_file(
             self.project.flags.case_sensitive,
             path,
             code,
@@ -1154,8 +1154,8 @@ impl Database {
         Ok(())
     }
 
-    pub fn unload_in_memory_file(&mut self, path: &AbsPath) -> Result<(), &'static str> {
-        let result = self.vfs.unload_in_memory_file(
+    pub fn close_in_memory_file(&mut self, path: &AbsPath) -> Result<(), &'static str> {
+        let result = self.vfs.close_in_memory_file(
             self.project.flags.case_sensitive,
             path,
             |file_state, file_index, new_code| {

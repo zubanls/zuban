@@ -348,7 +348,7 @@ impl TestCase<'_, '_> {
 
             for path in &step.deletions {
                 project
-                    .unload_in_memory_file(&base_path_join(&local_fs, path))
+                    .close_in_memory_file(&base_path_join(&local_fs, path))
                     .unwrap_or_else(|_| {
                         project
                             .delete_directory_of_in_memory_files(&base_path_join(&local_fs, path))
@@ -471,7 +471,7 @@ impl TestCase<'_, '_> {
                         before_slash,
                     ));
                 } else {
-                    let _ = project.unload_in_memory_file(&base_path_join(&local_fs, path));
+                    let _ = project.close_in_memory_file(&base_path_join(&local_fs, path));
                 }
             }
         }
@@ -551,7 +551,7 @@ fn initialize_and_return_wanted_output(
         add_inline_errors(&mut wanted, path, code, from_mypy_test_suite);
         // testAbstractClassSubclasses
         let p = base_path_join(local_fs, path);
-        project.load_in_memory_file(p, code.into());
+        project.store_in_memory_file(p, code.into());
     }
     for line in &mut wanted {
         replace_unions(line);
