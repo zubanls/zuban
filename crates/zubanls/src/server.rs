@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::str::FromStr;
 use std::sync::atomic::AtomicI64;
 
 use config::ProjectOptions;
@@ -349,6 +350,7 @@ impl<'sender> GlobalState<'sender> {
                 }
                 Message::Response(r) => self.complete_request(r),
             }
+            self.publish_diagnostics_if_necessary();
             false
         }));
         result.unwrap_or_else(|_| {
@@ -431,6 +433,29 @@ impl<'sender> GlobalState<'sender> {
 
     fn complete_request(&mut self, response: lsp_server::Response) {
         tracing::error!("unhandled request: {:?}", response);
+    }
+
+    fn publish_diagnostics_if_necessary(&mut self) {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let files = std::mem::take(&mut self.changed_in_memory_files);
+        for path in files {
+            let project = self.project();
+            let Some(mut document) = project.document(&path) else {
+                tracing::info!(
+                    "Wanted to publish diagnostics for {path}, but it does not exist anymore"
+                );
+                continue;
+            };
+            let not = lsp_server::Notification::new(
+                <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
+                lsp_types::PublishDiagnosticsParams {
+                    uri: Uri::from_str(&format!("file://{path}")).unwrap(),
+                    diagnostics: Self::diagnostics_for_file(&mut document, encoding),
+                    version: None,
+                }
+            );
+            _ = self.sender.send(not.into());
+        }
     }
 
     pub(crate) fn uri_to_path(project: &Project, uri: lsp_types::Uri) -> Box<AbsPath> {

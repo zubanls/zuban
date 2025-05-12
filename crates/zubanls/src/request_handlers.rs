@@ -4,7 +4,7 @@ use lsp_types::{
     DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, Position,
     RelatedFullDocumentDiagnosticReport,
 };
-use zuban_python::Severity;
+use zuban_python::{Document, Severity};
 
 use crate::{
     capabilities::NegotiatedEncoding,
@@ -32,7 +32,22 @@ impl GlobalState<'_> {
                 message: format!("File {path} does not exist"),
             });
         };
-        let diagnostics = document
+        Ok(DocumentDiagnosticReportResult::Report(
+            DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
+                related_documents: None,
+                full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                    result_id: None,
+                    items: Self::diagnostics_for_file(&mut document, encoding),
+                },
+            }),
+        ))
+    }
+
+    pub fn diagnostics_for_file(
+        document: &mut Document,
+        encoding: NegotiatedEncoding,
+    ) -> Vec<Diagnostic> {
+        document
             .diagnostics()
             .iter()
             .map(|issue| Diagnostic {
@@ -66,17 +81,7 @@ impl GlobalState<'_> {
                 tags: None,
                 data: None,
             })
-            .collect();
-        let resp = DocumentDiagnosticReportResult::Report(DocumentDiagnosticReport::Full(
-            RelatedFullDocumentDiagnosticReport {
-                related_documents: None,
-                full_document_diagnostic_report: FullDocumentDiagnosticReport {
-                    result_id: None,
-                    items: diagnostics,
-                },
-            },
-        ));
-        Ok(resp)
+            .collect()
     }
 
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {
