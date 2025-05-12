@@ -184,6 +184,9 @@ impl<F: VfsFile> Vfs<F> {
                 "Invalidate whole db because we have invalidated {:?}",
                 original_file_index.map(|f| &self.file_state(f).path)
             );
+            for path in self.in_memory_files.keys() {
+                self.handler.on_invalidated_in_memory_file(&path);
+            }
             return InvalidationResult::InvalidatedDb;
         };
         for invalid_index in invalidations {

@@ -181,7 +181,7 @@ pub(crate) struct GlobalState<'sender> {
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub diagnostic_request_count: usize,
-    pub changed_in_memory_files: Rc<RefCell<Vec<Box<AbsPath>>>>,
+    changed_in_memory_files: Rc<RefCell<Vec<Box<AbsPath>>>>,
     pub shutdown_requested: bool,
 }
 
