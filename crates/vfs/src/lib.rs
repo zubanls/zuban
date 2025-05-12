@@ -14,7 +14,7 @@ use std::{borrow::Cow, path::Path};
 use crossbeam_channel::Receiver;
 
 pub use glob_abs_path::GlobAbsPath;
-pub use local_fs::LocalFS;
+pub use local_fs::{LocalFS, SimpleLocalFS};
 pub use normalized_path::NormalizedPath;
 pub use path::AbsPath;
 pub use tree::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
@@ -29,6 +29,7 @@ pub trait VfsHandler {
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
+    fn on_invalidated_in_memory_file(&self, path: &AbsPath);
     fn walk_and_watch_dirs(
         &self,
         path: &str,
@@ -39,6 +40,7 @@ pub trait VfsHandler {
     fn separator(&self) -> char {
         std::path::MAIN_SEPARATOR
     }
+
     fn strip_separator_prefix<'a>(&self, path: &'a str) -> Option<&'a str> {
         let mut result = path.strip_prefix(self.separator());
         if cfg!(target_os = "windows") {

@@ -205,6 +205,10 @@ impl<F: VfsFile> Vfs<F> {
             {
                 return InvalidationResult::InvalidatedDb;
             }
+            let file = self.file_state(invalid_index);
+            if self.in_memory_files.get(&file.path).is_some() {
+                self.handler.on_invalidated_in_memory_file(&file.path);
+            }
         }
         InvalidationResult::InvalidatedFiles
     }
@@ -299,6 +303,7 @@ impl<F: VfsFile> Vfs<F> {
             }
             result |= self.invalidate_and_unload_file(file_index);
         }
+        self.handler.on_invalidated_in_memory_file(&path);
 
         let file_index = if let Some(file_index) = in_mem_file {
             let file = new_file(file_index, &ensured.file_entry, code);
@@ -325,7 +330,7 @@ impl<F: VfsFile> Vfs<F> {
                 false,
                 |file_index| new_file(file_index, &ensured.file_entry, code),
             );
-            self.in_memory_files.insert(path.clone(), file_index);
+            self.in_memory_files.insert(path, file_index);
             ensured.set_file_index(file_index);
             file_index
         };

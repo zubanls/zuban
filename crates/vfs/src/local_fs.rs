@@ -15,11 +15,14 @@ use crate::{
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
 
-pub struct LocalFS {
+pub type SimpleLocalFS = LocalFS<Box<dyn Fn(&AbsPath)>>;
+
+pub struct LocalFS<T: Fn(&AbsPath)> {
     watcher: Option<(RefCell<RecommendedWatcher>, Receiver<NotifyEvent>)>,
+    on_invalidated_in_memory_file: Option<T>,
 }
 
-impl VfsHandler for LocalFS {
+impl<T: Fn(&AbsPath)> VfsHandler for LocalFS<T> {
     fn read_and_watch_file(&self, path: &str) -> Option<String> {
         tracing::debug!("Read from FS: {path}");
         // Need to watch first, because otherwise the file might be read deleted and then watched.
@@ -173,10 +176,25 @@ impl VfsHandler for LocalFS {
             (path, None)
         }
     }
+
+    fn on_invalidated_in_memory_file(&self, path: &AbsPath) {
+        if let Some(callback) = self.on_invalidated_in_memory_file.as_ref() {
+            callback(path)
+        }
+    }
 }
 
-impl LocalFS {
-    pub fn with_watcher() -> Self {
+impl SimpleLocalFS {
+    pub fn without_watcher() -> Self {
+        Self {
+            watcher: None,
+            on_invalidated_in_memory_file: None,
+        }
+    }
+}
+
+impl<T: Fn(&AbsPath)> LocalFS<T> {
+    pub fn with_watcher(on_invalidated_memory_file: T) -> Self {
         let (watcher_sender, watcher_receiver) = unbounded();
         let watcher = log_notify_error(recommended_watcher(move |event| {
             // we don't care about the error. If sending fails that usually
@@ -189,11 +207,8 @@ impl LocalFS {
         }));
         Self {
             watcher: watcher.map(|w| (RefCell::new(w), watcher_receiver)),
+            on_invalidated_in_memory_file: Some(on_invalidated_memory_file),
         }
-    }
-
-    pub fn without_watcher() -> Self {
-        Self { watcher: None }
     }
 
     pub fn watch(&self, path: &Path) {

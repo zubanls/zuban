@@ -1,5 +1,6 @@
 //! Scheduling, I/O, and API endpoints.
 
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -180,7 +181,7 @@ pub(crate) struct GlobalState<'sender> {
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub diagnostic_request_count: usize,
-    pub changed_in_memory_files: Vec<Box<AbsPath>>,
+    pub changed_in_memory_files: Rc<RefCell<Vec<Box<AbsPath>>>>,
     pub shutdown_requested: bool,
 }
 
@@ -199,7 +200,7 @@ impl<'sender> GlobalState<'sender> {
             client_capabilities,
             project: None,
             panic_recovery: None,
-            changed_in_memory_files: vec![],
+            changed_in_memory_files: Default::default(),
             diagnostic_request_count: 0,
             shutdown_requested: false,
         }
@@ -219,6 +220,7 @@ impl<'sender> GlobalState<'sender> {
                 recv(self.notify_receiver().unwrap_or(&never())) -> msg =>
                     self.on_notify_events(msg?)
             }
+            self.publish_diagnostics_if_necessary();
         }
     }
 
@@ -231,7 +233,13 @@ impl<'sender> GlobalState<'sender> {
         if let Some(p) = project {
             p
         } else {
-            let vfs_handler = LocalFS::with_watcher();
+            let new_changed_files = self.changed_in_memory_files.clone();
+            let should_push = self.client_capabilities.should_push_diagnostics();
+            let vfs_handler = LocalFS::with_watcher(move |path| {
+                if should_push {
+                    new_changed_files.as_ref().borrow_mut().push(path.into())
+                }
+            });
             let first_root = self
                 .roots
                 .first()
@@ -350,7 +358,6 @@ impl<'sender> GlobalState<'sender> {
                 }
                 Message::Response(r) => self.complete_request(r),
             }
-            self.publish_diagnostics_if_necessary();
             false
         }));
         result.unwrap_or_else(|_| {
@@ -362,6 +369,7 @@ impl<'sender> GlobalState<'sender> {
     }
 
     fn recover_from_panic(&mut self) {
+        self.changed_in_memory_files.as_ref().borrow_mut().clear();
         if let Some(project) = self.project.take() {
             self.panic_recovery = Some(project.into_panic_recovery());
         }
@@ -437,7 +445,7 @@ impl<'sender> GlobalState<'sender> {
 
     fn publish_diagnostics_if_necessary(&mut self) {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let files = std::mem::take(&mut self.changed_in_memory_files);
+        let files = std::mem::take(&mut *self.changed_in_memory_files.as_ref().borrow_mut());
         for path in files {
             let project = self.project();
             let Some(mut document) = project.document(&path) else {

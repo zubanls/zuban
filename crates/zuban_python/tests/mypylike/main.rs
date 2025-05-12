@@ -12,7 +12,7 @@ use clap::Parser;
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
-use vfs::{AbsPath, LocalFS, VfsHandler as _};
+use vfs::{AbsPath, SimpleLocalFS, VfsHandler as _};
 use zuban_python::Project;
 
 const SKIP_MYPY_TEST_FILES: [&str; 28] = [
@@ -63,7 +63,7 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: Box<AbsPath> = LocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
+    static BASE_PATH: Box<AbsPath> = SimpleLocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
@@ -109,7 +109,7 @@ impl TestCase<'_, '_> {
     fn initialize_flags<'p>(
         &self,
         projects: &'p mut ProjectsCache,
-        local_fs: &LocalFS,
+        local_fs: &SimpleLocalFS,
         mypy_compatible: bool,
         steps: &test_utils::Steps,
     ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
@@ -320,7 +320,7 @@ impl TestCase<'_, '_> {
         {
             return Ok(false);
         }
-        let local_fs = LocalFS::without_watcher();
+        let local_fs = SimpleLocalFS::without_watcher();
         let (mut project, diagnostic_config) =
             self.initialize_flags(projects, &local_fs, mypy_compatible, &steps);
 
@@ -517,7 +517,7 @@ fn temporarily_skip(s: String) -> Option<String> {
 }
 
 fn initialize_and_return_wanted_output(
-    local_fs: &LocalFS,
+    local_fs: &SimpleLocalFS,
     project: &mut Project,
     step: &Step,
     from_mypy_test_suite: bool,
@@ -765,7 +765,7 @@ fn set_mypy_path(options: &mut ProjectOptions) {
     })
 }
 
-fn base_path_join(local_fs: &LocalFS, other: &str) -> Box<AbsPath> {
+fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> Box<AbsPath> {
     BASE_PATH.with(|base_path| local_fs.join(base_path, other))
 }
 

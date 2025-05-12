@@ -5,7 +5,7 @@ pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
 use config::{find_cli_config, ExcludeRegex, ProjectOptions, PythonVersion};
-use vfs::{AbsPath, GlobAbsPath, LocalFS, VfsHandler};
+use vfs::{AbsPath, GlobAbsPath, SimpleLocalFS, VfsHandler};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -248,7 +248,7 @@ fn project_from_cli(
     typeshed_path: Option<Box<AbsPath>>,
     lookup_env_var: impl Fn(&str) -> Option<String>,
 ) -> (Project, DiagnosticConfig) {
-    let local_fs = LocalFS::without_watcher();
+    let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
     let (mut options, mut diagnostic_config) =
         find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
@@ -274,7 +274,7 @@ fn project_from_cli(
 }
 
 fn apply_flags(
-    vfs_handler: &LocalFS,
+    vfs_handler: &SimpleLocalFS,
     project_options: &mut ProjectOptions,
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
@@ -626,7 +626,7 @@ mod tests {
     fn test_files_relative_paths() {
         logging_config::setup_logging_for_tests();
         let mut project_options = ProjectOptions::default();
-        let local_fs = LocalFS::without_watcher();
+        let local_fs = SimpleLocalFS::without_watcher();
         let current_dir = local_fs.unchecked_abs_path("/a/b".into());
         let mut cli = Cli::parse_from([""]);
         cli.files = vec![
