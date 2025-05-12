@@ -30,7 +30,7 @@ use support::Project;
 #[test]
 fn basic_server_setup() {
     let con = Connection::new();
-    let response = con.initialize(&["/foo/bar"], None);
+    let response = con.initialize(&["/foo/bar"], None, true);
 
     // Check diagnostic capabilities
     {
@@ -56,7 +56,7 @@ fn basic_server_setup() {
 
 #[test]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(false, &["/foo/bar"], None);
+    let con = Connection::initialized(false, &["/foo/bar"], None, true);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -87,7 +87,7 @@ fn request_after_shutdown_is_invalid() {
 
 #[test]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(false, &["/foo/bar"], None);
+    let con = Connection::initialized(false, &["/foo/bar"], None, true);
     con.notify::<lsp_types::notification::Exit>(());
 }
 

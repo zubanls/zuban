@@ -60,7 +60,7 @@ pub(crate) struct ClientCapabilities {
 impl ClientCapabilities {
     pub(crate) fn new(caps: lsp_types::ClientCapabilities) -> Self {
         let negotiated_encoding = Self::negotiate_encoding(&caps);
-        let should_push_diagnostics = Self::text_document_diagnostic(&caps);
+        let should_push_diagnostics = !Self::text_document_diagnostic(&caps);
         Self {
             caps,
             negotiated_encoding,

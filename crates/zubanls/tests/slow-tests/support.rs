@@ -25,6 +25,7 @@ pub(crate) struct Project<'a> {
     fixture: &'a str,
     roots: Vec<String>,
     root_dir_contains_symlink: bool,
+    push_diagnostics: bool,
 }
 
 impl<'a> Project<'a> {
@@ -34,6 +35,7 @@ impl<'a> Project<'a> {
             fixture,
             roots: vec![],
             root_dir_contains_symlink: false,
+            push_diagnostics: false,
         }
     }
 
@@ -44,6 +46,11 @@ impl<'a> Project<'a> {
 
     pub(crate) fn with_root_dir_contains_symlink(mut self) -> Self {
         self.root_dir_contains_symlink = true;
+        self
+    }
+
+    pub(crate) fn with_push_diagnostics(mut self) -> Self {
+        self.push_diagnostics = true;
         self
     }
 
@@ -80,6 +87,7 @@ impl<'a> Project<'a> {
                 panic_should_message_not_abort,
                 &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
                 client_encodings,
+                !self.push_diagnostics,
             ),
         }
     }

@@ -2,7 +2,10 @@ use std::{cell::Cell, path::Path, str::FromStr, time::Duration};
 
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
-use lsp_types::{notification::Notification as _, InitializeResult, Uri, WorkspaceFolder};
+use lsp_types::{
+    notification::Notification as _, DiagnosticClientCapabilities, InitializeResult,
+    TextDocumentClientCapabilities, Uri, WorkspaceFolder,
+};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub(crate) fn path_to_uri(path: &str) -> Uri {
@@ -74,9 +77,10 @@ impl Connection {
         panic_should_message_not_abort: bool,
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
+        pull_diagnostics: bool,
     ) -> Self {
         let slf = Self::new_internal(panic_should_message_not_abort);
-        slf.initialize(roots, position_encodings);
+        slf.initialize(roots, position_encodings, pull_diagnostics);
         slf
     }
 
@@ -84,6 +88,7 @@ impl Connection {
         &self,
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
+        pull_diagnostics: bool,
     ) -> InitializeResult {
         let initialize_params = lsp_types::InitializeParams {
             workspace_folders: Some(
@@ -120,6 +125,10 @@ impl Connection {
                 }),
                 general: Some(lsp_types::GeneralClientCapabilities {
                     position_encodings,
+                    ..Default::default()
+                }),
+                text_document: Some(TextDocumentClientCapabilities {
+                    diagnostic: pull_diagnostics.then(|| DiagnosticClientCapabilities::default()),
                     ..Default::default()
                 }),
                 ..Default::default()
