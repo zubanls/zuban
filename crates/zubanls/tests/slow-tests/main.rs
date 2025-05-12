@@ -535,7 +535,7 @@ fn diagnostics_positions() {
 
 #[test]
 fn check_panic_recovery() {
-    let server = Project::with_fixture(
+    let mut server = Project::with_fixture(
         r#"
         [file foo.py]
         b''()
@@ -545,17 +545,10 @@ fn check_panic_recovery() {
     )
     .into_server_detailed(None, false);
 
-    let req = |name| server.diagnostics_for_file(name);
-
     // Open an in memory file that doesn't otherwise exist
-    server.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
-        text_document: TextDocumentItem {
-            uri: server.doc_id("in_mem.py").uri,
-            language_id: "python".to_owned(),
-            version: 0,
-            text: "1()".to_owned(),
-        },
-    });
+    server.open_in_memory_file("in_mem.py", "1()");
+
+    let req = |name| server.diagnostics_for_file(name);
 
     // Check before panic (bar.py is intentionally not checked!)
     assert_eq!(req("foo.py"), vec![r#""bytes" not callable"#]);
@@ -597,17 +590,6 @@ fn publish_diagnostics() {
     .with_push_diagnostics()
     .into_server();
 
-    let open_text_document = |path, code: &str| {
-        server.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
-            text_document: TextDocumentItem {
-                uri: server.doc_id(path).uri,
-                language_id: "python".to_owned(),
-                version: 0,
-                text: code.to_owned(),
-            },
-        })
-    };
-
     let wait_for_diags = |server: &support::Server, name| {
         let (file, diags) = server.expect_publish_diagnostics();
         assert_eq!(name, file);
@@ -619,10 +601,10 @@ fn publish_diagnostics() {
     const MODULE_MISSING: &str =
         r#"Cannot find implementation or library stub for module named "m""#;
 
-    open_text_document("exists_in_fs.py", "import m");
+    server.open_in_memory_file("exists_in_fs.py", "import m");
     assert_eq!(wait_for_diags(&server, "exists_in_fs.py"), [MODULE_MISSING]);
 
-    open_text_document("not_exists_in_fs.py", "import m");
+    server.open_in_memory_file("not_exists_in_fs.py", "import m");
     assert_eq!(
         wait_for_diags(&server, "not_exists_in_fs.py"),
         [MODULE_MISSING]

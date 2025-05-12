@@ -6,10 +6,12 @@ use std::{
 };
 
 use lsp_types::{
-    notification::DidChangeTextDocument, request::DocumentDiagnosticRequest,
-    DidChangeTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, PartialResultParams, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, VersionedTextDocumentIdentifier, WorkDoneProgressParams,
+    notification::{DidChangeTextDocument, DidOpenTextDocument},
+    request::DocumentDiagnosticRequest,
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, PartialResultParams,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
+    VersionedTextDocumentIdentifier, WorkDoneProgressParams,
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
@@ -246,6 +248,17 @@ impl Server {
                 range_length: None,
             }],
         });
+    }
+
+    pub fn open_in_memory_file(&mut self, path: &str, code: &str) {
+        self.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+            text_document: TextDocumentItem {
+                uri: self.doc_id(path).uri,
+                language_id: "python".to_owned(),
+                version: 0,
+                text: code.to_owned(),
+            },
+        })
     }
 
     pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {
