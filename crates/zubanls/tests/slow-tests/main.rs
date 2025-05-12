@@ -534,6 +534,37 @@ fn check_panic_recovery() {
 }
 
 #[test]
+fn check_panic_recovery_with_push_diagnostics() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        b''()
+        "#,
+    )
+    .with_push_diagnostics()
+    .into_server_detailed(None, false);
+
+    const NOT_CALLABLE: &str = r#""int" not callable"#;
+    let wait_for_diags = |name| {
+        let (file, diags) = server.expect_publish_diagnostics();
+        assert_eq!(name, file);
+        diags
+    };
+
+    // Open an in memory file that doesn't otherwise exist
+    server.open_in_memory_file("in_mem.py", "1()");
+    assert_eq!(wait_for_diags("in_mem.py"), [NOT_CALLABLE]);
+
+    // Introduce a panic
+    server.raise_and_recover_panic_in_language_server();
+    assert_eq!(wait_for_diags("in_mem.py"), [NOT_CALLABLE]);
+
+    // Check that in memory files can be changed after a panic
+    server.change_in_memory_file("in_mem.py", "");
+    assert!(wait_for_diags("in_mem.py").is_empty());
+}
+
+#[test]
 fn publish_diagnostics() {
     // Check PublishDiagnostics where the client is not requesting diagnostics, but receiving them
     // each time a change is made

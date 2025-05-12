@@ -158,6 +158,11 @@ impl<F: VfsFile> Vfs<F> {
             ensured.set_file_index(file_index);
             if recoverable_file.is_in_memory_file {
                 let fs = self.file_state(file_index);
+                // It might feel strange that loading a panic recovery calls this hook. However
+                // this simplifies a lot of code that would otherwise needed to be run after a
+                // panic. Essentially after a panic we do not know what changed between the panic
+                // and now, so we simply push the diagnostic to the user again.
+                self.handler.on_invalidated_in_memory_file(&fs.path);
                 self.in_memory_files.insert(fs.path.clone(), file_index);
             }
         }
