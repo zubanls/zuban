@@ -626,17 +626,25 @@ pub(crate) struct Issue {
     pub kind: IssueKind,
     pub start_position: CodeIndex,
     pub end_position: CodeIndex,
+    from_name_binder: bool,
 }
 
 impl Issue {
-    pub(crate) fn from_node_index(tree: &Tree, node_index: NodeIndex, kind: IssueKind) -> Self {
+    pub(crate) fn from_node_index(
+        tree: &Tree,
+        node_index: NodeIndex,
+        kind: IssueKind,
+        from_name_binder: bool,
+    ) -> Self {
         Self {
             kind,
             start_position: tree.node_start_position(node_index),
             end_position: tree.node_end_position(node_index),
+            from_name_binder,
         }
     }
 
+    // This method implies it is NOT called by the name binder
     pub(crate) fn from_start_stop(
         start_position: CodeIndex,
         end_position: CodeIndex,
@@ -646,6 +654,7 @@ impl Issue {
             kind,
             start_position,
             end_position,
+            from_name_binder: false,
         }
     }
 }
@@ -2021,8 +2030,8 @@ impl Diagnostics {
         self.0.iter()
     }
 
-    pub fn clear(&mut self) {
-        self.0.as_vec_mut().clear()
+    pub fn invalidate_non_name_binder_issues(&mut self) {
+        self.0.as_vec_mut().retain(|issue| issue.from_name_binder)
     }
 }
 

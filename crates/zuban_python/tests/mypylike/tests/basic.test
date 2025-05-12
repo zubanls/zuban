@@ -1067,3 +1067,16 @@ def f(x: list[int]):
 'ä'; ä
 [out]
 __main__:2:6:2:7: error: Name "ä" is not defined
+
+[case name_binder_error_stays_after_dependency_changes]
+from m import C
+return
+[file m.py]
+class C: ...
+[file m.py.2]
+def C(): ...
+[""]
+[out]
+__main__:2: error: "return" outside function
+[out2]
+__main__:2: error: "return" outside function

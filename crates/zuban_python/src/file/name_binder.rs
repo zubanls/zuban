@@ -241,7 +241,7 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_issue(&self, node_index: NodeIndex, kind: IssueKind) {
-        let issue = Issue::from_node_index(self.db_infos.tree, node_index, kind);
+        let issue = Issue::from_node_index(self.db_infos.tree, node_index, kind, true);
         let maybe_ignored = self
             .db_infos
             .tree

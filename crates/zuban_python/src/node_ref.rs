@@ -282,17 +282,17 @@ impl<'file> NodeRef<'file> {
     }
 
     pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
-        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
         self.file.add_issue(i_s, issue)
     }
 
     pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) {
-        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
         self.file.add_type_issue(db, issue)
     }
 
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {
-        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
         Diagnostic::new(i_s.db, self.file, &issue).message_with_notes(&mut vec![])
     }
 
