@@ -863,11 +863,11 @@ fn info_from_directives<'x>(
             if let Err(err) = check() {
                 issues
                     .add_if_not_ignored(
-                        Issue {
-                            kind: IssueKind::DirectiveSyntaxError(err.to_string().into()),
+                        Issue::from_start_stop(
                             start_position,
-                            end_position: start_position + rest.len() as CodeIndex,
-                        },
+                            start_position + rest.len() as CodeIndex,
+                            IssueKind::DirectiveSyntaxError(err.to_string().into()),
+                        ),
                         None,
                     )
                     .ok();
@@ -906,13 +906,13 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
                         } else {
                             self.issues
                                 .add_if_not_ignored(
-                                    Issue {
-                                        kind: IssueKind::DirectiveSyntaxError(
+                                    Issue::from_start_stop(
+                                        start_position - 1,
+                                        start_position,
+                                        IssueKind::DirectiveSyntaxError(
                                             "Content after quote in configuration comment".into(),
                                         ),
-                                        start_position: start_position - 1,
-                                        end_position: start_position,
-                                    },
+                                    ),
                                     None,
                                 )
                                 .ok();
@@ -926,13 +926,13 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
                 if name.contains('"') {
                     self.issues
                         .add_if_not_ignored(
-                            Issue {
-                                kind: IssueKind::DirectiveSyntaxError(
+                            Issue::from_start_stop(
+                                start_position - 1,
+                                start_position,
+                                IssueKind::DirectiveSyntaxError(
                                     "Quotes should not be part of the key".into(),
                                 ),
-                                start_position: start_position - 1,
-                                end_position: start_position,
-                            },
+                            ),
                             None,
                         )
                         .ok();
@@ -959,13 +959,13 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
         if opened_quotation_mark {
             self.issues
                 .add_if_not_ignored(
-                    Issue {
-                        kind: IssueKind::DirectiveSyntaxError(
+                    Issue::from_start_stop(
+                        self.start_position,
+                        self.start_position + self.rest.len() as CodeIndex,
+                        IssueKind::DirectiveSyntaxError(
                             "Unterminated quote in configuration comment".into(),
                         ),
-                        start_position: self.start_position,
-                        end_position: self.start_position + self.rest.len() as CodeIndex,
-                    },
+                    ),
                     None,
                 )
                 .ok();

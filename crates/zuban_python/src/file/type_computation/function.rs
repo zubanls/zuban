@@ -129,11 +129,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let node = self.node();
         self.file.add_issue(
             i_s,
-            Issue {
-                kind,
-                start_position: node.start(),
-                end_position: node.end_position_of_colon(),
-            },
+            Issue::from_start_stop(node.start(), node.end_position_of_colon(), kind),
         )
     }
 

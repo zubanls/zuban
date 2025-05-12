@@ -426,11 +426,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             self.file.add_issue(
                 self.i_s,
-                Issue {
-                    start_position: start,
-                    end_position: start + f.tree.code().len() as CodeIndex,
-                    kind: IssueKind::InvalidSyntaxInTypeAnnotation,
-                },
+                Issue::from_start_stop(
+                    start,
+                    start + f.tree.code().len() as CodeIndex,
+                    IssueKind::InvalidSyntaxInTypeAnnotation,
+                ),
             );
             TypeContent::UNKNOWN_REPORTED
         }
@@ -3871,13 +3871,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             self.file.add_issue(
                 self.i_s,
-                Issue {
-                    start_position: start,
-                    end_position: start + s.len() as CodeIndex,
-                    kind: IssueKind::InvalidSyntaxInTypeComment {
+                Issue::from_start_stop(
+                    start,
+                    start + s.len() as CodeIndex,
+                    IssueKind::InvalidSyntaxInTypeComment {
                         type_comment: s.trim().into(),
                     },
-                },
+                ),
             );
             TypeCommentDetails::new_any()
         }

@@ -2375,14 +2375,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 if let Some(formatted_err) = needs_strict_equality_error() {
                     self.file.add_issue(
                         self.i_s,
-                        Issue {
-                            kind: IssueKind::NonOverlappingEqualityCheck {
+                        Issue::from_start_stop(
+                            l.start(),
+                            r.end(),
+                            IssueKind::NonOverlappingEqualityCheck {
                                 left_type: formatted_err.got,
                                 right_type: formatted_err.expected,
                             },
-                            start_position: l.start(),
-                            end_position: r.end(),
-                        },
+                        ),
                     )
                 }
                 let from = NodeRef::new(self.file, op.index());
@@ -2404,14 +2404,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 if let Some(formatted_err) = needs_strict_equality_error() {
                     self.file.add_issue(
                         self.i_s,
-                        Issue {
-                            kind: IssueKind::NonOverlappingIdentityCheck {
+                        Issue::from_start_stop(
+                            l.start(),
+                            r.end(),
+                            IssueKind::NonOverlappingIdentityCheck {
                                 left_type: formatted_err.got,
                                 right_type: formatted_err.expected,
                             },
-                            start_position: l.start(),
-                            end_position: r.end(),
-                        },
+                        ),
                     )
                 }
                 Inferred::from_type(self.i_s.db.python_state.bool_type())
@@ -2449,14 +2449,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     format_got_expected(self.i_s.db, &element_t, &container_t);
                                 self.file.add_issue(
                                     self.i_s,
-                                    Issue {
-                                        kind: IssueKind::NonOverlappingContainsCheck {
+                                    Issue::from_start_stop(
+                                        l.start(),
+                                        r.end(),
+                                        IssueKind::NonOverlappingContainsCheck {
                                             element_type: formatted.got,
                                             container_type: formatted.expected,
                                         },
-                                        start_position: l.start(),
-                                        end_position: r.end(),
-                                    },
+                                    ),
                                 )
                             }
                         }

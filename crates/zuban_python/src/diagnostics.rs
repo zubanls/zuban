@@ -623,7 +623,7 @@ impl IssueKind {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Issue {
-    pub(crate) kind: IssueKind,
+    pub kind: IssueKind,
     pub start_position: CodeIndex,
     pub end_position: CodeIndex,
 }
@@ -2006,13 +2006,13 @@ impl Diagnostics {
         self.0.push(Box::pin(issue));
         let last_issue = self.0.last().unwrap();
         if let Some(s) = add_not_covered_note {
-            self.0.push(Box::pin(Issue {
-                kind: IssueKind::Note(
+            self.0.push(Box::pin(Issue::from_start_stop(
+                last_issue.start_position,
+                last_issue.end_position,
+                IssueKind::Note(
                     format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
                 ),
-                start_position: last_issue.start_position,
-                end_position: last_issue.end_position,
-            }));
+            )));
         }
         Ok(last_issue)
     }
