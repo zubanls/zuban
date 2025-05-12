@@ -235,7 +235,7 @@ impl Server {
         );
     }
 
-    pub fn update_in_memory_file(&mut self, path: &str, code: &str) {
+    pub fn change_in_memory_file(&mut self, path: &str, code: &str) {
         self.version_incrementor += 1;
         self.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier {

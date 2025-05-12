@@ -556,7 +556,7 @@ fn check_panic_recovery() {
     assert_eq!(req("in_mem.py"), vec![r#""int" not callable"#]);
 
     // Check that in memory files can be changed after a panic
-    server.update_in_memory_file("in_mem.py", "");
+    server.change_in_memory_file("in_mem.py", "");
     assert!(server.diagnostics_for_file("in_mem.py").is_empty());
 }
 
@@ -596,13 +596,13 @@ fn publish_diagnostics() {
     // Writing this file does not do anything, because it exists as an in memory file
     server.write_file_and_wait("not_exists_in_fs.py", "");
 
-    server.update_in_memory_file("exists_in_fs.py", "import m\n1()\n");
+    server.change_in_memory_file("exists_in_fs.py", "import m\n1()\n");
     assert_eq!(
         wait_for_diags(&server, "exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE]
     );
 
-    server.update_in_memory_file("not_exists_in_fs.py", "import m\n''()\n");
+    server.change_in_memory_file("not_exists_in_fs.py", "import m\n''()\n");
     assert_eq!(
         wait_for_diags(&server, "not_exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE2]
