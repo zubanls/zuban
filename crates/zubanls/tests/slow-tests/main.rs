@@ -588,6 +588,7 @@ fn publish_diagnostics() {
     server.write_file_and_wait("exists_in_fs.py", "['']()");
 
     server.open_in_memory_file("m.py", "");
+    assert!(wait_for_diags("m.py").is_empty());
     assert_eq!(
         wait_for_diags("not_exists_in_fs.py"),
         [ATTR_MISSING, NOT_CALLABLE2]
@@ -596,7 +597,6 @@ fn publish_diagnostics() {
         wait_for_diags("exists_in_fs.py"),
         [ATTR_MISSING, NOT_CALLABLE]
     );
-    assert!(wait_for_diags("m.py").is_empty());
 
     server.close_in_memory_file("m.py");
     assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE2]);

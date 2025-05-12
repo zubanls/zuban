@@ -310,6 +310,7 @@ impl<F: VfsFile> Vfs<F> {
             self.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
+        self.handler.on_invalidated_in_memory_file(&path);
         let mut result = InvalidationResult::InvalidatedFiles;
         if let Some(file_index) = in_mem_file {
             if self.file_state(file_index).code() == Some(&code) {
@@ -319,7 +320,6 @@ impl<F: VfsFile> Vfs<F> {
             }
             result |= self.invalidate_and_unload_file(file_index);
         }
-        self.handler.on_invalidated_in_memory_file(&path);
 
         let file_index = if let Some(file_index) = in_mem_file {
             let file = new_file(file_index, &ensured.file_entry, code);
