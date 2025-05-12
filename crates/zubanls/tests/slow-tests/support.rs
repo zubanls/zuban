@@ -6,9 +6,10 @@ use std::{
 };
 
 use lsp_types::{
-    request::DocumentDiagnosticRequest, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, PartialResultParams, TextDocumentIdentifier,
-    WorkDoneProgressParams,
+    notification::DidChangeTextDocument, request::DocumentDiagnosticRequest,
+    DidChangeTextDocumentParams, DocumentDiagnosticParams, DocumentDiagnosticReport,
+    DocumentDiagnosticReportResult, PartialResultParams, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, VersionedTextDocumentIdentifier, WorkDoneProgressParams,
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
@@ -89,6 +90,7 @@ impl<'a> Project<'a> {
                 client_encodings,
                 !self.push_diagnostics,
             ),
+            version_incrementor: 0,
         }
     }
 }
@@ -96,6 +98,7 @@ impl<'a> Project<'a> {
 pub(crate) struct Server {
     pub tmp_dir: TestDir,
     connection: Connection,
+    version_incrementor: i32,
 }
 
 impl Deref for Server {
@@ -228,6 +231,21 @@ impl Server {
             message.contains("zubanls::notification_handlers::"),
             "{message}"
         );
+    }
+
+    pub fn update_in_memory_file(&mut self, path: &str, code: &str) {
+        self.version_incrementor += 1;
+        self.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier {
+                uri: self.doc_id(path).uri,
+                version: self.version_incrementor,
+            },
+            content_changes: vec![TextDocumentContentChangeEvent {
+                text: code.to_string(),
+                range: None,
+                range_length: None,
+            }],
+        });
     }
 
     pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {

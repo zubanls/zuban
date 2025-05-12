@@ -588,7 +588,7 @@ fn check_panic_recovery() {
 fn publish_diagnostics() {
     // Check PublishDiagnostics where the client is not requesting diagnostics, but receiving them
     // each time a change is made
-    let server = Project::with_fixture(
+    let mut server = Project::with_fixture(
         r#"
             [file exists_in_fs.py]
             [file unrelated.py]
@@ -608,21 +608,7 @@ fn publish_diagnostics() {
         })
     };
 
-    let update_text_document = |path, code: &str| {
-        server.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier {
-                uri: server.doc_id(path).uri,
-                version: 1,
-            },
-            content_changes: vec![TextDocumentContentChangeEvent {
-                text: code.to_string(),
-                range: None,
-                range_length: None,
-            }],
-        });
-    };
-
-    let wait_for_diags = |name| {
+    let wait_for_diags = |server: &support::Server, name| {
         let (file, diags) = server.expect_publish_diagnostics();
         assert_eq!(name, file);
         diags
@@ -634,38 +620,41 @@ fn publish_diagnostics() {
         r#"Cannot find implementation or library stub for module named "m""#;
 
     open_text_document("exists_in_fs.py", "import m");
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [MODULE_MISSING]);
+    assert_eq!(wait_for_diags(&server, "exists_in_fs.py"), [MODULE_MISSING]);
 
     open_text_document("not_exists_in_fs.py", "import m");
-    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [MODULE_MISSING]);
+    assert_eq!(
+        wait_for_diags(&server, "not_exists_in_fs.py"),
+        [MODULE_MISSING]
+    );
 
     // Writing this file does not do anything, because it exists as an in memory file
     server.write_file_and_wait("not_exists_in_fs.py", "");
 
-    update_text_document("exists_in_fs.py", "import m\n1()\n");
+    server.update_in_memory_file("exists_in_fs.py", "import m\n1()\n");
     assert_eq!(
-        wait_for_diags("exists_in_fs.py"),
+        wait_for_diags(&server, "exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE]
     );
 
-    update_text_document("not_exists_in_fs.py", "import m\n''()\n");
+    server.update_in_memory_file("not_exists_in_fs.py", "import m\n''()\n");
     assert_eq!(
-        wait_for_diags("not_exists_in_fs.py"),
+        wait_for_diags(&server, "not_exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE2]
     );
 
     /*
     server.write_file_and_wait("m.py", "class C: ...");
 
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
-    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE2]);
+    assert_eq!(wait_for_diags(&server, "exists_in_fs.py"), [NOT_CALLABLE]);
+    assert_eq!(wait_for_diags(&server, "not_exists_in_fs.py"), [NOT_CALLABLE2]);
 
     server.write_file_and_wait("not_exists_in_fs.py", "1()");
 
-    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE]);
+    assert_eq!(wait_for_diags(&server, "not_exists_in_fs.py"), [NOT_CALLABLE]);
 
     server.write_file_and_wait("m.py", "");
 
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
+    assert_eq!(wait_for_diags(&server, "exists_in_fs.py"), [NOT_CALLABLE]);
     */
 }
