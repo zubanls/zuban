@@ -202,7 +202,7 @@ impl Connection {
 
     pub(crate) fn expect_notification_message(&self) -> lsp_types::ShowMessageParams {
         let not = self.expect_notification();
-        not.extract::<lsp_types::ShowMessageParams>("window/showMessage")
+        not.extract::<lsp_types::ShowMessageParams>(lsp_types::notification::ShowMessage::METHOD)
             .unwrap()
     }
 
