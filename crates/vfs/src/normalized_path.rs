@@ -13,10 +13,6 @@ impl NormalizedPath {
     pub(crate) fn new_boxed(x: Box<AbsPath>) -> Box<Self> {
         unsafe { std::mem::transmute(x) }
     }
-
-    pub(crate) fn new_boxed_abs(x: Box<AbsPath>) -> Box<Self> {
-        unsafe { std::mem::transmute(x) }
-    }
 }
 
 impl ToOwned for NormalizedPath {
