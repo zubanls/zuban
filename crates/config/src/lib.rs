@@ -55,7 +55,7 @@ impl Default for Settings {
                 .ok()
                 .map(|p| LocalFS::without_watcher().abs_path_from_current_dir(p)),
             mypy_path: vec![],
-            mypy_compatible: false,
+            mypy_compatible: true, // TODO change this in the future
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }
