@@ -180,7 +180,7 @@ pub(crate) struct GlobalState<'sender> {
     pub client_capabilities: ClientCapabilities,
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
-    pub diagnostic_request_count: usize,
+    pub sent_diagnostic_count: usize,
     changed_in_memory_files: Rc<RefCell<Vec<Rc<NormalizedPath>>>>,
     pub shutdown_requested: bool,
 }
@@ -201,7 +201,7 @@ impl<'sender> GlobalState<'sender> {
             project: None,
             panic_recovery: None,
             changed_in_memory_files: Default::default(),
-            diagnostic_request_count: 0,
+            sent_diagnostic_count: 0,
             shutdown_requested: false,
         }
     }
@@ -447,6 +447,7 @@ impl<'sender> GlobalState<'sender> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let files = std::mem::take(&mut *self.changed_in_memory_files.as_ref().borrow_mut());
         for path in files {
+            self.sent_diagnostic_count += 1;
             let project = self.project();
             let Some(mut document) = project.document(&path) else {
                 tracing::info!(
@@ -455,17 +456,22 @@ impl<'sender> GlobalState<'sender> {
                 continue;
             };
             let diagnostics = Self::diagnostics_for_file(&mut document, encoding);
+            tracing::info!(
+                "Publish diagnostics for {path}, (#{} overall)",
+                self.sent_diagnostic_count
+            );
             tracing::trace!(
-                "Diagnostics for {path} on positions {}",
+                "Diagnostics [{}]",
                 diagnostics
                     .iter()
                     .map(|d| {
                         format!(
-                            "{}:{}-{}:{}",
+                            "{}:{}-{}:{}: {}",
                             d.range.start.line,
                             d.range.start.character,
                             d.range.end.line,
-                            d.range.end.character
+                            d.range.end.character,
+                            d.message,
                         )
                     })
                     .collect::<Vec<_>>()
