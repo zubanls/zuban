@@ -2,7 +2,7 @@
 set -eu -o pipefail 
                     
 cd "$(dirname "$0")"
-rm ../target/wheels/*
+rm -f ../target/wheels/*
 cd ../deploy/pypi/zuban
 
 maturin build --release

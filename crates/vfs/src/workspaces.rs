@@ -127,7 +127,7 @@ impl Workspaces {
                 );
             }
         }
-        unreachable!()
+        unreachable!("Expected to be able to place the file {path:?}")
     }
 
     pub(crate) fn unload_file(&mut self, vfs: &dyn VfsHandler, case_sensitive: bool, path: &str) {
