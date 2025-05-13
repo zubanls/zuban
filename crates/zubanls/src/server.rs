@@ -454,13 +454,30 @@ impl<'sender> GlobalState<'sender> {
                 );
                 continue;
             };
+            let diagnostics = Self::diagnostics_for_file(&mut document, encoding);
+            tracing::trace!(
+                "Diagnostics for {path} on positions {}",
+                diagnostics
+                    .iter()
+                    .map(|d| {
+                        format!(
+                            "{}:{}-{}:{}",
+                            d.range.start.line,
+                            d.range.start.character,
+                            d.range.end.line,
+                            d.range.end.character
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
             tracing::debug!("Pushing diagnostics to {path}");
             let path = format!("file://{path}");
             let not = lsp_server::Notification::new(
                 <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
                 lsp_types::PublishDiagnosticsParams {
                     uri: Uri::from_str(&path).expect(&path),
-                    diagnostics: Self::diagnostics_for_file(&mut document, encoding),
+                    diagnostics,
                     version: None,
                 }
             );
