@@ -446,40 +446,42 @@ impl<'sender> GlobalState<'sender> {
     fn publish_diagnostics_if_necessary(&mut self) {
         let encoding = self.client_capabilities.negotiated_encoding();
         let files = std::mem::take(&mut *self.changed_in_memory_files.as_ref().borrow_mut());
-        for path in files {
-            self.sent_diagnostic_count += 1;
-            let project = self.project();
-            let Some(mut document) = project.document(&path) else {
+        if !files.is_empty() {
+            tracing::info!("Needs to publish diagnostics for {} files", files.len());
+            for path in files {
+                self.sent_diagnostic_count += 1;
+                let project = self.project();
+                let Some(mut document) = project.document(&path) else {
+                    tracing::info!(
+                        "Wanted to publish diagnostics for {path}, but it does not exist anymore"
+                    );
+                    continue;
+                };
+                let diagnostics = Self::diagnostics_for_file(&mut document, encoding);
                 tracing::info!(
-                    "Wanted to publish diagnostics for {path}, but it does not exist anymore"
+                    "Publish diagnostics for {path}, (#{} overall)",
+                    self.sent_diagnostic_count
                 );
-                continue;
-            };
-            let diagnostics = Self::diagnostics_for_file(&mut document, encoding);
-            tracing::info!(
-                "Publish diagnostics for {path}, (#{} overall)",
-                self.sent_diagnostic_count
-            );
-            tracing::trace!(
-                "Diagnostics [{}]",
-                diagnostics
-                    .iter()
-                    .map(|d| {
-                        format!(
-                            "{}:{}-{}:{}: {}",
-                            d.range.start.line,
-                            d.range.start.character,
-                            d.range.end.line,
-                            d.range.end.character,
-                            d.message,
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-            tracing::debug!("Pushing diagnostics to {path}");
-            let path = format!("file://{path}");
-            let not = lsp_server::Notification::new(
+                tracing::trace!(
+                    "Diagnostics [{}]",
+                    diagnostics
+                        .iter()
+                        .map(|d| {
+                            format!(
+                                "{}:{}-{}:{}: {}",
+                                d.range.start.line,
+                                d.range.start.character,
+                                d.range.end.line,
+                                d.range.end.character,
+                                d.message,
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+                tracing::debug!("Pushing diagnostics to {path}");
+                let path = format!("file://{path}");
+                let not = lsp_server::Notification::new(
                 <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
                 lsp_types::PublishDiagnosticsParams {
                     uri: Uri::from_str(&path).expect(&path),
@@ -487,7 +489,8 @@ impl<'sender> GlobalState<'sender> {
                     version: None,
                 }
             );
-            _ = self.sender.send(not.into());
+                _ = self.sender.send(not.into());
+            }
         }
     }
 
