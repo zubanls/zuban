@@ -18,7 +18,7 @@ pub trait VfsFile: Unpin {
 }
 
 struct RecoveryFile<T> {
-    path: Box<NormalizedPath>,
+    path: Rc<NormalizedPath>,
     artifacts: T,
     invalidates_db: bool,
     is_in_memory_file: bool,
@@ -31,7 +31,7 @@ pub struct Vfs<F: VfsFile> {
     pub handler: Box<dyn VfsHandler>,
     pub workspaces: Workspaces,
     pub files: InsertOnlyVec<FileState<F>>,
-    in_memory_files: HashMap<Box<NormalizedPath>, FileIndex>,
+    in_memory_files: HashMap<Rc<NormalizedPath>, FileIndex>,
 }
 
 impl<F: VfsFile> Vfs<F> {
@@ -103,7 +103,7 @@ impl<F: VfsFile> Vfs<F> {
         }
 
         for p in type_checked_dirs.rev() {
-            workspaces.add_at_start(&*self.handler, p.cloned_box(), WorkspaceKind::TypeChecking)
+            workspaces.add_at_start(&*self.handler, p.to_owned(), WorkspaceKind::TypeChecking)
         }
 
         Self {
@@ -162,13 +162,13 @@ impl<F: VfsFile> Vfs<F> {
                 // this simplifies a lot of code that would otherwise needed to be run after a
                 // panic. Essentially after a panic we do not know what changed between the panic
                 // and now, so we simply push the diagnostic to the user again.
-                self.handler.on_invalidated_in_memory_file(&fs.path);
+                self.handler.on_invalidated_in_memory_file(fs.path.clone());
                 self.in_memory_files.insert(fs.path.clone(), file_index);
             }
         }
     }
 
-    pub fn add_workspace(&mut self, root_path: Box<AbsPath>, kind: WorkspaceKind) {
+    pub fn add_workspace(&mut self, root_path: Rc<AbsPath>, kind: WorkspaceKind) {
         self.workspaces.add(&*self.handler, root_path, kind)
     }
 
@@ -190,7 +190,7 @@ impl<F: VfsFile> Vfs<F> {
                 original_file_index.map(|f| &self.file_state(f).path)
             );
             for path in self.in_memory_files.keys() {
-                self.handler.on_invalidated_in_memory_file(&path);
+                self.handler.on_invalidated_in_memory_file(path.clone());
             }
             return InvalidationResult::InvalidatedDb;
         };
@@ -229,7 +229,8 @@ impl<F: VfsFile> Vfs<F> {
         }
         let file = self.file_state(invalid_index);
         if self.in_memory_files.get(&file.path).is_some() {
-            self.handler.on_invalidated_in_memory_file(&file.path);
+            self.handler
+                .on_invalidated_in_memory_file(file.path.clone());
         }
         InvalidationResult::InvalidatedFiles
     }
@@ -274,7 +275,7 @@ impl<F: VfsFile> Vfs<F> {
             let file_index = self.with_added_file(
                 file_entry.clone(),
                 // The path was previously normalized, because it is created from a Directory
-                NormalizedPath::new_boxed(path),
+                NormalizedPath::new_rc(path),
                 invalidates_db,
                 |file_index| new_file(file_index, code.into()),
             );
@@ -292,11 +293,11 @@ impl<F: VfsFile> Vfs<F> {
     pub fn store_in_memory_file(
         &mut self,
         case_sensitive: bool,
-        path: Box<AbsPath>,
+        path: Rc<AbsPath>,
         code: Box<str>,
         new_file: impl FnOnce(FileIndex, &FileEntry, Box<str>) -> F,
     ) -> (FileIndex, InvalidationResult) {
-        let path = self.handler.normalize_boxed_path(path);
+        let path = self.handler.normalize_rc_path(path);
         tracing::info!("Loading in memory file: {path}");
         let ensured = self
             .workspaces
@@ -315,7 +316,7 @@ impl<F: VfsFile> Vfs<F> {
             self.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
-        self.handler.on_invalidated_in_memory_file(&path);
+        self.handler.on_invalidated_in_memory_file(path.clone());
         let mut result = InvalidationResult::InvalidatedFiles;
         if let Some(file_index) = in_mem_file {
             if self.file_state(file_index).code() == Some(&code) {
@@ -422,7 +423,7 @@ impl<F: VfsFile> Vfs<F> {
     ) -> Result<InvalidationResult, String> {
         // TODO this method feels weird
 
-        let in_mem_paths: Vec<Box<NormalizedPath>> = self
+        let in_mem_paths: Vec<Rc<NormalizedPath>> = self
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
@@ -529,7 +530,7 @@ impl<F: VfsFile> Vfs<F> {
     fn with_added_file(
         &self,
         file_entry: Rc<FileEntry>,
-        path: Box<NormalizedPath>,
+        path: Rc<NormalizedPath>,
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex) -> F,
     ) -> FileIndex {
@@ -553,7 +554,7 @@ impl<F: VfsFile> Vfs<F> {
         let invalidates_db = file_entry.invalidations.invalidates_db();
         self.with_added_file(
             file_entry,
-            NormalizedPath::new_boxed(AbsPath::new_boxed("".into())),
+            NormalizedPath::new_rc(AbsPath::new_rc("".into())),
             invalidates_db,
             add,
         )
@@ -577,7 +578,7 @@ impl BitOrAssign for InvalidationResult {
 
 #[derive(Debug, Clone)]
 pub struct FileState<F> {
-    path: Box<NormalizedPath>,
+    path: Rc<NormalizedPath>,
     file_entry: Rc<FileEntry>,
     file: OnceCell<F>,
 }
@@ -585,7 +586,7 @@ pub struct FileState<F> {
 impl<F: VfsFile> FileState<F> {
     fn new_parsed(
         file_entry: Rc<FileEntry>,
-        path: Box<NormalizedPath>,
+        path: Rc<NormalizedPath>,
         file: F,
         invalidates_db: bool,
     ) -> Self {

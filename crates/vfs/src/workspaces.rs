@@ -15,14 +15,14 @@ pub enum WorkspaceKind {
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: Box<AbsPath>, kind: WorkspaceKind) {
+    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: Rc<AbsPath>, kind: WorkspaceKind) {
         self.0.push(Workspace::new(vfs, root, kind))
     }
 
     pub(crate) fn add_at_start(
         &mut self,
         vfs: &dyn VfsHandler,
-        root: Box<AbsPath>,
+        root: Rc<AbsPath>,
         kind: WorkspaceKind,
     ) {
         self.0.insert(0, Workspace::new(vfs, root, kind))
@@ -200,13 +200,13 @@ pub struct Workspace {
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
     #[cfg(target_os = "macos")]
-    canonicalized_path: Box<AbsPath>,
+    canonicalized_path: Rc<AbsPath>,
     pub directory: Directory,
     pub kind: WorkspaceKind,
 }
 
 impl Workspace {
-    fn new(vfs: &dyn VfsHandler, root_path: Box<AbsPath>, kind: WorkspaceKind) -> Self {
+    fn new(vfs: &dyn VfsHandler, root_path: Rc<AbsPath>, kind: WorkspaceKind) -> Self {
         tracing::debug!("Add workspace {root_path}");
         let root_path = Rc::<AbsPath>::from(root_path);
 

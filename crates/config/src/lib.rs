@@ -1,6 +1,6 @@
 mod searcher;
 
-use std::borrow::Cow;
+use std::{borrow::Cow, rc::Rc};
 
 use anyhow::bail;
 use ini::{Ini, ParseOption};
@@ -36,13 +36,13 @@ pub struct ProjectOptions {
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
-    pub environment: Option<Box<AbsPath>>,
-    pub mypy_path: Vec<Box<AbsPath>>,
-    pub prepended_site_packages: Vec<Box<AbsPath>>,
+    pub environment: Option<Rc<AbsPath>>,
+    pub mypy_path: Vec<Rc<AbsPath>>,
+    pub prepended_site_packages: Vec<Rc<AbsPath>>,
     pub mypy_compatible: bool,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
-    pub typeshed_path: Option<Box<AbsPath>>,
+    pub typeshed_path: Option<Rc<AbsPath>>,
 }
 
 impl Default for Settings {

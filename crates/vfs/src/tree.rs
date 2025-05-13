@@ -40,10 +40,10 @@ impl Parent {
         }
     }
 
-    fn absolute_path(&self, vfs: &dyn VfsHandler) -> Box<AbsPath> {
+    fn absolute_path(&self, vfs: &dyn VfsHandler) -> Rc<AbsPath> {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().absolute_path(vfs),
-            Self::Workspace(workspace) => workspace.cloned_box(),
+            Self::Workspace(workspace) => workspace.clone(),
         }
     }
 
@@ -80,7 +80,7 @@ impl FileEntry {
         })
     }
 
-    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Box<AbsPath> {
+    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Rc<AbsPath> {
         vfs.join(&self.parent.absolute_path(vfs), &self.name)
     }
 
@@ -317,7 +317,7 @@ impl Directory {
         }
     }
 
-    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Box<AbsPath> {
+    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Rc<AbsPath> {
         vfs.join(&self.parent.absolute_path(vfs), &self.name)
     }
 

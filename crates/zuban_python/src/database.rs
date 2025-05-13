@@ -1096,7 +1096,7 @@ impl Database {
         )
     }
 
-    pub fn store_in_memory_file(&mut self, path: Box<AbsPath>, code: Box<str>) -> FileIndex {
+    pub fn store_in_memory_file(&mut self, path: Rc<AbsPath>, code: Box<str>) -> FileIndex {
         let (file_index, invalidation) = self.vfs.store_in_memory_file(
             self.project.flags.case_sensitive,
             path,
@@ -1260,7 +1260,7 @@ impl Database {
 }
 
 pub(crate) struct PythonProject {
-    pub sys_path: Vec<Box<AbsPath>>,
+    pub sys_path: Vec<Rc<AbsPath>>,
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,

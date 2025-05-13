@@ -4,6 +4,7 @@ use std::{
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
     process::ExitCode,
+    rc::Rc,
     time::Instant,
 };
 
@@ -63,7 +64,7 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: Box<AbsPath> = SimpleLocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
+    static BASE_PATH: Rc<AbsPath> = SimpleLocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
@@ -765,7 +766,7 @@ fn set_mypy_path(options: &mut ProjectOptions) {
     })
 }
 
-fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> Box<AbsPath> {
+fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> Rc<AbsPath> {
     BASE_PATH.with(|base_path| local_fs.join(base_path, other))
 }
 

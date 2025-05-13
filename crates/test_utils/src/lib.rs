@@ -1,6 +1,6 @@
 mod testdir;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use regex::Regex;
 
@@ -174,7 +174,7 @@ fn find_flags(string: &str) -> Option<&str> {
     None
 }
 
-pub fn typeshed_path() -> Box<AbsPath> {
+pub fn typeshed_path() -> Rc<AbsPath> {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let typeshed_path = p.ancestors().nth(2).unwrap().join("typeshed");
     LocalFS::without_watcher()

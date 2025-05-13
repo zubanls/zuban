@@ -9,7 +9,7 @@ mod utils;
 mod vfs;
 mod workspaces;
 
-use std::{borrow::Cow, path::Path};
+use std::{borrow::Cow, path::Path, rc::Rc};
 
 use crossbeam_channel::Receiver;
 
@@ -29,7 +29,7 @@ pub trait VfsHandler {
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &str) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
-    fn on_invalidated_in_memory_file(&self, path: &AbsPath);
+    fn on_invalidated_in_memory_file(&self, path: Rc<NormalizedPath>);
     fn walk_and_watch_dirs(
         &self,
         path: &str,
@@ -60,19 +60,20 @@ pub trait VfsHandler {
 
     fn normalize_path<'s>(&self, path: &'s AbsPath) -> Cow<'s, NormalizedPath> {
         if cfg!(target_os = "windows") && path.contains("/") {
-            let p = AbsPath::new_boxed(path.replace('/', "\\").into_boxed_str());
-            return Cow::Owned(NormalizedPath::new_boxed(p));
+            let p = AbsPath::new_rc(path.replace('/', "\\").into());
+            return Cow::Owned(NormalizedPath::new_rc(p));
         }
         Cow::Borrowed(NormalizedPath::new(path))
     }
-    fn normalize_boxed_path(&self, path: Box<AbsPath>) -> Box<NormalizedPath> {
+    fn normalize_rc_path(&self, path: Rc<AbsPath>) -> Rc<NormalizedPath> {
         match self.normalize_path(&path) {
-            Cow::Borrowed(_) => NormalizedPath::new_boxed(path),
+            // If it's borrowed, it means it didn't change, so we can simply cast
+            Cow::Borrowed(_) => NormalizedPath::new_rc(path),
             Cow::Owned(o) => o,
         }
     }
 
-    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> Box<AbsPath> {
+    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> Rc<AbsPath> {
         let p = Path::new(&path);
         if p.is_absolute() {
             self.unchecked_abs_path(path)
@@ -81,14 +82,14 @@ pub trait VfsHandler {
         }
     }
 
-    fn unchecked_abs_path(&self, mut path: String) -> Box<AbsPath> {
+    fn unchecked_abs_path(&self, mut path: String) -> Rc<AbsPath> {
         if let Some(new_root_path) = self.strip_separator_suffix(path.as_str()) {
             path.truncate(new_root_path.len());
         }
-        AbsPath::new_boxed(path.into())
+        AbsPath::new_rc(path.into())
     }
 
-    fn join(&self, path: &AbsPath, name: &str) -> Box<AbsPath> {
+    fn join(&self, path: &AbsPath, name: &str) -> Rc<AbsPath> {
         self.unchecked_abs_path(
             Path::new(&**path)
                 .join(name)

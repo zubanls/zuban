@@ -14,7 +14,7 @@ use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
-use vfs::{AbsPath, LocalFS, NotifyEvent, VfsHandler as _};
+use vfs::{AbsPath, LocalFS, NormalizedPath, NotifyEvent, VfsHandler as _};
 use zuban_python::{PanicRecovery, Project};
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -29,7 +29,7 @@ fn version() -> &'static str {
 
 pub fn run_server_with_custom_connection(
     connection: Connection,
-    typeshed_path: Option<Box<AbsPath>>,
+    typeshed_path: Option<Rc<AbsPath>>,
     cleanup: impl FnOnce() -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     tracing::info!("Server version {} will start", version());
@@ -176,12 +176,12 @@ pub(crate) struct GlobalState<'sender> {
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
-    typeshed_path: Option<Box<AbsPath>>,
+    typeshed_path: Option<Rc<AbsPath>>,
     pub client_capabilities: ClientCapabilities,
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub diagnostic_request_count: usize,
-    changed_in_memory_files: Rc<RefCell<Vec<Box<AbsPath>>>>,
+    changed_in_memory_files: Rc<RefCell<Vec<Rc<NormalizedPath>>>>,
     pub shutdown_requested: bool,
 }
 
@@ -190,7 +190,7 @@ impl<'sender> GlobalState<'sender> {
         sender: &'sender Sender<lsp_server::Message>,
         client_capabilities: ClientCapabilities,
         roots: Rc<[String]>,
-        typeshed_path: Option<Box<AbsPath>>,
+        typeshed_path: Option<Rc<AbsPath>>,
     ) -> Self {
         GlobalState {
             paths_that_invalidate_whole_project: Default::default(),
@@ -237,7 +237,7 @@ impl<'sender> GlobalState<'sender> {
             let should_push = self.client_capabilities.should_push_diagnostics();
             let vfs_handler = LocalFS::with_watcher(move |path| {
                 if should_push {
-                    new_changed_files.as_ref().borrow_mut().push(path.into())
+                    new_changed_files.as_ref().borrow_mut().push(path)
                 }
             });
             let first_root = self
@@ -467,7 +467,7 @@ impl<'sender> GlobalState<'sender> {
         }
     }
 
-    pub(crate) fn uri_to_path(project: &Project, uri: lsp_types::Uri) -> Box<AbsPath> {
+    pub(crate) fn uri_to_path(project: &Project, uri: lsp_types::Uri) -> Rc<AbsPath> {
         project
             .vfs_handler()
             .unchecked_abs_path(uri_to_path(&uri).to_string())

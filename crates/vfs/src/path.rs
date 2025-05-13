@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, rc::Rc};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -12,7 +12,7 @@ impl AbsPath {
     }
     */
 
-    pub(crate) fn new_boxed(x: Box<str>) -> Box<Self> {
+    pub(crate) fn new_rc(x: Rc<str>) -> Rc<Self> {
         // SAFETY: `AbsPath` is repr(transparent) over `str`
         unsafe { std::mem::transmute(x) }
     }
@@ -20,30 +20,20 @@ impl AbsPath {
     pub fn contains_sub_file(&self, path: &str) -> bool {
         Path::new(path).starts_with(Path::new(&self.0))
     }
-
-    pub fn cloned_box(&self) -> Box<Self> {
-        Self::new_boxed(self.0.into())
-    }
-
-    pub fn into_string(self: Box<AbsPath>) -> String {
-        // SAFETY: `AbsPath` is repr(transparent) over `str`
-        let value: Box<str> = unsafe { std::mem::transmute(self) };
-        value.into_string()
-    }
 }
 
 impl ToOwned for AbsPath {
-    type Owned = Box<AbsPath>;
+    type Owned = Rc<AbsPath>;
 
     fn to_owned(&self) -> Self::Owned {
         self.into()
     }
 }
 
-impl From<&AbsPath> for Box<AbsPath> {
+impl From<&AbsPath> for Rc<AbsPath> {
     #[inline]
-    fn from(s: &AbsPath) -> Box<AbsPath> {
-        let x: Box<str> = s.0.into();
+    fn from(s: &AbsPath) -> Rc<AbsPath> {
+        let x: Rc<str> = s.0.into();
         unsafe { std::mem::transmute(x) }
     }
 }
@@ -59,12 +49,6 @@ impl std::ops::Deref for AbsPath {
 impl AsRef<Path> for AbsPath {
     fn as_ref(&self) -> &Path {
         Path::new(&self.0)
-    }
-}
-
-impl Clone for Box<AbsPath> {
-    fn clone(&self) -> Self {
-        AbsPath::new_boxed(self.as_ref().to_string().into())
     }
 }
 

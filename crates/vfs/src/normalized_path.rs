@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::AbsPath;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -10,23 +12,27 @@ impl NormalizedPath {
         unsafe { std::mem::transmute(x) }
     }
 
-    pub(crate) fn new_boxed(x: Box<AbsPath>) -> Box<Self> {
+    pub(crate) fn new_rc(x: Rc<AbsPath>) -> Rc<Self> {
         unsafe { std::mem::transmute(x) }
+    }
+
+    pub fn rc_to_abs_path(p: Rc<NormalizedPath>) -> Rc<AbsPath> {
+        unsafe { std::mem::transmute(p) }
     }
 }
 
 impl ToOwned for NormalizedPath {
-    type Owned = Box<NormalizedPath>;
+    type Owned = Rc<NormalizedPath>;
 
     fn to_owned(&self) -> Self::Owned {
         self.into()
     }
 }
 
-impl From<&NormalizedPath> for Box<NormalizedPath> {
+impl From<&NormalizedPath> for Rc<NormalizedPath> {
     #[inline]
-    fn from(s: &NormalizedPath) -> Box<NormalizedPath> {
-        let x: Box<AbsPath> = s.0.into();
+    fn from(s: &NormalizedPath) -> Rc<NormalizedPath> {
+        let x: Rc<AbsPath> = s.0.into();
         unsafe { std::mem::transmute(x) }
     }
 }
@@ -36,12 +42,6 @@ impl std::ops::Deref for NormalizedPath {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl Clone for Box<NormalizedPath> {
-    fn clone(&self) -> Self {
-        NormalizedPath::new_boxed(self.0.cloned_box())
     }
 }
 

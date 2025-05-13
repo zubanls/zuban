@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, rc::Rc};
 
 use vfs::{AbsPath, LocalFS, VfsHandler};
 
 use crate::{PythonVersion, Settings};
 
-pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> Vec<Box<AbsPath>> {
+pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> Vec<Rc<AbsPath>> {
     let mut sys_path = vec![];
 
     sys_path.extend(settings.prepended_site_packages.iter().cloned());
@@ -59,7 +59,7 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
     expected_path
 }
 
-pub(crate) fn typeshed_path_from_executable() -> Box<AbsPath> {
+pub(crate) fn typeshed_path_from_executable() -> Rc<AbsPath> {
     let executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
                  a typeshed path in that case.",

@@ -21,6 +21,8 @@ mod type_;
 mod type_helpers;
 mod utils;
 
+use std::rc::Rc;
+
 use parsa_python_cst::{CodeIndex, Tree};
 use vfs::{AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
 
@@ -72,7 +74,7 @@ impl Project {
 
     pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}
 
-    pub fn store_in_memory_file(&mut self, path: Box<AbsPath>, code: Box<str>) {
+    pub fn store_in_memory_file(&mut self, path: Rc<AbsPath>, code: Box<str>) {
         self.db.store_in_memory_file(path, code);
     }
 
@@ -243,7 +245,7 @@ pub struct Script<'a> {
 impl<'a> Script<'a> {
     pub fn new(
         project: &'a mut Project,
-        path: Option<Box<AbsPath>>,
+        path: Option<Rc<AbsPath>>,
         code: Option<Box<str>>,
     ) -> Self {
         let db = &mut project.db;
