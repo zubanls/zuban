@@ -122,12 +122,12 @@ fn diagnostics_for_saved_files() {
                   "message": "Module \"pkg.foo\" has no attribute \"Bar\"",
                   "range": {
                     "start": {
-                      "line": 2,
-                      "character": 41,
+                      "line": 1,
+                      "character": 40,
                     },
                     "end": {
-                      "line": 2,
-                      "character": 47,
+                      "line": 1,
+                      "character": 46,
                     },
                   },
                   "severity": 1,
@@ -138,12 +138,12 @@ fn diagnostics_for_saved_files() {
                   "message": "\"int\" not callable",
                   "range": {
                     "start": {
-                      "line": 4,
-                      "character": 1,
+                      "line": 3,
+                      "character": 0,
                     },
                     "end": {
-                      "line": 4,
-                      "character": 7,
+                      "line": 3,
+                      "character": 6,
                     },
                   },
                   "severity": 1,
@@ -468,11 +468,11 @@ fn symlink_dir_loop() {
 fn diagnostics_positions() {
     use PositionEncodingKind as P;
     for (start_column, len, client_encodings) in [
-        (11, 2, None),
-        (7, 2, Some(vec![P::UTF8])),
-        (11, 2, Some(vec![P::UTF16])),
-        (6, 1, Some(vec![P::UTF32])),
-        (7, 2, Some(vec![P::UTF8, P::UTF16, P::UTF32])),
+        (10, 2, None),
+        (6, 2, Some(vec![P::UTF8])),
+        (10, 2, Some(vec![P::UTF16])),
+        (5, 1, Some(vec![P::UTF32])),
+        (6, 2, Some(vec![P::UTF8, P::UTF16, P::UTF32])),
     ] {
         let server = Project::with_fixture(
             r#"
@@ -485,8 +485,8 @@ fn diagnostics_positions() {
         assert_eq!(diagnostics.len(), 1);
         let diagnostic = diagnostics.into_iter().next().unwrap();
         assert_eq!(diagnostic.message, "Name \"ä\" is not defined");
-        assert_eq!(diagnostic.range.start.line, 1);
-        assert_eq!(diagnostic.range.end.line, 1);
+        assert_eq!(diagnostic.range.start.line, 0);
+        assert_eq!(diagnostic.range.end.line, 0);
         assert_eq!(
             diagnostic.range.start.character, start_column,
             "{client_encodings:?}"

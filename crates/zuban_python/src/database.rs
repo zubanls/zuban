@@ -1294,7 +1294,7 @@ impl ParentScope {
             ParentScope::Function(_) => {
                 let line = file
                     .byte_to_position_infos(db, defined_at.node_start_position())
-                    .line;
+                    .line_one_based();
                 // Add the position like `foo.Bar@7`
                 format!("{}.{name}@{line}", file.qualified_name(db))
             }

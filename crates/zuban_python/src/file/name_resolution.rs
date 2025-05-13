@@ -666,7 +666,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     debug!(
                         "Found a cycle at {}:#{} on name {:?}",
                         self.file.qualified_name(self.i_s.db),
-                        node_ref.line(self.i_s.db),
+                        node_ref.line_one_based(self.i_s.db),
                         node_ref.as_code()
                     );
                     node_ref.set_point(Point::new_specific(Specific::Cycle, Locality::Todo));

@@ -273,7 +273,7 @@ impl<'file> NodeRef<'file> {
             "{}({}):#{}",
             self.file.qualified_name(db),
             self.file_index(),
-            self.line(db),
+            self.line_one_based(db),
         )
     }
 
@@ -386,10 +386,10 @@ impl<'file> NodeRef<'file> {
         self.file.tree.node_start_position(self.node_index)
     }
 
-    pub fn line(&self, db: &Database) -> usize {
+    pub fn line_one_based(&self, db: &Database) -> usize {
         self.file
             .byte_to_position_infos(db, self.node_start_position())
-            .line
+            .line_one_based()
     }
 
     pub fn maybe_redirect<'db>(&self, db: &'db Database) -> Option<NodeRef<'db>> {

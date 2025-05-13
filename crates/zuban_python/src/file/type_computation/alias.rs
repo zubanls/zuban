@@ -841,7 +841,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             "Alias {}={} on #{} is valid? {}",
             name_def.as_code(),
             expr.as_code(),
-            NodeRef::new(self.file, expr.index()).line(self.i_s.db),
+            NodeRef::new(self.file, expr.index()).line_one_based(self.i_s.db),
             alias.is_valid()
         );
         load_cached_type(cached_type_node_ref)

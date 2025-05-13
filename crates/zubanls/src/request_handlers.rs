@@ -58,7 +58,7 @@ impl GlobalState<'_> {
                             NegotiatedEncoding::UTF16 => pos.utf16_bytes_column(),
                             NegotiatedEncoding::UTF32 => pos.code_points_column(),
                         };
-                        Position::new(pos.line as u32, column as u32)
+                        Position::new(pos.line_zero_based() as u32, column as u32)
                     };
                     lsp_types::Range {
                         start: to_lsp_position(issue.start_position()),

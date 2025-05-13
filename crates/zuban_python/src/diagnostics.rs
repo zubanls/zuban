@@ -1966,14 +1966,14 @@ fn fmt_line(
 ) -> String {
     let mut line_number_infos = String::with_capacity(32);
     let mut add_part = |n| line_number_infos.push_str(&format!(":{n}"));
-    add_part(start.line);
+    add_part(start.line_one_based());
     if config.show_column_numbers {
-        add_part(start.code_points_column());
+        add_part(start.code_points_column() + 1);
     }
     if config.show_error_end {
-        add_part(end.line);
+        add_part(end.line_one_based());
         if config.show_column_numbers {
-            add_part(end.code_points_column());
+            add_part(end.code_points_column() + 1);
         }
     }
     format!("{path}{line_number_infos}: {type_}: {error}")

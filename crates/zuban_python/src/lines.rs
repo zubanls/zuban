@@ -28,12 +28,10 @@ impl NewlineIndices {
 
     pub fn line_column_to_byte(&self, code: &str, line: usize, column: usize) -> CodeIndex {
         if line == 0 {
-            panic!("Lines are 1-based")
-        } else if line == 1 {
             return column as CodeIndex;
         }
 
-        let byte = self.lines(code)[line - 2];
+        let byte = self.lines(code)[line - 1];
         // TODO column can be unicode, is that an issue?
         // TODO Also column can be bigger than the current line.
         byte + column as CodeIndex
@@ -47,7 +45,7 @@ impl NewlineIndices {
         let lines = self.lines(code);
         let line = lines.partition_point(|&l| l <= byte_position as CodeIndex);
         PositionInfos {
-            line: line + 1,
+            line,
             code,
             line_offset_in_code: line
                 .checked_sub(1)
@@ -60,24 +58,32 @@ impl NewlineIndices {
 
 #[derive(Copy, Clone)]
 pub struct PositionInfos<'code> {
-    pub line: usize, // 1-based line number
+    line: usize, // zero-based line number
     pub line_offset_in_code: usize,
     code: &'code str,
     pub byte_position: usize,
 }
 
 impl<'code> PositionInfos<'code> {
-    // All columns are one based
+    // All columns are zero-based
     pub fn utf8_bytes_column(&self) -> usize {
-        self.byte_position - self.line_offset_in_code + 1
+        self.byte_position - self.line_offset_in_code
     }
 
     pub fn utf16_bytes_column(&self) -> usize {
-        self.line_part().encode_utf16().count() * 2 + 1
+        self.line_part().encode_utf16().count() * 2
     }
 
     pub fn code_points_column(&self) -> usize {
-        self.line_part().chars().count() + 1
+        self.line_part().chars().count()
+    }
+
+    pub fn line_zero_based(&self) -> usize {
+        self.line
+    }
+
+    pub fn line_one_based(&self) -> usize {
+        self.line + 1
     }
 
     fn line_part(&self) -> &str {

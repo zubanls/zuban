@@ -37,7 +37,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         let Some(node_ref) = self.as_node_ref_internal() else {
             return "<unkown line>".into();
         };
-        node_ref.line(db).to_string()
+        node_ref.line_one_based(db).to_string()
     }
     fn points_backup(&self) -> Option<PointsBackup> {
         None

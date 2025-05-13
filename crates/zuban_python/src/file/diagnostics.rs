@@ -819,7 +819,7 @@ impl Inference<'_, '_, '_> {
             self.file_path(),
             self.file.file_index,
             class.index(),
-            NodeRef::new(self.file, class.index()).line(self.i_s.db)
+            NodeRef::new(self.file, class.index()).line_one_based(self.i_s.db)
         );
         let _indent = debug_indent();
 
@@ -969,7 +969,7 @@ impl Inference<'_, '_, '_> {
             recoverable_error!(
                 "Calculating the class block failed for: {} line #{} in {}",
                 class.name().as_code(),
-                class_node_ref.line(i_s.db),
+                class_node_ref.line_one_based(i_s.db),
                 self.file_path()
             );
             return;
@@ -1176,7 +1176,7 @@ impl Inference<'_, '_, '_> {
                 self.file_path(),
                 self.file.file_index,
                 func_node.index(),
-                function.node_ref.line(self.i_s.db)
+                function.node_ref.line_one_based(self.i_s.db)
             );
             let _indent = debug_indent();
             self.calc_func_diagnostics(function, func_node);

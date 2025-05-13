@@ -454,6 +454,7 @@ impl<'sender> GlobalState<'sender> {
                 );
                 continue;
             };
+            tracing::debug!("Pushing diagnostics to {path}");
             let path = format!("file://{path}");
             let not = lsp_server::Notification::new(
                 <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
