@@ -21,6 +21,10 @@ use crate::capabilities::{server_capabilities, ClientCapabilities};
 use crate::notification_handlers::TestPanic;
 use crate::panic_hooks;
 
+// Since we currently don't do garbage collection, we simply delete the project and reindex,
+// because it's not that expensive after a specific amount of diagnostics.
+const REINDEX_AFTER_N_DIAGNOSTICS: usize = 100;
+
 pub static GLOBAL_NOTIFY_EVENT_COUNTER: AtomicI64 = AtomicI64::new(0);
 
 fn version() -> &'static str {
@@ -221,6 +225,13 @@ impl<'sender> GlobalState<'sender> {
                     self.on_notify_events(msg?)
             }
             self.publish_diagnostics_if_necessary();
+
+            // See comment on REINDEX_AFTER_N_DIAGNOSTICS
+            if self.sent_diagnostic_count > REINDEX_AFTER_N_DIAGNOSTICS {
+                self.sent_diagnostic_count = 0;
+                tracing::info!("Reindex for performance reasons");
+                self.recover_from_panic();
+            }
         }
     }
 
@@ -451,7 +462,11 @@ impl<'sender> GlobalState<'sender> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let files = std::mem::take(&mut *self.changed_in_memory_files.as_ref().borrow_mut());
         if !files.is_empty() {
-            tracing::info!("Needs to publish diagnostics for {} files", files.len());
+            tracing::info!(
+                "Needs to publish diagnostics for {} files start at #{}",
+                files.len(),
+                self.sent_diagnostic_count
+            );
             for path in files {
                 self.sent_diagnostic_count += 1;
                 let project = self.project();
