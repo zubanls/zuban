@@ -70,8 +70,8 @@ impl<'code> PositionInfos<'code> {
         self.byte_position - self.line_offset_in_code
     }
 
-    pub fn utf16_bytes_column(&self) -> usize {
-        self.line_part().encode_utf16().count() * 2
+    pub fn utf16_code_units_column(&self) -> usize {
+        self.line_part().encode_utf16().count()
     }
 
     pub fn code_points_column(&self) -> usize {

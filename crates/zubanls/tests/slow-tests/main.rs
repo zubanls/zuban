@@ -123,11 +123,11 @@ fn diagnostics_for_saved_files() {
                   "range": {
                     "start": {
                       "line": 1,
-                      "character": 40,
+                      "character": 20,
                     },
                     "end": {
                       "line": 1,
-                      "character": 46,
+                      "character": 23,
                     },
                   },
                   "severity": 1,
@@ -143,7 +143,7 @@ fn diagnostics_for_saved_files() {
                     },
                     "end": {
                       "line": 3,
-                      "character": 6,
+                      "character": 3,
                     },
                   },
                   "severity": 1,
@@ -468,23 +468,23 @@ fn symlink_dir_loop() {
 fn diagnostics_positions() {
     use PositionEncodingKind as P;
     for (start_column, len, client_encodings) in [
-        (10, 2, None),
-        (6, 2, Some(vec![P::UTF8])),
-        (10, 2, Some(vec![P::UTF16])),
+        (6, 2, None),
+        (8, 4, Some(vec![P::UTF8])),
+        (6, 2, Some(vec![P::UTF16])),
         (5, 1, Some(vec![P::UTF32])),
-        (6, 2, Some(vec![P::UTF8, P::UTF16, P::UTF32])),
+        (8, 4, Some(vec![P::UTF8, P::UTF16, P::UTF32])),
     ] {
         let server = Project::with_fixture(
             r#"
             [file m.py]
-            'ä'; ä
+            '𐐀'; 𐐀
             "#,
         )
         .into_server_detailed(client_encodings.clone(), false);
         let diagnostics = server.full_diagnostics_for_file("m.py");
         assert_eq!(diagnostics.len(), 1);
         let diagnostic = diagnostics.into_iter().next().unwrap();
-        assert_eq!(diagnostic.message, "Name \"ä\" is not defined");
+        assert_eq!(diagnostic.message, "Name \"𐐀\" is not defined");
         assert_eq!(diagnostic.range.start.line, 0);
         assert_eq!(diagnostic.range.end.line, 0);
         assert_eq!(

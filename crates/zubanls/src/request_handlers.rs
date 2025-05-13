@@ -55,7 +55,7 @@ impl GlobalState<'_> {
                     let to_lsp_position = |pos: zuban_python::PositionInfos| {
                         let column = match encoding {
                             NegotiatedEncoding::UTF8 => pos.utf8_bytes_column(),
-                            NegotiatedEncoding::UTF16 => pos.utf16_bytes_column(),
+                            NegotiatedEncoding::UTF16 => pos.utf16_code_units_column(),
                             NegotiatedEncoding::UTF32 => pos.code_points_column(),
                         };
                         Position::new(pos.line_zero_based() as u32, column as u32)
