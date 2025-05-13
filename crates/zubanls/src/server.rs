@@ -237,7 +237,11 @@ impl<'sender> GlobalState<'sender> {
             let should_push = self.client_capabilities.should_push_diagnostics();
             let vfs_handler = LocalFS::with_watcher(move |path| {
                 if should_push {
-                    new_changed_files.as_ref().borrow_mut().push(path)
+                    let mut changed_files = new_changed_files.as_ref().borrow_mut();
+                    // This is currently a not a set, because the order matters
+                    if !changed_files.contains(&path) {
+                        changed_files.push(path)
+                    }
                 }
             });
             let first_root = self
