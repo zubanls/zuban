@@ -35,14 +35,14 @@ impl Workspaces {
     pub fn directories_not_type_checked(&self) -> impl Iterator<Item = &Directory> {
         self.0
             .iter()
-            .filter(|x| !matches!(x.kind, WorkspaceKind::TypeChecking))
+            .filter(|x| !x.is_type_checked())
             .map(|x| &x.directory)
     }
 
     pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Directory> {
         self.0
             .iter()
-            .filter(|x| matches!(x.kind, WorkspaceKind::TypeChecking))
+            .filter(|x| x.is_type_checked())
             .map(|x| &x.directory)
     }
 
@@ -251,6 +251,14 @@ impl Workspace {
                 kind,
             }
         }
+    }
+
+    pub fn is_type_checked(&self) -> bool {
+        matches!(self.kind, WorkspaceKind::TypeChecking)
+    }
+
+    pub fn part_of_site_packages(&self) -> bool {
+        matches!(self.kind, WorkspaceKind::SitePackages)
     }
 
     pub fn root_path(&self) -> &AbsPath {

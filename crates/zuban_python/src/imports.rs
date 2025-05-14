@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, rc::Rc};
 
 use utils::match_case;
-use vfs::{Directory, DirectoryEntry, FileIndex, WorkspaceKind};
+use vfs::{Directory, DirectoryEntry, FileIndex};
 
 use crate::{
     database::Database,
@@ -100,7 +100,7 @@ pub fn global_import<'a>(
                 db.vfs
                     .workspaces
                     .iter()
-                    .map(|w| (&w.directory, matches!(w.kind, WorkspaceKind::SitePackages))),
+                    .map(|w| (&w.directory, w.part_of_site_packages())),
                 name,
                 false,
             )
@@ -160,7 +160,7 @@ pub fn namespace_import(
                 Err(workspace_root) => {
                     for workspace in db.vfs.workspaces.iter() {
                         if *workspace.root_path() == **workspace_root {
-                            if workspace.kind == WorkspaceKind::SitePackages {
+                            if workspace.part_of_site_packages() {
                                 return Some(ImportResult::PyTypedMissing);
                             } else {
                                 return result;
