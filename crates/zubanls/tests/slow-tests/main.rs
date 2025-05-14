@@ -7,7 +7,7 @@
 //! specific JSON shapes here -- there's little value in such tests, as we can't
 //! be sure without a real client anyway.
 
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use lsp_server::Response;
 use lsp_types::{
@@ -583,6 +583,17 @@ fn publish_diagnostics() {
         assert_eq!(name, file);
         diags
     };
+    let wait_for_multiple_pushes = |mut pushes: HashMap<&str, Vec<&str>>| {
+        while !pushes.is_empty() {
+            let (file, diags) = server.expect_publish_diagnostics();
+            if let Some(wanted) = pushes.remove(file.as_str()) {
+                assert_eq!(diags, wanted);
+            } else {
+                let keys = pushes.keys().collect::<Vec<_>>();
+                panic!("Expected diagnostic for one of {keys:?}, but found {file} ({diags:?})")
+            }
+        }
+    };
 
     const NOT_CALLABLE: &str = r#""int" not callable"#;
     const NOT_CALLABLE2: &str = r#""str" not callable"#;
@@ -612,22 +623,25 @@ fn publish_diagnostics() {
     );
 
     server.write_file_and_wait("m.py", "class C: ...");
-    // TODO I don't think this order is guaranteed
-    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE2]);
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
+    wait_for_multiple_pushes(
+        [
+            ("exists_in_fs.py", vec![NOT_CALLABLE]),
+            ("not_exists_in_fs.py", vec![NOT_CALLABLE2]),
+        ]
+        .into(),
+    );
 
     // Should not generate a diagnostic
     server.write_file_and_wait("exists_in_fs.py", "['']()");
 
     server.open_in_memory_file("m.py", "");
-    assert!(wait_for_diags("m.py").is_empty());
-    assert_eq!(
-        wait_for_diags("not_exists_in_fs.py"),
-        [ATTR_MISSING, NOT_CALLABLE2]
-    );
-    assert_eq!(
-        wait_for_diags("exists_in_fs.py"),
-        [ATTR_MISSING, NOT_CALLABLE]
+    wait_for_multiple_pushes(
+        [
+            ("m.py", vec![]),
+            ("exists_in_fs.py", vec![ATTR_MISSING, NOT_CALLABLE]),
+            ("not_exists_in_fs.py", vec![ATTR_MISSING, NOT_CALLABLE2]),
+        ]
+        .into(),
     );
 
     server.close_in_memory_file("m.py");
