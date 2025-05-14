@@ -946,6 +946,12 @@ impl Database {
         for p in &project.sys_path {
             vfs.add_workspace(p.clone(), WorkspaceKind::SitePackages)
         }
+        // This AbsPath is not really an absolute path, it's just a fallback so anything can be
+        // part of it.
+        vfs.add_workspace(
+            vfs.handler.unchecked_abs_path("".to_string()),
+            WorkspaceKind::Fallback,
+        );
 
         if let Some(recovery) = recovery {
             vfs.load_panic_recovery(

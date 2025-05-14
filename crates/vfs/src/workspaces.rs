@@ -7,6 +7,8 @@ use crate::{tree::AddedFile, AbsPath, Directory, DirectoryEntry, FileEntry, Pare
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
     TypeChecking,
+    // Used as a fallback if files outside of workspaces are added to Workspaces
+    Fallback,
     SitePackages,
     Typeshed,
 }
@@ -254,7 +256,10 @@ impl Workspace {
     }
 
     pub fn is_type_checked(&self) -> bool {
-        matches!(self.kind, WorkspaceKind::TypeChecking)
+        matches!(
+            self.kind,
+            WorkspaceKind::TypeChecking | WorkspaceKind::Fallback
+        )
     }
 
     pub fn part_of_site_packages(&self) -> bool {
