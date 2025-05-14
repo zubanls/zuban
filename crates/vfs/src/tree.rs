@@ -17,8 +17,6 @@ impl std::fmt::Display for FileIndex {
 #[derive(Debug, Clone)]
 pub enum Parent {
     Directory(Weak<Directory>),
-    // This is not an Rc<str>, because that would make the enum 8 bytes bigger. It's used a lot, so
-    // this is probably better.
     Workspace(Rc<AbsPath>),
 }
 
@@ -404,5 +402,15 @@ impl Invalidations {
 
     pub(crate) fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {
         self.0.into_inner().map(|invs| invs.into_iter())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_sizes() {
+        // This would ideally be 8, but the Rc<AbsPath> causes 16 bytes
+        assert_eq!(std::mem::size_of::<Parent>(), 16);
     }
 }
