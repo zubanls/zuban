@@ -511,8 +511,9 @@ fn check_panic_recovery() {
     )
     .into_server_detailed(None, false);
 
-    // Open an in memory file that doesn't otherwise exist
-    server.open_in_memory_file("in_mem.py", "1()");
+    // Open an in memory file that doesn't otherwise exist, also add a forward reference that might
+    // create an additional file and issues with panic recovery.
+    server.open_in_memory_file("in_mem.py", "1()\nx: 'int' = 0");
 
     let req = |name| server.diagnostics_for_file(name);
 

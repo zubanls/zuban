@@ -121,6 +121,11 @@ impl<F: VfsFile> Vfs<F> {
                 .into_iter()
                 .filter_map(|f| {
                     let file_state = Pin::into_inner(f);
+                    if file_state.path.is_empty() {
+                        // If the path is empty is probably a subfile and won't be useful at all in
+                        // a recovery, because the files are identified by path.
+                        return None;
+                    }
                     Some(RecoveryFile {
                         is_in_memory_file: self.in_memory_files.contains_key(&file_state.path),
                         path: file_state.path,
