@@ -484,15 +484,24 @@ impl<F: VfsFile> Vfs<F> {
             let d = parent.maybe_dir();
             let in_dir = d.as_deref().unwrap_or(&workspace.directory);
             if let DirectoryEntry::MissingEntry(_) = new_entry {
-                tracing::debug!("Decided to remove {replace_name} from VFS");
-                if let Some(r) = in_dir.remove_name(replace_name) {
-                    check_invalidations_for_dir_entry(&r)
+                if in_dir
+                    .search(replace_name)
+                    .is_some_and(|entry| matches!(*entry, DirectoryEntry::MissingEntry(_)))
+                {
+                    tracing::debug!("Missing entry is still missing, no changes needed");
+                } else {
+                    tracing::debug!("Decided to remove {replace_name} from VFS");
+                    if let Some(r) = in_dir.remove_name(replace_name) {
+                        check_invalidations_for_dir_entry(&r)
+                    }
                 }
             } else if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
+                // TODO we don't have to invalidate the wohle tree
                 tracing::debug!("Decided to replace {replace_name} in VFS");
                 to_replace.walk_entries(&mut |e| check_invalidations_for_dir_entry(e));
                 *to_replace = new_entry;
             } else {
+                // TODO if the file is exactly the same as the old one, don't replace it
                 tracing::debug!("Decided to add {replace_name} to VFS");
                 in_dir.entries.borrow_mut().push(new_entry);
             }
