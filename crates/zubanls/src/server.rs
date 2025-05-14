@@ -547,7 +547,17 @@ impl<'sender> NotificationDispatcher<'_, 'sender> {
             }
         };
 
-        tracing::debug!(?params);
+        if tracing::event_enabled!(tracing::Level::DEBUG) {
+            if lsp_types::notification::DidOpenTextDocument::METHOD == N::METHOD
+                || lsp_types::notification::DidChangeTextDocument::METHOD == N::METHOD
+            {
+                // Avoid debug information in these specific cases, because we don't want to dump
+                // the whole source code as debug information
+                tracing::debug!(r#"notification{{method="{}"}}"#, N::METHOD);
+            } else {
+                tracing::debug!(?params);
+            }
+        }
 
         if let Err(e) = f(self.global_state, params) {
             tracing::error!(handler = %N::METHOD, error = %e, "notification handler failed");
