@@ -210,6 +210,7 @@ impl Connection {
     }
 
     pub(crate) fn shutdown_and_exit(&self) {
+        tracing::info!("Initiate shutdown sequence");
         self.request::<lsp_types::request::Shutdown>(());
         self.notify::<lsp_types::notification::Exit>(());
     }

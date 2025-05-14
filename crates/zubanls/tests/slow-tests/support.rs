@@ -270,23 +270,38 @@ impl Server {
     }
 
     pub(crate) fn write_file_and_wait(&self, rel_path: &str, code: &str) {
-        self.with_wait(|| self.tmp_dir.write_file(rel_path, code))
+        let _p = tracing::info_span!("write_file_and_wait").entered();
+        tracing::info!("Start");
+        self.with_wait(|| self.tmp_dir.write_file(rel_path, code));
+        tracing::info!("End");
     }
 
     pub(crate) fn remove_file_and_wait(&self, rel_path: &str) {
-        self.with_wait(|| self.tmp_dir.remove_file(rel_path))
+        let _p = tracing::info_span!("remove_file_and_wait").entered();
+        tracing::info!("Start");
+        self.with_wait(|| self.tmp_dir.remove_file(rel_path));
+        tracing::info!("End");
     }
 
     pub(crate) fn rename_file_and_wait(&self, from: &str, to: &str) {
-        self.with_wait(|| self.tmp_dir.rename(from, to))
+        let _p = tracing::info_span!("rename_file_and_wait").entered();
+        tracing::info!("Start");
+        self.with_wait(|| self.tmp_dir.rename(from, to));
+        tracing::info!("End");
     }
 
     pub(crate) fn create_dir_all_and_wait(&self, rel_path: &str) {
-        self.with_wait(|| self.tmp_dir.create_dir_all(rel_path))
+        let _p = tracing::info_span!("create_dir_all_and_wait").entered();
+        tracing::info!("Start");
+        self.with_wait(|| self.tmp_dir.create_dir_all(rel_path));
+        tracing::info!("End");
     }
 
     pub(crate) fn create_symlink_dir_and_wait(&self, rel_original: &str, rel_link: &str) {
-        self.with_wait(|| self.tmp_dir.create_symlink_dir(rel_original, rel_link))
+        let _p = tracing::info_span!("create_symlink_dir_and_wait").entered();
+        tracing::info!("Initiate create");
+        self.with_wait(|| self.tmp_dir.create_symlink_dir(rel_original, rel_link));
+        tracing::info!("End");
     }
 }
 

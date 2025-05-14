@@ -648,4 +648,5 @@ fn publish_diagnostics() {
         wait_for_diags("exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE]
     );
+    tracing::info!("Finished all checks");
 }
