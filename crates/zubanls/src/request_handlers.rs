@@ -18,7 +18,7 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
         self.sent_diagnostic_count += 1;
         tracing::info!(
-            "Requsted diagnostics for {} (#{} overall)",
+            "Requested diagnostics for {} (#{} overall)",
             params.text_document.uri.as_str(),
             self.sent_diagnostic_count
         );

@@ -154,8 +154,15 @@ impl Server {
     }
 
     pub(crate) fn full_diagnostics_for_file(&self, rel_path: &str) -> Vec<lsp_types::Diagnostic> {
+        self.full_diagnostics_for_abs_path(self.doc_id(rel_path))
+    }
+
+    pub(crate) fn full_diagnostics_for_abs_path(
+        &self,
+        text_document: TextDocumentIdentifier,
+    ) -> Vec<lsp_types::Diagnostic> {
         let res = self.request::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
-            text_document: self.doc_id(rel_path),
+            text_document,
             identifier: None,
             previous_result_id: None,
             partial_result_params: PartialResultParams::default(),
@@ -253,9 +260,13 @@ impl Server {
     }
 
     pub fn open_in_memory_file(&self, path: &str, code: &str) {
+        self.open_in_memory_file_for_uri(self.doc_id(path).uri, code)
+    }
+
+    pub fn open_in_memory_file_for_uri(&self, uri: lsp_types::Uri, code: &str) {
         self.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
-                uri: self.doc_id(path).uri,
+                uri,
                 language_id: "python".to_owned(),
                 version: 0,
                 text: code.to_owned(),

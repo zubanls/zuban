@@ -424,6 +424,88 @@ fn multi_roots() {
 }
 
 #[test]
+fn files_outside_of_root() {
+    let server = Project::with_fixture(
+        r#"
+        [file base/m.py]
+        import outside_workdir
+        import outside_in_mem
+        import foo
+
+        [file base/foo.py]
+
+        [file outside_workdir.py]
+        import foo
+
+        "#,
+    )
+    .root("base")
+    .into_server();
+
+    let d = |name| server.diagnostics_for_file(name);
+    const NO_OUTSIDE1: &str =
+        "Cannot find implementation or library stub for module named \"outside_workdir\"";
+    const NO_OUTSIDE2: &str =
+        "Cannot find implementation or library stub for module named \"outside_in_mem\"";
+
+    server.open_in_memory_file("outside_in_mem.py", "import foo");
+    assert!(d("outside_in_mem.py").is_empty());
+    // Since it's not an in-memory file, it's out of scope and diagnostics are not available
+    let response =
+        server.request_with_response::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
+            text_document: TextDocumentIdentifier {
+                uri: Uri::from_str("outside_workdir.py").unwrap(),
+            },
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        });
+    let err = response.error.unwrap();
+    assert_eq!(err.code, lsp_server::ErrorCode::InvalidParams as i32);
+    assert_eq!(err.message, "File outside_workdir.py does not exist");
+
+    assert_eq!(
+        d("base/m.py"),
+        vec![NO_OUTSIDE1.to_string(), NO_OUTSIDE2.to_string()]
+    );
+
+    // Check random files that don't really make sense
+    let check_other_uris = [
+        //Uri::from_str("file:///foo/bar").unwrap(),
+        Uri::from_str("file://foo").unwrap(),
+        //Uri::from_str("file://").unwrap(),
+        Uri::from_str("https://www.example.com/foo.py").unwrap(),
+    ];
+
+    let diags_for_uri = |uri: &Uri| {
+        server
+            .full_diagnostics_for_abs_path(TextDocumentIdentifier { uri: uri.clone() })
+            .into_iter()
+            .map(|d| d.message)
+            .collect::<Vec<_>>()
+    };
+
+    for uri in &check_other_uris {
+        server.open_in_memory_file_for_uri(uri.clone(), "import m\n1()");
+        assert_eq!(diags_for_uri(uri), vec![r#""int" not callable"#]);
+    }
+
+    server.open_in_memory_file("base/m.py", "import outside_workdir\nimport foo");
+    assert_eq!(d("base/m.py"), vec![NO_OUTSIDE1.to_string()]);
+
+    // The in memory files should still work after a panic
+    server.raise_and_recover_panic_in_language_server();
+
+    assert!(d("outside_in_mem.py").is_empty());
+    assert_eq!(d("base/m.py"), vec![NO_OUTSIDE1.to_string()]);
+
+    for uri in &check_other_uris {
+        assert_eq!(diags_for_uri(uri), vec![r#""int" not callable"#]);
+    }
+}
+
+#[test]
 #[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn symlink_dir_loop() {
     let server = Project::with_fixture(

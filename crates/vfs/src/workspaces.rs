@@ -35,15 +35,13 @@ impl Workspaces {
     }
 
     pub fn directories_not_type_checked(&self) -> impl Iterator<Item = &Directory> {
-        self.0
-            .iter()
+        self.iter()
             .filter(|x| !x.is_type_checked())
             .map(|x| &x.directory)
     }
 
     pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Directory> {
-        self.0
-            .iter()
+        self.iter()
             .filter(|x| x.is_type_checked())
             .map(|x| &x.directory)
     }
@@ -54,10 +52,24 @@ impl Workspaces {
         case_sensitive: bool,
         path: &AbsPath,
     ) -> Option<Rc<FileEntry>> {
-        self.0.iter().find_map(|workspace| {
-            let p = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path())?;
-            workspace.directory.search_path(vfs, p)
-        })
+        self.iter()
+            .find_map(|workspace| {
+                let p = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path())?;
+                workspace.directory.search_path(vfs, p)
+            })
+            .or_else(|| {
+                self.iter().find_map(|workspace| {
+                    if workspace.kind == WorkspaceKind::Fallback {
+                        if let Some(entry) = workspace.directory.search(path) {
+                            let DirectoryEntry::File(f) = &*entry else {
+                                unreachable!("Why would this ever be {entry:?} as a fallback?");
+                            };
+                            return Some(f.clone());
+                        };
+                    }
+                    None
+                })
+            })
     }
 
     pub(crate) fn search_potential_parent_for_invalidation<'path>(
@@ -127,6 +139,13 @@ impl Workspaces {
                     vfs,
                     p,
                 );
+            }
+        }
+        for workspace in &mut self.0 {
+            if workspace.kind == WorkspaceKind::Fallback {
+                return workspace
+                    .directory
+                    .ensure_file(Parent::Workspace(workspace.root_path.clone()), path);
             }
         }
         unreachable!("Expected to be able to place the file {path:?}")
