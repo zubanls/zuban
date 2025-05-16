@@ -176,6 +176,12 @@ impl Server {
         report.full_document_diagnostic_report.items
     }
 
+    pub fn expect_publish_diagnostics_for_file(&self, for_file: &str) -> Vec<String> {
+        let (file, diags) = self.expect_publish_diagnostics();
+        assert_eq!(for_file, file);
+        diags
+    }
+
     pub fn expect_publish_diagnostics(&self) -> (String, Vec<String>) {
         let (uri, messages) = self.expect_publish_diagnostics_with_uri();
         (

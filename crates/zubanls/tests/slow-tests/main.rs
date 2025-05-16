@@ -528,14 +528,10 @@ fn files_outside_of_root_with_push_diagnostics() {
     const NO_OUTSIDE: &str =
         "Cannot find implementation or library stub for module named \"outside_workdir\"";
 
-    let wait_for_diags = |name| {
-        let (file, diags) = server.expect_publish_diagnostics();
-        assert_eq!(name, file);
-        diags
-    };
-
     server.open_in_memory_file("outside_in_mem.py", "import foo");
-    assert!(wait_for_diags("outside_in_mem.py").is_empty());
+    assert!(server
+        .expect_publish_diagnostics_for_file("outside_in_mem.py")
+        .is_empty());
 
     // Check random files that don't really make sense
     let check_other_uris = [
@@ -554,7 +550,10 @@ fn files_outside_of_root_with_push_diagnostics() {
 
     /*
     server.open_in_memory_file("base/m.py", "import outside_workdir\nimport foo");
-    assert_eq!(wait_for_diags("base/m.py"), [NO_OUTSIDE]);
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("base/m.py"),
+        [NO_OUTSIDE]
+    );
 
     // The in memory files should still work after a panic
     server.raise_and_recover_panic_in_language_server();
@@ -688,23 +687,25 @@ fn check_panic_recovery_with_push_diagnostics() {
     .into_server_detailed(None, false);
 
     const NOT_CALLABLE: &str = r#""int" not callable"#;
-    let wait_for_diags = |name| {
-        let (file, diags) = server.expect_publish_diagnostics();
-        assert_eq!(name, file);
-        diags
-    };
-
     // Open an in memory file that doesn't otherwise exist
     server.open_in_memory_file("in_mem.py", "1()");
-    assert_eq!(wait_for_diags("in_mem.py"), [NOT_CALLABLE]);
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("in_mem.py"),
+        [NOT_CALLABLE]
+    );
 
     // Introduce a panic
     server.raise_and_recover_panic_in_language_server();
-    assert_eq!(wait_for_diags("in_mem.py"), [NOT_CALLABLE]);
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("in_mem.py"),
+        [NOT_CALLABLE]
+    );
 
     // Check that in memory files can be changed after a panic
     server.change_in_memory_file("in_mem.py", "");
-    assert!(wait_for_diags("in_mem.py").is_empty());
+    assert!(server
+        .expect_publish_diagnostics_for_file("in_mem.py")
+        .is_empty());
 }
 
 #[test]
@@ -720,11 +721,6 @@ fn publish_diagnostics() {
     .with_push_diagnostics()
     .into_server();
 
-    let wait_for_diags = |name| {
-        let (file, diags) = server.expect_publish_diagnostics();
-        assert_eq!(name, file);
-        diags
-    };
     let wait_for_multiple_pushes = |mut pushes: HashMap<&str, Vec<&str>>| {
         while !pushes.is_empty() {
             let (file, diags) = server.expect_publish_diagnostics();
@@ -744,23 +740,29 @@ fn publish_diagnostics() {
     const ATTR_MISSING: &str = r#"Module "m" has no attribute "C""#;
 
     server.open_in_memory_file("exists_in_fs.py", "import m");
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [MODULE_MISSING]);
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("exists_in_fs.py"),
+        [MODULE_MISSING]
+    );
 
     server.open_in_memory_file("not_exists_in_fs.py", "import m");
-    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [MODULE_MISSING]);
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("not_exists_in_fs.py"),
+        [MODULE_MISSING]
+    );
 
     // Writing this file does not do anything, because it exists as an in memory file
     server.write_file_and_wait("not_exists_in_fs.py", "");
 
     server.change_in_memory_file("exists_in_fs.py", "from m import C\n1()\n");
     assert_eq!(
-        wait_for_diags("exists_in_fs.py"),
+        server.expect_publish_diagnostics_for_file("exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE]
     );
 
     server.change_in_memory_file("not_exists_in_fs.py", "from m import C\n''()\n");
     assert_eq!(
-        wait_for_diags("not_exists_in_fs.py"),
+        server.expect_publish_diagnostics_for_file("not_exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE2]
     );
 
@@ -787,8 +789,14 @@ fn publish_diagnostics() {
     );
 
     server.close_in_memory_file("m.py");
-    assert_eq!(wait_for_diags("not_exists_in_fs.py"), [NOT_CALLABLE2]);
-    assert_eq!(wait_for_diags("exists_in_fs.py"), [NOT_CALLABLE]);
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("not_exists_in_fs.py"),
+        [NOT_CALLABLE2]
+    );
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("exists_in_fs.py"),
+        [NOT_CALLABLE]
+    );
 
     // Should not generate a diagnostic
     server.write_file_and_wait("not_exists_in_fs.py", "[1]()");
@@ -796,12 +804,12 @@ fn publish_diagnostics() {
 
     server.write_file_and_wait("m.py", "");
     assert_eq!(
-        wait_for_diags("exists_in_fs.py"),
+        server.expect_publish_diagnostics_for_file("exists_in_fs.py"),
         [ATTR_MISSING, NOT_CALLABLE]
     );
     server.remove_file_and_wait("m.py");
     assert_eq!(
-        wait_for_diags("exists_in_fs.py"),
+        server.expect_publish_diagnostics_for_file("exists_in_fs.py"),
         [MODULE_MISSING, NOT_CALLABLE]
     );
     tracing::info!("Finished all checks");
