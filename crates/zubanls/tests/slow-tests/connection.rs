@@ -160,15 +160,23 @@ impl Connection {
         match self.recv_timeout() {
             Ok(Message::Response(response)) => response,
             Ok(msg) => panic!("Unexpected message, expected response: {msg:?}"),
-            Err(err) => panic!("Expected a message, but got: {err:?}"),
+            Err(err) => {
+                tracing::error!("Why no response");
+                panic!("Expected a message, but got: {err:?}")
+            }
         }
     }
 
     pub fn expect_notification<N: lsp_types::notification::Notification>(&self) -> N::Params {
         match self.recv_timeout() {
-            Ok(Message::Notification(not)) => not.extract::<N::Params>(N::METHOD).unwrap(),
+            Ok(Message::Notification(not)) => not
+                .extract::<N::Params>(N::METHOD)
+                .unwrap_or_else(|err| panic!("Wanted {}, got {err:?}", N::METHOD)),
             Ok(msg) => panic!("Unexpected message, expected notification: {msg:?}"),
-            Err(err) => panic!("Expected a notification, but got: {err:?}"),
+            Err(err) => {
+                tracing::error!("Why no notification, expected {}", N::METHOD);
+                panic!("Expected the notification {}, but got: {err:?}", N::METHOD)
+            }
         }
     }
 

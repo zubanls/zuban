@@ -117,7 +117,6 @@ pub fn run_server_with_custom_connection(
         use std::io::Write;
 
         let backtrace = std::backtrace::Backtrace::force_capture();
-        tracing::error!("Panic hook: {panic_info}\n{backtrace}");
 
         // Currently std::panic::get_backtrace_style is unstable:
         // https://github.com/rust-lang/rust/issues/93346
@@ -137,7 +136,7 @@ pub fn run_server_with_custom_connection(
         }
 
         // It's not guaranteed that we can notify the client, but we try to.
-        let _ = hook_sender.send(lsp_server::Message::Notification(
+        if let Err(err) = hook_sender.send(lsp_server::Message::Notification(
             lsp_server::Notification {
                 method: lsp_types::notification::ShowMessage::METHOD.into(),
                 params: serde_json::to_value(lsp_types::ShowMessageParams {
@@ -149,7 +148,10 @@ pub fn run_server_with_custom_connection(
                 })
                 .unwrap(),
             },
-        ));
+        )) {
+            tracing::warn!("Wanted to send panic information to the client, but got {err}");
+        }
+        tracing::error!("Panic hook: {panic_info}\n{backtrace}");
     }));
 
     let mut global_state = GlobalState::new(
@@ -432,6 +434,7 @@ impl<'sender> GlobalState<'sender> {
                                     // recovery and reused. Currently this is not handled
                                     // correctly. If the VFS rechecks files, then it could be fine,
                                     // BUT we should document that here.
+                                    tracing::info!("Reindex because a file was changed that invalidates the whole project: {path:?}");
                                     self.recover_from_panic();
                                     return;
                                 }
