@@ -767,26 +767,20 @@ fn publish_diagnostics() {
     );
 
     server.write_file_and_wait("m.py", "class C: ...");
-    wait_for_multiple_pushes(
-        [
-            ("exists_in_fs.py", vec![NOT_CALLABLE]),
-            ("not_exists_in_fs.py", vec![NOT_CALLABLE2]),
-        ]
-        .into(),
-    );
+    server.expect_multiple_diagnostics_pushes([
+        ("exists_in_fs.py", vec![NOT_CALLABLE]),
+        ("not_exists_in_fs.py", vec![NOT_CALLABLE2]),
+    ]);
 
     // Should not generate a diagnostic
     server.write_file_and_wait("exists_in_fs.py", "['']()");
 
     server.open_in_memory_file("m.py", "");
-    wait_for_multiple_pushes(
-        [
-            ("m.py", vec![]),
-            ("exists_in_fs.py", vec![ATTR_MISSING, NOT_CALLABLE]),
-            ("not_exists_in_fs.py", vec![ATTR_MISSING, NOT_CALLABLE2]),
-        ]
-        .into(),
-    );
+    server.expect_multiple_diagnostics_pushes([
+        ("m.py", vec![]),
+        ("exists_in_fs.py", vec![ATTR_MISSING, NOT_CALLABLE]),
+        ("not_exists_in_fs.py", vec![ATTR_MISSING, NOT_CALLABLE2]),
+    ]);
 
     server.close_in_memory_file("m.py");
     assert_eq!(

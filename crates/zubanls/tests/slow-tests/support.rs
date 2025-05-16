@@ -1,5 +1,6 @@
 use std::{
     cell::Cell,
+    collections::HashMap,
     ops::Deref,
     path::{Path, PathBuf},
     str::FromStr,
@@ -174,6 +175,22 @@ impl Server {
         };
         assert!(report.related_documents.is_none());
         report.full_document_diagnostic_report.items
+    }
+
+    pub fn expect_multiple_diagnostics_pushes<'x>(
+        &self,
+        pushes: impl Into<HashMap<&'x str, Vec<&'x str>>>,
+    ) {
+        let mut pushes = pushes.into();
+        while !pushes.is_empty() {
+            let (file, diags) = self.expect_publish_diagnostics();
+            if let Some(wanted) = pushes.remove(file.as_str()) {
+                assert_eq!(diags, wanted);
+            } else {
+                let keys = pushes.keys().collect::<Vec<_>>();
+                panic!("Expected diagnostic for one of {keys:?}, but found {file} ({diags:?})")
+            }
+        }
     }
 
     pub fn expect_publish_diagnostics_for_file(&self, for_file: &str) -> Vec<String> {
