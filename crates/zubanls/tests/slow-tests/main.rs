@@ -7,7 +7,7 @@
 //! specific JSON shapes here -- there's little value in such tests, as we can't
 //! be sure without a real client anyway.
 
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
@@ -533,6 +533,12 @@ fn files_outside_of_root_with_push_diagnostics() {
         .expect_publish_diagnostics_for_file("outside_in_mem.py")
         .is_empty());
 
+    server.open_in_memory_file("base/m.py", "import outside_workdir\nimport foo");
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file("base/m.py"),
+        [NO_OUTSIDE]
+    );
+
     // Check random files that don't really make sense
     let check_other_uris = [
         Uri::from_str("file:///bar/foo").unwrap(),
@@ -548,20 +554,18 @@ fn files_outside_of_root_with_push_diagnostics() {
         assert_eq!(diags, [r#""int" not callable"#]);
     }
 
-    /*
-    server.open_in_memory_file("base/m.py", "import outside_workdir\nimport foo");
-    assert_eq!(
-        server.expect_publish_diagnostics_for_file("base/m.py"),
-        [NO_OUTSIDE]
-    );
-
+    let in_mem_uri = &format!("file://{}/outside_in_mem.py", server.tmp_dir.path());
+    let m_uri = &format!("file://{}/base/m.py", server.tmp_dir.path());
     // The in memory files should still work after a panic
     server.raise_and_recover_panic_in_language_server();
-
-    for uri in check_other_uris {
-        assert_eq!(file.as_str(), uri.as_str());
-    }
-    */
+    let mut expected: Vec<_> = check_other_uris
+        .iter()
+        .map(|uri| (uri.as_str(), vec![r#""int" not callable"#]))
+        .collect();
+    expected.push((in_mem_uri, vec![]));
+    expected.push((m_uri, vec![NO_OUTSIDE]));
+    let expected: std::collections::HashMap<_, _> = expected.into_iter().collect();
+    server.expect_multiple_diagnostics_pushes_with_uris(expected);
 }
 
 #[test]
@@ -720,18 +724,6 @@ fn publish_diagnostics() {
     )
     .with_push_diagnostics()
     .into_server();
-
-    let wait_for_multiple_pushes = |mut pushes: HashMap<&str, Vec<&str>>| {
-        while !pushes.is_empty() {
-            let (file, diags) = server.expect_publish_diagnostics();
-            if let Some(wanted) = pushes.remove(file.as_str()) {
-                assert_eq!(diags, wanted);
-            } else {
-                let keys = pushes.keys().collect::<Vec<_>>();
-                panic!("Expected diagnostic for one of {keys:?}, but found {file} ({diags:?})")
-            }
-        }
-    };
 
     const NOT_CALLABLE: &str = r#""int" not callable"#;
     const NOT_CALLABLE2: &str = r#""str" not callable"#;

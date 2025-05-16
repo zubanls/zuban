@@ -177,18 +177,36 @@ impl Server {
         report.full_document_diagnostic_report.items
     }
 
+    pub fn expect_multiple_diagnostics_pushes_with_uris<'x>(
+        &self,
+        pushes: impl Into<HashMap<&'x str, Vec<&'x str>>>,
+    ) {
+        let mut pushes = pushes.into();
+        while !pushes.is_empty() {
+            let (uri, diags) = self.expect_publish_diagnostics_with_uri();
+            let uri = uri.as_str();
+            if let Some(wanted) = pushes.remove(uri) {
+                assert_eq!(diags, wanted);
+            } else {
+                let keys = pushes.keys().collect::<Vec<_>>();
+                panic!("Expected diagnostic for one of {keys:?}, but found {uri} ({diags:?})")
+            }
+        }
+    }
+
     pub fn expect_multiple_diagnostics_pushes<'x>(
         &self,
         pushes: impl Into<HashMap<&'x str, Vec<&'x str>>>,
     ) {
         let mut pushes = pushes.into();
         while !pushes.is_empty() {
-            let (file, diags) = self.expect_publish_diagnostics();
-            if let Some(wanted) = pushes.remove(file.as_str()) {
+            let (uri, diags) = self.expect_publish_diagnostics();
+            let uri = uri.as_str();
+            if let Some(wanted) = pushes.remove(uri) {
                 assert_eq!(diags, wanted);
             } else {
                 let keys = pushes.keys().collect::<Vec<_>>();
-                panic!("Expected diagnostic for one of {keys:?}, but found {file} ({diags:?})")
+                panic!("Expected diagnostic for one of {keys:?}, but found {uri} ({diags:?})")
             }
         }
     }

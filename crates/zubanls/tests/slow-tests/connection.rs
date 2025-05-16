@@ -218,6 +218,9 @@ impl Connection {
 
 impl Drop for Connection {
     fn drop(&mut self) {
+        if let Ok(msg) = self.client.receiver.try_recv() {
+            panic!("Wanted to drop the connection, but the message {msg:?} appeared");
+        }
         assert!(self.client.receiver.is_empty());
         if let Some(server_thread) = self.server_thread.take() {
             let mut counter = 0;
