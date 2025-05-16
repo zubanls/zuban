@@ -742,7 +742,13 @@ fn patch_path_prefix(path: &Uri) -> String {
 
 fn uri_to_path(uri: &lsp_types::Uri) -> &str {
     let uri = uri.as_str();
-    uri.strip_prefix("file://").unwrap_or(uri)
+    if let Some(path) = uri.strip_prefix("file://") {
+        // We don't want empty paths, so we just use "file://" as its name
+        if !path.is_empty() {
+            return path;
+        }
+    }
+    uri
 }
 
 #[test]
