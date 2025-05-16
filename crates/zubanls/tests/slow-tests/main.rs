@@ -21,9 +21,16 @@ mod support;
 
 use connection::Connection;
 use serde_json::json;
+// It is very unfortunate, but we need to tag every test in this crate, to avoid having set_hook
+// overwritten by the thread spawning? test setup? I'm not sure what it is exactly, but I have seen
+// cases where the panic hook disappeared from tests and would be reverted to the default one,
+// which is obviously very unfortunate.
+// https://users.rust-lang.org/t/is-there-any-way-to-set-panic-hook-reliably-in-the-test/18202
+use serial_test::{parallel, serial};
 use support::Project;
 
 #[test]
+#[parallel]
 fn basic_server_setup() {
     let con = Connection::new();
     let response = con.initialize(&["/foo/bar"], None, true);
@@ -51,6 +58,7 @@ fn basic_server_setup() {
 }
 
 #[test]
+#[parallel]
 fn request_after_shutdown_is_invalid() {
     let con = Connection::initialized(&["/foo/bar"], None, true);
     con.request::<lsp_types::request::Shutdown>(());
@@ -82,12 +90,14 @@ fn request_after_shutdown_is_invalid() {
 }
 
 #[test]
+#[parallel]
 fn exit_without_shutdown() {
     let con = Connection::initialized(&["/foo/bar"], None, true);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
 #[test]
+#[parallel]
 fn diagnostics_for_saved_files() {
     let server = Project::with_fixture(
         r#"
@@ -196,6 +206,7 @@ fn diagnostics_for_saved_files() {
 }
 
 #[test]
+#[parallel]
 fn in_memory_file_changes() {
     let server = Project::with_fixture(
         r#"
@@ -268,6 +279,7 @@ fn in_memory_file_changes() {
 }
 
 #[test]
+#[serial]
 fn change_config_file() {
     if cfg!(target_os = "linux") && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
     {
@@ -322,11 +334,13 @@ fn change_config_file() {
 }
 
 #[test]
+#[parallel]
 fn check_rename_without_symlinks() {
     check_rename(false);
 }
 
 #[test]
+#[parallel]
 #[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn check_rename_with_symlinks() {
     check_rename(true);
@@ -391,6 +405,7 @@ fn check_rename(contains_symlink: bool) {
 }
 
 #[test]
+#[parallel]
 fn multi_roots() {
     let server = Project::with_fixture(
         r#"
@@ -424,6 +439,7 @@ fn multi_roots() {
 }
 
 #[test]
+#[serial]
 fn files_outside_of_root() {
     let server = Project::with_fixture(
         r#"
@@ -506,6 +522,7 @@ fn files_outside_of_root() {
 }
 
 #[test]
+#[serial]
 fn files_outside_of_root_with_push_diagnostics() {
     let server = Project::with_fixture(
         r#"
@@ -569,6 +586,7 @@ fn files_outside_of_root_with_push_diagnostics() {
 }
 
 #[test]
+#[parallel]
 #[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn symlink_dir_loop() {
     let server = Project::with_fixture(
@@ -610,6 +628,7 @@ fn symlink_dir_loop() {
 }
 
 #[test]
+#[parallel]
 fn diagnostics_positions() {
     use PositionEncodingKind as P;
     for (start_column, len, client_encodings) in [
@@ -645,6 +664,7 @@ fn diagnostics_positions() {
 }
 
 #[test]
+#[serial]
 fn check_panic_recovery() {
     let server = Project::with_fixture(
         r#"
@@ -680,6 +700,7 @@ fn check_panic_recovery() {
 }
 
 #[test]
+#[serial]
 fn check_panic_recovery_with_push_diagnostics() {
     let server = Project::with_fixture(
         r#"
@@ -713,6 +734,7 @@ fn check_panic_recovery_with_push_diagnostics() {
 }
 
 #[test]
+#[parallel]
 fn publish_diagnostics() {
     // Check PublishDiagnostics where the client is not requesting diagnostics, but receiving them
     // each time a change is made
