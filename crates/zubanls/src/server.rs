@@ -361,10 +361,14 @@ impl<'sender> GlobalState<'sender> {
     fn on_lsp_message_and_return_on_shutdown(&mut self, msg: Message) -> bool {
         // It is a bit questionable that we use AssertUnwindSafe here. But the data is mostly in
         // self.project and will be cleaned up if it panics.
+        let mut was_message = None;
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             use lsp_types::notification::Notification;
             match msg {
-                Message::Request(r) => self.on_request(r),
+                Message::Request(r) => {
+                    was_message = Some(r.id.clone());
+                    self.on_request(r)
+                }
                 Message::Notification(n) => {
                     if n.method == lsp_types::notification::Exit::METHOD {
                         return true;
@@ -378,6 +382,13 @@ impl<'sender> GlobalState<'sender> {
         result.unwrap_or_else(|_| {
             tracing::warn!("Recovered from panic");
             // The error was reported
+            if let Some(request_id) = was_message {
+                self.respond(lsp_server::Response::new_err(
+                    request_id,
+                    lsp_server::ErrorCode::InternalError as i32,
+                    "Server paniced, will now restart".to_string(),
+                ));
+            }
             self.recover_from_panic();
             false
         })
