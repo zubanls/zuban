@@ -66,7 +66,7 @@ impl GlobalState<'_> {
 
     #[inline(never)]
     pub(crate) fn test_panic(&mut self, _: ()) -> anyhow::Result<()> {
-        panic!("Test Panic")
+        panic!("Test Panic in thread {:?}", std::thread::current().id())
     }
 }
 

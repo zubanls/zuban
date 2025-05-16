@@ -111,7 +111,16 @@ pub fn run_server_with_custom_connection(
         return Err(e.into());
     }
 
-    let hook_sender = connection.sender.clone();
+    thread_local! {
+        static LOCAL_SENDER: RefCell<Option<Sender<Message>>> = RefCell::new(None);
+    }
+
+    // We need to use a thread local for the sender, because the hook is global and can therefore
+    // be used to send something to the wrong thread.
+    LOCAL_SENDER.with(|s| {
+        *s.borrow_mut() = Some(connection.sender.clone());
+    });
+
     // On panic, notify the client.
     let _hook = panic_hooks::enter(Box::new(move |panic_info| {
         use std::io::Write;
@@ -132,23 +141,28 @@ pub fn run_server_with_custom_connection(
         if use_backtrace {
             writeln!(stderr, "Panic hook: {panic_info}\n{backtrace}").ok();
         } else {
-            writeln!(stderr, "Panic hook: {panic_info}").ok();
+            writeln!(stderr, "Panic hook: {panic_info} ").ok();
         }
 
         // It's not guaranteed that we can notify the client, but we try to.
-        if let Err(err) = hook_sender.send(lsp_server::Message::Notification(
-            lsp_server::Notification {
-                method: lsp_types::notification::ShowMessage::METHOD.into(),
-                params: serde_json::to_value(lsp_types::ShowMessageParams {
-                    typ: lsp_types::MessageType::ERROR,
-                    message: format!(
-                        "ZubanLS paniced, please open an issue on GitHub with the details:\n\
+        if let Err(err) = LOCAL_SENDER.with_borrow(|sender| {
+            sender
+                .as_ref()
+                .unwrap()
+                .send(lsp_server::Message::Notification(
+                    lsp_server::Notification {
+                        method: lsp_types::notification::ShowMessage::METHOD.into(),
+                        params: serde_json::to_value(lsp_types::ShowMessageParams {
+                            typ: lsp_types::MessageType::ERROR,
+                            message: format!(
+                            "ZubanLS paniced, please open an issue on GitHub with the details:\n\
                      {panic_info}\n\n{backtrace}"
-                    ),
-                })
-                .unwrap(),
-            },
-        )) {
+                        ),
+                        })
+                        .unwrap(),
+                    },
+                ))
+        }) {
             tracing::warn!("Wanted to send panic information to the client, but got {err}");
         }
         tracing::error!("Panic hook: {panic_info}\n{backtrace}");
