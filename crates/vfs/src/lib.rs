@@ -89,6 +89,10 @@ pub trait VfsHandler {
         AbsPath::new_rc(path.into())
     }
 
+    fn unchecked_abs_path_from_uri(&self, path: Rc<str>) -> Rc<AbsPath> {
+        AbsPath::new_rc(path.into())
+    }
+
     fn join(&self, path: &AbsPath, name: &str) -> Rc<AbsPath> {
         self.unchecked_abs_path(
             Path::new(&**path)

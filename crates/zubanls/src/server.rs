@@ -525,7 +525,7 @@ impl<'sender> GlobalState<'sender> {
     pub(crate) fn uri_to_path(project: &Project, uri: lsp_types::Uri) -> Rc<AbsPath> {
         project
             .vfs_handler()
-            .unchecked_abs_path(uri_to_path(&uri).to_string())
+            .unchecked_abs_path_from_uri(uri_to_path(&uri).into())
     }
 }
 

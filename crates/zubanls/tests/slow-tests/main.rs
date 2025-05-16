@@ -543,7 +543,7 @@ fn files_outside_of_root_with_push_diagnostics() {
     let check_other_uris = [
         Uri::from_str("file:///bar/foo").unwrap(),
         Uri::from_str("file://foo").unwrap(),
-        //Uri::from_str("file://").unwrap(),
+        Uri::from_str("file://").unwrap(),
         Uri::from_str("https://www.example.com/foo.py").unwrap(),
     ];
 
