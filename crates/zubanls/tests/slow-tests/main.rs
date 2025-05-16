@@ -52,7 +52,7 @@ fn basic_server_setup() {
 
 #[test]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(false, &["/foo/bar"], None, true);
+    let con = Connection::initialized(&["/foo/bar"], None, true);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -83,7 +83,7 @@ fn request_after_shutdown_is_invalid() {
 
 #[test]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(false, &["/foo/bar"], None, true);
+    let con = Connection::initialized(&["/foo/bar"], None, true);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
@@ -625,7 +625,7 @@ fn diagnostics_positions() {
             '𐐀'; 𐐀
             "#,
         )
-        .into_server_detailed(client_encodings.clone(), false);
+        .into_server_detailed(client_encodings.clone());
         let diagnostics = server.full_diagnostics_for_file("m.py");
         assert_eq!(diagnostics.len(), 1);
         let diagnostic = diagnostics.into_iter().next().unwrap();
@@ -654,7 +654,7 @@ fn check_panic_recovery() {
         ""()
         "#,
     )
-    .into_server_detailed(None, false);
+    .into_server_detailed(None);
 
     // Open an in memory file that doesn't otherwise exist, also add a forward reference that might
     // create an additional file and issues with panic recovery.
@@ -688,7 +688,7 @@ fn check_panic_recovery_with_push_diagnostics() {
         "#,
     )
     .with_push_diagnostics()
-    .into_server_detailed(None, false);
+    .into_server_detailed(None);
 
     const NOT_CALLABLE: &str = r#""int" not callable"#;
     // Open an in memory file that doesn't otherwise exist

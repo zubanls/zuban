@@ -3,8 +3,8 @@ use std::{cell::Cell, path::Path, str::FromStr, time::Duration};
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
 use lsp_types::{
-    notification::Notification as _, DiagnosticClientCapabilities, InitializeResult,
-    TextDocumentClientCapabilities, Uri, WorkspaceFolder,
+    DiagnosticClientCapabilities, InitializeResult, TextDocumentClientCapabilities, Uri,
+    WorkspaceFolder,
 };
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -30,40 +30,13 @@ pub(crate) struct Connection {
 
 impl Connection {
     pub(crate) fn new() -> Self {
-        Self::new_internal(false)
-    }
-
-    fn new_internal(panic_should_message_not_abort: bool) -> Self {
         logging_config::setup_logging_for_tests();
         let (connection1, connection2) = lsp_server::Connection::memory();
 
         let server_thread = Some(std::thread::spawn(move || {
-            let cloned_sender = connection1.sender.clone();
             let typeshed_path = Some(test_utils::typeshed_path());
-            if panic_should_message_not_abort {
-                let maybe_paniced = std::panic::catch_unwind(|| {
-                    zubanls::run_server_with_custom_connection(connection1, typeshed_path, || {
-                        Ok(())
-                    })
-                    .expect("Should not error");
-                });
-                if let Err(err) = maybe_paniced {
-                    // Send the panic explicitly
-                    let _ = cloned_sender.send(lsp_server::Message::Notification(
-                        lsp_server::Notification {
-                            method: lsp_types::notification::ShowMessage::METHOD.into(),
-                            params: serde_json::to_value(lsp_types::ShowMessageParams {
-                                typ: lsp_types::MessageType::ERROR,
-                                message: format!("ZubanLS test paniced: {err:?}"),
-                            })
-                            .unwrap(),
-                        },
-                    ));
-                }
-            } else {
-                zubanls::run_server_with_custom_connection(connection1, typeshed_path, || Ok(()))
-                    .expect("Should not error");
-            }
+            zubanls::run_server_with_custom_connection(connection1, typeshed_path, || Ok(()))
+                .expect("Should not error");
         }));
 
         Self {
@@ -74,12 +47,11 @@ impl Connection {
     }
 
     pub(crate) fn initialized(
-        panic_should_message_not_abort: bool,
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
     ) -> Self {
-        let slf = Self::new_internal(panic_should_message_not_abort);
+        let slf = Self::new();
         slf.initialize(roots, position_encodings, pull_diagnostics);
         slf
     }

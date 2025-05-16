@@ -60,13 +60,12 @@ impl<'a> Project<'a> {
     }
 
     pub(crate) fn into_server(self) -> Server {
-        self.into_server_detailed(None, false)
+        self.into_server_detailed(None)
     }
 
     pub(crate) fn into_server_detailed(
         self,
         client_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
-        panic_should_message_not_abort: bool,
     ) -> Server {
         // TODO let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
         let tmp_dir = write_files_from_fixture(self.fixture, self.root_dir_contains_symlink);
@@ -89,7 +88,6 @@ impl<'a> Project<'a> {
         Server {
             tmp_dir,
             connection: Connection::initialized(
-                panic_should_message_not_abort,
                 &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
                 client_encodings,
                 !self.push_diagnostics,
