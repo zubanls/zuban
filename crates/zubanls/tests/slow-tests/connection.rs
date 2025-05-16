@@ -196,7 +196,7 @@ impl Connection {
         match self.recv_timeout() {
             Ok(Message::Notification(not)) => not.extract::<N::Params>(N::METHOD).unwrap(),
             Ok(msg) => panic!("Unexpected message, expected notification: {msg:?}"),
-            Err(err) => panic!("Expected a message, but got: {err:?}"),
+            Err(err) => panic!("Expected a notification, but got: {err:?}"),
         }
     }
 
