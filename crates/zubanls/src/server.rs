@@ -509,11 +509,10 @@ impl<'sender> GlobalState<'sender> {
                         .collect::<Vec<_>>()
                         .join(", ")
                 );
-                let path = format!("file://{path}");
                 let not = lsp_server::Notification::new(
                 <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
                 lsp_types::PublishDiagnosticsParams {
-                    uri: Uri::from_str(&path).expect(&path),
+                    uri: path_to_uri(path),
                     diagnostics,
                     version: None,
                 }
@@ -749,6 +748,21 @@ fn uri_to_path(uri: &lsp_types::Uri) -> &str {
         }
     }
     uri
+}
+
+fn path_to_uri(path: Rc<NormalizedPath>) -> Uri {
+    let path = (|| {
+        // For now Uris are just strings, so we use a heuristic to put them back. This is a weird
+        // case, because some in memory files are not file:// and therefore we put them there with
+        // the scheme (normal files are put there without the scheme).
+        if let Some(index) = path.find(['/', '\\']) {
+            if path[..index].contains(':') {
+                return path.to_string();
+            }
+        }
+        format!("file://{path}")
+    })();
+    Uri::from_str(&path).expect(&path)
 }
 
 #[test]

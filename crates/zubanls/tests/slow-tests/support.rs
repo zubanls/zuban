@@ -12,7 +12,7 @@ use lsp_types::{
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
     DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
     PartialResultParams, TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
-    VersionedTextDocumentIdentifier, WorkDoneProgressParams,
+    Uri, VersionedTextDocumentIdentifier, WorkDoneProgressParams,
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
@@ -177,11 +177,9 @@ impl Server {
     }
 
     pub fn expect_publish_diagnostics(&self) -> (String, Vec<String>) {
-        let publish = self.expect_notification::<lsp_types::notification::PublishDiagnostics>();
+        let (uri, messages) = self.expect_publish_diagnostics_with_uri();
         (
-            publish
-                .uri
-                .as_str()
+            uri.as_str()
                 .strip_prefix("file://")
                 .unwrap()
                 .strip_prefix(&self.tmp_dir.path())
@@ -189,6 +187,14 @@ impl Server {
                 .strip_prefix('/')
                 .unwrap()
                 .to_string(),
+            messages,
+        )
+    }
+
+    pub fn expect_publish_diagnostics_with_uri(&self) -> (Uri, Vec<String>) {
+        let publish = self.expect_notification::<lsp_types::notification::PublishDiagnostics>();
+        (
+            publish.uri,
             publish.diagnostics.into_iter().map(|d| d.message).collect(),
         )
     }
