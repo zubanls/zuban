@@ -775,7 +775,11 @@ fn path_to_uri(path: Rc<NormalizedPath>) -> Uri {
         // the scheme (normal files are put there without the scheme).
         path.to_string()
     } else {
-        format!("file://{path}")
+        if cfg!(windows) {
+            format!("file:///{}", path.replace('\\', "/"))
+        } else {
+            format!("file://{path}")
+        }
     };
     Uri::from_str(&path).expect(&path)
 }

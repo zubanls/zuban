@@ -221,7 +221,7 @@ impl Server {
             uri.as_str()
                 .strip_prefix("file://")
                 .unwrap()
-                .strip_prefix(&self.tmp_dir.path())
+                .strip_prefix(&self.tmp_dir.path_for_uri())
                 .unwrap()
                 .strip_prefix('/')
                 .unwrap()

@@ -62,6 +62,16 @@ impl TestDir {
         &self.path
     }
 
+    pub fn path_for_uri(&self) -> String {
+        // On Windows a path has slashes in it as well in an URI
+        if cfg!(windows) {
+            // Windows paths also start with a slash in a URI
+            format!("/{}", self.path.replace('\\', "/"))
+        } else {
+            self.path.to_string()
+        }
+    }
+
     pub fn write_file(&self, rel_path: &str, text: &str) {
         let path = Path::new(&self.path).join(rel_path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
