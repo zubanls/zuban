@@ -768,17 +768,15 @@ fn uri_to_path(uri: &lsp_types::Uri) -> &str {
 }
 
 fn path_to_uri(path: Rc<NormalizedPath>) -> Uri {
-    let path = (|| {
+    let path = if path.contains("://") {
+        // TODO This case should also be removed and handled with proper state in the VFS.
         // For now Uris are just strings, so we use a heuristic to put them back. This is a weird
         // case, because some in memory files are not file:// and therefore we put them there with
         // the scheme (normal files are put there without the scheme).
-        if let Some(index) = path.find(['/', '\\']) {
-            if path[..index].contains(':') {
-                return path.to_string();
-            }
-        }
+        path.to_string()
+    } else {
         format!("file://{path}")
-    })();
+    };
     Uri::from_str(&path).expect(&path)
 }
 
