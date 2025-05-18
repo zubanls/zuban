@@ -571,8 +571,8 @@ fn files_outside_of_root_with_push_diagnostics() {
         assert_eq!(diags, [r#""int" not callable"#]);
     }
 
-    let in_mem_uri = &format!("file://{}/outside_in_mem.py", server.tmp_dir.path());
-    let m_uri = &format!("file://{}/base/m.py", server.tmp_dir.path());
+    let in_mem_uri = &format!("file://{}/outside_in_mem.py", server.tmp_dir.path_for_uri());
+    let m_uri = &format!("file://{}/base/m.py", server.tmp_dir.path_for_uri());
     // The in memory files should still work after a panic
     server.raise_and_recover_panic_in_language_server();
     let mut expected: Vec<_> = check_other_uris

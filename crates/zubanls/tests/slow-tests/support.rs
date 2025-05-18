@@ -69,12 +69,12 @@ impl<'a> Project<'a> {
     ) -> Server {
         // TODO let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
         let tmp_dir = write_files_from_fixture(self.fixture, self.root_dir_contains_symlink);
-        let tmp_dir_path = tmp_dir.path();
+        let tmp_dir_path = tmp_dir.path_for_uri();
         let mut roots = self
             .roots
             .into_iter()
             .map(|root| {
-                PathBuf::from_str(tmp_dir_path)
+                PathBuf::from_str(&tmp_dir_path)
                     .unwrap()
                     .join(root)
                     .into_os_string()
@@ -83,7 +83,7 @@ impl<'a> Project<'a> {
             })
             .collect::<Vec<String>>();
         if roots.is_empty() {
-            roots.push(tmp_dir_path.into());
+            roots.push(tmp_dir_path);
         }
         Server {
             tmp_dir,
@@ -119,7 +119,7 @@ impl Drop for Server {
 
 impl Server {
     pub(crate) fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
-        let path = join(self.tmp_dir.path(), rel_path);
+        let path = join(&self.tmp_dir.path_for_uri(), rel_path);
         TextDocumentIdentifier {
             uri: path_to_uri(&path),
         }

@@ -759,8 +759,13 @@ fn patch_path_prefix(path: &Uri) -> String {
 fn uri_to_path(uri: &lsp_types::Uri) -> &str {
     let uri = uri.as_str();
     if let Some(path) = uri.strip_prefix("file://") {
-        // We don't want empty paths, so we just use "file://" as its name
-        if !path.is_empty() {
+        // We don't want empty paths, so we just use "file://" as its name.
+        // The same is true for relative paths like file://foo
+        if path.starts_with('/') {
+            if cfg!(windows) {
+                // Windows paths look like file:///C:/
+                return &path[1..]
+            }
             return path;
         }
     }
@@ -776,7 +781,12 @@ fn path_to_uri(path: Rc<NormalizedPath>) -> Uri {
         path.to_string()
     } else {
         if cfg!(windows) {
-            format!("file:///{}", path.replace('\\', "/"))
+            let p = path.replace('\\', "/");
+            if p.starts_with('/') {
+                format!("file://{p}")
+            } else {
+                format!("file:///{p}")
+            }
         } else {
             format!("file://{path}")
         }
