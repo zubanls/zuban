@@ -51,7 +51,7 @@ impl Parent {
             Self::Workspace(workspace) => {
                 let workspace = workspace.upgrade().unwrap();
                 PathWithScheme {
-                    // TODO Was this already normalized?
+                    // This should be normalized, because it's joined
                     path: NormalizedPath::new_rc(workspace.root_path.clone()),
                     scheme: workspace.scheme.clone(),
                 }
@@ -95,7 +95,7 @@ impl FileEntry {
     pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
         let parent = self.parent.absolute_path(vfs);
         PathWithScheme {
-            // TODO Was this already normalized?
+            // This should be normalized, because it's joined
             path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
             scheme: parent.scheme,
         }
@@ -200,7 +200,7 @@ impl Directory {
     pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
         let parent = self.parent.absolute_path(vfs);
         PathWithScheme {
-            // TODO Was this already normalized?
+            // This should be normalized, because it's joined
             path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
             scheme: parent.scheme,
         }

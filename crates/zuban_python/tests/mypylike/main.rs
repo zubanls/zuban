@@ -13,7 +13,7 @@ use clap::Parser;
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
-use vfs::{AbsPath, PathWithScheme, SimpleLocalFS, VfsHandler as _};
+use vfs::{AbsPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::Project;
 
 const SKIP_MYPY_TEST_FILES: [&str; 28] = [
@@ -767,7 +767,9 @@ fn set_mypy_path(options: &mut ProjectOptions) {
 }
 
 fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> PathWithScheme {
-    PathWithScheme::with_file_scheme(BASE_PATH.with(|base_path| local_fs.join(base_path, other)))
+    PathWithScheme::with_file_scheme(
+        BASE_PATH.with(|base_path| local_fs.normalize_rc_path(local_fs.join(base_path, other))),
+    )
 }
 
 impl ProjectsCache {

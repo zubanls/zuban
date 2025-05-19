@@ -550,9 +550,9 @@ impl<'sender> GlobalState<'sender> {
         uri: lsp_types::Uri,
     ) -> anyhow::Result<PathWithScheme> {
         let (scheme, path) = unpack_uri(&uri)?;
-        let path = project
-            .vfs_handler()
-            .unchecked_abs_path_from_uri(Rc::from(path));
+        let handler = project.vfs_handler();
+        let path = handler.unchecked_abs_path_from_uri(Rc::from(path));
+        let path = handler.normalize_rc_path(path);
         Ok(if scheme.eq_lowercase("file") {
             PathWithScheme::with_file_scheme(path)
         } else {
