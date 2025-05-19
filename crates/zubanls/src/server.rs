@@ -10,6 +10,7 @@ use std::sync::atomic::AtomicI64;
 use anyhow::bail;
 use config::ProjectOptions;
 use crossbeam_channel::{never, select, Receiver, Sender};
+use fluent_uri::Scheme;
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
@@ -67,19 +68,21 @@ pub fn run_server_with_custom_connection(
         );
     }
 
-    let workspace_roots = workspace_folders
-        .map(|workspaces| {
+    let workspace_roots = if let Some(workspaces) = workspace_folders {
+        Some(
             workspaces
                 .into_iter()
                 .map(|workspace| patch_path_prefix(&workspace.uri))
-                .collect::<Rc<_>>()
-        })
-        .filter(|workspaces| !workspaces.is_empty());
-    let workspace_roots = match workspace_roots {
+                .collect::<anyhow::Result<Rc<[String]>>>()?,
+        )
+    } else {
+        None
+    };
+    let workspace_roots = match workspace_roots.filter(|workspaces| !workspaces.is_empty()) {
         Some(r) => r,
         None => {
             let root_path = match root_uri.as_ref().map(patch_path_prefix) {
-                Some(it) => it,
+                Some(it) => it?,
                 None => {
                     let cwd = std::env::current_dir()?;
                     cwd.into_os_string().into_string().map_err(|e| {
@@ -546,15 +549,10 @@ impl<'sender> GlobalState<'sender> {
         project: &Project,
         uri: lsp_types::Uri,
     ) -> anyhow::Result<PathWithScheme> {
-        let Some(scheme) = uri.scheme() else {
-            bail!("No scheme found in uri {}", uri.as_str())
-        };
-        let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
-        let p = uri.as_str().get(scheme_end.get() as usize..).unwrap();
-        let p = p.strip_prefix("://").unwrap_or_else(|| todo!());
+        let (scheme, path) = unpack_uri(&uri)?;
         let path = project
             .vfs_handler()
-            .unchecked_abs_path_from_uri(Rc::from(p));
+            .unchecked_abs_path_from_uri(Rc::from(path));
         Ok(if scheme.eq_lowercase("file") {
             PathWithScheme::with_file_scheme(path)
         } else {
@@ -735,8 +733,8 @@ impl std::fmt::Display for LspError {
 
 impl std::error::Error for LspError {}
 
-fn patch_path_prefix(path: &Uri) -> String {
-    let path = uri_to_path(path);
+fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
+    let (_, path) = unpack_uri(path)?;
     use std::path::{Component, Prefix};
     if cfg!(windows) {
         // This might not be relevant for Zuban, it's from rust-analyzer, but we keep this code, it
@@ -749,7 +747,7 @@ fn patch_path_prefix(path: &Uri) -> String {
         // (doing it conditionally is a pain because std::path::Prefix always reports uppercase letters on windows)
         let buf = PathBuf::from(path);
         let mut comps = buf.components();
-        match comps.next() {
+        Ok(match comps.next() {
             Some(Component::Prefix(prefix)) => {
                 let prefix = match prefix.kind() {
                     Prefix::Disk(d) => {
@@ -758,7 +756,7 @@ fn patch_path_prefix(path: &Uri) -> String {
                     Prefix::VerbatimDisk(d) => {
                         format!(r"\\?\{}:", d.to_ascii_uppercase() as char)
                     }
-                    _ => return path.to_string(),
+                    _ => return Ok(path.to_string()),
                 };
                 let mut path = PathBuf::new();
                 path.push(prefix);
@@ -767,26 +765,19 @@ fn patch_path_prefix(path: &Uri) -> String {
                 path.into_os_string().into_string().unwrap()
             }
             _ => path.to_string(),
-        }
+        })
     } else {
-        path.to_string()
+        Ok(path.to_string())
     }
 }
 
-fn uri_to_path(uri: &lsp_types::Uri) -> &str {
-    let uri = uri.as_str();
-    if let Some(path) = uri.strip_prefix("file://") {
-        // We don't want empty paths, so we just use "file://" as its name.
-        // The same is true for relative paths like file://foo
-        if path.starts_with('/') {
-            if cfg!(windows) {
-                // Windows paths look like file:///C:/
-                return &path[1..];
-            }
-            return path;
-        }
-    }
-    uri
+fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
+    let Some(scheme) = uri.scheme() else {
+        bail!("No scheme found in uri {}", uri.as_str())
+    };
+    let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
+    let p = uri.as_str().get(scheme_end.get() as usize..).unwrap();
+    Ok((scheme, p.strip_prefix("://").unwrap_or_else(|| todo!())))
 }
 
 #[test]

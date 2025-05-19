@@ -1670,6 +1670,7 @@ dependencies = [
  "clap",
  "config",
  "crossbeam-channel",
+ "fluent-uri",
  "lazy_static",
  "licensing",
  "logging_config",
