@@ -1,7 +1,7 @@
-use std::{borrow::Borrow, rc::Rc};
+use std::rc::Rc;
 
 use utils::match_case;
-use vfs::{Directory, DirectoryEntry, FileIndex};
+use vfs::{Directory, DirectoryEntry, Entries, FileIndex};
 
 use crate::{
     database::Database,
@@ -30,9 +30,12 @@ impl ImportResult {
     ) -> Option<ImportResult> {
         match self {
             Self::File(file_index) => db.loaded_python_file(*file_index).sub_module(db, name),
-            Self::Namespace(ns) => {
-                python_import(db, original_file, ns.directories.iter().cloned(), name)
-            }
+            Self::Namespace(ns) => python_import(
+                db,
+                original_file,
+                ns.directories.iter().map(|d| &d.entries),
+                name,
+            ),
             Self::PyTypedMissing => unreachable!(),
         }
     }
@@ -100,7 +103,7 @@ pub fn global_import<'a>(
                 db.vfs
                     .workspaces
                     .iter()
-                    .map(|w| (w.directory(), w.part_of_site_packages())),
+                    .map(|w| (&w.entries, w.part_of_site_packages())),
                 name,
                 false,
             )
@@ -116,7 +119,7 @@ pub fn global_import_without_stubs_first<'a>(
     python_import(
         db,
         from_file,
-        db.vfs.workspaces.iter().map(|d| d.directory()),
+        db.vfs.workspaces.iter().map(|d| &d.entries),
         name,
     )
 }
@@ -127,23 +130,28 @@ pub fn namespace_import(
     namespace: &Namespace,
     name: &str,
 ) -> Option<ImportResult> {
-    let result =
-        python_import(db, from_file, namespace.directories.iter().cloned(), name).or_else(|| {
-            // If the namespace does not have a specific import, we check if we are in a
-            // <foo>-stubs package and import the non-stubs version of that package.
-            namespace
-                .directories
-                .iter()
-                .filter_map(|dir| {
-                    ImportResult::import_non_stub_for_stub_package(
-                        db,
-                        from_file,
-                        Some(dir.clone()),
-                        name,
-                    )
-                })
-                .next()
-        });
+    let result = python_import(
+        db,
+        from_file,
+        namespace.directories.iter().map(|d| &d.entries),
+        name,
+    )
+    .or_else(|| {
+        // If the namespace does not have a specific import, we check if we are in a
+        // <foo>-stubs package and import the non-stubs version of that package.
+        namespace
+            .directories
+            .iter()
+            .filter_map(|dir| {
+                ImportResult::import_non_stub_for_stub_package(
+                    db,
+                    from_file,
+                    Some(dir.clone()),
+                    name,
+                )
+            })
+            .next()
+    });
     // Since we are in a namespace, we need to verify the case where a namespace within
     // site-packages has a py.typed in one of the subdirectories.
     if let Some(ImportResult::File(file_index)) = result {
@@ -176,20 +184,20 @@ pub fn namespace_import(
     result
 }
 
-fn python_import(
+fn python_import<'x>(
     db: &Database,
     from_file: &PythonFile,
-    dirs: impl Iterator<Item = impl Borrow<Directory>>,
+    dirs: impl Iterator<Item = &'x Entries>,
     name: &str,
 ) -> Option<ImportResult> {
     python_import_with_needs_exact_case(db, from_file, dirs.map(|d| (d, false)), name, false)
 }
 
-pub fn python_import_with_needs_exact_case(
+pub fn python_import_with_needs_exact_case<'x>(
     db: &Database,
     from_file: &PythonFile,
     // Directory / Needs py.typed pairing
-    dirs: impl Iterator<Item = (impl Borrow<Directory>, bool)>,
+    dirs: impl Iterator<Item = (&'x Entries, bool)>,
     name: &str,
     needs_exact_case: bool,
 ) -> Option<ImportResult> {
@@ -202,7 +210,6 @@ pub fn python_import_with_needs_exact_case(
 
     for (dir, needs_py_typed) in dirs {
         let mut had_namespace_dir = false;
-        let dir = dir.borrow();
         for entry in &dir.iter() {
             match entry {
                 DirectoryEntry::Directory(dir2) => {

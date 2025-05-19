@@ -23,7 +23,7 @@ mod utils;
 
 use parsa_python_cst::{CodeIndex, Tree};
 use vfs::{
-    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, PathWithScheme, VfsHandler,
+    AbsPath, DirectoryEntry, Entries, FileEntry, FileIndex, LocalFS, PathWithScheme, VfsHandler,
 };
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
@@ -115,7 +115,7 @@ impl Project {
         let mut checked_files = 0;
         let mut files_with_errors = 0;
         for directory in self.db.vfs.workspaces.directories_to_type_check() {
-            let ignore_py_if_overwritten_by_pyi = |in_dir: &Directory, file: &FileEntry| {
+            let ignore_py_if_overwritten_by_pyi = |in_dir: &Entries, file: &FileEntry| {
                 if !file.name.ends_with(".py") {
                     return false;
                 }

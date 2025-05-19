@@ -414,7 +414,7 @@ impl<'db> PythonFile {
             Parent::Directory(dir) => python_import_with_needs_exact_case(
                 db,
                 self,
-                std::iter::once((dir.upgrade().unwrap(), false)),
+                std::iter::once((&dir.upgrade().unwrap().entries, false)),
                 name,
                 true,
             )

@@ -1,14 +1,11 @@
-use std::{
-    cell::UnsafeCell,
-    mem::MaybeUninit,
-    rc::{Rc, Weak},
-};
+use std::rc::Rc;
 
 use utils::match_case;
 
 use crate::{
-    tree::AddedFile, vfs::Scheme, AbsPath, Directory, DirectoryEntry, FileEntry, Parent,
-    PathWithScheme, VfsHandler,
+    tree::{AddedFile, Entries},
+    vfs::Scheme,
+    AbsPath, Directory, DirectoryEntry, FileEntry, Parent, PathWithScheme, VfsHandler,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -51,16 +48,14 @@ impl Workspaces {
         self.items.iter().map(|w| w.as_ref())
     }
 
-    pub fn directories_not_type_checked(&self) -> impl Iterator<Item = &Directory> {
-        self.iter()
-            .filter(|x| !x.is_type_checked())
-            .map(|x| x.directory())
+    pub fn iter_not_type_checked(&self) -> impl Iterator<Item = &Workspace> {
+        self.iter().filter(|x| !x.is_type_checked())
     }
 
-    pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Directory> {
+    pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Entries> {
         self.iter()
             .filter(|x| x.is_type_checked())
-            .map(|x| x.directory())
+            .map(|x| &x.entries)
     }
 
     pub fn search_path(
@@ -72,12 +67,12 @@ impl Workspaces {
         self.iter()
             .find_map(|workspace| {
                 let p = workspace.strip_path_prefix(vfs, case_sensitive, path)?;
-                workspace.directory().search_path(vfs, p)
+                workspace.entries.search_path(vfs, p)
             })
             .or_else(|| {
                 self.iter().find_map(|workspace| {
                     if workspace.kind == WorkspaceKind::Fallback {
-                        if let Some(entry) = workspace.directory().search(&path.path) {
+                        if let Some(entry) = workspace.entries.search(&path.path) {
                             let DirectoryEntry::File(f) = &*entry else {
                                 unreachable!("Why would this ever be {entry:?} as a fallback?");
                             };
@@ -119,8 +114,9 @@ impl Workspaces {
                     // paths are reachable.
                     rest = new_rest;
                     let found = current_dir
-                        .as_deref()
-                        .unwrap_or(workspace.directory())
+                        .as_ref()
+                        .map(|dir: &Rc<Directory>| &dir.entries)
+                        .unwrap_or(&workspace.entries)
                         .search(name)?;
                     match &*found {
                         DirectoryEntry::Directory(d) => {
@@ -155,7 +151,7 @@ impl Workspaces {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 return ensure_dirs_and_file(
                     Parent::Workspace(Rc::downgrade(workspace)),
-                    workspace.directory(),
+                    &workspace.entries,
                     vfs,
                     p,
                 );
@@ -164,7 +160,7 @@ impl Workspaces {
         for workspace in &mut self.items {
             if workspace.kind == WorkspaceKind::Fallback {
                 return workspace
-                    .directory()
+                    .entries
                     .ensure_file(Parent::Workspace(Rc::downgrade(workspace)), &path.path);
             }
         }
@@ -180,7 +176,7 @@ impl Workspaces {
         // TODO for now we always unload, fix that.
         for workspace in &self.items {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
-                workspace.directory().unload_file(vfs, p);
+                workspace.entries.unload_file(vfs, p);
             }
         }
     }
@@ -193,7 +189,7 @@ impl Workspaces {
     ) -> Result<(), String> {
         for workspace in &mut self.items {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
-                return workspace.directory().delete_directory(vfs, p);
+                return workspace.entries.delete_directory(vfs, p);
             }
         }
         Err(format!("Workspace of path {} cannot be found", path.path))
@@ -221,17 +217,20 @@ impl Workspaces {
         }
         let mut new = self.clone();
         for workspace in new.items.iter_mut() {
-            *workspace.directory().entries.borrow_mut() =
-                std::mem::take(&mut *workspace.directory().entries.borrow_mut());
-            for entry in workspace.directory().entries.borrow_mut().iter_mut() {
+            let new_workspace = Rc::new(workspace.as_ref().clone());
+            for entry in new_workspace.entries.borrow_mut().iter_mut() {
                 match entry {
                     DirectoryEntry::Directory(dir) => {
                         debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
-                        *dir = clone_inner_rcs(dir.as_ref().clone())
+                        let mut new_dir = dir.as_ref().clone();
+                        new_dir.parent = Parent::Workspace(Rc::downgrade(&new_workspace));
+                        *dir = clone_inner_rcs(new_dir)
                     }
                     DirectoryEntry::File(file) => {
-                        *file = Rc::new(file.as_ref().clone());
                         debug_assert!(matches!(file.parent, Parent::Workspace(_)));
+                        let mut new_file = file.as_ref().clone();
+                        new_file.parent = Parent::Workspace(Rc::downgrade(&new_workspace));
+                        *file = Rc::new(new_file);
                     }
                     DirectoryEntry::MissingEntry { .. } => (), // has no RCs
                 }
@@ -241,7 +240,7 @@ impl Workspaces {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Workspace {
     pub(crate) root_path: Rc<AbsPath>,
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
@@ -249,7 +248,7 @@ pub struct Workspace {
     #[cfg(target_os = "macos")]
     canonicalized_path: Rc<AbsPath>,
     pub(crate) scheme: Scheme,
-    directory: UnsafeCell<Directory>,
+    pub entries: Entries,
     pub kind: WorkspaceKind,
 }
 
@@ -263,12 +262,6 @@ impl Workspace {
         tracing::debug!("Add workspace {root_path}");
         let root_path = Rc::<AbsPath>::from(root_path);
 
-        let tmp_weak: MaybeUninit<Weak<Workspace>> = MaybeUninit::uninit();
-        let dir = Directory {
-            parent: Parent::Workspace(unsafe { tmp_weak.assume_init() }),
-            name: "".into(),
-            entries: Default::default(),
-        };
         let workspace;
         #[cfg(target_os = "macos")]
         {
@@ -288,7 +281,7 @@ impl Workspace {
                 }
             };
             workspace = Rc::new(Self {
-                directory: UnsafeCell::new(dir),
+                entries: Default::default(),
                 scheme,
                 root_path,
                 canonicalized_path: vfs.unchecked_abs_path(canonicalized_path),
@@ -298,7 +291,7 @@ impl Workspace {
         #[cfg(not(target_os = "macos"))]
         {
             workspace = Rc::new(Self {
-                directory: UnsafeCell::new(dir),
+                entries: Default::default(),
                 scheme,
                 root_path,
                 kind,
@@ -316,14 +309,8 @@ impl Workspace {
                 entries: Default::default(),
             },
         };
-        let d = unsafe { &mut *workspace.directory.get() };
-        *d = new_dir;
+        *workspace.entries.borrow_mut() = std::mem::take(&mut *new_dir.entries.borrow_mut());
         workspace
-    }
-
-    #[inline]
-    pub fn directory(&self) -> &Directory {
-        unsafe { &*self.directory.get() }
     }
 
     pub fn is_type_checked(&self) -> bool {
@@ -356,14 +343,14 @@ impl Workspace {
 
 fn ensure_dirs_and_file(
     parent: Parent,
-    dir: &Directory,
+    entries: &Entries,
     vfs: &dyn VfsHandler,
     path: &str,
 ) -> AddedFile {
     let (name, rest) = vfs.split_off_folder(path);
     if let Some(rest) = rest {
         let mut invs = Default::default();
-        if let Some(x) = dir.search(name) {
+        if let Some(x) = entries.search(name) {
             match &*x {
                 DirectoryEntry::Directory(rc) => {
                     return ensure_dirs_and_file(
@@ -376,7 +363,7 @@ fn ensure_dirs_and_file(
                 DirectoryEntry::MissingEntry(missing) => {
                     invs = missing.invalidations.take();
                     drop(x);
-                    dir.remove_name(name);
+                    entries.remove_name(name);
                 }
                 _ => unimplemented!("Dir overwrite of file; When does this happen?"),
             }
@@ -384,13 +371,11 @@ fn ensure_dirs_and_file(
         let dir2 = Directory::new(parent, Box::from(name));
         let mut result =
             ensure_dirs_and_file(Parent::Directory(Rc::downgrade(&dir2)), &dir2, vfs, rest);
-        dir.entries
-            .borrow_mut()
-            .push(DirectoryEntry::Directory(dir2));
+        entries.borrow_mut().push(DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result
     } else {
-        dir.ensure_file(parent, name)
+        entries.ensure_file(parent, name)
     }
 }
 

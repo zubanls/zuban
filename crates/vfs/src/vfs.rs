@@ -71,22 +71,22 @@ impl<F: VfsFile> Vfs<F> {
                 name: &str,
             ) -> DirectoryEntry {
                 let tmp;
-                let parent_dir = match parent {
+                let parent_entries = match parent {
                     Parent::Directory(dir) => {
                         tmp = dir.upgrade().unwrap();
-                        &tmp
+                        &tmp.entries
                     }
                     Parent::Workspace(w) => {
                         let w = w.upgrade().unwrap();
                         let n = w.root_path();
-                        workspaces
+                        &workspaces
                             .iter()
                             .find(|workspace| *workspace.root_path() == *n)
                             .unwrap()
-                            .directory()
+                            .entries
                     }
                 };
-                let x = parent_dir.search(name).unwrap().clone();
+                let x = parent_entries.search(name).unwrap().clone();
                 x
             }
             fn replace_from_new_workspace(workspaces: &Workspaces, parent: &Parent) -> Parent {
@@ -520,7 +520,7 @@ impl<F: VfsFile> Vfs<F> {
                 } else {
                     // TODO if the file is exactly the same as the old one, don't replace it
                     tracing::debug!("Decided to add {replace_name} to VFS");
-                    in_dir.entries.borrow_mut().push(new_entry);
+                    in_dir.borrow_mut().push(new_entry);
                 }
             })
         }

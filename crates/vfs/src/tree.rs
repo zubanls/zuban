@@ -21,10 +21,10 @@ pub enum Parent {
 }
 
 impl Parent {
-    pub fn with_dir<T>(&self, callable: impl FnOnce(&Directory) -> T) -> T {
+    pub fn with_dir<T>(&self, callable: impl FnOnce(&Entries) -> T) -> T {
         match self {
-            Self::Directory(dir) => callable(&dir.upgrade().unwrap()),
-            Self::Workspace(w) => callable(&w.upgrade().unwrap().directory()),
+            Self::Directory(dir) => callable(&dir.upgrade().unwrap().entries),
+            Self::Workspace(w) => callable(&w.upgrade().unwrap().entries),
         }
     }
 
@@ -145,7 +145,7 @@ impl DirectoryEntry {
         }
     }
 
-    pub fn walk(&self, in_dir: &Directory, callable: &mut impl FnMut(&Directory, &Rc<FileEntry>)) {
+    pub fn walk(&self, in_dir: &Entries, callable: &mut impl FnMut(&Entries, &Rc<FileEntry>)) {
         match self {
             DirectoryEntry::File(file) => callable(in_dir, file),
             DirectoryEntry::Directory(dir) => dir.walk(callable),
@@ -163,9 +163,12 @@ impl DirectoryEntry {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Entries(RefCell<Vec<DirectoryEntry>>);
+
 #[derive(Debug, Clone)]
 pub struct Directory {
-    pub(crate) entries: RefCell<Vec<DirectoryEntry>>,
+    pub entries: Entries,
     pub parent: Parent,
     pub name: Box<str>,
 }
@@ -193,18 +196,55 @@ impl Directory {
             name,
         })
     }
+
+    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
+        let parent = self.parent.absolute_path(vfs);
+        PathWithScheme {
+            // TODO Was this already normalized?
+            path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
+            scheme: parent.scheme,
+        }
+    }
+
+    pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
+        let mut path = self.parent.relative_path(vfs);
+        if path.is_empty() {
+            return self.name.clone().into();
+        }
+        path.push(vfs.separator());
+        path + &self.name
+    }
+}
+
+impl std::ops::Deref for Directory {
+    type Target = Entries;
+
+    fn deref(&self) -> &Self::Target {
+        &self.entries
+    }
+}
+
+impl Entries {
+    fn borrow(&self) -> Ref<Vec<DirectoryEntry>> {
+        self.0.borrow()
+    }
+
+    pub(crate) fn borrow_mut(&self) -> RefMut<Vec<DirectoryEntry>> {
+        self.0.borrow_mut()
+    }
+
     pub fn iter(&self) -> VecRefWrapper<DirectoryEntry> {
-        VecRefWrapper(self.entries.borrow())
+        VecRefWrapper(self.borrow())
     }
 
     pub(crate) fn remove_name(&self, name: &str) -> Option<DirectoryEntry> {
-        let mut entries = self.entries.borrow_mut();
+        let mut entries = self.borrow_mut();
         let pos = entries.iter().position(|f| f.name() == name)?;
         Some(entries.swap_remove(pos))
     }
 
     pub fn search(&self, name: &str) -> Option<Ref<DirectoryEntry>> {
-        let borrow = self.entries.borrow();
+        let borrow = self.borrow();
         // We need to do this indirectly, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
         let pos = borrow.iter().position(|entry| entry.name() == name)?;
@@ -216,7 +256,7 @@ impl Directory {
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
                 if let DirectoryEntry::Directory(dir) = &*entry {
-                    return dir.search_path(vfs, rest);
+                    return dir.entries.search_path(vfs, rest);
                 }
             } else if let DirectoryEntry::File(entry) = &*entry {
                 return Some(entry.clone());
@@ -226,7 +266,7 @@ impl Directory {
     }
 
     pub fn search_mut(&self, name: &str) -> Option<RefMut<DirectoryEntry>> {
-        let borrow = self.entries.borrow_mut();
+        let borrow = self.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
         borrow.iter().find(|entry| entry.name() == name)?;
@@ -255,7 +295,7 @@ impl Directory {
                 DirectoryEntry::Directory(..) => unimplemented!("What happens when we want to write a file on top of a directory? When does this happen?"),
             }
         } else {
-            let mut borrow = self.entries.borrow_mut();
+            let mut borrow = self.borrow_mut();
             let entry = FileEntry::new(parent, name.into());
             borrow.push(DirectoryEntry::File(entry.clone()));
             entry
@@ -271,7 +311,7 @@ impl Directory {
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
                 if let DirectoryEntry::Directory(dir) = &*entry {
-                    dir.unload_file(vfs, rest);
+                    dir.entries.unload_file(vfs, rest);
                 }
             } else if matches!(*entry, DirectoryEntry::File(_)) {
                 drop(entry);
@@ -281,7 +321,7 @@ impl Directory {
     }
 
     pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
-        let mut vec = self.entries.borrow_mut();
+        let mut vec = self.borrow_mut();
         if let Some(item) = vec.iter_mut().find(|x| x.name() == name) {
             match &item {
                 DirectoryEntry::MissingEntry(missing) => missing.invalidations.add(invalidates),
@@ -309,7 +349,7 @@ impl Directory {
             match &*inner {
                 DirectoryEntry::Directory(dir) => {
                     if let Some(rest) = rest {
-                        dir.delete_directory(vfs, rest)
+                        dir.entries.delete_directory(vfs, rest)
                     } else {
                         drop(inner);
                         self.remove_name(name);
@@ -328,28 +368,10 @@ impl Directory {
         }
     }
 
-    pub fn walk(&self, callable: &mut impl FnMut(&Directory, &Rc<FileEntry>)) {
-        for n in self.entries.borrow().iter() {
+    pub fn walk(&self, callable: &mut impl FnMut(&Entries, &Rc<FileEntry>)) {
+        for n in self.borrow().iter() {
             n.walk(self, callable)
         }
-    }
-
-    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
-        let parent = self.parent.absolute_path(vfs);
-        PathWithScheme {
-            // TODO Was this already normalized?
-            path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
-            scheme: parent.scheme,
-        }
-    }
-
-    pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
-        let mut path = self.parent.relative_path(vfs);
-        if path.is_empty() {
-            return self.name.clone().into();
-        }
-        path.push(vfs.separator());
-        path + &self.name
     }
 }
 

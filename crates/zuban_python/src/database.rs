@@ -9,8 +9,8 @@ use std::{
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
 use vfs::{
-    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS,
-    PathWithScheme, Vfs, VfsHandler, WorkspaceKind,
+    AbsPath, DirectoryEntry, Entries, FileEntry, FileIndex, InvalidationResult, LocalFS,
+    PathWithScheme, Vfs, VfsHandler, Workspace, WorkspaceKind,
 };
 
 use crate::{
@@ -1184,21 +1184,31 @@ impl Database {
         self.handle_invalidation(invalidation);
     }
 
-    fn preload_typeshed_stub(&self, dir: &Directory, file_name: &'static str) -> &PythonFile {
-        let path = || dir.absolute_path(&*self.vfs.handler);
-        let entry = dir
+    fn preload_typeshed_stub(&self, workspace: &Workspace, file_name: &'static str) -> &PythonFile {
+        self.preload_typeshed_stub_in_entries(&workspace.entries, file_name, || {
+            workspace.root_path().to_string()
+        })
+    }
+
+    fn preload_typeshed_stub_in_entries<'x>(
+        &self,
+        entries: &Entries,
+        file_name: &'static str,
+        as_debug_path: impl Fn() -> String,
+    ) -> &PythonFile {
+        let entry = entries
             .search(file_name)
-            .unwrap_or_else(|| panic!("Did not find file {file_name:?} in {}", path().path()))
+            .unwrap_or_else(|| panic!("Did not find file {file_name:?} in {}", as_debug_path()))
             .clone();
         let DirectoryEntry::File(file_entry) = &entry else {
             panic!(
                 "It seems like you are using directories in typeshed for {}: {file_name}",
-                path().path()
+                as_debug_path()
             )
         };
         let file_index = self
             .load_file_from_workspace(file_entry, true)
-            .unwrap_or_else(|| panic!("Unable to read {file_name:?} in {}", path().path()));
+            .unwrap_or_else(|| panic!("Unable to read {file_name:?} in {}", as_debug_path()));
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
     }
@@ -1210,16 +1220,16 @@ impl Database {
     }
 
     fn generate_python_state(&mut self) {
-        let mut dirs = self.vfs.workspaces.directories_not_type_checked();
+        let mut dirs = self.vfs.workspaces.iter_not_type_checked();
         // TODO this is wrong, because it's just a random dir...
-        let stdlib_dir = dirs.next().expect("Expected there to be a typeshed dir");
+        let stdlib_workspace = dirs.next().expect("Expected there to be a typeshed dir");
         let mypy_extensions_dir = dirs
             .next()
             .expect("Expected there to be a mypy_extensions dir");
-        let find_dir = |name| match &*stdlib_dir.search(name).unwrap_or_else(|| {
+        let find_dir = |name| match &*stdlib_workspace.entries.search(name).unwrap_or_else(|| {
             panic!(
                 "Expected a {name} directory in {}",
-                stdlib_dir.absolute_path(&*self.vfs.handler).path()
+                stdlib_workspace.root_path()
             )
         }) {
             DirectoryEntry::Directory(c) => c.clone(),
@@ -1229,23 +1239,35 @@ impl Database {
         let typeshed_dir = find_dir("_typeshed");
         drop(dirs);
 
-        let builtins = self.preload_typeshed_stub(stdlib_dir, "builtins.pyi") as *const _;
-        let typing = self.preload_typeshed_stub(stdlib_dir, "typing.pyi") as *const _;
-        let typeshed = self.preload_typeshed_stub(&typeshed_dir, "__init__.pyi") as *const _;
-        let types = self.preload_typeshed_stub(stdlib_dir, "types.pyi") as *const _;
-        let abc = self.preload_typeshed_stub(stdlib_dir, "abc.pyi") as *const _;
-        let functools = self.preload_typeshed_stub(stdlib_dir, "functools.pyi") as *const _;
-        let enum_file = self.preload_typeshed_stub(stdlib_dir, "enum.pyi") as *const _;
+        let builtins = self.preload_typeshed_stub(stdlib_workspace, "builtins.pyi") as *const _;
+        let typing = self.preload_typeshed_stub(stdlib_workspace, "typing.pyi") as *const _;
+        let typeshed =
+            self.preload_typeshed_stub_in_entries(&typeshed_dir.entries, "__init__.pyi", || {
+                typeshed_dir
+                    .absolute_path(&*self.vfs.handler)
+                    .path()
+                    .to_string()
+            }) as *const _;
+        let types = self.preload_typeshed_stub(stdlib_workspace, "types.pyi") as *const _;
+        let abc = self.preload_typeshed_stub(stdlib_workspace, "abc.pyi") as *const _;
+        let functools = self.preload_typeshed_stub(stdlib_workspace, "functools.pyi") as *const _;
+        let enum_file = self.preload_typeshed_stub(stdlib_workspace, "enum.pyi") as *const _;
         let dataclasses_file =
-            self.preload_typeshed_stub(stdlib_dir, "dataclasses.pyi") as *const _;
+            self.preload_typeshed_stub(stdlib_workspace, "dataclasses.pyi") as *const _;
         let typing_extensions =
-            self.preload_typeshed_stub(stdlib_dir, "typing_extensions.pyi") as *const _;
+            self.preload_typeshed_stub(stdlib_workspace, "typing_extensions.pyi") as *const _;
         let mypy_extensions =
             self.preload_typeshed_stub(mypy_extensions_dir, "mypy_extensions.pyi") as *const _;
 
-        let collections = self.preload_typeshed_stub(&collections_dir, "__init__.pyi") as *const _;
+        let collections =
+            self.preload_typeshed_stub_in_entries(&collections_dir.entries, "__init__.pyi", || {
+                collections_dir
+                    .absolute_path(&*self.vfs.handler)
+                    .path()
+                    .to_string()
+            }) as *const _;
         let _collections_abc =
-            self.preload_typeshed_stub(stdlib_dir, "_collections_abc.pyi") as *const _;
+            self.preload_typeshed_stub(stdlib_workspace, "_collections_abc.pyi") as *const _;
 
         PythonState::initialize(
             self,
