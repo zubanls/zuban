@@ -10,6 +10,16 @@ use crate::{
     WorkspaceKind,
 };
 
+thread_local! {
+    static FILE_SCHEME: Rc<Box<str>> = Rc::new("file".into());
+}
+
+pub(crate) type Scheme = Rc<Box<str>>;
+
+fn file_scheme() -> Scheme {
+    FILE_SCHEME.with(|f| f.clone())
+}
+
 pub trait VfsFile: Unpin {
     type Artifacts;
     fn code(&self) -> &str;
@@ -18,7 +28,7 @@ pub trait VfsFile: Unpin {
 }
 
 struct RecoveryFile<T> {
-    path: Rc<NormalizedPath>,
+    path: PathWithScheme,
     artifacts: T,
     invalidates_db: bool,
     is_in_memory_file: bool,
@@ -31,7 +41,7 @@ pub struct Vfs<F: VfsFile> {
     pub handler: Box<dyn VfsHandler>,
     pub workspaces: Workspaces,
     pub files: InsertOnlyVec<FileState<F>>,
-    in_memory_files: HashMap<Rc<NormalizedPath>, FileIndex>,
+    in_memory_files: HashMap<PathWithScheme, FileIndex>,
 }
 
 impl<F: VfsFile> Vfs<F> {
@@ -66,12 +76,14 @@ impl<F: VfsFile> Vfs<F> {
                         tmp = dir.upgrade().unwrap();
                         &tmp
                     }
-                    Parent::Workspace(w_name) => {
-                        &workspaces
+                    Parent::Workspace(w) => {
+                        let w = w.upgrade().unwrap();
+                        let n = w.root_path();
+                        workspaces
                             .iter()
-                            .find(|workspace| *workspace.root_path() == *w_name)
+                            .find(|workspace| *workspace.root_path() == *n)
                             .unwrap()
-                            .directory
+                            .directory()
                     }
                 };
                 let x = parent_dir.search(name).unwrap().clone();
@@ -103,7 +115,12 @@ impl<F: VfsFile> Vfs<F> {
         }
 
         for p in type_checked_dirs.rev() {
-            workspaces.add_at_start(&*self.handler, p.to_owned(), WorkspaceKind::TypeChecking)
+            workspaces.add_at_start(
+                &*self.handler,
+                file_scheme(),
+                p.to_owned(),
+                WorkspaceKind::TypeChecking,
+            )
         }
 
         Self {
@@ -121,9 +138,7 @@ impl<F: VfsFile> Vfs<F> {
                 .into_iter()
                 .filter_map(|f| {
                     let file_state = Pin::into_inner(f);
-                    if file_state.path.is_empty() {
-                        // If the path is empty is probably a subfile and won't be useful at all in
-                        // a recovery, because the files are identified by path.
+                    if file_state.path.is_subfile() {
                         return None;
                     }
                     Some(RecoveryFile {
@@ -148,7 +163,7 @@ impl<F: VfsFile> Vfs<F> {
         for recoverable_file in recovery.files.into_iter() {
             tracing::debug!(
                 "Load recovered file {} (is in memory file: {})",
-                &recoverable_file.path,
+                &recoverable_file.path.path,
                 recoverable_file.is_in_memory_file
             );
             let ensured =
@@ -174,10 +189,15 @@ impl<F: VfsFile> Vfs<F> {
     }
 
     pub fn add_workspace(&mut self, root_path: Rc<AbsPath>, kind: WorkspaceKind) {
-        self.workspaces.add(&*self.handler, root_path, kind)
+        self.workspaces
+            .add(&*self.handler, file_scheme(), root_path, kind)
     }
 
-    pub fn search_path(&self, case_sensitive: bool, path: &AbsPath) -> Option<Rc<FileEntry>> {
+    pub fn search_path(
+        &self,
+        case_sensitive: bool,
+        path: &PathWithScheme,
+    ) -> Option<Rc<FileEntry>> {
         self.workspaces
             .search_path(&*self.handler, case_sensitive, path)
     }
@@ -220,10 +240,10 @@ impl<F: VfsFile> Vfs<F> {
 
         if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
             for invalidation in &invs {
-                let p = &self.file_state(*invalidation).path;
+                let p = &self.file_state(*invalidation).path.path;
                 tracing::debug!(
                     "Invalidate {p} because we have invalidated {}",
-                    self.file_state(invalid_index).path
+                    self.file_state(invalid_index).path.path
                 );
             }
         }
@@ -244,7 +264,7 @@ impl<F: VfsFile> Vfs<F> {
         self.files.get(index.0 as usize).unwrap().file()
     }
 
-    pub fn file_path(&self, index: FileIndex) -> &str {
+    pub fn file_path(&self, index: FileIndex) -> &PathWithScheme {
         &self.file_state(index).path
     }
 
@@ -280,7 +300,7 @@ impl<F: VfsFile> Vfs<F> {
             let file_index = self.with_added_file(
                 file_entry.clone(),
                 // The path was previously normalized, because it is created from a Directory
-                NormalizedPath::new_rc(path),
+                path,
                 invalidates_db,
                 |file_index| new_file(file_index, code.into()),
             );
@@ -289,21 +309,18 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn in_memory_file(&mut self, path: &AbsPath) -> Option<FileIndex> {
-        self.in_memory_files
-            .get(self.handler.normalize_path(path).as_ref())
-            .cloned()
+    pub fn in_memory_file(&mut self, path: &PathWithScheme) -> Option<FileIndex> {
+        self.in_memory_files.get(path).copied()
     }
 
     pub fn store_in_memory_file(
         &mut self,
         case_sensitive: bool,
-        path: Rc<AbsPath>,
+        path: PathWithScheme,
         code: Box<str>,
         new_file: impl FnOnce(FileIndex, &FileEntry, Box<str>) -> F,
     ) -> (FileIndex, InvalidationResult) {
-        let path = self.handler.normalize_rc_path(path);
-        tracing::info!("Loading in memory file: {path}");
+        tracing::info!("Loading in memory file: {}", &path.path);
         let ensured = self
             .workspaces
             .ensure_file(&*self.handler, case_sensitive, &path);
@@ -312,7 +329,7 @@ impl<F: VfsFile> Vfs<F> {
         debug_assert!(
             in_mem_file.is_none()
                 || in_mem_file.is_some() && ensured.file_entry.get_file_index().is_some(),
-            "{path}; in_mem_file: {in_mem_file:?}; ensured file_index: {:?}",
+            "{path:?}; in_mem_file: {in_mem_file:?}; ensured file_index: {:?}",
             ensured.file_entry.get_file_index(),
         );
 
@@ -346,7 +363,7 @@ impl<F: VfsFile> Vfs<F> {
                 debug_assert!(
                     new.file_entry.get_file_index().is_some(),
                     "for {}",
-                    new.path
+                    new.path.path
                 );
             }
             file_index
@@ -364,8 +381,8 @@ impl<F: VfsFile> Vfs<F> {
         if tracing::enabled!(Level::INFO) {
             if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
                 for invalidation in &invs {
-                    let p = &self.file_state(*invalidation).path;
-                    let path = &self.file_state(file_index).path;
+                    let p = &self.file_state(*invalidation).path.path;
+                    let path = &self.file_state(file_index).path.path;
                     tracing::info!("Invalidate {p} because we're loading {path}");
                 }
             }
@@ -395,14 +412,11 @@ impl<F: VfsFile> Vfs<F> {
     pub fn close_in_memory_file(
         &mut self,
         case_sensitive: bool,
-        path: &AbsPath,
+        path: &PathWithScheme,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, &'static str> {
-        if let Some(file_index) = self
-            .in_memory_files
-            .remove(self.handler.normalize_path(path).as_ref())
-        {
-            if let Some(on_file_system_code) = self.handler.read_and_watch_file(path) {
+        if let Some(file_index) = self.in_memory_files.remove(&path) {
+            if let Some(on_file_system_code) = self.handler.read_and_watch_file(&path) {
                 let file_state = &mut self.files[file_index.0 as usize];
                 // In case the code matches the one already in the file, we don't have to do anything.
                 // This is the very typical case of closing a buffer after saving it and therefore
@@ -423,16 +437,19 @@ impl<F: VfsFile> Vfs<F> {
     pub fn delete_in_memory_files_directory(
         &mut self,
         case_sensitive: bool,
-        dir_path: &AbsPath,
+        dir_path: &PathWithScheme,
         to_file: impl Fn(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, String> {
-        // TODO this method feels weird
+        // TODO this method feels weird and currently only used in tests
 
-        let in_mem_paths: Vec<Rc<NormalizedPath>> = self
+        let in_mem_paths: Vec<PathWithScheme> = self
             .in_memory_files
             .iter()
             .filter_map(|(path, _)| {
-                let after_dir = path.strip_prefix(&**dir_path)?;
+                if path.scheme != dir_path.scheme {
+                    return None;
+                }
+                let after_dir = path.path.strip_prefix(&***dir_path.path)?;
                 self.handler.strip_separator_prefix(after_dir)?;
                 Some(path.clone())
             })
@@ -450,10 +467,11 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn invalidate_path(&mut self, case_sensitive: bool, path: &AbsPath) -> InvalidationResult {
         let _span = tracing::debug_span!("invalidate_path").entered();
-        if self
-            .in_memory_files
-            .contains_key(self.handler.normalize_path(path).as_ref())
-        {
+        let in_mem_path = PathWithScheme {
+            path: self.handler.normalize_path(path).into_owned(),
+            scheme: file_scheme(),
+        };
+        if self.in_memory_files.contains_key(&in_mem_path) {
             // In memory files override all file system events
             return InvalidationResult::InvalidatedFiles;
         }
@@ -461,7 +479,7 @@ impl<F: VfsFile> Vfs<F> {
         let mut all_unloads = FastHashSet::default();
         let mut all_invalidations = FastHashSet::<FileIndex>::default();
 
-        if let Some((workspace, parent, replace_name)) = self
+        if let Some((_, parent, replace_name)) = self
             .workspaces
             .search_potential_parent_for_invalidation(&*self.handler, case_sensitive, path)
         {
@@ -481,30 +499,30 @@ impl<F: VfsFile> Vfs<F> {
             let new_entry = self
                 .handler
                 .walk_and_watch_dirs(path, parent.clone(), false);
-            let d = parent.maybe_dir();
-            let in_dir = d.as_deref().unwrap_or(&workspace.directory);
-            if let DirectoryEntry::MissingEntry(_) = new_entry {
-                if in_dir
-                    .search(replace_name)
-                    .is_some_and(|entry| matches!(*entry, DirectoryEntry::MissingEntry(_)))
-                {
-                    tracing::debug!("Missing entry is still missing, no changes needed");
-                } else {
-                    tracing::debug!("Decided to remove {replace_name} from VFS");
-                    if let Some(r) = in_dir.remove_name(replace_name) {
-                        check_invalidations_for_dir_entry(&r)
+            parent.with_dir(|in_dir| {
+                if let DirectoryEntry::MissingEntry(_) = new_entry {
+                    if in_dir
+                        .search(replace_name)
+                        .is_some_and(|entry| matches!(*entry, DirectoryEntry::MissingEntry(_)))
+                    {
+                        tracing::debug!("Missing entry is still missing, no changes needed");
+                    } else {
+                        tracing::debug!("Decided to remove {replace_name} from VFS");
+                        if let Some(r) = in_dir.remove_name(replace_name) {
+                            check_invalidations_for_dir_entry(&r)
+                        }
                     }
+                } else if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
+                    // TODO we don't have to invalidate the wohle tree
+                    tracing::debug!("Decided to replace {replace_name} in VFS");
+                    to_replace.walk_entries(&mut |e| check_invalidations_for_dir_entry(e));
+                    *to_replace = new_entry;
+                } else {
+                    // TODO if the file is exactly the same as the old one, don't replace it
+                    tracing::debug!("Decided to add {replace_name} to VFS");
+                    in_dir.entries.borrow_mut().push(new_entry);
                 }
-            } else if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
-                // TODO we don't have to invalidate the wohle tree
-                tracing::debug!("Decided to replace {replace_name} in VFS");
-                to_replace.walk_entries(&mut |e| check_invalidations_for_dir_entry(e));
-                *to_replace = new_entry;
-            } else {
-                // TODO if the file is exactly the same as the old one, don't replace it
-                tracing::debug!("Decided to add {replace_name} to VFS");
-                in_dir.entries.borrow_mut().push(new_entry);
-            }
+            })
         }
 
         let invalidation_len = all_invalidations.len();
@@ -544,7 +562,7 @@ impl<F: VfsFile> Vfs<F> {
     fn with_added_file(
         &self,
         file_entry: Rc<FileEntry>,
-        path: Rc<NormalizedPath>,
+        path: PathWithScheme,
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex) -> F,
     ) -> FileIndex {
@@ -568,7 +586,7 @@ impl<F: VfsFile> Vfs<F> {
         let invalidates_db = file_entry.invalidations.invalidates_db();
         self.with_added_file(
             file_entry,
-            NormalizedPath::new_rc(AbsPath::new_rc("".into())),
+            PathWithScheme::new_sub_file(),
             invalidates_db,
             add,
         )
@@ -592,15 +610,58 @@ impl BitOrAssign for InvalidationResult {
 
 #[derive(Debug, Clone)]
 pub struct FileState<F> {
-    path: Rc<NormalizedPath>,
+    path: PathWithScheme,
     file_entry: Rc<FileEntry>,
     file: OnceCell<F>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PathWithScheme {
+    pub(crate) path: Rc<NormalizedPath>,
+    pub(crate) scheme: Scheme,
+}
+
+impl PathWithScheme {
+    fn new_sub_file() -> Self {
+        thread_local! {
+            static EMPTY_SCHEME: Rc<Box<str>> = Rc::new("".into());
+            static EMPTY_PATH: Rc<NormalizedPath> = NormalizedPath::new_rc(AbsPath::new_rc("".into()));
+        }
+
+        EMPTY_PATH.with(|empty_path| {
+            EMPTY_SCHEME.with(|scheme| Self {
+                scheme: scheme.clone(),
+                path: empty_path.clone(),
+            })
+        })
+    }
+
+    pub fn with_file_scheme(path: Rc<AbsPath>) -> Self {
+        // TODO why cast
+        Self {
+            path: NormalizedPath::new_rc(path),
+            scheme: file_scheme(),
+        }
+    }
+
+    fn is_subfile(&self) -> bool {
+        // Setting an empty scheme is currently used for subfiles
+        self.scheme.is_empty()
+    }
+
+    pub fn path(&self) -> &NormalizedPath {
+        &self.path
+    }
+
+    pub fn as_uri(&self) -> String {
+        format!("{}://{}", self.scheme, self.path)
+    }
 }
 
 impl<F: VfsFile> FileState<F> {
     fn new_parsed(
         file_entry: Rc<FileEntry>,
-        path: Rc<NormalizedPath>,
+        path: PathWithScheme,
         file: F,
         invalidates_db: bool,
     ) -> Self {

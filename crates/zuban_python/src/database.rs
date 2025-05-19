@@ -9,8 +9,8 @@ use std::{
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
 use vfs::{
-    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS, Vfs,
-    VfsHandler, WorkspaceKind,
+    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, InvalidationResult, LocalFS,
+    PathWithScheme, Vfs, VfsHandler, WorkspaceKind,
 };
 
 use crate::{
@@ -1076,7 +1076,7 @@ impl Database {
     }
 
     pub fn file_path(&self, index: FileIndex) -> &str {
-        self.vfs.file_path(index)
+        self.vfs.file_path(index).path()
     }
 
     pub fn load_sub_file(
@@ -1102,7 +1102,7 @@ impl Database {
         )
     }
 
-    pub fn store_in_memory_file(&mut self, path: Rc<AbsPath>, code: Box<str>) -> FileIndex {
+    pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) -> FileIndex {
         let (file_index, invalidation) = self.vfs.store_in_memory_file(
             self.project.flags.case_sensitive,
             path,
@@ -1142,7 +1142,7 @@ impl Database {
 
     pub fn delete_directory_of_in_memory_files(
         &mut self,
-        dir_path: &AbsPath,
+        dir_path: &PathWithScheme,
     ) -> Result<(), String> {
         let invalidation = self.vfs.delete_in_memory_files_directory(
             self.project.flags.case_sensitive,
@@ -1160,7 +1160,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn close_in_memory_file(&mut self, path: &AbsPath) -> Result<(), &'static str> {
+    pub fn close_in_memory_file(&mut self, path: &PathWithScheme) -> Result<(), &'static str> {
         let result = self.vfs.close_in_memory_file(
             self.project.flags.case_sensitive,
             path,
@@ -1188,17 +1188,17 @@ impl Database {
         let path = || dir.absolute_path(&*self.vfs.handler);
         let entry = dir
             .search(file_name)
-            .unwrap_or_else(|| panic!("Did not find file {file_name:?} in {}", path()))
+            .unwrap_or_else(|| panic!("Did not find file {file_name:?} in {}", path().path()))
             .clone();
         let DirectoryEntry::File(file_entry) = &entry else {
             panic!(
                 "It seems like you are using directories in typeshed for {}: {file_name}",
-                path()
+                path().path()
             )
         };
         let file_index = self
             .load_file_from_workspace(file_entry, true)
-            .unwrap_or_else(|| panic!("Unable to read {file_name:?} in {}", path()));
+            .unwrap_or_else(|| panic!("Unable to read {file_name:?} in {}", path().path()));
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
     }
@@ -1206,7 +1206,7 @@ impl Database {
     pub fn loaded_python_file(&self, index: FileIndex) -> &PythonFile {
         self.vfs
             .file(index)
-            .unwrap_or_else(|| panic!("file #{index}: {}", self.vfs.file_path(index)))
+            .unwrap_or_else(|| panic!("file #{index}: {}", self.vfs.file_path(index).path()))
     }
 
     fn generate_python_state(&mut self) {
@@ -1219,7 +1219,7 @@ impl Database {
         let find_dir = |name| match &*stdlib_dir.search(name).unwrap_or_else(|| {
             panic!(
                 "Expected a {name} directory in {}",
-                stdlib_dir.absolute_path(&*self.vfs.handler)
+                stdlib_dir.absolute_path(&*self.vfs.handler).path()
             )
         }) {
             DirectoryEntry::Directory(c) => c.clone(),

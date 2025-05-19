@@ -100,7 +100,7 @@ pub fn global_import<'a>(
                 db.vfs
                     .workspaces
                     .iter()
-                    .map(|w| (&w.directory, w.part_of_site_packages())),
+                    .map(|w| (w.directory(), w.part_of_site_packages())),
                 name,
                 false,
             )
@@ -116,7 +116,7 @@ pub fn global_import_without_stubs_first<'a>(
     python_import(
         db,
         from_file,
-        db.vfs.workspaces.iter().map(|d| &d.directory),
+        db.vfs.workspaces.iter().map(|d| d.directory()),
         name,
     )
 }
@@ -157,9 +157,10 @@ pub fn namespace_import(
                     }
                     parent = dir.parent.clone();
                 }
-                Err(workspace_root) => {
+                Err(parent_workspace) => {
                     for workspace in db.vfs.workspaces.iter() {
-                        if *workspace.root_path() == **workspace_root {
+                        if workspace.root_path() == parent_workspace.upgrade().unwrap().root_path()
+                        {
                             if workspace.part_of_site_packages() {
                                 return Some(ImportResult::PyTypedMissing);
                             } else {

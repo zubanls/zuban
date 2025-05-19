@@ -21,10 +21,10 @@ mod type_;
 mod type_helpers;
 mod utils;
 
-use std::rc::Rc;
-
 use parsa_python_cst::{CodeIndex, Tree};
-use vfs::{AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, VfsHandler};
+use vfs::{
+    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, LocalFS, PathWithScheme, VfsHandler,
+};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
@@ -74,20 +74,23 @@ impl Project {
 
     pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}
 
-    pub fn store_in_memory_file(&mut self, path: Rc<AbsPath>, code: Box<str>) {
+    pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
         self.db.store_in_memory_file(path, code);
     }
 
-    pub fn code_of_in_memory_file(&mut self, path: &AbsPath) -> Option<&str> {
+    pub fn code_of_in_memory_file(&mut self, path: &PathWithScheme) -> Option<&str> {
         let file_index = self.db.vfs.in_memory_file(path)?;
         Some(self.db.loaded_python_file(file_index).code())
     }
 
-    pub fn delete_directory_of_in_memory_files(&mut self, path: &AbsPath) -> Result<(), String> {
+    pub fn delete_directory_of_in_memory_files(
+        &mut self,
+        path: &PathWithScheme,
+    ) -> Result<(), String> {
         self.db.delete_directory_of_in_memory_files(path)
     }
 
-    pub fn close_in_memory_file(&mut self, path: &AbsPath) -> Result<(), &'static str> {
+    pub fn close_in_memory_file(&mut self, path: &PathWithScheme) -> Result<(), &'static str> {
         self.db.close_in_memory_file(path)
     }
 
@@ -143,7 +146,7 @@ impl Project {
                     || flags.excludes.iter().any(|e| e.regex.is_match(path))
             };
             for (file, path) in to_be_loaded {
-                if !maybe_skipped(&self.db.project.flags, &path) {
+                if !maybe_skipped(&self.db.project.flags, path.path()) {
                     self.db.load_file_from_workspace(&file, false);
                 }
             }
@@ -163,7 +166,7 @@ impl Project {
                 let p = python_file
                     .file_entry(&self.db)
                     .absolute_path(&*self.db.vfs.handler);
-                if maybe_skipped(python_file.flags(&self.db), &p) {
+                if maybe_skipped(python_file.flags(&self.db), p.path()) {
                     continue 'outer;
                 }
                 checked_files += 1;
@@ -192,14 +195,14 @@ impl Project {
         Project { db }
     }
 
-    pub fn document(&mut self, path: &AbsPath) -> Option<Document> {
+    pub fn document(&mut self, path: &PathWithScheme) -> Option<Document> {
         let file_entry = self
             .db
             .vfs
             .search_path(self.db.project.flags.case_sensitive, path)?;
 
         let file_index = self.db.load_file_from_workspace(&file_entry, false)?;
-        tracing::debug!("Looking at document #{file_index} for {path}",);
+        tracing::debug!("Looking at document #{file_index} for {}", path.as_uri());
         Some(Document {
             project: self,
             file_index,
@@ -245,7 +248,7 @@ pub struct Script<'a> {
 impl<'a> Script<'a> {
     pub fn new(
         project: &'a mut Project,
-        path: Option<Rc<AbsPath>>,
+        path: Option<PathWithScheme>,
         code: Option<Box<str>>,
     ) -> Self {
         let db = &mut project.db;

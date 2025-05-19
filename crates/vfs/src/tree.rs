@@ -3,7 +3,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{utils::VecRefWrapper, AbsPath, VfsHandler};
+use crate::{utils::VecRefWrapper, AbsPath, NormalizedPath, PathWithScheme, VfsHandler, Workspace};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileIndex(pub u32);
@@ -17,11 +17,18 @@ impl std::fmt::Display for FileIndex {
 #[derive(Debug, Clone)]
 pub enum Parent {
     Directory(Weak<Directory>),
-    Workspace(Rc<AbsPath>),
+    Workspace(Weak<Workspace>),
 }
 
 impl Parent {
-    pub fn maybe_dir(&self) -> Result<Rc<Directory>, &Rc<AbsPath>> {
+    pub fn with_dir<T>(&self, callable: impl FnOnce(&Directory) -> T) -> T {
+        match self {
+            Self::Directory(dir) => callable(&dir.upgrade().unwrap()),
+            Self::Workspace(w) => callable(&w.upgrade().unwrap().directory()),
+        }
+    }
+
+    pub fn maybe_dir(&self) -> Result<Rc<Directory>, &Weak<Workspace>> {
         match self {
             Self::Directory(dir) => Ok(dir.upgrade().unwrap()),
             Self::Workspace(w) => Err(w),
@@ -38,10 +45,17 @@ impl Parent {
         }
     }
 
-    fn absolute_path(&self, vfs: &dyn VfsHandler) -> Rc<AbsPath> {
+    fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().absolute_path(vfs),
-            Self::Workspace(workspace) => workspace.clone(),
+            Self::Workspace(workspace) => {
+                let workspace = workspace.upgrade().unwrap();
+                PathWithScheme {
+                    // TODO Was this already normalized?
+                    path: NormalizedPath::new_rc(workspace.root_path.clone()),
+                    scheme: workspace.scheme.clone(),
+                }
+            }
         }
     }
 
@@ -55,7 +69,7 @@ impl Parent {
     pub fn workspace_path(&self) -> Rc<AbsPath> {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().parent.workspace_path(),
-            Self::Workspace(workspace) => workspace.clone(),
+            Self::Workspace(workspace) => workspace.upgrade().unwrap().root_path.clone(),
         }
     }
 }
@@ -78,8 +92,13 @@ impl FileEntry {
         })
     }
 
-    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Rc<AbsPath> {
-        vfs.join(&self.parent.absolute_path(vfs), &self.name)
+    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
+        let parent = self.parent.absolute_path(vfs);
+        PathWithScheme {
+            // TODO Was this already normalized?
+            path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
+            scheme: parent.scheme,
+        }
     }
 
     pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
@@ -315,8 +334,13 @@ impl Directory {
         }
     }
 
-    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> Rc<AbsPath> {
-        vfs.join(&self.parent.absolute_path(vfs), &self.name)
+    pub fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
+        let parent = self.parent.absolute_path(vfs);
+        PathWithScheme {
+            // TODO Was this already normalized?
+            path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
+            scheme: parent.scheme,
+        }
     }
 
     pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {

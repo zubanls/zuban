@@ -1,8 +1,15 @@
-use std::rc::Rc;
+use std::{
+    cell::UnsafeCell,
+    mem::MaybeUninit,
+    rc::{Rc, Weak},
+};
 
 use utils::match_case;
 
-use crate::{tree::AddedFile, AbsPath, Directory, DirectoryEntry, FileEntry, Parent, VfsHandler};
+use crate::{
+    tree::AddedFile, vfs::Scheme, AbsPath, Directory, DirectoryEntry, FileEntry, Parent,
+    PathWithScheme, VfsHandler,
+};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
@@ -14,53 +21,63 @@ pub enum WorkspaceKind {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct Workspaces(Vec<Workspace>);
+pub struct Workspaces {
+    items: Vec<Rc<Workspace>>,
+}
 
 impl Workspaces {
-    pub(crate) fn add(&mut self, vfs: &dyn VfsHandler, root: Rc<AbsPath>, kind: WorkspaceKind) {
-        self.0.push(Workspace::new(vfs, root, kind))
+    pub(crate) fn add(
+        &mut self,
+        vfs: &dyn VfsHandler,
+        scheme: Scheme,
+        root: Rc<AbsPath>,
+        kind: WorkspaceKind,
+    ) {
+        self.items.push(Workspace::new(vfs, scheme, root, kind))
     }
 
     pub(crate) fn add_at_start(
         &mut self,
         vfs: &dyn VfsHandler,
+        scheme: Scheme,
         root: Rc<AbsPath>,
         kind: WorkspaceKind,
     ) {
-        self.0.insert(0, Workspace::new(vfs, root, kind))
+        self.items
+            .insert(0, Workspace::new(vfs, scheme, root, kind))
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Workspace> {
-        self.0.iter()
+        self.items.iter().map(|w| w.as_ref())
     }
 
     pub fn directories_not_type_checked(&self) -> impl Iterator<Item = &Directory> {
         self.iter()
             .filter(|x| !x.is_type_checked())
-            .map(|x| &x.directory)
+            .map(|x| x.directory())
     }
 
     pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Directory> {
         self.iter()
             .filter(|x| x.is_type_checked())
-            .map(|x| &x.directory)
+            .map(|x| x.directory())
     }
 
     pub fn search_path(
         &self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
-        path: &AbsPath,
+        path: &PathWithScheme,
     ) -> Option<Rc<FileEntry>> {
         self.iter()
             .find_map(|workspace| {
-                let p = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path())?;
-                workspace.directory.search_path(vfs, p)
+                let p = workspace.strip_path_prefix(vfs, case_sensitive, path)?;
+                workspace.directory().search_path(vfs, p)
             })
             .or_else(|| {
                 self.iter().find_map(|workspace| {
                     if workspace.kind == WorkspaceKind::Fallback {
-                        if let Some(entry) = workspace.directory.search(path) {
+                        if let Some(entry) = workspace.directory().search(&path.path) {
                             let DirectoryEntry::File(f) = &*entry else {
                                 unreachable!("Why would this ever be {entry:?} as a fallback?");
                             };
@@ -76,9 +93,13 @@ impl Workspaces {
         &self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
-        path: &'path str,
+        path: &'path AbsPath,
     ) -> Option<(&Workspace, Parent, &'path str)> {
-        self.0.iter().find_map(|workspace| {
+        self.items.iter().find_map(|workspace| {
+            if **workspace.scheme != *"file" {
+                // TODO for now only file schemes are allowed
+                return None;
+            }
             #[allow(unused_mut)]
             let mut rest = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path());
             #[cfg(target_os = "macos")]
@@ -99,7 +120,7 @@ impl Workspaces {
                     rest = new_rest;
                     let found = current_dir
                         .as_deref()
-                        .unwrap_or(&workspace.directory)
+                        .unwrap_or(workspace.directory())
                         .search(name)?;
                     match &*found {
                         DirectoryEntry::Directory(d) => {
@@ -112,10 +133,10 @@ impl Workspaces {
                 } else {
                     // Return dir
                     return Some((
-                        workspace,
+                        workspace.as_ref(),
                         match current_dir {
                             Some(dir) => Parent::Directory(Rc::downgrade(&dir)),
-                            None => Parent::Workspace(workspace.root_path.clone()),
+                            None => Parent::Workspace(Rc::downgrade(workspace)),
                         },
                         name,
                     ));
@@ -128,34 +149,38 @@ impl Workspaces {
         &mut self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
-        path: &str,
+        path: &PathWithScheme,
     ) -> AddedFile {
-        for workspace in &mut self.0 {
-            let root_path = workspace.root_path();
-            if let Some(p) = strip_path_prefix(vfs, case_sensitive, path, root_path) {
+        for workspace in &mut self.items {
+            if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 return ensure_dirs_and_file(
-                    Parent::Workspace(workspace.root_path.clone()),
-                    &workspace.directory,
+                    Parent::Workspace(Rc::downgrade(workspace)),
+                    workspace.directory(),
                     vfs,
                     p,
                 );
             }
         }
-        for workspace in &mut self.0 {
+        for workspace in &mut self.items {
             if workspace.kind == WorkspaceKind::Fallback {
                 return workspace
-                    .directory
-                    .ensure_file(Parent::Workspace(workspace.root_path.clone()), path);
+                    .directory()
+                    .ensure_file(Parent::Workspace(Rc::downgrade(workspace)), &path.path);
             }
         }
         unreachable!("Expected to be able to place the file {path:?}")
     }
 
-    pub(crate) fn unload_file(&mut self, vfs: &dyn VfsHandler, case_sensitive: bool, path: &str) {
+    pub(crate) fn unload_file(
+        &mut self,
+        vfs: &dyn VfsHandler,
+        case_sensitive: bool,
+        path: &PathWithScheme,
+    ) {
         // TODO for now we always unload, fix that.
-        for workspace in &self.0 {
-            if let Some(p) = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path()) {
-                workspace.directory.unload_file(vfs, p);
+        for workspace in &self.items {
+            if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
+                workspace.directory().unload_file(vfs, p);
             }
         }
     }
@@ -164,14 +189,14 @@ impl Workspaces {
         &mut self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
-        path: &str,
+        path: &PathWithScheme,
     ) -> Result<(), String> {
-        for workspace in &mut self.0 {
-            if let Some(p) = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path()) {
-                return workspace.directory.delete_directory(vfs, p);
+        for workspace in &mut self.items {
+            if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
+                return workspace.directory().delete_directory(vfs, p);
             }
         }
-        Err(format!("Workspace of path {path} cannot be found"))
+        Err(format!("Workspace of path {} cannot be found", path.path))
     }
 
     pub(crate) fn clone_with_new_rcs(&self) -> Self {
@@ -195,9 +220,10 @@ impl Workspaces {
             dir
         }
         let mut new = self.clone();
-        for workspace in new.0.iter_mut() {
-            workspace.directory.entries = workspace.directory.entries.clone();
-            for entry in workspace.directory.entries.borrow_mut().iter_mut() {
+        for workspace in new.items.iter_mut() {
+            *workspace.directory().entries.borrow_mut() =
+                std::mem::take(&mut *workspace.directory().entries.borrow_mut());
+            for entry in workspace.directory().entries.borrow_mut().iter_mut() {
                 match entry {
                     DirectoryEntry::Directory(dir) => {
                         debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
@@ -215,31 +241,35 @@ impl Workspaces {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Workspace {
-    root_path: Rc<AbsPath>,
+    pub(crate) root_path: Rc<AbsPath>,
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
     #[cfg(target_os = "macos")]
     canonicalized_path: Rc<AbsPath>,
-    pub directory: Directory,
+    pub(crate) scheme: Scheme,
+    directory: UnsafeCell<Directory>,
     pub kind: WorkspaceKind,
 }
 
 impl Workspace {
-    fn new(vfs: &dyn VfsHandler, root_path: Rc<AbsPath>, kind: WorkspaceKind) -> Self {
+    fn new(
+        vfs: &dyn VfsHandler,
+        scheme: Scheme,
+        root_path: Rc<AbsPath>,
+        kind: WorkspaceKind,
+    ) -> Rc<Self> {
         tracing::debug!("Add workspace {root_path}");
         let root_path = Rc::<AbsPath>::from(root_path);
 
-        let dir =
-            match vfs.walk_and_watch_dirs(&root_path, Parent::Workspace(root_path.clone()), true) {
-                DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
-                e => Directory {
-                    parent: Parent::Workspace(root_path.clone()),
-                    name: e.name().into(),
-                    entries: Default::default(),
-                },
-            };
+        let tmp_weak: MaybeUninit<Weak<Workspace>> = MaybeUninit::uninit();
+        let dir = Directory {
+            parent: Parent::Workspace(unsafe { tmp_weak.assume_init() }),
+            name: "".into(),
+            entries: Default::default(),
+        };
+        let workspace;
         #[cfg(target_os = "macos")]
         {
             let canonicalized_path = match std::fs::canonicalize(&**root_path) {
@@ -257,21 +287,43 @@ impl Workspace {
                     root_path.to_string()
                 }
             };
-            return Self {
-                directory: dir,
+            workspace = Rc::new(Self {
+                directory: UnsafeCell::new(dir),
+                scheme,
                 root_path,
                 canonicalized_path: vfs.unchecked_abs_path(canonicalized_path),
                 kind,
-            };
+            });
         };
         #[cfg(not(target_os = "macos"))]
         {
-            Self {
-                directory: dir,
+            workspace = Rc::new(Self {
+                directory: UnsafeCell::new(dir),
+                scheme,
                 root_path,
                 kind,
-            }
+            })
         }
+        let new_dir = match vfs.walk_and_watch_dirs(
+            &workspace.root_path,
+            Parent::Workspace(Rc::downgrade(&workspace)),
+            true,
+        ) {
+            DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
+            e => Directory {
+                parent: Parent::Workspace(Rc::downgrade(&workspace)),
+                name: e.name().into(),
+                entries: Default::default(),
+            },
+        };
+        let d = unsafe { &mut *workspace.directory.get() };
+        *d = new_dir;
+        workspace
+    }
+
+    #[inline]
+    pub fn directory(&self) -> &Directory {
+        unsafe { &*self.directory.get() }
     }
 
     pub fn is_type_checked(&self) -> bool {
@@ -283,6 +335,18 @@ impl Workspace {
 
     pub fn part_of_site_packages(&self) -> bool {
         matches!(self.kind, WorkspaceKind::SitePackages)
+    }
+
+    fn strip_path_prefix<'x>(
+        &self,
+        vfs: &dyn VfsHandler,
+        case_sensitive: bool,
+        path: &'x PathWithScheme,
+    ) -> Option<&'x str> {
+        if path.scheme == self.scheme {
+            return None;
+        }
+        strip_path_prefix(vfs, case_sensitive, &path.path, self.root_path())
     }
 
     pub fn root_path(&self) -> &AbsPath {

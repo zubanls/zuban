@@ -9,25 +9,34 @@ use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use walkdir::WalkDir;
 
 use crate::{
-    tree::MissingEntry, AbsPath, Directory, DirectoryEntry, FileEntry, NormalizedPath, NotifyEvent,
-    Parent, VfsHandler,
+    tree::MissingEntry, AbsPath, Directory, DirectoryEntry, FileEntry, NotifyEvent, Parent,
+    PathWithScheme, VfsHandler,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
 
-pub type SimpleLocalFS = LocalFS<Box<dyn Fn(Rc<NormalizedPath>)>>;
+pub type SimpleLocalFS = LocalFS<Box<dyn Fn(PathWithScheme)>>;
 
-pub struct LocalFS<T: Fn(Rc<NormalizedPath>)> {
+pub struct LocalFS<T: Fn(PathWithScheme)> {
     watcher: Option<(RefCell<RecommendedWatcher>, Receiver<NotifyEvent>)>,
     on_invalidated_in_memory_file: Option<T>,
 }
 
-impl<T: Fn(Rc<NormalizedPath>)> VfsHandler for LocalFS<T> {
-    fn read_and_watch_file(&self, path: &str) -> Option<String> {
-        tracing::debug!("Read from FS: {path}");
+impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
+    fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String> {
+        tracing::debug!("Read from FS: {}", path.as_uri());
+        if **path.scheme != *"file" {
+            tracing::error!(
+                "Tried to read from FS for the scheme: {}, scheme file was expected",
+                &path.scheme
+            );
+            return None;
+        }
+        let path = &path.path;
         // Need to watch first, because otherwise the file might be read deleted and then watched.
-        self.watch(Path::new(path));
-        let result = std::fs::read_to_string(path);
+        let p = path.as_ref().as_ref();
+        self.watch(p);
+        let result = std::fs::read_to_string(p);
         if let Err(error) = &result {
             tracing::warn!("Tried to read {path} but failed: {error}");
         }
@@ -90,10 +99,10 @@ impl<T: Fn(Rc<NormalizedPath>)> VfsHandler for LocalFS<T> {
                                 let parent = if let Some(last) = stack.last() {
                                     let parent_dir = &last.1;
                                     match &parent_dir.parent {
-                                        Parent::Workspace(root)
+                                        Parent::Workspace(_)
                                             if stack.len() == 1 && is_root_node =>
                                         {
-                                            Parent::Workspace(root.clone())
+                                            initial_parent.clone()
                                         }
                                         _ => Parent::Directory(Rc::downgrade(parent_dir)),
                                     }
@@ -177,7 +186,7 @@ impl<T: Fn(Rc<NormalizedPath>)> VfsHandler for LocalFS<T> {
         }
     }
 
-    fn on_invalidated_in_memory_file(&self, path: Rc<NormalizedPath>) {
+    fn on_invalidated_in_memory_file(&self, path: PathWithScheme) {
         if let Some(callback) = self.on_invalidated_in_memory_file.as_ref() {
             callback(path)
         }
@@ -193,7 +202,7 @@ impl SimpleLocalFS {
     }
 }
 
-impl<T: Fn(Rc<NormalizedPath>)> LocalFS<T> {
+impl<T: Fn(PathWithScheme)> LocalFS<T> {
     pub fn with_watcher(on_invalidated_memory_file: T) -> Self {
         let (watcher_sender, watcher_receiver) = unbounded();
         let watcher = log_notify_error(recommended_watcher(move |event| {

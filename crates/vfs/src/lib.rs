@@ -18,7 +18,7 @@ pub use local_fs::{LocalFS, SimpleLocalFS};
 pub use normalized_path::NormalizedPath;
 pub use path::AbsPath;
 pub use tree::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
-pub use vfs::{InvalidationResult, Vfs, VfsFile, VfsPanicRecovery};
+pub use vfs::{InvalidationResult, PathWithScheme, Vfs, VfsFile, VfsPanicRecovery};
 pub use workspaces::{Workspace, WorkspaceKind};
 
 pub type NotifyEvent = notify::Result<notify::Event>;
@@ -27,9 +27,9 @@ pub type NotifyEvent = notify::Result<notify::Event>;
 pub trait VfsHandler {
     /// Load the content of the given file, returning [`None`] if it does not  
     /// exists.                                                                
-    fn read_and_watch_file(&self, path: &str) -> Option<String>;
+    fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
-    fn on_invalidated_in_memory_file(&self, path: Rc<NormalizedPath>);
+    fn on_invalidated_in_memory_file(&self, path: PathWithScheme);
     fn walk_and_watch_dirs(
         &self,
         path: &str,

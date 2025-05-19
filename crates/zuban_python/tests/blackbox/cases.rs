@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 use std::{collections::HashSet, path::PathBuf};
 
-use zuban_python::Script;
-
 use crate::Filter;
 
 pub struct TestFile<'a> {
@@ -25,7 +23,9 @@ enum CaseType {
 }
 
 impl TestFile<'_> {
-    pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize) {
+    pub fn test(&self, _project: &mut zuban_python::Project) -> (usize, usize) {
+        todo!()
+        /*
         let _script = Script::new(
             project,
             Some(
@@ -76,6 +76,7 @@ impl TestFile<'_> {
             }
         }
         (ran_count, full_count)
+        */
     }
 
     fn find_test_cases(&self) -> Vec<TestCase> {

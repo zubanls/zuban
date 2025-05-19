@@ -764,7 +764,7 @@ fn uri_to_path(uri: &lsp_types::Uri) -> &str {
         if path.starts_with('/') {
             if cfg!(windows) {
                 // Windows paths look like file:///C:/
-                return &path[1..]
+                return &path[1..];
             }
             return path;
         }
