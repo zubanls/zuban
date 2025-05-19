@@ -800,10 +800,11 @@ impl ProjectsCache {
         self.map.get_mut(&key).unwrap()
     }
 
-    fn try_to_reuse_project_parts(&mut self, options: ProjectOptions) -> Project {
+    fn try_to_reuse_project_parts(&mut self, mut options: ProjectOptions) -> Project {
         if let Some(base_project) = self.base_project.as_mut() {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
+            options.settings.typeshed_path = Some(test_utils::typeshed_path());
             Project::without_watcher(options)
         }
     }

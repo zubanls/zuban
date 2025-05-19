@@ -235,6 +235,7 @@ impl Workspaces {
                     DirectoryEntry::MissingEntry { .. } => (), // has no RCs
                 }
             }
+            *workspace = new_workspace
         }
         new
     }
@@ -330,7 +331,7 @@ impl Workspace {
         case_sensitive: bool,
         path: &'x PathWithScheme,
     ) -> Option<&'x str> {
-        if path.scheme == self.scheme {
+        if path.scheme != self.scheme {
             return None;
         }
         strip_path_prefix(vfs, case_sensitive, &path.path, self.root_path())
