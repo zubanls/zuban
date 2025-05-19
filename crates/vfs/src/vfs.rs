@@ -657,6 +657,9 @@ impl PathWithScheme {
     }
 
     pub fn as_uri(&self) -> String {
+        if cfg!(windows) && **self.scheme == *"file" {
+            return format!("{}://{}", self.scheme, self.path.replace('\\', "/"));
+        }
         format!("{}://{}", self.scheme, self.path)
     }
 }
