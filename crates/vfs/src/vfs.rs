@@ -636,6 +636,14 @@ impl PathWithScheme {
         })
     }
 
+    pub fn new(scheme: Scheme, path: Rc<AbsPath>) -> Self {
+        // TODO why cast
+        Self {
+            path: NormalizedPath::new_rc(path),
+            scheme,
+        }
+    }
+
     pub fn with_file_scheme(path: Rc<AbsPath>) -> Self {
         // TODO why cast
         Self {

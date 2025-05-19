@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::atomic::AtomicI64;
 
+use anyhow::bail;
 use config::ProjectOptions;
 use crossbeam_channel::{never, select, Receiver, Sender};
 use lsp_server::{Connection, ExtractError, Message, Request};
@@ -14,7 +15,7 @@ use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
-use vfs::{AbsPath, LocalFS, NormalizedPath, NotifyEvent, VfsHandler as _};
+use vfs::{AbsPath, LocalFS, NotifyEvent, PathWithScheme, VfsHandler as _};
 use zuban_python::{PanicRecovery, Project};
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -201,7 +202,7 @@ pub(crate) struct GlobalState<'sender> {
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub sent_diagnostic_count: usize,
-    changed_in_memory_files: Rc<RefCell<Vec<Rc<NormalizedPath>>>>,
+    changed_in_memory_files: Rc<RefCell<Vec<PathWithScheme>>>,
     pub shutdown_requested: bool,
 }
 
@@ -500,14 +501,16 @@ impl<'sender> GlobalState<'sender> {
                 let project = self.project();
                 let Some(mut document) = project.document(&path) else {
                     tracing::info!(
-                        "Wanted to publish diagnostics for {path}, but it does not exist anymore"
+                        "Wanted to publish diagnostics for {}, but it does not exist anymore",
+                        path.as_uri()
                     );
                     continue;
                 };
                 let diagnostics = Self::diagnostics_for_file(&mut document, encoding);
                 tracing::info!(
-                    "Publish diagnostics for {path}, (#{} overall)",
-                    self.sent_diagnostic_count
+                    "Publish diagnostics for {}, (#{} overall)",
+                    path.as_uri(),
+                    self.sent_diagnostic_count,
                 );
                 tracing::trace!(
                     "Diagnostics [{}]",
@@ -529,7 +532,7 @@ impl<'sender> GlobalState<'sender> {
                 let not = lsp_server::Notification::new(
                 <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
                 lsp_types::PublishDiagnosticsParams {
-                    uri: path_to_uri(path),
+                    uri: Uri::from_str(&path.as_uri()).unwrap(),
                     diagnostics,
                     version: None,
                 }
@@ -539,10 +542,24 @@ impl<'sender> GlobalState<'sender> {
         }
     }
 
-    pub(crate) fn uri_to_path(project: &Project, uri: lsp_types::Uri) -> Rc<AbsPath> {
-        project
+    pub(crate) fn uri_to_path(
+        project: &Project,
+        uri: lsp_types::Uri,
+    ) -> anyhow::Result<PathWithScheme> {
+        let Some(scheme) = uri.scheme() else {
+            bail!("No scheme found in uri {}", uri.as_str())
+        };
+        let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
+        let p = uri.as_str().get(scheme_end.get() as usize..).unwrap();
+        let p = p.strip_prefix("://").unwrap_or_else(|| todo!());
+        let path = project
             .vfs_handler()
-            .unchecked_abs_path_from_uri(uri_to_path(&uri).into())
+            .unchecked_abs_path_from_uri(Rc::from(p));
+        Ok(if scheme.eq_lowercase("file") {
+            PathWithScheme::with_file_scheme(path)
+        } else {
+            PathWithScheme::new(Rc::new(scheme.to_lowercase().into_boxed_str()), path)
+        })
     }
 }
 
@@ -770,28 +787,6 @@ fn uri_to_path(uri: &lsp_types::Uri) -> &str {
         }
     }
     uri
-}
-
-fn path_to_uri(path: Rc<NormalizedPath>) -> Uri {
-    let path = if path.contains("://") {
-        // TODO This case should also be removed and handled with proper state in the VFS.
-        // For now Uris are just strings, so we use a heuristic to put them back. This is a weird
-        // case, because some in memory files are not file:// and therefore we put them there with
-        // the scheme (normal files are put there without the scheme).
-        path.to_string()
-    } else {
-        if cfg!(windows) {
-            let p = path.replace('\\', "/");
-            if p.starts_with('/') {
-                format!("file://{p}")
-            } else {
-                format!("file:///{p}")
-            }
-        } else {
-            format!("file://{path}")
-        }
-    };
-    Uri::from_str(&path).expect(&path)
 }
 
 #[test]

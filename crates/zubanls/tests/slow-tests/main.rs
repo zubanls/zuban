@@ -470,7 +470,11 @@ fn files_outside_of_root() {
     let response =
         server.request_with_response::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
             text_document: TextDocumentIdentifier {
-                uri: Uri::from_str("outside_workdir.py").unwrap(),
+                uri: Uri::from_str(&format!(
+                    "file://{}/outside_workdir.py",
+                    server.tmp_dir.path_for_uri()
+                ))
+                .unwrap(),
             },
             identifier: None,
             previous_result_id: None,
@@ -478,8 +482,8 @@ fn files_outside_of_root() {
             work_done_progress_params: WorkDoneProgressParams::default(),
         });
     let err = response.error.unwrap();
+    assert!(err.message.ends_with("outside_workdir.py does not exist"));
     assert_eq!(err.code, lsp_server::ErrorCode::InvalidParams as i32);
-    assert_eq!(err.message, "File outside_workdir.py does not exist");
 
     assert_eq!(
         d("base/m.py"),
