@@ -777,7 +777,18 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
     };
     let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
     let p = uri.as_str().get(scheme_end.get() as usize..).unwrap();
-    Ok((scheme, p.strip_prefix("://").unwrap_or_else(|| todo!())))
+    Ok((
+        scheme,
+        if let Some(p) = p.strip_prefix("://") {
+            p
+        } else {
+            let Some(p) = p.strip_prefix(":/") else {
+                // Does this ever really happen?
+                bail!("Had trouble parsing the URI scheme")
+            };
+            p
+        },
+    ))
 }
 
 #[test]

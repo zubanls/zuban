@@ -496,6 +496,7 @@ fn files_outside_of_root() {
         Uri::from_str("file://foo").unwrap(),
         Uri::from_str("file://").unwrap(),
         Uri::from_str("https://www.example.com/foo.py").unwrap(),
+        Uri::from_str("file:/single_slash").unwrap(),
     ];
 
     let diags_for_uri = |uri: &Uri| {
@@ -561,16 +562,21 @@ fn files_outside_of_root_with_push_diagnostics() {
     );
 
     // Check random files that don't really make sense
-    let check_other_uris = [
+    let mut check_other_uris = [
         Uri::from_str("file:///bar/foo").unwrap(),
         Uri::from_str("file://foo").unwrap(),
         Uri::from_str("file://").unwrap(),
         Uri::from_str("https://www.example.com/foo.py").unwrap(),
+        Uri::from_str("file:/single_slash").unwrap(),
     ];
 
-    for uri in &check_other_uris {
+    for uri in &mut check_other_uris {
         server.open_in_memory_file_for_uri(uri.clone(), "import m\n1()");
         let (file, diags) = server.expect_publish_diagnostics_with_uri();
+        if uri.authority().is_none() {
+            // Make sure all uris have an authority, because that's how zubanls returns it.
+            *uri = Uri::from_str(&uri.as_str().replace("file:/", "file://")).unwrap();
+        }
         assert_eq!(file.as_str(), uri.as_str());
         assert_eq!(diags, [r#""int" not callable"#]);
     }
