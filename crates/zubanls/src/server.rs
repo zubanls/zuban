@@ -244,14 +244,14 @@ impl<'sender> GlobalState<'sender> {
                 recv(self.notify_receiver().unwrap_or(&never())) -> msg =>
                     self.on_notify_events(msg?)
             }
-            self.publish_diagnostics_if_necessary();
-
             // See comment on REINDEX_AFTER_N_DIAGNOSTICS
             if self.sent_diagnostic_count > REINDEX_AFTER_N_DIAGNOSTICS {
                 self.sent_diagnostic_count = 0;
                 tracing::info!("Reindex for performance reasons");
                 self.recover_from_panic();
             }
+
+            self.publish_diagnostics_if_necessary();
         }
     }
 
