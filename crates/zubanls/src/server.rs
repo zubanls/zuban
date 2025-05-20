@@ -25,7 +25,7 @@ use crate::panic_hooks;
 
 // Since we currently don't do garbage collection, we simply delete the project and reindex,
 // because it's not that expensive after a specific amount of diagnostics.
-const REINDEX_AFTER_N_DIAGNOSTICS: usize = 30;
+const REINDEX_AFTER_N_DIAGNOSTICS: usize = 1000;
 
 pub static GLOBAL_NOTIFY_EVENT_COUNTER: AtomicI64 = AtomicI64::new(0);
 
