@@ -782,7 +782,7 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
     let mut p = if let Some(p) = p.strip_prefix("://") {
         p
     } else {
-        let Some(p) = p.strip_prefix(":/") else {
+        let Some(p) = p.strip_prefix(":") else {
             // Does this ever really happen?
             bail!("Had trouble parsing the URI scheme")
         };
