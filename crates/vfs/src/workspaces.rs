@@ -277,7 +277,8 @@ impl Workspace {
                     }
                 },
                 Err(err) => {
-                    tracing::error!("Issue while canonicalizing workspace path: {err}");
+                    // The path might not exist
+                    tracing::info!("Issue while canonicalizing workspace path: {err}");
                     root_path.to_string()
                 }
             };
