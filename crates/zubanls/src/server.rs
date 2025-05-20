@@ -777,18 +777,21 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
     };
     let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
     let p = uri.as_str().get(scheme_end.get() as usize..).unwrap();
-    Ok((
-        scheme,
-        if let Some(p) = p.strip_prefix("://") {
-            p
-        } else {
-            let Some(p) = p.strip_prefix(":/") else {
-                // Does this ever really happen?
-                bail!("Had trouble parsing the URI scheme")
-            };
-            p
-        },
-    ))
+    let mut p = if let Some(p) = p.strip_prefix("://") {
+        p
+    } else {
+        let Some(p) = p.strip_prefix(":/") else {
+            // Does this ever really happen?
+            bail!("Had trouble parsing the URI scheme")
+        };
+        p
+    };
+    if cfg!(windows) {
+        if let Some(new_p) = p.strip_prefix('/') {
+            p = new_p;
+        }
+    }
+    Ok((scheme, p))
 }
 
 #[test]
@@ -796,7 +799,7 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
 fn patch_path_prefix_works() {
     use std::str::FromStr as _;
     assert_eq!(
-        patch_path_prefix(&Uri::from_str(r"c:/foo/bar").unwrap()),
+        patch_path_prefix(&Uri::from_str(r"file:///c:/foo/bar").unwrap()).unwrap(),
         r"C:\foo\bar",
     );
     // This doesn't seem to be possible with URIs and we therefore ignore it for now.
