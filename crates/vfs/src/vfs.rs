@@ -141,8 +141,17 @@ impl<F: VfsFile> Vfs<F> {
                     if file_state.path.is_subfile() {
                         return None;
                     }
+                    let is_in_memory_file = self.in_memory_files.contains_key(&file_state.path);
+                    if is_in_memory_file {
+                        // It might feel strange that loading a panic recovery calls this hook. However
+                        // this simplifies a lot of code that would otherwise needed to be run after a
+                        // panic. Essentially after a panic we do not know what changed between the panic
+                        // and now, so we simply push the diagnostic to the user again.
+                        self.handler
+                            .on_invalidated_in_memory_file(file_state.path.clone());
+                    }
                     Some(RecoveryFile {
-                        is_in_memory_file: self.in_memory_files.contains_key(&file_state.path),
+                        is_in_memory_file,
                         path: file_state.path,
                         invalidates_db: file_state.file_entry.invalidations.invalidates_db(),
                         artifacts: file_state.file.into_inner()?.into_recoverable_artifacts(),
@@ -178,11 +187,6 @@ impl<F: VfsFile> Vfs<F> {
             ensured.set_file_index(file_index);
             if recoverable_file.is_in_memory_file {
                 let fs = self.file_state(file_index);
-                // It might feel strange that loading a panic recovery calls this hook. However
-                // this simplifies a lot of code that would otherwise needed to be run after a
-                // panic. Essentially after a panic we do not know what changed between the panic
-                // and now, so we simply push the diagnostic to the user again.
-                self.handler.on_invalidated_in_memory_file(fs.path.clone());
                 self.in_memory_files.insert(fs.path.clone(), file_index);
             }
         }
@@ -658,7 +662,7 @@ impl PathWithScheme {
 
     pub fn as_uri(&self) -> String {
         if cfg!(windows) && **self.scheme == *"file" {
-            return format!("{}://{}", self.scheme, self.path.replace('\\', "/"));
+            return format!("{}:///{}", self.scheme, self.path.replace('\\', "/"));
         }
         format!("{}://{}", self.scheme, self.path)
     }

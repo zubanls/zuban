@@ -400,8 +400,8 @@ impl<'sender> GlobalState<'sender> {
             false
         }));
         result.unwrap_or_else(|_| {
-            tracing::warn!("Recovered from panic");
             // The error was reported
+            tracing::warn!("Start panic recovery");
             if let Some(request_id) = was_message {
                 self.respond(lsp_server::Response::new_err(
                     request_id,
@@ -410,6 +410,7 @@ impl<'sender> GlobalState<'sender> {
                 ));
             }
             self.recover_from_panic();
+            tracing::info!("Recovered from panic");
             false
         })
     }
@@ -552,10 +553,11 @@ impl<'sender> GlobalState<'sender> {
         let (scheme, path) = unpack_uri(&uri)?;
         let handler = project.vfs_handler();
         let path = handler.unchecked_abs_path_from_uri(Rc::from(path));
-        let path = handler.normalize_rc_path(path);
         Ok(if scheme.eq_lowercase("file") {
+            let path = handler.normalize_rc_path(path);
             PathWithScheme::with_file_scheme(path)
         } else {
+            let path = handler.unchecked_normalized_path(path);
             PathWithScheme::new(Rc::new(scheme.to_lowercase().into_boxed_str()), path)
         })
     }

@@ -93,6 +93,10 @@ pub trait VfsHandler {
         AbsPath::new_rc(path.into())
     }
 
+    fn unchecked_normalized_path(&self, path: Rc<AbsPath>) -> Rc<NormalizedPath> {
+        NormalizedPath::new_rc(path.into())
+    }
+
     fn join(&self, path: &AbsPath, name: &str) -> Rc<AbsPath> {
         self.unchecked_abs_path(
             Path::new(&**path)
