@@ -778,15 +778,11 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
         bail!("No scheme found in uri {}", uri.as_str())
     };
     let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
-    let p = uri.as_str().get(scheme_end.get() as usize..).unwrap();
-    let mut p = if let Some(p) = p.strip_prefix("://") {
-        p
+    let mut p = if let Some(auth) = &uri.auth {
+        uri.as_str().get(auth.start.get().get() as usize..).unwrap()
     } else {
-        let Some(p) = p.strip_prefix(":") else {
-            // Does this ever really happen?
-            bail!("Had trouble parsing the URI scheme")
-        };
-        p
+        // + 1 for the colon in file:/
+        uri.as_str().get(scheme_end.get() as usize + 1..).unwrap()
     };
     if cfg!(windows) {
         if let Some(new_p) = p.strip_prefix('/') {

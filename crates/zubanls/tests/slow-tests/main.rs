@@ -755,7 +755,7 @@ fn check_panic_recovery_with_push_diagnostics() {
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn publish_diagnostics() {
     // Check PublishDiagnostics where the client is not requesting diagnostics, but receiving them
     // each time a change is made
