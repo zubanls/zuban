@@ -546,6 +546,8 @@ testMatchNarrowingUnionTypedDictViaIndex
 testMatchNarrowingUnionClassViaAttribute
 testMatchSequencePatternCaptureNamedTuple
 testMatchNamedTupleSequence
+testNewRedefineMatchBasics
+testNewRedefineLoopWithMatch
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1
@@ -1392,13 +1394,10 @@ testShowErrorCodeLinks
 # --allow-redefinition
 testUnusedTargetNotClass
 testFinalReassignModuleVar
-testFinalReassignModuleVar2
 testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 # --allow-redefinition-new
 testNewRedefineAffectsCache
-testNewRedefineMatchBasics
-testNewRedefineLoopWithMatch
 # module __getattr__ is considered a redefinition
 testModuleLevelGetattrImportFromAsTwice
 
