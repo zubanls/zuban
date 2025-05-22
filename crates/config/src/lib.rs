@@ -243,6 +243,7 @@ pub struct TypeCheckerFlags {
     pub disallow_subclassing_any: bool,
     pub disallow_incomplete_defs: bool,
     pub allow_untyped_globals: bool,
+    pub allow_redefinition: bool,
     pub allow_empty_bodies: bool,
     pub warn_unreachable: bool,
     pub warn_redundant_casts: bool,
@@ -284,6 +285,7 @@ impl Default for TypeCheckerFlags {
             disallow_incomplete_defs: false,
             allow_untyped_globals: false,
             allow_empty_bodies: false,
+            allow_redefinition: false,
             warn_unreachable: false,
             warn_redundant_casts: false,
             warn_return_any: false,
@@ -704,6 +706,9 @@ fn set_bool_init_flags(
         "warn_no_return" => flags.warn_no_return = value.as_bool(invert)?,
         "local_partial_types" => flags.local_partial_types = value.as_bool(invert)?,
         "implicit_reexport" => flags.no_implicit_reexport = !value.as_bool(invert)?,
+        "allow_redefinition" | "allow_redefinition_new" => {
+            flags.allow_redefinition = value.as_bool(invert)?
+        }
         "disable_bytearray_promotion" => {
             flags.disable_bytearray_promotion = value.as_bool(invert)?
         }
@@ -732,7 +737,7 @@ fn set_bool_init_flags(
 
         "extra_checks" => flags.extra_checks = value.as_bool(invert)?,
         // These are currently ignored
-        "allow_redefinition" | "follow_imports" | "follow_imports_for_stubs" => (),
+        "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
         "cache_fine_grained" => (),
         "ignore_errors" => return value.as_bool(invert),

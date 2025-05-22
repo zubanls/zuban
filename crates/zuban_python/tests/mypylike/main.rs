@@ -245,6 +245,8 @@ impl TestCase<'_, '_> {
         );
         set_bool_flag(&mut config.strict_equality, "--strict-equality");
         set_bool_flag(&mut config.extra_checks, "--extra-checks");
+        set_bool_flag(&mut config.allow_redefinition, "--allow-redefinition");
+        set_bool_flag(&mut config.allow_redefinition, "--allow-redefinition-new");
         set_bool_flag(
             &mut config.ignore_missing_imports,
             "--ignore-missing-imports",

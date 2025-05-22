@@ -150,7 +150,16 @@ pub struct Cli {
     allow_untyped_globals: bool,
     #[arg(long)]
     disallow_allow_untyped_globals: bool,
-    //allow_redefinition:      Allow unconditional variable redefinition with a new type (inverse: --disallow-redefinition)
+    /// Allow unconditional variable redefinition with a new type (inverse: --disallow-redefinition)
+    #[arg(long)]
+    allow_redefinition: bool,
+    #[arg(long)]
+    disallow_redefinition: bool,
+    /// For now --allow-redefinition and --allow-redefinition-new are the same (inverse: --disallow-redefinition-new)
+    #[arg(long)]
+    allow_redefinition_new: bool,
+    #[arg(long)]
+    disallow_redefinition_new: bool,
     /// Treat imports as private unless aliased (inverse: --implicit-reexport)
     #[arg(long)]
     no_implicit_reexport: bool,
