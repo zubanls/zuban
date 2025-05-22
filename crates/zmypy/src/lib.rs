@@ -217,13 +217,16 @@ pub fn run(cli: Cli) -> ExitCode {
     let current_dir = std::env::current_dir().expect("Expected a valid working directory");
     const CWD_ERROR: &str = "Expected valid unicode in working directory";
     let current_dir = current_dir.into_os_string().into_string().expect(CWD_ERROR);
+    with_exit_code(cli, current_dir, None)
+}
 
-    with_diagnostics_from_cli(cli, current_dir, None, |diagnostics, config| {
+fn with_exit_code(cli: Cli, current_dir: String, typeshed_path: Option<Rc<AbsPath>>) -> ExitCode {
+    with_diagnostics_from_cli(cli, current_dir, typeshed_path, |diagnostics, config| {
         for diagnostic in diagnostics.issues.iter() {
             println!("{}", diagnostic.as_string(config))
         }
         println!("{}", diagnostics.summary());
-        ExitCode::from(diagnostics.issues.is_empty() as u8)
+        ExitCode::from((diagnostics.error_count() > 0) as u8)
     })
 }
 
@@ -680,5 +683,32 @@ mod tests {
                 ]
             )
         }
+    }
+
+    #[test]
+    fn correct_exit_code() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file with_note.py]
+            reveal_type(1)
+
+            [file empty.py]
+
+            [file with_error.py]
+            1()
+            "#,
+            false,
+        );
+        let c = |cli| {
+            with_exit_code(
+                cli,
+                test_dir.path().into(),
+                Some(test_utils::typeshed_path()),
+            )
+        };
+        assert_eq!(c(Cli::parse_from(["", "with_note.py"])), ExitCode::SUCCESS);
+        assert_eq!(c(Cli::parse_from(["", "empty.py"])), ExitCode::SUCCESS);
+        assert_eq!(c(Cli::parse_from(["", "with_error.py"])), ExitCode::FAILURE);
     }
 }

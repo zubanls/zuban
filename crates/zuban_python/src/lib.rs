@@ -21,6 +21,8 @@ mod type_;
 mod type_helpers;
 mod utils;
 
+use std::cell::OnceCell;
+
 use parsa_python_cst::{CodeIndex, Tree};
 use vfs::{
     AbsPath, DirectoryEntry, Entries, FileEntry, FileIndex, LocalFS, PathWithScheme, VfsHandler,
@@ -183,6 +185,7 @@ impl Project {
             checked_files,
             files_with_errors,
             issues: all_diagnostics.into_boxed_slice(),
+            error_count: Default::default(),
         }
     }
 
@@ -417,6 +420,7 @@ pub struct Diagnostics<'a> {
     pub checked_files: usize,
     pub files_with_errors: usize,
     pub issues: Box<[diagnostics::Diagnostic<'a>]>,
+    error_count: OnceCell<usize>,
 }
 
 impl Diagnostics<'_> {
@@ -425,7 +429,8 @@ impl Diagnostics<'_> {
             1 => "",
             _ => "s",
         };
-        if self.issues.is_empty() {
+        let error_count = self.error_count();
+        if error_count == 0 {
             format!(
                 "Success: no issues found in {checked} source file{checked_s}",
                 checked = self.checked_files,
@@ -433,8 +438,7 @@ impl Diagnostics<'_> {
             )
         } else {
             format!(
-                "Found {e} error{e_s} in {fwe} file{fwe_s} (checked {checked} source file{checked_s})",
-                e = self.issues.len(),
+                "Found {error_count} error{e_s} in {fwe} file{fwe_s} (checked {checked} source file{checked_s})",
                 e_s = s_if_plural(self.issues.len()),
                 fwe = self.files_with_errors,
                 fwe_s = s_if_plural(self.files_with_errors),
@@ -442,6 +446,15 @@ impl Diagnostics<'_> {
                 checked_s = s_if_plural(self.checked_files),
             )
         }
+    }
+
+    pub fn error_count(&self) -> usize {
+        *self.error_count.get_or_init(|| {
+            self.issues
+                .iter()
+                .filter(|issue| issue.severity() == Severity::Error)
+                .count()
+        })
     }
 
     pub fn sort_issues_by_kind(&mut self) {

@@ -661,6 +661,7 @@ impl Issue {
 
 // These roughly correspond to LSP DiagnosticSeverity:
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
+#[derive(PartialEq, Eq)]
 pub enum Severity {
     Error,
     Warning,
