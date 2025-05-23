@@ -3922,7 +3922,11 @@ impl<'db> NameDef<'db> {
         // - Attributes with annotations
         // - Functions
         // - Classes
-        if parent.is_type(Nonterminal(function_def)) || parent.is_type(Nonterminal(class_def)) {
+        // - Imports
+        if matches!(
+            parent.type_(),
+            Nonterminal(function_def | class_def | import_from_as_name | dotted_as_name,)
+        ) {
             return false;
         }
         let maybe_annotation = if parent.is_type(Nonterminal(single_target)) {

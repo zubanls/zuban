@@ -1397,8 +1397,6 @@ testFinalReassignModuleVar
 testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 # --allow-redefinition-new
-testNewRedefineImportFrom-xfail
-testNewRedefineCannotWidenImportedVariable
 testNewRedefineMergeConditionalLocal2
 testNewRedefineUninitializedCodePath1
 testNewRedefineUninitializedCodePath2
@@ -1424,9 +1422,11 @@ testNewRedefineForLoopIndexWidening
 testNewRedefineFinalVariable
 testNewRedefineEnableUsingComment
 testNewRedefineWithoutLocalPartialTypes
-testNewRedefineNestedLoopInfiniteExpansion
 testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore
+# --alow-redefinition-new implementation details, that are probably not important
+testNewRedefineNestedLoopInfiniteExpansion
+testNewRedefineImportFrom-xfail
 # Multiple different flags in test
 testNewRedefineAffectsCache
 # module __getattr__ is considered a redefinition
