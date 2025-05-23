@@ -334,11 +334,18 @@ impl<'db> NameBinder<'db> {
                 {
                     self.following_nodes_need_flow_analysis = true;
                 }
+                let needs_flow_analysis = self.following_nodes_need_flow_analysis && {
+                    NameDef::by_index(
+                        &self.db_infos.tree,
+                        first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                    )
+                    .name_can_be_overwritten()
+                };
                 self.db_infos.points.set(
                     latest_name_index,
                     point
                         .with_changed_node_index(new_index)
-                        .with_needs_flow_analysis(self.following_nodes_need_flow_analysis),
+                        .with_needs_flow_analysis(needs_flow_analysis),
                 );
                 // Here we create a loop, so it's easy to find the relevant definitions from
                 // any point.

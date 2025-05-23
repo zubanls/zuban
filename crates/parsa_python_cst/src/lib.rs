@@ -3916,6 +3916,23 @@ impl<'db> NameDef<'db> {
         }
     }
 
+    pub fn name_can_be_overwritten(&self) -> bool {
+        let parent = self.node.parent().unwrap();
+        // The following nodes can not be overwritten:
+        // - Attributes with annotations
+        // - Functions
+        // - Classes
+        if parent.is_type(Nonterminal(function_def)) || parent.is_type(Nonterminal(class_def)) {
+            return false;
+        }
+        let maybe_annotation = if parent.is_type(Nonterminal(single_target)) {
+            parent.next_sibling()
+        } else {
+            parent.iter_children().nth(1)
+        };
+        !maybe_annotation.is_some_and(|n| n.is_type(Nonterminal(annotation)))
+    }
+
     pub fn expect_class_def(&self) -> ClassDef<'db> {
         ClassDef::new(self.node.parent().unwrap())
     }
