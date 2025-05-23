@@ -157,14 +157,14 @@ impl Entry {
     fn widen_with_declaration(&self, i_s: &InferenceState) -> EntryKind {
         match &self.type_ {
             EntryKind::Type(t) => match self.key {
-                FlowKey::Name(link) => EntryKind::Type(
-                    Inferred::from_saved_link(PointLink::new(
-                        link.file,
-                        link.node_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                    ))
-                    .as_cow_type(i_s)
-                    .simplified_union(i_s, t),
-                ),
+                FlowKey::Name(link) => {
+                    let file = i_s.db.loaded_python_file(link.file);
+                    let inf = file
+                        .inference(i_s)
+                        .check_point_cache(link.node_index - NAME_DEF_TO_NAME_DIFFERENCE)
+                        .expect("There should always be a type for declarations");
+                    EntryKind::Type(inf.as_cow_type(i_s).simplified_union(i_s, t))
+                }
                 _ => EntryKind::OriginalDeclaraction,
             },
             EntryKind::OriginalDeclaraction => EntryKind::OriginalDeclaraction,
