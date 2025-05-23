@@ -1398,7 +1398,6 @@ testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 # --allow-redefinition-new
 testNewRedefineImportFrom-xfail
-testNewRedefineAnnotatedVariable
 testNewRedefineCannotWidenImportedVariable
 testNewRedefineMergeConditionalLocal2
 testNewRedefineUninitializedCodePath1
@@ -1410,7 +1409,6 @@ testNewRedefineClassBody
 testNewRedefineNestedFunctionBasics
 testNewRedefineAssignmentExpression
 testNewRedefineOptionalTypesSimple
-testNewRedefinePartialTypeForInstanceVariable
 testNewRedefinePartialGenericTypes
 testNewRedefineAnyType1
 testNewRedefineAnyType2

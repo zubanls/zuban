@@ -1047,6 +1047,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
+                    if self.flags().allow_redefinition
+                        && NodeRef::from_link(self.i_s.db, first_name_link)
+                            .point()
+                            .needs_flow_analysis()
+                    {
+                        return false;
+                    }
                     self.check_assignment_type(value, declaration_t, from, None, assign_kind)
                 })
             },

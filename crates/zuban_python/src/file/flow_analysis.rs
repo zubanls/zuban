@@ -1441,14 +1441,13 @@ impl Inference<'_, '_, '_> {
             }
             return;
         }
-        let allow_redefinition = self.flags().allow_redefinition;
-        if !allow_redefinition && check_for_error() {
+        if check_for_error() {
             return; // There was an error so return and don't narrow.
         }
         self.save_narrowed(
             key,
             new_t.clone(),
-            allow_redefinition
+            self.flags().allow_redefinition
                 && !declaration_t
                     .is_simple_super_type_of(self.i_s, new_t)
                     .bool(),
