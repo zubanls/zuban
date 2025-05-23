@@ -13,7 +13,7 @@ use parsa_python_cst::{
     NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
     PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
     SliceType as CSTSliceType, StarPatternContent, Target, Ternary, TryBlockType, TryStmt,
-    WhileStmt,
+    WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -140,13 +140,34 @@ impl Entry {
         }
     }
 
-    fn with_declaration(&self) -> Self {
+    fn with_declaration(&self, i_s: &InferenceState) -> Self {
         Entry {
             key: self.key.clone(),
-            type_: EntryKind::OriginalDeclaraction,
+            type_: if self.widens {
+                self.widen_with_declaration(i_s)
+            } else {
+                EntryKind::OriginalDeclaraction
+            },
             modifies_ancestors: self.modifies_ancestors,
             deleted: self.deleted,
             widens: self.widens,
+        }
+    }
+
+    fn widen_with_declaration(&self, i_s: &InferenceState) -> EntryKind {
+        match &self.type_ {
+            EntryKind::Type(t) => match self.key {
+                FlowKey::Name(link) => EntryKind::Type(
+                    Inferred::from_saved_link(PointLink::new(
+                        link.file,
+                        link.node_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                    ))
+                    .as_cow_type(i_s)
+                    .simplified_union(i_s, t),
+                ),
+                _ => EntryKind::OriginalDeclaraction,
+            },
+            EntryKind::OriginalDeclaraction => EntryKind::OriginalDeclaraction,
         }
     }
 
@@ -601,8 +622,8 @@ impl FlowAnalysis {
                 })
             })
             // The fallback just assigns an "empty" key. This is needed, because otherwise we would
-            // not be able to know if the entry would invalidate entries further up the stack.
-            .unwrap_or_else(|| search_for.with_declaration())
+            // not be able to know if the entry invalidated entries further up the stack.
+            .unwrap_or_else(|| search_for.with_declaration(i_s))
     }
 
     fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {
@@ -1419,10 +1440,19 @@ impl Inference<'_, '_, '_> {
                 FLOW_ANALYSIS.with(|fa| fa.remove_key_if_modifies_ancestors(self.i_s, &key));
             }
             return;
-        } else if check_for_error() {
+        }
+        let allow_redefinition = self.flags().allow_redefinition;
+        if !allow_redefinition && check_for_error() {
             return; // There was an error so return and don't narrow.
         }
-        self.save_narrowed(key, new_t.clone(), widens);
+        self.save_narrowed(
+            key,
+            new_t.clone(),
+            allow_redefinition
+                && !declaration_t
+                    .is_simple_super_type_of(self.i_s, new_t)
+                    .bool(),
+        );
     }
 
     pub fn narrow_or_widen_self_target(

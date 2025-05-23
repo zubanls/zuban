@@ -1104,13 +1104,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
         let check_assign_to_known_definition =
             |first_name_link, original: &Inferred, base_class| {
-                let declaration_t = original.as_cow_type(i_s);
                 if original.add_issue_if_final_assignment(
                     i_s,
                     from,
                     name_def.as_code(),
                     lookup_self_attribute_in_bases.is_some(),
                 ) {
+                    let declaration_t = original.as_cow_type(i_s);
                     self.check_assignment_type(
                         value,
                         &declaration_t.into_owned().avoid_implicit_literal(i_s.db),
@@ -1122,6 +1122,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
 
                 if matches!(assign_kind, AssignKind::Annotation { .. }) {
+                    let declaration_t = original.as_cow_type(i_s);
                     self.check_assignment_type(
                         value,
                         &declaration_t,
@@ -1130,6 +1131,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         assign_kind,
                     );
                 } else {
+                    let declaration_t = original.as_cow_type(i_s);
                     narrow(first_name_link, &declaration_t)
                 }
             };
