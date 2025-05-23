@@ -104,6 +104,7 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 - 2025-02-23:  8812 / 10128 (1.25s ->  7050 tests/s b65d5256011792e807562f366168a3d3b7845eaa)
 - 2025-03-23:  8968 / 10369 (1.27s ->  7061 tests/s 4d34f7bc9aaa82ed1b64c54479a29932953a8eb8)
 - 2025-04-23:  9272 / 10582 (1.62s ->  5723 tests/s b068ac600aff0dd46bf9e97c4889339ec99fc763) (note: tests cannot reuse Python versions sometimes)
+- 2025-05-23:  9400 / 10701 (1.71s ->  5497 tests/s 4827fc01e4052bfe9fbbd0535a84906ae9159b7d)
 
 ## Unsound?
 
