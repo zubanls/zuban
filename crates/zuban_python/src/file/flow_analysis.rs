@@ -114,9 +114,15 @@ enum FlowKeyIndex {
 }
 
 #[derive(Debug, Clone)]
+enum EntryKind {
+    Type(Type),
+    OriginalDeclaraction,
+}
+
+#[derive(Debug, Clone)]
 struct Entry {
     key: FlowKey,
-    type_: Option<Type>,
+    type_: EntryKind,
     modifies_ancestors: bool,
     deleted: bool, // e.g. after a `del foo`
     // TODO currently unused, delete?
@@ -127,7 +133,7 @@ impl Entry {
     fn new(key: FlowKey, type_: Type) -> Self {
         Entry {
             key,
-            type_: Some(type_),
+            type_: EntryKind::Type(type_),
             modifies_ancestors: false,
             deleted: false,
             widens: false,
@@ -137,7 +143,7 @@ impl Entry {
     fn with_declaration(&self) -> Self {
         Entry {
             key: self.key.clone(),
-            type_: None,
+            type_: EntryKind::OriginalDeclaraction,
             modifies_ancestors: self.modifies_ancestors,
             deleted: self.deleted,
             widens: self.widens,
@@ -145,11 +151,13 @@ impl Entry {
     }
 
     #[inline]
-    fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
-        self.type_
-            .as_ref()
-            .zip(other.type_.as_ref())
-            .map(|(t1, t2)| t1.simplified_union(i_s, t2))
+    fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> EntryKind {
+        match (&self.type_, &other.type_) {
+            (EntryKind::Type(t1), EntryKind::Type(t2)) => {
+                EntryKind::Type(t1.simplified_union(i_s, t2))
+            }
+            _ => EntryKind::OriginalDeclaraction,
+        }
     }
 
     #[inline]
@@ -174,20 +182,20 @@ impl Entry {
         }
     }
 
-    fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Option<Type>> {
-        let Some(t1) = self.type_.as_ref() else {
+    fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<EntryKind> {
+        let EntryKind::Type(t1) = &self.type_ else {
             return Some(other.type_.clone());
         };
-        let Some(t2) = other.type_.as_ref() else {
-            return Some(Some(t1.clone()));
+        let EntryKind::Type(t2) = &other.type_ else {
+            return Some(self.type_.clone());
         };
-        t1.common_sub_type(i_s, t2).map(Some)
+        t1.common_sub_type(i_s, t2).map(EntryKind::Type)
     }
 
     fn debug_format_type(&self, db: &Database) -> Box<str> {
-        match self.type_.as_ref() {
-            Some(t) => t.format_short(db),
-            None => "<widened back to declaration>".into(),
+        match &self.type_ {
+            EntryKind::Type(t) => t.format_short(db),
+            EntryKind::OriginalDeclaraction => "<widened back to declaration>".into(),
         }
     }
 }
@@ -442,10 +450,10 @@ impl FlowAnalysis {
             .iter()
             .rev()
             .find_map(|frame| frame.lookup_entry(db, &lookup_key))?;
-        Some((
-            Inferred::from_type(entry.type_.as_ref()?.clone()),
-            entry.deleted,
-        ))
+        match &entry.type_ {
+            EntryKind::Type(t) => Some((Inferred::from_type(t.clone()), entry.deleted)),
+            EntryKind::OriginalDeclaraction => None,
+        }
     }
 
     pub fn in_conditional(&self) -> bool {
@@ -873,7 +881,7 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
                 } else if let Some(t) = x_entry.common_sub_type(i_s, &y_entry) {
                     x_entry.type_ = t
                 } else {
-                    x_entry.type_ = Some(Type::Never(NeverCause::Other));
+                    x_entry.type_ = EntryKind::Type(Type::Never(NeverCause::Other));
                     x.unreachable = true;
                 }
                 continue 'outer;
@@ -1479,7 +1487,7 @@ impl Inference<'_, '_, '_> {
                 self.i_s,
                 Entry {
                     key,
-                    type_: Some(type_),
+                    type_: EntryKind::Type(type_),
                     modifies_ancestors: true,
                     deleted: false,
                     widens,
@@ -1882,7 +1890,7 @@ impl Inference<'_, '_, '_> {
                 self.i_s,
                 Entry {
                     key: self.key_from_name_def(name_def),
-                    type_: Some(Type::ERROR),
+                    type_: EntryKind::Type(Type::ERROR),
                     modifies_ancestors: true,
                     deleted: true,
                     widens: false,
@@ -2321,7 +2329,10 @@ impl Inference<'_, '_, '_> {
             })
         };
 
-        let child_t = child_entry.type_.as_ref()?;
+        let child_t = match &child_entry.type_ {
+            EntryKind::Type(t) => t,
+            EntryKind::OriginalDeclaraction => return None,
+        };
         let mut matching_entries = vec![];
         for union_entry in base_union.entries.iter() {
             let (inf, had_error) = replay(&union_entry.type_);
@@ -3479,10 +3490,12 @@ impl Inference<'_, '_, '_> {
                             primary.as_code(),
                             entry.debug_format_type(self.i_s.db)
                         );
-                        return Some((
-                            entry.key.clone(),
-                            Inferred::from_type(entry.type_.clone()?),
-                        ));
+                        return match &entry.type_ {
+                            EntryKind::Type(t) => {
+                                Some((entry.key.clone(), Inferred::from_type(t.clone())))
+                            }
+                            EntryKind::OriginalDeclaraction => None,
+                        };
                     }
                 }
                 // If an entry in the current frame overwrites entries further up the stack, it
