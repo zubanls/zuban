@@ -1396,7 +1396,6 @@ testShowErrorCodeLinks
 
 # --allow-redefinition
 testUnusedTargetNotClass
-testFinalReassignModuleVar
 testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 
