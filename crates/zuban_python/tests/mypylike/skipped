@@ -1399,27 +1399,30 @@ testUnusedTargetNotClass
 testFinalReassignModuleVar
 testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
+
 # --allow-redefinition-new
+tetNewRedefineDel
+testNewRedefineUnderscore
+testNewRedefinePartialNoneEmptyList
+testNewRedefinePartialTypeForUnderscore
+# mypy: allow-redefinition-new
+testNewRedefineEnableUsingComment
+testNewRedefineWithoutLocalPartialTypes
+# --allow-redefinition-new Initial definition in if/while
 testNewRedefineUninitializedCodePath1
 testNewRedefineUninitializedCodePath2
-testNewRedefineGlobalVariableSimple
-testNewRedefineGlobalVariableNoneInit
-testNewRedefineParameterTypes
-testNewRedefineClassBody
-testNewRedefineNestedFunctionBasics
-testNewRedefineOptionalTypesSimple
-testNewRedefinePartialGenericTypes
-tetNewRedefineDel
 testNewRedefineWhileLoopSimple
-testNewRedefineUnderscore
 testNewRedefineForLoop1
 testNewRedefineForStatementIndexNarrowing
 testNewRedefineForLoopIndexWidening
-testNewRedefineFinalVariable
-testNewRedefineEnableUsingComment
-testNewRedefineWithoutLocalPartialTypes
-testNewRedefinePartialNoneEmptyList
-testNewRedefinePartialTypeForUnderscore
+# --allow-redefinition-new global/nonlocal
+testNewRedefineGlobalVariableSimple
+testNewRedefineGlobalVariableNoneInit
+testNewRedefineNestedFunctionBasics
+# --allow-redefinition-new access from outside after widening inside
+testNewRedefineClassBody
+# --allow-redefinition-new are list redefinitions ok? questionable
+testNewRedefinePartialGenericTypes
 # --alow-redefinition-new implementation details, that are probably not important
 testNewRedefineNestedLoopInfiniteExpansion
 testNewRedefineImportFrom-xfail
