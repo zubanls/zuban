@@ -540,10 +540,14 @@ impl FlowAnalysis {
             if first_entry.modifies_ancestors {
                 for other_entry in &mut other_frame.entries {
                     if first_entry.key.equals(i_s.db, &other_entry.key) {
+                        if other_entry.modifies_ancestors {
+                            self.overwrite_entry(i_s, first_entry.union_of_refs(i_s, other_entry));
+                        } else {
+                            self.overwrite_entry(i_s, other_entry.union_of_refs(i_s, first_entry));
+                        }
+
                         // Assign false to make sure it is not handled again from the other side.
                         other_entry.modifies_ancestors = false;
-
-                        self.overwrite_entry(i_s, other_entry.union_of_refs(i_s, first_entry));
                         continue 'outer;
                     }
                 }
