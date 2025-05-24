@@ -1415,7 +1415,11 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
             return;
         }
-        if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
+        let allow_redefinition = self.flags().allow_redefinition;
+        if !allow_redefinition
+            && new_t.is_any()
+            && !declaration_t.is_any_or_any_in_union(self.i_s.db)
+        {
             if declaration_t.is_none_or_none_in_union(self.i_s.db) {
                 // This is a special case like
                 //
@@ -1447,10 +1451,11 @@ impl Inference<'_, '_, '_> {
         self.save_narrowed(
             key,
             new_t.clone(),
-            self.flags().allow_redefinition
-                && !declaration_t
+            allow_redefinition
+                && (!declaration_t
                     .is_simple_super_type_of(self.i_s, new_t)
-                    .bool(),
+                    .non_any_match()
+                    || declaration_t.has_any(self.i_s)),
         );
     }
 
