@@ -12,9 +12,10 @@ pub use searcher::{find_cli_config, find_workspace_config};
 
 type ConfigResult = anyhow::Result<bool>;
 
-const OPTIONS_STARTING_WITH_ALLOW: [&str; 3] = [
+const OPTIONS_STARTING_WITH_ALLOW: [&str; 4] = [
     "allow_untyped_globals",
     "allow_redefinition",
+    "allow_redefinition_new",
     "allow_empty_bodies",
 ];
 
