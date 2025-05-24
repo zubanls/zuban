@@ -688,16 +688,26 @@ def foo(x: Animal):
         del x
     else:
         x.paws = 3
-    x.paws  # E: Trying to read deleted variable "x"
+    x.paws
 
 def bar(x: Animal):
     x = Dog()
     x.paws = ""
     if bool():
+        x.paws = 3
+    else:
+        del x
+    x.paws
+
+def baz(x: Animal):
+    x = Dog()
+    x.paws = ""
+    if bool():
         del x
     else:
-        x.paws = 3
+        del x
     x.paws  # E: Trying to read deleted variable "x"
+
 
 [case try_invalidation2]
 class Animal:

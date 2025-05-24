@@ -183,22 +183,32 @@ impl Entry {
 
     #[inline]
     fn union(&mut self, i_s: &InferenceState, other: &Self, invert_type: bool) {
-        if invert_type {
-            self.type_ = other.simplified_union(i_s, self);
-        } else {
-            self.type_ = self.simplified_union(i_s, other);
+        match (self.deleted, other.deleted) {
+            (false, true) => (),
+            (true, false) => self.type_ = other.type_.clone(),
+            _ => {
+                if invert_type {
+                    self.type_ = other.simplified_union(i_s, self);
+                } else {
+                    self.type_ = self.simplified_union(i_s, other);
+                }
+            }
         }
         self.modifies_ancestors |= other.modifies_ancestors;
-        self.deleted |= other.deleted;
+        self.deleted &= other.deleted;
         self.widens |= other.widens;
     }
 
     fn union_of_refs(&self, i_s: &InferenceState, other: &Self) -> Self {
         Self {
             key: self.key.clone(),
-            type_: self.simplified_union(i_s, other),
+            type_: match (self.deleted, other.deleted) {
+                (false, true) => self.type_.clone(),
+                (true, false) => other.type_.clone(),
+                _ => self.simplified_union(i_s, other),
+            },
             modifies_ancestors: self.modifies_ancestors | other.modifies_ancestors,
-            deleted: self.deleted | other.deleted,
+            deleted: self.deleted & other.deleted,
             widens: self.widens | other.widens,
         }
     }
