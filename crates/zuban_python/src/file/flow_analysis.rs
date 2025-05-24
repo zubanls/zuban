@@ -1388,7 +1388,7 @@ impl Inference<'_, '_, '_> {
         first_name_link: PointLink,
         declaration_t: &Type,
         new_t: &Type,
-        check_for_error: impl FnOnce() -> bool,
+        check_for_error: impl FnOnce() -> RedefinitionResult,
     ) {
         self.narrow_or_widen_target(
             FlowKey::Name(first_name_link),
@@ -1403,7 +1403,7 @@ impl Inference<'_, '_, '_> {
         key: FlowKey,
         declaration_t: &Type,
         new_t: &Type,
-        check_for_error: impl FnOnce() -> bool,
+        check_for_error: impl FnOnce() -> RedefinitionResult,
     ) {
         let widens = false;
         // It seems like explicit Any is treated in a special way, see tests
@@ -1415,43 +1415,50 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
             return;
         }
-        let allow_redefinition = self.flags().allow_redefinition;
-        if !allow_redefinition
-            && new_t.is_any()
-            && !declaration_t.is_any_or_any_in_union(self.i_s.db)
-        {
-            if declaration_t.is_none_or_none_in_union(self.i_s.db) {
-                // This is a special case like
-                //
-                //     def foo(x: int | None) -> None:
-                //         if x is None:
-                //             x = assign_with_untyped_function()
-                //             reveal_type(x) # Revealed type is "Union[builtins.int, Any]"
-                //         reveal_type(x)     # Revealed type is "Union[builtins.int, Any]"
-                //
-                // This special case is important, because a lot of the time when Any is returned
-                // people actually remove None from the union.
-                self.save_narrowed(
-                    key,
-                    declaration_t
-                        .remove_none(self.i_s.db)
-                        .into_owned()
-                        .union(new_t.clone()),
-                    widens,
-                )
+        let error_result = if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
+            if self.flags().allow_redefinition
+                && matches!(check_for_error(), RedefinitionResult::RedefinitionAllowed)
+            {
+                RedefinitionResult::RedefinitionAllowed
             } else {
-                // Any should not be narrowed if it is not part of a union with any.
-                FLOW_ANALYSIS.with(|fa| fa.remove_key_if_modifies_ancestors(self.i_s, &key));
+                if declaration_t.is_none_or_none_in_union(self.i_s.db) {
+                    // This is a special case like
+                    //
+                    //     def foo(x: int | None) -> None:
+                    //         if x is None:
+                    //             x = assign_with_untyped_function()
+                    //             reveal_type(x) # Revealed type is "Union[builtins.int, Any]"
+                    //         reveal_type(x)     # Revealed type is "Union[builtins.int, Any]"
+                    //
+                    // This special case is important, because a lot of the time when Any is returned
+                    // people actually remove None from the union.
+                    self.save_narrowed(
+                        key,
+                        declaration_t
+                            .remove_none(self.i_s.db)
+                            .into_owned()
+                            .union(new_t.clone()),
+                        widens,
+                    )
+                } else {
+                    // Any should not be narrowed if it is not part of a union with any.
+                    FLOW_ANALYSIS.with(|fa| fa.remove_key_if_modifies_ancestors(self.i_s, &key));
+                }
+                return;
             }
-            return;
-        }
-        if check_for_error() {
-            return; // There was an error so return and don't narrow.
-        }
+        } else {
+            check_for_error()
+        };
+        let redefinition_allowed = match error_result {
+            RedefinitionResult::RedefinitionAllowed => true,
+            // There was an error so return and don't narrow.
+            RedefinitionResult::TypeMismatch(true) => return,
+            RedefinitionResult::TypeMismatch(false) => false,
+        };
         self.save_narrowed(
             key,
             new_t.clone(),
-            allow_redefinition
+            redefinition_allowed
                 && (!declaration_t
                     .is_simple_super_type_of(self.i_s, new_t)
                     .non_any_match()
@@ -1464,7 +1471,7 @@ impl Inference<'_, '_, '_> {
         primary_target: PrimaryTarget,
         declaration_t: &Type,
         new_t: &Type,
-        check_for_error: impl FnOnce() -> bool,
+        check_for_error: impl FnOnce() -> RedefinitionResult,
     ) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
             self.narrow_or_widen_target(key, declaration_t, new_t, check_for_error)
@@ -3663,6 +3670,11 @@ impl Inference<'_, '_, '_> {
             &|_| (), // OnLookupError is irrelevant for us here.
         )
     }
+}
+
+pub(crate) enum RedefinitionResult {
+    RedefinitionAllowed,
+    TypeMismatch(bool),
 }
 
 fn name_def_link(db: &Database, file: &PythonFile, name: Name) -> Option<PointLink> {

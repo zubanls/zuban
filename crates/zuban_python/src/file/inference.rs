@@ -17,7 +17,10 @@ use crate::{
     database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
-    file::{name_resolution::PointResolution, type_computation::TypeCommentState},
+    file::{
+        flow_analysis::RedefinitionResult, name_resolution::PointResolution,
+        type_computation::TypeCommentState,
+    },
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -963,7 +966,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     None,
                 );
                 had_error = !matched;
-                matched
+                RedefinitionResult::TypeMismatch(had_error)
             },
         );
         if had_error && assign_kind == AssignKind::Normal {
@@ -1052,9 +1055,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             .point()
                             .needs_flow_analysis()
                     {
-                        return false;
+                        return RedefinitionResult::RedefinitionAllowed;
                     }
-                    self.check_assignment_type(value, declaration_t, from, None, assign_kind)
+                    RedefinitionResult::TypeMismatch(self.check_assignment_type(
+                        value,
+                        declaration_t,
+                        from,
+                        None,
+                        assign_kind,
+                    ))
                 })
             },
         )
@@ -1719,13 +1728,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 declaration_t,
                                 &current_t,
                                 || {
-                                    self.check_assignment_type(
+                                    RedefinitionResult::TypeMismatch(self.check_assignment_type(
                                         value,
                                         declaration_t,
                                         from,
                                         None,
                                         assign_kind,
-                                    )
+                                    ))
                                 },
                             )
                         },

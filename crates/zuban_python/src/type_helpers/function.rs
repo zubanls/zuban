@@ -15,7 +15,8 @@ use crate::{
     diagnostics::IssueKind,
     file::{
         first_defined_name_of_multi_def, use_cached_param_annotation_type, FuncNodeRef, FuncParent,
-        OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, FLOW_ANALYSIS,
+        OtherDefinitionIterator, PythonFile, RedefinitionResult, TypeVarCallbackReturn,
+        FLOW_ANALYSIS,
     },
     format_data::FormatData,
     inference_state::InferenceState,
@@ -476,7 +477,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         },
                     )
                 }
-                had_error
+                RedefinitionResult::TypeMismatch(had_error)
             },
         );
     }
