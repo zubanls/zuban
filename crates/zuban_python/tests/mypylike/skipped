@@ -1400,7 +1400,6 @@ testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 
 # --allow-redefinition-new
-testNewRedefineUnderscore
 testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore
 # --allow-redefinition-new Initial definition in if/while
