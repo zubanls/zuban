@@ -1345,98 +1345,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         } else {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
                 let lookup_details = lookup_in_bases();
-                if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
-                    match assign_kind {
-                        AssignKind::Annotation { specific: reason }
-                            if matches!(
-                                lookup_details.class,
-                                TypeOrClass::Class(c)
-                                if c.node_ref == i_s.current_class().unwrap().node_ref
-                            ) =>
-                        {
-                            if reason == Some(Specific::AnnotationOrTypeCommentFinal) {
-                                from.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
-                            } else if let Some(link) = inf
-                                .maybe_saved_node_ref(i_s.db)
-                                .filter(|node_ref| node_ref.maybe_name_def().is_some())
-                            {
-                                debug_assert_eq!(link.file_index(), self.file.file_index);
-                                self.add_redefinition_issue(
-                                    link.node_index + NAME_DEF_TO_NAME_DIFFERENCE,
-                                    name_def.as_code(),
-                                    true,
-                                    |issue| from.add_issue(i_s, issue),
-                                )
-                            }
-                        }
-                        _ => (),
-                    }
-                    if lookup_details.attr_kind.is_final() {
-                        if let TypeOrClass::Class(c) = lookup_details.class {
-                            let name_str = name_def.as_code();
-                            // We cannot assign to final only in the case where the original
-                            // definition in the parent class was not an assignment like:
-                            //
-                            //     class Foo:
-                            //         x: Final[int]  # Not missing assignment, which is allowed
-                            //         y: Final[int]
-                            //         def __init__(self) -> None:
-                            //             self.x = 1
-                            //         def foo(self) -> None:
-                            //             self.y = 1  # This is disallowed
-                            if !c.lookup_assignment(name_str).is_some_and(|a| {
-                                matches!(a.unpack(), AssignmentContent::WithAnnotation(_, _, None),)
-                            }) || func_of_self_symbol(self.file, name_def.name_index())
-                                .name_def()
-                                .as_code()
-                                != "__init__"
-                            {
-                                from.add_issue(
-                                    i_s,
-                                    match assign_kind {
-                                        AssignKind::Annotation {
-                                            specific: Some(Specific::AnnotationOrTypeCommentFinal),
-                                        } => IssueKind::CannotOverrideFinalAttribute {
-                                            name: name_str.into(),
-                                            base_class: c.name().into(),
-                                        },
-                                        _ => IssueKind::CannotAssignToFinal {
-                                            name: name_str.into(),
-                                            is_attribute: true,
-                                        },
-                                    },
-                                );
-                            }
-                        }
-                        save(
-                            name_def.index(),
-                            &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
-                                inf.as_type(i_s),
-                            ))),
-                        );
-                    } else {
-                        if !lookup_details.attr_kind.is_overwritable() {
-                            from.add_issue(
-                                i_s,
-                                IssueKind::PropertyIsReadOnly {
-                                    class_name: lookup_details.class.name(i_s.db).into(),
-                                    property_name: name_def.as_code().into(),
-                                },
-                            );
-                        }
-                        check_assign_including_partials(
-                            current_index,
-                            &inf,
-                            Some(lookup_details.class),
-                        );
-                        // TODO maybe this is needed?
-                        //if matches!(assign_kind, AssignKind::Annotation { .. }) {
-                        //save(name_def.index(), value);
-                        //} else {
-                        save(name_def.index(), &inf);
-                        //}
-                    }
-                    return;
+                if lookup_details.lookup.is_some() {
+                    return self.assign_name_with_info_from_base_class(
+                        name_def,
+                        from,
+                        assign_kind,
+                        lookup_details,
+                        save,
+                        check_assign_including_partials,
+                    );
                 }
             } else if let Some(star_imp) = self.lookup_from_star_import_with_node_index(
                 name_def.as_code(),
@@ -1516,6 +1433,109 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             } else {
                 save(name_def.index(), value);
             }
+        }
+    }
+
+    fn assign_name_with_info_from_base_class<'x>(
+        &self,
+        name_def: NameDef,
+        from: NodeRef,
+        assign_kind: AssignKind,
+        base_lookup: LookupDetails<'x>,
+        save: impl FnOnce(NodeIndex, &Inferred),
+        check_assign_including_partials: impl FnOnce(NodeIndex, &Inferred, Option<TypeOrClass<'x>>),
+    ) {
+        let base_inf = base_lookup.lookup.into_inferred();
+        let i_s = self.i_s;
+        match assign_kind {
+            AssignKind::Annotation { specific: reason }
+                if matches!(
+                    base_lookup.class,
+                    TypeOrClass::Class(c)
+                    if c.node_ref == i_s.current_class().unwrap().node_ref
+                ) =>
+            {
+                if reason == Some(Specific::AnnotationOrTypeCommentFinal) {
+                    from.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
+                } else if let Some(link) = base_inf
+                    .maybe_saved_node_ref(i_s.db)
+                    .filter(|node_ref| node_ref.maybe_name_def().is_some())
+                {
+                    debug_assert_eq!(link.file_index(), self.file.file_index);
+                    self.add_redefinition_issue(
+                        link.node_index + NAME_DEF_TO_NAME_DIFFERENCE,
+                        name_def.as_code(),
+                        true,
+                        |issue| from.add_issue(i_s, issue),
+                    )
+                }
+            }
+            _ => (),
+        }
+        if base_lookup.attr_kind.is_final() {
+            if let TypeOrClass::Class(c) = base_lookup.class {
+                let name_str = name_def.as_code();
+                // We cannot assign to final only in the case where the original
+                // definition in the parent class was not an assignment like:
+                //
+                //     class Foo:
+                //         x: Final[int]  # Not missing assignment, which is allowed
+                //         y: Final[int]
+                //         def __init__(self) -> None:
+                //             self.x = 1
+                //         def foo(self) -> None:
+                //             self.y = 1  # This is disallowed
+                if !c.lookup_assignment(name_str).is_some_and(|a| {
+                    matches!(a.unpack(), AssignmentContent::WithAnnotation(_, _, None),)
+                }) || func_of_self_symbol(self.file, name_def.name_index())
+                    .name_def()
+                    .as_code()
+                    != "__init__"
+                {
+                    from.add_issue(
+                        i_s,
+                        match assign_kind {
+                            AssignKind::Annotation {
+                                specific: Some(Specific::AnnotationOrTypeCommentFinal),
+                            } => IssueKind::CannotOverrideFinalAttribute {
+                                name: name_str.into(),
+                                base_class: c.name().into(),
+                            },
+                            _ => IssueKind::CannotAssignToFinal {
+                                name: name_str.into(),
+                                is_attribute: true,
+                            },
+                        },
+                    );
+                }
+            }
+            save(
+                name_def.index(),
+                &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
+                    base_inf.as_type(i_s),
+                ))),
+            );
+        } else {
+            if !base_lookup.attr_kind.is_overwritable() {
+                from.add_issue(
+                    i_s,
+                    IssueKind::PropertyIsReadOnly {
+                        class_name: base_lookup.class.name(i_s.db).into(),
+                        property_name: name_def.as_code().into(),
+                    },
+                );
+            }
+            check_assign_including_partials(
+                name_def.name_index(),
+                &base_inf,
+                Some(base_lookup.class),
+            );
+            // TODO maybe this is needed?
+            //if matches!(assign_kind, AssignKind::Annotation { .. }) {
+            //save(name_def.index(), value);
+            //} else {
+            save(name_def.index(), &base_inf);
+            //}
         }
     }
 
