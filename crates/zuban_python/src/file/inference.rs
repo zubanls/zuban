@@ -1045,7 +1045,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             from,
             value,
             assign_kind,
-            save,
+            |save_to_index, inf| {
+                if self.flags().allow_redefinition {
+                    FLOW_ANALYSIS.with(|fa| {
+                        fa.add_initial_name_definition(
+                            self.i_s.db,
+                            PointLink::new(self.file.file_index, name_def.name_index()),
+                        )
+                    })
+                }
+                save(save_to_index, inf)
+            },
             None,
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);

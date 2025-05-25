@@ -5,6 +5,7 @@ testPostInitIsNotAFunction
 testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
+testNewRedefineForStatementIndexNarrowing
 
 # typeshed upgrade __getitem__ with generics
 testGetSlice
@@ -1399,17 +1400,13 @@ testUnusedTargetNotClass
 testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 
+testNewRedefineAnyType2
 # --allow-redefinition-new
 testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore
 # --allow-redefinition-new Initial definition in if/while
-testNewRedefineUninitializedCodePath1
 testNewRedefineUninitializedCodePath2
-testNewRedefineWhileLoopSimple
-testNewRedefineForLoop1
-testNewRedefineForStatementIndexNarrowing
 testNewRedefineForLoopIndexWidening
-tetNewRedefineDel
 # --allow-redefinition-new global/nonlocal
 testNewRedefineGlobalVariableSimple
 testNewRedefineGlobalVariableNoneInit

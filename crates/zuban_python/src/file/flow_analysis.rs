@@ -27,6 +27,7 @@ use crate::{
     inferred::{Inferred, UnionValue},
     matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
+    recoverable_error,
     type_::{
         lookup_on_enum_instance, AnyCause, CallableContent, CallableLike, CallableParams, DbBytes,
         DbString, EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult,
@@ -113,7 +114,7 @@ enum FlowKeyIndex {
     Str(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum EntryKind {
     Type(Type),
     OriginalDeclaraction,
@@ -144,7 +145,18 @@ impl Entry {
         Entry {
             key: self.key.clone(),
             type_: if self.widens {
-                self.widen_with_declaration(i_s)
+                // This feels strange, but if a type widens this means we are in a context where
+                // allow_redefinition_new is allowed, which implies that we have added an inital
+                // definition for the type already, so type definitions should have been merged
+                // properly, we only reach this case in something like:
+                //
+                //     if bool():
+                //         x = 1
+                //         x = ""
+                //     x  # What's x here?
+                //  x is only partially defined in the if so it's str, therefore we clone that
+                //  entry.
+                self.type_.clone()
             } else {
                 EntryKind::OriginalDeclaraction
             },
@@ -154,27 +166,22 @@ impl Entry {
         }
     }
 
-    fn widen_with_declaration(&self, i_s: &InferenceState) -> EntryKind {
-        match &self.type_ {
-            EntryKind::Type(t) => match self.key {
-                FlowKey::Name(link) => {
-                    let file = i_s.db.loaded_python_file(link.file);
-                    let inf = file
-                        .inference(i_s)
-                        .check_point_cache(link.node_index - NAME_DEF_TO_NAME_DIFFERENCE)
-                        .expect("There should always be a type for declarations");
-                    EntryKind::Type(inf.as_cow_type(i_s).simplified_union(i_s, t))
-                }
-                _ => EntryKind::OriginalDeclaraction,
-            },
-            EntryKind::OriginalDeclaraction => EntryKind::OriginalDeclaraction,
-        }
-    }
-
     #[inline]
     fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> EntryKind {
         match (&self.type_, &other.type_) {
             (EntryKind::Type(t1), EntryKind::Type(t2)) => {
+                EntryKind::Type(t1.simplified_union(i_s, t2))
+            }
+            (EntryKind::OriginalDeclaraction, EntryKind::Type(t2)) if other.widens => {
+                let t1 = match self.key {
+                    FlowKey::Name(link) => NodeRef::from_link(i_s.db, link)
+                        .infer_name_of_definition_by_index(i_s)
+                        .as_type(i_s),
+                    _ => {
+                        recoverable_error!("For now we do not expect original declarations to have simplified unions ");
+                        Type::ERROR
+                    }
+                };
                 EntryKind::Type(t1.simplified_union(i_s, t2))
             }
             _ => EntryKind::OriginalDeclaraction,
@@ -613,6 +620,43 @@ impl FlowAnalysis {
                     *entry = new_entry;
                 }
                 return;
+            }
+        }
+        entries.push(new_entry)
+    }
+
+    pub(super) fn add_initial_name_definition(&self, db: &Database, name: PointLink) {
+        let new_entry = Entry {
+            key: FlowKey::Name(name),
+            type_: EntryKind::OriginalDeclaraction,
+            modifies_ancestors: true,
+            deleted: false,
+            widens: false,
+        };
+        if self.frames.borrow().is_empty() {
+            // TODO why this????
+            return;
+        }
+        let mut top_frame = self.tos_frame();
+        let entries = &mut top_frame.entries;
+        if cfg!(debug_assertions) {
+            for entries in self.try_frames.borrow_mut().iter_mut() {
+                for entry in entries.iter() {
+                    if entry.key.equals(db, &new_entry.key) {
+                        if entry.type_ != EntryKind::OriginalDeclaraction {
+                            unreachable!();
+                        }
+                    }
+                }
+            }
+        }
+        for entry in entries.iter() {
+            if entry.key.equals(db, &new_entry.key) {
+                if entry.type_ == EntryKind::OriginalDeclaraction {
+                    return;
+                } else {
+                    recoverable_error!("Did not expect an already existing entry")
+                }
             }
         }
         entries.push(new_entry)
