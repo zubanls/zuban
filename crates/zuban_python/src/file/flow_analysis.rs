@@ -1386,13 +1386,16 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
     }
 
+    #[inline]
     pub(super) fn add_initial_name_definition(&self, name_index: NodeIndex) {
-        FLOW_ANALYSIS.with(|fa| {
-            fa.add_initial_name_definition(
-                self.i_s.db,
-                PointLink::new(self.file.file_index, name_index),
-            )
-        })
+        if self.flags().allow_redefinition {
+            FLOW_ANALYSIS.with(|fa| {
+                fa.add_initial_name_definition(
+                    self.i_s.db,
+                    PointLink::new(self.file.file_index, name_index),
+                )
+            })
+        }
     }
 
     pub fn maybe_lookup_narrowed_name(

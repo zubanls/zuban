@@ -1400,7 +1400,6 @@ testUnusedTargetNotClass
 testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 
-testNewRedefineAnyType2
 # --allow-redefinition-new
 testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore
