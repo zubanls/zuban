@@ -1387,12 +1387,12 @@ impl Inference<'_, '_, '_> {
     }
 
     #[inline]
-    pub(super) fn add_initial_name_definition(&self, name_index: NodeIndex) {
+    pub(super) fn add_initial_name_definition(&self, name: NameDef) {
         if self.flags().allow_redefinition {
             FLOW_ANALYSIS.with(|fa| {
                 fa.add_initial_name_definition(
                     self.i_s.db,
-                    PointLink::new(self.file.file_index, name_index),
+                    PointLink::new(self.file.file_index, name.name_index()),
                 )
             })
         }

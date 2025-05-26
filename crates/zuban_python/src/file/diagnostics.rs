@@ -1521,7 +1521,7 @@ impl Inference<'_, '_, '_> {
                     }
                 }
             }
-            self.add_initial_name_definition(param.name_def().name_index());
+            self.add_initial_name_definition(param.name_def());
         }
 
         if let Some(return_annotation) = return_annotation {

@@ -1046,7 +1046,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             value,
             assign_kind,
             |save_to_index, inf| {
-                self.add_initial_name_definition(name_def.name_index());
+                self.add_initial_name_definition(name_def);
                 save(save_to_index, inf)
             },
             None,
