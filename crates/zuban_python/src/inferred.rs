@@ -1474,7 +1474,25 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return r.map(|inf| (inf, attr_kind));
                             }
                         }
-                        ComplexPoint::WidenedType(widened) => todo!(),
+                        ComplexPoint::WidenedType(widened) => {
+                            if let Some(r) = Self::bind_class_descriptors_for_type(
+                                i_s,
+                                class,
+                                attribute_class,
+                                add_issue,
+                                apply_descriptor,
+                                &widened.widened,
+                                as_type_type,
+                                func_class_type,
+                            ) {
+                                return r.map(|inf| (inf, attr_kind));
+                            } else {
+                                return Some((
+                                    Inferred::from_type(widened.widened.clone()),
+                                    attr_kind,
+                                ));
+                            }
+                        }
                         _ => (),
                     },
                     _ => (),

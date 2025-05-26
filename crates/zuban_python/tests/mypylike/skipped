@@ -1407,8 +1407,6 @@ testNewRedefinePartialTypeForUnderscore
 testNewRedefineGlobalVariableSimple
 testNewRedefineGlobalVariableNoneInit
 testNewRedefineNestedFunctionBasics
-# --allow-redefinition-new access from outside after widening inside
-testNewRedefineClassBody
 # --allow-redefinition-new are list redefinitions ok? questionable
 testNewRedefinePartialGenericTypes
 # --alow-redefinition-new implementation details, that are probably not important

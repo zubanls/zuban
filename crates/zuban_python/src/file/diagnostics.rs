@@ -148,7 +148,7 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| {
                 let _indent = debug_indent();
                 fa.with_new_empty_and_process_delayed_diagnostics(self.i_s, || {
-                    fa.with_new_module_frame(self.i_s, || {
+                    fa.with_frame_that_exports_widened_entries(self.i_s, || {
                         self.calc_stmts_diagnostics(
                             self.file.tree.root().iter_stmt_likes(),
                             None,
@@ -964,7 +964,12 @@ impl Inference<'_, '_, '_> {
 
         let i_s = self.i_s.with_class_context(&c);
         let inference = self.file.inference(&i_s);
-        let result = inference.calculate_class_block_diagnostics(c, block);
+
+        let result = FLOW_ANALYSIS.with(|fa| {
+            fa.with_frame_that_exports_widened_entries(self.i_s, || {
+                inference.calculate_class_block_diagnostics(c, block)
+            })
+        });
         if !result.is_ok() {
             recoverable_error!(
                 "Calculating the class block failed for: {} line #{} in {}",

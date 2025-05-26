@@ -786,8 +786,12 @@ impl FlowAnalysis {
             .unreachable
     }
 
-    pub fn with_new_module_frame(&self, i_s: &InferenceState, callable: impl FnOnce()) {
-        let frame = self.with_frame(Frame::new_base_scope(), callable);
+    pub fn with_frame_that_exports_widened_entries<T>(
+        &self,
+        i_s: &InferenceState,
+        callable: impl FnOnce() -> T,
+    ) -> T {
+        let (frame, result) = self.with_frame_and_result(Frame::new_base_scope(), callable);
         for entry in frame.entries {
             if entry.widens {
                 if let EntryKind::Type(t) = &entry.type_ {
@@ -822,6 +826,7 @@ impl FlowAnalysis {
                 }
             }
         }
+        result
     }
 
     fn with_frame_and_result<T>(&self, frame: Frame, callable: impl FnOnce() -> T) -> (Frame, T) {
@@ -1785,10 +1790,9 @@ impl Inference<'_, '_, '_> {
                 fa.with_new_empty_and_delay_further(self.i_s, || {
                     let new_i_s = self.i_s.with_class_context(&class);
                     let inference = self.file.inference(&new_i_s);
-                    fa.with_frame_and_result(Frame::new_base_scope(), || {
+                    fa.with_frame_that_exports_widened_entries(self.i_s, || {
                         inference.calculate_class_block_diagnostics(*class, class_block)
                     })
-                    .1
                 })?
                 // At this point we just lose reachability information for the class. This is
                 // probably the price we pay, since we allow weird (in reality impossible?) forward
