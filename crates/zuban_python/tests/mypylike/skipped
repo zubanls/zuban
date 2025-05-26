@@ -1403,8 +1403,6 @@ testRedefineLocalWithinExceptStarTryClauses
 # --allow-redefinition-new
 testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore
-# --allow-redefinition-new Initial definition in if/while
-testNewRedefineUninitializedCodePath2
 # --allow-redefinition-new global/nonlocal
 testNewRedefineGlobalVariableSimple
 testNewRedefineGlobalVariableNoneInit

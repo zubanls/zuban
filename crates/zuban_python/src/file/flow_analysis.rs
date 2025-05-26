@@ -1493,8 +1493,9 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
             return;
         }
+        let allow_redefinition = self.flags().allow_redefinition && matches!(key, FlowKey::Name(_));
         let error_result = if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-            if self.flags().allow_redefinition
+            if allow_redefinition
                 && matches!(check_for_error(), RedefinitionResult::RedefinitionAllowed)
             {
                 RedefinitionResult::RedefinitionAllowed
@@ -1527,21 +1528,10 @@ impl Inference<'_, '_, '_> {
         } else {
             check_for_error()
         };
-        let redefinition_allowed = match error_result {
-            RedefinitionResult::RedefinitionAllowed => true,
-            // There was an error so return and don't narrow.
-            RedefinitionResult::TypeMismatch(true) => return,
-            RedefinitionResult::TypeMismatch(false) => false,
-        };
-        self.save_narrowed(
-            key,
-            new_t.clone(),
-            redefinition_allowed
-                && (!declaration_t
-                    .is_simple_super_type_of(self.i_s, new_t)
-                    .non_any_match()
-                    || declaration_t.has_any(self.i_s)),
-        );
+        if let RedefinitionResult::TypeMismatch(true) = error_result {
+            return;
+        }
+        self.save_narrowed(key, new_t.clone(), allow_redefinition);
     }
 
     pub fn narrow_or_widen_self_target(
