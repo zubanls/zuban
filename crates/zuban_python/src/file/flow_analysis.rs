@@ -251,19 +251,45 @@ impl Entry {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone, Copy)]
+enum FrameKind {
+    BaseScope,
+    Conditional,
+}
+
+#[derive(Debug, Clone)]
 struct Frame {
     entries: Entries,
     unreachable: bool,
     reported_unreachable: bool,
+    kind: FrameKind,
 }
 
 impl Frame {
-    fn new(entries: Entries) -> Self {
+    fn new(kind: FrameKind, entries: Entries) -> Self {
         Self {
+            kind,
             entries,
             unreachable: false,
             reported_unreachable: false,
+        }
+    }
+
+    fn new_conditional() -> Self {
+        Self {
+            entries: Default::default(),
+            unreachable: false,
+            reported_unreachable: false,
+            kind: FrameKind::Conditional,
+        }
+    }
+
+    fn new_base_scope() -> Self {
+        Self {
+            entries: Default::default(),
+            unreachable: false,
+            reported_unreachable: false,
+            kind: FrameKind::BaseScope,
         }
     }
 
@@ -272,6 +298,16 @@ impl Frame {
             entries: Default::default(),
             unreachable: true,
             reported_unreachable: false,
+            kind: FrameKind::Conditional,
+        }
+    }
+
+    fn take(&mut self) -> Self {
+        Self {
+            entries: std::mem::take(&mut self.entries),
+            unreachable: std::mem::take(&mut self.unreachable),
+            reported_unreachable: std::mem::take(&mut self.reported_unreachable),
+            kind: self.kind,
         }
     }
 
@@ -304,7 +340,7 @@ impl Frame {
     fn from_type_without_entry(t: Type) -> Self {
         match t {
             Type::Never(_) => Self::new_unreachable(),
-            _ => Self::default(),
+            _ => Self::new_conditional(),
         }
     }
 
@@ -315,7 +351,7 @@ impl Frame {
     fn from_type(key: FlowKey, type_: Type) -> Self {
         match type_ {
             Type::Never(_) => Self::new_unreachable(),
-            type_ => Self::new(vec![Entry::new(key, type_)]),
+            type_ => Self::new(FrameKind::Conditional, vec![Entry::new(key, type_)]),
         }
     }
 }
@@ -446,6 +482,7 @@ impl FlowAnalysis {
         callable: impl FnOnce(),
     ) {
         let reused_narrowings = Frame::new(
+            FrameKind::BaseScope,
             self.frames
                 .borrow()
                 .iter()
@@ -508,7 +545,12 @@ impl FlowAnalysis {
     }
 
     pub fn in_conditional(&self) -> bool {
-        self.frames.borrow().len() > 1
+        let frames = self.frames.borrow();
+        let Some(last) = frames.last() else {
+            recoverable_error!("in_conditional should not have empty frames");
+            return false;
+        };
+        matches!(last.kind, FrameKind::Conditional)
     }
 
     pub fn in_loop(&self) -> bool {
@@ -740,11 +782,12 @@ impl FlowAnalysis {
     }
 
     pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
-        self.with_frame(Frame::default(), callable).unreachable
+        self.with_frame(Frame::new_base_scope(), callable)
+            .unreachable
     }
 
     pub fn with_new_module_frame(&self, i_s: &InferenceState, callable: impl FnOnce()) {
-        let frame = self.with_frame(Frame::default(), callable);
+        let frame = self.with_frame(Frame::new_base_scope(), callable);
         for entry in frame.entries {
             if entry.widens {
                 if let EntryKind::Type(t) = &entry.type_ {
@@ -805,7 +848,7 @@ impl FlowAnalysis {
         callable();
         Frame {
             entries: self.try_frames.borrow_mut().pop().unwrap(),
-            ..Frame::default()
+            ..Frame::new_conditional()
         }
     }
 
@@ -823,7 +866,7 @@ impl FlowAnalysis {
     }
 
     fn merge_frames_for_index(&self, db: &Database, frame_index: usize) -> Frame {
-        let mut result = Frame::default();
+        let mut result = Frame::new_conditional();
         for check_frame in self.frames.borrow().iter().skip(frame_index).rev() {
             for entry in &check_frame.entries {
                 if result.lookup_entry(db, &entry.key).is_none() {
@@ -964,7 +1007,7 @@ impl FlowAnalysis {
                 add_entry(&mut new_entries, y_entry)
             }
         }
-        Frame::new(new_entries)
+        Frame::new(FrameKind::Conditional, new_entries)
     }
 
     fn merge_conjunction(
@@ -1180,7 +1223,7 @@ fn narrow_is_or_eq(
         }
         Type::None => {
             let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq)?;
-            Some((Frame::default(), Frame::from_type(key, falsey)))
+            Some((Frame::new_conditional(), Frame::from_type(key, falsey)))
         }
         Type::EnumMember(member) if !is_eq || !member.implicit => {
             let (truthy, falsey) = split_off_enum_member(i_s, checking_t, member, is_eq)?;
@@ -1259,7 +1302,7 @@ fn narrow_is_or_eq(
                     if falsey.is_simple_sub_type_of(i_s, other_t).bool()
                         || falsey.is_simple_super_type_of(i_s, other_t).bool()
                     {
-                        return Some((Frame::from_type(key, falsey), Frame::default()));
+                        return Some((Frame::from_type(key, falsey), Frame::new_conditional()));
                     }
                 }
                 None
@@ -1742,7 +1785,7 @@ impl Inference<'_, '_, '_> {
                 fa.with_new_empty_and_delay_further(self.i_s, || {
                     let new_i_s = self.i_s.with_class_context(&class);
                     let inference = self.file.inference(&new_i_s);
-                    fa.with_frame_and_result(Frame::default(), || {
+                    fa.with_frame_and_result(Frame::new_base_scope(), || {
                         inference.calculate_class_block_diagnostics(*class, class_block)
                     })
                     .1
@@ -1867,7 +1910,7 @@ impl Inference<'_, '_, '_> {
                 let (_, truthy, falsey) = self.find_guards_in_named_expr(if_expr);
                 (truthy, falsey)
             } else {
-                (Frame::default(), Frame::default())
+                (Frame::new_conditional(), Frame::new_conditional())
             };
             let (mut after_frame, loop_details) = fa.with_new_loop_frame(true_frame, || {
                 assign_for_stmt_names();
@@ -2141,7 +2184,7 @@ impl Inference<'_, '_, '_> {
         except_bodies: usize,
     ) -> (Frame, Frame) {
         FLOW_ANALYSIS.with(|fa| {
-            let mut try_frame_for_except = Frame::default();
+            let mut try_frame_for_except = Frame::new_conditional();
             let mut try_frame = None;
             let mut after_ok = Frame::new_unreachable();
             let mut after_exception = Frame::new_unreachable();
@@ -2182,14 +2225,14 @@ impl Inference<'_, '_, '_> {
                     };
                     nth_except_body += 1;
                     let mut exception_frame = if nth_except_body == except_bodies {
-                        std::mem::take(&mut try_frame_for_except)
+                        try_frame_for_except.take()
                     } else {
                         try_frame_for_except.clone()
                     };
                     exception_frame = fa.with_frame(exception_frame, || {
                         self.calc_block_diagnostics(block, class, func)
                     });
-                    let new_after = std::mem::take(&mut after_exception);
+                    let new_after = after_exception.take();
                     after_exception = fa.merge_or(self.i_s, exception_frame, new_after, false);
                     if let Some(name_def) = name_def {
                         self.delete_name(name_def)
@@ -2199,7 +2242,7 @@ impl Inference<'_, '_, '_> {
                 match b {
                     TryBlockType::Try(block) => {
                         try_frame_for_except = fa.with_new_try_frame(|| {
-                            try_frame = Some(fa.with_frame(Frame::default(), || {
+                            try_frame = Some(fa.with_frame(Frame::new_conditional(), || {
                                 self.calc_block_diagnostics(block, class, func)
                             }))
                         })
@@ -2241,10 +2284,10 @@ impl Inference<'_, '_, '_> {
                         let else_frame = if try_frame.unreachable {
                             Frame::new_unreachable()
                         } else {
-                            Frame::default()
+                            Frame::new_conditional()
                         };
                         fa.with_frame(try_frame, || {
-                            let new_after = std::mem::take(&mut after_ok);
+                            let new_after = after_ok.take();
                             after_ok = fa.merge_or(
                                 self.i_s,
                                 new_after,
@@ -2285,7 +2328,7 @@ impl Inference<'_, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         FLOW_ANALYSIS.with(|fa| {
-            fa.with_frame_and_result(Frame::default(), || {
+            fa.with_frame_and_result(Frame::new_conditional(), || {
                 self.infer_expression_without_cache(expr, result_context)
             })
             .1
@@ -2612,7 +2655,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        (Frame::default(), Frame::default())
+        (Frame::new_conditional(), Frame::new_conditional())
     }
 
     fn find_guards_in_sequence_pattern<'x>(
@@ -2645,7 +2688,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        (Frame::default(), Frame::default())
+        (Frame::new_conditional(), Frame::new_conditional())
     }
 
     fn find_guards_in_named_expr(&self, named_expr: NamedExpression) -> (Inferred, Frame, Frame) {
@@ -2663,14 +2706,15 @@ impl Inference<'_, '_, '_> {
                         self.find_guards_in_expr(expr)
                     };
                 FLOW_ANALYSIS.with(|fa| {
-                    let (walrus_frame, inf) = fa.with_frame_and_result(Frame::default(), || {
-                        // This can happen in weird closures. I'm not currently sure how we should
-                        // best handle that, see avoid_walrus_crash_when_variable_is_used_in_closure
-                        if self.point(name_def.index()).calculated() {
-                            return inf;
-                        }
-                        self.save_walrus(name_def, inf)
-                    });
+                    let (walrus_frame, inf) =
+                        fa.with_frame_and_result(Frame::new_conditional(), || {
+                            // This can happen in weird closures. I'm not currently sure how we should
+                            // best handle that, see avoid_walrus_crash_when_variable_is_used_in_closure
+                            if self.point(name_def.index()).calculated() {
+                                return inf;
+                            }
+                            self.save_walrus(name_def, inf)
+                        });
                     if let Some((walrus_truthy, walrus_falsey)) =
                         split_truthy_and_falsey(self.i_s, &inf)
                     {
@@ -2709,8 +2753,8 @@ impl Inference<'_, '_, '_> {
             }
             _ => (
                 self.infer_expression(expr),
-                Frame::default(),
-                Frame::default(),
+                Frame::new_conditional(),
+                Frame::new_conditional(),
             ),
         }
     }
@@ -3044,7 +3088,7 @@ impl Inference<'_, '_, '_> {
             debug!("The isinstance type is Any, we therefore do not narrow");
             return Some(FramesWithParentUnions {
                 truthy: Frame::from_type(key, isinstance_type),
-                falsey: Frame::default(),
+                falsey: Frame::new_conditional(),
                 parent_unions: vec![],
             });
         }
@@ -3109,7 +3153,7 @@ impl Inference<'_, '_, '_> {
         let falsey = match falsey_parent {
             // Frames should not be unreachable, because people might be checking for deleted
             // attributes.
-            Type::Never(_) => Frame::default(),
+            Type::Never(_) => Frame::new_conditional(),
             _ => Frame::from_type(key.clone(), falsey_parent),
         };
         Some(FramesWithParentUnions {
@@ -3162,7 +3206,7 @@ impl Inference<'_, '_, '_> {
                 Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
                 input_t.into_owned(),
             ])));
-            Frame::default()
+            Frame::new_conditional()
         } else {
             Frame::from_type(key.clone(), other_side)
         };
@@ -3236,7 +3280,7 @@ impl Inference<'_, '_, '_> {
                                             if found.falsey.entries.is_empty()
                                                 || y.falsey.entries.is_empty()
                                             {
-                                                Frame::default()
+                                                Frame::new_conditional()
                                             } else {
                                                 merge_and(self.i_s, found.falsey, y.falsey)
                                             }
@@ -3338,7 +3382,7 @@ impl Inference<'_, '_, '_> {
         } else {
             (
                 Frame::from_type(key, resolved_guard_t.into_owned()),
-                Frame::default(),
+                Frame::new_conditional(),
             )
         };
         Some(FramesWithParentUnions {
@@ -3382,7 +3426,7 @@ impl Inference<'_, '_, '_> {
                     if let Some(t) = removed_optional(db, &left_t) {
                         return maybe_invert(
                             Frame::from_type(left_key.clone(), t),
-                            Frame::default(),
+                            Frame::new_conditional(),
                             left.parent_unions.take(),
                         );
                     }
@@ -3836,11 +3880,20 @@ struct ComparisonPartInfos {
     parent_unions: RefCell<ParentUnions>,
 }
 
-#[derive(Default)]
 struct FramesWithParentUnions {
     truthy: Frame,
     falsey: Frame,
     parent_unions: ParentUnions,
+}
+
+impl Default for FramesWithParentUnions {
+    fn default() -> Self {
+        Self {
+            truthy: Frame::new_conditional(),
+            falsey: Frame::new_conditional(),
+            parent_unions: ParentUnions::default(),
+        }
+    }
 }
 
 fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
@@ -3988,7 +4041,7 @@ fn check_for_comparison_guard(
                                 !t.is_simple_same_type(i_s, base_truthy).bool()
                             }),
                         ),
-                        false => Frame::default(),
+                        false => Frame::new_conditional(),
                     },
                     parent_unions: std::mem::take(&mut checking_side.parent_unions.borrow_mut()),
                 })
