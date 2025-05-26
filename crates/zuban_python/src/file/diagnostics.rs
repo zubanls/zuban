@@ -1190,7 +1190,7 @@ impl Inference<'_, '_, '_> {
         let i_s = self.i_s;
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;
-            let unreachable = fa.with_new_frame_and_return_unreachable(|| {
+            let unreachable = fa.with_new_func_frame_and_return_unreachable(|| {
                 if func_node.is_empty_generator_function() {
                     fa.enable_reported_unreachable_in_top_frame();
                 }

@@ -781,7 +781,7 @@ impl FlowAnalysis {
         self.tos_frame().unreachable |= new_frame.unreachable;
     }
 
-    pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
+    pub fn with_new_func_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
         self.with_frame(Frame::new_base_scope(), callable)
             .unreachable
     }
@@ -2320,7 +2320,7 @@ impl Inference<'_, '_, '_> {
             let try_frame_for_except = fa.with_new_try_frame(|| {
                 // Create a new frame that is then thrown away. This makes sense if we consider
                 // that the end of the with statement might never be reached.
-                fa.with_new_frame_and_return_unreachable(callable);
+                fa.with_frame(Frame::new_conditional(), callable);
             });
             fa.overwrite_entries(self.i_s.db, try_frame_for_except.entries);
         })
