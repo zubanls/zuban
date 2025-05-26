@@ -1047,12 +1047,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             assign_kind,
             |save_to_index, inf| {
                 if self.flags().allow_redefinition {
-                    FLOW_ANALYSIS.with(|fa| {
-                        fa.add_initial_name_definition(
-                            self.i_s.db,
-                            PointLink::new(self.file.file_index, name_def.name_index()),
-                        )
-                    })
+                    self.add_initial_name_definition(name_def.name_index())
                 }
                 save(save_to_index, inf)
             },

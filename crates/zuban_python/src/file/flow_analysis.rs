@@ -633,7 +633,7 @@ impl FlowAnalysis {
         entries.push(new_entry)
     }
 
-    pub(super) fn add_initial_name_definition(&self, db: &Database, name: PointLink) {
+    fn add_initial_name_definition(&self, db: &Database, name: PointLink) {
         let new_entry = Entry {
             key: FlowKey::Name(name),
             type_: EntryKind::OriginalDeclaraction,
@@ -1384,6 +1384,15 @@ impl Inference<'_, '_, '_> {
 
     pub fn mark_current_frame_unreachable(&self) {
         FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+    }
+
+    pub(super) fn add_initial_name_definition(&self, name_index: NodeIndex) {
+        FLOW_ANALYSIS.with(|fa| {
+            fa.add_initial_name_definition(
+                self.i_s.db,
+                PointLink::new(self.file.file_index, name_index),
+            )
+        })
     }
 
     pub fn maybe_lookup_narrowed_name(
