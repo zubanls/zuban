@@ -13,7 +13,7 @@ use parsa_python_cst::{
     NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
     PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
     SliceType as CSTSliceType, StarPatternContent, Target, Ternary, TryBlockType, TryStmt,
-    WhileStmt, NAME_DEF_TO_NAME_DIFFERENCE,
+    WhileStmt,
 };
 
 use crate::{
@@ -141,7 +141,7 @@ impl Entry {
         }
     }
 
-    fn with_declaration(&self, i_s: &InferenceState) -> Self {
+    fn with_declaration(&self) -> Self {
         Entry {
             key: self.key.clone(),
             type_: if self.widens {
@@ -168,21 +168,29 @@ impl Entry {
 
     #[inline]
     fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> EntryKind {
+        let merge_with_original = |key: &_, other_t| {
+            let original_t = match key {
+                FlowKey::Name(link) => NodeRef::from_link(i_s.db, *link)
+                    .infer_name_of_definition_by_index(i_s)
+                    .as_type(i_s),
+                _ => {
+                    recoverable_error!(
+                        "For now we do not expect original declarations to have simplified unions "
+                    );
+                    Type::ERROR
+                }
+            };
+            EntryKind::Type(original_t.simplified_union(i_s, other_t))
+        };
         match (&self.type_, &other.type_) {
             (EntryKind::Type(t1), EntryKind::Type(t2)) => {
                 EntryKind::Type(t1.simplified_union(i_s, t2))
             }
-            (EntryKind::OriginalDeclaraction, EntryKind::Type(t2)) if other.widens => {
-                let t1 = match self.key {
-                    FlowKey::Name(link) => NodeRef::from_link(i_s.db, link)
-                        .infer_name_of_definition_by_index(i_s)
-                        .as_type(i_s),
-                    _ => {
-                        recoverable_error!("For now we do not expect original declarations to have simplified unions ");
-                        Type::ERROR
-                    }
-                };
-                EntryKind::Type(t1.simplified_union(i_s, t2))
+            (EntryKind::OriginalDeclaraction, EntryKind::Type(t)) if other.widens => {
+                merge_with_original(&self.key, t)
+            }
+            (EntryKind::Type(t), EntryKind::OriginalDeclaraction) if self.widens => {
+                merge_with_original(&other.key, t)
             }
             _ => EntryKind::OriginalDeclaraction,
         }
@@ -681,7 +689,7 @@ impl FlowAnalysis {
             })
             // The fallback just assigns an "empty" key. This is needed, because otherwise we would
             // not be able to know if the entry invalidated entries further up the stack.
-            .unwrap_or_else(|| search_for.with_declaration(i_s))
+            .unwrap_or_else(|| search_for.with_declaration())
     }
 
     fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {

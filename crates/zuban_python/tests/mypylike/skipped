@@ -1406,7 +1406,6 @@ testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore
 # --allow-redefinition-new Initial definition in if/while
 testNewRedefineUninitializedCodePath2
-testNewRedefineForLoopIndexWidening
 # --allow-redefinition-new global/nonlocal
 testNewRedefineGlobalVariableSimple
 testNewRedefineGlobalVariableNoneInit
