@@ -71,7 +71,7 @@ impl<'file> NodeRef<'file> {
     #[inline]
     pub fn name_ref_of_name_def(&self) -> Self {
         let n = Self::new(self.file, self.node_index + NAME_DEF_TO_NAME_DIFFERENCE);
-        debug_assert!(n.maybe_name().is_some());
+        debug_assert!(n.maybe_name().is_some(), "Why is this not a name: {self:?}");
         n
     }
 

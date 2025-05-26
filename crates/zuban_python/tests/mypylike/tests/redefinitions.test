@@ -1,0 +1,8 @@
+[case redefine_in_module_access_from_outside]
+# flags: --allow-redefinition-new
+import m
+reveal_type(m.x)  # N: Revealed type is "str"
+
+[file m.py]
+x = 1
+x = ""

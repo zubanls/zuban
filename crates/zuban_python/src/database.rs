@@ -650,7 +650,7 @@ pub(crate) enum ComplexPoint {
     TypedDictDefinition(TypedDictDefinition),
     // Sometimes needed when a Final is defined in a class and initialized in __init__.
     IndirectFinal(Rc<Type>),
-    WidenedType(WidenedType),
+    WidenedType(Rc<WidenedType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -705,8 +705,8 @@ impl OverloadDefinition {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct WidenedType {
-    pub original: Rc<ComplexPoint>,
-    pub widened: Rc<Type>,
+    pub original: ComplexPoint,
+    pub widened: Type,
 }
 
 #[derive(Debug, Clone, PartialEq)]

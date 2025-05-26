@@ -148,7 +148,7 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| {
                 let _indent = debug_indent();
                 fa.with_new_empty_and_process_delayed_diagnostics(self.i_s, || {
-                    fa.with_new_frame_and_return_unreachable(|| {
+                    fa.with_new_module_frame(self.i_s, || {
                         self.calc_stmts_diagnostics(
                             self.file.tree.root().iter_stmt_likes(),
                             None,

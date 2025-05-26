@@ -18,7 +18,9 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::SimpleArgs,
-    database::{Database, Locality, Point, PointKind, PointLink, Specific},
+    database::{
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, WidenedType,
+    },
     debug,
     diagnostics::IssueKind,
     file::{ClassNodeRef, OtherDefinitionIterator},
@@ -166,31 +168,34 @@ impl Entry {
         }
     }
 
+    fn declaration_t(&self, i_s: &InferenceState) -> Type {
+        match &self.key {
+            FlowKey::Name(link) => NodeRef::from_link(i_s.db, *link)
+                .infer_name_of_definition_by_index(i_s)
+                .as_type(i_s),
+            _ => {
+                recoverable_error!(
+                    "For now we do not expect original declarations to have simplified unions "
+                );
+                Type::ERROR
+            }
+        }
+    }
+
     #[inline]
     fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> EntryKind {
-        let merge_with_original = |key: &_, other_t| {
-            let original_t = match key {
-                FlowKey::Name(link) => NodeRef::from_link(i_s.db, *link)
-                    .infer_name_of_definition_by_index(i_s)
-                    .as_type(i_s),
-                _ => {
-                    recoverable_error!(
-                        "For now we do not expect original declarations to have simplified unions "
-                    );
-                    Type::ERROR
-                }
-            };
-            EntryKind::Type(original_t.simplified_union(i_s, other_t))
+        let merge_with_original = |entry: &Self, other_t| {
+            EntryKind::Type(entry.declaration_t(i_s).simplified_union(i_s, other_t))
         };
         match (&self.type_, &other.type_) {
             (EntryKind::Type(t1), EntryKind::Type(t2)) => {
                 EntryKind::Type(t1.simplified_union(i_s, t2))
             }
             (EntryKind::OriginalDeclaraction, EntryKind::Type(t)) if other.widens => {
-                merge_with_original(&self.key, t)
+                merge_with_original(self, t)
             }
             (EntryKind::Type(t), EntryKind::OriginalDeclaraction) if self.widens => {
-                merge_with_original(&other.key, t)
+                merge_with_original(other, t)
             }
             _ => EntryKind::OriginalDeclaraction,
         }
@@ -736,6 +741,44 @@ impl FlowAnalysis {
 
     pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
         self.with_frame(Frame::default(), callable).unreachable
+    }
+
+    pub fn with_new_module_frame(&self, i_s: &InferenceState, callable: impl FnOnce()) {
+        let frame = self.with_frame(Frame::default(), callable);
+        for entry in frame.entries {
+            if entry.widens {
+                if let EntryKind::Type(t) = &entry.type_ {
+                    let declaration_t = entry.declaration_t(i_s);
+                    if !declaration_t
+                        .is_simple_super_type_of(i_s, t)
+                        .non_any_match()
+                    {
+                        let EntryKind::Type(widened) = entry.type_ else {
+                            unreachable!()
+                        };
+                        let name_def_ref = match &entry.key {
+                            FlowKey::Name(link) => {
+                                NodeRef::from_link(i_s.db, *link).name_def_ref_of_name()
+                            }
+                            _ => {
+                                recoverable_error!(
+                                    "Widening is not supported for key {:?}",
+                                    entry.key
+                                );
+                                continue;
+                            }
+                        };
+                        name_def_ref.insert_complex(
+                            ComplexPoint::WidenedType(Rc::new(WidenedType {
+                                original: ComplexPoint::TypeInstance(declaration_t),
+                                widened,
+                            })),
+                            Locality::Todo,
+                        )
+                    }
+                }
+            }
+        }
     }
 
     fn with_frame_and_result<T>(&self, frame: Frame, callable: impl FnOnce() -> T) -> (Frame, T) {

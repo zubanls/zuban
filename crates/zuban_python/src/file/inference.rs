@@ -3716,6 +3716,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         // In case where the partial is overwritten, we can just return the old Inferred,
                         // because it points to the correct place.
                     }
+                    if let Some(ComplexPoint::WidenedType(w)) =
+                        r.result.maybe_complex_point(self.i_s.db)
+                    {
+                        return Inferred::from_type(w.widened.clone());
+                    }
                     r.result
                 },
             ),
