@@ -1312,10 +1312,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     } else {
                         maybe_saved.is_some_and(|n| {
                             if let Some(complex) = maybe_complex_def {
-                                return is_special_def && !matches!(complex, ComplexPoint::Class(_) | ComplexPoint::FunctionOverload(_) | ComplexPoint::TypeAlias(_))
+                                return is_special_def
+                                    && !matches!(
+                                        complex,
+                                        ComplexPoint::Class(_)
+                                            | ComplexPoint::FunctionOverload(_)
+                                            | ComplexPoint::TypeAlias(_)
+                                    );
                             }
                             let p = n.point();
-                            p.kind() == PointKind::FileReference && matches!(value.as_cow_type(i_s).as_ref(), Type::Module(f) if *f != p.file_index())
+                            p.kind() == PointKind::FileReference
+                                && matches!(
+                                    value.as_cow_type(i_s).as_ref(),
+                                    Type::Module(f) if *f != p.file_index()
+                                )
                         })
                     }
                 }

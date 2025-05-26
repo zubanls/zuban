@@ -1143,9 +1143,7 @@ impl Inference<'_, '_, '_> {
     ) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         function.cache_func(self.i_s);
-        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) =
-            function.node_ref.maybe_complex()
-        {
+        if let Some(Type::Callable(c)) = function.node_ref.maybe_type() {
             if c.no_type_check {
                 return;
             }

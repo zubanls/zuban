@@ -456,8 +456,9 @@ impl<'db: 'slf, 'slf> Inferred {
             .and_then(|n| n.point().maybe_file_reference())
         {
             Some(f)
-        } else if let Some(ComplexPoint::TypeInstance(Type::Module(m))) =
-            self.maybe_complex_point(db)
+        } else if let Type::Module(m) = self
+            .maybe_complex_point(db)
+            .and_then(|c| c.maybe_instance())?
         {
             Some(*m)
         } else {
@@ -507,7 +508,10 @@ impl<'db: 'slf, 'slf> Inferred {
                 return from_type(t);
             }
         }
-        if let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(db) {
+        if let Some(t) = self
+            .maybe_complex_point(db)
+            .and_then(|c| c.maybe_instance())
+        {
             from_type(t)
         } else {
             UnionValue::Any
@@ -723,8 +727,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     _ => (),
                 }
             }
-            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Type::Callable(c))) => {
-                return FunctionOrOverload::Callable(c.clone());
+            InferredState::UnsavedComplex(c) => {
+                if let Some(Type::Callable(c)) = c.maybe_instance() {
+                    return FunctionOrOverload::Callable(c.clone());
+                }
             }
             _ => (),
         }
@@ -754,10 +760,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => return self,
                     },
                     PointKind::Complex => {
-                        if !matches!(
-                            node_ref.maybe_complex().unwrap(),
-                            ComplexPoint::TypeInstance(_) | ComplexPoint::IndirectFinal(_)
-                        ) {
+                        if node_ref.maybe_complex().unwrap().maybe_instance().is_none() {
                             return self;
                         }
                     }
@@ -1119,6 +1122,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     return inf;
                                 }
                             }
+                            ComplexPoint::WidenedType(widened) => todo!(),
                             _ => (),
                         }
                     }
@@ -1470,6 +1474,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return r.map(|inf| (inf, attr_kind));
                             }
                         }
+                        ComplexPoint::WidenedType(widened) => todo!(),
                         _ => (),
                     },
                     _ => (),
@@ -1632,14 +1637,16 @@ impl<'db: 'slf, 'slf> Inferred {
                             };
                             return inf;
                         }
-                        ComplexPoint::TypeInstance(Type::Callable(c)) => {
-                            let Some(c) = infer_class_method(i_s, *class, attribute_class, c, None)
-                            else {
-                                return Self::new_any_from_error();
-                            };
-                            return Inferred::from_type(Type::Callable(Rc::new(c)));
+                        complex => {
+                            if let Some(Type::Callable(c)) = complex.maybe_instance() {
+                                let Some(c) =
+                                    infer_class_method(i_s, *class, attribute_class, c, None)
+                                else {
+                                    return Self::new_any_from_error();
+                                };
+                                return Inferred::from_type(Type::Callable(Rc::new(c)));
+                            }
                         }
-                        _ => (),
                     },
                     _ => (),
                 }
@@ -1659,44 +1666,53 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn debug_info(&self, db: &Database) -> String {
-        let format_complex = |from: Option<NodeRef>, complex: &_| match complex {
-            ComplexPoint::TypeInstance(t) => t.format_short(db).into(),
-            ComplexPoint::Class(_) => {
-                format!(
-                    "ClassDefinition({}, {})",
-                    from.unwrap().maybe_class().unwrap().name().as_code(),
-                    from.unwrap().debug_info(db)
-                )
+        fn format_complex(db: &Database, from: Option<NodeRef>, complex: &ComplexPoint) -> String {
+            match complex {
+                ComplexPoint::TypeInstance(t) => t.format_short(db).into(),
+                ComplexPoint::Class(_) => {
+                    format!(
+                        "ClassDefinition({}, {})",
+                        from.unwrap().maybe_class().unwrap().name().as_code(),
+                        from.unwrap().debug_info(db)
+                    )
+                }
+                ComplexPoint::ClassInfos(_) => {
+                    format!("ClassInfos({})", from.unwrap().debug_info(db))
+                }
+                ComplexPoint::TypeVarLikes(_) => {
+                    format!("TypeVarLikes({})", from.unwrap().debug_info(db))
+                }
+                ComplexPoint::FunctionOverload(_) => {
+                    format!("OverloadedFunction({})", from.unwrap().debug_info(db))
+                }
+                ComplexPoint::NamedTupleDefinition(t) => {
+                    format!("NamedTupleDef({})", t.format_short(db))
+                }
+                ComplexPoint::TypedDictDefinition(td) => {
+                    format!("TypedDictDef({})", td.type_.format_short(db))
+                }
+                ComplexPoint::IndirectFinal(t) => {
+                    format!("IndirectFinal({})", t.format_short(db))
+                }
+                ComplexPoint::TypeVarLike(tvl) => {
+                    format!("TypeVarLike({})", tvl.name(db))
+                }
+                ComplexPoint::TypeAlias(alias) => {
+                    format!(
+                        "TypeAlias({}, {})",
+                        alias.name(db),
+                        from.unwrap().debug_info(db)
+                    )
+                }
+                ComplexPoint::WidenedType(widened) => {
+                    format!(
+                        "WidenedType(original={}, widened={})",
+                        format_complex(db, from, &widened.original),
+                        widened.widened.format_short(db)
+                    )
+                }
             }
-            ComplexPoint::ClassInfos(_) => {
-                format!("ClassInfos({})", from.unwrap().debug_info(db))
-            }
-            ComplexPoint::TypeVarLikes(_) => {
-                format!("TypeVarLikes({})", from.unwrap().debug_info(db))
-            }
-            ComplexPoint::FunctionOverload(_) => {
-                format!("OverloadedFunction({})", from.unwrap().debug_info(db))
-            }
-            ComplexPoint::NamedTupleDefinition(t) => {
-                format!("NamedTupleDef({})", t.format_short(db))
-            }
-            ComplexPoint::TypedDictDefinition(td) => {
-                format!("TypedDictDef({})", td.type_.format_short(db))
-            }
-            ComplexPoint::IndirectFinal(t) => {
-                format!("IndirectFinal({})", t.format_short(db))
-            }
-            ComplexPoint::TypeVarLike(tvl) => {
-                format!("TypeVarLike({})", tvl.name(db))
-            }
-            ComplexPoint::TypeAlias(alias) => {
-                format!(
-                    "TypeAlias({}, {})",
-                    alias.name(db),
-                    from.unwrap().debug_info(db)
-                )
-            }
-        };
+        }
         match &self.state {
             InferredState::Saved(definition) => {
                 let from = NodeRef::from_link(db, *definition);
@@ -1705,14 +1721,14 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointKind::Specific => format!("Specific({:?})", p.specific()),
                     PointKind::Complex => {
                         let complex = from.file.complex_points.get(p.complex_index());
-                        format_complex(Some(from), complex)
+                        format_complex(db, Some(from), complex)
                     }
                     PointKind::FileReference => format!("UnsavedFile({})", p.file_index()),
                     PointKind::Redirect => unreachable!(),
                 }
             }
             InferredState::UnsavedFileReference(file_index) => format!("UnsavedFile({file_index})"),
-            InferredState::UnsavedComplex(c) => format!("Unsaved{}", format_complex(None, c)),
+            InferredState::UnsavedComplex(c) => format!("Unsaved{}", format_complex(db, None, c)),
             InferredState::UnsavedSpecific(specific) => format!("UnsavedSpecific({specific:?})"),
             InferredState::BoundMethod {
                 instance,
@@ -1734,8 +1750,8 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn maybe_any(&self, db: &Database) -> Option<AnyCause> {
         if let Some(complex) = self.maybe_complex_point(db) {
-            return match complex {
-                ComplexPoint::TypeInstance(Type::Any(cause)) => Some(*cause),
+            return match complex.maybe_instance() {
+                Some(Type::Any(cause)) => Some(*cause),
                 _ => None,
             };
         }
@@ -2106,6 +2122,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                                 return Inferred::new_any_from_error();
                             }
+                            ComplexPoint::WidenedType(w) => todo!(),
                             _ => (),
                         }
                     }
@@ -2618,6 +2635,7 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(Type::Type(n.clone())),
         ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
         ComplexPoint::IndirectFinal(t) => Cow::Borrowed(t),
+        ComplexPoint::WidenedType(widened) => type_of_complex(i_s, &widened.original, definition),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }

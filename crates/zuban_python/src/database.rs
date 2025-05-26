@@ -650,10 +650,22 @@ pub(crate) enum ComplexPoint {
     TypedDictDefinition(TypedDictDefinition),
     // Sometimes needed when a Final is defined in a class and initialized in __init__.
     IndirectFinal(Rc<Type>),
+    WidenedType(WidenedType),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
     TypeAlias(Box<TypeAlias>),
+}
+
+impl ComplexPoint {
+    pub fn maybe_instance(&self) -> Option<&Type> {
+        match self {
+            Self::TypeInstance(t) => Some(t),
+            Self::WidenedType(w) => w.original.maybe_instance(),
+            Self::IndirectFinal(t) => Some(&t),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -689,6 +701,12 @@ impl OverloadDefinition {
     pub fn kind(&self) -> &FunctionKind {
         self.functions.kind()
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct WidenedType {
+    pub original: Rc<ComplexPoint>,
+    pub widened: Rc<Type>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
