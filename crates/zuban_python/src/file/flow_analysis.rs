@@ -735,10 +735,7 @@ impl FlowAnalysis {
     }
 
     pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
-        self.frames.borrow_mut().push(Frame::default());
-        callable();
-        let frame = self.frames.borrow_mut().pop().unwrap();
-        frame.unreachable
+        self.with_frame(Frame::default(), callable).unreachable
     }
 
     fn with_frame_and_result<T>(&self, frame: Frame, callable: impl FnOnce() -> T) -> (Frame, T) {
