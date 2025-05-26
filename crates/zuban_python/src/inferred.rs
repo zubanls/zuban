@@ -1122,7 +1122,24 @@ impl<'db: 'slf, 'slf> Inferred {
                                     return inf;
                                 }
                             }
-                            ComplexPoint::WidenedType(widened) => todo!(),
+                            ComplexPoint::WidenedType(widened) => {
+                                if let Some(inf) = Self::bind_instance_descriptors_for_type(
+                                    i_s,
+                                    for_name,
+                                    instance,
+                                    attribute_class,
+                                    add_issue,
+                                    &widened.widened,
+                                    apply_descriptors_kind,
+                                ) {
+                                    return inf;
+                                } else {
+                                    return Some((
+                                        Inferred::from_type(widened.widened.clone()),
+                                        AttributeKind::Attribute,
+                                    ));
+                                }
+                            }
                             _ => (),
                         }
                     }
@@ -2140,7 +2157,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                                 return Inferred::new_any_from_error();
                             }
-                            ComplexPoint::WidenedType(w) => todo!(),
                             _ => (),
                         }
                     }

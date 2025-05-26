@@ -347,7 +347,6 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
     ) {
-        // TODO In general all {} blocks are todos
         for stmt_like in stmts {
             let point = self.point(stmt_like.parent_index);
             if point.calculated() {
