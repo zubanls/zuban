@@ -1181,7 +1181,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     {
                         let mut t = t.into_owned();
                         if t.has_never_from_inference(i_s.db) {
-                            saved_node_ref.finish_partial_with_annotation_needed(i_s)
+                            saved_node_ref.finish_partial_with_annotation_needed(i_s.db)
                         } else {
                             if partial_flags.nullable && !i_s.db.project.strict_optional_partials()
                             {
@@ -1749,14 +1749,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 return LookupDetails::any(AnyCause::Internal);
                             };
                             c.instance().lookup(
-                                self.i_s,
+                                i_s,
                                 name_def.as_code(),
                                 InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue))
                                     .with_skip_first_self_variables(),
                             )
                         }),
                         |_, declaration_t| {
-                            let current_t = value.as_cow_type(self.i_s);
+                            let current_t = value.as_cow_type(i_s);
                             self.narrow_or_widen_self_target(
                                 primary_target,
                                 declaration_t,
@@ -1825,11 +1825,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                         "The defaultdict value type should always be defined"
                                     )
                                 };
-                                if !original_value
-                                    .is_simple_same_type(self.i_s, &value_t)
-                                    .bool()
-                                {
-                                    from.add_need_type_annotation_issue(i_s, specific);
+                                if !original_value.is_simple_same_type(i_s, &value_t).bool() {
+                                    from.add_need_type_annotation_issue(i_s.db, specific);
                                     return;
                                 }
                             }
@@ -1842,8 +1839,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 s_t.infer(i_s).as_type(i_s).avoid_implicit_literal(i_s.db),
                                 value_t,
                             );
-                            if new_dict.has_never_from_inference(self.i_s.db) {
-                                from.finish_partial_with_annotation_needed(i_s);
+                            if new_dict.has_never_from_inference(i_s.db) {
+                                from.finish_partial_with_annotation_needed(i_s.db);
                                 return;
                             }
                             debug!(
@@ -1851,8 +1848,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 primary_target.as_code(),
                                 new_dict.format_short(i_s.db)
                             );
-                            if partial_flags.nullable
-                                && !self.i_s.db.project.strict_optional_partials()
+                            if partial_flags.nullable && !i_s.db.project.strict_optional_partials()
                             {
                                 self.save_narrowed_partial_primary_target_or_atom(
                                     primary_target.first(),
@@ -3039,8 +3035,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 debug!(r#"Partial "{}" was already finished"#, primary.as_code());
                 return None;
             }
-            if resolved_partial.has_never_from_inference(self.i_s.db) {
-                base.finish_partial_with_annotation_needed(i_s);
+            if resolved_partial.has_never_from_inference(i_s.db) {
+                base.finish_partial_with_annotation_needed(i_s.db);
                 return Some(Type::None);
             }
             debug!(
@@ -3077,9 +3073,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let t = find_container_types(unwrap_from_iterable)?;
             save_partial(new_class!(
                 i_s.db.python_state.defaultdict_link(),
-                defaultdict_key?
-                    .as_type(self.i_s)
-                    .avoid_implicit_literal(self.i_s.db),
+                defaultdict_key?.as_type(i_s).avoid_implicit_literal(i_s.db),
                 new_class!(container_partial_link, t)
             ))
         };
@@ -3712,7 +3706,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         if let Some(result) = ensure_flow_analysis() {
                             return result;
                         }
-                        process_unfinished_partials(inference.i_s, r.unfinished_partials);
+                        process_unfinished_partials(self.i_s.db, r.unfinished_partials);
                         // In case where the partial is overwritten, we can just return the old Inferred,
                         // because it points to the correct place.
                     }
@@ -3748,7 +3742,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     ) -> T {
         if global_redirect {
             FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_and_delay_further(self.i_s, || {
+                fa.with_new_empty_and_delay_further(self.i_s.db, || {
                     callable(
                         &self
                             .file

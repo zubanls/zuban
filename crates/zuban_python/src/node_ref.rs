@@ -339,15 +339,15 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn finish_partial_with_annotation_needed(&self, i_s: &InferenceState) {
+    pub fn finish_partial_with_annotation_needed(&self, db: &Database) {
         let point = self.point();
         let mut partial_flags = point.partial_flags();
         partial_flags.finished = true;
         self.set_point(point.set_partial_flags(partial_flags));
-        self.add_need_type_annotation_issue(i_s, point.specific())
+        self.add_need_type_annotation_issue(db, point.specific())
     }
 
-    pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, specific: Specific) {
+    pub fn add_need_type_annotation_issue(&self, db: &Database, specific: Specific) {
         let hint = match specific {
             Specific::PartialNone => Some("<type> | None"),
             Specific::PartialList => Some("List[<type>]"),
@@ -360,11 +360,11 @@ impl<'file> NodeRef<'file> {
         };
         let point = self.point();
         let mut partial_flags = point.partial_flags();
-        if !partial_flags.reported_error && !self.file.flags(i_s.db).allow_untyped_globals {
+        if !partial_flags.reported_error && !self.file.flags(db).allow_untyped_globals {
             partial_flags.reported_error = true;
             self.set_point(point.set_partial_flags(partial_flags));
-            self.add_issue(
-                i_s,
+            self.add_type_issue(
+                db,
                 IssueKind::NeedTypeAnnotation {
                     for_: self.as_code().into(),
                     hint,

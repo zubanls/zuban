@@ -398,27 +398,27 @@ pub(crate) struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn with_new_empty<T>(&self, i_s: &InferenceState, callable: impl FnOnce() -> T) -> T {
+    fn with_new_empty<T>(&self, db: &Database, callable: impl FnOnce() -> T) -> T {
         let FlowAnalysisResult {
             result,
             unfinished_partials,
         } = self.with_new_empty_without_unfinished_partial_checking(callable);
-        process_unfinished_partials(i_s, unfinished_partials);
+        process_unfinished_partials(db, unfinished_partials);
         result
     }
 
     pub fn with_new_empty_and_process_delayed_diagnostics(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         callable: impl FnOnce(),
     ) {
-        self.with_new_empty(i_s, || {
+        self.with_new_empty(db, || {
             callable();
-            self.process_delayed_diagnostics(i_s.db, |func| {
+            self.process_delayed_diagnostics(db, |func| {
                 let result = func
                     .node_ref
                     .file
-                    .inference(&InferenceState::new(i_s.db, func.node_ref.file))
+                    .inference(&InferenceState::new(db, func.node_ref.file))
                     .ensure_func_diagnostics(func);
                 debug_assert!(result.is_ok());
             });
@@ -426,10 +426,10 @@ impl FlowAnalysis {
     }
     pub fn with_new_empty_and_delay_further<T>(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         callable: impl FnOnce() -> T,
     ) -> T {
-        let (result, delayed) = self.with_new_empty(i_s, || {
+        let (result, delayed) = self.with_new_empty(db, || {
             let result = callable();
             let delayed: Vec<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
             (result, delayed)
@@ -477,7 +477,7 @@ impl FlowAnalysis {
 
     pub(crate) fn with_reused_narrowings_for_nested_function(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         func_node_ref: FuncNodeRef,
         callable: impl FnOnce(),
     ) {
@@ -514,7 +514,7 @@ impl FlowAnalysis {
                 })
                 .collect(),
         );
-        self.with_new_empty_and_delay_further(i_s, || self.with_frame(reused_narrowings, callable));
+        self.with_new_empty_and_delay_further(db, || self.with_frame(reused_narrowings, callable));
     }
 
     pub fn debug_assert_is_empty(&self) {
@@ -895,8 +895,8 @@ impl FlowAnalysis {
         self.partials_in_module.borrow_mut().push(defined_at)
     }
 
-    pub fn check_for_unfinished_partials(&self, i_s: &InferenceState) {
-        process_unfinished_partials(i_s, self.partials_in_module.take());
+    pub fn check_for_unfinished_partials(&self, db: &Database) {
+        process_unfinished_partials(db, self.partials_in_module.take());
     }
 
     pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
@@ -1780,7 +1780,7 @@ impl Inference<'_, '_, '_> {
             class.ensure_calculated_diagnostics_for_class(self.i_s.db)?;
         }
 
-        fa.with_new_empty_and_delay_further(self.i_s, || self.ensure_func_diagnostics(function))
+        fa.with_new_empty_and_delay_further(self.i_s.db, || self.ensure_func_diagnostics(function))
     }
 
     pub fn flow_analysis_for_ternary(
@@ -4424,13 +4424,13 @@ fn except_type(db: &Database, t: &Type, allow_tuple: bool) -> ExceptType {
     }
 }
 
-pub fn process_unfinished_partials(i_s: &InferenceState, partials: Vec<PointLink>) {
+pub fn process_unfinished_partials(db: &Database, partials: Vec<PointLink>) {
     for partial in partials.into_iter() {
-        let node_ref = NodeRef::from_link(i_s.db, partial);
+        let node_ref = NodeRef::from_link(db, partial);
         let point = node_ref.point();
         if let Some(specific) = point.maybe_specific() {
             if specific.is_partial() {
-                node_ref.finish_partial_with_annotation_needed(i_s);
+                node_ref.finish_partial_with_annotation_needed(db);
             }
         }
     }

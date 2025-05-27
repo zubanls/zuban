@@ -147,7 +147,7 @@ impl Inference<'_, '_, '_> {
             debug_assert!(self.i_s.is_file_context());
             FLOW_ANALYSIS.with(|fa| {
                 let _indent = debug_indent();
-                fa.with_new_empty_and_process_delayed_diagnostics(self.i_s, || {
+                fa.with_new_empty_and_process_delayed_diagnostics(self.i_s.db, || {
                     fa.with_frame_that_exports_widened_entries(self.i_s, || {
                         self.calc_stmts_diagnostics(
                             self.file.tree.root().iter_stmt_likes(),
@@ -156,7 +156,7 @@ impl Inference<'_, '_, '_> {
                         );
                     });
                     if self.flags().local_partial_types {
-                        fa.check_for_unfinished_partials(self.i_s);
+                        fa.check_for_unfinished_partials(self.i_s.db);
                     }
                 })
             });
@@ -1155,9 +1155,13 @@ impl Inference<'_, '_, '_> {
 
         FLOW_ANALYSIS.with(|fa| {
             if in_func.is_some() {
-                fa.with_reused_narrowings_for_nested_function(self.i_s, function.node_ref, || {
-                    let _ = self.ensure_func_diagnostics(function);
-                })
+                fa.with_reused_narrowings_for_nested_function(
+                    self.i_s.db,
+                    function.node_ref,
+                    || {
+                        let _ = self.ensure_func_diagnostics(function);
+                    },
+                )
             } else {
                 fa.add_delayed_func(
                     function.node_ref.as_link(),

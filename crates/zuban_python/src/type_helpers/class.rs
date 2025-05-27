@@ -1365,12 +1365,13 @@ impl<'db: 'a, 'a> Class<'a> {
             if !db.project.settings.mypy_compatible {
                 self.node_ref.file.ensure_calculated_diagnostics(db)?;
             }
-            let new_i_s = &InferenceState::from_class(db, self);
             FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_and_delay_further(new_i_s, || {
-                    let inference = self.file.inference(&new_i_s);
+                fa.with_new_empty_and_delay_further(db, || {
+                    let new_i_s = &InferenceState::from_class(db, self);
                     fa.with_frame_that_exports_widened_entries(new_i_s, || {
-                        inference.calculate_class_block_diagnostics(*self, class_block)
+                        self.file
+                            .inference(&new_i_s)
+                            .calculate_class_block_diagnostics(*self, class_block)
                     })
                 })
             })?;

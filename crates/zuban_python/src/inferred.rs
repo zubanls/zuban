@@ -2748,19 +2748,19 @@ pub fn specific_to_type<'db>(
             }
         }
         Specific::PartialList => {
-            definition.add_need_type_annotation_issue(i_s, specific);
+            definition.add_need_type_annotation_issue(i_s.db, specific);
             Cow::Borrowed(&i_s.db.python_state.list_of_any)
         }
         Specific::PartialDict => {
-            definition.add_need_type_annotation_issue(i_s, specific);
+            definition.add_need_type_annotation_issue(i_s.db, specific);
             Cow::Borrowed(&i_s.db.python_state.dict_of_any)
         }
         Specific::PartialSet => {
-            definition.add_need_type_annotation_issue(i_s, specific);
+            definition.add_need_type_annotation_issue(i_s.db, specific);
             Cow::Borrowed(&i_s.db.python_state.set_of_any)
         }
         Specific::PartialDefaultDictWithList | Specific::PartialDefaultDictWithSet => {
-            definition.add_need_type_annotation_issue(i_s, specific);
+            definition.add_need_type_annotation_issue(i_s.db, specific);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
                 Type::ERROR,
@@ -2768,7 +2768,7 @@ pub fn specific_to_type<'db>(
             ))
         }
         Specific::PartialDefaultDict => {
-            definition.add_need_type_annotation_issue(i_s, specific);
+            definition.add_need_type_annotation_issue(i_s.db, specific);
             let value_node_ref = definition.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),
