@@ -103,7 +103,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         cached_type_node_ref.set_point(Point::new_calculating());
 
-        if matches!(cause, AliasCause::Implicit) {
+        if matches!(cause, AliasCause::Implicit) && !point.calculating() {
             // Only non-explicit TypeAliases are allowed here.
             if let Some(name_or_prim) = assignment.maybe_simple_type_reassignment() {
                 // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
@@ -133,6 +133,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     )) => (),
                     Some(lookup) => {
                         debug!("Alias can be redirected: {lookup:?}");
+                        // We have to reset if the type was not calculated
+                        if cached_type_node_ref.point().calculating() {
+                            cached_type_node_ref.set_point(Point::new_uncalculated());
+                        }
                         return lookup;
                     }
                     None => {

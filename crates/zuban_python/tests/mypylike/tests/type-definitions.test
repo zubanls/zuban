@@ -599,3 +599,14 @@ x = y = int
 def foo(a: x, b: y):
     reveal_type(a)  # N: Revealed type is "int"
     reveal_type(b)  # N: Revealed type is "int"
+
+[case reassign_builtin_and_using_it_in_annotation_no_crash]
+# TODO this test is wrong
+import m
+x: m.ExceptionGroup[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x)  # N: Revealed type is "Any"
+
+[file m.py]
+ExceptionGroup = ExceptionGroup  # E: Name "ExceptionGroup" is used before definition \
+                                 # E: Invalid recursive alias: a union item of itself \
+                                 # E: Cannot resolve name "ExceptionGroup" (possible cyclic definition)
