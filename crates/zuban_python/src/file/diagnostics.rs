@@ -965,7 +965,7 @@ impl Inference<'_, '_, '_> {
         let inference = self.file.inference(&i_s);
 
         let result = FLOW_ANALYSIS.with(|fa| {
-            fa.with_frame_that_exports_widened_entries(self.i_s, || {
+            fa.with_frame_that_exports_widened_entries(&i_s, || {
                 inference.calculate_class_block_diagnostics(c, block)
             })
         });

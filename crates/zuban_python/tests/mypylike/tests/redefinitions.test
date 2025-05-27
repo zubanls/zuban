@@ -90,3 +90,14 @@ class C:
 
 reveal_type(C.x)  # N: Revealed type is "int | str"
 reveal_type(C().x)  # N: Revealed type is "int | str"
+
+[case no_crash_on_stdlib_overwrite_in_class]
+# flags: --allow-redefinition-new
+
+# Enable flow analysis
+if bool(): ...
+
+class DType:
+    def __repr__(self):
+        return '...'
+    __str__ = __repr__
