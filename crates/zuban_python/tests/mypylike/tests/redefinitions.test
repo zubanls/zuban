@@ -7,24 +7,21 @@ reveal_type(m.x)  # N: Revealed type is "str"
 x = 1
 x = ""
 
-[case redefine_class_var]
-# flags: --allow-redefinition-new
-
-class X:
-    x = 1
-    x = ""
-
-reveal_type(X.x)  # N: Revealed type is "str"
-reveal_type(X().x)  # N: Revealed type is "str"
-
 [case redefine_in_module_class_access_from_outside]
 # flags: --allow-redefinition-new
+from m import C
 import m
 
 reveal_type(m.C.x)  # N: Revealed type is "str"
 reveal_type(m.C().x)  # N: Revealed type is "str"
 
+reveal_type(C.x)  # N: Revealed type is "str"
+reveal_type(C().x)  # N: Revealed type is "str"
+
 [file m.py]
 class C:
     x = 1
     x = ""
+
+reveal_type(C.x)  # N: Revealed type is "str"
+reveal_type(C().x)  # N: Revealed type is "str"

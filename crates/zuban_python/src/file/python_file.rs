@@ -158,11 +158,10 @@ impl File for PythonFile {
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
-        let i_s = InferenceState::new(db, self);
         if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
-            let result = self.inference(&i_s).calculate_diagnostics();
+            let result = self.ensure_calculated_diagnostics(db);
             debug_assert!(result.is_ok());
         }
         let flags = self.flags(db);
@@ -486,6 +485,11 @@ impl<'db> PythonFile {
                 }
             }
         }
+    }
+
+    pub fn ensure_calculated_diagnostics(&self, db: &Database) -> Result<(), ()> {
+        self.inference(&InferenceState::new(db, self))
+            .calculate_diagnostics()
     }
 
     pub(super) fn ensure_annotation_file(

@@ -815,6 +815,11 @@ impl FlowAnalysis {
                                 continue;
                             }
                         };
+                        debug!(
+                            "Save widened type {:?} to {}",
+                            widened.format_short(i_s.db),
+                            name_def_ref.as_code()
+                        );
                         name_def_ref.insert_complex(
                             ComplexPoint::WidenedType(Rc::new(WidenedType {
                                 original: ComplexPoint::TypeInstance(declaration_t),
@@ -1772,32 +1777,7 @@ impl Inference<'_, '_, '_> {
     ) -> Result<(), ()> {
         let mut function = function; // lifetime issues?!
         if let Some(class) = function.class.as_mut() {
-            let class_block = class.node().block();
-            if !class
-                .node_ref
-                .file
-                .points
-                .get(class_block.index())
-                .calculated()
-            {
-                if !self.i_s.db.project.settings.mypy_compatible {
-                    class
-                        .node_ref
-                        .file
-                        .inference(&InferenceState::new(self.i_s.db, self.file))
-                        .calculate_diagnostics()?;
-                }
-                fa.with_new_empty_and_delay_further(self.i_s, || {
-                    let new_i_s = self.i_s.with_class_context(&class);
-                    let inference = self.file.inference(&new_i_s);
-                    fa.with_frame_that_exports_widened_entries(self.i_s, || {
-                        inference.calculate_class_block_diagnostics(*class, class_block)
-                    })
-                })?
-                // At this point we just lose reachability information for the class. This is
-                // probably the price we pay, since we allow weird (in reality impossible?) forward
-                // statements in Mypy.
-            }
+            class.ensure_calculated_diagnostics_for_class(self.i_s.db)?;
         }
 
         fa.with_new_empty_and_delay_further(self.i_s, || self.ensure_func_diagnostics(function))

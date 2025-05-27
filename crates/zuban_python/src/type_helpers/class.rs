@@ -16,7 +16,7 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassInitializer, ClassNodeRef, TypeVarCallbackReturn},
+    file::{ClassInitializer, ClassNodeRef, TypeVarCallbackReturn, FLOW_ANALYSIS},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -728,8 +728,15 @@ impl<'db: 'a, 'a> Class<'a> {
             Some(node_index) => {
                 let self_class = Class::with_self_generics(i_s.db, self.node_ref);
                 let i_s = &i_s.with_class_context(&self_class);
-                let inf = NodeRef::new(self.node_ref.file, node_index)
-                    .infer_name_of_definition_by_index(i_s);
+                let node_ref = NodeRef::new(self.node_ref.file, node_index);
+                if node_ref.point().needs_flow_analysis()
+                    && !node_ref.name_def_ref_of_name().point().calculated()
+                {
+                    if let Err(()) = self.ensure_calculated_diagnostics_for_class(i_s.db) {
+                        return LookupResult::None;
+                    }
+                }
+                let inf = node_ref.infer_name_of_definition_by_index(i_s);
                 LookupResult::GotoName {
                     name: PointLink::new(self.node_ref.file.file_index, node_index),
                     inf,
@@ -1346,6 +1353,33 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
+    pub fn ensure_calculated_diagnostics_for_class(&self, db: &Database) -> Result<(), ()> {
+        let class_block = self.node().block();
+        if !self
+            .node_ref
+            .file
+            .points
+            .get(class_block.index())
+            .calculated()
+        {
+            if !db.project.settings.mypy_compatible {
+                self.node_ref.file.ensure_calculated_diagnostics(db)?;
+            }
+            let new_i_s = &InferenceState::from_class(db, self);
+            FLOW_ANALYSIS.with(|fa| {
+                fa.with_new_empty_and_delay_further(new_i_s, || {
+                    let inference = self.file.inference(&new_i_s);
+                    fa.with_frame_that_exports_widened_entries(new_i_s, || {
+                        inference.calculate_class_block_diagnostics(*self, class_block)
+                    })
+                })
+            })?;
+            // At this point we just lose reachability information for the class. This is
+            // probably the price we pay, since we allow weird (in reality impossible?) forward
+            // statements in Mypy.
+        }
+        Ok(())
+    }
     pub fn ensure_calculated_variance(&self, db: &Database) {
         let Some(class_infos) = self.maybe_cached_class_infos(db) else {
             debug!(
@@ -1362,10 +1396,7 @@ impl<'db: 'a, 'a> Class<'a> {
             // It also feels strange that we have to type check a whole file to know the variance
             // of a class. But we at least need to do narrowing for the file, because the variance
             // may depend on self variables, which may depend on inferred file state.
-            if let Err(()) = file
-                .inference(&InferenceState::new(db, file))
-                .calculate_diagnostics()
-            {
+            if let Err(()) = file.ensure_calculated_diagnostics(db) {
                 // If the file is already being type checked, we simply try to infer the variance
                 // without the narrowed types.
                 self.infer_variance_of_type_params(db, false);

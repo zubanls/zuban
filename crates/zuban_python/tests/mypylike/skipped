@@ -1400,7 +1400,6 @@ testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 
 # --allow-redefinition-new
-redefine_in_module_class_access_from_outside
 testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore
 # --allow-redefinition-new global/nonlocal
