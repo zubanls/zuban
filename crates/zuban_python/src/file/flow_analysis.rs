@@ -547,7 +547,9 @@ impl FlowAnalysis {
     pub fn in_conditional(&self) -> bool {
         let frames = self.frames.borrow();
         let Some(last) = frames.last() else {
-            recoverable_error!("in_conditional should not have empty frames");
+            //recoverable_error!("in_conditional should not have empty frames");
+            // TODO This should probably not happen, because we are not sure if we are in a
+            // conditional
             return false;
         };
         matches!(last.kind, FrameKind::Conditional)
