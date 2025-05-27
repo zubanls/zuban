@@ -25,3 +25,45 @@ class C:
 
 reveal_type(C.x)  # N: Revealed type is "str"
 reveal_type(C().x)  # N: Revealed type is "str"
+
+[case narrow_class_annotation_with_allow_redefinition_new_simple]
+# flags: --allow-redefinition-new
+from m import C
+import m
+
+reveal_type(m.C.x)  # N: Revealed type is "int | str"
+reveal_type(m.C().x)  # N: Revealed type is "int | str"
+
+reveal_type(C.x)  # N: Revealed type is "int | str"
+reveal_type(C().x)  # N: Revealed type is "int | str"
+
+[file m.py]
+class C:
+    x: int | str = 1
+    x = ""
+
+reveal_type(C.x)  # N: Revealed type is "int | str"
+reveal_type(C().x)  # N: Revealed type is "int | str"
+
+[case narrow_class_annotation_with_allow_redefinition_new_with_any]
+# flags: --allow-redefinition-new
+from m import C
+import m
+
+reveal_type(m.C.x)  # N: Revealed type is "int | str"
+reveal_type(m.C().x)  # N: Revealed type is "int | str"
+
+reveal_type(C.x)  # N: Revealed type is "int | str"
+reveal_type(C().x)  # N: Revealed type is "int | str"
+
+[file m.py]
+from typing import Any
+
+def generate_any() -> Any: ...
+
+class C:
+    x: int | str = 1
+    x = generate_any()
+
+reveal_type(C.x)  # N: Revealed type is "int | str"
+reveal_type(C().x)  # N: Revealed type is "int | str"
