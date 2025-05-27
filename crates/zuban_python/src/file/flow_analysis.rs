@@ -795,23 +795,26 @@ impl FlowAnalysis {
         for entry in frame.entries {
             if entry.widens {
                 if let EntryKind::Type(widened) = entry.type_ {
+                    let name_def_ref = match &entry.key {
+                        FlowKey::Name(link) => {
+                            let name_ref = NodeRef::from_link(i_s.db, *link);
+                            if !name_ref.point().needs_flow_analysis() {
+                                // The name is only narrowed from e.g. x: int | str and should not
+                                // be saved as a widened name
+                                continue;
+                            }
+                            name_ref.name_def_ref_of_name()
+                        }
+                        _ => {
+                            recoverable_error!("Widening is not supported for key {:?}", entry.key);
+                            continue;
+                        }
+                    };
                     let declaration_t = entry.key.declaration_t(i_s);
                     if !declaration_t
                         .is_simple_super_type_of(i_s, &widened)
                         .non_any_match()
                     {
-                        let name_def_ref = match &entry.key {
-                            FlowKey::Name(link) => {
-                                NodeRef::from_link(i_s.db, *link).name_def_ref_of_name()
-                            }
-                            _ => {
-                                recoverable_error!(
-                                    "Widening is not supported for key {:?}",
-                                    entry.key
-                                );
-                                continue;
-                            }
-                        };
                         debug!(
                             "Save widened type {:?} to {}",
                             widened.format_short(i_s.db),
