@@ -32,6 +32,7 @@ use crate::{
         WrappedStar, WrappedStarStar,
     },
     python_state::NAME_TO_FUNCTION_DIFF,
+    recoverable_error,
     type_::{
         replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
         ClassGenerics, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
@@ -1337,7 +1338,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                     if needs_self_type {
                                         Type::Self_
                                     } else {
-                                        self.class.unwrap().as_type(i_s.db)
+                                        if let Some(cls) = self.class {
+                                            cls.as_type(i_s.db)
+                                        } else {
+                                            recoverable_error!(
+                                                "Tried to access Self in InferenceState"
+                                            );
+                                            Type::ERROR
+                                        }
                                     }
                                 }
                                 FunctionKind::Classmethod { .. } => {
