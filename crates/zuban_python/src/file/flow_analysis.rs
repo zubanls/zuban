@@ -108,6 +108,20 @@ impl FlowKey {
             },
         }
     }
+
+    fn declaration_t(&self, i_s: &InferenceState) -> Type {
+        match self {
+            FlowKey::Name(link) => NodeRef::from_link(i_s.db, *link)
+                .infer_name_of_definition_by_index(i_s)
+                .as_type(i_s),
+            _ => {
+                recoverable_error!(
+                    "For now we do not expect original declarations to have simplified unions "
+                );
+                Type::ERROR
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -168,24 +182,10 @@ impl Entry {
         }
     }
 
-    fn declaration_t(&self, i_s: &InferenceState) -> Type {
-        match &self.key {
-            FlowKey::Name(link) => NodeRef::from_link(i_s.db, *link)
-                .infer_name_of_definition_by_index(i_s)
-                .as_type(i_s),
-            _ => {
-                recoverable_error!(
-                    "For now we do not expect original declarations to have simplified unions "
-                );
-                Type::ERROR
-            }
-        }
-    }
-
     #[inline]
     fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> EntryKind {
         let merge_with_original = |entry: &Self, other_t| {
-            EntryKind::Type(entry.declaration_t(i_s).simplified_union(i_s, other_t))
+            EntryKind::Type(entry.key.declaration_t(i_s).simplified_union(i_s, other_t))
         };
         match (&self.type_, &other.type_) {
             (EntryKind::Type(t1), EntryKind::Type(t2)) => {
@@ -794,15 +794,12 @@ impl FlowAnalysis {
         let (frame, result) = self.with_frame_and_result(Frame::new_base_scope(), callable);
         for entry in frame.entries {
             if entry.widens {
-                if let EntryKind::Type(t) = &entry.type_ {
-                    let declaration_t = entry.declaration_t(i_s);
+                if let EntryKind::Type(widened) = entry.type_ {
+                    let declaration_t = entry.key.declaration_t(i_s);
                     if !declaration_t
-                        .is_simple_super_type_of(i_s, t)
+                        .is_simple_super_type_of(i_s, &widened)
                         .non_any_match()
                     {
-                        let EntryKind::Type(widened) = entry.type_ else {
-                            unreachable!()
-                        };
                         let name_def_ref = match &entry.key {
                             FlowKey::Name(link) => {
                                 NodeRef::from_link(i_s.db, *link).name_def_ref_of_name()
