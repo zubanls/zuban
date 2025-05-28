@@ -1033,6 +1033,7 @@ class C2:
 C2()
 
 [case super_matching]
+# flags: --disallow-redefinition
 class Foo: ...
 class Bar(Foo):
     def __init__(self) -> None:

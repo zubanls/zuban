@@ -192,7 +192,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         _args: &dyn Args<'db>,
     ) -> Inferred {
-        if i_s.db.project.settings.mypy_compatible {
+        // TODO enable
+        if i_s.db.project.settings.mypy_compatible || true {
             return Inferred::new_any(AnyCause::Unannotated);
         }
         if self.is_generator() {

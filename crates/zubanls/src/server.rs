@@ -299,6 +299,7 @@ impl<'sender> GlobalState<'sender> {
                     notification::{Notification, ShowMessage},
                     MessageType, ShowMessageParams,
                 };
+                tracing::warn!("Error while loading config: {}", err.to_string());
                 let not = lsp_server::Notification::new(
                     ShowMessage::METHOD.to_owned(),
                     ShowMessageParams {

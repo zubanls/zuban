@@ -723,6 +723,7 @@ def foo(y: dict[int, set[int]]) -> None:
     y[1] = set()
 
 [case assign_self_to_variable]
+# flags: --disallow-redefinition
 from typing import Self
 
 class X:
@@ -739,6 +740,7 @@ class X:
         y = X()  # E: Incompatible types in assignment (expression has type "X", variable has type "Self")
 
 [case bool_matching_false_and_true_literals]
+# flags: --disallow-redefinition
 from typing import Literal
 def foo(x: bool, y: Literal[False, True], z: Literal[False, True, ""]) -> None:
     if bool():
@@ -930,10 +932,17 @@ x[:1:] = 1
 x[::] = 1
 x[*(1, 2)] = 1
 
-[case walrus_definition_reused]
+[case walrus_definition_reused_mypy_compatible]
+# flags: --mypy-compatible
 def foo(x: int) -> None:
     w = w if (w := x) else None # E: Incompatible types in assignment (expression has type "int | None", variable has type "int")
     reveal_type(w)  # N: Revealed type is "int"
+
+[case walrus_definition_reused_no_mypy_compatible]
+# flags: --no-mypy-compatible
+def foo(x: int) -> None:
+    w = w if (w := x) else None
+    reveal_type(w)  # N: Revealed type is "int | None"
 
 [case walrus_definition_used_in_assignment]
 if (avar := avar()):  # E: Name "avar" is used before definition

@@ -36,7 +36,10 @@ pub fn find_cli_config(
             .map_err(|err| anyhow::anyhow!("Issue while reading {config_path}: {err}"))?;
 
         let result = initialize_config(vfs, current_dir, config_path, s)?;
-        Ok((result.0.unwrap_or_else(ProjectOptions::default), result.1))
+        Ok((
+            result.0.unwrap_or_else(ProjectOptions::mypy_default),
+            result.1,
+        ))
     } else {
         find_mypy_config_file_in_dir(vfs, current_dir, |_| ())
     }
@@ -76,7 +79,7 @@ fn find_mypy_config_file_in_dir(
             if result.0.is_none() && ["mypy.ini", ".mypy.ini"].contains(config_path) {
                 // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
                 // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
-                result.0 = Some(ProjectOptions::default())
+                result.0 = Some(ProjectOptions::mypy_default())
             }
             if let Some(project_options) = result.0 {
                 return Ok((project_options, result.1));

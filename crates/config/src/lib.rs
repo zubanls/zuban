@@ -56,7 +56,7 @@ impl Default for Settings {
                 .ok()
                 .map(|p| LocalFS::without_watcher().abs_path_from_current_dir(p)),
             mypy_path: vec![],
-            mypy_compatible: true, // TODO change this in the future
+            mypy_compatible: false,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }
@@ -101,6 +101,17 @@ impl ProjectOptions {
         }
     }
 
+    pub fn mypy_default() -> Self {
+        Self {
+            settings: Settings {
+                mypy_compatible: true,
+                ..Default::default()
+            },
+            flags: TypeCheckerFlags::mypy_default(),
+            overrides: Default::default(),
+        }
+    }
+
     pub fn from_mypy_ini(
         vfs: &dyn VfsHandler,
         current_dir: &AbsPath,
@@ -112,7 +123,7 @@ impl ProjectOptions {
             ..Default::default()
         };
         let ini = Ini::load_from_str_opt(code, options)?;
-        let mut flags = TypeCheckerFlags::default();
+        let mut flags = TypeCheckerFlags::mypy_default();
         let mut settings = Settings::default();
         let mut overrides = vec![];
         let mut had_relevant_section = false;
@@ -159,9 +170,9 @@ impl ProjectOptions {
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Option<Self>> {
         let document = code.parse::<DocumentMut>()?;
-        let mut flags = TypeCheckerFlags::default();
-        let mut settings = Settings::default();
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
+            let mut flags = TypeCheckerFlags::mypy_default();
+            let mut settings = Settings::default();
             let Item::Table(table) = config else {
                 bail!("Expected tool.mypy to be a table in pyproject.toml");
             };
@@ -286,7 +297,7 @@ impl Default for TypeCheckerFlags {
             disallow_incomplete_defs: false,
             allow_untyped_globals: false,
             allow_empty_bodies: false,
-            allow_redefinition: false,
+            allow_redefinition: true,
             warn_unreachable: false,
             warn_redundant_casts: false,
             warn_return_any: false,
@@ -328,6 +339,13 @@ impl TypeCheckerFlags {
     pub fn enable_strict_bytes(&mut self) {
         self.disable_bytearray_promotion = true;
         self.disable_memoryview_promotion = true;
+    }
+
+    pub fn mypy_default() -> Self {
+        Self {
+            allow_redefinition: false,
+            ..Default::default()
+        }
     }
 }
 

@@ -473,6 +473,7 @@ def aliased() -> AliasedType: ...  # E: Variable "__main__.AliasedType" is not v
                                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case redefining_type_variables]
+# flags: --disallow-redefinition
 # From testRedefineVariableAsTypevar, but fully implemented
 from typing import TypeVar
 x = 0
@@ -537,6 +538,7 @@ def f():
     f: T  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 
 [case conditional_type_invalid_when_any_is_assigned]
+# flags: --disallow-redefinition
 from typing import TypeAlias, Any, Mapping
 if bool():
     X: TypeAlias = int

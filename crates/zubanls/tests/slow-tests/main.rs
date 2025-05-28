@@ -133,7 +133,7 @@ fn diagnostics_for_saved_files() {
                   "range": {
                     "start": {
                       "line": 1,
-                      "character": 0,
+                      "character": 20,
                     },
                     "end": {
                       "line": 1,

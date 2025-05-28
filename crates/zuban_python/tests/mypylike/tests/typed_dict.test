@@ -63,6 +63,7 @@ def foo(x: type[TD]) -> None:
     y = TD
 
 [case typed_dict_passing_to_callable_generic]
+# flags: --disallow-redefinition
 from typing import TypedDict, Callable, Generic, TypeVar
 
 T = TypeVar("T")

@@ -414,6 +414,7 @@ from l import *
 from m import *
 
 [case star_import_with_module_and_types]
+# flags: --disallow-redefinition
 import x
 y: x.m  # E: Module "m" is not valid as a type  # N: Perhaps you meant to use a protocol matching the module structure?
 reveal_type(x.m)  # N: Revealed type is "def () -> n.m"

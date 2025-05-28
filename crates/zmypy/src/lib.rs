@@ -637,7 +637,7 @@ mod tests {
     #[test]
     fn test_files_relative_paths() {
         logging_config::setup_logging_for_tests();
-        let mut project_options = ProjectOptions::default();
+        let mut project_options = ProjectOptions::mypy_default();
         let local_fs = SimpleLocalFS::without_watcher();
         let current_dir = local_fs.unchecked_abs_path("/a/b".into());
         let mut cli = Cli::parse_from([""]);

@@ -119,7 +119,11 @@ impl TestCase<'_, '_> {
                 .then(|| flag_iterator.next().unwrap().to_string())
         };
 
-        let mut config = TypeCheckerFlags::default();
+        let mut config = if mypy_compatible {
+            TypeCheckerFlags::mypy_default()
+        } else {
+            TypeCheckerFlags::default()
+        };
         let mut settings = Settings::default();
         let mut project_options = None;
 
@@ -129,7 +133,7 @@ impl TestCase<'_, '_> {
             let mut new = BASE_PATH.with(|base_path| {
                 ProjectOptions::from_mypy_ini(local_fs, base_path, &ini, &mut diagnostic_config)
                     .expect("Expected there to be no errors in the mypy.ini")
-                    .unwrap_or_else(Default::default)
+                    .unwrap_or_else(ProjectOptions::mypy_default)
             });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
@@ -150,7 +154,13 @@ impl TestCase<'_, '_> {
                     &mut diagnostic_config,
                 )
                 .expect("Expected there to be no errors in the pyproject.toml")
-                .unwrap_or_else(Default::default)
+                .unwrap_or_else(|| {
+                    if mypy_compatible {
+                        ProjectOptions::mypy_default()
+                    } else {
+                        ProjectOptions::default()
+                    }
+                })
             });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
@@ -256,6 +266,7 @@ impl TestCase<'_, '_> {
         set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
         set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
         set_reverse_bool_flag(&mut config.disallow_any_generics, "--allow-any-generics");
+        set_reverse_bool_flag(&mut config.allow_redefinition, "--disallow-redefinition");
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
@@ -333,9 +344,8 @@ impl TestCase<'_, '_> {
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
-                    "\nTest: {} ({}): Step {}/{}",
-                    self.name,
-                    self.file_name,
+                    "\nTest: {}: Step {}/{}",
+                    self.format(mypy_compatible),
                     i + 1,
                     steps.steps.len()
                 );
@@ -477,6 +487,18 @@ impl TestCase<'_, '_> {
             }
         }
         result
+    }
+
+    fn format(&self, mypy_compatible: bool) -> String {
+        format!(
+            "{} ({}, {})",
+            self.name,
+            self.file_name,
+            match mypy_compatible {
+                true => "mypy-compatible",
+                false => "no-mypy-compatible",
+            }
+        )
     }
 
     #[allow(dead_code)]
@@ -774,7 +796,7 @@ fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> PathWithScheme {
 
 impl ProjectsCache {
     fn new(reuse_db: bool) -> Self {
-        let mut po = ProjectOptions::default();
+        let mut po = ProjectOptions::mypy_default();
         let base_version = po.settings.python_version;
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
@@ -864,7 +886,7 @@ fn main() -> ExitCode {
                 full_count += 1;
                 continue;
             }
-            let mut check = |result| match result {
+            let mut check = |result, mypy_compatible| match result {
                 Ok(ran) => {
                     passed_count += ran as usize;
                     full_count += ran as usize;
@@ -874,7 +896,8 @@ fn main() -> ExitCode {
                     if cli_args.stop_after_first_error {
                         panic!("{err}")
                     } else {
-                        error_summary += &format!("{} ({})\n", case.name, case.file_name);
+                        error_summary += &case.format(mypy_compatible);
+                        error_summary += "\n";
                         error_count += 1;
                         println!("{err}")
                     }
@@ -882,9 +905,9 @@ fn main() -> ExitCode {
             };
             if !from_mypy_test_suite {
                 // Run our own tests both with mypy-compatible and without it.
-                check(case.run(&mut projects, from_mypy_test_suite))
+                check(case.run(&mut projects, false), false)
             }
-            check(case.run(&mut projects, true));
+            check(case.run(&mut projects, true), true);
         }
     }
     if error_count > 0 {

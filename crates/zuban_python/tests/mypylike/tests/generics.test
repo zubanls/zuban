@@ -815,6 +815,7 @@ x_str.foo(1)  # E: Too many arguments for "foo" of "X"
 x_bytes.foo()  # E: Invalid self argument "Type[X[bytes]]" to class attribute function "foo" with type "Callable[[X[int]], T]"
 
 [case type_var_restriction_subtyping]
+# flags: --disallow-redefinition
 from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class S(str): pass
