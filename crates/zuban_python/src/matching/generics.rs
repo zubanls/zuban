@@ -18,7 +18,15 @@ macro_rules! replace_class_vars {
             Some(type_var_generics) => Generic::owned(
                 $g.replace_type_var_likes_and_self(
                     $db,
-                    &mut |t| Some(type_var_generics.nth_usage($db, &t).into_generic_item()),
+                    &mut |t| {
+                        Some({
+                            if matches!(type_var_generics, Generics::NotDefinedYet { .. }) {
+                                t.as_default_or_any_generic_item($db)
+                            } else {
+                                type_var_generics.nth_usage($db, &t).into_generic_item()
+                            }
+                        })
+                    },
                     &|| None,
                 )
                 .unwrap_or($g.clone()),

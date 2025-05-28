@@ -1662,3 +1662,30 @@ reveal_type(x2)  # N: Revealed type is "__main__.PandT[[int, str], str]"
 C3 = PandT[[int, *Ts], T]
 x3: C3[str, bool, bytes]
 reveal_type(x3)  # N: Revealed type is "__main__.PandT[[int, str, bool], bytes]"
+
+[case lambda_isinstance_should_not_crash]
+from m import Super
+
+class C(Super[int]): ...
+
+x = lambda message: isinstance(message, C) and message.foo == 1
+
+reveal_type(x(1))  # N: Revealed type is "bool"
+reveal_type(x(C(1)))  # N: Revealed type is "bool"
+reveal_type(C(1).foo) # N: Revealed type is "int"
+C("")  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+
+[file m.py]
+from typing import Generic, TypeVar
+
+if bool(): ...
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class Sub(Generic[U]):
+    def __init__(self, foo: U):
+        self.foo = foo
+
+class Super(Sub[T]):
+    foo: T
