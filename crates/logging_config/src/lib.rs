@@ -4,11 +4,7 @@
 
 mod hprof;
 
-use std::{
-    env, fs,
-    path::PathBuf,
-    sync::{Arc, Once},
-};
+use std::{env, fs, path::PathBuf, sync::Once};
 
 use anyhow::Context;
 use tracing::level_filters::LevelFilter;
@@ -37,21 +33,17 @@ pub fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         .ok()
         .map(PathBuf::from)
         .or(log_file_flag);
-    let log_file = match log_file {
-        Some(path) => {
-            if let Some(parent) = path.parent() {
-                let _ = fs::create_dir_all(parent);
-            }
-            Some(
-                fs::File::create(&path)
-                    .with_context(|| format!("can't create log file at {}", path.display()))?,
-            )
-        }
-        None => None,
-    };
-
     let writer = match log_file {
-        Some(file) => BoxMakeWriter::new(Arc::new(file)),
+        Some(path) => {
+            let path = path
+                .canonicalize()
+                .expect("Expected a log path that can be cannonicalized");
+            let file_name = path.file_name().expect("Expected a file name as a log");
+            let dir = path.parent().expect("Expected there to be a parent for ");
+            let _ = fs::create_dir_all(dir);
+            let appender = tracing_appender::rolling::never(dir, file_name);
+            BoxMakeWriter::new(appender)
+        }
         None => BoxMakeWriter::new(std::io::stderr),
     };
 
