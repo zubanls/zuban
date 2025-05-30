@@ -576,9 +576,10 @@ impl FlowAnalysis {
     }
 
     pub fn report_unreachable_if_not_reported_before(&self, callback: impl FnOnce()) {
-        let mut top_frame = self.tos_frame();
-        if !top_frame.reported_unreachable {
-            top_frame.reported_unreachable = true;
+        let mut tos_frame = self.tos_frame();
+        if !tos_frame.reported_unreachable {
+            tos_frame.reported_unreachable = true;
+            drop(tos_frame);
             callback()
         }
     }
@@ -665,9 +666,9 @@ impl FlowAnalysis {
             // TODO why this????
             return;
         }
-        let mut top_frame = self.tos_frame();
-        invalidate_child_entries(&mut top_frame.entries, i_s.db, &new_entry.key);
-        let entries = &mut top_frame.entries;
+        let mut tos_frame = self.tos_frame();
+        invalidate_child_entries(&mut tos_frame.entries, i_s.db, &new_entry.key);
+        let entries = &mut tos_frame.entries;
         for entry in &mut *entries {
             if entry.key.equals(i_s.db, &new_entry.key) {
                 if self.accumulating_types.get() > 0 {
@@ -700,10 +701,10 @@ impl FlowAnalysis {
             return;
         }
         drop(borrowed_mut);
-        let mut top_frame = self.tos_frame();
-        let entries = &mut top_frame.entries;
+        let mut tos_frame = self.tos_frame();
+        let entries = &mut tos_frame.entries;
         if cfg!(debug_assertions) {
-            for entries in self.try_frames.borrow_mut().iter_mut() {
+            for entries in self.try_frames.borrow().iter() {
                 for entry in entries.iter() {
                     if entry.key.equals(db, &new_entry.key) {
                         if entry.type_ != EntryKind::OriginalDeclaraction {
@@ -764,13 +765,13 @@ impl FlowAnalysis {
     }
 
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
-        let mut top_frame = self.tos_frame();
+        let mut tos_frame = self.tos_frame();
 
         for entry in &new_entries {
-            invalidate_child_entries(&mut top_frame.entries, db, &entry.key);
+            invalidate_child_entries(&mut tos_frame.entries, db, &entry.key);
         }
 
-        let entries = &mut top_frame.entries;
+        let entries = &mut tos_frame.entries;
         'outer: for mut new_entry in new_entries {
             for entry in &mut *entries {
                 if entry.key.equals(db, &new_entry.key) {
