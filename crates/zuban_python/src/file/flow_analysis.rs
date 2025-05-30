@@ -690,10 +690,16 @@ impl FlowAnalysis {
             deleted: false,
             widens: false,
         };
-        if self.frames.borrow().is_empty() {
+        let Ok(borrowed_mut) = self.frames.try_borrow_mut() else {
+            // TODO This is completely wrong, but is related to the test
+            // narrowing_with_key_in_different_file and executing narrows
+            return;
+        };
+        if borrowed_mut.is_empty() {
             // TODO why this????
             return;
         }
+        drop(borrowed_mut);
         let mut top_frame = self.tos_frame();
         let entries = &mut top_frame.entries;
         if cfg!(debug_assertions) {

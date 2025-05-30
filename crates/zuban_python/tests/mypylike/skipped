@@ -8,7 +8,6 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
 # func redefinitions
-narrowing_with_key_in_different_file
 callable_subtyping_keyword_only_default_params1
 callable_subtyping_keyword_only_default_params2
 unpacked_typeddict_compatible_with_broader_kwargs1
