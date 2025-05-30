@@ -1630,9 +1630,11 @@ impl Inference<'_, '_, '_> {
         } else {
             check_for_error()
         };
-        if let RedefinitionResult::TypeMismatch(true) = error_result {
-            return;
-        }
+        let allow_redefinition = match error_result {
+            RedefinitionResult::TypeMismatch(true) => return,
+            RedefinitionResult::TypeMismatch(false) => false,
+            RedefinitionResult::RedefinitionAllowed => true,
+        };
         self.save_narrowed(key, new_t.clone(), allow_redefinition);
     }
 

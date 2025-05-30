@@ -7,14 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
-# func redefinitions
-callable_subtyping_keyword_only_default_params1
-callable_subtyping_keyword_only_default_params2
-unpacked_typeddict_compatible_with_broader_kwargs1
-unpacked_typeddict_compatible_with_broader_kwargs2
-func_unpack_with_type_var_tuple_vs_arbitrary_len
-subtyping_only_result_generics
-
 # typeshed upgrade __getitem__ with generics
 testGetSlice
 testSliceSupportsIndex
@@ -1407,6 +1399,8 @@ testShowErrorCodeLinks
 testReusingInferredForIndex2
 testRedefineLocalWithinExceptStarTryClauses
 
+# --allow-redefinition-new should not merge in the wrong way
+testNewRedefineUninitializedCodePath2
 # --allow-redefinition-new
 testNewRedefinePartialNoneEmptyList
 testNewRedefinePartialTypeForUnderscore

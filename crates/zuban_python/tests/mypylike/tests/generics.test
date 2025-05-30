@@ -41,6 +41,7 @@ from typing import Type
 reveal_type(Type[int]) # N: Revealed type is "typing._SpecialForm"
 
 [case subtyping_only_result_generics]
+# flags: --disallow-redefinition
 -- It feels like this test is a bit weird, because a generic as a result in
 -- Python doesn't really make sense.
 from typing import TypeVar
