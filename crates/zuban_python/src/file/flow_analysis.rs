@@ -1595,9 +1595,9 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
             return;
         }
-        let allow_redefinition = self.flags().allow_redefinition && matches!(key, FlowKey::Name(_));
         let error_result = if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-            if allow_redefinition
+            if self.flags().allow_redefinition
+                && matches!(key, FlowKey::Name(_))
                 && matches!(check_for_error(), RedefinitionResult::RedefinitionAllowed)
             {
                 RedefinitionResult::RedefinitionAllowed
