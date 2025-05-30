@@ -807,7 +807,7 @@ impl FlowAnalysis {
                     let name_def_ref = match &entry.key {
                         FlowKey::Name(link) => {
                             let name_ref = NodeRef::from_link(i_s.db, *link);
-                            if !name_ref.point().needs_flow_analysis() {
+                            if !name_ref.point().can_be_redefined() {
                                 // The name is only narrowed from e.g. x: int | str and should not
                                 // be saved as a widened name
                                 continue;

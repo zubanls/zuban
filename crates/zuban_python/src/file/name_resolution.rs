@@ -263,7 +263,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     #[inline]
     fn is_allowed_to_assign_on_import_without_narrowing(&self, name_def: NameDef) -> bool {
-        !self.point(name_def.name_index()).needs_flow_analysis()
+        !self.point(name_def.name_index()).can_be_redefined()
     }
 
     pub fn cache_import_dotted_name(

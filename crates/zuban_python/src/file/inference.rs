@@ -1056,7 +1056,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     if self.flags().allow_redefinition
                         && NodeRef::from_link(self.i_s.db, first_name_link)
                             .point()
-                            .needs_flow_analysis()
+                            .can_be_redefined()
                     {
                         return RedefinitionResult::RedefinitionAllowed;
                     }

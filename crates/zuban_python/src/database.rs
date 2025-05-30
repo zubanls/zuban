@@ -205,6 +205,12 @@ impl Point {
         (self.flags & NEEDS_FLOW_ANALYSIS_MASK) > 0
     }
 
+    pub fn can_be_redefined(self) -> bool {
+        // This is intentionally an alias for now, because it's not guarantueed that this will
+        // always match in the future and in this way we can quickly find the origins.
+        self.needs_flow_analysis()
+    }
+
     pub fn calculated(self) -> bool {
         (self.flags & IS_ANALIZED_MASK) != 0
     }
