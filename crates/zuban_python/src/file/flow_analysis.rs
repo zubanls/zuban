@@ -133,7 +133,7 @@ enum FlowKeyIndex {
 #[derive(Debug, Clone, PartialEq)]
 enum EntryKind {
     Type(Type),
-    OriginalDeclaraction,
+    OriginalDeclaration,
 }
 
 #[derive(Debug, Clone)]
@@ -174,7 +174,7 @@ impl Entry {
                 //  entry.
                 self.type_.clone()
             } else {
-                EntryKind::OriginalDeclaraction
+                EntryKind::OriginalDeclaration
             },
             modifies_ancestors: self.modifies_ancestors,
             deleted: self.deleted,
@@ -191,13 +191,13 @@ impl Entry {
             (EntryKind::Type(t1), EntryKind::Type(t2)) => {
                 EntryKind::Type(t1.simplified_union(i_s, t2))
             }
-            (EntryKind::OriginalDeclaraction, EntryKind::Type(t)) if other.widens => {
+            (EntryKind::OriginalDeclaration, EntryKind::Type(t)) if other.widens => {
                 merge_with_original(self, t)
             }
-            (EntryKind::Type(t), EntryKind::OriginalDeclaraction) if self.widens => {
+            (EntryKind::Type(t), EntryKind::OriginalDeclaration) if self.widens => {
                 merge_with_original(other, t)
             }
-            _ => EntryKind::OriginalDeclaraction,
+            _ => EntryKind::OriginalDeclaration,
         }
     }
 
@@ -246,7 +246,7 @@ impl Entry {
     fn debug_format_type(&self, db: &Database) -> Box<str> {
         match &self.type_ {
             EntryKind::Type(t) => t.format_short(db),
-            EntryKind::OriginalDeclaraction => "<widened back to declaration>".into(),
+            EntryKind::OriginalDeclaration => "<widened back to declaration>".into(),
         }
     }
 }
@@ -540,7 +540,7 @@ impl FlowAnalysis {
             .find_map(|frame| frame.lookup_entry(db, &lookup_key))?;
         match &entry.type_ {
             EntryKind::Type(t) => Some((Inferred::from_type(t.clone()), entry.deleted)),
-            EntryKind::OriginalDeclaraction => None,
+            EntryKind::OriginalDeclaration => None,
         }
     }
 
@@ -686,7 +686,7 @@ impl FlowAnalysis {
     fn add_initial_name_definition(&self, db: &Database, name: PointLink) {
         let new_entry = Entry {
             key: FlowKey::Name(name),
-            type_: EntryKind::OriginalDeclaraction,
+            type_: EntryKind::OriginalDeclaration,
             modifies_ancestors: true,
             deleted: false,
             widens: false,
@@ -707,7 +707,7 @@ impl FlowAnalysis {
             for entries in self.try_frames.borrow().iter() {
                 for entry in entries.iter() {
                     if entry.key.equals(db, &new_entry.key) {
-                        if entry.type_ != EntryKind::OriginalDeclaraction {
+                        if entry.type_ != EntryKind::OriginalDeclaration {
                             unreachable!();
                         }
                     }
@@ -716,7 +716,7 @@ impl FlowAnalysis {
         }
         for entry in entries.iter() {
             if entry.key.equals(db, &new_entry.key) {
-                if entry.type_ == EntryKind::OriginalDeclaraction {
+                if entry.type_ == EntryKind::OriginalDeclaration {
                     return;
                 } else {
                     recoverable_error!("Did not expect an already existing entry")
@@ -2518,7 +2518,7 @@ impl Inference<'_, '_, '_> {
 
         let child_t = match &child_entry.type_ {
             EntryKind::Type(t) => t,
-            EntryKind::OriginalDeclaraction => return None,
+            EntryKind::OriginalDeclaration => return None,
         };
         let mut matching_entries = vec![];
         for union_entry in base_union.entries.iter() {
@@ -3682,7 +3682,7 @@ impl Inference<'_, '_, '_> {
                             EntryKind::Type(t) => {
                                 Some((entry.key.clone(), Inferred::from_type(t.clone())))
                             }
-                            EntryKind::OriginalDeclaraction => None,
+                            EntryKind::OriginalDeclaration => None,
                         };
                     }
                 }
