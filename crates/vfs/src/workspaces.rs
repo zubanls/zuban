@@ -357,7 +357,7 @@ fn ensure_dirs_and_file(
                 DirectoryEntry::Directory(rc) => {
                     return ensure_dirs_and_file(
                         Parent::Directory(Rc::downgrade(rc)),
-                        rc,
+                        &rc.entries,
                         vfs,
                         rest,
                     )
@@ -371,8 +371,12 @@ fn ensure_dirs_and_file(
             }
         };
         let dir2 = Directory::new(parent, Box::from(name));
-        let mut result =
-            ensure_dirs_and_file(Parent::Directory(Rc::downgrade(&dir2)), &dir2, vfs, rest);
+        let mut result = ensure_dirs_and_file(
+            Parent::Directory(Rc::downgrade(&dir2)),
+            &dir2.entries,
+            vfs,
+            rest,
+        );
         entries.borrow_mut().push(DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result

@@ -160,7 +160,8 @@ pub fn namespace_import(
         loop {
             match parent.maybe_dir() {
                 Ok(dir) => {
-                    if dir.search("py.typed").is_some() || dir.name.ends_with(STUBS_SUFFIX) {
+                    if dir.entries.search("py.typed").is_some() || dir.name.ends_with(STUBS_SUFFIX)
+                    {
                         return result;
                     }
                     parent = dir.parent.clone();
@@ -218,7 +219,7 @@ pub fn python_import_with_needs_exact_case<'x>(
                         if let Some(file_index) = result {
                             if needs_py_typed
                                 && !from_file.flags(db).follow_untyped_imports
-                                && dir2.search("py.typed").is_none()
+                                && dir2.entries.search("py.typed").is_none()
                             {
                                 return Some(ImportResult::PyTypedMissing);
                             }
@@ -276,7 +277,8 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
 }
 
 fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> Option<FileIndex> {
-    for child in &content.iter() {
+    let entries = &content.entries;
+    for child in &entries.iter() {
         if let DirectoryEntry::File(entry) = child {
             if match_c(db, &entry.name, INIT_PY, false) || match_c(db, &entry.name, INIT_PYI, false)
             {
@@ -286,8 +288,8 @@ fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> O
             }
         }
     }
-    content.add_missing_entry(INIT_PY, from_file);
-    content.add_missing_entry(INIT_PYI, from_file);
+    entries.add_missing_entry(INIT_PY, from_file);
+    entries.add_missing_entry(INIT_PYI, from_file);
     None
 }
 

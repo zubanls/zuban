@@ -148,7 +148,7 @@ impl DirectoryEntry {
     pub fn walk(&self, in_dir: &Entries, callable: &mut impl FnMut(&Entries, &Rc<FileEntry>)) {
         match self {
             DirectoryEntry::File(file) => callable(in_dir, file),
-            DirectoryEntry::Directory(dir) => dir.walk(callable),
+            DirectoryEntry::Directory(dir) => dir.entries.walk(callable),
             DirectoryEntry::MissingEntry { .. } => (),
         }
     }
@@ -213,14 +213,6 @@ impl Directory {
         }
         path.push(vfs.separator());
         path + &self.name
-    }
-}
-
-impl std::ops::Deref for Directory {
-    type Target = Entries;
-
-    fn deref(&self) -> &Self::Target {
-        &self.entries
     }
 }
 

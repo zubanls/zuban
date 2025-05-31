@@ -557,15 +557,17 @@ impl<'db> PythonFile {
                     // partial is only relevant for -stubs, otherwise we don't really care.
                     return false;
                 }
-                dir.search("py.typed").is_some_and(|entry| match &*entry {
-                    // TODO we are currently never invalidating this file, when it changes
-                    DirectoryEntry::File(entry) => db
-                        .vfs
-                        .handler
-                        .read_and_watch_file(&entry.absolute_path(&*db.vfs.handler))
-                        .is_some_and(|code| code.contains("partial")),
-                    _ => false,
-                })
+                dir.entries
+                    .search("py.typed")
+                    .is_some_and(|entry| match &*entry {
+                        // TODO we are currently never invalidating this file, when it changes
+                        DirectoryEntry::File(entry) => db
+                            .vfs
+                            .handler
+                            .read_and_watch_file(&entry.absolute_path(&*db.vfs.handler))
+                            .is_some_and(|code| code.contains("partial")),
+                        _ => false,
+                    })
             })
         })
     }
