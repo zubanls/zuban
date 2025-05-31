@@ -1,4 +1,4 @@
-use utils::FastHashSet;
+use utils::{AlreadySeen, FastHashSet};
 
 use crate::{
     database::{Database, PointLink},
@@ -8,7 +8,6 @@ use crate::{
         FormatStyle, ParamSpecUsage, RecursiveType, RecursiveTypeOrigin, Type, TypeVarLikeName,
         TypeVarLikeUsage, TypeVarName, TypeVarTupleUsage, TypeVarUsage,
     },
-    utils::AlreadySeen,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]

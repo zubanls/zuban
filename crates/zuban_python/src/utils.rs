@@ -184,68 +184,6 @@ pub fn rc_slice_into_vec<T: Clone>(this: Rc<[T]>) -> Vec<T> {
     Vec::from(this.as_ref())
 }
 
-pub(crate) struct AlreadySeen<'a, T> {
-    pub current: T,
-    pub previous: Option<&'a AlreadySeen<'a, T>>,
-}
-
-impl<T: PartialEq<T>> AlreadySeen<'_, T> {
-    pub fn is_cycle(&self) -> bool {
-        self.iter_ancestors()
-            .any(|ancestor| *ancestor == self.current)
-    }
-}
-
-impl<'a, T> AlreadySeen<'a, T> {
-    pub fn new(current: T) -> Self {
-        Self {
-            current,
-            previous: None,
-        }
-    }
-
-    pub fn iter_ancestors(&self) -> AlreadySeenIterator<'a, T> {
-        AlreadySeenIterator(self.previous)
-    }
-
-    pub fn append<'x: 'a>(&'x self, current: T) -> AlreadySeen<'x, T> {
-        Self {
-            current,
-            previous: Some(self),
-        }
-    }
-}
-
-impl<T: fmt::Debug> fmt::Debug for AlreadySeen<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.iter_ancestors()).finish()
-    }
-}
-
-impl<T: Clone> Clone for AlreadySeen<'_, T> {
-    fn clone(&self) -> Self {
-        Self {
-            current: self.current.clone(),
-            previous: self.previous,
-        }
-    }
-}
-
-impl<T: Copy> Copy for AlreadySeen<'_, T> {}
-
-pub(crate) struct AlreadySeenIterator<'a, T>(Option<&'a AlreadySeen<'a, T>>);
-
-impl<'a, T> Iterator for AlreadySeenIterator<'a, T> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let first = self.0.take()?;
-        let result = Some(&first.current);
-        self.0 = first.previous;
-        result
-    }
-}
-
 #[inline]
 pub fn is_magic_method(name: &str) -> bool {
     name.starts_with("__") && name.ends_with("__")

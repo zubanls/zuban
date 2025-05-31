@@ -6,7 +6,7 @@ use parsa_python_cst::{
     NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, PythonString, StarExpressionContent, Target,
     TypeLike,
 };
-use utils::FastHashSet;
+use utils::{AlreadySeen, FastHashSet};
 
 use super::{
     super::name_resolution::NameResolution, ClassNodeRef, InvalidVariableType, Lookup, TypeContent,
@@ -39,7 +39,7 @@ use crate::{
         TypeVarManager, TypedDict,
     },
     type_helpers::{cache_class_name, Class},
-    utils::{debug_indent, AlreadySeen},
+    utils::debug_indent,
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;

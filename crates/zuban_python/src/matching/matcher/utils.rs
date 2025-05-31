@@ -1,4 +1,5 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
+pub(super) use utils::AlreadySeen;
 
 use parsa_python_cst::ParamKind;
 

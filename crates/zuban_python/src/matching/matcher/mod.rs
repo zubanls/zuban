@@ -4,6 +4,7 @@ mod utils;
 
 use core::fmt;
 use std::{borrow::Cow, collections::HashSet};
+use utils::AlreadySeen;
 
 pub(crate) use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
@@ -40,7 +41,7 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
-    utils::{join_with_commas, AlreadySeen},
+    utils::join_with_commas,
 };
 
 pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;

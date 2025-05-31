@@ -3,6 +3,7 @@ use parsa_python_cst::{
     DefiningStmt, DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom,
     ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
+use utils::AlreadySeen;
 
 use crate::{
     database::{Database, Locality, Point, PointKind, PointLink, Specific},
@@ -14,7 +15,7 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
-    utils::{is_magic_method, AlreadySeen},
+    utils::is_magic_method,
 };
 
 use super::{inference::StarImportResult, python_file::StarImport, ClassInitializer, PythonFile};
