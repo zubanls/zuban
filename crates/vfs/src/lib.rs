@@ -30,12 +30,8 @@ pub trait VfsHandler {
     fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
     fn on_invalidated_in_memory_file(&self, path: PathWithScheme);
-    fn walk_and_watch_dirs(
-        &self,
-        path: &str,
-        initial_parent: Parent,
-        is_root_node: bool,
-    ) -> DirectoryEntry;
+    fn read_and_watch_dir(&self, path: &str, parent: Parent) -> Entries;
+    fn read_entry(&self, path: &str, parent: Parent, replace_name: &str) -> Option<DirectoryEntry>;
 
     fn separator(&self) -> char {
         std::path::MAIN_SEPARATOR

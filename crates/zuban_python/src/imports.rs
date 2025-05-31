@@ -33,7 +33,9 @@ impl ImportResult {
             Self::Namespace(ns) => python_import(
                 db,
                 original_file,
-                ns.directories.iter().map(|d| &d.entries),
+                ns.directories
+                    .iter()
+                    .map(|d| Directory::entries(&*db.vfs.handler, d)),
                 name,
             ),
             Self::PyTypedMissing => unreachable!(),
@@ -133,7 +135,10 @@ pub fn namespace_import(
     let result = python_import(
         db,
         from_file,
-        namespace.directories.iter().map(|d| &d.entries),
+        namespace
+            .directories
+            .iter()
+            .map(|d| Directory::entries(&*db.vfs.handler, d)),
         name,
     )
     .or_else(|| {
@@ -160,7 +165,10 @@ pub fn namespace_import(
         loop {
             match parent.maybe_dir() {
                 Ok(dir) => {
-                    if dir.entries.search("py.typed").is_some() || dir.name.ends_with(STUBS_SUFFIX)
+                    if Directory::entries(&*db.vfs.handler, &dir)
+                        .search("py.typed")
+                        .is_some()
+                        || dir.name.ends_with(STUBS_SUFFIX)
                     {
                         return result;
                     }
@@ -219,7 +227,9 @@ pub fn python_import_with_needs_exact_case<'x>(
                         if let Some(file_index) = result {
                             if needs_py_typed
                                 && !from_file.flags(db).follow_untyped_imports
-                                && dir2.entries.search("py.typed").is_none()
+                                && Directory::entries(&*db.vfs.handler, dir2)
+                                    .search("py.typed")
+                                    .is_none()
                             {
                                 return Some(ImportResult::PyTypedMissing);
                             }
@@ -276,8 +286,12 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
     }
 }
 
-fn load_init_file(db: &Database, content: &Directory, from_file: FileIndex) -> Option<FileIndex> {
-    let entries = &content.entries;
+fn load_init_file(
+    db: &Database,
+    content: &Rc<Directory>,
+    from_file: FileIndex,
+) -> Option<FileIndex> {
+    let entries = Directory::entries(&*db.vfs.handler, content);
     for child in &entries.iter() {
         if let DirectoryEntry::File(entry) = child {
             if match_c(db, &entry.name, INIT_PY, false) || match_c(db, &entry.name, INIT_PYI, false)

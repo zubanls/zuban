@@ -6,7 +6,7 @@ use utils::{FastHashSet, InsertOnlyVec};
 use crate::{
     tree::{InvalidationDetail, Invalidations},
     workspaces::Workspaces,
-    AbsPath, DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent, VfsHandler,
+    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent, VfsHandler,
     WorkspaceKind,
 };
 
@@ -63,9 +63,10 @@ impl<F: VfsFile> Vfs<F> {
         F: Clone,
     {
         let mut files = vec![];
-        let mut workspaces = self.workspaces.clone_with_new_rcs();
+        let mut workspaces = self.workspaces.clone_with_new_rcs(&*handler);
         for file_state in self.files.iter_mut() {
             fn search_parent(
+                vfs_handler: &dyn VfsHandler,
                 workspaces: &Workspaces,
                 parent: Parent,
                 name: &str,
@@ -74,7 +75,7 @@ impl<F: VfsFile> Vfs<F> {
                 let parent_entries = match parent {
                     Parent::Directory(dir) => {
                         tmp = dir.upgrade().unwrap();
-                        &tmp.entries
+                        Directory::entries(vfs_handler, &tmp)
                     }
                     Parent::Workspace(w) => {
                         let w = w.upgrade().unwrap();
@@ -89,12 +90,17 @@ impl<F: VfsFile> Vfs<F> {
                 let x = parent_entries.search(name).unwrap().clone();
                 x
             }
-            fn replace_from_new_workspace(workspaces: &Workspaces, parent: &Parent) -> Parent {
+            fn replace_from_new_workspace(
+                vfs_handler: &dyn VfsHandler,
+                workspaces: &Workspaces,
+                parent: &Parent,
+            ) -> Parent {
                 match parent {
                     Parent::Directory(dir) => {
                         let dir = dir.upgrade().unwrap();
-                        let replaced = replace_from_new_workspace(workspaces, &dir.parent);
-                        let search = search_parent(workspaces, replaced, &dir.name);
+                        let replaced =
+                            replace_from_new_workspace(vfs_handler, workspaces, &dir.parent);
+                        let search = search_parent(vfs_handler, workspaces, replaced, &dir.name);
                         let DirectoryEntry::Directory(new_dir) = search else {
                             unreachable!();
                         };
@@ -104,9 +110,10 @@ impl<F: VfsFile> Vfs<F> {
                 }
             }
             let current_entry = file_state.file_entry();
-            let parent_dir = replace_from_new_workspace(&workspaces, &current_entry.parent);
+            let parent_dir =
+                replace_from_new_workspace(&*handler, &workspaces, &current_entry.parent);
             let DirectoryEntry::File(new_file_entry) =
-                search_parent(&workspaces, parent_dir, &current_entry.name)
+                search_parent(&*handler, &workspaces, parent_dir, &current_entry.name)
             else {
                 unreachable!()
             };
@@ -500,31 +507,36 @@ impl<F: VfsFile> Vfs<F> {
                 },
                 DirectoryEntry::Directory(_) => (),
             };
-            let new_entry = self
-                .handler
-                .walk_and_watch_dirs(path, parent.clone(), false);
-            parent.with_dir(|in_dir| {
-                if let DirectoryEntry::MissingEntry(_) = new_entry {
-                    if in_dir
-                        .search(replace_name)
-                        .is_some_and(|entry| matches!(*entry, DirectoryEntry::MissingEntry(_)))
-                    {
-                        tracing::debug!("Missing entry is still missing, no changes needed");
-                    } else {
-                        tracing::debug!("Decided to remove {replace_name} from VFS");
-                        if let Some(r) = in_dir.remove_name(replace_name) {
-                            check_invalidations_for_dir_entry(&r)
+            let new_entry = self.handler.read_entry(path, parent.clone(), replace_name);
+            parent.with_dir(&*self.handler, |in_dir| {
+                match new_entry {
+                    Some(new_entry) => {
+                        if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
+                            // TODO we don't have to invalidate the whole tree
+                            tracing::debug!("Decided to replace {replace_name} in VFS");
+                            to_replace.walk_entries(&*self.handler, &mut |e| {
+                                check_invalidations_for_dir_entry(e)
+                            });
+                            *to_replace = new_entry;
+                        } else {
+                            // TODO if the file is exactly the same as the old one, don't replace it
+                            tracing::debug!("Decided to add {replace_name} to VFS");
+                            in_dir.borrow_mut().push(new_entry);
                         }
                     }
-                } else if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
-                    // TODO we don't have to invalidate the wohle tree
-                    tracing::debug!("Decided to replace {replace_name} in VFS");
-                    to_replace.walk_entries(&mut |e| check_invalidations_for_dir_entry(e));
-                    *to_replace = new_entry;
-                } else {
-                    // TODO if the file is exactly the same as the old one, don't replace it
-                    tracing::debug!("Decided to add {replace_name} to VFS");
-                    in_dir.borrow_mut().push(new_entry);
+                    None => {
+                        if in_dir
+                            .search(replace_name)
+                            .is_some_and(|entry| matches!(*entry, DirectoryEntry::MissingEntry(_)))
+                        {
+                            tracing::debug!("Missing entry is still missing, no changes needed");
+                        } else {
+                            tracing::debug!("Decided to remove {replace_name} from VFS");
+                            if let Some(r) = in_dir.remove_name(replace_name) {
+                                check_invalidations_for_dir_entry(&r)
+                            }
+                        }
+                    }
                 }
             })
         }

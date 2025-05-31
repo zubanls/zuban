@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, Ref, RefCell, RefMut},
+    cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     rc::{Rc, Weak},
 };
 
@@ -21,9 +21,13 @@ pub enum Parent {
 }
 
 impl Parent {
-    pub fn with_dir<T>(&self, callable: impl FnOnce(&Entries) -> T) -> T {
+    pub(crate) fn with_dir<T>(
+        &self,
+        vfs: &dyn VfsHandler,
+        callable: impl FnOnce(&Entries) -> T,
+    ) -> T {
         match self {
-            Self::Directory(dir) => callable(&dir.upgrade().unwrap().entries),
+            Self::Directory(dir) => callable(Directory::entries(vfs, &dir.upgrade().unwrap())),
             Self::Workspace(w) => callable(&w.upgrade().unwrap().entries),
         }
     }
@@ -145,19 +149,24 @@ impl DirectoryEntry {
         }
     }
 
-    pub fn walk(&self, in_dir: &Entries, callable: &mut impl FnMut(&Entries, &Rc<FileEntry>)) {
+    pub fn walk(
+        &self,
+        vfs: &dyn VfsHandler,
+        in_dir: &Entries,
+        callable: &mut impl FnMut(&Entries, &Rc<FileEntry>),
+    ) {
         match self {
             DirectoryEntry::File(file) => callable(in_dir, file),
-            DirectoryEntry::Directory(dir) => dir.entries.walk(callable),
+            DirectoryEntry::Directory(dir) => Directory::entries(vfs, dir).walk(vfs, callable),
             DirectoryEntry::MissingEntry { .. } => (),
         }
     }
 
-    pub(crate) fn walk_entries(&self, callable: &mut impl FnMut(&Self)) {
+    pub(crate) fn walk_entries(&self, vfs: &dyn VfsHandler, callable: &mut impl FnMut(&Self)) {
         callable(self);
         if let DirectoryEntry::Directory(dir) = self {
-            for entry in dir.entries.borrow().iter() {
-                entry.walk_entries(callable);
+            for entry in Directory::entries(vfs, dir).borrow().iter() {
+                entry.walk_entries(vfs, callable);
             }
         }
     }
@@ -168,7 +177,7 @@ pub struct Entries(RefCell<Vec<DirectoryEntry>>);
 
 #[derive(Debug, Clone)]
 pub struct Directory {
-    pub entries: Entries,
+    entries: OnceCell<Entries>,
     pub parent: Parent,
     pub name: Box<str>,
 }
@@ -214,9 +223,22 @@ impl Directory {
         path.push(vfs.separator());
         path + &self.name
     }
+
+    pub fn entries<'x>(vfs: &dyn VfsHandler, dir: &'x Rc<Directory>) -> &'x Entries {
+        dir.entries.get_or_init(|| {
+            vfs.read_and_watch_dir(
+                &dir.absolute_path(vfs).path,
+                Parent::Directory(Rc::downgrade(dir)),
+            )
+        })
+    }
 }
 
 impl Entries {
+    pub fn from_vec(vec: Vec<DirectoryEntry>) -> Self {
+        Self(RefCell::from(vec))
+    }
+
     fn borrow(&self) -> Ref<Vec<DirectoryEntry>> {
         self.0.borrow()
     }
@@ -248,7 +270,7 @@ impl Entries {
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
                 if let DirectoryEntry::Directory(dir) = &*entry {
-                    return dir.entries.search_path(vfs, rest);
+                    return Directory::entries(vfs, dir).search_path(vfs, rest);
                 }
             } else if let DirectoryEntry::File(entry) = &*entry {
                 return Some(entry.clone());
@@ -303,7 +325,7 @@ impl Entries {
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
                 if let DirectoryEntry::Directory(dir) = &*entry {
-                    dir.entries.unload_file(vfs, rest);
+                    Directory::entries(vfs, dir).unload_file(vfs, rest);
                 }
             } else if matches!(*entry, DirectoryEntry::File(_)) {
                 drop(entry);
@@ -341,7 +363,7 @@ impl Entries {
             match &*inner {
                 DirectoryEntry::Directory(dir) => {
                     if let Some(rest) = rest {
-                        dir.entries.delete_directory(vfs, rest)
+                        Directory::entries(vfs, dir).delete_directory(vfs, rest)
                     } else {
                         drop(inner);
                         self.remove_name(name);
@@ -360,9 +382,9 @@ impl Entries {
         }
     }
 
-    pub fn walk(&self, callable: &mut impl FnMut(&Entries, &Rc<FileEntry>)) {
+    pub fn walk(&self, vfs: &dyn VfsHandler, callable: &mut impl FnMut(&Entries, &Rc<FileEntry>)) {
         for n in self.borrow().iter() {
-            n.walk(self, callable)
+            n.walk(vfs, self, callable)
         }
     }
 }

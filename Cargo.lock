@@ -1418,7 +1418,6 @@ dependencies = [
  "notify",
  "tracing",
  "utils",
- "walkdir",
 ]
 
 [[package]]

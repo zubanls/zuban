@@ -1,16 +1,11 @@
-use std::{
-    cell::RefCell,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::{cell::RefCell, path::Path, rc::Rc};
 
 use crossbeam_channel::{unbounded, Receiver};
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
-use walkdir::WalkDir;
 
 use crate::{
-    tree::MissingEntry, AbsPath, Directory, DirectoryEntry, FileEntry, NotifyEvent, Parent,
-    PathWithScheme, VfsHandler,
+    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, NotifyEvent, Parent, PathWithScheme,
+    VfsHandler,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
@@ -43,125 +38,101 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
         result.ok()
     }
 
-    fn walk_and_watch_dirs(
-        &self,
-        path: &str,
-        initial_parent: Parent,
-        is_root_node: bool,
-    ) -> DirectoryEntry {
-        let is_relevant_name =
-            |name: &str| name.ends_with(".py") || name.ends_with(".pyi") || name == "py.typed";
-        let path = self.strip_separator_suffix(path).unwrap_or(path);
-
-        let mut is_first = true;
-        self.watch(Path::new(path));
-        let walker = WalkDir::new(path)
-            .follow_links(true)
-            .into_iter()
-            .filter_entry(|entry| {
-                entry.file_name().to_str().is_some_and(|name| {
-                    if is_first {
-                        // We always want the base dir
-                        is_first = false;
-                        return true;
-                    }
-                    if is_relevant_name(name) {
-                        return true;
-                    }
-                    // This logic is derived from how Mypy does it. It ignores only very specific
-                    // folders: https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-exclude
-                    !GLOBALLY_IGNORED_FOLDERS.contains(&name) && !name.starts_with('.')
-                })
-            });
-
-        let mut stack: Vec<(PathBuf, Rc<Directory>)> = vec![];
-
-        for e in walker {
-            match e {
+    fn read_and_watch_dir(&self, path: &str, parent: Parent) -> Entries {
+        let trace_err = |from, e: std::io::Error| match e.kind() {
+            // Not found is a very ususal and expected thing so we lower the severity
+            // here.
+            std::io::ErrorKind::NotFound => {
+                tracing::debug!("{from} error (base: {path}): {e}")
+            }
+            _ => tracing::error!("{from} error (base: {path}): {e}"),
+        };
+        let iterator = match std::fs::read_dir(path) {
+            Ok(iterator) => iterator,
+            Err(e) => {
+                trace_err("Initial read dir", e);
+                return Entries::default();
+            }
+        };
+        let mut entries = vec![];
+        for dir_entry in iterator {
+            match dir_entry {
                 Ok(dir_entry) => {
-                    let p = dir_entry.path();
-                    if !stack.is_empty() {
-                        while !p.starts_with(&stack.last().unwrap().0) {
-                            let n = stack.pop().unwrap().1;
-                            stack
-                                .last_mut()
-                                .unwrap()
-                                .1
-                                .entries
-                                .borrow_mut()
-                                .push(DirectoryEntry::Directory(n));
-                        }
-                    }
                     let name = dir_entry.file_name();
-                    if let Some(name) = name.to_str() {
-                        match dir_entry.metadata() {
-                            Ok(m) => {
-                                let parent = if let Some(last) = stack.last() {
-                                    let parent_dir = &last.1;
-                                    match &parent_dir.parent {
-                                        Parent::Workspace(_)
-                                            if stack.len() == 1 && is_root_node =>
-                                        {
-                                            initial_parent.clone()
-                                        }
-                                        _ => Parent::Directory(Rc::downgrade(parent_dir)),
-                                    }
-                                } else {
-                                    initial_parent.clone()
-                                };
-                                if m.is_dir() {
-                                    self.watch(p);
-                                    stack.push((p.to_owned(), Directory::new(parent, name.into())));
-                                } else {
-                                    let dir_entry =
-                                        DirectoryEntry::File(FileEntry::new(parent, name.into()));
-                                    if let Some(last_dir) = stack.last_mut() {
-                                        last_dir.1.entries.borrow_mut().push(dir_entry)
-                                    } else {
-                                        if is_relevant_name(name) {
-                                            return dir_entry;
-                                        }
-                                        break; // This case will just return a missing entry, which
-                                               // is fine, because the file is not relevant
+                    let Ok(name) = name.into_string() else {
+                        let p = dir_entry.path();
+                        tracing::info!("Listdir ignored {p:?}, because it's not UTF-8");
+                        continue;
+                    };
+                    match dir_entry.file_type() {
+                        Ok(file_type) => {
+                            let new = if file_type.is_dir() {
+                                ResolvedFileType::Directory
+                            } else if file_type.is_symlink() {
+                                match self.follow_symlink(dir_entry.path()) {
+                                    Ok(resolved) => resolved,
+                                    Err(err) => {
+                                        tracing::error!("Follow symlink error, path={path}: {err}");
+                                        continue;
                                     }
                                 }
-                            }
-                            Err(err) => {
-                                tracing::error!("Walkdir metadata error (base: {path}): {err}")
-                            }
+                            } else {
+                                debug_assert!(file_type.is_file());
+                                ResolvedFileType::File
+                            };
+                            entries.push(match new {
+                                ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(
+                                    parent.clone(),
+                                    name.into(),
+                                )),
+                                ResolvedFileType::Directory => DirectoryEntry::Directory(
+                                    Directory::new(parent.clone(), name.into()),
+                                ),
+                            })
                         }
-                    } else {
-                        tracing::info!("Walkdir ignored {p:?}, because it's not UTF-8")
+                        Err(err) => {
+                            let path = dir_entry.path();
+                            tracing::error!(
+                                "Listdir filetype did error (path={path:?}, name={name}): {err}"
+                            )
+                        }
                     }
                 }
-                Err(e) => {
-                    match e.io_error().map(|e| e.kind()) {
-                        // Not found is a very ususal and expected thing so we lower the severity
-                        // here.
-                        Some(std::io::ErrorKind::NotFound) => {
-                            tracing::debug!("Walkdir error (base: {path}): {e}")
-                        }
-                        _ => tracing::error!("Walkdir error (base: {path}): {e}"),
-                    };
+                Err(e) => trace_err("Read dir entry", e),
+            }
+        }
+        Entries::from_vec(entries)
+    }
+
+    fn read_entry(&self, path: &str, parent: Parent, replace_name: &str) -> Option<DirectoryEntry> {
+        let metadata = match std::fs::symlink_metadata(path) {
+            Ok(metadata) => metadata,
+            Err(err) => {
+                tracing::info!("Reading metatdata failed for path={path:?}: {err}");
+                return None;
+            }
+        };
+        let resolved = if metadata.is_dir() {
+            ResolvedFileType::Directory
+        } else if metadata.is_symlink() {
+            match self.follow_symlink(path) {
+                Ok(resolved) => resolved,
+                Err(err) => {
+                    tracing::info!("read_entry follow symlink error, path={path}: {err}");
+                    return None;
                 }
             }
-        }
-        while let Some(current) = stack.pop() {
-            if let Some(parent) = stack.last_mut() {
-                parent
-                    .1
-                    .entries
-                    .borrow_mut()
-                    .push(DirectoryEntry::Directory(current.1))
-            } else {
-                return DirectoryEntry::Directory(current.1);
+        } else {
+            debug_assert!(metadata.is_file());
+            ResolvedFileType::File
+        };
+        Some(match resolved {
+            ResolvedFileType::File => {
+                DirectoryEntry::File(FileEntry::new(parent, replace_name.into()))
             }
-        }
-        // TODO There is a chance that the dir does not exist and might be created later. We
-        // should actually "watch" for that.
-        DirectoryEntry::MissingEntry(MissingEntry {
-            name: "".into(),
-            invalidations: Default::default(),
+            ResolvedFileType::Directory => {
+                DirectoryEntry::Directory(Directory::new(parent, replace_name.into()))
+            }
         })
     }
 
@@ -250,6 +221,27 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
     pub fn abs_path_from_current_dir(&self, p: String) -> Rc<AbsPath> {
         self.absolute_path(&self.current_dir(), p)
     }
+
+    fn follow_symlink<P: AsRef<Path>>(&self, path: P) -> std::io::Result<ResolvedFileType> {
+        let path = path.as_ref();
+        self.watch(path);
+        let target_path = std::fs::read_link(path)?;
+        let metadata = std::fs::symlink_metadata(&target_path)?;
+        let file_type = metadata.file_type();
+        if file_type.is_dir() {
+            Ok(ResolvedFileType::Directory)
+        } else if file_type.is_symlink() {
+            self.follow_symlink(target_path)
+        } else {
+            debug_assert!(file_type.is_file());
+            Ok(ResolvedFileType::File)
+        }
+    }
+}
+
+enum ResolvedFileType {
+    File,
+    Directory,
 }
 
 fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {

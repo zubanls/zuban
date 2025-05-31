@@ -413,7 +413,10 @@ impl<'db> PythonFile {
             Parent::Directory(dir) => python_import_with_needs_exact_case(
                 db,
                 self,
-                std::iter::once((&dir.upgrade().unwrap().entries, false)),
+                std::iter::once((
+                    Directory::entries(&*db.vfs.handler, &dir.upgrade().unwrap()),
+                    false,
+                )),
                 name,
                 true,
             )
@@ -557,7 +560,7 @@ impl<'db> PythonFile {
                     // partial is only relevant for -stubs, otherwise we don't really care.
                     return false;
                 }
-                dir.entries
+                Directory::entries(&*db.vfs.handler, &dir)
                     .search("py.typed")
                     .is_some_and(|entry| match &*entry {
                         // TODO we are currently never invalidating this file, when it changes

@@ -9,7 +9,7 @@ use std::{
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
 use vfs::{
-    AbsPath, DirectoryEntry, Entries, FileEntry, FileIndex, InvalidationResult, LocalFS,
+    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, InvalidationResult, LocalFS,
     PathWithScheme, Vfs, VfsHandler, Workspace, WorkspaceKind,
 };
 
@@ -1265,13 +1265,16 @@ impl Database {
 
         let builtins = self.preload_typeshed_stub(stdlib_workspace, "builtins.pyi") as *const _;
         let typing = self.preload_typeshed_stub(stdlib_workspace, "typing.pyi") as *const _;
-        let typeshed =
-            self.preload_typeshed_stub_in_entries(&typeshed_dir.entries, "__init__.pyi", || {
+        let typeshed = self.preload_typeshed_stub_in_entries(
+            Directory::entries(&*self.vfs.handler, &typeshed_dir),
+            "__init__.pyi",
+            || {
                 typeshed_dir
                     .absolute_path(&*self.vfs.handler)
                     .path()
                     .to_string()
-            }) as *const _;
+            },
+        ) as *const _;
         let types = self.preload_typeshed_stub(stdlib_workspace, "types.pyi") as *const _;
         let abc = self.preload_typeshed_stub(stdlib_workspace, "abc.pyi") as *const _;
         let functools = self.preload_typeshed_stub(stdlib_workspace, "functools.pyi") as *const _;
@@ -1283,13 +1286,16 @@ impl Database {
         let mypy_extensions =
             self.preload_typeshed_stub(mypy_extensions_dir, "mypy_extensions.pyi") as *const _;
 
-        let collections =
-            self.preload_typeshed_stub_in_entries(&collections_dir.entries, "__init__.pyi", || {
+        let collections = self.preload_typeshed_stub_in_entries(
+            Directory::entries(&*self.vfs.handler, &collections_dir),
+            "__init__.pyi",
+            || {
                 collections_dir
                     .absolute_path(&*self.vfs.handler)
                     .path()
                     .to_string()
-            }) as *const _;
+            },
+        ) as *const _;
         let _collections_abc =
             self.preload_typeshed_stub(stdlib_workspace, "_collections_abc.pyi") as *const _;
 

@@ -115,7 +115,7 @@ impl Workspaces {
                     rest = new_rest;
                     let found = current_dir
                         .as_ref()
-                        .map(|dir: &Rc<Directory>| &dir.entries)
+                        .map(|dir: &Rc<Directory>| Directory::entries(vfs, dir))
                         .unwrap_or(&workspace.entries)
                         .search(name)?;
                     match &*found {
@@ -195,10 +195,11 @@ impl Workspaces {
         Err(format!("Workspace of path {} cannot be found", path.path))
     }
 
-    pub(crate) fn clone_with_new_rcs(&self) -> Self {
-        fn clone_inner_rcs(dir: Directory) -> Rc<Directory> {
+    pub(crate) fn clone_with_new_rcs(&self, vfs: &dyn VfsHandler) -> Self {
+        fn clone_inner_rcs(vfs: &dyn VfsHandler, dir: Directory) -> Rc<Directory> {
+            // TODO not all entries need to be recalculated if it's not yet calculated
             let dir = Rc::new(dir);
-            for entry in dir.entries.borrow_mut().iter_mut() {
+            for entry in Directory::entries(vfs, &dir).borrow_mut().iter_mut() {
                 match entry {
                     DirectoryEntry::File(file) => {
                         let mut new_file = file.as_ref().clone();
@@ -209,7 +210,7 @@ impl Workspaces {
                     DirectoryEntry::Directory(dir) => {
                         let mut new = dir.as_ref().clone();
                         new.parent = Parent::Directory(Rc::downgrade(dir));
-                        *dir = clone_inner_rcs(new);
+                        *dir = clone_inner_rcs(vfs, new);
                     }
                 }
             }
@@ -224,7 +225,7 @@ impl Workspaces {
                         debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
                         let mut new_dir = dir.as_ref().clone();
                         new_dir.parent = Parent::Workspace(Rc::downgrade(&new_workspace));
-                        *dir = clone_inner_rcs(new_dir)
+                        *dir = clone_inner_rcs(vfs, new_dir)
                     }
                     DirectoryEntry::File(file) => {
                         debug_assert!(matches!(file.parent, Parent::Workspace(_)));
@@ -299,19 +300,11 @@ impl Workspace {
                 kind,
             })
         }
-        let new_dir = match vfs.walk_and_watch_dirs(
+        let new_entries = vfs.read_and_watch_dir(
             &workspace.root_path,
             Parent::Workspace(Rc::downgrade(&workspace)),
-            true,
-        ) {
-            DirectoryEntry::Directory(dir) => Rc::unwrap_or_clone(dir),
-            e => Directory {
-                parent: Parent::Workspace(Rc::downgrade(&workspace)),
-                name: e.name().into(),
-                entries: Default::default(),
-            },
-        };
-        *workspace.entries.borrow_mut() = std::mem::take(&mut *new_dir.entries.borrow_mut());
+        );
+        *workspace.entries.borrow_mut() = std::mem::take(&mut new_entries.borrow_mut());
         workspace
     }
 
@@ -357,7 +350,7 @@ fn ensure_dirs_and_file(
                 DirectoryEntry::Directory(rc) => {
                     return ensure_dirs_and_file(
                         Parent::Directory(Rc::downgrade(rc)),
-                        &rc.entries,
+                        Directory::entries(vfs, rc),
                         vfs,
                         rest,
                     )
@@ -373,7 +366,7 @@ fn ensure_dirs_and_file(
         let dir2 = Directory::new(parent, Box::from(name));
         let mut result = ensure_dirs_and_file(
             Parent::Directory(Rc::downgrade(&dir2)),
-            &dir2.entries,
+            Directory::entries(vfs, &dir2),
             vfs,
             rest,
         );
