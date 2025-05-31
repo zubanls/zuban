@@ -405,12 +405,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if FLOW_ANALYSIS.with(|fa| fa.in_conditional()) {
                     self.check_conditional_function_definition(i_s)
                 } else {
-                    name_def
-                        .file
-                        .inference(i_s)
-                        .check_for_redefinition(name_def, |issue| {
+                    let inference = name_def.file.inference(i_s);
+                    if let Some(_) = first_defined_name_of_multi_def(
+                        self.node_ref.file,
+                        name_def.name_ref_of_name_def().node_index,
+                    ) {
+                        inference.check_for_redefinition(name_def, |issue| {
                             self.add_issue_onto_start_including_decorator(i_s, issue)
                         });
+                    } else {
+                        inference.add_initial_name_definition(name_def.expect_name_def())
+                    }
                 }
             }
         }

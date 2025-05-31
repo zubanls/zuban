@@ -157,21 +157,13 @@ impl Entry {
         }
     }
 
-    fn with_declaration(&self) -> Self {
+    fn with_declaration(&self, allow_redefinition: bool) -> Self {
         Entry {
             key: self.key.clone(),
-            type_: if self.widens {
-                // This feels strange, but if a type widens this means we are in a context where
-                // allow_redefinition_new is allowed, which implies that we have added an inital
-                // definition for the type already, so type definitions should have been merged
-                // properly, we only reach this case in something like:
-                //
-                //     if bool():
-                //         x = 1
-                //         x = ""
-                //     x  # What's x here?
-                //  x is only partially defined in the if so it's str, therefore we clone that
-                //  entry.
+            type_: if allow_redefinition && matches!(&self.key, FlowKey::Name(_)) {
+                // Redefinitions define the original declaration always in the name binder, we
+                // therefore never need to fallback to the original definition, because it is part
+                // of name binding already and can offer more precise types.
                 self.type_.clone()
             } else {
                 EntryKind::OriginalDeclaration
@@ -745,7 +737,7 @@ impl FlowAnalysis {
             })
             // The fallback just assigns an "empty" key. This is needed, because otherwise we would
             // not be able to know if the entry invalidated entries further up the stack.
-            .unwrap_or_else(|| search_for.with_declaration())
+            .unwrap_or_else(|| search_for.with_declaration(i_s.flags().allow_redefinition))
     }
 
     fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {
@@ -1489,7 +1481,7 @@ impl Inference<'_, '_, '_> {
     }
 
     #[inline]
-    pub(super) fn add_initial_name_definition(&self, name: NameDef) {
+    pub fn add_initial_name_definition(&self, name: NameDef) {
         if self.flags().allow_redefinition {
             FLOW_ANALYSIS.with(|fa| {
                 fa.add_initial_name_definition(
