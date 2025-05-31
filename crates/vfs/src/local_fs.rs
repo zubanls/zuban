@@ -80,15 +80,9 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
                                 debug_assert!(file_type.is_file());
                                 ResolvedFileType::File
                             };
-                            entries.push(match new {
-                                ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(
-                                    parent.clone(),
-                                    name.into(),
-                                )),
-                                ResolvedFileType::Directory => DirectoryEntry::Directory(
-                                    Directory::new(parent.clone(), name.into()),
-                                ),
-                            })
+                            if let Some(entry) = new.into_dir_entry(parent.clone(), name) {
+                                entries.push(entry)
+                            }
                         }
                         Err(err) => {
                             let path = dir_entry.path();
@@ -126,14 +120,7 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
             debug_assert!(metadata.is_file());
             ResolvedFileType::File
         };
-        Some(match resolved {
-            ResolvedFileType::File => {
-                DirectoryEntry::File(FileEntry::new(parent, replace_name.into()))
-            }
-            ResolvedFileType::Directory => {
-                DirectoryEntry::Directory(Directory::new(parent, replace_name.into()))
-            }
-        })
+        resolved.into_dir_entry(parent, replace_name)
     }
 
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
@@ -242,6 +229,28 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
 enum ResolvedFileType {
     File,
     Directory,
+}
+
+impl ResolvedFileType {
+    fn into_dir_entry<N: Into<Box<str>> + AsRef<str>>(
+        self,
+        parent: Parent,
+        name: N,
+    ) -> Option<DirectoryEntry> {
+        // This logic is derived from how Mypy does it. It ignores only very specific
+        // folders: https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-exclude
+        let n = name.as_ref();
+        if n.starts_with('.') || GLOBALLY_IGNORED_FOLDERS.contains(&n) {
+            return None;
+        }
+
+        Some(match self {
+            ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(parent, name.into())),
+            ResolvedFileType::Directory => {
+                DirectoryEntry::Directory(Directory::new(parent, name.into()))
+            }
+        })
+    }
 }
 
 fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {
