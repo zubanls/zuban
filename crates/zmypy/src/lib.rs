@@ -213,7 +213,10 @@ pub struct Cli {
     // --show-absolute-path Show absolute paths to files (inverse: --hide-absolute-path)
 
     // Additional options
-    #[arg(long, hide = true)]
+    /// Enable or disable mypy compatibility. By default disabled and enabled if a Mypy config is found (inverse: --no-mypy-compatible)
+    #[arg(long)]
+    mypy_compatible: bool,
+    #[arg(long)]
     no_mypy_compatible: bool,
 }
 
@@ -341,6 +344,9 @@ fn apply_flags(
     apply!(diagnostic_config, show_error_end, hide_error_end);
     apply!(diagnostic_config, show_error_codes, hide_error_codes);
 
+    if cli.mypy_compatible {
+        project_options.settings.mypy_compatible = true;
+    }
     if cli.no_mypy_compatible {
         project_options.settings.mypy_compatible = false;
     }
