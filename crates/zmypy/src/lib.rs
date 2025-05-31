@@ -149,7 +149,7 @@ pub struct Cli {
     #[arg(long)]
     allow_untyped_globals: bool,
     #[arg(long)]
-    disallow_allow_untyped_globals: bool,
+    disallow_untyped_globals: bool,
     /// Allow unconditional variable redefinition with a new type (inverse: --disallow-redefinition)
     #[arg(long)]
     allow_redefinition: bool,
@@ -332,7 +332,7 @@ fn apply_flags(
     //apply!(disallow_any_expr, allow_any_expr);
     apply!(flags, disallow_subclassing_any, allow_subclassing_any);
     apply!(flags, disallow_incomplete_defs, allow_incomplete_defs);
-    apply!(flags, allow_untyped_globals, disallow_allow_untyped_globals);
+    apply!(flags, allow_untyped_globals, disallow_untyped_globals);
     apply!(flags, warn_unreachable, no_warn_unreachable);
     //apply!(warn_redundant_casts, no_warn_redundant_casts);
     apply!(flags, warn_return_any, no_warn_return_any);
@@ -349,6 +349,14 @@ fn apply_flags(
     }
     if cli.no_mypy_compatible {
         project_options.settings.mypy_compatible = false;
+    }
+
+    apply!(flags, allow_redefinition, disallow_redefinition);
+    if cli.allow_redefinition_new {
+        flags.allow_redefinition = true;
+    }
+    if cli.disallow_redefinition_new {
+        flags.allow_redefinition = false;
     }
 
     if cli.platform.is_some() {
