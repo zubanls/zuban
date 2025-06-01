@@ -52,7 +52,7 @@ impl Workspaces {
         self.iter().filter(|x| !x.is_type_checked())
     }
 
-    pub fn directories_to_type_check(&self) -> impl Iterator<Item = &Entries> {
+    pub fn entries_to_type_check(&self) -> impl Iterator<Item = &Entries> {
         self.iter()
             .filter(|x| x.is_type_checked())
             .map(|x| &x.entries)
