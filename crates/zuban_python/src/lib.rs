@@ -117,6 +117,19 @@ impl Project {
         let mut checked_files = 0;
         let mut files_with_errors = 0;
         let vfs_handler = &*self.db.vfs.handler;
+        let mut file_indexes = vec![];
+        let maybe_skipped = |flags: &TypeCheckerFlags, path: &AbsPath| {
+            // TODO the path __main__ should probably not be here.
+            if !path.ends_with(".py") && !path.ends_with(".pyi") && !path.ends_with("__main__") {
+                return true;
+            }
+            let check_files = &self.db.project.settings.files_or_directories_to_check;
+            !check_files.is_empty()
+                && !check_files
+                    .iter()
+                    .any(|glob| glob.matches(vfs_handler, path))
+                || flags.excludes.iter().any(|e| e.regex.is_match(path))
+        };
         for directory in self.db.vfs.workspaces.directories_to_type_check() {
             let ignore_py_if_overwritten_by_pyi = |in_dir: &Entries, file: &FileEntry| {
                 if !file.name.ends_with(".py") {
@@ -135,26 +148,12 @@ impl Project {
                 }
             });
 
-            let maybe_skipped = |flags: &TypeCheckerFlags, path: &AbsPath| {
-                // TODO the path __main__ should probably not be here.
-                if !path.ends_with(".py") && !path.ends_with(".pyi") && !path.ends_with("__main__")
-                {
-                    return true;
-                }
-                let check_files = &self.db.project.settings.files_or_directories_to_check;
-                !check_files.is_empty()
-                    && !check_files
-                        .iter()
-                        .any(|glob| glob.matches(vfs_handler, path))
-                    || flags.excludes.iter().any(|e| e.regex.is_match(path))
-            };
             for (file, path) in to_be_loaded {
                 if !maybe_skipped(&self.db.project.flags, path.path()) {
                     self.db.load_file_from_workspace(&file, false);
                 }
             }
 
-            let mut file_indexes = vec![];
             directory.walk(vfs_handler, &mut |in_dir, file| {
                 if let Some(file_index) = file.get_file_index() {
                     // We need to recheck here, because some modules might have been loaded
@@ -164,18 +163,19 @@ impl Project {
                     }
                 }
             });
-            'outer: for file_index in file_indexes {
-                let python_file = self.db.loaded_python_file(file_index);
-                let p = python_file.file_entry(&self.db).absolute_path(vfs_handler);
-                if maybe_skipped(python_file.flags(&self.db), p.path()) {
-                    continue 'outer;
-                }
-                checked_files += 1;
-                let mut issues = python_file.diagnostics(&self.db).into_vec();
-                if !issues.is_empty() {
-                    files_with_errors += 1;
-                    all_diagnostics.append(&mut issues)
-                }
+        }
+
+        'outer: for file_index in file_indexes {
+            let python_file = self.db.loaded_python_file(file_index);
+            let p = python_file.file_entry(&self.db).absolute_path(vfs_handler);
+            if maybe_skipped(python_file.flags(&self.db), p.path()) {
+                continue 'outer;
+            }
+            checked_files += 1;
+            let mut issues = python_file.diagnostics(&self.db).into_vec();
+            if !issues.is_empty() {
+                files_with_errors += 1;
+                all_diagnostics.append(&mut issues)
             }
         }
         tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
