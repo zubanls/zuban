@@ -1,7 +1,12 @@
-use std::{cell::RefCell, path::Path, rc::Rc};
+use std::{
+    cell::RefCell,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 use crossbeam_channel::{unbounded, Receiver};
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use utils::FastHashSet;
 
 use crate::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, NotifyEvent, Parent, PathWithScheme,
@@ -14,6 +19,7 @@ pub type SimpleLocalFS = LocalFS<Box<dyn Fn(PathWithScheme)>>;
 
 pub struct LocalFS<T: Fn(PathWithScheme)> {
     watcher: Option<(RefCell<RecommendedWatcher>, Receiver<NotifyEvent>)>,
+    already_watched_dirs: RefCell<FastHashSet<PathBuf>>,
     on_invalidated_in_memory_file: Option<T>,
 }
 
@@ -163,6 +169,7 @@ impl SimpleLocalFS {
     pub fn without_watcher() -> Self {
         Self {
             watcher: None,
+            already_watched_dirs: Default::default(),
             on_invalidated_in_memory_file: None,
         }
     }
@@ -182,6 +189,7 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
         }));
         Self {
             watcher: watcher.map(|w| (RefCell::new(w), watcher_receiver)),
+            already_watched_dirs: Default::default(),
             on_invalidated_in_memory_file: Some(on_invalidated_memory_file),
         }
     }
@@ -189,18 +197,77 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
     pub fn watch<P: AsRef<Path>>(&self, path: P) {
         let path = path.as_ref();
         if let Some((watcher, _)) = &self.watcher {
-            if cfg!(target_os = "windows") {
-                // On windows adding the watch n times will cause n events. We therefore have to
-                // remove the watch before adding it again. This is generally problematic, because
+            if cfg!(any(
+                target_os = "macos",
+                target_os = "windows",
+                target_os = "ios"
+            )) {
+                // On windows adding the watch n times will cause n events. We therefore used to
+                // remove the watch before adding it again. This was generally problematic, because
                 // it might be modified during that time and we might lose an event.
-                let _ = watcher.borrow_mut().unwatch(path);
+                // However now that we only watch a path if we do not already watch it it shouldn't
+                // be an issue anymore.
+
+                // Linux does not support recursive files.
+                match std::fs::canonicalize(path) {
+                    Ok(canonicalized) => {
+                        let mut already_watched = self.already_watched_dirs.borrow_mut();
+                        // General information:
+                        // MacOS - FSEventStreamCreate: https://developer.apple.com/documentation/coreservices/1443980-fseventstreamcreate
+                        // Windows - ReadDirectoryChangesW: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw
+                        if let Some(found) = already_watched
+                            .iter()
+                            .find(|watched| canonicalized.starts_with(watched))
+                        {
+                            // TODO While I'm not sure, I think MacOS simply works with paths, so
+                            // watching should be fine. On Windows this feels different, because we
+                            // are watching a directory handle. This complicates things, because we
+                            // always provide a path (can be a file too) to notify. So if the
+                            // parent directory of a file is removed (can be the parent of a
+                            // symlink target as well) and recreated we might run into issues.
+                            // So there might be edge cases where we lose watches for now.
+                            // As one possible workaround we try to rewatch the same file again.
+                            //
+                            // This might however still not work in cases where the file tree is
+                            // removed a level lower and then recreated later. In essence we would
+                            // need to watch ALL ancestors (however this is probably also an issue
+                            // on Linux and is only fine on MacOS).
+                            if cfg!(target_os = "windows") {
+                                if &canonicalized == found {
+                                    let _ = watcher.borrow_mut().unwatch(path);
+                                    log_notify_error(
+                                        watcher
+                                            .borrow_mut()
+                                            .watch(&canonicalized, RecursiveMode::Recursive),
+                                    );
+                                    tracing::debug!("Removed and re-added recursive watch for {canonicalized:?}");
+                                    already_watched.insert(canonicalized);
+                                }
+                            }
+                        } else {
+                            log_notify_error(
+                                watcher
+                                    .borrow_mut()
+                                    .watch(&canonicalized, RecursiveMode::Recursive),
+                            );
+                            tracing::debug!("Added recursive watch for {canonicalized:?}");
+                            already_watched.insert(canonicalized);
+                        }
+                    }
+                    Err(err) => {
+                        tracing::error!(
+                            "Failed to cannonicalize path {path:?} and did therefore not watch, because: {err}"
+                        );
+                    }
+                }
+            } else {
+                log_notify_error(
+                    watcher
+                        .borrow_mut()
+                        .watch(path, RecursiveMode::NonRecursive),
+                );
+                tracing::debug!("Added watch for {path:?}");
             }
-            log_notify_error(
-                watcher
-                    .borrow_mut()
-                    .watch(path, RecursiveMode::NonRecursive),
-            );
-            tracing::debug!("Added watch for {path:?}");
         }
     }
 
