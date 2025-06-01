@@ -60,7 +60,7 @@ pub fn calculate_steps<'code>(file_name: Option<&str>, code: &'code str) -> Step
     steps.insert(1, Default::default());
     let mut current_step_index = 1;
     let mut current_type = "file";
-    let mut current_rest = "__main__";
+    let mut current_rest = "__main__.py";
     let mut current_step_start = 0;
     let mut flags = vec![];
 
@@ -110,7 +110,7 @@ pub fn calculate_steps<'code>(file_name: Option<&str>, code: &'code str) -> Step
         } else {
             process_step_part2(step_index, type_, in_between, rest)
         }
-        if rest == "__main__" {
+        if rest == "__main__.py" {
             if let Some(flags_str) = find_flags(in_between) {
                 flags = flags_str.split(' ').collect();
             }
@@ -207,7 +207,7 @@ fn fixture_to_file_entry(fixture: &str) -> impl Iterator<Item = FileEntry> {
     assert!(first.deletions.is_empty());
     let main_content = first
         .files
-        .remove("__main__")
+        .remove("__main__.py")
         .expect("Should always be there");
     assert_eq!(main_content.trim(), "");
     first

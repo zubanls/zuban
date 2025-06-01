@@ -384,6 +384,9 @@ impl TestCase<'_, '_> {
                     }
                     (!is_parse_test || d.mypy_error_code() == "syntax").then(|| {
                         let mut s = d.as_string(&diagnostic_config);
+                        if s.starts_with("__main__.py:") {
+                            s = s.replace("__main__.py:", "__main__:");
+                        }
                         if cfg!(target_os = "windows") {
                             // TODO this only checks the first line, but with notes there may
                             // be multiple lines.
@@ -571,7 +574,12 @@ fn initialize_and_return_wanted_output(
         if ["mypy.ini", "pyproject.toml"].contains(&path) {
             continue;
         }
-        add_inline_errors(&mut wanted, path, code, from_mypy_test_suite);
+        let p = if path == "__main__.py" {
+            "__main__"
+        } else {
+            path
+        };
+        add_inline_errors(&mut wanted, p, code, from_mypy_test_suite);
         // testAbstractClassSubclasses
         let p = base_path_join(local_fs, path);
         project.store_in_memory_file(p, code.into());
