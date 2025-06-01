@@ -1416,6 +1416,7 @@ dependencies = [
  "crossbeam-channel",
  "glob",
  "notify",
+ "same-file",
  "tracing",
  "utils",
 ]
@@ -1671,7 +1672,6 @@ dependencies = [
  "tracing",
  "utils",
  "vfs",
- "walkdir",
 ]
 
 [[package]]

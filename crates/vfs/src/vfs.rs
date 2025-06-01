@@ -507,7 +507,9 @@ impl<F: VfsFile> Vfs<F> {
                 },
                 DirectoryEntry::Directory(_) => (),
             };
-            let new_entry = self.handler.read_entry(path, parent.clone(), replace_name);
+            let new_entry = self
+                .handler
+                .read_and_watch_entry(path, parent.clone(), replace_name);
             parent.with_dir(&*self.handler, |in_dir| {
                 match new_entry {
                     Some(new_entry) => {

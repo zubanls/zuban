@@ -642,8 +642,9 @@ fn symlink_dir_loop() {
     assert_eq!(
         d(),
         vec![
-            cannot_find("nested.nested"),
-            "Revealed type is \"builtins.int\"".to_string()
+            cannot_find("nested"),
+            cannot_find("nested"),
+            "Revealed type is \"Any\"".to_string()
         ]
     );
 }

@@ -15,3 +15,4 @@ tracing.workspace = true
 crossbeam-channel.workspace = true
 notify.workspace = true
 glob = "*"
+same-file = "*"

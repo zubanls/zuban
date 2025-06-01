@@ -47,6 +47,7 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
             }
             _ => tracing::error!("{from} error (base: {path}): {e}"),
         };
+        self.watch(path);
         let iterator = match std::fs::read_dir(path) {
             Ok(iterator) => iterator,
             Err(e) => {
@@ -69,7 +70,7 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
                             let new = if file_type.is_dir() {
                                 ResolvedFileType::Directory
                             } else if file_type.is_symlink() {
-                                match self.follow_symlink(dir_entry.path()) {
+                                match self.follow_and_watch_symlink(dir_entry.path()) {
                                     Ok(resolved) => resolved,
                                     Err(err) => {
                                         tracing::error!("Follow symlink error, path={path}: {err}");
@@ -98,7 +99,12 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
         Entries::from_vec(entries)
     }
 
-    fn read_entry(&self, path: &str, parent: Parent, replace_name: &str) -> Option<DirectoryEntry> {
+    fn read_and_watch_entry(
+        &self,
+        path: &str,
+        parent: Parent,
+        replace_name: &str,
+    ) -> Option<DirectoryEntry> {
         let metadata = match std::fs::symlink_metadata(path) {
             Ok(metadata) => metadata,
             Err(err) => {
@@ -107,9 +113,10 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
             }
         };
         let resolved = if metadata.is_dir() {
+            self.watch(path);
             ResolvedFileType::Directory
         } else if metadata.is_symlink() {
-            match self.follow_symlink(path) {
+            match self.follow_and_watch_symlink(path) {
                 Ok(resolved) => resolved,
                 Err(err) => {
                     tracing::info!("read_entry follow symlink error, path={path}: {err}");
@@ -118,6 +125,7 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
             }
         } else {
             debug_assert!(metadata.is_file());
+            self.watch(path);
             ResolvedFileType::File
         };
         resolved.into_dir_entry(parent, replace_name)
@@ -178,7 +186,8 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
         }
     }
 
-    pub fn watch(&self, path: &Path) {
+    pub fn watch<P: AsRef<Path>>(&self, path: P) {
+        let path = path.as_ref();
         if let Some((watcher, _)) = &self.watcher {
             if cfg!(target_os = "windows") {
                 // On windows adding the watch n times will cause n events. We therefore have to
@@ -209,16 +218,39 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
         self.absolute_path(&self.current_dir(), p)
     }
 
-    fn follow_symlink<P: AsRef<Path>>(&self, path: P) -> std::io::Result<ResolvedFileType> {
-        let path = path.as_ref();
+    fn follow_and_watch_symlink<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> Result<ResolvedFileType, String> {
+        self.follow_symlink_internal(path.as_ref(), path.as_ref())
+    }
+
+    fn follow_symlink_internal(
+        &self,
+        origin_path: &Path,
+        path: &Path,
+    ) -> Result<ResolvedFileType, String> {
         self.watch(path);
-        let target_path = std::fs::read_link(path)?;
-        let metadata = std::fs::symlink_metadata(&target_path)?;
+        let target_path = std::fs::read_link(path).map_err(|e| format!("{e}"))?;
+        let metadata = std::fs::symlink_metadata(&target_path).map_err(|e| format!("{e}"))?;
         let file_type = metadata.file_type();
         if file_type.is_dir() {
+            // We use same_file here for comparing the entries, because just comparing the paths
+            // can be hard, because they might be symlinks to e.g. `.`. Maybe cannonicalized paths
+            // could work, but the walkdir crate works like that, so we are probably on the safe
+            // side, because lots of well-known projects are using it.
+            let target_handle =
+                same_file::Handle::from_path(&target_path).map_err(|e| format!("{e}"))?;
+            for p in origin_path.ancestors() {
+                if let Ok(ancestor_handle) = same_file::Handle::from_path(p) {
+                    if target_handle == ancestor_handle {
+                        return Err(format!("Detected cycle in {target_path:?}"));
+                    }
+                }
+            }
             Ok(ResolvedFileType::Directory)
         } else if file_type.is_symlink() {
-            self.follow_symlink(target_path)
+            self.follow_symlink_internal(origin_path, &target_path)
         } else {
             debug_assert!(file_type.is_file());
             Ok(ResolvedFileType::File)

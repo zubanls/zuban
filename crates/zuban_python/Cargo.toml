@@ -17,7 +17,6 @@ config.workspace = true
 lazy_static.workspace = true
 regex.workspace = true
 tracing.workspace = true
-walkdir.workspace = true
 
 [dev-dependencies]
 clap.workspace = true
