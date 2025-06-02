@@ -6,22 +6,7 @@ pub struct GlobAbsPath {
 }
 
 impl GlobAbsPath {
-    pub fn new(
-        vfs: &dyn VfsHandler,
-        current_dir: &AbsPath,
-        mut path: String,
-    ) -> anyhow::Result<Self> {
-        if !path.ends_with(".py") {
-            // TODO It feels very wrong to just add an arbitrary match for directories, but we have
-            // no other solution for now, otherwise only a bare directory is matched and not the
-            // file itself.
-            if !(path.ends_with(vfs.separator())
-                || cfg!(target_os = "windows") && path.ends_with('/'))
-            {
-                path.push(vfs.separator());
-            }
-            path.push_str("**");
-        }
+    pub fn new(vfs: &dyn VfsHandler, current_dir: &AbsPath, path: String) -> anyhow::Result<Self> {
         let abspath = vfs.absolute_path(current_dir, path);
         let pattern = glob::Pattern::new(&abspath)?;
         Ok(Self { pattern })

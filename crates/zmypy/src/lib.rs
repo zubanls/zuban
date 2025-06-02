@@ -685,10 +685,10 @@ mod tests {
                 vec![
                     "/a/b/baz.py",
                     "/a/b\\bla.py",
-                    "/other/**",
-                    "/another\\**",
-                    "/a/b\\blub/bla/**",
-                    "/a/b\\blub/baz\\**",
+                    "/other",
+                    "/another",
+                    "/a/b\\blub/bla",
+                    "/a/b\\blub/baz",
                     //"/foo/bar/not_in_blub",
                 ]
             )
@@ -698,10 +698,10 @@ mod tests {
                 vec![
                     "/a/b/baz.py",
                     "/a/b/bla.py",
-                    "/other/**",
-                    "/another/**",
-                    "/a/b/blub/bla/**",
-                    "/a/b/blub/baz/**",
+                    "/other",
+                    "/another",
+                    "/a/b/blub/bla",
+                    "/a/b/blub/baz",
                     //"/foo/bar/not_in_blub",
                 ]
             )
@@ -733,5 +733,25 @@ mod tests {
         assert_eq!(c(Cli::parse_from(["", "with_note.py"])), ExitCode::SUCCESS);
         assert_eq!(c(Cli::parse_from(["", "empty.py"])), ExitCode::SUCCESS);
         assert_eq!(c(Cli::parse_from(["", "with_error.py"])), ExitCode::FAILURE);
+    }
+
+    #[test]
+    fn no_python_files() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file foo/no_py_ending]
+            1()
+            "#,
+            false,
+        );
+        let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+
+        assert_eq!(
+            d(&["", "foo/no_py_ending"]),
+            ["foo/no_py_ending:1: error: \"int\" not callable"]
+        );
+        assert!(d(&["", "foo/"]).is_empty());
+        assert!(d(&[""]).is_empty());
     }
 }

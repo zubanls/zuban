@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use config::TypeCheckerFlags;
-use utils::FastHashSet;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, LocalFS,
     PathWithScheme,
@@ -9,12 +8,9 @@ use vfs::{
 
 use crate::{database::Database, file::PythonFile};
 
-pub(crate) fn with_relevant_files<'db>(
-    db: &'db Database,
-    mut on_file: impl FnMut(&'db PythonFile),
-) {
+pub fn with_relevant_files<'db>(db: &'db Database, mut on_file: impl FnMut(&'db PythonFile)) {
     let vfs_handler = &*db.vfs.handler;
-    for file_index in FileSelector::find_file_indexes(db) {
+    for file_index in FilePicker::find_file_indexes(db) {
         let python_file = db.loaded_python_file(file_index);
         let p = python_file.file_entry(&db).absolute_path(vfs_handler);
         if let Some(more_specific_flags) = python_file.maybe_more_specific_flags(&db) {
@@ -38,35 +34,31 @@ fn should_skip(flags: &TypeCheckerFlags, path: &AbsPath) -> bool {
     flags.excludes.iter().any(|e| e.regex.is_match(path))
 }
 
-struct FileSelector<'db> {
+pub(crate) struct FilePicker<'db> {
     db: &'db Database,
     to_be_loaded: Vec<(Rc<FileEntry>, PathWithScheme)>,
-    file_indexes: FastHashSet<FileIndex>,
+    file_indexes: Vec<FileIndex>,
 }
 
 //vfs_handler: &'db dyn VfsHandler, , files: &[GlobAbsPath]
 //vfs_handler, &db.project.settings.files_or_directories_to_check
-impl<'db> FileSelector<'db> {
+impl<'db> FilePicker<'db> {
     fn find_file_indexes(db: &'db Database) -> Vec<FileIndex> {
-        let mut selector = Self {
+        let mut picker = Self {
             db,
             to_be_loaded: vec![],
-            file_indexes: Default::default(),
+            file_indexes: vec![],
         };
-        selector.search_in_workspaces();
-        for (file, _) in selector.to_be_loaded {
+        picker.search_in_workspaces();
+        for (file, _) in picker.to_be_loaded {
             if let Some(new_index) = db.load_file_from_workspace(&file, false) {
-                selector.file_indexes.insert(new_index);
+                picker.file_indexes.push(new_index);
             }
         }
-        let mut vec: Vec<_> = selector.file_indexes.into_iter().collect();
-        // Sort to have at least somewhat of a deterministic order, it's probably easier to debug
-        // it that way.
-        vec.sort();
-        vec
+        picker.file_indexes
     }
 
-    fn search_in_workspaces(&mut self) {
+    pub fn search_in_workspaces(&mut self) {
         // In case there are no files provided we simply scan everything. This might not be
         // efficient in some cases, but people can easily just scan the parts they wish.
         let check_files = &self.db.project.settings.files_or_directories_to_check;
@@ -129,7 +121,7 @@ impl<'db> FileSelector<'db> {
 
     fn add_file(&mut self, file: Rc<FileEntry>) {
         if let Some(file_index) = file.get_file_index() {
-            self.file_indexes.insert(file_index);
+            self.file_indexes.push(file_index);
         } else {
             let path = file.absolute_path(&*self.db.vfs.handler);
             self.to_be_loaded.push((file, path));
