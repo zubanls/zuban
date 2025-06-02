@@ -490,18 +490,29 @@ impl<F: VfsFile> Vfs<F> {
             .workspaces
             .search_potential_parent_for_invalidation(&*self.handler, case_sensitive, path)
         {
+            tracing::debug!(
+                "Using dir {} to invalidate {replace_name}",
+                parent.absolute_path(&*self.handler).path()
+            );
             // TODO handle path == workspace path
-            let mut check_invalidations_for_dir_entry = |e: &_| match e {
-                DirectoryEntry::File(f) => {
-                    if let Some(file_index) = f.get_file_index() {
-                        all_unloads.insert(file_index);
-                    }
-                }
-                DirectoryEntry::MissingEntry(missing) => match missing.invalidations.iter() {
-                    InvalidationDetail::InvalidatesDb => invalidates_db = true,
-                    InvalidationDetail::Some(invs) => all_invalidations.extend(&invs),
-                },
-                DirectoryEntry::Directory(_) => (),
+
+            let mut check_invalidations_for_dir_entry = |e: &DirectoryEntry| {
+                e.walk_entries(&*self.handler, &mut |entry| {
+                    match entry {
+                        DirectoryEntry::File(f) => {
+                            if let Some(file_index) = f.get_file_index() {
+                                all_unloads.insert(file_index);
+                            }
+                        }
+                        DirectoryEntry::MissingEntry(missing) => match missing.invalidations.iter()
+                        {
+                            InvalidationDetail::InvalidatesDb => invalidates_db = true,
+                            InvalidationDetail::Some(invs) => all_invalidations.extend(&invs),
+                        },
+                        DirectoryEntry::Directory(_) => (),
+                    };
+                    true
+                });
             };
             let new_entry = self
                 .handler

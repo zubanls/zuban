@@ -49,7 +49,7 @@ impl Parent {
         }
     }
 
-    fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
+    pub(crate) fn absolute_path(&self, vfs: &dyn VfsHandler) -> PathWithScheme {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().absolute_path(vfs),
             Self::Workspace(workspace) => {

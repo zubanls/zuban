@@ -844,3 +844,68 @@ fn publish_diagnostics() {
     );
     tracing::info!("Finished all checks");
 }
+
+#[test]
+#[serial]
+fn test_virtual_environment() {
+    let run = |expected_first: &[String], expected_second: Option<&[String]>| {
+        let server = Project::with_fixture(
+            r#"
+        [file venv/bin/python]
+
+        [file venv/lib/python3.12/site-packages/foo/__init__.py]
+        foo = 1
+
+        [file venv/lib/python3.12/site-packages/foo/py.typed]
+
+        [file venv/lib/python3.12/site-packages/bar.py]
+        bar = ''
+        1()
+        "#,
+        )
+        .with_push_diagnostics()
+        .into_server();
+
+        const PATH: &str = "check.py";
+
+        server.open_in_memory_file(PATH, "from foo import foo\nfrom bar import bar");
+
+        assert_eq!(
+            server.expect_publish_diagnostics_for_file(PATH),
+            expected_first,
+        );
+
+        if let Some(expected_second) = expected_second {
+            // Remove it by renaming it
+            let old_path = "venv/lib/python3.12/site-packages/foo";
+            let new_path = "venv/lib/python3.12/site-packages/foo_new";
+            server.rename_file_and_wait(old_path, new_path);
+            assert_eq!(
+                server.expect_publish_diagnostics_for_file(PATH),
+                expected_second,
+            );
+            server.rename_file_and_wait(new_path, old_path);
+            assert_eq!(
+                server.expect_publish_diagnostics_for_file(PATH),
+                expected_first,
+            );
+        } else {
+            // There is no watch on the venv dir if the environment variable is not set. Therefore
+            // we cannot wait for an event. So we simply remove it.
+            server
+                .tmp_dir
+                .remove_file("venv/lib/python3.12/site-packages/foo/__init__.py")
+        }
+    };
+
+    let import_err = |name: &str| {
+        format!("Cannot find implementation or library stub for module named \"{name}\"")
+    };
+
+    // set venv information via $VIRTUAL_ENV
+    std::env::set_var("VIRTUAL_ENV", "venv");
+    run(&[], Some(&[import_err("foo")]));
+    std::env::remove_var("VIRTUAL_ENV");
+    // After unsetting it, there should just be errors
+    run(&[import_err("foo"), import_err("bar")], None);
+}

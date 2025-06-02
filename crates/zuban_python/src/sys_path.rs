@@ -54,7 +54,9 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
                 }
             }
         }
-        Err(err) => panic!("Expected {lib:?} to be a directory: {err}"),
+        Err(err) => {
+            tracing::error!("Expected {lib:?} to be a directory: {err}");
+        }
     }
     expected_path
 }
