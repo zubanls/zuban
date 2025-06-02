@@ -696,6 +696,12 @@ impl<'db> File<'db> {
     pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
         StmtLikeIterator::from_stmt_iterator(self.node, self.node.iter_children())
     }
+
+    pub fn has_docstr(&self) -> bool {
+        self.iter_stmt_likes()
+            .next()
+            .is_some_and(|first| first.node.is_string())
+    }
 }
 
 impl<'db> List<'db> {

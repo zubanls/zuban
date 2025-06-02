@@ -606,6 +606,23 @@ class Foo:
     __eq__  # E: Name "__eq__" is not defined
     mro  # E: Name "mro" is not defined
 
+[case __doc__not_none_with_docstr]
+import m
+reveal_type(m.__doc__)  # N: Revealed type is "str | None"
+
+[file m.py]
+"""
+Hello
+"""
+reveal_type(__doc__)  # N: Revealed type is "str"
+
+[case __doc__nullable_without_docstr]
+import m
+reveal_type(m.__doc__)  # N: Revealed type is "str | None"
+
+[file m.py]
+reveal_type(__doc__)  # N: Revealed type is "str | None"
+
 [case had_fstring_syntax_error]
 a = 'x'
 f"{a * 3:1}"
