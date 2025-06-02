@@ -149,24 +149,28 @@ impl DirectoryEntry {
         }
     }
 
-    pub fn walk(
+    pub(crate) fn walk_entries(
         &self,
         vfs: &dyn VfsHandler,
-        in_dir: &Entries,
-        callable: &mut impl FnMut(&Entries, &Rc<FileEntry>),
+        callable: &mut impl FnMut(&Self) -> bool,
     ) {
-        match self {
-            DirectoryEntry::File(file) => callable(in_dir, file),
-            DirectoryEntry::Directory(dir) => Directory::entries(vfs, dir).walk(vfs, callable),
-            DirectoryEntry::MissingEntry { .. } => (),
-        }
+        if !callable(self) {
+            return;
+        };
+        self.walk_internal(vfs, &mut |_, entry| callable(entry))
     }
 
-    pub(crate) fn walk_entries(&self, vfs: &dyn VfsHandler, callable: &mut impl FnMut(&Self)) {
-        callable(self);
+    fn walk_internal(
+        &self,
+        vfs: &dyn VfsHandler,
+        callable: &mut impl FnMut(&Entries, &Self) -> bool,
+    ) {
         if let DirectoryEntry::Directory(dir) = self {
-            for entry in Directory::entries(vfs, dir).borrow().iter() {
-                entry.walk_entries(vfs, callable);
+            let entries = Directory::entries(vfs, dir);
+            for entry in entries.borrow().iter() {
+                if callable(&*entries, entry) {
+                    entry.walk_internal(vfs, callable);
+                };
             }
         }
     }
@@ -265,15 +269,19 @@ impl Entries {
         Some(Ref::map(borrow, |dir| &dir[pos]))
     }
 
-    pub(crate) fn search_path(&self, vfs: &dyn VfsHandler, path: &str) -> Option<Rc<FileEntry>> {
+    pub(crate) fn search_path(&self, vfs: &dyn VfsHandler, path: &str) -> Option<DirOrFile> {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
                 if let DirectoryEntry::Directory(dir) = &*entry {
                     return Directory::entries(vfs, dir).search_path(vfs, rest);
                 }
-            } else if let DirectoryEntry::File(entry) = &*entry {
-                return Some(entry.clone());
+            } else {
+                return match &*entry {
+                    DirectoryEntry::File(f) => Some(DirOrFile::File(f.clone())),
+                    DirectoryEntry::MissingEntry(_) => None,
+                    DirectoryEntry::Directory(d) => Some(DirOrFile::Dir(d.clone())),
+                };
             }
         }
         None
@@ -382,11 +390,24 @@ impl Entries {
         }
     }
 
-    pub fn walk(&self, vfs: &dyn VfsHandler, callable: &mut impl FnMut(&Entries, &Rc<FileEntry>)) {
-        for n in self.borrow().iter() {
-            n.walk(vfs, self, callable)
+    /// Walks the entries and aborts descending if the callable returns false
+    pub fn walk_entries(
+        &self,
+        vfs: &dyn VfsHandler,
+        callable: &mut impl FnMut(&Self, &DirectoryEntry) -> bool,
+    ) {
+        for entry in self.borrow().iter() {
+            if callable(self, entry) {
+                entry.walk_internal(vfs, callable)
+            }
         }
     }
+}
+
+#[derive(Debug)]
+pub enum DirOrFile {
+    Dir(Rc<Directory>),
+    File(Rc<FileEntry>),
 }
 
 #[derive(Debug, Default, Clone)]

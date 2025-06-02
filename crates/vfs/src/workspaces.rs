@@ -5,7 +5,7 @@ use utils::match_case;
 use crate::{
     tree::{AddedFile, Entries},
     vfs::Scheme,
-    AbsPath, Directory, DirectoryEntry, FileEntry, Parent, PathWithScheme, VfsHandler,
+    AbsPath, DirOrFile, Directory, DirectoryEntry, Parent, PathWithScheme, VfsHandler,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -63,7 +63,7 @@ impl Workspaces {
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
         path: &PathWithScheme,
-    ) -> Option<Rc<FileEntry>> {
+    ) -> Option<DirOrFile> {
         self.iter()
             .find_map(|workspace| {
                 let p = workspace.strip_path_prefix(vfs, case_sensitive, path)?;
@@ -76,7 +76,7 @@ impl Workspaces {
                             let DirectoryEntry::File(f) = &*entry else {
                                 unreachable!("Why would this ever be {entry:?} as a fallback?");
                             };
-                            return Some(f.clone());
+                            return Some(DirOrFile::File(f.clone()));
                         };
                     }
                     None

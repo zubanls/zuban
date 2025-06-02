@@ -6,8 +6,8 @@ use utils::{FastHashSet, InsertOnlyVec};
 use crate::{
     tree::{InvalidationDetail, Invalidations},
     workspaces::Workspaces,
-    AbsPath, Directory, DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent, VfsHandler,
-    WorkspaceKind,
+    AbsPath, DirOrFile, Directory, DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent,
+    VfsHandler, WorkspaceKind,
 };
 
 thread_local! {
@@ -204,11 +204,7 @@ impl<F: VfsFile> Vfs<F> {
             .add(&*self.handler, file_scheme(), root_path, kind)
     }
 
-    pub fn search_path(
-        &self,
-        case_sensitive: bool,
-        path: &PathWithScheme,
-    ) -> Option<Rc<FileEntry>> {
+    pub fn search_path(&self, case_sensitive: bool, path: &PathWithScheme) -> Option<DirOrFile> {
         self.workspaces
             .search_path(&*self.handler, case_sensitive, path)
     }
@@ -517,7 +513,8 @@ impl<F: VfsFile> Vfs<F> {
                             // TODO we don't have to invalidate the whole tree
                             tracing::debug!("Decided to replace {replace_name} in VFS");
                             to_replace.walk_entries(&*self.handler, &mut |e| {
-                                check_invalidations_for_dir_entry(e)
+                                check_invalidations_for_dir_entry(e);
+                                true
                             });
                             *to_replace = new_entry;
                         } else {

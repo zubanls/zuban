@@ -188,7 +188,7 @@ files = [
     "b.py",
 ]
 
-[case files_path_in_mypy_config]
+[case files_path_in_mypy_config1]
 [file a/a.py]
 1()  # E: "int" not callable
 [file b/a/b.py]
@@ -200,7 +200,24 @@ files = [
 [mypy]
 files =
     a,
+    a,
     c
+
+[case files_path_in_mypy_config2]
+[file a/a.py]
+1()  # E: "int" not callable
+[file b/a/b.py]
+1()
+[file c/a/c.py]
+1()  # E: "int" not callable
+
+[file mypy.ini]
+[mypy]
+files =
+    a/**,
+    a/**,
+    c/**
+
 
 [case files_path_wild_cards_in_mypy_config1]
 [file a/x.py]

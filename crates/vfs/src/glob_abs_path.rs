@@ -39,6 +39,11 @@ impl GlobAbsPath {
         )
     }
 
+    pub fn maybe_simple_path(&self) -> Option<&str> {
+        let original = self.pattern.as_str();
+        (!original.contains(['?', '[', ']', '*'])).then_some(original)
+    }
+
     pub fn as_str(&self) -> &str {
         self.pattern.as_str()
     }

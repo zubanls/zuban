@@ -762,11 +762,19 @@ impl<'db> PythonFile {
     }
 
     pub fn flags<'x>(&'x self, db: &'x Database) -> &'x TypeCheckerFlags {
+        self.maybe_more_specific_flags(db)
+            .unwrap_or(&db.project.flags)
+    }
+
+    pub fn maybe_more_specific_flags<'x>(
+        &'x self,
+        db: &'x Database,
+    ) -> Option<&'x TypeCheckerFlags> {
         if let Some(super_file) = self.super_file {
             debug_assert!(self.flags.is_none());
-            super_file.file(db).flags(db)
+            super_file.file(db).maybe_more_specific_flags(db)
         } else {
-            self.flags.as_ref().unwrap_or(&db.project.flags)
+            self.flags.as_ref()
         }
     }
 

@@ -16,6 +16,7 @@ mod name;
 mod node_ref;
 mod params;
 mod python_state;
+mod select_files;
 mod sys_path;
 mod type_;
 mod type_helpers;
@@ -24,9 +25,7 @@ mod utils;
 use std::cell::OnceCell;
 
 use parsa_python_cst::{CodeIndex, Tree};
-use vfs::{
-    AbsPath, DirectoryEntry, Entries, FileEntry, FileIndex, LocalFS, PathWithScheme, VfsHandler,
-};
+use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
@@ -116,62 +115,15 @@ impl Project {
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         let mut checked_files = 0;
         let mut files_with_errors = 0;
-        let vfs_handler = &*self.db.vfs.handler;
-        let mut file_indexes = vec![];
-        let should_skip = |flags: &TypeCheckerFlags, path: &AbsPath| {
-            if !path.ends_with(".py") && !path.ends_with(".pyi") {
-                return true;
-            }
-            let check_files = &self.db.project.settings.files_or_directories_to_check;
-            !check_files.is_empty()
-                && !check_files
-                    .iter()
-                    .any(|glob| glob.matches(vfs_handler, path))
-                || flags.excludes.iter().any(|e| e.regex.is_match(path))
-        };
-        for entries in self.db.vfs.workspaces.entries_to_type_check() {
-            let ignore_py_if_overwritten_by_pyi = |in_dir: &Entries, file: &FileEntry| {
-                if !file.name.ends_with(".py") {
-                    return false;
-                }
-                in_dir
-                    .search(&format!("{}i", &file.name))
-                    .is_some_and(|e| matches!(*e, DirectoryEntry::File(_)))
-            };
-            let mut to_be_loaded = vec![];
-            entries.walk(vfs_handler, &mut |in_dir, file| {
-                if !ignore_py_if_overwritten_by_pyi(in_dir, file) {
-                    if let Some(file_index) = file.get_file_index() {
-                        file_indexes.push(file_index);
-                    } else {
-                        let path = file.absolute_path(vfs_handler);
-                        to_be_loaded.push((file.clone(), path));
-                    }
-                }
-            });
 
-            for (file, path) in to_be_loaded {
-                if !should_skip(&self.db.project.flags, path.path()) {
-                    if let Some(new_index) = self.db.load_file_from_workspace(&file, false) {
-                        file_indexes.push(new_index);
-                    }
-                }
-            }
-        }
-
-        'outer: for file_index in file_indexes {
-            let python_file = self.db.loaded_python_file(file_index);
-            let p = python_file.file_entry(&self.db).absolute_path(vfs_handler);
-            if should_skip(python_file.flags(&self.db), p.path()) {
-                continue 'outer;
-            }
+        select_files::with_relevant_files(&self.db, |file| {
             checked_files += 1;
-            let mut issues = python_file.diagnostics(&self.db).into_vec();
+            let mut issues = file.diagnostics(&self.db).into_vec();
             if !issues.is_empty() {
                 files_with_errors += 1;
                 all_diagnostics.append(&mut issues)
             }
-        }
+        });
         tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
         invalidate_protocol_cache();
         Diagnostics {
@@ -192,10 +144,13 @@ impl Project {
     }
 
     pub fn document(&mut self, path: &PathWithScheme) -> Option<Document> {
-        let file_entry = self
+        let DirOrFile::File(file_entry) = self
             .db
             .vfs
-            .search_path(self.db.project.flags.case_sensitive, path)?;
+            .search_path(self.db.project.flags.case_sensitive, path)?
+        else {
+            return None;
+        };
 
         let file_index = self.db.load_file_from_workspace(&file_entry, false)?;
         tracing::debug!("Looking at document #{file_index} for {}", path.as_uri());
