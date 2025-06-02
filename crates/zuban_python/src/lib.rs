@@ -140,28 +140,23 @@ impl Project {
             };
             let mut to_be_loaded = vec![];
             entries.walk(vfs_handler, &mut |in_dir, file| {
-                if file.get_file_index().is_none() && !ignore_py_if_overwritten_by_pyi(in_dir, file)
-                {
-                    let path = file.absolute_path(vfs_handler);
-                    to_be_loaded.push((file.clone(), path));
+                if !ignore_py_if_overwritten_by_pyi(in_dir, file) {
+                    if let Some(file_index) = file.get_file_index() {
+                        file_indexes.push(file_index);
+                    } else {
+                        let path = file.absolute_path(vfs_handler);
+                        to_be_loaded.push((file.clone(), path));
+                    }
                 }
             });
 
             for (file, path) in to_be_loaded {
                 if !should_skip(&self.db.project.flags, path.path()) {
-                    self.db.load_file_from_workspace(&file, false);
-                }
-            }
-
-            entries.walk(vfs_handler, &mut |in_dir, file| {
-                if let Some(file_index) = file.get_file_index() {
-                    // We need to recheck here, because some modules might have been loaded
-                    // previously in the current db and we don't want to check them.
-                    if !ignore_py_if_overwritten_by_pyi(in_dir, file) {
-                        file_indexes.push(file_index);
+                    if let Some(new_index) = self.db.load_file_from_workspace(&file, false) {
+                        file_indexes.push(new_index);
                     }
                 }
-            });
+            }
         }
 
         'outer: for file_index in file_indexes {
