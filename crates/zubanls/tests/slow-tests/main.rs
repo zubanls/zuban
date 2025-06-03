@@ -899,38 +899,34 @@ fn test_virtual_environment() {
                 expected_first,
             );
 
-            // For now we disable Windows, because the events are a bit random and lead to
-            // published diagnostics that are not that predictable
-            if !cfg!(target_os = "windows") {
-                tracing::info!("Check if rewriting the file causes an issue now");
-                let init = &format!("{old_path}/__init__.py");
-                server.write_file_and_wait(init, "\n");
-                assert_eq!(
-                    server.expect_publish_diagnostics_for_file(PATH),
-                    ["Module \"foo\" has no attribute \"foo\"".to_string()],
-                );
+            tracing::info!("Check if rewriting the file causes an issue now");
+            let init = &format!("{old_path}/__init__.py");
+            server.write_file_and_wait(init, "\n");
+            assert_eq!(
+                server.expect_publish_diagnostics_for_file(PATH),
+                ["Module \"foo\" has no attribute \"foo\"".to_string()],
+            );
 
-                tracing::info!("Check adding the code again");
-                server.write_file_and_wait(init, "foo = 1");
-                let mut result = server.expect_publish_diagnostics_for_file(PATH);
-                if cfg!(target_os = "windows") && !result.is_empty() {
-                    // On Windows events may be duplicated, because there is a Create event for writing
-                    // and then a modification event.
-                    result = server.expect_publish_diagnostics_for_file(PATH);
-                }
-                assert!(result.is_empty(), "{result:?}");
-
-                tracing::info!("Check removing it");
-                server.remove_file_and_wait(init);
-                assert_eq!(
-                    server.expect_publish_diagnostics_for_file(PATH),
-                    ["Module \"foo\" has no attribute \"foo\"".to_string()],
-                );
-
-                tracing::info!("Check adding it again");
-                server.write_file_and_wait(init, "foo = 1");
-                assert!(server.expect_publish_diagnostics_for_file(PATH).is_empty());
+            tracing::info!("Check adding the code again");
+            server.write_file_and_wait(init, "foo = 1");
+            let mut result = server.expect_publish_diagnostics_for_file(PATH);
+            if cfg!(target_os = "windows") && !result.is_empty() {
+                // On Windows events may be duplicated, because there is a Create event for writing
+                // and then a modification event.
+                result = server.expect_publish_diagnostics_for_file(PATH);
             }
+            assert!(result.is_empty(), "{result:?}");
+
+            tracing::info!("Check removing it");
+            server.remove_file_and_wait(init);
+            assert_eq!(
+                server.expect_publish_diagnostics_for_file(PATH),
+                ["Module \"foo\" has no attribute \"foo\"".to_string()],
+            );
+
+            tracing::info!("Check adding it again");
+            server.write_file_and_wait(init, "foo = 1");
+            assert!(server.expect_publish_diagnostics_for_file(PATH).is_empty());
         } else {
             // There is no watch on the venv dir if the environment variable is not set. Therefore
             // we cannot wait for an event. So we simply remove it.

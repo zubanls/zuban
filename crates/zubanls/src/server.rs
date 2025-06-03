@@ -446,7 +446,17 @@ impl<'sender> GlobalState<'sender> {
     fn on_notify_events(&mut self, event: NotifyEvent) {
         self.on_notify_event(event);
         // Check all events in the Notify queue
-        while let Some(next) = self.notify_receiver().and_then(|n| n.try_recv().ok()) {
+        while let Some(next) = self.notify_receiver().and_then(|n| {
+            if cfg!(target_os = "windows") {
+                // On Windows some events simply cause multiple events (e.g. rename), but also writes
+                // to files may be a Create + Modify, so we simply wait. This is useful for tests, but
+                // might also be useful in other cases, so we don't have to compute states in between
+                // changes.
+                n.recv_timeout(std::time::Duration::from_millis(5)).ok()
+            } else {
+                n.try_recv().ok()
+            }
+        }) {
             self.on_notify_event(next);
         }
     }
