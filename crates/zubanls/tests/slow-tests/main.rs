@@ -848,7 +848,9 @@ fn publish_diagnostics() {
 #[test]
 #[serial]
 fn test_virtual_environment() {
-    if cfg!(target_os = "windows") && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true") {
+    if cfg!(target_os = "windows")
+        && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
+    {
         // For now simply disable this test on Windows, because it fails sometimes and I'm not sure
         // how to fix it.
         return;

@@ -291,10 +291,14 @@ impl<'sender> GlobalState<'sender> {
                 // Don't delete this line of code, it might not be necessary in most cases, because
                 // the base directory is typically already watched, but I'm not sure this will
                 // always be the case.
-                vfs_handler.watch(parent_dir);
-                match std::fs::canonicalize(path) {
-                    Ok(path) => {
-                        self.paths_that_invalidate_whole_project.insert(path.into());
+                match std::fs::canonicalize(parent_dir) {
+                    Ok(parent_dir) => {
+                        vfs_handler.watch(&parent_dir);
+                        let path = parent_dir.join(path.file_name().expect(
+                            "config files where hand generated and should therefore always exist",
+                        ));
+                        vfs_handler.watch(&path);
+                        self.paths_that_invalidate_whole_project.insert(path);
                     }
                     Err(err) => tracing::info!(
                         "Canonicalizing of path that invalidates the whole project failed: {err}"
