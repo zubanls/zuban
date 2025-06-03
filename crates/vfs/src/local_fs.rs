@@ -215,7 +215,7 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
                         // General information:
                         // MacOS - FSEventStreamCreate: https://developer.apple.com/documentation/coreservices/1443980-fseventstreamcreate
                         // Windows - ReadDirectoryChangesW: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw
-                        if let Some(found) = already_watched
+                        if let Some(_found) = already_watched
                             .iter()
                             .find(|watched| canonicalized.starts_with(watched))
                         {

@@ -29,23 +29,7 @@ pub fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         }
     }
 
-    let log_file = env::var("ZUBAN_LOG_FILE")
-        .ok()
-        .map(PathBuf::from)
-        .or(log_file_flag);
-    let writer = match log_file {
-        Some(path) => {
-            let path = path
-                .canonicalize()
-                .expect("Expected a log path that can be cannonicalized");
-            let file_name = path.file_name().expect("Expected a file name as a log");
-            let dir = path.parent().expect("Expected there to be a parent for ");
-            let _ = fs::create_dir_all(dir);
-            let appender = tracing_appender::rolling::never(dir, file_name);
-            BoxMakeWriter::new(appender)
-        }
-        None => BoxMakeWriter::new(std::io::stderr),
-    };
+    let writer = maybe_log_file_writer(log_file_flag).unwrap_or_else(|| BoxMakeWriter::new(std::io::stderr));
 
     Config {
         writer,
@@ -59,11 +43,31 @@ pub fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
     .init()
 }
 
+fn maybe_log_file_writer(log_file_flag: Option<PathBuf>) -> Option<BoxMakeWriter> {
+    let log_file = env::var("ZUBAN_LOG_FILE")
+        .ok()
+        .map(PathBuf::from)
+        .or(log_file_flag)?;
+
+    let path = if log_file.is_absolute() {
+        log_file.to_path_buf()
+    } else {
+        let cwd = env::current_dir().expect("Expected to access the current dir to set the log file");
+        cwd.join(log_file)
+    };
+    let file_name = path.file_name().expect("Expected a file name as a log");
+    let dir = path.parent().expect("Expected there to be a parent for ");
+    let _ = fs::create_dir_all(dir);
+    let appender = tracing_appender::rolling::never(dir, file_name);
+    Some(BoxMakeWriter::new(appender))
+}
+
 pub fn setup_logging_for_tests() {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
+        let writer = maybe_log_file_writer(None).unwrap_or_else(|| BoxMakeWriter::new(TestWriter::default()));
         Config {
-            writer: TestWriter::default(),
+            writer,
             // Deliberately enable all `warning` logs if the user has not set ZUBAN_LOG, as there
             // is usually useful information in there for debugging.
             filter: std::env::var("ZUBAN_LOG")
