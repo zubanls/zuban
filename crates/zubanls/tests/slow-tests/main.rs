@@ -900,7 +900,8 @@ fn test_virtual_environment() {
 
             // Check adding the code again
             server.write_file_and_wait(init, "foo = 1");
-            assert!(server.expect_publish_diagnostics_for_file(PATH).is_empty());
+            let result = server.expect_publish_diagnostics_for_file(PATH);
+            assert!(result.is_empty(), "{result:?}");
 
             // Check removing it
             server.remove_file_and_wait(init);

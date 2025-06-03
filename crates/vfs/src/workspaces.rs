@@ -278,8 +278,10 @@ impl Workspace {
                     }
                 },
                 Err(err) => {
-                    // The path might not exist
-                    tracing::info!("Issue while canonicalizing workspace path: {err}");
+                    if kind != WorkspaceKind::Fallback {
+                        // The path might not exist
+                        tracing::info!("Issue while canonicalizing workspace path: {err}");
+                    }
                     root_path.to_string()
                 }
             };
@@ -299,6 +301,9 @@ impl Workspace {
                 root_path,
                 kind,
             })
+        }
+        if kind == WorkspaceKind::Fallback {
+            return workspace;
         }
         let new_entries = vfs.read_and_watch_dir(
             &workspace.root_path,

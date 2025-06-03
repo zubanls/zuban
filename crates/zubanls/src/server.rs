@@ -292,7 +292,14 @@ impl<'sender> GlobalState<'sender> {
                 // the base directory is typically already watched, but I'm not sure this will
                 // always be the case.
                 vfs_handler.watch(parent_dir);
-                self.paths_that_invalidate_whole_project.insert(path.into());
+                match std::fs::canonicalize(path) {
+                    Ok(path) => {
+                        self.paths_that_invalidate_whole_project.insert(path.into());
+                    }
+                    Err(err) => tracing::info!(
+                        "Canonicalizing of path that invalidates the whole project failed: {err}"
+                    ),
+                }
             })
             .unwrap_or_else(|err| {
                 use lsp_types::{
@@ -469,7 +476,15 @@ impl<'sender> GlobalState<'sender> {
                                 }
                                 if let Some(p) = path.to_str() {
                                     debug_assert!(path.is_absolute());
-                                    let p = project.vfs_handler().unchecked_abs_path(p.to_string());
+                                    let s = p.to_string();
+                                    let s = if cfg!(target_os = "windows")
+                                        && s.starts_with(r#"\\?\"#)
+                                    {
+                                        p[4..].to_string()
+                                    } else {
+                                        p.to_string()
+                                    };
+                                    let p = project.vfs_handler().unchecked_abs_path(s);
                                     project.invalidate_path(&p)
                                 }
                             }

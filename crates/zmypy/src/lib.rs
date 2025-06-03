@@ -749,7 +749,10 @@ mod tests {
 
         assert_eq!(
             d(&["", "foo/no_py_ending"]),
-            ["foo/no_py_ending:1: error: \"int\" not callable"]
+            [format!(
+                "foo{}no_py_ending:1: error: \"int\" not callable",
+                std::path::MAIN_SEPARATOR
+            )]
         );
         assert!(d(&["", "foo/"]).is_empty());
         assert!(d(&[""]).is_empty());

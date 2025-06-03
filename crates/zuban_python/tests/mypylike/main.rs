@@ -571,7 +571,8 @@ fn initialize_and_return_wanted_output(
     let mut sorted_files: Vec<_> = step.files.iter().collect();
     sorted_files.sort();
     for (&path, &code) in &sorted_files {
-        if ["mypy.ini", "pyproject.toml"].contains(&path) {
+        // ../ files are usually Mypy internals
+        if ["mypy.ini", "pyproject.toml"].contains(&path) || path.starts_with("../") {
             continue;
         }
         let p = if path == "__main__.py" {

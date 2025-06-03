@@ -233,8 +233,9 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
                             // need to watch ALL ancestors (however this is probably also an issue
                             // on Linux and is only fine on MacOS).
                             if cfg!(target_os = "windows") {
+                                /* TODO for now we disabled this
                                 if &canonicalized == found {
-                                    let _ = watcher.borrow_mut().unwatch(path);
+                                    let _ = watcher.borrow_mut().unwatch(&canonicalized);
                                     log_notify_error(
                                         watcher
                                             .borrow_mut()
@@ -243,6 +244,7 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
                                     tracing::debug!("Removed and re-added recursive watch for {canonicalized:?}");
                                     already_watched.insert(canonicalized);
                                 }
+                                */
                             }
                         } else {
                             log_notify_error(
