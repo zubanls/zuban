@@ -830,7 +830,12 @@ fn publish_diagnostics() {
 
     // Should not generate a diagnostic
     server.write_file_and_wait("not_exists_in_fs.py", "[1]()");
+
     server.close_in_memory_file("not_exists_in_fs.py");
+    if cfg!(target_os = "windows") {
+        // Try to make sure the events are properly ordered
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
 
     server.write_file_and_wait("m.py", "");
     assert_eq!(
