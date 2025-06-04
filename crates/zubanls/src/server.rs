@@ -573,13 +573,14 @@ impl<'sender> GlobalState<'sender> {
                         .join(", ")
                 );
                 let not = lsp_server::Notification::new(
-                <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
-                lsp_types::PublishDiagnosticsParams {
-                    uri: Uri::from_str(&path.as_uri()).unwrap(),
-                    diagnostics,
-                    version: None,
-                }
-            );
+                    <lsp_types::notification::PublishDiagnostics
+                        as lsp_types::notification::Notification>::METHOD.to_owned(),
+                    lsp_types::PublishDiagnosticsParams {
+                        uri: Uri::from_str(&path.as_uri()).unwrap(),
+                        diagnostics,
+                        version: None,
+                    }
+                );
                 _ = self.sender.send(not.into());
             }
         }
