@@ -97,7 +97,7 @@ impl Workspaces {
             }
             #[allow(unused_mut)]
             let mut rest = strip_path_prefix(vfs, case_sensitive, path, workspace.root_path());
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
             {
                 rest = rest.or_else(|| {
                     strip_path_prefix(vfs, case_sensitive, path, &workspace.canonicalized_path)
@@ -247,7 +247,10 @@ pub struct Workspace {
     pub(crate) root_path: Rc<AbsPath>,
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
-    #[cfg(target_os = "macos")]
+    // On Windows this is also necessary since changing the watch logic. We canonicalize watched
+    // paths to avoid adding multiple watches for the same files. Therefore we also need to
+    // canonicalize the paths here.
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
     canonicalized_path: Rc<AbsPath>,
     pub(crate) scheme: Scheme,
     pub entries: Entries,
@@ -265,11 +268,21 @@ impl Workspace {
         let root_path = Rc::<AbsPath>::from(root_path);
 
         let workspace;
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {
             let canonicalized_path = match std::fs::canonicalize(&**root_path) {
                 Ok(p) => match p.into_os_string().into_string() {
-                    Ok(p) => p,
+                    Ok(p) => {
+                        if cfg!(target_os = "windows") {
+                            if let Some(p) = p.strip_prefix(r#"\\?\"#) {
+                                p.to_string()
+                            } else {
+                                p
+                            }
+                        } else {
+                            p
+                        }
+                    }
                     Err(p) => {
                         tracing::error!(
                             "Canonicalized path for {root_path:?} is {p:?}, not valid unicode"
@@ -293,7 +306,7 @@ impl Workspace {
                 kind,
             });
         };
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios")))]
         {
             workspace = Rc::new(Self {
                 entries: Default::default(),

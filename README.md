@@ -44,6 +44,11 @@ Debugging:
 
     gdb -ex r --args <executable> <arguments...>
 
+On Windows' Github CI the tempdir path may be part of a symlink. Therefore you
+may want to run tests like this:
+
+TMP=~/<path-with-link> cargo test -p zubanls
+
 ## Running primer
 
 Mypy uses mypy-primer to test for changes. We can simply check if we panic on

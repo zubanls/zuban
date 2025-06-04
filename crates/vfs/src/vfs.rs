@@ -480,6 +480,7 @@ impl<F: VfsFile> Vfs<F> {
         };
         if self.in_memory_files.contains_key(&in_mem_path) {
             // In memory files override all file system events
+            tracing::debug!("Ignored invalidation, because the file is in-memory");
             return InvalidationResult::InvalidatedFiles;
         }
         let mut invalidates_db = false;
