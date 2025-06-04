@@ -206,7 +206,7 @@ fn diagnostics_for_saved_files() {
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn in_memory_file_changes() {
     let server = Project::with_fixture(
         r#"
@@ -334,13 +334,13 @@ fn change_config_file() {
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn check_rename_without_symlinks() {
     check_rename(false);
 }
 
 #[test]
-#[parallel]
+#[serial]
 #[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn check_rename_with_symlinks() {
     check_rename(true);
@@ -405,7 +405,7 @@ fn check_rename(contains_symlink: bool) {
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn multi_roots() {
     let server = Project::with_fixture(
         r#"
