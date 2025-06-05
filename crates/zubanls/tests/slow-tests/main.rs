@@ -7,7 +7,7 @@
 //! specific JSON shapes here -- there's little value in such tests, as we can't
 //! be sure without a real client anyway.
 
-use std::str::FromStr;
+use std::{str::FromStr, sync::OnceLock};
 
 use lsp_server::Response;
 use lsp_types::{
@@ -341,8 +341,10 @@ fn check_rename_without_symlinks() {
 
 #[test]
 #[parallel]
-#[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn check_rename_with_symlinks() {
+    if !symlink_creation_allowed() {
+        return
+    }
     check_rename(true);
 }
 
@@ -755,19 +757,50 @@ fn check_panic_recovery_with_push_diagnostics() {
         .is_empty());
 }
 
+fn symlink_creation_allowed() -> bool {
+    if cfg!(target_os = "windows") {
+        static SYMLINK_CREATION: OnceLock<bool> = OnceLock::new();
+        *SYMLINK_CREATION.get_or_init(|| {
+            let temp_dir = std::env::temp_dir();
+            let link = temp_dir.join("zuban-test-symlink-creation-link");
+            let result = std::os::windows::fs::symlink_dir(temp_dir, &link).is_ok();
+            let _ = std::fs::remove_file(link);
+            result
+        })
+    } else {
+        true
+    }
+}
+
 #[test]
 #[serial]
-fn publish_diagnostics() {
+fn publish_diagnostics_without_symlinks() {
+    publish_diagnostics(false)
+}
+
+#[test]
+#[serial]
+fn publish_diagnostics_with_symlinks() {
+    if !symlink_creation_allowed() {
+        return
+    }
+    publish_diagnostics(true)
+}
+
+fn publish_diagnostics(with_symlinks: bool) {
     // Check PublishDiagnostics where the client is not requesting diagnostics, but receiving them
     // each time a change is made
-    let server = Project::with_fixture(
+    let mut project = Project::with_fixture(
         r#"
             [file exists_in_fs.py]
             [file unrelated.py]
             "#,
     )
-    .with_push_diagnostics()
-    .into_server();
+    .with_push_diagnostics();
+    if with_symlinks {
+        project = project.with_root_dir_contains_symlink()
+    }
+    let server = project.into_server();
 
     const NOT_CALLABLE: &str = r#""int" not callable"#;
     const NOT_CALLABLE2: &str = r#""str" not callable"#;
