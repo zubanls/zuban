@@ -1042,11 +1042,7 @@ fn remove_directory_of_in_memory_file_with_push() {
 
     tracing::info!("Re-create directory, which should not mess with in-memory file");
     server.create_dir_all_and_wait("foo");
-    if !cfg!(any(
-        target_os = "windows",
-        target_os = "macos",
-        target_os = "ios"
-    )) {
+    if !cfg!(target_os = "windows") {
         assert_eq!(
             server.expect_publish_diagnostics_for_file(path),
             ["Module \"foo\" has no attribute \"exists\""]
