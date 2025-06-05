@@ -610,8 +610,10 @@ fn files_outside_of_root_with_push_diagnostics() {
 
 #[test]
 #[parallel]
-#[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn symlink_dir_loop() {
+    if !symlink_creation_allowed() {
+        return
+    }
     let server = Project::with_fixture(
         r#"
         [file foo.py]
