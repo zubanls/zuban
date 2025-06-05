@@ -7,7 +7,7 @@
 //! specific JSON shapes here -- there's little value in such tests, as we can't
 //! be sure without a real client anyway.
 
-use std::{str::FromStr, sync::OnceLock};
+use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
@@ -756,7 +756,7 @@ fn check_panic_recovery_with_push_diagnostics() {
 
 #[cfg(target_os = "windows")]
 fn symlink_creation_allowed() -> bool {
-    static SYMLINK_CREATION: OnceLock<bool> = OnceLock::new();
+    static SYMLINK_CREATION: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *SYMLINK_CREATION.get_or_init(|| {
         let temp_dir = std::env::temp_dir();
         let link = temp_dir.join("zuban-test-symlink-creation");

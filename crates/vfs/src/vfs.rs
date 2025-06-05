@@ -487,6 +487,7 @@ impl<F: VfsFile> Vfs<F> {
         let mut all_unloads = FastHashSet::default();
         let mut all_invalidations = FastHashSet::<FileIndex>::default();
 
+        #[allow(unused_variables)]
         if let Some((workspace, parent, replace_name)) = self
             .workspaces
             .search_potential_parent_for_invalidation(&*self.handler, case_sensitive, path)

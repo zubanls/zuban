@@ -114,8 +114,8 @@ pub trait VfsHandler {
 
     fn is_unnecessary_invalidation(
         &self,
-        path: &AbsPath,
-        curent_entry: Option<&DirectoryEntry>,
+        _path: &AbsPath,
+        _current_entry: Option<&DirectoryEntry>,
     ) -> bool {
         false
     }
