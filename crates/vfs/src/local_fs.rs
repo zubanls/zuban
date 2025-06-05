@@ -163,6 +163,26 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
             callback(path)
         }
     }
+
+    fn is_unnecessary_invalidation(
+        &self,
+        path: &AbsPath,
+        current_entry: Option<&DirectoryEntry>,
+    ) -> bool {
+        if current_entry.is_some_and(|entry| matches!(entry, DirectoryEntry::Directory(_))) {
+            if let Ok(metadata) = std::fs::metadata(path) {
+                // If it is still a directory, so we don't have to invalidate.
+                //
+                // Metadata changes do not affect our caches and file changes should lead to
+                // separate notify events. This is really important on Windows where creating
+                // a file leads to a directory change event + a file creation event. On Linux
+                // an event is also generated, but for the path of the newly created file
+                // (which is what we are intersted in).
+                return metadata.is_dir();
+            }
+        }
+        false
+    }
 }
 
 impl SimpleLocalFS {

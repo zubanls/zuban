@@ -111,4 +111,12 @@ pub trait VfsHandler {
     fn is_case_sensitive(&self) -> bool {
         cfg!(target_os = "windows")
     }
+
+    fn is_unnecessary_invalidation(
+        &self,
+        path: &AbsPath,
+        curent_entry: Option<&DirectoryEntry>,
+    ) -> bool {
+        false
+    }
 }

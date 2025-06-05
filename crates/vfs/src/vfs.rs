@@ -540,10 +540,14 @@ impl<F: VfsFile> Vfs<F> {
                     true
                 });
             };
-            let new_entry = self
-                .handler
-                .read_and_watch_entry(path, parent.clone(), replace_name);
             parent.with_dir(&*self.handler, |in_dir| {
+                if self.handler.is_unnecessary_invalidation(path, in_dir.search(replace_name).as_deref()) {
+                    tracing::debug!("Ignored invalidation for {path}, because it is an unnecessary invalidation");
+                    return;
+                }
+                let new_entry = self
+                    .handler
+                    .read_and_watch_entry(path, parent.clone(), replace_name);
                 match new_entry {
                     Some(new_entry) => {
                         if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
