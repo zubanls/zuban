@@ -762,9 +762,11 @@ fn symlink_creation_allowed() -> bool {
         static SYMLINK_CREATION: OnceLock<bool> = OnceLock::new();
         *SYMLINK_CREATION.get_or_init(|| {
             let temp_dir = std::env::temp_dir();
-            let link = temp_dir.join("zuban-test-symlink-creation-link");
+            let link = temp_dir.join("zuban-test-symlink-creation");
             let result = std::os::windows::fs::symlink_dir(temp_dir, &link).is_ok();
-            let _ = std::fs::remove_file(link);
+            if let Err(err) = std::fs::remove_dir(link) {
+                eprintln!("Symlink deletion did not work: {err}")
+            }
             result
         })
     } else {

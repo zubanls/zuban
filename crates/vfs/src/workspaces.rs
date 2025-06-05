@@ -251,7 +251,7 @@ pub struct Workspace {
     // paths to avoid adding multiple watches for the same files. Therefore we also need to
     // canonicalize the paths here.
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
-    canonicalized_path: Rc<AbsPath>,
+    pub(crate) canonicalized_path: Rc<AbsPath>,
     pub(crate) scheme: Scheme,
     pub entries: Entries,
     pub kind: WorkspaceKind,
