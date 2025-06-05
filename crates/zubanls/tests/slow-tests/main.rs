@@ -281,11 +281,6 @@ fn in_memory_file_changes() {
 #[test]
 #[serial]
 fn change_config_file() {
-    if cfg!(target_os = "linux") && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
-    {
-        // Somehow this test is failing a bit too often on GitHub, so for now ignore it.
-        return;
-    }
     let server = Project::with_fixture(
         r#"
         [file mypy.ini]
@@ -343,7 +338,7 @@ fn check_rename_without_symlinks() {
 #[parallel]
 fn check_rename_with_symlinks() {
     if !symlink_creation_allowed() {
-        return
+        return;
     }
     check_rename(true);
 }
@@ -612,7 +607,7 @@ fn files_outside_of_root_with_push_diagnostics() {
 #[parallel]
 fn symlink_dir_loop() {
     if !symlink_creation_allowed() {
-        return
+        return;
     }
     let server = Project::with_fixture(
         r#"
@@ -759,21 +754,23 @@ fn check_panic_recovery_with_push_diagnostics() {
         .is_empty());
 }
 
+#[cfg(target_os = "windows")]
 fn symlink_creation_allowed() -> bool {
-    if cfg!(target_os = "windows") {
-        static SYMLINK_CREATION: OnceLock<bool> = OnceLock::new();
-        *SYMLINK_CREATION.get_or_init(|| {
-            let temp_dir = std::env::temp_dir();
-            let link = temp_dir.join("zuban-test-symlink-creation");
-            let result = std::os::windows::fs::symlink_dir(temp_dir, &link).is_ok();
-            if let Err(err) = std::fs::remove_dir(link) {
-                eprintln!("Symlink deletion did not work: {err}")
-            }
-            result
-        })
-    } else {
-        true
-    }
+    static SYMLINK_CREATION: OnceLock<bool> = OnceLock::new();
+    *SYMLINK_CREATION.get_or_init(|| {
+        let temp_dir = std::env::temp_dir();
+        let link = temp_dir.join("zuban-test-symlink-creation");
+        let result = std::os::windows::fs::symlink_dir(temp_dir, &link).is_ok();
+        if let Err(err) = std::fs::remove_dir(link) {
+            eprintln!("Symlink deletion did not work: {err}")
+        }
+        result
+    })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn symlink_creation_allowed() -> bool {
+    true
 }
 
 #[test]
@@ -786,7 +783,7 @@ fn publish_diagnostics_without_symlinks() {
 #[serial]
 fn publish_diagnostics_with_symlinks() {
     if !symlink_creation_allowed() {
-        return
+        return;
     }
     publish_diagnostics(true)
 }
@@ -890,13 +887,6 @@ fn publish_diagnostics(with_symlinks: bool) {
 #[test]
 #[serial]
 fn test_virtual_environment() {
-    if cfg!(target_os = "windows")
-        && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
-    {
-        // For now simply disable this test on Windows, because it fails sometimes and I'm not sure
-        // how to fix it.
-        return;
-    }
     let run = |expected_first: &[String], expected_second: Option<&[String]>| {
         let server = Project::with_fixture(
             r#"
