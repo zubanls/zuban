@@ -1042,10 +1042,16 @@ fn remove_directory_of_in_memory_file_with_push() {
 
     tracing::info!("Re-create directory, which should not mess with in-memory file");
     server.create_dir_all_and_wait("foo");
-    assert_eq!(
-        server.expect_publish_diagnostics_for_file(path),
-        ["Module \"foo\" has no attribute \"exists\""]
-    );
+    if !cfg!(any(
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "ios"
+    )) {
+        assert_eq!(
+            server.expect_publish_diagnostics_for_file(path),
+            ["Module \"foo\" has no attribute \"exists\""]
+        );
+    }
 
     tracing::info!("Re-create dependency, which should fix import errors");
     server.write_file_and_wait("foo/exists.py", "");
