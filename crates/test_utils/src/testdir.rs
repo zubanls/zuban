@@ -85,6 +85,12 @@ impl TestDir {
         tracing::info!("Removed {path:?}");
     }
 
+    pub fn remove_dir(&self, rel_path: &str) {
+        let path = Path::new(&self.path).join(rel_path);
+        fs::remove_dir(path.as_path()).unwrap();
+        tracing::info!("Removed {path:?}");
+    }
+
     pub fn create_dir_all(&self, rel_path: &str) {
         let path = Path::new(&self.path).join(rel_path);
         fs::create_dir_all(&path).unwrap();

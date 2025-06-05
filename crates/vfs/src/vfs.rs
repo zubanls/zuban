@@ -486,6 +486,7 @@ impl<F: VfsFile> Vfs<F> {
         let mut invalidates_db = false;
         let mut all_unloads = FastHashSet::default();
         let mut all_invalidations = FastHashSet::<FileIndex>::default();
+        let mut ensure_unloaded_in_memory_paths = vec![];
 
         #[allow(unused_variables)]
         if let Some((workspace, parent, replace_name)) = self
@@ -528,6 +529,14 @@ impl<F: VfsFile> Vfs<F> {
                     match entry {
                         DirectoryEntry::File(f) => {
                             if let Some(file_index) = f.get_file_index() {
+                                for (path, in_memory_index) in self.in_memory_files.iter() {
+                                    if file_index == *in_memory_index {
+                                        ensure_unloaded_in_memory_paths
+                                            .push((path.clone(), *in_memory_index));
+                                        all_invalidations.insert(file_index);
+                                        return true;
+                                    }
+                                }
                                 all_unloads.insert(file_index);
                             }
                         }
@@ -598,6 +607,14 @@ impl<F: VfsFile> Vfs<F> {
             if self.invalidate_file_by_index(None, inv) == InvalidationResult::InvalidatedDb {
                 return InvalidationResult::InvalidatedDb;
             }
+        }
+        for (path, file_index) in ensure_unloaded_in_memory_paths {
+            let ensured = self
+                .workspaces
+                .ensure_file(&*self.handler, case_sensitive, &path);
+            debug_assert!(ensured.invalidations.is_empty());
+            ensured.file_entry.set_file_index(file_index);
+            self.handler.on_invalidated_in_memory_file(path);
         }
         tracing::debug!("Caused {unload_len} unloads and {invalidation_len} direct invalidations");
         InvalidationResult::InvalidatedFiles

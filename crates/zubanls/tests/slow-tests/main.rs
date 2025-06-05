@@ -980,3 +980,81 @@ fn test_virtual_environment() {
     tracing::info!("test_virtual_environment - After unsetting it, there should just be errors");
     run(&[import_err("foo"), import_err("bar")], None);
 }
+
+#[test]
+#[serial]
+fn remove_directory_of_in_memory_file_without_push() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo/exists.py]
+        "#,
+    )
+    .into_server();
+
+    let path = "foo/does_not_exist.py";
+    server.open_in_memory_file(path, "from foo import exists");
+
+    let d = || server.diagnostics_for_file(path);
+
+    let current = d();
+    assert!(current.is_empty(), "{current:?}");
+
+    tracing::info!("Remove directory, while in-memory file should persist");
+    server.remove_file_and_wait("foo/exists.py");
+    server.remove_dir_and_wait("foo");
+
+    assert_eq!(d(), ["Module \"foo\" has no attribute \"exists\""]);
+
+    tracing::info!("Re-create directory, which should not mess with in-memory file");
+
+    server.create_dir_all_and_wait("foo");
+    assert_eq!(d(), ["Module \"foo\" has no attribute \"exists\""]);
+
+    tracing::info!("Re-create dependency, which should fix import errors");
+    server.write_file_and_wait("foo/exists.py", "");
+    let current = d();
+    assert!(current.is_empty(), "{current:?}");
+}
+
+#[test]
+#[serial]
+fn remove_directory_of_in_memory_file_with_push() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo/exists.py]
+        "#,
+    )
+    .with_push_diagnostics()
+    .into_server();
+
+    let path = "foo/does_not_exist.py";
+    server.open_in_memory_file(path, "from foo import exists");
+
+    assert!(server.expect_publish_diagnostics_for_file(path).is_empty());
+
+    tracing::info!("Remove directory, while in-memory file should persist");
+    server.remove_file_and_wait("foo/exists.py");
+    server.remove_dir_and_wait("foo");
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file(path),
+        ["Module \"foo\" has no attribute \"exists\""]
+    );
+
+    tracing::info!("Re-create directory, which should not mess with in-memory file");
+    server.create_dir_all_and_wait("foo");
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file(path),
+        ["Module \"foo\" has no attribute \"exists\""]
+    );
+
+    tracing::info!("Re-create dependency, which should fix import errors");
+    server.write_file_and_wait("foo/exists.py", "");
+    assert!(server.expect_publish_diagnostics_for_file(path).is_empty());
+
+    tracing::info!("Change the in-memory file");
+    server.change_in_memory_file(path, "from foo import exists\n1()");
+    assert_eq!(
+        server.expect_publish_diagnostics_for_file(path),
+        ["\"int\" not callable"]
+    );
+}

@@ -484,6 +484,13 @@ impl Invalidations {
     pub(crate) fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {
         self.0.into_inner().map(|invs| invs.into_iter())
     }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        match &*self.0.borrow() {
+            InvalidationDetail::Some(file_indexes) => file_indexes.is_empty(),
+            InvalidationDetail::InvalidatesDb => false,
+        }
+    }
 }
 
 #[cfg(test)]

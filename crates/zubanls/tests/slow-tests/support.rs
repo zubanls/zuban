@@ -339,6 +339,13 @@ impl Server {
         tracing::info!("End");
     }
 
+    pub(crate) fn remove_dir_and_wait(&self, rel_path: &str) {
+        let _p = tracing::info_span!("remove_dir_and_wait").entered();
+        tracing::info!("Start");
+        self.with_wait(|| self.tmp_dir.remove_dir(rel_path));
+        tracing::info!("End");
+    }
+
     pub(crate) fn rename_file_and_wait(&self, from: &str, to: &str) {
         let _p = tracing::info_span!("rename_file_and_wait").entered();
         tracing::info!("Start");

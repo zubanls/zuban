@@ -171,6 +171,11 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
     ) -> bool {
         if current_entry.is_some_and(|entry| matches!(entry, DirectoryEntry::Directory(_))) {
             if let Ok(metadata) = std::fs::metadata(path) {
+                // The directory might have been created, but is not watched (relevant on Linux,
+                // respectively on all operating systems that don't support recursive file
+                // watchers).
+                self.watch(path);
+
                 // If it is still a directory, so we don't have to invalidate.
                 //
                 // Metadata changes do not affect our caches and file changes should lead to
