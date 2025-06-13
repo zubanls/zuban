@@ -1077,7 +1077,7 @@ class B(A):
 reveal_type(B().x)  # N: Revealed type is "int | str"
 
 [case finished_dict_overwrite]
-# flags: --local-partial-types
+# flags: --local-partial-types --disallow-untyped-globals
 
 x = {}  # E: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
 

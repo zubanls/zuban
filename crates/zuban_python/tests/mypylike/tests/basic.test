@@ -511,6 +511,7 @@ check(b"\z")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\z']"
 check(b"\ä ")  # E: Argument 1 to "check" has incompatible type "Literal[b'\\\xc3\xa4 ']"; expected "Literal[b'a']"
 
 [case bare_self_aug_assignment]
+# flags: --disallow-untyped-globals
 class Foo:
     def f(self) -> None:
         self.foo += 1  # E: "Self" has no attribute "foo"

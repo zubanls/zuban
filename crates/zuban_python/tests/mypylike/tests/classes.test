@@ -527,6 +527,7 @@ x = [1]
 Foo().undefined = x = []  # E: "Foo" has no attribute "undefined"
 
 [case avoid_context_of_getattr]
+# flags: --disallow-untyped-globals
 class Foo:
     def __getattr__(self, name: str) -> list[int]: ...
 
@@ -704,7 +705,7 @@ reveal_type(c.wrong_aug_assign)  # N: Revealed type is "Any"
 
 
 [case unannotated_class_init_with_self_def_check_untyped_defs]
-# flags: --check-untyped-defs
+# flags: --check-untyped-defs --no-local-partial-types
 class C:
     def __init__(self):
         self.x = 1

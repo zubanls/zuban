@@ -265,8 +265,13 @@ impl TestCase<'_, '_> {
         );
         set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
         set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
+        set_reverse_bool_flag(&mut config.local_partial_types, "--no-local-partial-types");
         set_reverse_bool_flag(&mut config.disallow_any_generics, "--allow-any-generics");
         set_reverse_bool_flag(&mut config.allow_redefinition, "--disallow-redefinition");
+        set_reverse_bool_flag(
+            &mut config.allow_untyped_globals,
+            "--disallow-untyped-globals",
+        );
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";

@@ -295,14 +295,14 @@ impl Default for TypeCheckerFlags {
             disallow_any_expr: false,
             disallow_subclassing_any: false,
             disallow_incomplete_defs: false,
-            allow_untyped_globals: false,
+            allow_untyped_globals: true,
             allow_empty_bodies: false,
             allow_redefinition: true,
             warn_unreachable: false,
             warn_redundant_casts: false,
             warn_return_any: false,
             warn_no_return: true,
-            local_partial_types: false,
+            local_partial_types: true,
             no_implicit_reexport: false,
             disable_bytearray_promotion: false,
             disable_memoryview_promotion: false,
@@ -344,6 +344,8 @@ impl TypeCheckerFlags {
     pub fn mypy_default() -> Self {
         Self {
             allow_redefinition: false,
+            local_partial_types: false,
+            allow_untyped_globals: false,
             ..Default::default()
         }
     }

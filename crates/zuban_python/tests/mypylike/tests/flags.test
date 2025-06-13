@@ -411,3 +411,25 @@ class D:
 
 class E:
     def __init__(self, x): ...  # E: Function is missing a type annotation for one or more arguments
+
+[case allow_untyped_globals_default_mypy_compatible]
+# flags: --mypy-compatible
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+
+[case allow_untyped_globals_default_no_mypy_compatible]
+# flags: --no-mypy-compatible
+x = []
+
+[case local_partial_types_default_mypy_compatible]
+# flags: --mypy-compatible --disallow-untyped-globals
+x = []
+def foo() -> None:
+    x.append(1)
+    reveal_type(x)  # N: Revealed type is "list[int]"
+
+[case local_partial_types_default_no_mypy_compatible]
+# flags: --no-mypy-compatible --disallow-untyped-globals
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+def foo() -> None:
+    x.append(1)
+    reveal_type(x)  # N: Revealed type is "list[Any]"
