@@ -169,14 +169,14 @@ def f(z: tuple[str, bool, Unpack[tuple[float, ...]], bytes, None, int]):
     reveal_type(z[1:-1])  # N: Revealed type is "tuple[bool, Unpack[Tuple[float, ...]], bytes, None]"
     reveal_type(z[2:-2])  # N: Revealed type is "tuple[Unpack[Tuple[float, ...]], bytes]"
     reveal_type(z[2:-2:1])  # N: Revealed type is "tuple[Unpack[Tuple[float, ...]], bytes]"
-    reveal_type(z[2:-3])  # N: Revealed type is "tuple[Unpack[Tuple[float, ...]]]"
+    reveal_type(z[2:-3])  # N: Revealed type is "tuple[float, ...]"
     z[3:-2]  # E: Ambiguous slice of a variadic tuple
 
     reveal_type(z[::-1])  # N: Revealed type is "tuple[int, None, bytes, Unpack[Tuple[float, ...]], bool, str]"
     reveal_type(z[-1::-1])  # N: Revealed type is "tuple[None, bytes, Unpack[Tuple[float, ...]], bool, str]"
     reveal_type(z[-1:1:-1])  # N: Revealed type is "tuple[None, bytes, Unpack[Tuple[float, ...]], bool]"
     reveal_type(z[-2:2:-1])  # N: Revealed type is "tuple[bytes, Unpack[Tuple[float, ...]]]"
-    reveal_type(z[-3:2:-1])  # N: Revealed type is "tuple[Unpack[Tuple[float, ...]]]"
+    reveal_type(z[-3:2:-1])  # N: Revealed type is "tuple[float, ...]"
     z[-4:2:-1]  # E: Ambiguous slice of a variadic tuple
     z[-3:3:-1]  # E: Ambiguous slice of a variadic tuple
     z[-4:-5:-1]  # E: Ambiguous slice of a variadic tuple
