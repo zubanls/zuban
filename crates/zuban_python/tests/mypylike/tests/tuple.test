@@ -524,3 +524,11 @@ def f(x: tuple[str, bytes], y: tuple[str]):
     reveal_type(t1)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
     t2 = [x, y]
     reveal_type(t2)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
+
+[case unpack_simplification_no_crash]
+# flags: --allow-redefinition
+def f(z: tuple[tuple[str, int], ...]) -> None:
+    x = z
+    if x and x[0][0] == "":
+        x = x[1:]
+        reveal_type(x)  # N: Revealed type is "tuple[tuple[str, int], ...]"

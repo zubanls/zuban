@@ -288,108 +288,115 @@ impl Tuple {
                     match &self.args {
                         TupleArgs::FixedLen(ts) => as_fixed_len_tuple(ts),
                         TupleArgs::WithUnpack(with_unpack) => {
-                            Inferred::from_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack({
-                                let ambiguous = || {
-                                    add_issue(IssueKind::AmbigousSliceOfVariadicTuple);
-                                    Inferred::from_type(Type::Tuple(
-                                        Self::new_arbitrary_length_with_any_from_error(),
-                                    ))
-                                };
-                                // These are special cases where we know that the resulting tuple
-                                // is just part of the prefix or suffix and therefore results in a
-                                // normal fixed length tuple that can have an arbitrary step.
-                                let is_same_sign = start
-                                    .zip(end)
-                                    .map(|(s, e)| s < 0 && e < 0 || s >= 0 && e >= 0)
-                                    .unwrap_or(true);
-                                if is_same_sign {
-                                    let before_len = with_unpack.before.len() as isize;
-                                    let after_len = with_unpack.after.len() as isize;
-                                    if let Some(end) = end {
-                                        if step < 0 {
-                                            if end < 0 && -end - 1 <= after_len {
-                                                return as_fixed_len_tuple(&with_unpack.after);
-                                            }
-                                        } else if end >= 0 && end <= before_len {
-                                            return as_fixed_len_tuple(&with_unpack.before);
-                                        }
-                                    }
-                                    if let Some(start) = start {
-                                        if step < 0 {
-                                            if start >= 0 && start <= before_len {
-                                                return as_fixed_len_tuple(&with_unpack.before);
-                                            }
-                                        } else if start < 0 && -start <= after_len {
+                            let ambiguous = || {
+                                add_issue(IssueKind::AmbigousSliceOfVariadicTuple);
+                                Inferred::from_type(Type::Tuple(
+                                    Self::new_arbitrary_length_with_any_from_error(),
+                                ))
+                            };
+                            // These are special cases where we know that the resulting tuple
+                            // is just part of the prefix or suffix and therefore results in a
+                            // normal fixed length tuple that can have an arbitrary step.
+                            let is_same_sign = start
+                                .zip(end)
+                                .map(|(s, e)| s < 0 && e < 0 || s >= 0 && e >= 0)
+                                .unwrap_or(true);
+                            if is_same_sign {
+                                let before_len = with_unpack.before.len() as isize;
+                                let after_len = with_unpack.after.len() as isize;
+                                if let Some(end) = end {
+                                    if step < 0 {
+                                        if end < 0 && -end - 1 <= after_len {
                                             return as_fixed_len_tuple(&with_unpack.after);
                                         }
+                                    } else if end >= 0 && end <= before_len {
+                                        return as_fixed_len_tuple(&with_unpack.before);
                                     }
                                 }
+                                if let Some(start) = start {
+                                    if step < 0 {
+                                        if start >= 0 && start <= before_len {
+                                            return as_fixed_len_tuple(&with_unpack.before);
+                                        }
+                                    } else if start < 0 && -start <= after_len {
+                                        return as_fixed_len_tuple(&with_unpack.after);
+                                    }
+                                }
+                            }
 
-                                // These are the normal cases where we skip an or at the start/end.
-                                if step == 1 {
-                                    let skip_start = start.unwrap_or(0);
-                                    if skip_start < 0 || end.is_some_and(|e| e >= 0) {
-                                        return ambiguous();
-                                    }
-                                    let skip_start = skip_start as usize;
-                                    let skip_end = -end.unwrap_or(0) as usize;
-
-                                    if skip_start > with_unpack.before.len()
-                                        || skip_end > with_unpack.after.len()
-                                    {
-                                        return ambiguous();
-                                    }
-                                    WithUnpack {
-                                        before: with_unpack
-                                            .before
-                                            .iter()
-                                            .skip(skip_start)
-                                            .cloned()
-                                            .collect(),
-                                        unpack: with_unpack.unpack.clone(),
-                                        after: with_unpack
-                                            .after
-                                            .iter()
-                                            .rev()
-                                            .skip(skip_end)
-                                            .rev()
-                                            .cloned()
-                                            .collect(),
-                                    }
-                                } else if step == -1 {
-                                    let skip_start = end.unwrap_or(0);
-                                    if skip_start < 0 || start.is_some_and(|s| s >= 0) {
-                                        return ambiguous();
-                                    }
-                                    let skip_start = skip_start as usize;
-                                    let skip_end = -start.unwrap_or(0) as usize;
-
-                                    if skip_start > with_unpack.before.len()
-                                        || skip_end > with_unpack.after.len()
-                                    {
-                                        return ambiguous();
-                                    }
-                                    WithUnpack {
-                                        before: with_unpack
-                                            .after
-                                            .iter()
-                                            .rev()
-                                            .skip(skip_end)
-                                            .cloned()
-                                            .collect(),
-                                        unpack: with_unpack.unpack.clone(),
-                                        after: with_unpack
-                                            .before
-                                            .iter()
-                                            .skip(skip_start)
-                                            .rev()
-                                            .cloned()
-                                            .collect(),
-                                    }
-                                } else {
+                            // These are the normal cases where we skip an or at the start/end.
+                            let out = if step == 1 {
+                                let skip_start = start.unwrap_or(0);
+                                if skip_start < 0 || end.is_some_and(|e| e >= 0) {
                                     return ambiguous();
                                 }
-                            }))))
+                                let skip_start = skip_start as usize;
+                                let skip_end = -end.unwrap_or(0) as usize;
+
+                                if skip_start > with_unpack.before.len()
+                                    || skip_end > with_unpack.after.len()
+                                {
+                                    return ambiguous();
+                                }
+                                WithUnpack {
+                                    before: with_unpack
+                                        .before
+                                        .iter()
+                                        .skip(skip_start)
+                                        .cloned()
+                                        .collect(),
+                                    unpack: with_unpack.unpack.clone(),
+                                    after: with_unpack
+                                        .after
+                                        .iter()
+                                        .rev()
+                                        .skip(skip_end)
+                                        .rev()
+                                        .cloned()
+                                        .collect(),
+                                }
+                            } else if step == -1 {
+                                let skip_start = end.unwrap_or(0);
+                                if skip_start < 0 || start.is_some_and(|s| s >= 0) {
+                                    return ambiguous();
+                                }
+                                let skip_start = skip_start as usize;
+                                let skip_end = -start.unwrap_or(0) as usize;
+
+                                if skip_start > with_unpack.before.len()
+                                    || skip_end > with_unpack.after.len()
+                                {
+                                    return ambiguous();
+                                }
+                                WithUnpack {
+                                    before: with_unpack
+                                        .after
+                                        .iter()
+                                        .rev()
+                                        .skip(skip_end)
+                                        .cloned()
+                                        .collect(),
+                                    unpack: with_unpack.unpack.clone(),
+                                    after: with_unpack
+                                        .before
+                                        .iter()
+                                        .skip(skip_start)
+                                        .rev()
+                                        .cloned()
+                                        .collect(),
+                                }
+                            } else {
+                                return ambiguous();
+                            };
+                            if out.before.is_empty() && out.after.is_empty() {
+                                if let TupleUnpack::ArbitraryLen(t) = out.unpack {
+                                    // We can simplify
+                                    return Inferred::from_type(Type::Tuple(Tuple::new(
+                                        TupleArgs::ArbitraryLen(Rc::new(t)),
+                                    )));
+                                }
+                            }
+                            Inferred::from_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(out))))
                         }
                         TupleArgs::ArbitraryLen(_) => {
                             Inferred::from_type(Type::Tuple(Rc::new(self.clone())))

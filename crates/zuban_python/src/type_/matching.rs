@@ -14,6 +14,7 @@ use crate::{
         Matcher, MismatchReason,
     },
     params::matches_params,
+    recoverable_error,
     type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
     type_helpers::{Class, TypeOrClass},
 };
@@ -1107,7 +1108,7 @@ fn match_unpack_internal(
                         check_type_var_tuple(matcher, tvt, TupleArgs::ArbitraryLen(t2.clone()))
                 }
                 TupleUnpack::ArbitraryLen(_) => {
-                    unreachable!(
+                    recoverable_error!(
                         "Arbitrary len with unpacks should not exist without before and \
                                   after. They should be simplified to normal arbitrary len"
                     )
