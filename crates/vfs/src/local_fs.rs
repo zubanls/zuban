@@ -79,7 +79,7 @@ impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
                                 match self.follow_and_watch_symlink(dir_entry.path()) {
                                     Ok(resolved) => resolved,
                                     Err(err) => {
-                                        tracing::error!("Follow symlink error, path={path}: {err}");
+                                        tracing::warn!("Follow symlink error, path={path}: {err}");
                                         continue;
                                     }
                                 }
