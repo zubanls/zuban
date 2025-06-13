@@ -835,6 +835,21 @@ impl FlowAnalysis {
         result
     }
 
+    pub fn with_class_frame<T>(&self, i_s: &InferenceState, callable: impl FnOnce() -> T) -> T {
+        self.with_frame_that_exports_widened_entries(i_s, || {
+            let start = self.partials_in_module.borrow().len();
+            let result = callable();
+            let mut partials_in_module = self.partials_in_module.borrow_mut();
+            // Partials of a class should be closed here, otherwise we would probably get into very
+            // weird situations where arbitrary other code after the class could "fill" the
+            // partial and accessing it would return e.g. None, which is definitely not what
+            // anybody wants.
+            process_unfinished_partials(i_s.db, partials_in_module.iter().skip(start).copied());
+            partials_in_module.truncate(start);
+            result
+        })
+    }
+
     fn with_frame_and_result<T>(&self, frame: Frame, callable: impl FnOnce() -> T) -> (Frame, T) {
         self.frames.borrow_mut().push(frame);
         let result = callable();

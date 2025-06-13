@@ -440,3 +440,29 @@ x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 def foo() -> None:
     x.append(1)
     reveal_type(x)  # N: Revealed type is "list[Any]"
+
+[case gradual_none1]
+# flags: --no-mypy-compatible
+class MyClass:
+    attr = None
+
+foo = MyClass()
+
+reveal_type(foo.attr)  # N: Revealed type is "Any | None"
+
+foo.attr = 1
+
+[case gradual_none2]
+# flags: --no-mypy-compatible
+import m
+reveal_type(m.foo.attr)  # N: Revealed type is "Any | None"
+
+[file m.py]
+class MyClass:
+    attr = None
+
+foo = MyClass()
+
+reveal_type(foo.attr)  # N: Revealed type is "Any | None"
+
+foo.attr = 1

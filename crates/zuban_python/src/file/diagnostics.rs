@@ -808,7 +808,7 @@ impl Inference<'_, '_, '_> {
     pub fn calculate_class_block_diagnostics(&self, c: Class, block: Block) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, block.index()), || {
             FLOW_ANALYSIS.with(|fa| {
-                fa.with_frame_that_exports_widened_entries(self.i_s, || {
+                fa.with_class_frame(self.i_s, || {
                     self.calc_block_diagnostics(block, Some(c), None);
                 })
             })

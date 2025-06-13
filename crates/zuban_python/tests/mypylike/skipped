@@ -7,6 +7,8 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
+gradual_none2
+
 # typeshed upgrade __getitem__ with generics
 testGetSlice
 testSliceSupportsIndex
@@ -161,7 +163,6 @@ testCustomEqCheckStrictEqualityTuple
 testDisableBytearrayPromotion
 # optional assignment within class
 testLocalPartialTypesWithInheritance3
-testInheritedAttributeNoStrictOptional
 # formatting the wrong class in assignment to member of superclass of superclass
 testClassOrderOfError
 testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
