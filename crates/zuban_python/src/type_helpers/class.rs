@@ -1367,12 +1367,9 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_and_delay_further(db, || {
-                    let new_i_s = &InferenceState::from_class(db, self);
-                    fa.with_frame_that_exports_widened_entries(new_i_s, || {
-                        self.file
-                            .inference(&new_i_s)
-                            .calculate_class_block_diagnostics(*self, class_block)
-                    })
+                    self.file
+                        .inference(&InferenceState::from_class(db, self))
+                        .calculate_class_block_diagnostics(*self, class_block)
                 })
             })?;
             // At this point we just lose reachability information for the class. This is

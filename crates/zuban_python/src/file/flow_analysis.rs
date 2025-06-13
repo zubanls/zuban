@@ -4427,7 +4427,7 @@ fn except_type(db: &Database, t: &Type, allow_tuple: bool) -> ExceptType {
     }
 }
 
-pub fn process_unfinished_partials(db: &Database, partials: Vec<PointLink>) {
+pub fn process_unfinished_partials(db: &Database, partials: impl IntoIterator<Item = PointLink>) {
     for partial in partials.into_iter() {
         let node_ref = NodeRef::from_link(db, partial);
         let point = node_ref.point();

@@ -807,7 +807,11 @@ impl Inference<'_, '_, '_> {
 
     pub fn calculate_class_block_diagnostics(&self, c: Class, block: Block) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, block.index()), || {
-            self.calc_block_diagnostics(block, Some(c), None);
+            FLOW_ANALYSIS.with(|fa| {
+                fa.with_frame_that_exports_widened_entries(self.i_s, || {
+                    self.calc_block_diagnostics(block, Some(c), None);
+                })
+            })
         })
     }
 
@@ -964,11 +968,7 @@ impl Inference<'_, '_, '_> {
         let i_s = self.i_s.with_class_context(&c);
         let inference = self.file.inference(&i_s);
 
-        let result = FLOW_ANALYSIS.with(|fa| {
-            fa.with_frame_that_exports_widened_entries(&i_s, || {
-                inference.calculate_class_block_diagnostics(c, block)
-            })
-        });
+        let result = inference.calculate_class_block_diagnostics(c, block);
         if !result.is_ok() {
             recoverable_error!(
                 "Calculating the class block failed for: {} line #{} in {}",
