@@ -433,3 +433,10 @@ x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 def foo() -> None:
     x.append(1)
     reveal_type(x)  # N: Revealed type is "list[Any]"
+
+[case no_mypy_compatible_disallows_untyped_globals]
+# flags: --no-mypy-compatible --strict
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+def foo() -> None:
+    x.append(1)
+    reveal_type(x)  # N: Revealed type is "list[Any]"

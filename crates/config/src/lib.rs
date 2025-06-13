@@ -333,6 +333,7 @@ impl TypeCheckerFlags {
         self.warn_return_any = true;
         self.no_implicit_reexport = true;
         self.strict_equality = true;
+        self.allow_untyped_globals = false; // This is mostly important for --no-mypy-compatible
         self.extra_checks = true;
     }
 
