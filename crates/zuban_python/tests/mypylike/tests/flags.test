@@ -442,7 +442,7 @@ def foo() -> None:
     reveal_type(x)  # N: Revealed type is "list[Any]"
 
 [case gradual_none1]
-# flags: --no-mypy-compatible
+# flags: --allow-untyped-globals --local-partial-types
 class MyClass:
     attr = None
 
@@ -453,12 +453,28 @@ reveal_type(foo.attr)  # N: Revealed type is "Any | None"
 foo.attr = 1
 
 [case gradual_none2]
-# flags: --no-mypy-compatible
+# flags: --allow-untyped-globals --local-partial-types
 import m
 reveal_type(m.foo.attr)  # N: Revealed type is "Any | None"
 
 [file m.py]
 class MyClass:
+    attr = None
+
+foo = MyClass()
+
+reveal_type(foo.attr)  # N: Revealed type is "Any | None"
+
+foo.attr = 1
+
+[case gradual_none3]
+# flags: --allow-untyped-globals --local-partial-types
+import m
+reveal_type(m.foo.attr)  # N: Revealed type is "Any | None"
+
+[file m.py]
+class MyClass:
+    attr = None
     attr = None
 
 foo = MyClass()

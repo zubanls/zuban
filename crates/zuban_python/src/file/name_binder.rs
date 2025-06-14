@@ -308,7 +308,8 @@ impl<'db> NameBinder<'db> {
                                 | IndexingCause::Annotation { .. }
                                 | IndexingCause::ConstantAssignment
                         )
-                    },
+                    }
+                    || matches!(cause, IndexingCause::Other),
             );
             self.db_infos.points.set(name_index, p);
         }
@@ -412,6 +413,11 @@ impl<'db> NameBinder<'db> {
                                 IndexingCause::Other
                             } else {
                                 IndexingCause::ConstantAssignment
+                            }
+                        }
+                        AssignmentContent::WithAnnotation(_, _, None) => {
+                            IndexingCause::Annotation {
+                                definition_name_index: None,
                             }
                         }
                         _ => IndexingCause::Other,

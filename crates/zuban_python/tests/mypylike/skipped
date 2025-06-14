@@ -7,7 +7,12 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
-gradual_none2
+testIncrementalNativeInt
+conjunction_partial_inference_combination_issue
+overload_overwrite
+testNewAnalyzerAliasToNotReadyClassGeneric
+testNewAnalyzerTrickyAliasInFuncDef
+mypy_extensions_invalid_callable_param_named
 
 # typeshed upgrade __getitem__ with generics
 testGetSlice

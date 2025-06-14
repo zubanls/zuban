@@ -4423,7 +4423,7 @@ fn get_generator_return_type(db: &Database, had_issue: &impl Fn(), t: &Type) -> 
 
 pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex {
     let mut point = file.points.get(name_index);
-    if !point.calculated() || point.specific() != Specific::NameOfNameDef {
+    if !point.calculated() || point.maybe_specific() != Some(Specific::NameOfNameDef) {
         // Happens e.g. for the definition of builtins.type (overwritten in python_state.rs)
         // Or definitions of names that look like self (e.g. in testInferAttributeInitializedToEmptyNonSelf)
         return name_index;
