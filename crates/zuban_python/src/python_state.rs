@@ -1285,8 +1285,13 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
             // typing_extensions to typing.
             return;
         }
+        let index = if name_def.maybe_name_of_func().is_some() {
+            name_def.index()
+        } else {
+            node_index
+        };
         file.points
-            .set(node_index, Point::new_specific(specific, Locality::File));
+            .set(index, Point::new_specific(specific, Locality::File));
     }
 }
 
