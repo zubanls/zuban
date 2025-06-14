@@ -787,7 +787,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         if cfg!(feature = "zuban_debug") {
             if let Some((pr, _)) = &result {
                 debug!(
-                    "Module lookup on {}: {}",
+                    "Module lookup {}.{name}: {}",
                     self.file.qualified_name(self.i_s.db),
                     pr.debug_info(self.i_s.db)
                 );

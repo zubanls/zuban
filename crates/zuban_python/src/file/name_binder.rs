@@ -420,7 +420,6 @@ impl<'db> NameBinder<'db> {
                                 definition_name_index: None,
                             }
                         }
-                        _ => IndexingCause::Other,
                     };
                     match unpacked {
                         AssignmentContent::Normal(targets, _) => {
@@ -522,7 +521,11 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::NonlocalStmt(n) => self.index_non_block_node(&n, ordered),
                 StmtLikeContent::TypeAlias(type_alias) => {
                     let (name_def, type_params, expr) = type_alias.unpack();
-                    self.add_new_definition(name_def, Point::new_uncalculated());
+                    self.add_new_definition_with_cause(
+                        name_def,
+                        Point::new_uncalculated(),
+                        IndexingCause::NonFlowAnalysisName,
+                    );
                     self.with_nested(NameBinderKind::TypeAlias, type_alias.index(), |binder| {
                         binder.index_type_param_names(type_params);
                         // This is not an actual annotation, but behaves like one
@@ -1391,7 +1394,11 @@ impl<'db> NameBinder<'db> {
     fn index_type_param_names(&mut self, type_params: Option<TypeParams<'db>>) {
         if let Some(type_params) = type_params {
             for type_param in type_params.iter() {
-                self.add_new_definition(type_param.name_def(), Point::new_uncalculated());
+                self.add_new_definition_with_cause(
+                    type_param.name_def(),
+                    Point::new_uncalculated(),
+                    IndexingCause::NonFlowAnalysisName,
+                );
             }
         }
     }
