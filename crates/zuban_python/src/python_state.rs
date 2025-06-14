@@ -488,16 +488,17 @@ impl PythonState {
                 class.ensure_calculated_class_infos(db);
             } else {
                 let func_index = name_index - NAME_TO_FUNCTION_DIFF;
-                if NodeRef::new(module(db), func_index)
-                    .maybe_function()
-                    .is_some()
-                {
+                let file = module(db);
+                let node_ref = NodeRef::new(file, func_index);
+                if let Some(_) = node_ref.maybe_function() {
                     if !is_func {
                         panic!(
                             "Expected a class for {}.{name}",
                             module(db).qualified_name(db)
                         )
                     }
+                    Function::new(node_ref, None)
+                        .ensure_cached_func(&InferenceState::new(db, file));
                     update(db, Some(func_index))
                 } else {
                     panic!(
@@ -1098,19 +1099,15 @@ impl PythonState {
     }
 
     pub(crate) fn collections_namedtuple_function(&self, i_s: &InferenceState) -> Function {
-        let func = Function::new(self.collections_named_tuple_node_ref(), None);
-        func.ensure_cached_func(i_s);
-        func
+        Function::new(self.collections_named_tuple_node_ref(), None)
     }
 
     pub(crate) fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {
         debug_assert!(self.dataclasses_replace_index != 0);
-        let func = Function::new(
+        Function::new(
             NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
             None,
-        );
-        func.ensure_cached_func(i_s);
-        func
+        )
     }
 
     pub fn mypy_extensions_arg_func(&self, db: &Database, specific: Specific) -> Inferred {
@@ -1156,7 +1153,6 @@ fn node_ref_to_global_func_type(db: &Database, n: NodeRef) -> Type {
     );
     let func = Function::new(n, None);
     let i_s = InferenceState::new(db, func.file);
-    func.ensure_cached_func(&i_s);
     func.as_type(&i_s, FirstParamProperties::None)
 }
 
