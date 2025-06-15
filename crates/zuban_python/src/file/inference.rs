@@ -3611,12 +3611,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             PointResolution::NameDef {
                 node_ref,
                 global_redirect,
-            } => node_ref
-                .file
-                .inference(self.i_s)
-                .with_correct_context(global_redirect, |inference| {
-                    inference._infer_name_def(node_ref.expect_name_def())
-                }),
+            } => node_ref.file.inference(self.i_s).with_correct_context(
+                global_redirect,
+                |inference| {
+                    if global_redirect {
+                        self.infer_module_point_resolution(pr, |_| todo!())
+                    } else {
+                        inference._infer_name_def(node_ref.expect_name_def())
+                    }
+                },
+            ),
             PointResolution::Inferred(inferred) => inferred,
             PointResolution::Param { node_ref, .. } => {
                 debug_assert_eq!(node_ref.file_index(), self.file.file_index());

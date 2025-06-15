@@ -540,3 +540,14 @@ def f(x: X) -> None:
 [file m.py]
 class C: ...
 X = C
+
+[case func_star_import]
+def g() -> None:
+    from m import *
+    reveal_type(a)  # N: Revealed type is "int | None"
+
+[file m.py]
+if bool():
+    a = None
+else:
+    a = 1

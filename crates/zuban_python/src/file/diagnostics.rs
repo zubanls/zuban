@@ -144,7 +144,7 @@ impl Inference<'_, '_, '_> {
                 "Diagnostics for module {file_path} ({})",
                 self.file.file_index(),
             );
-            debug_assert!(self.i_s.is_file_context());
+            debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
             FLOW_ANALYSIS.with(|fa| {
                 let _indent = debug_indent();
                 fa.with_new_empty_and_process_delayed_diagnostics(self.i_s.db, || {
