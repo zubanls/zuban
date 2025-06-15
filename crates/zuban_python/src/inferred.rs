@@ -640,9 +640,12 @@ impl<'db: 'slf, 'slf> Inferred {
                     if ignore_if_already_saved {
                         return self;
                     }
-                    let node_ref = NodeRef::new(file, index);
                     if std::cfg!(debug_assertions) {
-                        panic!("Why overwrite? New: {self:?} Previous: {node_ref:?}");
+                        let node_ref = NodeRef::new(file, index);
+                        panic!(
+                            "Why overwrite? New: {self:?} Previous: {node_ref:?} line {}",
+                            node_ref.line_one_based(i_s.db)
+                        );
                     }
                 }
                 file.points.set(

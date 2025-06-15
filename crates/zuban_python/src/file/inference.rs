@@ -4269,7 +4269,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
         }
         let i = self.infer_named_expression(decorator.named_expression());
-        i.save_redirect(self.i_s, self.file, decorator.index())
+        if self.file.points.get(decorator.index()).calculated() {
+            // It is possible that the decorator causes flow analysis for the whole file. In this
+            // case we simply return and do not save, because it was already saved.
+            i
+        } else {
+            i.save_redirect(self.i_s, self.file, decorator.index())
+        }
     }
 
     pub(super) fn infer_dotted_name(&self, dotted: DottedName) -> Inferred {
