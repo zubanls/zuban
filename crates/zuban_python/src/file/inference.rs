@@ -3611,19 +3611,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             PointResolution::NameDef {
                 node_ref,
                 global_redirect,
-            } => node_ref.file.inference(self.i_s).with_correct_context(
-                global_redirect,
-                |inference| {
-                    if global_redirect {
-                        self.infer_module_point_resolution(pr, |issue| {
-                            debug!("TODO Add an error around module point resolution {issue:?}");
-                            tracing::warn!("Ignored an error around module point resolution");
-                        })
-                    } else {
-                        inference._infer_name_def(node_ref.expect_name_def())
-                    }
-                },
-            ),
+            } => {
+                if global_redirect {
+                    self.infer_module_point_resolution(pr, |issue| {
+                        debug!("TODO Add an error around module point resolution {issue:?}");
+                        tracing::warn!("Ignored an error around module point resolution");
+                    })
+                } else {
+                    node_ref
+                        .file
+                        .inference(self.i_s)
+                        ._infer_name_def(node_ref.expect_name_def())
+                }
+            }
             PointResolution::Inferred(inferred) => inferred,
             PointResolution::Param { node_ref, .. } => {
                 debug_assert_eq!(node_ref.file_index(), self.file.file_index());
@@ -3686,9 +3686,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             PointResolution::NameDef {
                 node_ref,
                 global_redirect,
-            } => node_ref.file.inference(self.i_s).with_correct_context(
-                global_redirect,
-                |inference| {
+            } => node_ref
+                .file
+                .inference(&InferenceState::new(self.i_s.db, node_ref.file))
+                .with_correct_context(global_redirect, |inference| {
                     let ensure_flow_analysis = || {
                         if inference.calculate_diagnostics().is_err() {
                             add_issue(IssueKind::CannotDetermineType {
@@ -3723,8 +3724,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         return Inferred::from_type(w.widened.clone());
                     }
                     r.result
-                },
-            ),
+                }),
 
             PointResolution::Inferred(inferred) => inferred,
             _ => self.infer_point_resolution(pr),

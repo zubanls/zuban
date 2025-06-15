@@ -397,3 +397,13 @@ _RetType = TypeVar("_RetType")
 class C(Generic[_RetType]):
     def __init__(self, coro: _RetType) -> None:
         self._coro: _RetType = coro
+
+[case no_crash_on_forward_reference_and_weird_imports]
+def f() -> None:
+    from m import APP
+
+[file m/__init__.py]
+from .inner import *
+
+[file m/inner.py]
+APP = bool()
