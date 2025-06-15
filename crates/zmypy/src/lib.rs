@@ -24,13 +24,14 @@ pub struct Cli {
     ignore_excludes_from_config: bool,
     #[arg(num_args = 0..)]
     files: Vec<String>,
+    /*
     /// Type-check module; can repeat for more modules
     #[arg(short, long, hide = true)]
     module_todo_unimplemented: Vec<String>,
     /// Type-check package recursively; can be repeated
     #[arg(short, long, hide = true)]
     package_todo_unimplemented: Vec<String>,
-
+    */
     // Config file
     /// Configuration file, must have a [mypy] section (defaults to mypy.ini, .mypy.ini, pyproject.toml, setup.cfg, ~/.config/mypy/config, ~/.mypy.ini)
     #[arg(long)]
