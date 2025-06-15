@@ -3615,7 +3615,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 global_redirect,
                 |inference| {
                     if global_redirect {
-                        self.infer_module_point_resolution(pr, |_| todo!())
+                        self.infer_module_point_resolution(pr, |issue| {
+                            debug!("TODO Add an error around module point resolution {issue:?}");
+                            tracing::warn!("Ignored an error around module point resolution");
+                        })
                     } else {
                         inference._infer_name_def(node_ref.expect_name_def())
                     }

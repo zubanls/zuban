@@ -501,3 +501,37 @@ class C(TypedDict):  # E: A TypedDict cannot be a dataclass
 
 
 C()  # E: Missing keys ("x", "y") for TypedDict "C"
+
+[case dataclass_post_init_should_not_crash1]
+import m
+
+def _construct_named_inputs_and_attrs(signature: m.OpSignature): ...
+
+[file m.py]
+import dataclasses
+from typing import Any
+
+EMPTY = bool()
+
+@dataclasses.dataclass
+class OpSignature:
+    default: Any = EMPTY
+
+    def __post_init__(self) -> None: ...
+
+[case dataclass_post_init_should_not_crash2]
+import m
+
+def _construct_named_inputs_and_attrs(signature: m.OpSignature): ...
+
+[file m.py]
+import dataclasses
+from typing import Any
+
+EMPTY = bool()
+
+@dataclasses.dataclass
+class OpSignature:
+    default: dataclasses.InitVar[Any] = EMPTY
+
+    def __post_init__(self) -> None: ...

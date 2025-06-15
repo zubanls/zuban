@@ -352,20 +352,22 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     t = replace_class_type_vars(db, &t, &cls, &|| );
                 }
                 */
-                if let Some(right_side) = right_side {
-                    // Since an InitVar is special and actually not checked against defaults, we
-                    // need to check for this separately and tell the inference that this was
-                    // already done.
-                    inference.check_right_side_against_annotation(&t, right_side);
-                    inference.assign_for_annotation(
-                        annotation,
-                        target,
-                        NodeRef::new(file, right_side.index()),
-                    );
-                    file.points.set(
-                        assignment.index(),
-                        Point::new_specific(Specific::Analyzed, Locality::Todo),
-                    );
+                if is_init_var {
+                    if let Some(right_side) = right_side {
+                        // Since an InitVar is special and actually not checked against defaults, we
+                        // need to check for this separately and tell the inference that this was
+                        // already done.
+                        inference.check_right_side_against_annotation(&t, right_side);
+                        inference.assign_for_annotation(
+                            annotation,
+                            target,
+                            NodeRef::new(file, right_side.index()),
+                        );
+                        file.points.set(
+                            assignment.index(),
+                            Point::new_specific(Specific::Analyzed, Locality::Todo),
+                        );
+                    }
                 }
                 let name = field_options.alias_name.clone().unwrap_or_else(|| {
                     DbString::StringSlice(StringSlice::from_name(cls.node_ref.file_index(), name))
