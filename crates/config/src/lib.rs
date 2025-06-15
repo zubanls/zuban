@@ -740,6 +740,7 @@ fn set_bool_init_flags(
         "warn_unused_ignores"
         | "packages"
         | "strict_concatenate"
+        | "strict_bytes"
         | "namespace_packages"
         | "explicit_package_bases"
         | "warn_incomplete_stub"
