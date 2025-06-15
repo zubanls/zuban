@@ -530,8 +530,7 @@ impl PythonState {
             ($attr_name:ident, $name:literal, $is_func:expr) => {
                 // NewType is special, because the fallback is a function in current
                 // Typeshed, so use TypingExtensions for now...
-                let use_new_type_from_typing_extensions = $name == "NewType"
-                    && db.project.settings.python_version < PythonVersion::new(3, 10);
+                let use_new_type_from_typing_extensions = $name == "NewType" && legacy_new_type(db);
                 cache_index(
                     db,
                     |db| {
@@ -737,6 +736,33 @@ impl PythonState {
             _collections_abc,
             "dict_keys"
         );
+        // Some cases "Special" types need to be precalculated, because their names are overwritten.
+        {
+            let legacy_new_type = legacy_new_type(db);
+            let mut cache_without_saving_in_typing =
+                |name| cache_index(db, |db| db.python_state.typing(), name, |_, _| (), true);
+            cache_without_saving_in_typing("dataclass_transform");
+            cache_without_saving_in_typing("assert_type");
+            if legacy_new_type {
+                cache_without_saving_in_typing("NewType");
+            }
+            let mut cache_without_saving_mypy_extensions = |name| {
+                cache_index(
+                    db,
+                    |db| db.python_state.mypy_extensions(),
+                    name,
+                    |_, _| (),
+                    true,
+                )
+            };
+            cache_without_saving_mypy_extensions("Arg");
+            cache_without_saving_mypy_extensions("DefaultArg");
+            cache_without_saving_mypy_extensions("NamedArg");
+            cache_without_saving_mypy_extensions("DefaultNamedArg");
+            cache_without_saving_mypy_extensions("VarArg");
+            cache_without_saving_mypy_extensions("KwArg");
+            cache_without_saving_mypy_extensions("TypedDict");
+        }
 
         let typed_dict_mro = calculate_mro_for_class(db, db.python_state.typed_dict_class());
         let builtins_int_mro = calculate_mro_for_class(db, db.python_state.int());
@@ -1098,11 +1124,11 @@ impl PythonState {
         Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
     }
 
-    pub(crate) fn collections_namedtuple_function(&self, i_s: &InferenceState) -> Function {
+    pub(crate) fn collections_namedtuple_function(&self) -> Function {
         Function::new(self.collections_named_tuple_node_ref(), None)
     }
 
-    pub(crate) fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {
+    pub(crate) fn dataclasses_replace(&self) -> Function {
         debug_assert!(self.dataclasses_replace_index != 0);
         Function::new(
             NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
@@ -1354,4 +1380,8 @@ fn calculate_mro_for_class(db: &Database, class: Class) -> Box<[BaseClass]> {
         },
     );
     mro.into_boxed_slice()
+}
+
+fn legacy_new_type(db: &Database) -> bool {
+    db.project.settings.python_version < PythonVersion::new(3, 10)
 }

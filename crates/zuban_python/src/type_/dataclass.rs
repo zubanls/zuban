@@ -792,7 +792,7 @@ pub(crate) fn dataclasses_replace<'db>(
     // Execute the original function (in typeshed).
     i_s.db
         .python_state
-        .dataclasses_replace(i_s)
+        .dataclasses_replace()
         .execute(i_s, args, result_context, on_type_error)
 }
 

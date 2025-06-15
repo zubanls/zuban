@@ -2795,7 +2795,7 @@ pub fn specific_to_type<'db>(
         Specific::CollectionsNamedTuple => Cow::Owned(
             i_s.db
                 .python_state
-                .collections_namedtuple_function(i_s)
+                .collections_namedtuple_function()
                 .as_type(i_s, FirstParamProperties::None),
         ),
         Specific::TypingProtocol
