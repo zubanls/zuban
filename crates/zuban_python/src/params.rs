@@ -102,7 +102,8 @@ fn matches_params_detailed(
     }
 }
 
-// Check whether params of f1 are assignable to params of f2, like f2 = f1
+// Check whether params of f1 are assignable to params of f2, like f2 = f1 or in other words that
+// f2 is wider than f1.
 pub fn matches_simple_params<
     'db: 'x + 'y,
     'x,
@@ -341,10 +342,7 @@ pub fn matches_simple_params<
                                 }
                             }
                             let mut found = false;
-                            while params2
-                                .peek()
-                                .is_some_and(|p2| !matches!(p2.kind(i_s.db), ParamKind::StarStar))
-                            {
+                            while params2.peek().is_some() {
                                 param2 = *params2.peek().unwrap();
                                 if param1.name(i_s.db) == param2.name(i_s.db) {
                                     match &param2.specific(i_s.db) {
@@ -354,15 +352,34 @@ pub fn matches_simple_params<
                                             found = true;
                                             break;
                                         }
-                                        _ => continue,
+                                        _ => (),
                                     }
-                                } else {
-                                    params2.next();
-                                    if matches!(
-                                        param2.kind(i_s.db),
-                                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                                    ) {
+                                }
+                                match param2.kind(i_s.db) {
+                                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly => {
+                                        params2.next();
                                         unused_keyword_params.push(param2);
+                                    }
+                                    ParamKind::StarStar => {
+                                        let WrappedParamType::StarStar(WrappedStarStar::ValueType(
+                                            vt,
+                                        )) = param2.specific(i_s.db)
+                                        else {
+                                            // TODO Add support for at least unpacks
+                                            break;
+                                        };
+                                        matches &= match_(i_s, matcher, t1, &vt);
+                                        found = true;
+                                        break;
+                                    }
+                                    ParamKind::Star => {
+                                        params2.next();
+                                    }
+                                    _ => {
+                                        if !param2.has_default() {
+                                            break;
+                                        }
+                                        params2.next();
                                     }
                                 }
                             }
