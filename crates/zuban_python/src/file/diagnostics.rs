@@ -2768,7 +2768,13 @@ fn operator_domain_is_widened(
         match original {
             Type::Callable(c) => widens_callable(c),
             Type::FunctionOverload(o) => o.iter_functions().all(widens_callable),
-            _ => unreachable!(),
+            _ => {
+                recoverable_error!(
+                    "Why would an overload ever be {:?}",
+                    original.format_short(i_s.db)
+                );
+                false
+            }
         }
     })
 }
