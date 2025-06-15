@@ -1276,17 +1276,16 @@ fn typing_changes(
     set_typing_inference(t, "Self", Specific::TypingSelf);
     set_typing_inference(t, "TypeAliasType", Specific::TypingTypeAliasType);
     setup_type_alias(typing_extensions, "final", typing, "final");
-    // Not needed, because there's an import?
-    //set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
-    //set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
-    //set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
-    //set_typing_inference(t, "NamedTuple", Specific::TypingNamedTuple);
-    //set_typing_inference(t, "Unpack", Specific::TypingUnpack);
-    //set_typing_inference(t, "reveal_type", Specific::RevealTypeFunction);
-    //set_typing_inference(t, "assert_type", Specific::AssertTypeFunction);
-    //set_typing_inference(t, "NotRequired", Specific::TypingNotRequired);
-    //set_typing_inference(t, "Required", Specific::TypingRequired);
-    //set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
+    set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
+    set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
+    set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
+    set_typing_inference(t, "NamedTuple", Specific::TypingNamedTuple);
+    set_typing_inference(t, "Unpack", Specific::TypingUnpack);
+    set_typing_inference(t, "reveal_type", Specific::RevealTypeFunction);
+    set_typing_inference(t, "assert_type", Specific::AssertTypeFunction);
+    set_typing_inference(t, "NotRequired", Specific::TypingNotRequired);
+    set_typing_inference(t, "Required", Specific::TypingRequired);
+    set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
 
     for module in [typing, mypy_extensions, typing_extensions] {
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);

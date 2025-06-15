@@ -1107,3 +1107,9 @@ def C(): ...
 __main__:2: error: "return" outside function
 [out2]
 __main__:2: error: "return" outside function
+
+[case string_indexing_should_not_be_any]
+# flags: --strict --disallow-any-unimported --python-version 3.8
+def short_type(obj: object) -> str:
+    t = str(type(obj))
+    return t.split(".")[-1].rstrip("'>")
