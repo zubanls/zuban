@@ -222,10 +222,13 @@ pub struct Cli {
 }
 
 pub fn run(cli: Cli) -> ExitCode {
+    /*
+     * TODO renenable this after alpha in some form
     if let Err(err) = licensing::verify_license_in_config_dir() {
         eprintln!("{err}");
         return ExitCode::from(10);
     }
+    */
 
     let current_dir = std::env::current_dir().expect("Expected a valid working directory");
     const CWD_ERROR: &str = "Expected valid unicode in working directory";

@@ -185,7 +185,8 @@ pub fn run_server_with_custom_connection(
 }
 
 pub fn run_server() -> anyhow::Result<()> {
-    licensing::verify_license_in_config_dir()?;
+    // TODO reenable this in the alpha in some form
+    //licensing::verify_license_in_config_dir()?;
 
     let (connection, io_threads) = Connection::stdio();
     run_server_with_custom_connection(connection, None, || Ok(io_threads.join()?))
