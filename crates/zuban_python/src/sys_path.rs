@@ -16,7 +16,7 @@ pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> 
         let p = site_packages_path_from_venv(exe, settings.python_version);
         sys_path.push(
             handler.unchecked_abs_path(
-                p.into_os_string().into_string().expect(
+                p.to_str().expect(
                     "Should never happen, because we only put together valid unicode paths",
                 ),
             ),
@@ -89,8 +89,7 @@ pub(crate) fn typeshed_path_from_executable() -> Rc<AbsPath> {
         if typeshed_path.exists() {
             return LocalFS::without_watcher().abs_path_from_current_dir(
                 typeshed_path
-                    .into_os_string()
-                    .into_string()
+                    .to_str()
                     .expect("Expected the typeshed path to be UTF-8"),
             );
         }

@@ -62,7 +62,7 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: Rc<AbsPath> = SimpleLocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR.to_string());
+    static BASE_PATH: Rc<AbsPath> = SimpleLocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR);
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";

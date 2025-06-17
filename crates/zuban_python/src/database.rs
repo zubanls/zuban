@@ -964,7 +964,7 @@ impl Database {
             format!("{typeshed_path}{sep}stdlib"),
             format!("{typeshed_path}{sep}stubs{sep}mypy-extensions"),
         ] {
-            vfs.add_workspace(vfs.handler.unchecked_abs_path(p), WorkspaceKind::Typeshed)
+            vfs.add_workspace(vfs.handler.unchecked_abs_path(&p), WorkspaceKind::Typeshed)
         }
 
         for p in &project.sys_path {
@@ -972,10 +972,7 @@ impl Database {
         }
         // This AbsPath is not really an absolute path, it's just a fallback so anything can be
         // part of it.
-        vfs.add_workspace(
-            vfs.handler.unchecked_abs_path("".to_string()),
-            WorkspaceKind::Fallback,
-        );
+        vfs.add_workspace(vfs.handler.unchecked_abs_path(""), WorkspaceKind::Fallback);
 
         if let Some(recovery) = recovery {
             vfs.load_panic_recovery(

@@ -254,7 +254,7 @@ pub fn with_diagnostics_from_cli<T>(
 ) -> T {
     tracing::info!("Checking in {current_dir}");
     let (mut project, diagnostic_config) =
-        project_from_cli(cli, current_dir, typeshed_path, |name| {
+        project_from_cli(cli, &current_dir, typeshed_path, |name| {
             std::env::var(name).ok()
         });
     let diagnostics = project.diagnostics();
@@ -263,7 +263,7 @@ pub fn with_diagnostics_from_cli<T>(
 
 fn project_from_cli(
     cli: Cli,
-    current_dir: String,
+    current_dir: &str,
     typeshed_path: Option<Rc<AbsPath>>,
     lookup_env_var: impl Fn(&str) -> Option<String>,
 ) -> (Project, DiagnosticConfig) {
@@ -278,7 +278,7 @@ fn project_from_cli(
     }
     if options.settings.environment.is_none() {
         options.settings.environment =
-            lookup_env_var("VIRTUAL_ENV").map(|v| local_fs.absolute_path(&current_dir, v))
+            lookup_env_var("VIRTUAL_ENV").map(|v| local_fs.absolute_path(&current_dir, &v))
     }
 
     apply_flags(
@@ -370,7 +370,7 @@ fn apply_flags(
         project_options.settings.python_version = python_version;
     }
     if let Some(p) = cli.python_executable {
-        let p = vfs_handler.absolute_path(&current_dir, p);
+        let p = vfs_handler.absolute_path(&current_dir, &p);
         project_options
             .settings
             .apply_python_executable(vfs_handler, &p)
@@ -384,7 +384,7 @@ fn apply_flags(
             .files
             .into_iter()
             .map(|p| {
-                GlobAbsPath::new(vfs_handler, &current_dir, p)
+                GlobAbsPath::new(vfs_handler, &current_dir, &p)
                     .expect("Need a valid glob path as a files argument")
             })
             .collect();
@@ -447,7 +447,7 @@ mod tests {
     ) -> Vec<String> {
         let (mut project, diagnostic_config) = project_from_cli(
             cli,
-            directory.to_string(),
+            directory,
             Some(test_utils::typeshed_path()),
             lookup_env_var,
         );

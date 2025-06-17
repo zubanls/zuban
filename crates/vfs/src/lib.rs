@@ -74,7 +74,7 @@ pub trait VfsHandler {
         }
     }
 
-    fn absolute_path(&self, current_dir: &AbsPath, path: String) -> Rc<AbsPath> {
+    fn absolute_path(&self, current_dir: &AbsPath, path: &str) -> Rc<AbsPath> {
         let p = Path::new(&path);
         if p.is_absolute() {
             self.unchecked_abs_path(path)
@@ -83,9 +83,9 @@ pub trait VfsHandler {
         }
     }
 
-    fn unchecked_abs_path(&self, mut path: String) -> Rc<AbsPath> {
-        if let Some(new_root_path) = self.strip_separator_suffix(path.as_str()) {
-            path.truncate(new_root_path.len());
+    fn unchecked_abs_path(&self, mut path: &str) -> Rc<AbsPath> {
+        if let Some(new_root_path) = self.strip_separator_suffix(path) {
+            path = new_root_path;
         }
         AbsPath::new_rc(path.into())
     }
@@ -99,13 +99,7 @@ pub trait VfsHandler {
     }
 
     fn join(&self, path: &AbsPath, name: &str) -> Rc<AbsPath> {
-        self.unchecked_abs_path(
-            Path::new(&**path)
-                .join(name)
-                .into_os_string()
-                .into_string()
-                .unwrap(),
-        )
+        self.unchecked_abs_path(Path::new(&**path).join(name).to_str().unwrap())
     }
 
     fn is_case_sensitive(&self) -> bool {

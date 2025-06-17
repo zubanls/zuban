@@ -280,7 +280,7 @@ impl<'sender> GlobalState<'sender> {
                 .roots
                 .first()
                 .expect("There should always be at least one root at this point");
-            let first_root = vfs_handler.unchecked_abs_path(first_root.clone());
+            let first_root = vfs_handler.unchecked_abs_path(first_root);
             let mut config = config::find_workspace_config(&vfs_handler, &first_root, |path| {
                 // Watch the file itself to make sure that we can invalidate when it changes.
                 let path = Path::new(&**path);
@@ -337,12 +337,12 @@ impl<'sender> GlobalState<'sender> {
             config.settings.mypy_path = self
                 .roots
                 .iter()
-                .map(|p| vfs_handler.unchecked_abs_path(p.clone()))
+                .map(|p| vfs_handler.unchecked_abs_path(p))
                 .collect();
             config.settings.typeshed_path = self.typeshed_path.clone();
             if config.settings.environment.is_none() {
                 config.settings.environment = match std::env::var("VIRTUAL_ENV") {
-                    Ok(path) => Some(vfs_handler.absolute_path(&first_root, path)),
+                    Ok(path) => Some(vfs_handler.absolute_path(&first_root, &path)),
                     Err(err) => {
                         tracing::info!("Tried to access $VIRTUAL_ENV, but got: {err}");
                         None
@@ -491,13 +491,12 @@ impl<'sender> GlobalState<'sender> {
                                 }
                                 if let Some(p) = path.to_str() {
                                     debug_assert!(path.is_absolute());
-                                    let s = p.to_string();
                                     let s = if cfg!(target_os = "windows")
-                                        && s.starts_with(r#"\\?\"#)
+                                        && p.starts_with(r#"\\?\"#)
                                     {
-                                        p[4..].to_string()
+                                        &p[4..]
                                     } else {
-                                        p.to_string()
+                                        p
                                     };
                                     let p = project.vfs_handler().unchecked_abs_path(s);
                                     project.invalidate_path(&p)

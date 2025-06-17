@@ -54,7 +54,7 @@ impl Default for Settings {
             environment: None,
             typeshed_path: std::env::var("ZUBAN_TYPESHED")
                 .ok()
-                .map(|p| LocalFS::without_watcher().abs_path_from_current_dir(p)),
+                .map(|p| LocalFS::without_watcher().abs_path_from_current_dir(&p)),
             mypy_path: vec![],
             mypy_compatible: false,
             files_or_directories_to_check: vec![],
@@ -82,7 +82,7 @@ impl Settings {
                 .as_os_str()
                 .to_str()
                 .expect("Should never happen, because we only put together valid unicode paths");
-            handler.unchecked_abs_path(p.to_string())
+            handler.unchecked_abs_path(p)
         });
         if environment.is_none() {
             bail!(ERR)
@@ -812,17 +812,17 @@ fn apply_from_base_config(
             settings.files_or_directories_to_check = value
                 .as_str_list(key, &[','])?
                 .into_iter()
-                .map(|s| GlobAbsPath::new(vfs, current_dir, s))
+                .map(|s| GlobAbsPath::new(vfs, current_dir, &s))
                 .collect::<anyhow::Result<Vec<_>>>()?;
         }
         "mypy_path" => settings.mypy_path.extend(
             value
                 .as_str_list(key, &[',', ':'])?
                 .into_iter()
-                .map(|s| vfs.absolute_path(current_dir, s)),
+                .map(|s| vfs.absolute_path(current_dir, &s)),
         ),
         "python_executable" => {
-            let p = vfs.absolute_path(current_dir, value.as_str()?.to_string());
+            let p = vfs.absolute_path(current_dir, value.as_str()?);
             settings.apply_python_executable(vfs, &p)?
         }
         "python_version" => {
@@ -890,7 +890,7 @@ mod tests {
 
     fn project_options(code: &str, from_ini: bool) -> anyhow::Result<Option<ProjectOptions>> {
         let local_fs = LocalFS::without_watcher();
-        let current_dir = local_fs.unchecked_abs_path("/foo".to_string());
+        let current_dir = local_fs.unchecked_abs_path("/foo");
         if from_ini {
             ProjectOptions::from_mypy_ini(
                 &local_fs,

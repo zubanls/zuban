@@ -86,12 +86,9 @@ impl<'db> FileSelector<'db> {
                     if let Some(path) = pattern.maybe_simple_path() {
                         match self.db.vfs.search_path(
                             self.db.project.flags.case_sensitive,
-                            &PathWithScheme::with_file_scheme(
-                                vfs_handler.normalize_rc_path(
-                                    LocalFS::without_watcher()
-                                        .abs_path_from_current_dir(path.to_string()),
-                                ),
-                            ),
+                            &PathWithScheme::with_file_scheme(vfs_handler.normalize_rc_path(
+                                LocalFS::without_watcher().abs_path_from_current_dir(path),
+                            )),
                         ) {
                             Some(DirOrFile::Dir(dir)) => self.handle_dir(&dir),
                             Some(DirOrFile::File(file)) => self.add_file(file),

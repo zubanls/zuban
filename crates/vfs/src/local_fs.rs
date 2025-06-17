@@ -299,16 +299,10 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
     }
 
     pub fn current_dir(&self) -> Rc<AbsPath> {
-        self.unchecked_abs_path(
-            std::env::current_dir()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap(),
-        )
+        self.unchecked_abs_path(std::env::current_dir().unwrap().to_str().unwrap())
     }
 
-    pub fn abs_path_from_current_dir(&self, p: String) -> Rc<AbsPath> {
+    pub fn abs_path_from_current_dir(&self, p: &str) -> Rc<AbsPath> {
         self.absolute_path(&self.current_dir(), p)
     }
 

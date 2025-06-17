@@ -6,7 +6,7 @@ pub struct GlobAbsPath {
 }
 
 impl GlobAbsPath {
-    pub fn new(vfs: &dyn VfsHandler, current_dir: &AbsPath, path: String) -> anyhow::Result<Self> {
+    pub fn new(vfs: &dyn VfsHandler, current_dir: &AbsPath, path: &str) -> anyhow::Result<Self> {
         let abspath = vfs.absolute_path(current_dir, path);
         let pattern = glob::Pattern::new(&abspath)?;
         Ok(Self { pattern })
