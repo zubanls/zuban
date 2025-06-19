@@ -8,6 +8,7 @@ mod file;
 mod format_data;
 mod getitem;
 mod imports;
+mod inference;
 mod inference_state;
 mod inferred;
 mod lines;
@@ -24,18 +25,19 @@ mod utils;
 
 use std::cell::OnceCell;
 
-use parsa_python_cst::{CodeIndex, Tree};
+use inference::{GotoResolver, PositionalDocument};
+use parsa_python_cst::Tree;
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
-use file::{File, Leaf, PythonFile};
+use file::File;
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
 use matching::invalidate_protocol_cache;
-use name::Names;
+pub use name::{Name, SymbolKind};
 
 pub struct Project {
     db: Database,
@@ -173,66 +175,66 @@ impl std::fmt::Debug for Project {
     }
 }
 
-pub struct Document<'a> {
-    project: &'a mut Project,
+pub struct Document<'project> {
+    project: &'project mut Project,
     file_index: FileIndex,
 }
 
-impl Document<'_> {
+impl<'project> Document<'project> {
     pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic]> {
         let python_file = self.project.db.loaded_python_file(self.file_index);
         python_file.diagnostics(&self.project.db)
     }
+
+    fn positional_document(&self, position: InputPosition) -> PositionalDocument {
+        PositionalDocument::new(
+            &self.project.db,
+            self.project.db.loaded_python_file(self.file_index),
+            position,
+        )
+    }
+
+    pub fn goto<T>(
+        &self,
+        position: InputPosition,
+        follow_imports: bool,
+        on_name: impl for<'a> Fn(&dyn Name<'a>) -> T + Copy,
+    ) -> impl Iterator<Item = T> {
+        GotoResolver::new(self.positional_document(position), on_name).goto(follow_imports)
+    }
+
+    pub fn infer_type_definition<'slf, T>(
+        &'slf self,
+        position: InputPosition,
+        on_name: impl for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'slf,
+    ) -> impl Iterator<Item = T> + 'slf {
+        GotoResolver::new(self.positional_document(position), on_name).infer_type_definition()
+    }
+
+    pub fn infer_implementation<'slf, T>(
+        &'slf self,
+        position: InputPosition,
+        on_name: impl for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'slf,
+    ) -> impl Iterator<Item = T> + 'slf {
+        GotoResolver::new(self.positional_document(position), on_name).infer_implementation()
+    }
+
+    pub fn complete(&self, position: InputPosition) {
+        self.positional_document(position).complete();
+    }
 }
 
+/// All positions are zero based
 #[derive(Debug, Clone, Copy)]
-pub enum Position {
-    Byte(usize),
-    LineColumn(usize, usize),
+pub enum InputPosition {
+    NthByte(usize),
+    Utf8Bytes { line: usize, column: usize },
+    Utf16CodeUnits { line: usize, column: usize },
+    CodePoints { line: usize, column: usize },
 }
 
-pub struct Script<'a> {
-    project: &'a mut Project,
-    file_index: FileIndex,
-}
-
+/*
 impl<'a> Script<'a> {
-    pub fn new(
-        project: &'a mut Project,
-        path: Option<PathWithScheme>,
-        code: Option<Box<str>>,
-    ) -> Self {
-        let db = &mut project.db;
-        let file_index = match path {
-            Some(path) => {
-                if let Some(code) = code {
-                    db.store_in_memory_file(path, code)
-                } else {
-                    db.vfs
-                        .in_memory_file(&path)
-                        .or_else(|| unimplemented!())
-                        .unwrap()
-                }
-            }
-            None => unimplemented!(),
-        };
-        Self {
-            project,
-            file_index,
-        }
-    }
-
-    fn to_byte_position(&self, position: Position) -> CodeIndex {
-        match position {
-            Position::Byte(pos) => pos as u32,
-            Position::LineColumn(line, column) => self.file().line_column_to_byte(line, column),
-        }
-    }
-
-    fn file(&self) -> &PythonFile {
-        self.project.db.loaded_python_file(self.file_index)
-    }
-
     fn leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
         let leaf = self.file().leaf(&self.project.db, pos);
@@ -241,66 +243,13 @@ impl<'a> Script<'a> {
         leaf
     }
 
-    pub fn complete(&self, _position: Position) {}
-
-    /*
-    pub fn infer_definition<C: Fn(&dyn ValueName<'a>) -> T, T>(
-        &'a self,
-        callable: &C,
-        position: Position,
-    ) -> impl Iterator<Item = T> {
-        let i_s = InferenceState::new(&self.project.db);
-        match self.leaf(position) {
-            Leaf::Name(name) => name.infer(),
-            Leaf::Number => unimplemented!(),
-            Leaf::Keyword(keyword) => self.file().infer_operator_leaf(&self.project.db, keyword),
-            Leaf::None | Leaf::String => unimplemented!(),
-        }
-    }
-    */
-
-    /*
-    pub fn infer_implementation(&self, position: Position) -> ValueNames {
-        let names = self.infer_definition(position);
-        //self.file.implementation(names);
-        unimplemented!()
-    }
-    */
-
-    pub fn goto_definition(&self, position: Position, _follow_imports: bool) -> Names {
-        match self.leaf(position) {
-            Leaf::Name(name) => name.goto(),
-            Leaf::Number => unimplemented!(),
-            Leaf::Keyword(_keyword) => unimplemented!(),
-            Leaf::None | Leaf::String => vec![],
-        }
-    }
-
-    pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
-        let names = self.goto_definition(position, follow_imports);
-        self.file().implementation(names)
-    }
-
     pub fn search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
-
     pub fn complete_search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
-
     pub fn help(&self, _position: Position) {}
-
     pub fn references(&self, _position: Position /*, scope='project'*/) {}
-
     pub fn signatures(&self, _position: Position) {}
-
     pub fn context(&self, _position: Position) {}
-
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
-
-    pub fn diagnostics(&self) -> Box<[diagnostics::Diagnostic<'_>]> {
-        self.file().diagnostics(&self.project.db)
-    }
-
-    pub fn errors(&self) {}
-
     pub fn rename(&self, _position: Position, _new_name: &str) {}
 
     pub fn extract_variable(
@@ -311,7 +260,6 @@ impl<'a> Script<'a> {
         _until_column: Option<usize>,
     ) {
     }
-
     pub fn extract_function(
         &self,
         _position: Position,
@@ -320,49 +268,12 @@ impl<'a> Script<'a> {
         _until_column: Option<usize>,
     ) {
     }
-
     pub fn inline(&self, _position: Position) {}
 
-    /*
     pub fn selection_ranges() {
     }
-
-    pub fn errors() {
-    }
-    */
 }
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum ValueKind {
-    Unknown = 0,
-    // Taken from LSP, unused kinds are commented
-    //File = 1,
-    Module = 2,
-    Namespace = 3,
-    //Package = 4,
-    Class = 5,
-    Method = 6,
-    Property = 7,
-    Field = 8,
-    //Constructor = 9,
-    //Enum = 10,
-    //Interface = 11,
-    Function = 12,
-    //Variable = 13,
-    Constant = 14,
-    String = 15,
-    Number = 16,
-    Bool = 17,
-    Array = 18,
-    Object = 19, // From JavaScript objects -> Basically an instance
-    //Key = 20,
-    Null = 21,
-    //EnumMember = 22,
-    //Struct = 23,
-    //Event = 24,
-    //Operator = 25,
-    TypeParameter = 26,
-}
+*/
 
 pub struct Diagnostics<'a> {
     pub checked_files: usize,

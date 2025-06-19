@@ -1,15 +1,9 @@
-#![allow(dead_code)] // TODO remove this
-
 use std::fmt;
 
 use parsa_python_cst::Name as CSTName;
 
-use crate::{
-    database::Database,
-    file::{File, PythonFile},
-};
+use crate::{database::Database, file::PythonFile, inferred::Inferred};
 
-type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
 
 pub trait Name<'db>: fmt::Debug {
@@ -21,41 +15,35 @@ pub trait Name<'db>: fmt::Debug {
     fn is_implementation(&self) -> bool {
         true
     }
+    fn kind(&self) -> SymbolKind;
+    /*
     fn type_hint(&self) -> Option<String> {
         None
     }
     fn signatures(&self) -> Signatures {
         vec![]
     }
-    fn infer(&self);
-    fn goto(&self) -> Names<'db>;
-    fn is_definition(&self) -> bool {
-        false
-    }
+    */
 }
 
-pub(crate) struct TreeName<'db, F: File, N> {
+#[derive(Debug)]
+pub(crate) struct TreeName<'db> {
     db: &'db Database,
-    file: &'db F,
-    cst_name: N,
+    file: &'db PythonFile,
+    cst_name: CSTName<'db>,
 }
 
-impl<'db> fmt::Debug for TreeName<'db, PythonFile, CSTName<'db>> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TreeName")
-            .field("file", &self.file_path())
-            .field("name", &self.name())
-            .finish()
-    }
-}
-
-impl<'db, F: File, N> TreeName<'db, F, N> {
-    pub fn new(db: &'db Database, file: &'db F, cst_name: N) -> Self {
+impl<'db> TreeName<'db> {
+    pub fn new(db: &'db Database, file: &'db PythonFile, cst_name: CSTName<'db>) -> Self {
         Self { db, cst_name, file }
     }
+
+    pub(crate) fn infer(&self) -> Inferred {
+        Inferred::new_never(crate::type_::NeverCause::Other) // TODO
+    }
 }
 
-impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
+impl<'db> Name<'db> for TreeName<'db> {
     fn name(&self) -> &str {
         self.cst_name.as_str()
     }
@@ -76,23 +64,13 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
         unimplemented!()
     }
 
-    /*
-    fn is_implementation(&self) {
-    }
-    */
-
-    fn infer(&self) {
-        /*
-        let i_s = InferenceState::new(self.db);
-        self.file
-            .inference(&i_s)
-            .infer_name_of_definition(self.cst_name);
-        */
-        // TODO
+    fn is_implementation(&self) -> bool {
+        // TODO this is incomplete
+        !self.file.is_stub()
     }
 
-    fn goto(&self) -> Names<'db> {
-        unimplemented!()
+    fn kind(&self) -> SymbolKind {
+        SymbolKind::Object
     }
 }
 
@@ -189,3 +167,35 @@ impl<T> Iterator for ValueNameIterator<T> {
     }
 }
 */
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum SymbolKind {
+    Unknown = 0,
+    // Taken from LSP, unused kinds are commented
+    //File = 1,
+    Module = 2,
+    Namespace = 3,
+    //Package = 4,
+    Class = 5,
+    Method = 6,
+    Property = 7,
+    Field = 8,
+    //Constructor = 9,
+    //Enum = 10,
+    //Interface = 11,
+    Function = 12,
+    //Variable = 13,
+    Constant = 14,
+    String = 15,
+    Number = 16,
+    Bool = 17,
+    Array = 18,
+    Object = 19, // From JavaScript objects -> Basically an instance
+    //Key = 20,
+    Null = 21,
+    //EnumMember = 22,
+    //Struct = 23,
+    //Event = 24,
+    //Operator = 25,
+    TypeParameter = 26,
+}

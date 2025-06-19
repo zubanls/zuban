@@ -83,6 +83,10 @@ pub trait VfsHandler {
         }
     }
 
+    fn normalize_uncheck_abs_path(&self, path: &str) -> Rc<NormalizedPath> {
+        self.normalize_rc_path(self.unchecked_abs_path(path))
+    }
+
     fn unchecked_abs_path(&self, mut path: &str) -> Rc<AbsPath> {
         if let Some(new_root_path) = self.strip_separator_suffix(path) {
             path = new_root_path;

@@ -383,6 +383,10 @@ impl GenericClass {
     pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         Class::from_generic_class_components(db, self.link, &self.generics)
     }
+
+    pub fn node_ref<'db>(&self, db: &'db Database) -> ClassNodeRef<'db> {
+        ClassNodeRef::from_link(db, self.link)
+    }
 }
 
 enum TypeIterator<Iter> {

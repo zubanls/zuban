@@ -12,7 +12,7 @@ use utils::InsertOnlyVec;
 use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 
 use super::{
-    file_state::{File, Leaf},
+    file_state::File,
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
     name_resolution::NameResolution,
@@ -27,7 +27,6 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     lines::{NewlineIndices, PositionInfos},
-    name::{Names, TreeName},
     node_ref::NodeRef,
     type_::{DbString, LookupResult, Type},
     utils::SymbolTable,
@@ -101,35 +100,6 @@ pub(crate) struct PythonFile {
 }
 
 impl File for PythonFile {
-    fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
-        unimplemented!()
-    }
-
-    fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db> {
-        match NameOrKeywordLookup::from_position(&self.tree, position) {
-            NameOrKeywordLookup::Name(name) => Leaf::Name(Box::new(TreeName::new(db, self, name))),
-            NameOrKeywordLookup::Keyword(keyword) => Leaf::Keyword(keyword),
-            NameOrKeywordLookup::None => Leaf::None,
-        }
-    }
-
-    fn infer_operator_leaf(&self, _db: &Database, _leaf: Keyword) -> Inferred {
-        /*
-        if ["(", "[", "{", ")", "]", "}"]
-            .iter()
-            .any(|&x| x == leaf.as_str())
-        {
-            if let Some(primary) = leaf.maybe_primary_parent() {
-                let i_s = InferenceState::new(db);
-                return self
-                    .inference(&i_s)
-                    .infer_primary(primary, &mut ResultContext::Unknown);
-            }
-        }
-        */
-        unimplemented!()
-    }
-
     fn file_index(&self) -> FileIndex {
         self.file_index
     }

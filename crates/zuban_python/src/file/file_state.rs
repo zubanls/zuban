@@ -15,22 +15,7 @@ use crate::{
     PythonProject,
 };
 
-#[derive(Debug)]
-pub(crate) enum Leaf<'db> {
-    Name(Box<dyn Name<'db> + 'db>),
-    String,
-    Number,
-    Keyword(Keyword<'db>),
-    None,
-}
-
 pub trait File: std::fmt::Debug {
-    // Called each time a file is loaded
-    fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
-        vec![]
-    }
-    fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db>;
-    fn infer_operator_leaf<'db>(&'db self, db: &'db Database, keyword: Keyword<'db>) -> Inferred;
     fn file_index(&self) -> FileIndex;
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;

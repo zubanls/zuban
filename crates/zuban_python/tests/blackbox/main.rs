@@ -3,11 +3,13 @@ mod cases;
 use std::{
     env,
     fs::{read_dir, read_to_string},
-    path::PathBuf,
+    path::{Path, PathBuf},
+    rc::Rc,
     time::Instant,
 };
 
 use config::{ProjectOptions, TypeCheckerFlags};
+use vfs::{AbsPath, LocalFS};
 use zuban_python::Project;
 
 #[derive(Debug)]
@@ -69,16 +71,21 @@ fn main() {
         return;
     }
 
-    let mut project = Project::without_watcher(ProjectOptions::new(
+    let mut po = ProjectOptions::new(
         Default::default(),
         //"tests/blackbox/".into(),
         TypeCheckerFlags {
             check_untyped_defs: true,
             ..Default::default()
         },
-    ));
+    );
+    po.settings.typeshed_path = Some(test_utils::typeshed_path());
+    po.settings.mypy_path = mypy_path();
 
-    let files = python_files();
+    let files = python_files(&po.settings.mypy_path);
+
+    let mut project = Project::without_watcher(po);
+
     let start = Instant::now();
     let mut full_count = 0;
     let mut ran_count = 0;
@@ -103,17 +110,24 @@ fn main() {
     );
 }
 
-fn python_files() -> Vec<PathBuf> {
-    let mut base = PathBuf::from(file!().replace("zuban_python/", ""));
-    assert!(base.pop());
+fn mypy_path() -> Vec<Rc<AbsPath>> {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("blackbox");
 
+    ["python_files", "from_jedi_python_files"]
+        .into_iter()
+        .map(|part| {
+            LocalFS::without_watcher().abs_path_from_current_dir(base.join(part).to_str().unwrap())
+        })
+        .collect()
+}
+
+fn python_files(mypy_path: &[Rc<AbsPath>]) -> Vec<PathBuf> {
     let mut entries = vec![];
-    for p in ["python_files", "from_jedi_python_files"] {
-        let mut path = base.clone();
-        path.push(p);
-
+    for path in mypy_path {
         entries.extend(
-            read_dir(path)
+            read_dir(path.as_ref())
                 .unwrap()
                 .map(|res| res.map(|e| e.path()).unwrap()),
         );

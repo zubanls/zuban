@@ -4311,6 +4311,7 @@ impl<'db> Expressions<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum NameOrKeywordLookup<'db> {
     Name(Name<'db>),
     Keyword(Keyword<'db>),

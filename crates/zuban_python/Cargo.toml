@@ -26,9 +26,9 @@ logging_config.workspace = true
 [features]
 zuban_debug = []
 
-#[[test]]
-#name = "blackbox"
-#harness = false
+[[test]]
+name = "blackbox"
+harness = false
 
 [[test]]
 name = "mypylike"

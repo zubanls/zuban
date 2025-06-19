@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 use std::{collections::HashSet, path::PathBuf};
 
+use vfs::PathWithScheme;
+use zuban_python::{InputPosition, SymbolKind};
+
 use crate::Filter;
 
 pub struct TestFile<'a> {
@@ -23,18 +26,13 @@ enum CaseType {
 }
 
 impl TestFile<'_> {
-    pub fn test(&self, _project: &mut zuban_python::Project) -> (usize, usize) {
-        todo!()
-        /*
-        let _script = Script::new(
-            project,
-            Some(
-                project
-                    .vfs_handler()
-                    .unchecked_abs_path(self.path.to_str().unwrap().to_string()),
-            ),
-            Some(self.code.clone()),
-        );
+    pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize) {
+        let path = project
+            .vfs_handler()
+            .normalize_uncheck_abs_path(self.path.to_str().unwrap());
+        let document = project
+            .document(&PathWithScheme::with_file_scheme(path))
+            .unwrap();
         let cases = self.find_test_cases();
         let full_count = cases.len();
         let mut ran_count = 0;
@@ -50,24 +48,25 @@ impl TestFile<'_> {
             }
             ran_count += 1;
             match case.type_ {
-                CaseType::Infer(_expected) => {
-                    /*
-                     * TODO reenable this
-                    let actual: HashSet<_> = script
-                        .infer_definition(
-                            &|name| {
+                CaseType::Infer(expected) => {
+                    let actual: HashSet<_> = document
+                        .infer_type_definition(
+                            InputPosition::Utf8Bytes {
+                                line: case.line,
+                                column: case.column,
+                            },
+                            |name| {
                                 name.name().to_owned()
-                                    + (if name.kind() == ValueKind::Object {
+                                    + (if name.kind() == SymbolKind::Object {
                                         "()"
                                     } else {
                                         ""
                                     })
                             },
-                            Position::LineColumn(case.line + 1, case.column),
                         )
                         .collect();
-                    assert_eq!(actual, expected);
-                    */
+                    //assert_eq!(actual, expected);
+                    // TODO
                 }
                 CaseType::Complete(_) => {
                     ran_count -= 1;
@@ -76,7 +75,6 @@ impl TestFile<'_> {
             }
         }
         (ran_count, full_count)
-        */
     }
 
     fn find_test_cases(&self) -> Vec<TestCase> {
