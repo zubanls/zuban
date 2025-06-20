@@ -130,7 +130,32 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         Type::None => todo!(),
         Type::Tuple(tup) => tup.class(db).node_ref.to_db_lifetime(db).node().name(),
         Type::Any(_) => return None,
-        _ => unimplemented!("{t:?}"),
+        Type::Intersection(_) => todo!(),
+        Type::FunctionOverload(_) => todo!(),
+        Type::TypeVar(_) => todo!(),
+        Type::Type(_) => todo!(),
+        Type::Callable(_) => todo!(),
+        Type::RecursiveType(_) => todo!(),
+        Type::NewType(_) => todo!(),
+        Type::ParamSpecArgs(_) => todo!(),
+        Type::ParamSpecKwargs(_) => todo!(),
+        Type::Literal(_) => todo!(),
+        Type::Dataclass(_) => todo!(),
+        Type::TypedDict(_) => todo!(),
+        Type::NamedTuple(_) => todo!(),
+        Type::Enum(_) => todo!(),
+        Type::EnumMember(_) => todo!(),
+        Type::Module(_) => todo!(),
+        Type::Namespace(_) => todo!(),
+        Type::Super { .. } => todo!(),
+        Type::CustomBehavior(_) => todo!(),
+        Type::DataclassTransformObj(_) => todo!(),
+        Type::Self_ => todo!(),
+        Type::Union(_) | Type::Never(_) => {
+            // This probably only happens for Type[int | str], which should probably be handled
+            // separately.
+            return None;
+        }
     };
     Some(TreeName::new(db, file, n))
 }
