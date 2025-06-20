@@ -148,6 +148,84 @@ impl Tree {
         let node = self.0.node_by_index(index);
         node.as_code().get(..40).unwrap_or_else(|| node.as_code())
     }
+
+    pub fn goto_node(&self, position: CodeIndex) -> GotoNode {
+        // First check the token left and right of the cursor
+        let mut left = self.0.leaf_by_position(position);
+        let mut right = left;
+        if left.start() == position {
+            if let Some(n) = left.previous_leaf() {
+                if n.end() == position {
+                    left = n;
+                }
+            }
+        } else if left.end() == position {
+            if let Some(n) = left.next_leaf() {
+                if n.start() == position {
+                    right = n;
+                }
+            }
+        }
+        // From now on left is the node we're passing.
+        if left.index != right.index {
+            use TerminalType::*;
+            let order = [
+                Name,
+                Number,
+                String,
+                Bytes,
+                FStringString,
+                FStringStart,
+                FStringEnd,
+            ];
+            match left.type_() {
+                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
+                    match right.type_() {
+                        PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
+                            let is_alpha =
+                                |n: PyNode| n.as_code().chars().all(|x| x.is_alphanumeric());
+                            if is_alpha(right) && !is_alpha(left) {
+                                // Prefer keywords to operators
+                                left = right;
+                            }
+                        }
+                        Terminal(t) | ErrorTerminal(t) => {
+                            // If it is any of the wanted types, just use that instead.
+                            if order.contains(&t) {
+                                left = right;
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
+                    match right.type_() {
+                        Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
+                            let order_func = |type_| {
+                                order.iter().position(|&t| t == type_).unwrap_or(usize::MAX)
+                            };
+                            let left_index = order_func(left_terminal);
+                            let right_index = order_func(right_terminal);
+                            // Both are terminals, prefer the one that is higher in the order
+                            if right_index < left_index {
+                                left = right;
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+                Nonterminal(_) | ErrorNonterminal(_) => unreachable!(),
+            }
+        }
+        match left.type_() {
+            Terminal(t) | ErrorTerminal(t) => match t {
+                TerminalType::Name => GotoNode::Name(Name::new(left)),
+                _ => GotoNode::None,
+            },
+            PyNodeType::ErrorKeyword | PyNodeType::Keyword => GotoNode::Keyword(Keyword::new(left)),
+            Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
+        }
+    }
 }
 
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
@@ -4356,7 +4434,7 @@ impl<'db> Expressions<'db> {
 }
 
 #[derive(Debug)]
-pub enum NameOrKeywordLookup<'db> {
+pub enum GotoNode<'db> {
     Name(Name<'db>),
     Keyword(Keyword<'db>),
     None,
@@ -4443,86 +4521,6 @@ impl<'db> Target<'db> {
         match self {
             Self::Name(name) => Some(*name),
             _ => None,
-        }
-    }
-}
-
-impl<'db> NameOrKeywordLookup<'db> {
-    pub fn from_position(tree: &'db Tree, position: CodeIndex) -> Self {
-        // First check the token left and right of the cursor
-        let mut left = tree.0.leaf_by_position(position);
-        let mut right = left;
-        if left.start() == position {
-            if let Some(n) = left.previous_leaf() {
-                if n.end() == position {
-                    left = n;
-                }
-            }
-        } else if left.end() == position {
-            if let Some(n) = left.next_leaf() {
-                if n.start() == position {
-                    right = n;
-                }
-            }
-        }
-        // From now on left is the node we're passing.
-        if left.index != right.index {
-            use TerminalType::*;
-            let order = [
-                Name,
-                Number,
-                String,
-                Bytes,
-                FStringString,
-                FStringStart,
-                FStringEnd,
-            ];
-            match left.type_() {
-                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                    match right.type_() {
-                        PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                            let is_alpha =
-                                |n: PyNode| n.as_code().chars().all(|x| x.is_alphanumeric());
-                            if is_alpha(right) && !is_alpha(left) {
-                                // Prefer keywords to operators
-                                left = right;
-                            }
-                        }
-                        Terminal(t) | ErrorTerminal(t) => {
-                            // If it is any of the wanted types, just use that instead.
-                            if order.contains(&t) {
-                                left = right;
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
-                    match right.type_() {
-                        Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
-                            let order_func = |type_| {
-                                order.iter().position(|&t| t == type_).unwrap_or(usize::MAX)
-                            };
-                            let left_index = order_func(left_terminal);
-                            let right_index = order_func(right_terminal);
-                            // Both are terminals, prefer the one that is higher in the order
-                            if right_index < left_index {
-                                left = right;
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                Nonterminal(_) | ErrorNonterminal(_) => unreachable!(),
-            }
-        }
-        match left.type_() {
-            Terminal(t) | ErrorTerminal(t) => match t {
-                TerminalType::Name => Self::Name(Name::new(left)),
-                _ => Self::None,
-            },
-            PyNodeType::ErrorKeyword | PyNodeType::Keyword => Self::Keyword(Keyword::new(left)),
-            Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
         }
     }
 }

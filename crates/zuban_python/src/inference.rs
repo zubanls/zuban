@@ -3,7 +3,7 @@
  * standard type checking. Type checking should always be done first.
  * */
 
-use parsa_python_cst::{CodeIndex, NameOrKeywordLookup};
+use parsa_python_cst::{CodeIndex, GotoNode};
 
 use crate::{
     database::Database,
@@ -36,18 +36,16 @@ impl<'db> PositionalDocument<'db> {
     fn infer_position(&self) -> Option<Inferred> {
         let result = self.file.ensure_calculated_diagnostics(&self.db);
         debug_assert!(result.is_ok());
-        let leaf = NameOrKeywordLookup::from_position(&self.file.tree, self.position);
+        let leaf = self.file.tree.goto_node(self.position);
         debug!(
             "Infer for position {}->{:?} on leaf {leaf:?}",
             self.file.file_path(&self.db),
             self.position
         );
         match leaf {
-            NameOrKeywordLookup::Name(name) => {
-                Some(TreeName::new(self.db, self.file, name).infer())
-            }
-            NameOrKeywordLookup::Keyword(_) => None,
-            NameOrKeywordLookup::None => None,
+            GotoNode::Name(name) => Some(TreeName::new(self.db, self.file, name).infer()),
+            GotoNode::Keyword(_) => None,
+            GotoNode::None => None,
         }
     }
 
