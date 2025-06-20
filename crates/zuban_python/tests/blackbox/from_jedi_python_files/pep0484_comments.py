@@ -54,9 +54,9 @@ def test(a):
     a
 
 a,b = 1, 2 # type: str, float
-##? str()
+#? str()
 a
-##? float()
+#? float()
 b
 
 class Employee:
@@ -67,11 +67,11 @@ x = []   # type: List[Employee]
 #? Employee()
 x[1]
 x, y, z = [], [], []  # type: List[int], List[int], List[str]
-##? int()
+#? int()
 y[2]
 x, y, z = [], [], []  # type: (List[float], List[float], List[BB])
 for zi in z:
-    ##? BB()
+    #? BB()
     zi
 
 x = [
@@ -96,9 +96,9 @@ for bar, baz in foo():  # type: int, float
 for bar, baz in foo():
     # type: str, str
     """ type hinting on next line should not work """
-    ##?
+    #?
     bar
-    ##?
+    #?
     baz
 
 with foo():  # type: int
@@ -111,7 +111,7 @@ with foo() as f:  # type: str
 with foo() as f:
     # type: str
     """ type hinting on next line should not work """
-    ##?
+    #?
     f
 
 aaa = some_extremely_long_function_name_that_doesnt_leave_room_for_hints() \
@@ -155,7 +155,7 @@ friend = buddy.friends[0][1]
 friend.bark()
 
 # type is determined by function parameter type following nested generics
-##? str()
+#? str()
 friend.name
 
 # Mypy comment describing function return type.
@@ -180,22 +180,22 @@ class Cat(object):
         self.name = name
 
 cat = Cat(UNKNOWN_NAME4, UNKNOWN_NAME5, UNKNOWN_NAME6)
-##? str()
+#? str()
 cat.name
 
 
 # Check potential errors
 def x(a, b):
     # type: ([) -> a
-    ##?
+    #?
     a
 def x(a, b):
     # type: (1) -> a
-    ##?
+    #?
     a
 def x(a, b, c):
     # type: (str) -> a
-    ##?
+    #?
     b
-    ##?
+    #?
     c

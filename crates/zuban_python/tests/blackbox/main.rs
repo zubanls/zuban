@@ -8,7 +8,7 @@ use std::{
     time::Instant,
 };
 
-use config::{ProjectOptions, TypeCheckerFlags};
+use config::{ProjectOptions, Settings, TypeCheckerFlags};
 use vfs::{AbsPath, LocalFS};
 use zuban_python::Project;
 
@@ -71,16 +71,18 @@ fn main() {
         return;
     }
 
-    let mut po = ProjectOptions::new(
-        Default::default(),
-        //"tests/blackbox/".into(),
+    let po = ProjectOptions::new(
+        Settings {
+            typeshed_path: Some(test_utils::typeshed_path()),
+            mypy_path: mypy_path(),
+            ..Default::default()
+        },
         TypeCheckerFlags {
             check_untyped_defs: true,
+            allow_redefinition: true,
             ..Default::default()
         },
     );
-    po.settings.typeshed_path = Some(test_utils::typeshed_path());
-    po.settings.mypy_path = mypy_path();
 
     let files = python_files(&po.settings.mypy_path);
 

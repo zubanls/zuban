@@ -130,7 +130,11 @@ impl<'db, C: for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'db, T> GotoResolver<'db, C
 fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<TreeName<'db>> {
     let n = match t {
         Type::Class(c) => c.node_ref(db).node().name(),
-        Type::None => return None,
+        Type::None => db
+            .python_state
+            .types()
+            .lookup_symbol("NoneType")?
+            .expect_name(),
         Type::Tuple(tup) => tup.class(db).node_ref.to_db_lifetime(db).node().name(),
         Type::Any(_) => return None,
         Type::Intersection(_) => todo!(),
