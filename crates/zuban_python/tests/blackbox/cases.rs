@@ -36,6 +36,7 @@ impl TestFile<'_> {
         let cases = self.find_test_cases();
         let full_count = cases.len();
         let mut ran_count = 0;
+        let mut errors = vec![];
         for case in cases {
             let file_name = self.path.file_name().unwrap().to_str().unwrap();
             if self.filters.iter().any(|f| f.denied(file_name, case.line)) {
@@ -65,14 +66,25 @@ impl TestFile<'_> {
                             },
                         )
                         .collect();
-                    //assert_eq!(actual, expected);
-                    // TODO
+                    if actual != expected {
+                        errors.push(format!(
+                            "{}: Line #{} {actual:?} != {expected:?}",
+                            self.path.file_name().unwrap().to_str().unwrap(),
+                            case.line,
+                        ));
+                    }
                 }
                 CaseType::Complete(_) => {
                     ran_count -= 1;
                     // TODO implement complete tests
                 }
             }
+        }
+        if !errors.is_empty() {
+            for error in &errors {
+                println!("{error}");
+            }
+            panic!("Ran {ran_count} tests with {} errors", errors.len());
         }
         (ran_count, full_count)
     }

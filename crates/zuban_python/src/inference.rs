@@ -115,7 +115,7 @@ impl<'db, C: for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'db, T> GotoResolver<'db, C
         })
         .into_iter()
         .flatten()
-        .map(move |e| callback(&type_to_name(db, file, &e.type_)))
+        .filter_map(move |e| Some(callback(&type_to_name(db, file, &e.type_)?)))
     }
 
     pub fn infer_implementation(&self) -> impl Iterator<Item = T> + 'db {
@@ -124,9 +124,13 @@ impl<'db, C: for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'db, T> GotoResolver<'db, C
     }
 }
 
-fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> TreeName<'db> {
-    match t {
-        Type::Class(c) => TreeName::new(db, file, c.node_ref(db).node().name()),
-        _ => unimplemented!(),
-    }
+fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<TreeName<'db>> {
+    let n = match t {
+        Type::Class(c) => c.node_ref(db).node().name(),
+        Type::None => todo!(),
+        Type::Tuple(tup) => tup.class(db).node_ref.to_db_lifetime(db).node().name(),
+        Type::Any(_) => return None,
+        _ => unimplemented!("{t:?}"),
+    };
+    Some(TreeName::new(db, file, n))
 }

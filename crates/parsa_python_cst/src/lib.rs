@@ -378,6 +378,7 @@ create_nonterminal_structs!(
     FString: fstring
     FStringExpr: fstring_expr
     FStringFormatSpec: fstring_format_spec
+    FStringConversion: fstring_conversion
 
     List: atom
     Set: atom
@@ -492,6 +493,33 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn parent(&self) -> NameParent<'db> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(atom)) {
+            NameParent::Atom(Atom::new(parent))
+        } else if parent.is_type(Nonterminal(name_def)) {
+            NameParent::NameDef(NameDef::new(parent))
+        } else if parent.is_type(Nonterminal(primary)) {
+            NameParent::Primary(Primary::new(parent))
+        } else if parent.is_type(Nonterminal(t_primary)) {
+            NameParent::PrimaryTarget(PrimaryTarget::new(parent))
+        } else if parent.is_type(Nonterminal(kwarg)) {
+            NameParent::Kwarg(Kwarg::new(parent))
+        } else if parent.is_type(Nonterminal(keyword_pattern)) {
+            NameParent::KeywordPattern(KeywordPattern::new(parent))
+        } else if parent.is_type(Nonterminal(import_from_as_name)) {
+            NameParent::ImportFromAsName(ImportFromAsName::new(parent))
+        } else if parent.is_type(Nonterminal(dotted_name)) {
+            NameParent::DottedName(DottedName::new(parent))
+        } else {
+            assert!(
+                parent.is_type(Nonterminal(fstring_conversion)),
+                "{parent:?}"
+            );
+            NameParent::FStringConversion(FStringConversion::new(parent))
+        }
+    }
+
     pub fn maybe_atom_of_primary(&self) -> Option<Primary<'db>> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {
@@ -574,6 +602,19 @@ pub enum SimpleNameParent<'db> {
     NameDef(NameDef<'db>),
     Atom,
     Other,
+}
+
+#[derive(Debug)]
+pub enum NameParent<'db> {
+    NameDef(NameDef<'db>),
+    Atom(Atom<'db>),
+    Primary(Primary<'db>),
+    PrimaryTarget(PrimaryTarget<'db>),
+    Kwarg(Kwarg<'db>),
+    KeywordPattern(KeywordPattern<'db>),
+    ImportFromAsName(ImportFromAsName<'db>),
+    DottedName(DottedName<'db>),
+    FStringConversion(FStringConversion<'db>),
 }
 
 pub enum FunctionOrLambda<'db> {
@@ -4085,6 +4126,12 @@ impl<'db> Atom<'db> {
             },
             _ => unreachable!(),
         }
+    }
+
+    pub fn maybe_expression_parent(&self) -> Option<Expression<'db>> {
+        let n = self.node.parent().unwrap();
+        n.is_type(Nonterminal(expression))
+            .then(|| Expression::new(n))
     }
 }
 

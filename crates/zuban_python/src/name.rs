@@ -1,8 +1,11 @@
 use std::fmt;
 
-use parsa_python_cst::Name as CSTName;
+use parsa_python_cst::{Name as CSTName, NameParent};
 
-use crate::{database::Database, file::PythonFile, inferred::Inferred};
+use crate::{
+    database::Database, file::PythonFile, inference_state::InferenceState, inferred::Inferred,
+    node_ref::NodeRef,
+};
 
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
 
@@ -39,6 +42,36 @@ impl<'db> TreeName<'db> {
     }
 
     pub(crate) fn infer(&self) -> Inferred {
+        let i_s = &InferenceState::new(self.db, self.file);
+        match self.cst_name.parent() {
+            NameParent::NameDef(_) => todo!(),
+            NameParent::Atom(atom) => {
+                if let Some(expr) = atom.maybe_expression_parent() {
+                    let n = NodeRef::new(self.file, expr.index());
+                    if n.point().calculated() {
+                        if let Some(inf) = self.file.inference(i_s).check_point_cache(expr.index())
+                        {
+                            return inf;
+                        }
+                    }
+                }
+            }
+            NameParent::Primary(_) => todo!(),
+            NameParent::PrimaryTarget(_) => todo!(),
+            NameParent::Kwarg(_) => todo!(),
+            NameParent::KeywordPattern(_) => todo!(),
+            NameParent::ImportFromAsName(_) => todo!(),
+            NameParent::DottedName(_) => todo!(),
+            NameParent::FStringConversion(_) => todo!(),
+        }
+        /*
+        let p = node_ref.point();
+        if p.calculated() {
+            if p.kind() == PointKind::Redirect {
+                let redirected_to = p.as_redirected_node_ref(self.db);
+            }
+        }
+        */
         Inferred::new_never(crate::type_::NeverCause::Other) // TODO
     }
 }
