@@ -1013,8 +1013,8 @@ impl<'db> NameBinder<'db> {
                             continue;
                         }
                     }
-                    match name.parent() {
-                        NameParent::Atom => {
+                    match name.simple_parent() {
+                        SimpleNameParent::Atom => {
                             if let IndexingCause::Annotation {
                                 definition_name_index,
                             } = cause
@@ -1037,7 +1037,7 @@ impl<'db> NameBinder<'db> {
                                 self.maybe_add_reference(name, ordered);
                             }
                         }
-                        NameParent::NameDef(name_def) => {
+                        SimpleNameParent::NameDef(name_def) => {
                             match name_def.parent() {
                                 NameDefParent::Other => {
                                     // The types are inferred later.

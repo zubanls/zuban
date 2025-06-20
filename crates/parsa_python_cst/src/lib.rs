@@ -481,16 +481,14 @@ impl<'db> Name<'db> {
         n.expect_type()
     }
 
-    pub fn parent(&self) -> NameParent<'db> {
+    pub fn simple_parent(&self) -> SimpleNameParent<'db> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {
-            NameParent::Atom
+            SimpleNameParent::Atom
         } else if parent.is_type(Nonterminal(name_def)) {
-            NameParent::NameDef(NameDef::new(parent))
-        } else if parent.is_type(Nonterminal(primary)) {
-            NameParent::Primary(Primary::new(parent))
+            SimpleNameParent::NameDef(NameDef::new(parent))
         } else {
-            NameParent::Other
+            SimpleNameParent::Other
         }
     }
 
@@ -572,9 +570,8 @@ impl<'db> Name<'db> {
 }
 
 #[derive(Debug)]
-pub enum NameParent<'db> {
+pub enum SimpleNameParent<'db> {
     NameDef(NameDef<'db>),
-    Primary(Primary<'db>),
     Atom,
     Other,
 }
