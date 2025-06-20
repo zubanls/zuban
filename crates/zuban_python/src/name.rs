@@ -48,11 +48,8 @@ impl<'db> TreeName<'db> {
             NameParent::Atom(atom) => {
                 if let Some(expr) = atom.maybe_expression_parent() {
                     let n = NodeRef::new(self.file, expr.index());
-                    if n.point().calculated() {
-                        if let Some(inf) = self.file.inference(i_s).check_point_cache(expr.index())
-                        {
-                            return inf;
-                        }
+                    if let Some(inf) = n.maybe_inferred(i_s) {
+                        return inf;
                     }
                 }
             }

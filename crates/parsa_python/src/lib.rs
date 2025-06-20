@@ -276,7 +276,7 @@ create_grammar!(
     // Bitwise operators
     // -----------------
 
-    bitwise_or:?   [bitwise_or "|"] bitwise_xor
+    bitwise_or:?  [bitwise_or "|"] bitwise_xor
     bitwise_xor:? [bitwise_xor "^"] bitwise_and
     bitwise_and:? [bitwise_and "&"] shift_expr
     shift_expr:?  [shift_expr ("<<"|">>")] sum

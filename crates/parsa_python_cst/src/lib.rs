@@ -222,7 +222,15 @@ impl Tree {
                 TerminalType::Name => GotoNode::Name(Name::new(left)),
                 _ => GotoNode::None,
             },
-            PyNodeType::ErrorKeyword | PyNodeType::Keyword => GotoNode::Keyword(Keyword::new(left)),
+            PyNodeType::Keyword => {
+                let parent = left.parent().unwrap();
+                if parent.is_type(Nonterminal(primary)) {
+                    GotoNode::Primary(Primary::new(parent))
+                } else {
+                    GotoNode::None
+                }
+            }
+            PyNodeType::ErrorKeyword => GotoNode::None,
             Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
         }
     }
@@ -4436,7 +4444,7 @@ impl<'db> Expressions<'db> {
 #[derive(Debug)]
 pub enum GotoNode<'db> {
     Name(Name<'db>),
-    Keyword(Keyword<'db>),
+    Primary(Primary<'db>),
     None,
 }
 

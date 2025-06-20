@@ -231,11 +231,12 @@ impl<'file> NodeRef<'file> {
         self.file.file_index
     }
 
+    pub fn maybe_inferred(&self, i_s: &InferenceState) -> Option<Inferred> {
+        self.file.inference(i_s).check_point_cache(self.node_index)
+    }
+
     pub fn expect_inferred(&self, i_s: &InferenceState) -> Inferred {
-        self.file
-            .inference(i_s)
-            .check_point_cache(self.node_index)
-            .unwrap()
+        self.maybe_inferred(i_s).unwrap()
     }
 
     pub fn expect_complex_type(&self) -> &Type {

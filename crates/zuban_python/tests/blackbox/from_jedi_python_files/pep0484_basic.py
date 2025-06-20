@@ -140,9 +140,11 @@ function_with_non_pep_0484_annotation(1, 2, 3, "force string")
 def function_forward_reference_dynamic(
         x: return_str_type(),
         y: "return_str_type()") -> None:
-    #? str()
+    # jedi-diff: #? str()
+    #? 
     x
-    #? str()
+    # jedi-diff: #? str()
+    #? 
     y
 
 def return_str_type():

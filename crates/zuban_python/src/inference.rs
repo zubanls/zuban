@@ -12,6 +12,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     name::{Name, Names, TreeName},
+    node_ref::NodeRef,
     type_::Type,
     InputPosition,
 };
@@ -44,7 +45,11 @@ impl<'db> PositionalDocument<'db> {
         );
         match leaf {
             GotoNode::Name(name) => Some(TreeName::new(self.db, self.file, name).infer()),
-            GotoNode::Keyword(_) => None,
+            GotoNode::Primary(primary) => {
+                // TODO don't just use it on expr
+                let n = NodeRef::new(self.file, primary.index() - 1);
+                n.maybe_inferred(&InferenceState::new(self.db, self.file))
+            }
             GotoNode::None => None,
         }
     }
@@ -125,7 +130,7 @@ impl<'db, C: for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'db, T> GotoResolver<'db, C
 fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<TreeName<'db>> {
     let n = match t {
         Type::Class(c) => c.node_ref(db).node().name(),
-        Type::None => todo!(),
+        Type::None => return None,
         Type::Tuple(tup) => tup.class(db).node_ref.to_db_lifetime(db).node().name(),
         Type::Any(_) => return None,
         Type::Intersection(_) => todo!(),
