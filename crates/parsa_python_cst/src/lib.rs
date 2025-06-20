@@ -219,7 +219,14 @@ impl Tree {
         }
         match left.type_() {
             Terminal(t) | ErrorTerminal(t) => match t {
-                TerminalType::Name => GotoNode::Name(Name::new(left)),
+                TerminalType::Name => {
+                    let parent = left.parent().unwrap();
+                    if parent.is_type(Nonterminal(primary)) {
+                        GotoNode::Primary(Primary::new(parent))
+                    } else {
+                        GotoNode::Name(Name::new(left))
+                    }
+                }
                 _ => GotoNode::None,
             },
             PyNodeType::Keyword => {
