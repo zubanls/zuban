@@ -321,10 +321,10 @@ is_decorated_by_class_bound_factory(the_par
 def decorator_factory_bound_callable() -> Callable[[TCallable], TCallable]:
     pass
 
-#? callable()
+#? Callable()
 decorator_factory_bound_callable()
 
-#? callable()
+#? Callable()
 decorator_factory_bound_callable()()
 
 is_decorated_by_bound_factory = decorator_factory_bound_callable()(will_be_decorated)

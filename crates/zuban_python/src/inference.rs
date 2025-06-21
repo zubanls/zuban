@@ -128,13 +128,10 @@ impl<'db, C: for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'db, T> GotoResolver<'db, C
 }
 
 fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<TreeName<'db>> {
+    let lookup = |name| db.python_state.types().lookup_symbol(name);
     let n = match t {
         Type::Class(c) => c.node_ref(db).node().name(),
-        Type::None => db
-            .python_state
-            .types()
-            .lookup_symbol("NoneType")?
-            .expect_name(),
+        Type::None => lookup("NoneType")?.expect_name(),
         Type::Tuple(tup) => tup.class(db).node_ref.to_db_lifetime(db).node().name(),
         Type::Any(_) => return None,
         Type::Intersection(_) => todo!(),
@@ -144,7 +141,13 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             return None;
         }
         Type::Type(t) => return type_to_name(db, file, &t),
-        Type::Callable(_) => db.python_state.callable_function().node().name(),
+        Type::Callable(callable) => {
+            if let Some(func) = NodeRef::from_link(db, callable.defined_at).maybe_function() {
+                func.name()
+            } else {
+                lookup("Callable")?.expect_name()
+            }
+        }
         Type::RecursiveType(_) => todo!(),
         Type::NewType(n) => {
             // TODO
