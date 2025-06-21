@@ -32,7 +32,7 @@ impl TestFile<'_> {
             .normalize_uncheck_abs_path(self.path.to_str().unwrap());
         let file_name = self.path.file_name().unwrap().to_str().unwrap();
         let document = project
-            .document(&PathWithScheme::with_file_scheme(path))
+            .document(&PathWithScheme::with_file_scheme(path.clone()))
             .unwrap();
         let cases = self.find_test_cases();
         let full_count = cases.len();
@@ -58,12 +58,19 @@ impl TestFile<'_> {
                                 column: case.column,
                             },
                             |name| {
-                                name.name().to_owned()
-                                    + (if name.kind() == SymbolKind::Object {
-                                        "()"
-                                    } else {
-                                        ""
-                                    })
+                                let mut n = if *name.file_path() == *path {
+                                    name.name().to_owned()
+                                } else {
+                                    let mut s = name.qualified_name();
+                                    if let Some(rest) = s.strip_prefix("builtins.") {
+                                        s = rest.to_string();
+                                    }
+                                    s
+                                };
+                                if name.kind() == SymbolKind::Object {
+                                    n.push_str("()");
+                                }
+                                n
                             },
                         )
                         .collect();

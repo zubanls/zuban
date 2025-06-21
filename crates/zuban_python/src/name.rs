@@ -1,9 +1,13 @@
 use std::fmt;
 
 use parsa_python_cst::{Name as CSTName, NameParent};
+use vfs::NormalizedPath;
 
 use crate::{
-    database::Database, file::PythonFile, inference_state::InferenceState, inferred::Inferred,
+    database::{Database, ParentScope},
+    file::PythonFile,
+    inference_state::InferenceState,
+    inferred::Inferred,
     node_ref::NodeRef,
 };
 
@@ -11,10 +15,10 @@ pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
 
 pub trait Name<'db>: fmt::Debug {
     fn name(&self) -> &str;
-    fn file_path(&self) -> &str;
+    fn file_path(&self) -> &NormalizedPath;
     fn documentation(&self) -> String;
     fn description(&self) -> String;
-    fn qualified_names(&self) -> Option<Vec<String>>;
+    fn qualified_name(&self) -> String;
     fn is_implementation(&self) -> bool {
         true
     }
@@ -33,12 +37,23 @@ pub trait Name<'db>: fmt::Debug {
 pub(crate) struct TreeName<'db> {
     db: &'db Database,
     file: &'db PythonFile,
+    parent_scope: ParentScope,
     cst_name: CSTName<'db>,
 }
 
 impl<'db> TreeName<'db> {
-    pub fn new(db: &'db Database, file: &'db PythonFile, cst_name: CSTName<'db>) -> Self {
-        Self { db, cst_name, file }
+    pub fn new(
+        db: &'db Database,
+        file: &'db PythonFile,
+        parent_scope: ParentScope,
+        cst_name: CSTName<'db>,
+    ) -> Self {
+        Self {
+            db,
+            cst_name,
+            parent_scope,
+            file,
+        }
     }
 
     pub(crate) fn infer(&self) -> Inferred {
@@ -78,7 +93,7 @@ impl<'db> Name<'db> for TreeName<'db> {
         self.cst_name.as_str()
     }
 
-    fn file_path(&self) -> &str {
+    fn file_path(&self) -> &NormalizedPath {
         self.db.file_path(self.file.file_index)
     }
 
@@ -90,8 +105,12 @@ impl<'db> Name<'db> for TreeName<'db> {
         unimplemented!()
     }
 
-    fn qualified_names(&self) -> Option<Vec<String>> {
-        unimplemented!()
+    fn qualified_name(&self) -> String {
+        self.parent_scope.qualified_name(
+            self.db,
+            NodeRef::new(self.file, self.cst_name.index()),
+            self.cst_name.as_code(),
+        )
     }
 
     fn is_implementation(&self) -> bool {

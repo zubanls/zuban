@@ -6,9 +6,9 @@
 use parsa_python_cst::{CodeIndex, GotoNode};
 
 use crate::{
-    database::Database,
+    database::{Database, ParentScope},
     debug,
-    file::{File, PythonFile},
+    file::{ClassInitializer, File, FuncNodeRef, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
     name::{Name, Names, TreeName},
@@ -44,7 +44,11 @@ impl<'db> PositionalDocument<'db> {
             self.position
         );
         match leaf {
-            GotoNode::Name(name) => Some(TreeName::new(self.db, self.file, name).infer()),
+            GotoNode::Name(name) => {
+                // TODO this scope is wrong, but currently also not used in infer
+                let scope = ParentScope::Module;
+                Some(TreeName::new(self.db, self.file, scope, name).infer())
+            }
             GotoNode::Primary(primary) => {
                 // TODO don't just use it on expr
                 let n = NodeRef::new(self.file, primary.index() - 1);
@@ -128,11 +132,33 @@ impl<'db, C: for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'db, T> GotoResolver<'db, C
 }
 
 fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<TreeName<'db>> {
-    let lookup = |name| db.python_state.types().lookup_symbol(name);
-    let n = match t {
-        Type::Class(c) => c.node_ref(db).node().name(),
-        Type::None => lookup("NoneType")?.expect_name(),
-        Type::Tuple(tup) => tup.class(db).node_ref.to_db_lifetime(db).node().name(),
+    let from_node_ref = |node_ref: NodeRef<'db>| {
+        TreeName::new(
+            db,
+            node_ref.file,
+            ParentScope::Module,
+            node_ref.expect_name(),
+        )
+    };
+    let lookup = |module: &'db PythonFile, name| Some(from_node_ref(module.lookup_symbol(name)?));
+    Some(match t {
+        Type::Class(c) => {
+            let node_ref = c.node_ref(db);
+            let parent_scope = ClassInitializer::from_node_ref(node_ref)
+                .class_storage
+                .parent_scope;
+            TreeName::new(db, file, parent_scope, node_ref.node().name())
+        }
+        Type::None => lookup(db.python_state.types(), "NoneType")?,
+        Type::Tuple(tup) => {
+            let node_ref = tup.class(db).node_ref.to_db_lifetime(db);
+            TreeName::new(
+                db,
+                node_ref.file,
+                ParentScope::Module,
+                node_ref.node().name(),
+            )
+        }
         Type::Any(_) => return None,
         Type::Intersection(_) => todo!(),
         Type::FunctionOverload(_) => todo!(),
@@ -142,10 +168,12 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         }
         Type::Type(t) => return type_to_name(db, file, &t),
         Type::Callable(callable) => {
-            if let Some(func) = NodeRef::from_link(db, callable.defined_at).maybe_function() {
-                func.name()
+            let node_ref = NodeRef::from_link(db, callable.defined_at);
+            if let Some(func) = node_ref.maybe_function() {
+                let parent_scope = FuncNodeRef::from_node_ref(node_ref).parent_scope();
+                TreeName::new(db, node_ref.file, parent_scope, func.name())
             } else {
-                lookup("Callable")?.expect_name()
+                lookup(db.python_state.typing(), "Callable")?
             }
         }
         Type::RecursiveType(_) => todo!(),
@@ -155,7 +183,15 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         }
         Type::ParamSpecArgs(_) => todo!(),
         Type::ParamSpecKwargs(_) => todo!(),
-        Type::Literal(l) => l.fallback_node_ref(db).node().name(),
+        Type::Literal(l) => {
+            let node_ref = l.fallback_node_ref(db);
+            TreeName::new(
+                db,
+                node_ref.file,
+                ParentScope::Module,
+                node_ref.node().name(),
+            )
+        }
         Type::Dataclass(_) => todo!(),
         Type::TypedDict(_) => todo!(),
         Type::NamedTuple(_) => todo!(),
@@ -172,6 +208,5 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             // separately.
             return None;
         }
-    };
-    Some(TreeName::new(db, file, n))
+    })
 }

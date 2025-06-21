@@ -188,7 +188,7 @@ def union(
     r
     #? int() str() float() dict()
     s
-    #? int() None
+    #? int() types.NoneType()
     t
 
 def optional(p: Optional[int]):
@@ -197,7 +197,7 @@ def optional(p: Optional[int]):
     as being of that type. Jedi doesn't do anything with the extra into that
     it can be None as well
     """
-    #? int() None
+    #? int() types.NoneType()
     p
 
 class ForwardReference:

@@ -10,7 +10,7 @@ use config::{OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
 use vfs::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, InvalidationResult, LocalFS,
-    PathWithScheme, Vfs, VfsHandler, Workspace, WorkspaceKind,
+    NormalizedPath, PathWithScheme, Vfs, VfsHandler, Workspace, WorkspaceKind,
 };
 
 use crate::{
@@ -1096,7 +1096,7 @@ impl Database {
         new_db
     }
 
-    pub fn file_path(&self, index: FileIndex) -> &str {
+    pub fn file_path(&self, index: FileIndex) -> &NormalizedPath {
         self.vfs.file_path(index).path()
     }
 
