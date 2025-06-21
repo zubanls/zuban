@@ -4,6 +4,7 @@ use std::{
     env,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
+    process::ExitCode,
     rc::Rc,
     time::Instant,
 };
@@ -63,12 +64,12 @@ fn calculate_filters(args: &[String]) -> Vec<Filter> {
     filters
 }
 
-fn main() {
+fn main() -> ExitCode {
     logging_config::setup_logging(None).unwrap();
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
     if cli_args.iter().any(|s| s.as_str() == "mypy") {
-        return;
+        return ExitCode::from(0);
     }
 
     let po = ProjectOptions::new(
@@ -91,6 +92,7 @@ fn main() {
     let start = Instant::now();
     let mut full_count = 0;
     let mut ran_count = 0;
+    let mut error_count = 0;
     let file_count = files.len();
     for python_file in files {
         let code = read_to_string(&python_file).unwrap().into();
@@ -99,17 +101,16 @@ fn main() {
             code,
             filters: &filters,
         };
-        let (ran, full) = f.test(&mut project);
+        let (ran, full, errors) = f.test(&mut project);
         ran_count += ran;
         full_count += full;
+        error_count += errors;
     }
     println!(
-        "Ran {} of {} integration tests in {} files; finished in {:.2}s",
-        ran_count,
-        full_count,
-        file_count,
+        "Ran {ran_count} of {full_count} ({error_count} errors) blackbox tests in {file_count} files; finished in {:.2}s",
         start.elapsed().as_secs_f32(),
     );
+    ExitCode::from((error_count > 0) as u8)
 }
 
 fn mypy_path() -> Vec<Rc<AbsPath>> {

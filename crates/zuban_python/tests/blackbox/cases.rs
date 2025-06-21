@@ -26,7 +26,7 @@ enum CaseType {
 }
 
 impl TestFile<'_> {
-    pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize) {
+    pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize, usize) {
         let path = project
             .vfs_handler()
             .normalize_uncheck_abs_path(self.path.to_str().unwrap());
@@ -96,7 +96,7 @@ impl TestFile<'_> {
                 errors.len()
             );
         }
-        (ran_count, full_count)
+        (ran_count, full_count, errors.len())
     }
 
     fn find_test_cases(&self) -> Vec<TestCase> {
