@@ -139,14 +139,20 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         Type::Any(_) => return None,
         Type::Intersection(_) => todo!(),
         Type::FunctionOverload(_) => todo!(),
-        Type::TypeVar(_) => todo!(),
-        Type::Type(_) => todo!(),
-        Type::Callable(_) => todo!(),
+        Type::TypeVar(tv) => {
+            // TODO
+            return None;
+        }
+        Type::Type(t) => return type_to_name(db, file, &t),
+        Type::Callable(_) => db.python_state.callable_function().node().name(),
         Type::RecursiveType(_) => todo!(),
-        Type::NewType(_) => todo!(),
+        Type::NewType(n) => {
+            // TODO
+            return None;
+        }
         Type::ParamSpecArgs(_) => todo!(),
         Type::ParamSpecKwargs(_) => todo!(),
-        Type::Literal(_) => todo!(),
+        Type::Literal(l) => l.fallback_node_ref(db).node().name(),
         Type::Dataclass(_) => todo!(),
         Type::TypedDict(_) => todo!(),
         Type::NamedTuple(_) => todo!(),

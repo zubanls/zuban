@@ -21,7 +21,7 @@ with_typing_module[0]
 somelist = [1, 2, 3, "A", "A"]
 element : int
 for element in somelist:
-    ##? int()
+    #? int()
     element
 
 test_string: str = NOT_DEFINED
@@ -31,7 +31,7 @@ test_string
 
 char: str
 for char in NOT_DEFINED:
-    ##? str()
+    #? str()
     char
 
 
@@ -44,7 +44,7 @@ class Foo():
     baz: typing.ClassVar[str]
 
 
-##?
+#?
 Foo.bar
 #? int()
 Foo().bar
@@ -78,7 +78,7 @@ class VarClass:
 VarClass.var_
 #? int()
 VarClass.var_instance1
-##?
+#?
 VarClass.var_instance2
 #? str()
 VarClass.var_class1

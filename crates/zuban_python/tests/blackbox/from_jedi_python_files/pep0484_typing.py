@@ -24,7 +24,7 @@ def we_can_has_sequence(p: Sequence[int], q: Sequence[B], r: Sequence[int],
     r[1]
     #? ["count"]
     s.c
-    ##? int()
+    #? int()
     s[1]
     #? []
     s.a
@@ -34,7 +34,7 @@ def we_can_has_sequence(p: Sequence[int], q: Sequence[B], r: Sequence[int],
     t[1]
     #? ["append"]
     u.a
-    ##? float() list()
+    #? float() list()
     u[1.0]
     #? float()
     u[1]
@@ -44,30 +44,26 @@ def iterators(ps: Iterable[int], qs: Iterator[str], rs:
     for p in ps:
         #? int()
         p
-    ##?
+    #?
     next(ps)
     a, b = ps
-    ##? int()
+    #? int()
     a
-    ##? int()  --- TODO fix support for tuple assignment
-    # https://github.com/davidhalter/jedi/pull/663#issuecomment-172317854
-    # test below is just to make sure that in case it gets fixed by accident
-    # these tests will be fixed as well the way they should be
-    ##?
+    #? int()
     b
 
     for q in qs:
-        ##? str()
+        #? str()
         q
-    ##? str()
+    #? str()
     next(qs)
     for r in rs:
-        ##? ForwardReference()
+        #? ForwardReference()
         r
-    ##?
+    #?
     next(rs)
     for t in ts:
-        ##? float()
+        #? float()
         t
 
 def sets(p: AbstractSet[int], q: typing.MutableSet[float]):
@@ -96,11 +92,11 @@ def tuple(p: Tuple[int], q: Tuple[int, str, float], r: Tuple[B, ...]):
     #? B()
     r[10000]
     i, s, f = q
-    ##? int()
+    #? int()
     i
-    ##? str()
+    #? str()
     s
-    ##? float()
+    #? float()
     f
 
 class Key:
@@ -137,45 +133,45 @@ def mapping(
         #? Value()
         value
     for item in p.items():
-        ##? Key()
+        #? Key()
         item[0]
-        ##? Value()
+        #? Value()
         item[1]
         (key, value) = item
-        ##? Key()
+        #? Key()
         key
-        ##? Value()
+        #? Value()
         value
     for key, value in p.items():
-        ##? Key()
+        #? Key()
         key
-        ##? Value()
+        #? Value()
         value
     for key, value in q.items():
-        ##? Key()
+        #? Key()
         key
-        ##? Value()
+        #? Value()
         value
     for key, value in d.items():
-        ##? Key()
+        #? Key()
         key
-        ##? Value()
+        #? Value()
         value
     for key, value in dd.items():
-        ##? Key()
+        #? Key()
         key
-        ##? Value()
+        #? Value()
         value
     for key in r:
-        ##? Key()
+        #? Key()
         key
     for value in s:
-        ##? Value()
+        #? Value()
         value
     for key, value in t:
-        ##? Key()
+        #? Key()
         key
-        ##? Value()
+        #? Value()
         value
 
 def union(
@@ -188,9 +184,9 @@ def union(
     p
     #? int()
     q
-    ##? int() str()
+    #? int() str()
     r
-    ##? int() str() float() dict()
+    #? int() str() float() dict()
     s
     #? int() None
     t
@@ -215,37 +211,37 @@ def testdict(x: TestDict):
     #? ["setdud", "setdefault"]
     x.setd
     for key in x.keys():
-        ##? str()
+        #? str()
         key
     for value in x.values():
-        ##? int()
+        #? int()
         value
 
 x = TestDict()
 #? ["setdud", "setdefault"]
 x.setd
 for key in x.keys():
-    ##? str()
+    #? str()
     key
 for value in x.values():
-    ##? int()
+    #? int()
     value
 
 WrappingType = typing.NewType('WrappingType', str) # Chosen arbitrarily
 y = WrappingType(0) # Per https://github.com/davidhalter/jedi/issues/1015#issuecomment-355795929
-##? str()
+#? str()
 y
 
 def testnewtype(y: WrappingType):
-    ##? str()
+    #? str()
     y
-    ##? ["upper"]
+    #? ["upper"]
     y.u
 
 WrappingType2 = typing.NewType()
 
 def testnewtype2(y: WrappingType2):
-    ##?
+    #?
     y
     #? []
     ##y.
@@ -253,12 +249,12 @@ def testnewtype2(y: WrappingType2):
 # The type of a NewType is equivalent to the type of its underlying type.
 MyInt = typing.NewType('MyInt', int)
 x = type(MyInt)
-##? type.mro
+#? type.mro
 x.mro
 
 PlainInt = int
 y = type(PlainInt)
-##? type.mro
+#? type.mro
 y.mro
 
 class TestDefaultDict(typing.DefaultDict[str, int]):
@@ -269,20 +265,20 @@ def testdict(x: TestDefaultDict):
     #? ["setdud", "setdefault"]
     x.setd
     for key in x.keys():
-        ##? str()
+        #? str()
         key
     for value in x.values():
-        ##? int()
+        #? int()
         value
 
 x = TestDefaultDict()
 #? ["setdud", "setdefault"]
 x.setd
 for key in x.keys():
-    ##? str()
+    #? str()
     key
 for value in x.values():
-    ##? int()
+    #? int()
     value
 
 
@@ -304,7 +300,7 @@ def union4(x: U[int, str]):
     #? int() str()
     x
 
-##? typing.Optional
+#? typing.Optional
 typing.Optional[0]
 
 # -------------------------
@@ -336,7 +332,7 @@ in_out1(1)
 in_out1("")
 #? str()
 in_out1(str())
-##?
+#?
 in_out1()
 
 def type_in_out1(x: typing.Type[TYPE_VARX]) -> TYPE_VARX: ...
@@ -358,7 +354,7 @@ in_out2(1)
 in_out2("")
 #? str()
 in_out2(str())
-##? str() int()
+#? str() int()
 in_out2()
 # TODO this should actually be str() int(), because of the constraints.
 #? float()
@@ -370,14 +366,14 @@ def type_in_out2(x: typing.Type[TYPE_VAR_CONSTRAINTSX]) -> TYPE_VAR_CONSTRAINTSX
 type_in_out2(int)
 #? str()
 type_in_out2(str)
-##? str() int()
+#? str() int()
 type_in_out2()
 # TODO this should actually be str() int(), because of the constraints.
 #? float()
 type_in_out2(float)
 
 def ma(a: typing.Callable[[str], TYPE_VARX]) -> typing.Callable[[str], TYPE_VARX]:
-    ##? typing.Callable()
+    #? typing.Callable()
     return a
 
 def mf(s: str) -> int:
@@ -400,7 +396,7 @@ def call_pls() -> typing.Callable[[TYPE_VARX], TYPE_VARX]: ...
 call_pls()(1)
 
 def call2_pls() -> typing.Callable[[str, typing.Callable[[int], TYPE_VARX]], TYPE_VARX]: ...
-##? float()
+#? float()
 call2_pls('')(1, lambda x: 3.0)
 
 def call3_pls() -> typing.Callable[[typing.Callable[[int], TYPE_VARX]], typing.List[TYPE_VARX]]: ...
@@ -411,7 +407,7 @@ call3_pls()(the_callable)[0]
 def call4_pls(fn: typing.Callable[..., TYPE_VARX]) -> typing.Callable[..., TYPE_VARX]:
     return ""
 
-##? int()
+#? int()
 call4_pls(lambda x: 1)()
 
 # -------------------------
@@ -424,7 +420,7 @@ else:
     without_type_checking = 1.0
 #? int()
 with_type_checking
-##?
+#?
 without_type_checking
 
 def foo(a: typing.List, b: typing.Dict, c: typing.MutableMapping) -> typing.Type[int]:
@@ -442,7 +438,7 @@ def foo(a: typing.List, b: typing.Dict, c: typing.MutableMapping) -> typing.Type
     c
     #?
     c['asdf']
-##? int
+#? int
 foo()
 
 # -------------------------
@@ -494,13 +490,13 @@ def typed_dict_test_foo(arg: Foo):
     a_list_of_floats = arg['bar']
     an_int = arg['an_int']
 
-    ##? str()
+    #? str()
     a_string
-    ##? list()
+    #? list()
     a_list_of_floats
-    ##? float()
+    #? float()
     a_list_of_floats[0]
-    ##? int()
+    #? int()
     an_int
 
     #? ['isupper']
@@ -512,16 +508,16 @@ def typed_dict_test_foo(arg: Foo):
 
 #! ['class Foo']
 d: Foo
-##? str()
+#? str()
 d['foo']
-##? float()
+#? float()
 d['bar'][0]
-##?
+#?
 d['baz']
 
-##?
+#?
 d.foo
-##?
+#?
 d.bar
 #! []
 d.foo
@@ -543,17 +539,17 @@ class Bar(Foo):
 
     #? int()
     another_variable
-    ##?
+    #?
     an_int
 
 def typed_dict_test_foo(arg: Bar):
-    ##? str()
+    #? str()
     arg['foo']
-    ##? list()
+    #? list()
     arg['bar']
-    ##? float()
+    #? float()
     arg['bar'][0]
-    ##? int()
+    #? int()
     arg['an_int']
-    ##? int()
+    #? int()
     arg['another_variable']

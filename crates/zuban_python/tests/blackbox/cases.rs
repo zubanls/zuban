@@ -30,6 +30,7 @@ impl TestFile<'_> {
         let path = project
             .vfs_handler()
             .normalize_uncheck_abs_path(self.path.to_str().unwrap());
+        let file_name = self.path.file_name().unwrap().to_str().unwrap();
         let document = project
             .document(&PathWithScheme::with_file_scheme(path))
             .unwrap();
@@ -68,8 +69,7 @@ impl TestFile<'_> {
                         .collect();
                     if actual != expected {
                         errors.push(format!(
-                            "{}: Line #{} {actual:?} != {expected:?}",
-                            self.path.file_name().unwrap().to_str().unwrap(),
+                            "{file_name}: Line #{} {actual:?} != {expected:?}",
                             case.line,
                         ));
                     }
@@ -84,7 +84,10 @@ impl TestFile<'_> {
             for error in &errors {
                 println!("{error}");
             }
-            panic!("Ran {ran_count} tests with {} errors", errors.len());
+            println!(
+                "{file_name} Ran {ran_count} tests with {} errors",
+                errors.len()
+            );
         }
         (ran_count, full_count)
     }

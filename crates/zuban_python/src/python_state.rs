@@ -1136,6 +1136,10 @@ impl PythonState {
         )
     }
 
+    pub(crate) fn callable_function(&self) -> Function {
+        Function::new(self.callable_node_ref(), None)
+    }
+
     pub fn mypy_extensions_arg_func(&self, db: &Database, specific: Specific) -> Inferred {
         let node_index = match specific {
             Specific::MypyExtensionsArg => self.mypy_extensions_arg_func,
