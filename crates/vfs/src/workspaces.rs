@@ -302,7 +302,7 @@ impl Workspace {
                 entries: Default::default(),
                 scheme,
                 root_path,
-                canonicalized_path: vfs.unchecked_abs_path(canonicalized_path),
+                canonicalized_path: vfs.unchecked_abs_path(&canonicalized_path),
                 kind,
             });
         };
