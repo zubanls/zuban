@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{path::Path, rc::Rc};
 
 use config::TypeCheckerFlags;
 use utils::FastHashSet;
@@ -92,7 +92,13 @@ impl<'db> FileSelector<'db> {
                         ) {
                             Some(DirOrFile::Dir(dir)) => self.handle_dir(&dir),
                             Some(DirOrFile::File(file)) => self.add_file(file),
-                            None => (),
+                            None => {
+                                for workspace in self.db.vfs.workspaces.iter() {
+                                    if workspace.root_path().as_ref().starts_with(Path::new(path)) {
+                                        self.handle_entries(&workspace.entries)
+                                    }
+                                }
+                            }
                         }
                         false
                     } else {

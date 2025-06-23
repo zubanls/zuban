@@ -431,7 +431,9 @@ fn apply_flags(
     );
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
-    project_options.settings.mypy_path.push(current_dir);
+    if project_options.settings.mypy_path.is_empty() {
+        project_options.settings.mypy_path.push(current_dir);
+    }
 }
 
 #[cfg(test)]
@@ -787,13 +789,12 @@ mod tests {
 
             [file src/hello_zuban/__init__.py]
             from hello_zuban.hello import X
-
-            def f() -> None:
-                from src.hello_zuban.hello import X
+            from src.hello_zuban.hello import Z
 
             x = X()
 
             [file src/hello_zuban/hello.py]
+            Z = 1
             class X: pass
             1()
 
@@ -804,7 +805,10 @@ mod tests {
 
         assert_eq!(
             d(),
-            ["src/hello_zuban/hello.py:2: error: \"int\" not callable"]
+            [
+                "hello_zuban/__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
+                "hello_zuban/hello.py:3: error: \"int\" not callable"
+            ]
         );
     }
 }
