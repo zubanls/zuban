@@ -803,12 +803,22 @@ mod tests {
         );
         let d = || diagnostics(Cli::parse_from(vec![""]), test_dir.path());
 
-        assert_eq!(
-            d(),
-            [
-                "hello_zuban/__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
-                "hello_zuban/hello.py:3: error: \"int\" not callable"
-            ]
-        );
+        if cfg!(target_os = "windows") {
+            assert_eq!(
+                d(),
+                [
+                    "hello_zuban\\__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
+                    "hello_zuban\\hello.py:3: error: \"int\" not callable"
+                ]
+            );
+        } else {
+            assert_eq!(
+                d(),
+                [
+                    "hello_zuban/__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
+                    "hello_zuban/hello.py:3: error: \"int\" not callable"
+                ]
+            );
+        }
     }
 }
