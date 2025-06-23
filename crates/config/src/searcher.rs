@@ -1,4 +1,4 @@
-use std::{io::Read, path::Path};
+use std::{io::Read, path::Path, rc::Rc};
 
 use crate::{DiagnosticConfig, ProjectOptions};
 use vfs::{AbsPath, VfsHandler};
@@ -13,12 +13,19 @@ const CONFIG_PATHS: [&str; 4] = [
     //"~/.mypy.ini",
 ];
 
+pub struct FoundConfig {
+    pub project_options: ProjectOptions,
+    pub diagnostic_config: DiagnosticConfig,
+    pub config_path: Option<Rc<AbsPath>>,
+}
+
 pub fn find_workspace_config(
     vfs: &dyn VfsHandler,
     workspace_dir: &AbsPath,
     on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<ProjectOptions> {
-    let mut project_options = find_mypy_config_file_in_dir(vfs, workspace_dir, on_check_path)?.0;
+    let mut project_options =
+        find_mypy_config_file_in_dir(vfs, workspace_dir, on_check_path)?.project_options;
     project_options.settings.mypy_path = vec![];
     Ok(project_options)
 }
@@ -27,7 +34,7 @@ pub fn find_cli_config(
     vfs: &dyn VfsHandler,
     current_dir: &AbsPath,
     config_file: Option<&Path>,
-) -> anyhow::Result<(ProjectOptions, DiagnosticConfig)> {
+) -> anyhow::Result<FoundConfig> {
     if let Some(config_file) = config_file.as_ref() {
         let Some(config_path) = config_file.as_os_str().to_str() else {
             anyhow::bail!("Expected a valid UTF-8 encoded config path")
@@ -36,10 +43,11 @@ pub fn find_cli_config(
             .map_err(|err| anyhow::anyhow!("Issue while reading {config_path}: {err}"))?;
 
         let result = initialize_config(vfs, current_dir, config_path, s)?;
-        Ok((
-            result.0.unwrap_or_else(ProjectOptions::mypy_default),
-            result.1,
-        ))
+        Ok(FoundConfig {
+            project_options: result.0.unwrap_or_else(ProjectOptions::mypy_default),
+            diagnostic_config: result.1,
+            config_path: Some(vfs.absolute_path(current_dir, config_path)),
+        })
     } else {
         find_mypy_config_file_in_dir(vfs, current_dir, |_| ())
     }
@@ -50,22 +58,35 @@ fn initialize_config(
     current_dir: &AbsPath,
     path: &str,
     content: String,
-) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig)> {
+) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Rc<AbsPath>)> {
     let _p = tracing::info_span!("config_finder").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
+    let config_path = vfs.absolute_path(current_dir, path);
     let options = if path.ends_with(".toml") {
-        ProjectOptions::from_pyproject_toml(vfs, current_dir, &content, &mut diagnostic_config)?
+        ProjectOptions::from_pyproject_toml(
+            vfs,
+            current_dir,
+            &config_path,
+            &content,
+            &mut diagnostic_config,
+        )?
     } else {
-        ProjectOptions::from_mypy_ini(vfs, current_dir, &content, &mut diagnostic_config)?
+        ProjectOptions::from_mypy_ini(
+            vfs,
+            current_dir,
+            &config_path,
+            &content,
+            &mut diagnostic_config,
+        )?
     };
-    Ok((options, diagnostic_config))
+    Ok((options, diagnostic_config, config_path))
 }
 
 fn find_mypy_config_file_in_dir(
     vfs: &dyn VfsHandler,
     dir: &AbsPath,
     mut on_check_path: impl FnMut(&AbsPath),
-) -> anyhow::Result<(ProjectOptions, DiagnosticConfig)> {
+) -> anyhow::Result<FoundConfig> {
     for config_path in CONFIG_PATHS.iter() {
         let path = vfs.join(dir, config_path);
         on_check_path(&path);
@@ -82,10 +103,18 @@ fn find_mypy_config_file_in_dir(
                 result.0 = Some(ProjectOptions::mypy_default())
             }
             if let Some(project_options) = result.0 {
-                return Ok((project_options, result.1));
+                return Ok(FoundConfig {
+                    project_options,
+                    diagnostic_config: result.1,
+                    config_path: Some(result.2),
+                });
             }
         }
     }
     tracing::info!("No relevant config found");
-    Ok((ProjectOptions::default(), DiagnosticConfig::default()))
+    Ok(FoundConfig {
+        project_options: ProjectOptions::default(),
+        diagnostic_config: DiagnosticConfig::default(),
+        config_path: None,
+    })
 }

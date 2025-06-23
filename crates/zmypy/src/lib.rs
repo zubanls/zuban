@@ -5,7 +5,7 @@ pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
 use config::{find_cli_config, ExcludeRegex, ProjectOptions, PythonVersion};
-use vfs::{AbsPath, GlobAbsPath, SimpleLocalFS, VfsHandler};
+use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -269,9 +269,9 @@ fn project_from_cli(
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
-    let (mut options, mut diagnostic_config) =
-        find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
-            .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
+    let mut found = find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
+        .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
+    let mut options = found.project_options;
     options.settings.mypy_compatible = true;
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
@@ -284,12 +284,16 @@ fn project_from_cli(
     apply_flags(
         &local_fs,
         &mut options,
-        &mut diagnostic_config,
+        &mut found.diagnostic_config,
         cli,
         current_dir,
+        found.config_path.as_deref(),
     );
 
-    (Project::new(Box::new(local_fs), options), diagnostic_config)
+    (
+        Project::new(Box::new(local_fs), options),
+        found.diagnostic_config,
+    )
 }
 
 fn apply_flags(
@@ -298,6 +302,7 @@ fn apply_flags(
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
     current_dir: Rc<AbsPath>,
+    config_path: Option<&AbsPath>,
 ) {
     macro_rules! apply {
         ($to:ident, $attr:ident, $inverse:ident) => {
@@ -370,24 +375,19 @@ fn apply_flags(
         project_options.settings.python_version = python_version;
     }
     if let Some(p) = cli.python_executable {
-        let p = vfs_handler.absolute_path(&current_dir, &p);
         project_options
             .settings
-            .apply_python_executable(vfs_handler, &p)
+            .apply_python_executable(vfs_handler, &current_dir, config_path, &p)
             .expect("Error when applying --python-executable")
     }
     if let Some(p) = &project_options.settings.environment {
         tracing::info!("Checking the following environment: {p}");
     }
     if !cli.files.is_empty() {
-        project_options.settings.files_or_directories_to_check = cli
-            .files
-            .into_iter()
-            .map(|p| {
-                GlobAbsPath::new(vfs_handler, &current_dir, &p)
-                    .expect("Need a valid glob path as a files argument")
-            })
-            .collect();
+        project_options
+            .settings
+            .set_files_or_directories_to_check(vfs_handler, &current_dir, config_path, cli.files)
+            .expect("Need a valid glob path as a files argument");
     }
     tracing::info!(
         "Checking the following files: {:?}",
@@ -673,7 +673,8 @@ mod tests {
             &mut project_options,
             &mut DiagnosticConfig::default(),
             cli,
-            current_dir,
+            current_dir.clone(),
+            Some(current_dir.as_ref()),
         );
         let files: Vec<&str> = project_options
             .settings
@@ -760,5 +761,50 @@ mod tests {
         );
         assert!(d(&["", "foo/"]).is_empty());
         assert!(d(&[""]).is_empty());
+    }
+
+    #[test]
+    fn test_pyproject_with_mypy_config_dir_env_var() {
+        // From https://github.com/zubanls/zubanls/issues/3
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file pyproject.toml]
+            [project]
+            name = "hello_zuban"
+            version = "0.1.0"
+
+            requires-python = ">= 3.12"
+            dependencies = []
+
+            [project.scripts]
+            hello-zuban = "hello_zuban:entry_point"
+
+            [tool.mypy]
+            mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+            files = ["$MYPY_CONFIG_FILE_DIR/src"]
+            strict = true
+
+            [file src/hello_zuban/__init__.py]
+            from hello_zuban.hello import X
+
+            def f() -> None:
+                from src.hello_zuban.hello import X
+
+            x = X()
+
+            [file src/hello_zuban/hello.py]
+            class X: pass
+            1()
+
+            "#,
+            false,
+        );
+        let d = || diagnostics(Cli::parse_from(vec![""]), test_dir.path());
+
+        assert_eq!(
+            d(),
+            ["src/hello_zuban/hello.py:2: error: \"int\" not callable"]
+        );
     }
 }

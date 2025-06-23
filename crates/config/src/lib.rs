@@ -71,10 +71,14 @@ impl Settings {
     pub fn apply_python_executable(
         &mut self,
         handler: &dyn VfsHandler,
-        python_executable: &AbsPath,
+        current_dir: &AbsPath,
+        config_file_path: Option<&AbsPath>,
+        python_executable: &str,
     ) -> anyhow::Result<()> {
         const ERR: &str = "Expected a python-executable to be at least two directories deep";
-        let Some(executable_dir) = python_executable.as_ref().parent() else {
+        let python_executable =
+            to_abs_path(handler, current_dir, config_file_path, python_executable);
+        let Some(executable_dir) = python_executable.as_ref().as_ref().parent() else {
             bail!(ERR)
         };
         let environment = executable_dir.parent().map(|p| {
@@ -90,6 +94,55 @@ impl Settings {
         self.environment = environment;
         Ok(())
     }
+
+    pub fn set_files_or_directories_to_check(
+        &mut self,
+        handler: &dyn VfsHandler,
+        current_dir: &AbsPath,
+        config_file_path: Option<&AbsPath>,
+        items: impl IntoIterator<Item = String>,
+    ) -> anyhow::Result<()> {
+        self.files_or_directories_to_check = items
+            .into_iter()
+            .map(|s| {
+                GlobAbsPath::new(
+                    handler,
+                    current_dir,
+                    &replace_env_vars(config_file_path, &s),
+                )
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        Ok(())
+    }
+}
+
+fn to_abs_path(
+    handler: &dyn VfsHandler,
+    current_dir: &AbsPath,
+    config_file_path: Option<&AbsPath>,
+    s: &str,
+) -> Rc<AbsPath> {
+    // Replace only $MYPY_CONFIG_FILE_DIR for now.
+    if s.contains('$') {
+        handler.absolute_path(current_dir, &replace_env_vars(config_file_path, s))
+    } else {
+        handler.absolute_path(current_dir, s)
+    }
+}
+
+fn replace_env_vars<'x>(config_file_path: Option<&AbsPath>, s: &'x str) -> Cow<'x, str> {
+    // Replace only $MYPY_CONFIG_FILE_DIR for now.
+    if s.contains('$') {
+        if let Some(config_file_path) = config_file_path {
+            if let Some(mypy_config_file_dir) = config_file_path.as_ref().parent() {
+                return Cow::Owned(s.replace(
+                    "$MYPY_CONFIG_FILE_DIR",
+                    mypy_config_file_dir.to_str().unwrap(),
+                ));
+            }
+        }
+    }
+    Cow::Borrowed(s)
 }
 
 impl ProjectOptions {
@@ -115,6 +168,7 @@ impl ProjectOptions {
     pub fn from_mypy_ini(
         vfs: &dyn VfsHandler,
         current_dir: &AbsPath,
+        config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Option<Self>> {
@@ -135,6 +189,7 @@ impl ProjectOptions {
                     apply_from_base_config(
                         vfs,
                         current_dir,
+                        Some(config_file_path),
                         &mut settings,
                         &mut flags,
                         diagnostic_config,
@@ -166,6 +221,7 @@ impl ProjectOptions {
     pub fn from_pyproject_toml(
         vfs: &dyn VfsHandler,
         current_dir: &AbsPath,
+        config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Option<Self>> {
@@ -184,6 +240,7 @@ impl ProjectOptions {
                         apply_from_base_config(
                             vfs,
                             current_dir,
+                            Some(config_file_path),
                             &mut settings,
                             &mut flags,
                             diagnostic_config,
@@ -781,6 +838,7 @@ fn split_and_trim<'a>(s: &'a str, pattern: &'a [char]) -> impl Iterator<Item = &
 fn apply_from_base_config(
     vfs: &dyn VfsHandler,
     current_dir: &AbsPath,
+    config_file_path: Option<&AbsPath>,
     settings: &mut Settings,
     flags: &mut TypeCheckerFlags,
     diagnostic_config: &mut DiagnosticConfig,
@@ -808,22 +866,20 @@ fn apply_from_base_config(
         | "warn_unused_configs" => {
             tracing::warn!("TODO ignored config value {key}");
         }
-        "files" => {
-            settings.files_or_directories_to_check = value
-                .as_str_list(key, &[','])?
-                .into_iter()
-                .map(|s| GlobAbsPath::new(vfs, current_dir, &s))
-                .collect::<anyhow::Result<Vec<_>>>()?;
-        }
+        "files" => settings.set_files_or_directories_to_check(
+            vfs,
+            current_dir,
+            config_file_path,
+            value.as_str_list(key, &[','])?,
+        )?,
         "mypy_path" => settings.mypy_path.extend(
             value
                 .as_str_list(key, &[',', ':'])?
                 .into_iter()
-                .map(|s| vfs.absolute_path(current_dir, &s)),
+                .map(|s| to_abs_path(vfs, current_dir, config_file_path, &s)),
         ),
         "python_executable" => {
-            let p = vfs.absolute_path(current_dir, value.as_str()?);
-            settings.apply_python_executable(vfs, &p)?
+            settings.apply_python_executable(vfs, current_dir, config_file_path, value.as_str()?)?
         }
         "python_version" => {
             settings.python_version = if let IniOrTomlValue::Toml(Value::Float(f)) = &value {
@@ -895,12 +951,14 @@ mod tests {
             ProjectOptions::from_mypy_ini(
                 &local_fs,
                 &current_dir,
+                &current_dir,
                 code,
                 &mut DiagnosticConfig::default(),
             )
         } else {
             ProjectOptions::from_pyproject_toml(
                 &local_fs,
+                &current_dir,
                 &current_dir,
                 code,
                 &mut DiagnosticConfig::default(),
