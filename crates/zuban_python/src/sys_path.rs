@@ -62,10 +62,15 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
 }
 
 pub(crate) fn typeshed_path_from_executable() -> Rc<AbsPath> {
-    let executable = std::env::current_exe().expect(
+    let mut executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
                  a typeshed path in that case.",
     );
+
+    // It seems on Mac the paths are not canonicalized, see https://github.com/zubanls/zubanls/issues/2
+    if let Ok(canonicalized) = std::fs::canonicalize(&executable) {
+        executable = canonicalized;
+    }
     const NEEDS_PARENTS: &str = "The executable is expected to be relative to the typeshed path";
     let lib_folder = executable
         .parent()
