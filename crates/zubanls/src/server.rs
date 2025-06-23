@@ -334,11 +334,13 @@ impl<'sender> GlobalState<'sender> {
             //
             // It's questionable that we want those two things. And maybe there will also be a need
             // for the type checker to understand what the mypy_path originally was.
-            config.settings.mypy_path = self
-                .roots
-                .iter()
-                .map(|p| vfs_handler.unchecked_abs_path(p))
-                .collect();
+            if config.settings.mypy_path.is_empty() {
+                config.settings.mypy_path = self
+                    .roots
+                    .iter()
+                    .map(|p| vfs_handler.unchecked_abs_path(p))
+                    .collect();
+            }
             config.settings.typeshed_path = self.typeshed_path.clone();
             if config.settings.environment.is_none() {
                 config.settings.environment = match std::env::var("VIRTUAL_ENV") {

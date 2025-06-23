@@ -1060,3 +1060,57 @@ fn remove_directory_of_in_memory_file_with_push() {
         ["\"int\" not callable"]
     );
 }
+
+#[test]
+fn test_pyproject_with_mypy_config_dir_env_var() {
+    let server = Project::with_fixture(
+        r#"
+        [file pyproject.toml]
+        [project]
+        name = "hello_zuban"
+        version = "0.1.0"
+
+        requires-python = ">= 3.12"
+        dependencies = []
+
+        [project.scripts]
+        hello-zuban = "hello_zuban:entry_point"
+
+        [tool.mypy]
+        mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+        files = ["$MYPY_CONFIG_FILE_DIR/src"]
+        strict = true
+
+        [file src/hello_zuban/__init__.py]
+        from hello_zuban.hello import X
+        from src.hello_zuban.hello import Z
+
+        x = X()
+
+        [file src/hello_zuban/hello.py]
+        Z = 1
+        class X: pass
+        1()
+
+        [file test/test_foo.py]
+        ""()
+
+        "#,
+    )
+    .into_server();
+
+    assert_eq!(
+        server.diagnostics_for_file("src/hello_zuban/__init__.py"),
+        ["Cannot find implementation or library stub for module named \"src\""]
+    );
+    assert_eq!(
+        server.diagnostics_for_file("src/hello_zuban/hello.py"),
+        ["\"int\" not callable"]
+    );
+    // It should work at least after opening, even if it's not on path.
+    server.open_in_memory_file("test/test_foo.py", "''()");
+    assert_eq!(
+        server.diagnostics_for_file("test/test_foo.py"),
+        ["\"str\" not callable"]
+    );
+}

@@ -24,10 +24,7 @@ pub fn find_workspace_config(
     workspace_dir: &AbsPath,
     on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<ProjectOptions> {
-    let mut project_options =
-        find_mypy_config_file_in_dir(vfs, workspace_dir, on_check_path)?.project_options;
-    project_options.settings.mypy_path = vec![];
-    Ok(project_options)
+    Ok(find_mypy_config_file_in_dir(vfs, workspace_dir, on_check_path)?.project_options)
 }
 
 pub fn find_cli_config(
