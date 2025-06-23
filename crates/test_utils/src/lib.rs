@@ -5,7 +5,7 @@ use std::{collections::HashMap, rc::Rc};
 use regex::Regex;
 
 pub use testdir::TestDir;
-use vfs::{AbsPath, LocalFS};
+use vfs::{LocalFS, NormalizedPath};
 
 lazy_static::lazy_static! {
     // This is how I found out about possible "commands in mypy, executed in
@@ -174,10 +174,10 @@ fn find_flags(string: &str) -> Option<&str> {
     None
 }
 
-pub fn typeshed_path() -> Rc<AbsPath> {
+pub fn typeshed_path() -> Rc<NormalizedPath> {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let typeshed_path = p.ancestors().nth(2).unwrap().join("typeshed");
-    LocalFS::without_watcher().abs_path_from_current_dir(typeshed_path.to_str().unwrap())
+    LocalFS::without_watcher().normalized_path_from_current_dir(typeshed_path.to_str().unwrap())
 }
 
 pub fn write_files_from_fixture(fixture: &str, root_dir_contains_symlink: bool) -> TestDir {

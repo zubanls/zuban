@@ -5,7 +5,7 @@ pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
 use config::{find_cli_config, ExcludeRegex, ProjectOptions, PythonVersion};
-use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
+use vfs::{AbsPath, NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -236,7 +236,11 @@ pub fn run(cli: Cli) -> ExitCode {
     with_exit_code(cli, current_dir, None)
 }
 
-fn with_exit_code(cli: Cli, current_dir: String, typeshed_path: Option<Rc<AbsPath>>) -> ExitCode {
+fn with_exit_code(
+    cli: Cli,
+    current_dir: String,
+    typeshed_path: Option<Rc<NormalizedPath>>,
+) -> ExitCode {
     with_diagnostics_from_cli(cli, current_dir, typeshed_path, |diagnostics, config| {
         for diagnostic in diagnostics.issues.iter() {
             println!("{}", diagnostic.as_string(config))
@@ -249,7 +253,7 @@ fn with_exit_code(cli: Cli, current_dir: String, typeshed_path: Option<Rc<AbsPat
 pub fn with_diagnostics_from_cli<T>(
     cli: Cli,
     current_dir: String,
-    typeshed_path: Option<Rc<AbsPath>>,
+    typeshed_path: Option<Rc<NormalizedPath>>,
     callback: impl FnOnce(Diagnostics, &DiagnosticConfig) -> T,
 ) -> T {
     tracing::info!("Checking in {current_dir}");
@@ -264,7 +268,7 @@ pub fn with_diagnostics_from_cli<T>(
 fn project_from_cli(
     cli: Cli,
     current_dir: &str,
-    typeshed_path: Option<Rc<AbsPath>>,
+    typeshed_path: Option<Rc<NormalizedPath>>,
     lookup_env_var: impl Fn(&str) -> Option<String>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
@@ -277,8 +281,8 @@ fn project_from_cli(
         options.settings.typeshed_path = Some(typeshed_path);
     }
     if options.settings.environment.is_none() {
-        options.settings.environment =
-            lookup_env_var("VIRTUAL_ENV").map(|v| local_fs.absolute_path(&current_dir, &v))
+        options.settings.environment = lookup_env_var("VIRTUAL_ENV")
+            .map(|v| local_fs.normalize_rc_path(local_fs.absolute_path(&current_dir, &v)))
     }
 
     apply_flags(
@@ -432,7 +436,10 @@ fn apply_flags(
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
     if project_options.settings.mypy_path.is_empty() {
-        project_options.settings.mypy_path.push(current_dir);
+        project_options
+            .settings
+            .mypy_path
+            .push(vfs_handler.normalize_rc_path(current_dir));
     }
 }
 

@@ -57,7 +57,7 @@ impl<F: VfsFile> Vfs<F> {
     pub fn with_reused_test_resources<'x>(
         &mut self,
         handler: Box<dyn VfsHandler>,
-        type_checked_dirs: impl DoubleEndedIterator<Item = &'x AbsPath>,
+        type_checked_dirs: impl DoubleEndedIterator<Item = &'x NormalizedPath>,
     ) -> Self
     where
         F: Clone,
@@ -199,7 +199,7 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&mut self, root_path: Rc<AbsPath>, kind: WorkspaceKind) {
+    pub fn add_workspace(&mut self, root_path: Rc<NormalizedPath>, kind: WorkspaceKind) {
         self.workspaces
             .add(&*self.handler, file_scheme(), root_path, kind)
     }

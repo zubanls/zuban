@@ -9,8 +9,8 @@ use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use utils::FastHashSet;
 
 use crate::{
-    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, NotifyEvent, Parent, PathWithScheme,
-    VfsHandler,
+    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, NormalizedPath, NotifyEvent, Parent,
+    PathWithScheme, VfsHandler,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
@@ -302,8 +302,8 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
         self.unchecked_abs_path(std::env::current_dir().unwrap().to_str().unwrap())
     }
 
-    pub fn abs_path_from_current_dir(&self, p: &str) -> Rc<AbsPath> {
-        self.absolute_path(&self.current_dir(), p)
+    pub fn normalized_path_from_current_dir(&self, p: &str) -> Rc<NormalizedPath> {
+        self.normalize_rc_path(self.absolute_path(&self.current_dir(), p))
     }
 
     fn follow_and_watch_symlink<P: AsRef<Path>>(

@@ -5,7 +5,8 @@ use utils::match_case;
 use crate::{
     tree::{AddedFile, Entries},
     vfs::Scheme,
-    AbsPath, DirOrFile, Directory, DirectoryEntry, Parent, PathWithScheme, VfsHandler, NormalizedPath
+    AbsPath, DirOrFile, Directory, DirectoryEntry, NormalizedPath, Parent, PathWithScheme,
+    VfsHandler,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -27,7 +28,7 @@ impl Workspaces {
         &mut self,
         vfs: &dyn VfsHandler,
         scheme: Scheme,
-        root: Rc<AbsPath>,
+        root: Rc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
         self.items.push(Workspace::new(vfs, scheme, root, kind))
@@ -37,7 +38,7 @@ impl Workspaces {
         &mut self,
         vfs: &dyn VfsHandler,
         scheme: Scheme,
-        root: Rc<AbsPath>,
+        root: Rc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
         self.items
@@ -244,14 +245,14 @@ impl Workspaces {
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    pub(crate) root_path: Rc<AbsPath>,
+    pub(crate) root_path: Rc<NormalizedPath>,
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
     // On Windows this is also necessary since changing the watch logic. We canonicalize watched
     // paths to avoid adding multiple watches for the same files. Therefore we also need to
     // canonicalize the paths here.
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
-    pub(crate) canonicalized_path: Rc<AbsPath>,
+    pub(crate) canonicalized_path: Rc<NormalizedPath>,
     pub(crate) scheme: Scheme,
     pub entries: Entries,
     pub kind: WorkspaceKind,
@@ -261,11 +262,11 @@ impl Workspace {
     fn new(
         vfs: &dyn VfsHandler,
         scheme: Scheme,
-        root_path: Rc<AbsPath>,
+        root_path: Rc<NormalizedPath>,
         kind: WorkspaceKind,
     ) -> Rc<Self> {
         tracing::debug!("Add workspace {root_path}");
-        let root_path = Rc::<AbsPath>::from(root_path);
+        let root_path = Rc::<NormalizedPath>::from(root_path);
 
         let workspace;
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
@@ -354,7 +355,7 @@ impl Workspace {
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {
             if self.canonicalized_path.as_ref().as_ref().starts_with(path) {
-                return true
+                return true;
             }
         }
         self.root_path().as_ref().starts_with(path)

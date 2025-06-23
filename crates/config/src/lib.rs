@@ -6,7 +6,7 @@ use anyhow::bail;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
-use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, VfsHandler};
+use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, NormalizedPath, VfsHandler};
 
 pub use searcher::{find_cli_config, find_workspace_config};
 
@@ -37,13 +37,13 @@ pub struct ProjectOptions {
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: PythonVersion,
-    pub environment: Option<Rc<AbsPath>>,
-    pub mypy_path: Vec<Rc<AbsPath>>,
-    pub prepended_site_packages: Vec<Rc<AbsPath>>,
+    pub environment: Option<Rc<NormalizedPath>>,
+    pub mypy_path: Vec<Rc<NormalizedPath>>,
+    pub prepended_site_packages: Vec<Rc<NormalizedPath>>,
     pub mypy_compatible: bool,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
-    pub typeshed_path: Option<Rc<AbsPath>>,
+    pub typeshed_path: Option<Rc<NormalizedPath>>,
 }
 
 impl Default for Settings {
@@ -54,7 +54,7 @@ impl Default for Settings {
             environment: None,
             typeshed_path: std::env::var("ZUBAN_TYPESHED")
                 .ok()
-                .map(|p| LocalFS::without_watcher().abs_path_from_current_dir(&p)),
+                .map(|p| LocalFS::without_watcher().normalized_path_from_current_dir(&p)),
             mypy_path: vec![],
             mypy_compatible: false,
             files_or_directories_to_check: vec![],
@@ -77,7 +77,7 @@ impl Settings {
     ) -> anyhow::Result<()> {
         const ERR: &str = "Expected a python-executable to be at least two directories deep";
         let python_executable =
-            to_abs_path(handler, current_dir, config_file_path, python_executable);
+            to_normalized_path(handler, current_dir, config_file_path, python_executable);
         let Some(executable_dir) = python_executable.as_ref().as_ref().parent() else {
             bail!(ERR)
         };
@@ -86,7 +86,7 @@ impl Settings {
                 .as_os_str()
                 .to_str()
                 .expect("Should never happen, because we only put together valid unicode paths");
-            handler.unchecked_abs_path(p)
+            handler.unchecked_normalized_path(handler.unchecked_abs_path(p))
         });
         if environment.is_none() {
             bail!(ERR)
@@ -116,18 +116,18 @@ impl Settings {
     }
 }
 
-fn to_abs_path(
+fn to_normalized_path(
     handler: &dyn VfsHandler,
     current_dir: &AbsPath,
     config_file_path: Option<&AbsPath>,
     s: &str,
-) -> Rc<AbsPath> {
+) -> Rc<NormalizedPath> {
     // Replace only $MYPY_CONFIG_FILE_DIR for now.
-    if s.contains('$') {
+    handler.normalize_rc_path(if s.contains('$') {
         handler.absolute_path(current_dir, &replace_env_vars(config_file_path, s))
     } else {
         handler.absolute_path(current_dir, s)
-    }
+    })
 }
 
 fn replace_env_vars<'x>(config_file_path: Option<&AbsPath>, s: &'x str) -> Cow<'x, str> {
@@ -876,7 +876,7 @@ fn apply_from_base_config(
             value
                 .as_str_list(key, &[',', ':'])?
                 .into_iter()
-                .map(|s| to_abs_path(vfs, current_dir, config_file_path, &s)),
+                .map(|s| to_normalized_path(vfs, current_dir, config_file_path, &s)),
         ),
         "python_executable" => {
             settings.apply_python_executable(vfs, current_dir, config_file_path, value.as_str()?)?
@@ -1027,7 +1027,7 @@ mod tests {
         let code = "[mypy]\npython_executable = /some/path/bin/python";
         let opts = project_options_valid(code, true);
         let path = opts.settings.environment.as_ref().unwrap();
-        assert_eq!(***path, *"/some/path");
+        assert_eq!(****path, *"/some/path");
     }
 
     #[test]

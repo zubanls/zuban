@@ -17,7 +17,7 @@ use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
-use vfs::{AbsPath, LocalFS, NotifyEvent, PathWithScheme, VfsHandler as _};
+use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
 use zuban_python::{PanicRecovery, Project};
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
@@ -36,7 +36,7 @@ fn version() -> &'static str {
 
 pub fn run_server_with_custom_connection(
     connection: Connection,
-    typeshed_path: Option<Rc<AbsPath>>,
+    typeshed_path: Option<Rc<NormalizedPath>>,
     cleanup: impl FnOnce() -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     tracing::info!("Server version {} will start", version());
@@ -202,7 +202,7 @@ pub(crate) struct GlobalState<'sender> {
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
-    typeshed_path: Option<Rc<AbsPath>>,
+    typeshed_path: Option<Rc<NormalizedPath>>,
     pub client_capabilities: ClientCapabilities,
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
@@ -216,7 +216,7 @@ impl<'sender> GlobalState<'sender> {
         sender: &'sender Sender<lsp_server::Message>,
         client_capabilities: ClientCapabilities,
         roots: Rc<[String]>,
-        typeshed_path: Option<Rc<AbsPath>>,
+        typeshed_path: Option<Rc<NormalizedPath>>,
     ) -> Self {
         GlobalState {
             paths_that_invalidate_whole_project: Default::default(),
@@ -339,13 +339,18 @@ impl<'sender> GlobalState<'sender> {
                 config.settings.mypy_path = self
                     .roots
                     .iter()
-                    .map(|p| vfs_handler.unchecked_abs_path(p))
+                    .map(|p| {
+                        vfs_handler.unchecked_normalized_path(vfs_handler.unchecked_abs_path(p))
+                    })
                     .collect();
             }
             config.settings.typeshed_path = self.typeshed_path.clone();
             if config.settings.environment.is_none() {
                 config.settings.environment = match std::env::var("VIRTUAL_ENV") {
-                    Ok(path) => Some(vfs_handler.absolute_path(&first_root, &path)),
+                    Ok(path) => Some(
+                        vfs_handler
+                            .normalize_rc_path(vfs_handler.absolute_path(&first_root, &path)),
+                    ),
                     Err(err) => {
                         tracing::info!("Tried to access $VIRTUAL_ENV, but got: {err}");
                         None

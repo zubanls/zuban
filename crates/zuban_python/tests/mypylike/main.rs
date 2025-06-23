@@ -13,7 +13,7 @@ use clap::Parser;
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
-use vfs::{AbsPath, PathWithScheme, SimpleLocalFS, VfsHandler};
+use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::Project;
 
 const SKIP_MYPY_TEST_FILES: [&str; 27] = [
@@ -62,7 +62,10 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: Rc<AbsPath> = SimpleLocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR);
+    static BASE_PATH: Rc<NormalizedPath> = {
+        let local_fs = SimpleLocalFS::without_watcher();
+        local_fs.normalize_rc_path(local_fs.unchecked_abs_path(BASE_PATH_STR))
+    };
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
@@ -183,7 +186,7 @@ impl TestCase<'_, '_> {
                 settings.prepended_site_packages.extend(
                     suffix
                         .split([';', ','])
-                        .map(|s| local_fs.join(&folder, s.trim())),
+                        .map(|s| local_fs.normalize_rc_path(local_fs.join(&folder, s.trim()))),
                 );
             };
         }
