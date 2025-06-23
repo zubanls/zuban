@@ -1027,7 +1027,11 @@ mod tests {
         let code = "[mypy]\npython_executable = /some/path/bin/python";
         let opts = project_options_valid(code, true);
         let path = opts.settings.environment.as_ref().unwrap();
-        assert_eq!(****path, *"/some/path");
+        if cfg!(target_os = "windows") {
+            assert_eq!(****path, *"\\some\\path");
+        } else {
+            assert_eq!(****path, *"/some/path");
+        }
     }
 
     #[test]

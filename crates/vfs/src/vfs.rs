@@ -498,7 +498,7 @@ impl<F: VfsFile> Vfs<F> {
                 // I'm not sure if this also affects Mac, but on Windows the paths are reported
                 // depending on how the watch was created.
                 if workspace.canonicalized_path != workspace.root_path {
-                    if let Ok(after) = path.as_ref().strip_prefix(&*workspace.canonicalized_path) {
+                    if let Ok(after) = path.as_ref().strip_prefix(&**workspace.canonicalized_path) {
                         if let Some(after) = after.to_str() {
                             let new = format!(
                                 "{}{}{after}",
