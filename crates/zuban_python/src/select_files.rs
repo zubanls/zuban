@@ -1,4 +1,4 @@
-use std::{path::Path, rc::Rc};
+use std::rc::Rc;
 
 use config::TypeCheckerFlags;
 use utils::FastHashSet;
@@ -84,17 +84,18 @@ impl<'db> FileSelector<'db> {
                 .iter()
                 .filter(|pattern| {
                     if let Some(path) = pattern.maybe_simple_path() {
+                        let normalized = vfs_handler.normalize_rc_path(
+                            LocalFS::without_watcher().abs_path_from_current_dir(path),
+                        );
                         match self.db.vfs.search_path(
                             self.db.project.flags.case_sensitive,
-                            &PathWithScheme::with_file_scheme(vfs_handler.normalize_rc_path(
-                                LocalFS::without_watcher().abs_path_from_current_dir(path),
-                            )),
+                            &PathWithScheme::with_file_scheme(normalized.clone()),
                         ) {
                             Some(DirOrFile::Dir(dir)) => self.handle_dir(&dir),
                             Some(DirOrFile::File(file)) => self.add_file(file),
                             None => {
                                 for workspace in self.db.vfs.workspaces.iter() {
-                                    if workspace.root_path().as_ref().starts_with(Path::new(path)) {
+                                    if workspace.root_path_starts_with(&normalized) {
                                         self.handle_entries(&workspace.entries)
                                     }
                                 }

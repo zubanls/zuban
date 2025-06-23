@@ -5,7 +5,7 @@ use utils::match_case;
 use crate::{
     tree::{AddedFile, Entries},
     vfs::Scheme,
-    AbsPath, DirOrFile, Directory, DirectoryEntry, Parent, PathWithScheme, VfsHandler,
+    AbsPath, DirOrFile, Directory, DirectoryEntry, Parent, PathWithScheme, VfsHandler, NormalizedPath
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -347,6 +347,17 @@ impl Workspace {
             return None;
         }
         strip_path_prefix(vfs, case_sensitive, &path.path, self.root_path())
+    }
+
+    pub fn root_path_starts_with(&self, path: &NormalizedPath) -> bool {
+        let path = path.as_ref();
+        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
+        {
+            if self.canonicalized_path.as_ref().as_ref().starts_with(path) {
+                return true
+            }
+        }
+        self.root_path().as_ref().starts_with(path)
     }
 
     pub fn root_path(&self) -> &AbsPath {
