@@ -283,7 +283,7 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
                     }
                     Err(err) => {
                         tracing::error!(
-                            "Failed to cannonicalize path {path:?} and did therefore not watch, because: {err}"
+                            "Failed to canonicalize path {path:?} and did therefore not watch, because: {err}"
                         );
                     }
                 }

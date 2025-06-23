@@ -450,6 +450,9 @@ fn files_outside_of_root() {
         [file outside_workdir.py]
         import foo
 
+        [file base/with space.py]
+        b''()
+
         "#,
     )
     .root("base")
@@ -486,6 +489,8 @@ fn files_outside_of_root() {
         d("base/m.py"),
         vec![NO_OUTSIDE1.to_string(), NO_OUTSIDE2.to_string()]
     );
+
+    assert_eq!(d("base/with%20space.py"), [r#""bytes" not callable"#]);
 
     // Check random files that don't really make sense
     let check_other_uris = [

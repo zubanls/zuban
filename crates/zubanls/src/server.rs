@@ -1,5 +1,6 @@
 //! Scheduling, I/O, and API endpoints.
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -789,7 +790,7 @@ fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
         // cargo's compilations unnecessarily. https://github.com/rust-lang/rust-analyzer/issues/14683
         // So we just uppercase the drive letter here unconditionally.
         // (doing it conditionally is a pain because std::path::Prefix always reports uppercase letters on windows)
-        let buf = PathBuf::from(path);
+        let buf = PathBuf::from(path.as_ref());
         let mut comps = buf.components();
         Ok(match comps.next() {
             Some(Component::Prefix(prefix)) => {
@@ -815,10 +816,11 @@ fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
     }
 }
 
-fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
+fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<str>)> {
     let Some(scheme) = uri.scheme() else {
         bail!("No scheme found in uri {}", uri.as_str())
     };
+
     let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
     let mut p = if let Some(auth) = &uri.auth {
         uri.as_str().get(auth.start.get().get() as usize..).unwrap()
@@ -831,7 +833,9 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, &str)> {
             p = new_p;
         }
     }
-    Ok((scheme, p))
+
+    let decoded = urlencoding::decode(p)?;
+    Ok((scheme, decoded))
 }
 
 #[test]
