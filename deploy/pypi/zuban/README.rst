@@ -1,11 +1,17 @@
-#####
-Zuban
-#####
+#########################
+The Zuban Language Server
+#########################
 
-It's coming: https://zubanls.com.
+A Mypy-compatible Python Language Server built in Rust
 
-There will be a closed alpha and then a more public alpha/beta.
-If you want to know more, send us an email to info (at) zubanls.com with the
-content "Subscribe Newsletter" to subscribe to our Newsletter. 
+More infos: https://zubanls.com
+
+Docs
+====
+
+https://docs.zubanls.com
+
+License
+=======
 
 Copyright (c) 2020-2025 Dave Halter. All rights reserved.
