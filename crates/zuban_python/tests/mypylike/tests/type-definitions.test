@@ -614,7 +614,7 @@ ExceptionGroup = ExceptionGroup  # E: Name "ExceptionGroup" is used before defin
                                  # E: Cannot resolve name "ExceptionGroup" (possible cyclic definition)
 
 [case type_var_as_def]
-from typing import TypeVar, TypeVarTuple, ParamSpec
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -631,3 +631,11 @@ def f(a: T) -> T:
 
 def check1(y: TypeVar): ...
 def check2(y: list[TypeVar]): ...
+
+[case param_spec_as_def]
+from typing import ParamSpec
+
+P = ParamSpec("P")
+
+x: ParamSpec = P
+y: int = P  # E: Incompatible types in assignment (expression has type "ParamSpec", variable has type "int")

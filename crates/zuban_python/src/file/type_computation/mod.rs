@@ -1171,6 +1171,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::TypingTypeVarClass => {
                     return Some(self.i_s.db.python_state.type_var_type());
                 }
+                Specific::TypingParamSpecClass => {
+                    return Some(self.i_s.db.python_state.param_spec_type());
+                }
                 _ => self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type"))),
             },
             TypeContent::TypeVarTuple(t) => self.add_issue(
