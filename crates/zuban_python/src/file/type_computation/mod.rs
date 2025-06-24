@@ -1168,6 +1168,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::TypingTypeIs => {
                     self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
                 }
+                Specific::TypingTypeVarClass => {
+                    return Some(self.i_s.db.python_state.type_var_type());
+                }
                 _ => self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type"))),
             },
             TypeContent::TypeVarTuple(t) => self.add_issue(

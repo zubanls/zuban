@@ -1,6 +1,5 @@
 [case invalid-type-var-types]
 from typing import TypeVar, TypeVarTuple, ParamSpec
-a: list[TypeVar]  # E: Invalid type
 b: list[TypeVarTuple]  # E: Invalid type
 c: list[ParamSpec]  # E: Invalid type
 
