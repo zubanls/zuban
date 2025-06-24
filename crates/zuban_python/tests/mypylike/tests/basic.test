@@ -1,8 +1,3 @@
-[case invalid-type-var-types]
-from typing import TypeVar, TypeVarTuple, ParamSpec
-b: list[TypeVarTuple]  # E: Invalid type
-c: list[ParamSpec]  # E: Invalid type
-
 [case invalid_base_class_in_param]
 # Checked mypy for this.
 

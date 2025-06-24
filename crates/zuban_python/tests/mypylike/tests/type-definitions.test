@@ -632,6 +632,14 @@ def f(a: T) -> T:
 def check1(y: TypeVar): ...
 def check2(y: list[TypeVar]): ...
 
+[case type_var_tuple_as_def]
+from typing import TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+x: TypeVarTuple = Ts
+y: int = Ts  # E: Incompatible types in assignment (expression has type "TypeVarTuple", variable has type "int")
+
 [case param_spec_as_def]
 from typing import ParamSpec
 
