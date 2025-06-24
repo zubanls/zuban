@@ -614,17 +614,36 @@ ExceptionGroup = ExceptionGroup  # E: Name "ExceptionGroup" is used before defin
                                  # E: Cannot resolve name "ExceptionGroup" (possible cyclic definition)
 
 [case type_var_as_def]
-from typing import TypeVar, TypeVarTuple, ParamSpec
+from typing import TypeVar
 
 T = TypeVar("T")
 
 def f(a: T) -> T:
-    check1(a)
+    check1(a)  # E: Argument 1 to "check1" has incompatible type "T"; expected "TypeVar"
     check1(1)  # E: Argument 1 to "check1" has incompatible type "int"; expected "TypeVar"
+    check1(T)
 
     b = [a]
-    check2(b)
+    check2(b)  # E: Argument 1 to "check2" has incompatible type "list[T]"; expected "list[TypeVar]"
+    c = [T]
+    check2(c)
     return a
 
 def check1(y: TypeVar): ...
 def check2(y: list[TypeVar]): ...
+
+[case type_var_tuple_as_def]
+from typing import TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+x: TypeVarTuple = Ts
+y: int = Ts  # E: Incompatible types in assignment (expression has type "TypeVarTuple", variable has type "int")
+
+[case param_spec_as_def]
+from typing import ParamSpec
+
+P = ParamSpec("P")
+
+x: ParamSpec = P
+y: int = P  # E: Incompatible types in assignment (expression has type "ParamSpec", variable has type "int")
