@@ -612,6 +612,7 @@ impl PythonState {
         cache_index!(types_module_type_index, types, "ModuleType");
         cache_index!(enum_enum_meta_index, enum_file, "EnumMeta");
         cache_index!(typing_overload_index, typing, "overload", true);
+        cache_index!(typing_type_var_index, typing, "TypeVar");
         cache_index!(builtins_str_index, builtins, "str");
         cache_index!(enum_enum_index, enum_file, "Enum");
         cache_index!(enum_auto_index, enum_file, "auto");
@@ -656,7 +657,6 @@ impl PythonState {
             typeshed,
             "SupportsKeysAndGetItem"
         );
-        cache_index!(typing_type_var_index, typing, "TypeVar");
         cache_typing_link_with_typing_extensions_fallback!(
             type_var_tuple_link,
             "TypeVarTuple",
@@ -990,7 +990,7 @@ impl PythonState {
         builtins_exception_group_index
     );
 
-    attribute_node_ref!(typing, type_var_node_ref, typing_type_var_index);
+    attribute_node_ref!(typing, pub type_var_node_ref, typing_type_var_index);
     //attribute_node_ref!(typing, cast_node_ref, typing_cast_index);
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
     class_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);

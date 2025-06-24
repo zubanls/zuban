@@ -612,3 +612,19 @@ reveal_type(x)  # N: Revealed type is "Any"
 ExceptionGroup = ExceptionGroup  # E: Name "ExceptionGroup" is used before definition \
                                  # E: Invalid recursive alias: a union item of itself \
                                  # E: Cannot resolve name "ExceptionGroup" (possible cyclic definition)
+
+[case type_var_as_def]
+from typing import TypeVar, TypeVarTuple, ParamSpec
+
+T = TypeVar("T")
+
+def f(a: T) -> T:
+    check1(a)
+    check1(1)  # E: Argument 1 to "check1" has incompatible type "int"; expected "TypeVar"
+
+    b = [a]
+    check2(b)
+    return a
+
+def check1(y: TypeVar): ...
+def check2(y: list[TypeVar]): ...

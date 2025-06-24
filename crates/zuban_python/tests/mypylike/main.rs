@@ -13,7 +13,7 @@ use clap::Parser;
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
-use vfs::{AbsPath, PathWithScheme, SimpleLocalFS, VfsHandler};
+use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::Project;
 
 const SKIP_MYPY_TEST_FILES: [&str; 27] = [
@@ -62,7 +62,10 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: Rc<AbsPath> = SimpleLocalFS::without_watcher().unchecked_abs_path(BASE_PATH_STR);
+    static BASE_PATH: Rc<NormalizedPath> = {
+        let local_fs = SimpleLocalFS::without_watcher();
+        local_fs.normalize_rc_path(local_fs.unchecked_abs_path(BASE_PATH_STR))
+    };
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
@@ -131,9 +134,15 @@ impl TestCase<'_, '_> {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
             let mut new = BASE_PATH.with(|base_path| {
-                ProjectOptions::from_mypy_ini(local_fs, base_path, &ini, &mut diagnostic_config)
-                    .expect("Expected there to be no errors in the mypy.ini")
-                    .unwrap_or_else(ProjectOptions::mypy_default)
+                ProjectOptions::from_mypy_ini(
+                    local_fs,
+                    base_path,
+                    base_path,
+                    &ini,
+                    &mut diagnostic_config,
+                )
+                .expect("Expected there to be no errors in the mypy.ini")
+                .unwrap_or_else(ProjectOptions::mypy_default)
             });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
@@ -149,6 +158,7 @@ impl TestCase<'_, '_> {
             let mut new = BASE_PATH.with(|base_path| {
                 ProjectOptions::from_pyproject_toml(
                     local_fs,
+                    base_path,
                     base_path,
                     &ini,
                     &mut diagnostic_config,
@@ -176,7 +186,7 @@ impl TestCase<'_, '_> {
                 settings.prepended_site_packages.extend(
                     suffix
                         .split([';', ','])
-                        .map(|s| local_fs.join(&folder, s.trim())),
+                        .map(|s| local_fs.normalize_rc_path(local_fs.join(&folder, s.trim()))),
                 );
             };
         }

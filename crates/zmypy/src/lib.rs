@@ -5,7 +5,7 @@ pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
 use config::{find_cli_config, ExcludeRegex, ProjectOptions, PythonVersion};
-use vfs::{AbsPath, GlobAbsPath, SimpleLocalFS, VfsHandler};
+use vfs::{AbsPath, NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::Project;
 
 use clap::Parser;
@@ -236,7 +236,11 @@ pub fn run(cli: Cli) -> ExitCode {
     with_exit_code(cli, current_dir, None)
 }
 
-fn with_exit_code(cli: Cli, current_dir: String, typeshed_path: Option<Rc<AbsPath>>) -> ExitCode {
+fn with_exit_code(
+    cli: Cli,
+    current_dir: String,
+    typeshed_path: Option<Rc<NormalizedPath>>,
+) -> ExitCode {
     with_diagnostics_from_cli(cli, current_dir, typeshed_path, |diagnostics, config| {
         for diagnostic in diagnostics.issues.iter() {
             println!("{}", diagnostic.as_string(config))
@@ -249,7 +253,7 @@ fn with_exit_code(cli: Cli, current_dir: String, typeshed_path: Option<Rc<AbsPat
 pub fn with_diagnostics_from_cli<T>(
     cli: Cli,
     current_dir: String,
-    typeshed_path: Option<Rc<AbsPath>>,
+    typeshed_path: Option<Rc<NormalizedPath>>,
     callback: impl FnOnce(Diagnostics, &DiagnosticConfig) -> T,
 ) -> T {
     tracing::info!("Checking in {current_dir}");
@@ -264,32 +268,36 @@ pub fn with_diagnostics_from_cli<T>(
 fn project_from_cli(
     cli: Cli,
     current_dir: &str,
-    typeshed_path: Option<Rc<AbsPath>>,
+    typeshed_path: Option<Rc<NormalizedPath>>,
     lookup_env_var: impl Fn(&str) -> Option<String>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
-    let (mut options, mut diagnostic_config) =
-        find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
-            .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
+    let mut found = find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
+        .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
+    let mut options = found.project_options;
     options.settings.mypy_compatible = true;
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
     if options.settings.environment.is_none() {
-        options.settings.environment =
-            lookup_env_var("VIRTUAL_ENV").map(|v| local_fs.absolute_path(&current_dir, &v))
+        options.settings.environment = lookup_env_var("VIRTUAL_ENV")
+            .map(|v| local_fs.normalize_rc_path(local_fs.absolute_path(&current_dir, &v)))
     }
 
     apply_flags(
         &local_fs,
         &mut options,
-        &mut diagnostic_config,
+        &mut found.diagnostic_config,
         cli,
         current_dir,
+        found.config_path.as_deref(),
     );
 
-    (Project::new(Box::new(local_fs), options), diagnostic_config)
+    (
+        Project::new(Box::new(local_fs), options),
+        found.diagnostic_config,
+    )
 }
 
 fn apply_flags(
@@ -298,6 +306,7 @@ fn apply_flags(
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
     current_dir: Rc<AbsPath>,
+    config_path: Option<&AbsPath>,
 ) {
     macro_rules! apply {
         ($to:ident, $attr:ident, $inverse:ident) => {
@@ -370,24 +379,19 @@ fn apply_flags(
         project_options.settings.python_version = python_version;
     }
     if let Some(p) = cli.python_executable {
-        let p = vfs_handler.absolute_path(&current_dir, &p);
         project_options
             .settings
-            .apply_python_executable(vfs_handler, &p)
+            .apply_python_executable(vfs_handler, &current_dir, config_path, &p)
             .expect("Error when applying --python-executable")
     }
     if let Some(p) = &project_options.settings.environment {
         tracing::info!("Checking the following environment: {p}");
     }
     if !cli.files.is_empty() {
-        project_options.settings.files_or_directories_to_check = cli
-            .files
-            .into_iter()
-            .map(|p| {
-                GlobAbsPath::new(vfs_handler, &current_dir, &p)
-                    .expect("Need a valid glob path as a files argument")
-            })
-            .collect();
+        project_options
+            .settings
+            .set_files_or_directories_to_check(vfs_handler, &current_dir, config_path, cli.files)
+            .expect("Need a valid glob path as a files argument");
     }
     tracing::info!(
         "Checking the following files: {:?}",
@@ -431,7 +435,12 @@ fn apply_flags(
     );
 
     // TODO MYPYPATH=$MYPYPATH:mypy-stubs
-    project_options.settings.mypy_path.push(current_dir);
+    if project_options.settings.mypy_path.is_empty() {
+        project_options
+            .settings
+            .mypy_path
+            .push(vfs_handler.normalize_rc_path(current_dir));
+    }
 }
 
 #[cfg(test)]
@@ -579,6 +588,10 @@ mod tests {
             [file venv/lib/python3.12/site-packages/bar.py]
             1()
 
+            [file venv/src/baz/baz/__init__.py]
+            # Installing with pip install -e works similar to this
+            my_baz = 1
+
             [file m.py]
             import foo
 
@@ -673,7 +686,8 @@ mod tests {
             &mut project_options,
             &mut DiagnosticConfig::default(),
             cli,
-            current_dir,
+            current_dir.clone(),
+            Some(current_dir.as_ref()),
         );
         let files: Vec<&str> = project_options
             .settings
@@ -760,5 +774,94 @@ mod tests {
         );
         assert!(d(&["", "foo/"]).is_empty());
         assert!(d(&[""]).is_empty());
+    }
+
+    #[test]
+    fn test_pyproject_with_mypy_config_dir_env_var() {
+        // From https://github.com/zubanls/zubanls/issues/3
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file pyproject.toml]
+            [project]
+            name = "hello_zuban"
+            version = "0.1.0"
+
+            requires-python = ">= 3.12"
+            dependencies = []
+
+            [project.scripts]
+            hello-zuban = "hello_zuban:entry_point"
+
+            [tool.mypy]
+            mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+            files = ["$MYPY_CONFIG_FILE_DIR/src"]
+            strict = true
+
+            [file src/hello_zuban/__init__.py]
+            from hello_zuban.hello import X
+            from src.hello_zuban.hello import Z
+
+            x = X()
+
+            [file src/hello_zuban/hello.py]
+            Z = 1
+            class X: pass
+            1()
+
+            "#,
+            false,
+        );
+        let d = || diagnostics(Cli::parse_from(vec![""]), test_dir.path());
+
+        if cfg!(target_os = "windows") {
+            assert_eq!(
+                d(),
+                [
+                    "hello_zuban\\__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
+                    "hello_zuban\\hello.py:3: error: \"int\" not callable"
+                ]
+            );
+        } else {
+            assert_eq!(
+                d(),
+                [
+                    "hello_zuban/__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
+                    "hello_zuban/hello.py:3: error: \"int\" not callable"
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn test_editable_source() {
+        logging_config::setup_logging_for_tests();
+        // We intentionally also test that dirs with dashes are also checked.
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file venv/bin/python]
+
+            [file venv/lib/python3.12/site-packages/foo.py]
+
+            [file venv/src/baz/baz/__init__.py]
+            # Installing with pip install -e works similar to this
+            my_baz = 1
+
+            [file venv/src/baz/baz/py.typed]
+
+            [file m.py]
+            import foo
+            from baz import my_baz
+            reveal_type(my_baz)
+
+            "#,
+            false,
+        );
+        let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+
+        assert_eq!(
+            d(&["", "--python-executable", "venv/bin/python"]),
+            ["m.py:3: note: Revealed type is \"builtins.int\""]
+        );
     }
 }

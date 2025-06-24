@@ -1,26 +1,30 @@
 use std::{path::PathBuf, rc::Rc};
 
-use vfs::{AbsPath, LocalFS, VfsHandler};
+use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler};
 
 use crate::{PythonVersion, Settings};
 
-pub(crate) fn create_sys_path(handler: &dyn VfsHandler, settings: &Settings) -> Vec<Rc<AbsPath>> {
+pub(crate) fn create_sys_path(
+    handler: &dyn VfsHandler,
+    settings: &Settings,
+) -> Vec<Rc<NormalizedPath>> {
     let mut sys_path = vec![];
 
     sys_path.extend(settings.prepended_site_packages.iter().cloned());
 
-    if let Some(exe) = &settings.environment {
+    if let Some(env) = &settings.environment {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
-        let p = site_packages_path_from_venv(exe, settings.python_version);
-        sys_path.push(
+        let p = site_packages_path_from_venv(env, settings.python_version);
+        sys_path.push(handler.unchecked_normalized_path(
             handler.unchecked_abs_path(
                 p.to_str().expect(
                     "Should never happen, because we only put together valid unicode paths",
                 ),
             ),
-        );
+        ));
+        add_editable_src_packages(handler, &mut sys_path, env);
     } else {
         // TODO use a real sys path
         //"../typeshed/stubs".into(),
@@ -61,11 +65,33 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
     expected_path
 }
 
-pub(crate) fn typeshed_path_from_executable() -> Rc<AbsPath> {
-    let executable = std::env::current_exe().expect(
+fn add_editable_src_packages(
+    handler: &dyn VfsHandler,
+    sys_path: &mut Vec<Rc<NormalizedPath>>,
+    env: &NormalizedPath,
+) {
+    let Ok(entries) = env.as_ref().join("src").read_dir() else {
+        return;
+    };
+    for entry in entries {
+        if let Ok(entry) = entry {
+            if let Some(path) = entry.path().to_str() {
+                sys_path.push(handler.normalize_rc_path(handler.unchecked_abs_path(path)))
+            }
+        }
+    }
+}
+
+pub(crate) fn typeshed_path_from_executable() -> Rc<NormalizedPath> {
+    let mut executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
                  a typeshed path in that case.",
     );
+
+    // It seems on Mac the paths are not canonicalized, see https://github.com/zubanls/zubanls/issues/2
+    if let Ok(canonicalized) = std::fs::canonicalize(&executable) {
+        executable = canonicalized;
+    }
     const NEEDS_PARENTS: &str = "The executable is expected to be relative to the typeshed path";
     let lib_folder = executable
         .parent()
@@ -87,7 +113,7 @@ pub(crate) fn typeshed_path_from_executable() -> Rc<AbsPath> {
         let p = folder.path();
         let typeshed_path = p.join("site-packages").join("zuban").join("typeshed");
         if typeshed_path.exists() {
-            return LocalFS::without_watcher().abs_path_from_current_dir(
+            return LocalFS::without_watcher().normalized_path_from_current_dir(
                 typeshed_path
                     .to_str()
                     .expect("Expected the typeshed path to be UTF-8"),

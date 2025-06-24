@@ -3,7 +3,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{utils::VecRefWrapper, AbsPath, NormalizedPath, PathWithScheme, VfsHandler, Workspace};
+use crate::{utils::VecRefWrapper, NormalizedPath, PathWithScheme, VfsHandler, Workspace};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileIndex(pub u32);
@@ -56,7 +56,7 @@ impl Parent {
                 let workspace = workspace.upgrade().unwrap();
                 PathWithScheme {
                     // This should be normalized, because it's joined
-                    path: NormalizedPath::new_rc(workspace.root_path.clone()),
+                    path: workspace.root_path.clone(),
                     scheme: workspace.scheme.clone(),
                 }
             }
@@ -70,7 +70,7 @@ impl Parent {
         }
     }
 
-    pub fn workspace_path(&self) -> Rc<AbsPath> {
+    pub fn workspace_path(&self) -> Rc<NormalizedPath> {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().parent.workspace_path(),
             Self::Workspace(workspace) => workspace.upgrade().unwrap().root_path.clone(),

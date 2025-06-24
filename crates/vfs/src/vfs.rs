@@ -57,7 +57,7 @@ impl<F: VfsFile> Vfs<F> {
     pub fn with_reused_test_resources<'x>(
         &mut self,
         handler: Box<dyn VfsHandler>,
-        type_checked_dirs: impl DoubleEndedIterator<Item = &'x AbsPath>,
+        type_checked_dirs: impl DoubleEndedIterator<Item = &'x NormalizedPath>,
     ) -> Self
     where
         F: Clone,
@@ -199,7 +199,7 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&mut self, root_path: Rc<AbsPath>, kind: WorkspaceKind) {
+    pub fn add_workspace(&mut self, root_path: Rc<NormalizedPath>, kind: WorkspaceKind) {
         self.workspaces
             .add(&*self.handler, file_scheme(), root_path, kind)
     }
@@ -498,7 +498,7 @@ impl<F: VfsFile> Vfs<F> {
                 // I'm not sure if this also affects Mac, but on Windows the paths are reported
                 // depending on how the watch was created.
                 if workspace.canonicalized_path != workspace.root_path {
-                    if let Ok(after) = path.as_ref().strip_prefix(&*workspace.canonicalized_path) {
+                    if let Ok(after) = path.as_ref().strip_prefix(&**workspace.canonicalized_path) {
                         if let Some(after) = after.to_str() {
                             let new = format!(
                                 "{}{}{after}",
@@ -506,7 +506,7 @@ impl<F: VfsFile> Vfs<F> {
                                 self.handler.separator()
                             );
                             let normalized =
-                                NormalizedPath::new_rc(self.handler.unchecked_abs_path(new));
+                                NormalizedPath::new_rc(self.handler.unchecked_abs_path(&new));
                             let non_canonicalized_path =
                                 PathWithScheme::with_file_scheme(normalized);
                             if self.in_memory_files.contains_key(&non_canonicalized_path) {
@@ -561,15 +561,17 @@ impl<F: VfsFile> Vfs<F> {
                 match new_entry {
                     Some(new_entry) => {
                         if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
-                            // TODO we don't have to invalidate the whole tree
-                            tracing::debug!("Decided to replace {replace_name} in VFS");
-                            to_replace.walk_entries(&*self.handler, &mut |e| {
-                                check_invalidations_for_dir_entry(e);
-                                true
-                            });
-                            *to_replace = new_entry;
+                            if self.matches_current_dir_entry(&to_replace, &new_entry) {
+                                tracing::debug!("Decided to replace nothing in VFS, because nothing changed");
+                            } else {
+                                tracing::debug!("Decided to replace {replace_name} in VFS");
+                                to_replace.walk_entries(&*self.handler, &mut |e| {
+                                    check_invalidations_for_dir_entry(e);
+                                    true
+                                });
+                                *to_replace = new_entry;
+                            }
                         } else {
-                            // TODO if the file is exactly the same as the old one, don't replace it
                             tracing::debug!("Decided to add {replace_name} to VFS");
                             in_dir.borrow_mut().push(new_entry);
                         }
@@ -618,6 +620,24 @@ impl<F: VfsFile> Vfs<F> {
         }
         tracing::debug!("Caused {unload_len} unloads and {invalidation_len} direct invalidations");
         InvalidationResult::InvalidatedFiles
+    }
+
+    fn matches_current_dir_entry(&self, old: &DirectoryEntry, new: &DirectoryEntry) -> bool {
+        match (old, new) {
+            (DirectoryEntry::File(old), DirectoryEntry::File(_)) => {
+                if let Some(file_index) = old.get_file_index() {
+                    let file_state = self.file_state(file_index);
+                    if let Some(old_code) = file_state.code() {
+                        if let Some(new_code) = self.handler.read_and_watch_file(&file_state.path) {
+                            return old_code == new_code;
+                        }
+                    }
+                }
+                false
+            }
+            // TODO we don't have to invalidate the whole tree when the directories match
+            _ => false,
+        }
     }
 
     fn update_file(

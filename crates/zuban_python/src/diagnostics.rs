@@ -1932,7 +1932,7 @@ impl<'db> Diagnostic<'db> {
         let path = self
             .db
             .file_path(original_file.file_index)
-            .trim_start_matches(&**original_file.file_entry(self.db).parent.workspace_path());
+            .trim_start_matches(&***original_file.file_entry(self.db).parent.workspace_path());
         let path = self
             .db
             .vfs
