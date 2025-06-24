@@ -97,7 +97,7 @@ fn exit_without_shutdown() {
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn diagnostics_for_saved_files() {
     let server = Project::with_fixture(
         r#"
@@ -329,13 +329,13 @@ fn change_config_file() {
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn check_rename_without_symlinks() {
     check_rename(false);
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn check_rename_with_symlinks() {
     if !symlink_creation_allowed() {
         return;
