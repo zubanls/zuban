@@ -12,11 +12,11 @@ pub(crate) fn create_sys_path(
 
     sys_path.extend(settings.prepended_site_packages.iter().cloned());
 
-    if let Some(exe) = &settings.environment {
+    if let Some(env) = &settings.environment {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
-        let p = site_packages_path_from_venv(exe, settings.python_version);
+        let p = site_packages_path_from_venv(env, settings.python_version);
         sys_path.push(handler.unchecked_normalized_path(
             handler.unchecked_abs_path(
                 p.to_str().expect(
@@ -24,6 +24,7 @@ pub(crate) fn create_sys_path(
                 ),
             ),
         ));
+        add_editable_src_packages(handler, &mut sys_path, env);
     } else {
         // TODO use a real sys path
         //"../typeshed/stubs".into(),
@@ -62,6 +63,23 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
         }
     }
     expected_path
+}
+
+fn add_editable_src_packages(
+    handler: &dyn VfsHandler,
+    sys_path: &mut Vec<Rc<NormalizedPath>>,
+    env: &NormalizedPath,
+) {
+    let Ok(entries) = env.as_ref().join("src").read_dir() else {
+        return;
+    };
+    for entry in entries {
+        if let Ok(entry) = entry {
+            if let Some(path) = entry.path().to_str() {
+                sys_path.push(handler.normalize_rc_path(handler.unchecked_abs_path(path)))
+            }
+        }
+    }
 }
 
 pub(crate) fn typeshed_path_from_executable() -> Rc<NormalizedPath> {

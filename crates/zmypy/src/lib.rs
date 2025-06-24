@@ -588,6 +588,10 @@ mod tests {
             [file venv/lib/python3.12/site-packages/bar.py]
             1()
 
+            [file venv/src/baz/baz/__init__.py]
+            # Installing with pip install -e works similar to this
+            my_baz = 1
+
             [file m.py]
             import foo
 
@@ -827,5 +831,37 @@ mod tests {
                 ]
             );
         }
+    }
+
+    #[test]
+    fn test_editable_source() {
+        logging_config::setup_logging_for_tests();
+        // We intentionally also test that dirs with dashes are also checked.
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file venv/bin/python]
+
+            [file venv/lib/python3.12/site-packages/foo.py]
+
+            [file venv/src/baz/baz/__init__.py]
+            # Installing with pip install -e works similar to this
+            my_baz = 1
+
+            [file venv/src/baz/baz/py.typed]
+
+            [file m.py]
+            import foo
+            from baz import my_baz
+            reveal_type(my_baz)
+
+            "#,
+            false,
+        );
+        let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+
+        assert_eq!(
+            d(&["", "--python-executable", "venv/bin/python"]),
+            ["m.py:3: note: Revealed type is \"builtins.int\""]
+        );
     }
 }

@@ -1067,6 +1067,7 @@ fn remove_directory_of_in_memory_file_with_push() {
 }
 
 #[test]
+#[serial]
 fn test_pyproject_with_mypy_config_dir_env_var() {
     let server = Project::with_fixture(
         r#"
