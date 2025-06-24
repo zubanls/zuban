@@ -37,7 +37,7 @@ use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
 use matching::invalidate_protocol_cache;
-pub use name::{Name, SymbolKind};
+pub use name::{Name, SymbolKind, ValueName};
 
 pub struct Project {
     db: Database,
@@ -206,7 +206,7 @@ impl<'project> Document<'project> {
     pub fn infer_type_definition<'slf, T>(
         &'slf self,
         position: InputPosition,
-        on_name: impl for<'a> Fn(&dyn Name) -> T + Copy + 'slf,
+        on_name: impl for<'a> Fn(ValueName) -> T + Copy + 'slf,
     ) -> impl Iterator<Item = T> + 'slf {
         GotoResolver::new(self.positional_document(position), on_name).infer_type_definition()
     }
@@ -214,7 +214,7 @@ impl<'project> Document<'project> {
     pub fn infer_implementation<'slf, T>(
         &'slf self,
         position: InputPosition,
-        on_name: impl for<'a> Fn(&dyn Name) -> T + Copy + 'slf,
+        on_name: impl for<'a> Fn(ValueName) -> T + Copy + 'slf,
     ) -> impl Iterator<Item = T> + 'slf {
         GotoResolver::new(self.positional_document(position), on_name).infer_implementation()
     }

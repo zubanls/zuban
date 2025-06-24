@@ -9,6 +9,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
+    type_::Type,
 };
 
 pub type Names = Vec<Box<dyn Name>>;
@@ -16,8 +17,6 @@ pub type Names = Vec<Box<dyn Name>>;
 pub trait Name: fmt::Debug {
     fn name(&self) -> &str;
     fn file_path(&self) -> &NormalizedPath;
-    fn documentation(&self) -> String;
-    fn description(&self) -> String;
     fn qualified_name(&self) -> String;
     fn is_implementation(&self) -> bool {
         true
@@ -31,6 +30,39 @@ pub trait Name: fmt::Debug {
         vec![]
     }
     */
+}
+
+#[derive(Debug)]
+pub struct ValueName<'x> {
+    pub(crate) db: &'x Database,
+    pub(crate) type_: &'x Type,
+    pub(crate) name: &'x dyn Name,
+}
+
+impl Name for ValueName<'_> {
+    fn name(&self) -> &str {
+        self.name.name()
+    }
+    fn file_path(&self) -> &NormalizedPath {
+        self.name.file_path()
+    }
+    fn qualified_name(&self) -> String {
+        self.name.qualified_name()
+    }
+    fn kind(&self) -> SymbolKind {
+        self.name.kind()
+    }
+}
+
+impl ValueName<'_> {
+    pub fn type_description(&self) -> Box<str> {
+        self.type_.format_short(self.db)
+    }
+
+    /// This is mostly for testing, you should probably not use this.
+    pub fn is_instance(&self) -> bool {
+        matches!(self.type_, Type::Class(_))
+    }
 }
 
 #[derive(Debug)]
@@ -95,14 +127,6 @@ impl<'db> Name for TreeName<'db> {
 
     fn file_path(&self) -> &NormalizedPath {
         self.db.file_path(self.file.file_index)
-    }
-
-    fn documentation(&self) -> String {
-        unimplemented!()
-    }
-
-    fn description(&self) -> String {
-        unimplemented!()
     }
 
     fn qualified_name(&self) -> String {

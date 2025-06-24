@@ -14,7 +14,7 @@ use crate::{
     name::{Name, Names, TreeName},
     node_ref::NodeRef,
     type_::Type,
-    InputPosition,
+    InputPosition, ValueName,
 };
 
 pub(crate) struct PositionalDocument<'db> {
@@ -101,16 +101,20 @@ pub(crate) struct GotoResolver<'db, C> {
     on_result: C,
 }
 
-impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
+impl<'db, C> GotoResolver<'db, C> {
     pub(crate) fn new(infos: PositionalDocument<'db>, on_result: C) -> Self {
         Self { infos, on_result }
     }
+}
 
+impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     pub fn goto(&self, follow_imports: bool) -> impl Iterator<Item = T> {
         let callback = self.on_result;
         std::iter::empty().map(move |n| callback(n))
     }
+}
 
+impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     pub fn infer_type_definition(&self) -> impl Iterator<Item = T> + 'db {
         let inf = self.infos.infer_position();
         let callback = self.on_result;
@@ -122,7 +126,13 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         })
         .into_iter()
         .flatten()
-        .filter_map(move |e| Some(callback(&type_to_name(db, file, &e.type_)?)))
+        .filter_map(move |e| {
+            Some(callback(ValueName {
+                name: &type_to_name(db, file, &e.type_)?,
+                db,
+                type_: &e.type_,
+            }))
+        })
     }
 
     pub fn infer_implementation(&self) -> impl Iterator<Item = T> + 'db {

@@ -2,7 +2,7 @@
 use std::{collections::HashSet, path::PathBuf};
 
 use vfs::PathWithScheme;
-use zuban_python::{InputPosition, SymbolKind};
+use zuban_python::{InputPosition, Name};
 
 use crate::Filter;
 
@@ -67,7 +67,7 @@ impl TestFile<'_> {
                                     }
                                     s
                                 };
-                                if name.kind() == SymbolKind::Object {
+                                if name.is_instance() {
                                     n.push_str("()");
                                 }
                                 n
