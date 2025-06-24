@@ -619,11 +619,14 @@ from typing import TypeVar, TypeVarTuple, ParamSpec
 T = TypeVar("T")
 
 def f(a: T) -> T:
-    check1(a)
+    check1(a)  # E: Argument 1 to "check1" has incompatible type "T"; expected "TypeVar"
     check1(1)  # E: Argument 1 to "check1" has incompatible type "int"; expected "TypeVar"
+    check1(T)
 
     b = [a]
-    check2(b)
+    check2(b)  # E: Argument 1 to "check2" has incompatible type "list[T]"; expected "list[TypeVar]"
+    c = [T]
+    check2(c)
     return a
 
 def check1(y: TypeVar): ...

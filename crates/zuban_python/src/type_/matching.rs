@@ -712,9 +712,6 @@ impl Type {
                     )
                     .unwrap_or_else(Match::new_false)
             }
-            Type::TypeVar(_) if class1.node_ref == i_s.db.python_state.type_var_node_ref() => {
-                Match::new_true()
-            }
             Type::Union(u2) if class1.node_ref == i_s.db.python_state.bool_node_ref() => {
                 (u2.bool_literal_count() == 2 && u2.entries.len() == 2).into()
             }
