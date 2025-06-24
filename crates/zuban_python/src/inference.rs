@@ -91,7 +91,7 @@ impl<'db> PositionalDocument<'db> {
     }
     */
 
-    pub fn complete(&self) -> Names<'db> {
+    pub fn complete(&self) -> Names {
         unimplemented!()
     }
 }
@@ -101,7 +101,7 @@ pub(crate) struct GotoResolver<'db, C> {
     on_result: C,
 }
 
-impl<'db, C: for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'db, T> GotoResolver<'db, C> {
+impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     pub(crate) fn new(infos: PositionalDocument<'db>, on_result: C) -> Self {
         Self { infos, on_result }
     }

@@ -198,7 +198,7 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         follow_imports: bool,
-        on_name: impl for<'a> Fn(&dyn Name<'a>) -> T + Copy,
+        on_name: impl for<'a> Fn(&dyn Name) -> T + Copy,
     ) -> impl Iterator<Item = T> {
         GotoResolver::new(self.positional_document(position), on_name).goto(follow_imports)
     }
@@ -206,7 +206,7 @@ impl<'project> Document<'project> {
     pub fn infer_type_definition<'slf, T>(
         &'slf self,
         position: InputPosition,
-        on_name: impl for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'slf,
+        on_name: impl for<'a> Fn(&dyn Name) -> T + Copy + 'slf,
     ) -> impl Iterator<Item = T> + 'slf {
         GotoResolver::new(self.positional_document(position), on_name).infer_type_definition()
     }
@@ -214,7 +214,7 @@ impl<'project> Document<'project> {
     pub fn infer_implementation<'slf, T>(
         &'slf self,
         position: InputPosition,
-        on_name: impl for<'a> Fn(&dyn Name<'a>) -> T + Copy + 'slf,
+        on_name: impl for<'a> Fn(&dyn Name) -> T + Copy + 'slf,
     ) -> impl Iterator<Item = T> + 'slf {
         GotoResolver::new(self.positional_document(position), on_name).infer_implementation()
     }

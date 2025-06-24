@@ -11,9 +11,9 @@ use crate::{
     node_ref::NodeRef,
 };
 
-pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
+pub type Names = Vec<Box<dyn Name>>;
 
-pub trait Name<'db>: fmt::Debug {
+pub trait Name: fmt::Debug {
     fn name(&self) -> &str;
     fn file_path(&self) -> &NormalizedPath;
     fn documentation(&self) -> String;
@@ -88,7 +88,7 @@ impl<'db> TreeName<'db> {
     }
 }
 
-impl<'db> Name<'db> for TreeName<'db> {
+impl<'db> Name for TreeName<'db> {
     fn name(&self) -> &str {
         self.cst_name.as_str()
     }
