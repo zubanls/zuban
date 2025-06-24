@@ -10,7 +10,7 @@ use std::{
 };
 
 use config::{ProjectOptions, Settings, TypeCheckerFlags};
-use vfs::{AbsPath, LocalFS};
+use vfs::{LocalFS, NormalizedPath};
 use zuban_python::Project;
 
 #[derive(Debug)]
@@ -113,7 +113,7 @@ fn main() -> ExitCode {
     ExitCode::from((error_count > 0) as u8)
 }
 
-fn mypy_path() -> Vec<Rc<AbsPath>> {
+fn mypy_path() -> Vec<Rc<NormalizedPath>> {
     let base = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("blackbox");
@@ -121,16 +121,17 @@ fn mypy_path() -> Vec<Rc<AbsPath>> {
     ["python_files", "from_jedi_python_files"]
         .into_iter()
         .map(|part| {
-            LocalFS::without_watcher().abs_path_from_current_dir(base.join(part).to_str().unwrap())
+            LocalFS::without_watcher()
+                .normalized_path_from_current_dir(base.join(part).to_str().unwrap())
         })
         .collect()
 }
 
-fn python_files(mypy_path: &[Rc<AbsPath>]) -> Vec<PathBuf> {
+fn python_files(mypy_path: &[Rc<NormalizedPath>]) -> Vec<PathBuf> {
     let mut entries = vec![];
     for path in mypy_path {
         entries.extend(
-            read_dir(path.as_ref())
+            read_dir(path.as_ref().as_ref())
                 .unwrap()
                 .map(|res| res.map(|e| e.path()).unwrap()),
         );
