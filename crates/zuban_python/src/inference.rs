@@ -11,7 +11,7 @@ use crate::{
     file::{ClassInitializer, File, FuncNodeRef, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
-    name::{Name, Names, TreeName},
+    name::{ModuleName, Name, Names, TreeName},
     node_ref::NodeRef,
     type_::Type,
     InputPosition, ValueName,
@@ -128,7 +128,7 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 e.type_.format_short(db)
             );
             Some(callback(ValueName {
-                name: &type_to_name(db, file, &e.type_)?,
+                name: type_to_name(db, file, &e.type_)?.as_name(),
                 db,
                 type_: &e.type_,
             }))
@@ -141,7 +141,21 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     }
 }
 
-fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<TreeName<'db>> {
+enum NameLike<'db> {
+    TreeName(TreeName<'db>),
+    ModuleName(ModuleName<'db>),
+}
+
+impl NameLike<'_> {
+    fn as_name(&self) -> &dyn Name {
+        match self {
+            NameLike::TreeName(n) => n,
+            NameLike::ModuleName(n) => n,
+        }
+    }
+}
+
+fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<NameLike<'db>> {
     let from_node_ref = |node_ref: NodeRef<'db>| {
         TreeName::new(
             db,
@@ -151,7 +165,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         )
     };
     let lookup = |module: &'db PythonFile, name| Some(from_node_ref(module.lookup_symbol(name)?));
-    Some(match t {
+    Some(NameLike::TreeName(match t {
         Type::Class(c) => {
             let node_ref = c.node_ref(db);
             let parent_scope = ClassInitializer::from_node_ref(node_ref)
@@ -172,10 +186,10 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         Type::Any(_) => return None,
         Type::Intersection(_) => todo!(),
         Type::FunctionOverload(_) => todo!(),
-        Type::TypeVar(tv) => {
-            // TODO
-            return None;
-        }
+        Type::TypeVar(tv) => match tv.type_var.name {
+            crate::type_::TypeVarName::Name(tvl_name) => return None,
+            crate::type_::TypeVarName::Self_ => return None,
+        },
         Type::Type(t) => return type_to_name(db, file, &t),
         Type::Callable(callable) => {
             let node_ref = NodeRef::from_link(db, callable.defined_at);
@@ -218,7 +232,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             // separately.
             return None;
         }
-    })
+    }))
 }
 
 fn infer_name(db: &Database, file: &PythonFile, name: CSTName) -> Inferred {

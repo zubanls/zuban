@@ -7,7 +7,7 @@ use crate::{
     database::{Database, ParentScope},
     file::PythonFile,
     node_ref::NodeRef,
-    type_::Type,
+    type_::{DbString, Type},
 };
 
 pub type Names = Vec<Box<dyn Name>>;
@@ -114,99 +114,36 @@ impl<'db> Name for TreeName<'db> {
     }
 }
 
-/*
-struct WithValueName<'db, 'a, 'b> {
+#[derive(Debug)]
+pub struct ModuleName<'db> {
     db: &'db Database,
-    value: &'b dyn Value<'db, 'a>,
+    file: &'db PythonFile,
+    parent_scope: ParentScope,
+    name: DbString,
 }
 
-impl<'db, 'a, 'b> WithValueName<'db, 'a, 'b> {
-    pub fn new(db: &'db Database, value: &'b dyn Value<'db, 'a>) -> Self {
-        Self { db, value }
-    }
-}
-
-impl fmt::Debug for WithValueName<'_, '_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("WithValueName")
-            .field("value", &self.value)
-            .finish()
-    }
-}
-
-impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
+impl<'db> Name for ModuleName<'db> {
     fn name(&self) -> &str {
-        unimplemented!()
-        //self.value.name()
+        self.name.as_str(self.db)
     }
 
-    fn file_path(&self) -> &str {
-        unimplemented!()
-        //self.value.file().path()
+    fn file_path(&self) -> &NormalizedPath {
+        self.db.file_path(self.file.file_index)
     }
 
-    fn start_position(&self) -> TreePosition<'db> {
-        unimplemented!()
-        //TreePosition {file: self.value.file(), position: unimplemented!()}
+    fn qualified_name(&self) -> String {
+        self.file.qualified_name(self.db)
     }
 
-    fn end_position(&self) -> TreePosition<'db> {
-        unimplemented!()
-        //TreePosition {file: self.value.file(), position: unimplemented!()}
+    fn is_implementation(&self) -> bool {
+        // TODO this is incomplete
+        !self.file.is_stub()
     }
 
-    fn documentation(&self) -> String {
-        unimplemented!()
-    }
-
-    fn description(&self) -> String {
-        unimplemented!()
-    }
-
-    fn qualified_names(&self) -> Option<Vec<String>> {
-        unimplemented!()
-    }
-
-    fn infer(&self) -> Inferred {
-        unimplemented!()
-    }
-
-    fn goto(&self) -> Names<'db> {
-        unimplemented!()
-    }
-
-    /*
-    fn is_implementation(&self) {
-    }
-    */
-}
-
-enum ValueNameIterator<T> {
-    Single(T),
-    Multiple(Vec<T>),
-    Finished,
-}
-
-impl<T> Iterator for ValueNameIterator<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Single(t) => {
-                let result = mem::replace(self, Self::Finished);
-                // Is this really the best way to do this? Please tell me!!!
-                if let Self::Single(t) = result {
-                    Some(t)
-                } else {
-                    unreachable!()
-                }
-            }
-            Self::Multiple(list) => list.pop(),
-            Self::Finished => None,
-        }
+    fn kind(&self) -> SymbolKind {
+        SymbolKind::Module
     }
 }
-*/
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum SymbolKind {
