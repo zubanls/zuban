@@ -724,7 +724,10 @@ impl Hash for TypeVarLike {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarLikeName {
-    InString(PointLink),
+    InString {
+        name_node: PointLink,
+        string_node: PointLink,
+    },
     SyntaxNode(PointLink),
 }
 
@@ -737,13 +740,19 @@ pub(crate) enum TypeVarName {
 impl TypeVarLikeName {
     fn file<'db>(self, db: &'db Database) -> &'db PythonFile {
         match self {
-            Self::InString(link) | Self::SyntaxNode(link) => db.loaded_python_file(link.file),
+            Self::InString {
+                string_node: link, ..
+            }
+            | Self::SyntaxNode(link) => db.loaded_python_file(link.file),
         }
     }
 
     fn as_str<'db>(self, db: &'db Database) -> &'db str {
         match self {
-            Self::InString(link) => NodeRef::from_link(db, link).maybe_str().unwrap().content(),
+            Self::InString { string_node, .. } => NodeRef::from_link(db, string_node)
+                .maybe_str()
+                .unwrap()
+                .content(),
             Self::SyntaxNode(link) => NodeRef::from_link(db, link).as_code(),
         }
     }
@@ -1371,7 +1380,10 @@ impl TypeVarLikeUsage {
             Self::ParamSpec(p) => p.param_spec.name,
         };
         match name {
-            TypeVarLikeName::InString(link) | TypeVarLikeName::SyntaxNode(link) => Some(link),
+            TypeVarLikeName::InString {
+                string_node: link, ..
+            }
+            | TypeVarLikeName::SyntaxNode(link) => Some(link),
         }
     }
 
