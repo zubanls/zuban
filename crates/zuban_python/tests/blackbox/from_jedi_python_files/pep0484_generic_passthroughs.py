@@ -53,7 +53,7 @@ def typed_fully_generic_passthrough(x: T) -> T:
     return x
 
 def typed_bound_generic_passthrough(x: TList) -> TList:
-    #? list()
+    #? TList()
     x
 
     return x
@@ -190,7 +190,7 @@ typed_list_generic_passthrough(CustomList[str])[0]
 
 
 def typed_bound_type_implicit_any_generic_passthrough(x: TType) -> TType:
-    #? Type()
+    #? TType()
     x
     return x
 

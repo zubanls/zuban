@@ -13,7 +13,7 @@ use crate::{
     inferred::Inferred,
     name::{ModuleName, Name, Names, TreeName},
     node_ref::NodeRef,
-    type_::Type,
+    type_::{Type, TypeVarLikeName, TypeVarName},
     InputPosition, ValueName,
 };
 
@@ -187,7 +187,12 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         Type::Intersection(_) => todo!(),
         Type::FunctionOverload(_) => todo!(),
         Type::TypeVar(tv) => match tv.type_var.name {
-            crate::type_::TypeVarName::Name(tvl_name) => return None,
+            TypeVarName::Name(tvl_name) => match tvl_name {
+                TypeVarLikeName::InString { name_node, .. } => {
+                    from_node_ref(NodeRef::from_link(db, name_node))
+                }
+                TypeVarLikeName::SyntaxNode(point_link) => todo!(),
+            },
             crate::type_::TypeVarName::Self_ => return None,
         },
         Type::Type(t) => return type_to_name(db, file, &t),
