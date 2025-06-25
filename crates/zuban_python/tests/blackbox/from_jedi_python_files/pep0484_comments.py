@@ -63,24 +63,24 @@ class Employee:
     pass
 
 from typing import List, Tuple
-x = []   # type: List[Employee]
+x1 = []   # type: List[Employee]
 #? Employee()
-x[1]
-x, y, z = [], [], []  # type: List[int], List[int], List[str]
+x1[1]
+x2, y2, z2 = [], [], []  # type: List[int], List[int], List[str]
 #? int()
-y[2]
-x, y, z = [], [], []  # type: (List[float], List[float], List[BB])
-for zi in z:
+y2[2]
+x3, y3, z3 = [], [], []  # type: (List[float], List[float], List[BB])
+for zi in z3:
     #? BB()
     zi
 
-x = [
+x4 = [
    1,
    2,
 ]  # type: List[str]
 
 #? str()
-x[1]
+x4[1]
 
 
 for bar in foo():  # type: str
@@ -167,10 +167,10 @@ def annot():
 annot()
 
 # Mypy variable type annotation.
-x = UNKNOWN_NAME2  # type: str
+x5 = UNKNOWN_NAME2  # type: str
 
 #? str()
-x
+x5
 
 class Cat(object):
     def __init__(self, age, friends, name):
@@ -185,15 +185,15 @@ cat.name
 
 
 # Check potential errors
-def x(a, b):
+def x6(a, b):
     # type: ([) -> a
     #?
     a
-def x(a, b):
+def x7(a, b):
     # type: (1) -> a
     #?
     a
-def x(a, b, c):
+def x8(a, b, c):
     # type: (str) -> a
     #?
     b
