@@ -61,7 +61,7 @@ impl ValueName<'_> {
 
     /// This is mostly for testing, you should probably not use this.
     pub fn is_instance(&self) -> bool {
-        matches!(self.type_, Type::Class(_))
+        !matches!(self.type_, Type::Type(_) | Type::Callable(_))
     }
 }
 

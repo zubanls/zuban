@@ -76,7 +76,7 @@ impl TestFile<'_> {
                         .collect();
                     if actual != expected {
                         errors.push(format!(
-                            "{file_name}: Line #{} {actual:?} != {expected:?}",
+                            "{file_name}: Line #{} {expected:?} != {actual:?}",
                             case.line,
                         ));
                     }

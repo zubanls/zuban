@@ -127,6 +127,10 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         .into_iter()
         .flatten()
         .filter_map(move |e| {
+            debug!(
+                "Part of inferring type definition: {:?}",
+                e.type_.format_short(db)
+            );
             Some(callback(ValueName {
                 name: &type_to_name(db, file, &e.type_)?,
                 db,
