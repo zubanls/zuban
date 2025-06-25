@@ -93,11 +93,9 @@ impl<'db> TreeName<'db> {
         match self.cst_name.parent() {
             NameParent::NameDef(_) => todo!(),
             NameParent::Atom(atom) => {
-                if let Some(expr) = atom.maybe_expression_parent() {
-                    let n = NodeRef::new(self.file, expr.index());
-                    if let Some(inf) = n.maybe_inferred(i_s) {
-                        return inf;
-                    }
+                let n = NodeRef::new(self.file, atom.index());
+                if let Some(inf) = n.maybe_inferred(i_s) {
+                    return inf;
                 }
             }
             NameParent::Primary(_) => todo!(),

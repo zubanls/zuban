@@ -6,7 +6,8 @@ import typing
 asdf = ''
 asdf: int
 # This is not necessarily correct, but for now this is ok (at least no error).
-#? int()
+# jedi-diff #? int()
+#? str()
 asdf
 
 
@@ -44,7 +45,8 @@ class Foo():
     baz: typing.ClassVar[str]
 
 
-#?
+# jedi-diff #?
+#? int()
 Foo.bar
 #? int()
 Foo().bar
@@ -78,7 +80,8 @@ class VarClass:
 VarClass.var_
 #? int()
 VarClass.var_instance1
-#?
+# jedi-diff #?
+#? float()
 VarClass.var_instance2
 #? str()
 VarClass.var_class1

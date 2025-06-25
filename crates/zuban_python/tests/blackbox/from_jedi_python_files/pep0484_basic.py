@@ -42,7 +42,7 @@ def return_none() -> None:
     """
     pass
 
-#? NoneType()
+#? types.NoneType()
 return_none()
 
 

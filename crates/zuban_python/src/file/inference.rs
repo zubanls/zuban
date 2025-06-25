@@ -14,7 +14,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
-    database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
+    database::{ComplexPoint, Database, Locality, Mode, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
@@ -3261,7 +3261,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
         use AtomContent::*;
         let specific = match atom.unpack() {
-            Name(n) => return self.infer_name_reference(n),
+            Name(n) => {
+                let result = self.infer_name_reference(n);
+                return if self.i_s.db.mode == Mode::LanguageServer {
+                    // This information is needed when doing goto/completions
+                    result.save_redirect(i_s, self.file, atom.index())
+                } else {
+                    result
+                };
+            }
             Int(i) => match self.parse_int(i) {
                 Some(_) => {
                     return check_literal(result_context, i_s, i.index(), Specific::IntLiteral);

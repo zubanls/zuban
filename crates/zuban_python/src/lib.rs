@@ -30,6 +30,7 @@ use parsa_python_cst::Tree;
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+pub use database::Mode;
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
 use file::File;
@@ -44,8 +45,8 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn new(vfs: Box<dyn VfsHandler>, options: ProjectOptions) -> Self {
-        let db = Database::new(vfs, options);
+    pub fn new(vfs: Box<dyn VfsHandler>, options: ProjectOptions, mode: Mode) -> Self {
+        let db = Database::new(vfs, options, mode);
         Self { db }
     }
 
@@ -54,12 +55,12 @@ impl Project {
         options: ProjectOptions,
         recovery: PanicRecovery,
     ) -> Self {
-        let db = Database::from_recovery(vfs, options, recovery.vfs);
+        let db = Database::from_recovery(vfs, options, recovery.mode, recovery.vfs);
         Self { db }
     }
 
-    pub fn without_watcher(options: ProjectOptions) -> Self {
-        let db = Database::new(Box::new(LocalFS::without_watcher()), options);
+    pub fn without_watcher(options: ProjectOptions, mode: Mode) -> Self {
+        let db = Database::new(Box::new(LocalFS::without_watcher()), options, mode);
         Self { db }
     }
 
@@ -70,6 +71,7 @@ impl Project {
     pub fn into_panic_recovery(self) -> PanicRecovery {
         PanicRecovery {
             vfs: self.db.vfs.into_panic_recovery(),
+            mode: self.db.mode,
         }
     }
 
@@ -323,4 +325,5 @@ impl Diagnostics<'_> {
 
 pub struct PanicRecovery {
     vfs: vfs::VfsPanicRecovery<Tree>,
+    mode: Mode,
 }

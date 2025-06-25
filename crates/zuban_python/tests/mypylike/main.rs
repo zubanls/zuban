@@ -14,7 +14,7 @@ use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeChec
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
-use zuban_python::Project;
+use zuban_python::{Mode, Project};
 
 const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     // --allow-redefinition tests
@@ -825,7 +825,7 @@ impl ProjectsCache {
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
-            base_project: reuse_db.then(|| Project::without_watcher(po)),
+            base_project: reuse_db.then(|| Project::without_watcher(po, Mode::TypeCheckingOnly)),
             base_version,
             map: Default::default(),
         }
@@ -841,7 +841,7 @@ impl ProjectsCache {
             let project = if key.0.python_version == self.base_version {
                 self.try_to_reuse_project_parts(options)
             } else {
-                Project::without_watcher(options)
+                Project::without_watcher(options, Mode::TypeCheckingOnly)
             };
             self.map.insert(key.clone(), project);
         }
@@ -853,7 +853,7 @@ impl ProjectsCache {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
             options.settings.typeshed_path = Some(test_utils::typeshed_path());
-            Project::without_watcher(options)
+            Project::without_watcher(options, Mode::TypeCheckingOnly)
         }
     }
 }

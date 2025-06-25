@@ -18,7 +18,7 @@ use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
 use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
-use zuban_python::{PanicRecovery, Project};
+use zuban_python::{Mode, PanicRecovery, Project};
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
 use crate::notification_handlers::TestPanic;
@@ -362,7 +362,7 @@ impl<'sender> GlobalState<'sender> {
             *project = Some(if let Some(recovery) = self.panic_recovery.take() {
                 Project::from_recovery(vfs, config, recovery)
             } else {
-                Project::new(vfs, config)
+                Project::new(vfs, config, Mode::LanguageServer)
             });
             project.as_mut().unwrap()
         }
