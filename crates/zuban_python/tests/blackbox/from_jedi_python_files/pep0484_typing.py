@@ -229,11 +229,11 @@ for value in x.values():
 
 WrappingType = typing.NewType('WrappingType', str) # Chosen arbitrarily
 y = WrappingType(0) # Per https://github.com/davidhalter/jedi/issues/1015#issuecomment-355795929
-#? str()
+#? WrappingType()
 y
 
 def testnewtype(y: WrappingType):
-    #? str()
+    #? WrappingType()
     y
     #? ["upper"]
     y.u

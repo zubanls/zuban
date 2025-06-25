@@ -1693,13 +1693,18 @@ impl FunctionKind {
 
 #[derive(Debug, Clone, Eq, Hash)]
 pub(crate) struct NewType {
+    pub name_node: PointLink,
     pub name_string: PointLink,
     pub type_: Type,
 }
 
 impl NewType {
-    pub fn new(name_string: PointLink, type_: Type) -> Self {
-        Self { name_string, type_ }
+    pub fn new(name_node: PointLink, name_string: PointLink, type_: Type) -> Self {
+        Self {
+            name_node,
+            name_string,
+            type_,
+        }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

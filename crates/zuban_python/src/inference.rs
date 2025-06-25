@@ -206,10 +206,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             }
         }
         Type::RecursiveType(_) => todo!(),
-        Type::NewType(n) => {
-            // TODO
-            return None;
-        }
+        Type::NewType(n) => from_node_ref(NodeRef::from_link(db, n.name_node)),
         Type::ParamSpecArgs(_) => todo!(),
         Type::ParamSpecKwargs(_) => todo!(),
         Type::Literal(l) => {

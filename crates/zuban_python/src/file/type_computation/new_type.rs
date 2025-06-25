@@ -37,18 +37,7 @@ impl<'db, 'file> TypeComputation<'db, 'file, '_, '_> {
                 return None;
             }
         };
-        if let Some(name) = py_string.in_simple_assignment() {
-            if name.as_code() != py_string.content() {
-                name_node.add_issue(
-                    self.i_s,
-                    IssueKind::VarNameMismatch {
-                        class_name: "NewType".into(),
-                        string_name: Box::from(py_string.content()),
-                        variable_name: Box::from(name.as_code()),
-                    },
-                );
-            }
-        } else {
+        let Some(name_def) = py_string.in_simple_assignment() else {
             first.add_issue(
                 self.i_s,
                 IssueKind::InvalidAssignmentForm {
@@ -56,10 +45,24 @@ impl<'db, 'file> TypeComputation<'db, 'file, '_, '_> {
                 },
             );
             return None;
+        };
+        if name_def.as_code() != py_string.content() {
+            name_node.add_issue(
+                self.i_s,
+                IssueKind::VarNameMismatch {
+                    class_name: "NewType".into(),
+                    string_name: Box::from(py_string.content()),
+                    variable_name: Box::from(name_def.as_code()),
+                },
+            );
         }
         let type_ =
             self.compute_new_type_constraint(second.expect_named_expression().expression())?;
         Some(NewType::new(
+            PointLink {
+                file: name_node.file_index(),
+                node_index: name_def.name_index(),
+            },
             PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
