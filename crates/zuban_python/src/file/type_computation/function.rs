@@ -121,6 +121,10 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         self.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
     }
 
+    pub fn unannotated_return_reference(&self) -> NodeRef<'file> {
+        NodeRef::new(self.file, self.node().colon_index())
+    }
+
     pub(crate) fn expect_decorated_node(&self) -> Decorated {
         self.node().maybe_decorated().unwrap()
     }

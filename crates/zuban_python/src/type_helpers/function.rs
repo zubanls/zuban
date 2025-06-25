@@ -192,34 +192,53 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         _args: &dyn Args<'db>,
     ) -> Inferred {
-        // TODO enable
-        if i_s.db.project.settings.mypy_compatible || true {
+        if i_s.db.project.settings.mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
         }
-        if self.is_generator() {
-            // TODO
+
+        let inner_i_s = &i_s.with_func_context(self);
+        let reference = self.unannotated_return_reference();
+        if reference.point().calculated() {
+            return reference.maybe_inferred(inner_i_s).unwrap();
         }
-        let inner_i_s = i_s.with_func_context(self);
+
+        let inference = self.node_ref.file.inference(inner_i_s);
+        let mut generator: Option<Inferred> = None;
+        let mut result: Option<Inferred> = None;
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
                 ReturnOrYield::Return(ret) =>
                 // TODO multiple returns, this is an early exit
                 {
-                    if let Some(star_expressions) = ret.star_expressions() {
-                        return self
-                            .node_ref
-                            .file
-                            .inference(&inner_i_s)
+                    let inf = if let Some(star_expressions) = ret.star_expressions() {
+                        inference
                             .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
-                            .resolve_untyped_function_return(&inner_i_s);
                     } else {
-                        // TODO
-                    }
+                        Inferred::new_none()
+                    };
+                    result = Some(if let Some(r) = result {
+                        r.simplified_union(inner_i_s, inf)
+                    } else {
+                        inf
+                    });
                 }
-                ReturnOrYield::Yield(_yield_expr) => unreachable!(),
+                ReturnOrYield::Yield(yield_expr) => {
+                    let inf = inference.infer_yield_expr(yield_expr, &mut ResultContext::Unknown);
+                    generator = Some(if let Some(g) = generator {
+                        g.simplified_union(inner_i_s, inf)
+                    } else {
+                        inf
+                    });
+                }
             }
         }
-        Inferred::new_none()
+        if generator.is_some() {
+            todo!()
+            // TODO
+        }
+        result
+            .unwrap_or_else(|| Inferred::new_none())
+            .save_redirect(i_s, reference.file, reference.node_index)
     }
 
     pub fn parent_class(&self, db: &'db Database) -> Option<Class<'class>> {

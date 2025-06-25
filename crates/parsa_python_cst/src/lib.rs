@@ -2108,6 +2108,15 @@ impl<'db> FunctionDef<'db> {
         None
     }
 
+    pub fn colon_index(&self) -> NodeIndex {
+        for child in self.node.iter_children().skip(2) {
+            if child.as_code() == ":" {
+                return child.index;
+            }
+        }
+        unreachable!()
+    }
+
     pub fn is_typed(&self) -> bool {
         // A function is considered typed according to Mypy if at least param or return annotation
         // is used.

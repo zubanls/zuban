@@ -396,19 +396,6 @@ impl<'db: 'slf, 'slf> Inferred {
         Some(specific)
     }
 
-    pub fn resolve_untyped_function_return(self, _i_s: &InferenceState) -> Self {
-        unimplemented!();
-        /*
-        if let InferredState::Saved(definition) = self.state {
-            let definition = NodeRef::from_link(i_s.db, definition);
-            let point = definition.point();
-            if point.type_() == PointType::Specific && point.specific() == Specific::Closure {
-            }
-        }
-        self.resolve_class_type_vars(i_s, class, attribute_class)
-        */
-    }
-
     pub fn resolve_class_type_vars(
         self,
         i_s: &InferenceState,
