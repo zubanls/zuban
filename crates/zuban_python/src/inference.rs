@@ -3,7 +3,7 @@
  * standard type checking. Type checking should always be done first.
  * */
 
-use parsa_python_cst::{CodeIndex, GotoNode};
+use parsa_python_cst::{CodeIndex, GotoNode, Name as CSTName, NameParent};
 
 use crate::{
     database::{Database, ParentScope},
@@ -44,11 +44,7 @@ impl<'db> PositionalDocument<'db> {
             self.position
         );
         match leaf {
-            GotoNode::Name(name) => {
-                // TODO this scope is wrong, but currently also not used in infer
-                let scope = ParentScope::Module;
-                Some(TreeName::new(self.db, self.file, scope, name).infer())
-            }
+            GotoNode::Name(name) => Some(infer_name(self.db, self.file, name)),
             GotoNode::Primary(primary) => {
                 // TODO don't just use it on expr
                 let n = NodeRef::new(self.file, primary.index() - 1);
@@ -223,4 +219,33 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             return None;
         }
     })
+}
+
+fn infer_name(db: &Database, file: &PythonFile, name: CSTName) -> Inferred {
+    let i_s = &InferenceState::new(db, file);
+    match name.parent() {
+        NameParent::NameDef(_) => todo!(),
+        NameParent::Atom(atom) => {
+            let n = NodeRef::new(file, atom.index());
+            if let Some(inf) = n.maybe_inferred(i_s) {
+                return inf;
+            }
+        }
+        NameParent::Primary(_) => todo!(),
+        NameParent::PrimaryTarget(_) => todo!(),
+        NameParent::Kwarg(_) => todo!(),
+        NameParent::KeywordPattern(_) => todo!(),
+        NameParent::ImportFromAsName(_) => todo!(),
+        NameParent::DottedName(_) => todo!(),
+        NameParent::FStringConversion(_) => todo!(),
+    }
+    /*
+    let p = node_ref.point();
+    if p.calculated() {
+        if p.kind() == PointKind::Redirect {
+            let redirected_to = p.as_redirected_node_ref(self.db);
+        }
+    }
+    */
+    Inferred::new_never(crate::type_::NeverCause::Other) // TODO
 }
