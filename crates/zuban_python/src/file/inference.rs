@@ -3134,7 +3134,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
     fn _infer_primary(&self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
         if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
-            return inf;
+            return if self.i_s.db.mode == Mode::LanguageServer {
+                inf.save_redirect(self.i_s, self.file, primary.index())
+            } else {
+                inf
+            };
         }
         let base = match self.try_to_infer_partial_from_primary(primary) {
             Some(t) => return Inferred::from_type(t),

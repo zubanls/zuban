@@ -6,11 +6,11 @@ class Foo:
 
 #? int()
 Foo.x
-##?
+#?
 Foo.a
 #? int()
 Foo().x
-##?
+#?
 Foo().a
 #? int()
 Foo(1).a

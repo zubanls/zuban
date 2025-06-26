@@ -3,14 +3,17 @@
  * standard type checking. Type checking should always be done first.
  * */
 
+use std::cell::Cell;
+
 use parsa_python_cst::{CodeIndex, GotoNode, Name as CSTName, NameParent};
 
 use crate::{
     database::{Database, ParentScope},
     debug,
     file::{ClassInitializer, File, FuncNodeRef, PythonFile},
-    inference_state::InferenceState,
+    inference_state::{InferenceState, Mode},
     inferred::Inferred,
+    matching::ResultContext,
     name::{ModuleName, Name, Names, TreeName},
     node_ref::NodeRef,
     type_::{Type, TypeVarLikeName, TypeVarName},
@@ -43,12 +46,18 @@ impl<'db> PositionalDocument<'db> {
             self.file.file_path(&self.db),
             self.position
         );
+        let had_error = &Cell::new(false);
+        let i_s =
+            &InferenceState::new(self.db, self.file).with_mode(Mode::AvoidErrors { had_error });
         match leaf {
-            GotoNode::Name(name) => Some(infer_name(self.db, self.file, name)),
+            GotoNode::Name(name) => Some(infer_name(i_s, self.file, name)),
             GotoNode::Primary(primary) => {
-                // TODO don't just use it on expr
-                let n = NodeRef::new(self.file, primary.index() - 1);
-                n.maybe_inferred(&InferenceState::new(self.db, self.file))
+                let n = NodeRef::new(self.file, primary.index());
+                Some(
+                    self.file
+                        .inference(i_s)
+                        .infer_primary(primary, &mut ResultContext::Unknown),
+                )
             }
             GotoNode::None => None,
         }
@@ -237,8 +246,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
     }))
 }
 
-fn infer_name(db: &Database, file: &PythonFile, name: CSTName) -> Inferred {
-    let i_s = &InferenceState::new(db, file);
+fn infer_name(i_s: &InferenceState, file: &PythonFile, name: CSTName) -> Inferred {
     match name.parent() {
         NameParent::NameDef(_) => todo!(),
         NameParent::Atom(atom) => {
