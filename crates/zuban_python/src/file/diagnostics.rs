@@ -732,7 +732,8 @@ impl Inference<'_, '_, '_> {
 
     fn assign_any_to_untyped_target(&self, target: Target) {
         match target {
-            Target::Name(n) | Target::NameExpression(_, n) => {
+            Target::NameExpression(_, n) => {
+                // Assign any to potential self assignments
                 Inferred::new_any_from_error().save_redirect(self.i_s, self.file, n.index());
             }
             Target::Tuple(targets) => {
@@ -741,7 +742,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
             Target::Starred(s) => self.assign_any_to_untyped_target(s.as_target()),
-            Target::IndexExpression(_) => (),
+            Target::Name(_) | Target::IndexExpression(_) => (),
         }
     }
 
