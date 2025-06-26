@@ -94,6 +94,7 @@ testRecursiveAliasWithRecursiveInstanceInference
 testUnionInference
 # type var with unions and fallback in case solving is not possible
 testTypeVarTupleInvariant
+unite_type_vars_mypy_issue_5874_no_join
 # Invalid ParamSpec definitions
 testParamSpecLocations
 testUnboundParamSpec

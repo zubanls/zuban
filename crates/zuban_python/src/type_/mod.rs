@@ -1249,6 +1249,14 @@ impl Type {
         self.maybe_avoid_implicit_literal(db).unwrap_or(self)
     }
 
+    pub fn avoid_implicit_literal_cow(&self, db: &Database) -> Cow<Self> {
+        if let Some(t) = self.maybe_avoid_implicit_literal(db) {
+            Cow::Owned(t)
+        } else {
+            Cow::Borrowed(self)
+        }
+    }
+
     pub fn is_literal_or_literal_in_tuple(&self) -> bool {
         self.iter_with_unpacked_unions_without_unpacking_recursive_types()
             .any(|t| match t {

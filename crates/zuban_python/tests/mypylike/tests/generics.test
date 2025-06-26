@@ -89,7 +89,21 @@ if int():
 if int():
     h = h
 
-[case unite_type_vars_mypy_issue_5874]
+[case unite_type_vars_mypy_issue_5874_join]
+# flags: --use-joins
+from typing import TypeVar, List, Union
+T = TypeVar('T')
+S = TypeVar('S')
+
+def add(x: List[T], y: List[S]) -> List[Union[T, S]]: ...
+
+a: List[int]
+b: List[str]
+
+e: List[Union[int, str]] = add(a, b)
+
+[case unite_type_vars_mypy_issue_5874_no_join]
+# flags: --no-use-joins
 from typing import TypeVar, List, Union
 T = TypeVar('T')
 S = TypeVar('S')
@@ -682,7 +696,8 @@ y3: list[Foo[Any]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo
 f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
 y4: list[Foo[Any]] = f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
 
-[case generic_covariant_match]
+[case generic_covariant_match_mypy_compatible]
+# flags: --mypy-compatible
 from typing import TypeVar, Sequence
 
 T = TypeVar("T")
@@ -694,6 +709,20 @@ y: list[Sequence[object]]
 
 reveal_type(foo(x, y)) # N: Revealed type is "typing.Sequence[typing.Sequence[object]]"
 reveal_type(foo(y, x)) # N: Revealed type is "typing.Sequence[typing.Sequence[object]]"
+
+[case generic_covariant_match_no_mypy_compatible]
+# flags: --no-mypy-compatible
+from typing import TypeVar, Sequence
+
+T = TypeVar("T")
+
+def foo(x: T, y: T) -> T: ...
+
+x: list[Sequence[int]]
+y: list[Sequence[object]]
+
+reveal_type(foo(x, y)) # N: Revealed type is "list[typing.Sequence[int]] | list[typing.Sequence[object]]"
+reveal_type(foo(y, x)) # N: Revealed type is "list[typing.Sequence[object]] | list[typing.Sequence[int]]"
 
 [case class_attribute_inheritance_access]
 from typing import TypeVar, Generic
@@ -1069,7 +1098,8 @@ def id(x: T2) -> T2: ...
 
 reveal_type(foo(id))  # N: Revealed type is "Never"
 
-[case transitive_constraints_mismatch1]
+[case transitive_constraints_mismatch1_mypy_compatible]
+# flags: --mypy-compatible
 from typing import TypeVar, Callable, List, Tuple
 
 T1 = TypeVar("T1")
@@ -1081,6 +1111,22 @@ def combine(f: Callable[[T1, T2], T3], g: T2, h: T3) -> Callable[[T1], T3]: ...
 def id(x: T4, y: T4) -> T4: ...
 
 reveal_type(combine(id, 1, ""))  # N: Revealed type is "def (object) -> object"
+
+[case transitive_constraints_mismatch1_no_mypy_compatible]
+# flags: --no-mypy-compatible
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+T4 = TypeVar("T4")
+
+def combine(f: Callable[[T1, T2], T3], g: T2, h: T3) -> Callable[[T1], T3]: ...
+def id(x: T4, y: T4) -> T4: ...
+
+# TODO currently not deterministic
+-- reveal_type(combine(id, 1, ""))  # N: Revealed type is "def (str | int) -> int | str"
+x: Callable[[int | str], int | str] = combine(id, 1, "")
 
 [case transitive_constraints_mismatch2]
 from typing import TypeVar, Callable, List, Tuple
@@ -1290,7 +1336,8 @@ def foo(x: list[int | Any], y: list[int]) -> None:
     if bool():
         y = x
 
-[case type_var_tuple_merging]
+[case type_var_tuple_merging_join]
+# flags: --use-joins
 from typing import TypeVarTuple, TypeVar, Generic, Tuple, Unpack
 
 Ts = TypeVarTuple("Ts")
@@ -1312,7 +1359,31 @@ def f(x: Foo[A, B, C, C], y: Foo[C, B, B, A], z: Foo[C, B], other: Foo[int]):
 
 def g(x: T, y: T) -> T: ...
 
-[case param_spec_merging]
+[case type_var_tuple_merging_no_join]
+# flags: --no-use-joins
+from typing import TypeVarTuple, TypeVar, Generic, Tuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+T = TypeVar("T")
+class Foo(Generic[Unpack[Ts]]): ...
+
+class A: ...
+class B(A): ...
+class C(B): ...
+def f(x: Foo[A, B, C, C], y: Foo[C, B, B, A], z: Foo[C, B], other: Foo[int]):
+    reveal_type(g(x, y))  # N: Revealed type is "__main__.Foo[__main__.A, __main__.B, __main__.C, __main__.C] | __main__.Foo[__main__.C, __main__.B, __main__.B, __main__.A]"
+    reveal_type(g(y, x))  # N: Revealed type is "__main__.Foo[__main__.C, __main__.B, __main__.B, __main__.A] | __main__.Foo[__main__.A, __main__.B, __main__.C, __main__.C]"
+
+    reveal_type(g(x, z))  # N: Revealed type is "__main__.Foo[__main__.A, __main__.B, __main__.C, __main__.C] | __main__.Foo[__main__.C, __main__.B]"
+    reveal_type(g(z, x))  # N: Revealed type is "__main__.Foo[__main__.C, __main__.B] | __main__.Foo[__main__.A, __main__.B, __main__.C, __main__.C]"
+
+    reveal_type(g(x, other))  # N: Revealed type is "__main__.Foo[__main__.A, __main__.B, __main__.C, __main__.C] | __main__.Foo[int]"
+    reveal_type(g(other, x))  # N: Revealed type is "__main__.Foo[int] | __main__.Foo[__main__.A, __main__.B, __main__.C, __main__.C]"
+
+def g(x: T, y: T) -> T: ...
+
+[case param_spec_merging_join]
+# flags: --use-joins
 from typing import ParamSpec, TypeVar, Generic
 
 P = ParamSpec("P")
@@ -1328,6 +1399,26 @@ def f(x: Foo[[A, B, C, C]], y: Foo[[C, B, B, A]], z: Foo[[C, B]]):
 
     reveal_type(g(x, z))  # N: Revealed type is "object"
     reveal_type(g(z, x))  # N: Revealed type is "object"
+
+def g(x: T, y: T) -> T: ...
+
+[case param_spec_merging_no_join]
+# flags: --no-use-joins
+from typing import ParamSpec, TypeVar, Generic
+
+P = ParamSpec("P")
+T = TypeVar("T")
+class Foo(Generic[P]): ...
+
+class A: ...
+class B(A): ...
+class C(B): ...
+def f(x: Foo[[A, B, C, C]], y: Foo[[C, B, B, A]], z: Foo[[C, B]]):
+    reveal_type(g(x, y))  # N: Revealed type is "__main__.Foo[[__main__.A, __main__.B, __main__.C, __main__.C]] | __main__.Foo[[__main__.C, __main__.B, __main__.B, __main__.A]]"
+    reveal_type(g(y, x))  # N: Revealed type is "__main__.Foo[[__main__.C, __main__.B, __main__.B, __main__.A]] | __main__.Foo[[__main__.A, __main__.B, __main__.C, __main__.C]]"
+
+    reveal_type(g(x, z))  # N: Revealed type is "__main__.Foo[[__main__.A, __main__.B, __main__.C, __main__.C]] | __main__.Foo[[__main__.C, __main__.B]]"
+    reveal_type(g(z, x))  # N: Revealed type is "__main__.Foo[[__main__.C, __main__.B]] | __main__.Foo[[__main__.A, __main__.B, __main__.C, __main__.C]]"
 
 def g(x: T, y: T) -> T: ...
 

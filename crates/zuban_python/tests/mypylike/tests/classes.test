@@ -1359,6 +1359,7 @@ def g(x: type[Foo], y: type[Bar]):
         reveal_type(y())  # N: Revealed type is "__main__.Bar"
 
 [case join_undefined_generics_in_class_types_should_not_panic]
+# flags: --use-joins
 from collections import defaultdict
 m = set([dict, defaultdict])
 reveal_type(m)  # N: Revealed type is "set[Type[dict[Any, Any]]]"
