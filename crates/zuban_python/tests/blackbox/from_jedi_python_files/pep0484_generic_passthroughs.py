@@ -173,7 +173,8 @@ typed_quoted_input_generic_passthrough((42,))
 
 
 
-class CustomList(List):
+# jedi-diff: class CustomList(List):
+class CustomList[T](List[T]):
     def get_first(self):
         return self[0]
 
@@ -305,8 +306,8 @@ class class_decorator_factory_bound_callable:
 #? class_decorator_factory_bound_callable()
 class_decorator_factory_bound_callable()
 
-#? callable()
-class_decorator_factory_bound_callable()()
+#? typing.Callable
+class_decorator_factory_bound_callable()(lambda: ...)
 
 is_decorated_by_class_bound_factory = class_decorator_factory_bound_callable()(will_be_decorated)
 
@@ -325,6 +326,10 @@ def decorator_factory_bound_callable() -> Callable[[TCallable], TCallable]:
 decorator_factory_bound_callable()
 
 #? typing.Callable
+decorator_factory_bound_callable()(lambda: ...)
+#? int()
+decorator_factory_bound_callable()(1)
+#?
 decorator_factory_bound_callable()()
 
 is_decorated_by_bound_factory = decorator_factory_bound_callable()(will_be_decorated)

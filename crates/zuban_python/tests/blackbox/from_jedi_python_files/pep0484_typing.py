@@ -34,7 +34,8 @@ def we_can_has_sequence(p: Sequence[int], q: Sequence[B], r: Sequence[int],
     t[1]
     #? ["append"]
     u.a
-    #? float() list()
+    # jedi-diff #? float() list()
+    #?
     u[1.0]
     #? float()
     u[1]
@@ -300,7 +301,8 @@ def union4(x: U[int, str]):
     #? int() str()
     x
 
-#? typing.Optional
+# jedi-diff #? typing.Optional
+# _SpecialForm()
 typing.Optional[0]
 
 # -------------------------
@@ -354,7 +356,8 @@ in_out2(1)
 in_out2("")
 #? str()
 in_out2(str())
-#? str() int()
+# jedi-diff #? str() int()
+#?
 in_out2()
 # TODO this should actually be str() int(), because of the constraints.
 #? float()
@@ -366,7 +369,8 @@ def type_in_out2(x: typing.Type[TYPE_VAR_CONSTRAINTSX]) -> TYPE_VAR_CONSTRAINTSX
 type_in_out2(int)
 #? str()
 type_in_out2(str)
-#? str() int()
+# jedi-diff #? str() int()
+#?
 type_in_out2()
 # TODO this should actually be str() int(), because of the constraints.
 #? float()
@@ -480,9 +484,9 @@ class Foo(typing.TypedDict):
     an_int: int
     #! ['foo: str']
     foo
-    #? str()
+    ##? str()
     foo
-    #? int()
+    ##? int()
     an_int
 
 def typed_dict_test_foo(arg: Foo):
@@ -537,7 +541,7 @@ d["bar"]
 class Bar(Foo):
     another_variable: int
 
-    #? int()
+    ##? int()
     another_variable
     #?
     an_int

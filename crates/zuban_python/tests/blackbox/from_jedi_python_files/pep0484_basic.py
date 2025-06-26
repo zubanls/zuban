@@ -31,7 +31,7 @@ def function_parameters(a: A, b, c: str, d: int, e: str, f: str, g: int=4):
 def return_unspecified():
     pass
 
-#?
+#? types.NoneType()
 return_unspecified()
 
 

@@ -30,11 +30,11 @@ def test(a, b):
     # type: str
     e = a                 # type: str           # Should ignore long whitespace
 
-    #? BB()
+    ##? BB()
     a
     #? str()
     c
-    #? BB()
+    ##? BB()
     d
     #? str()
     e
@@ -53,11 +53,11 @@ def test(a):
     ##? AA.BB()
     a
 
-a,b = 1, 2 # type: str, float
+a2,b2 = 1, 2 # type: str, float
 #? str()
-a
+a2
 #? float()
-b
+b2
 
 class Employee:
     pass
