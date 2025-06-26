@@ -91,10 +91,12 @@ impl TestFile<'_> {
             for error in &errors {
                 println!("{error}");
             }
+            /*
             println!(
                 "{file_name} Ran {ran_count} tests with {} errors",
                 errors.len()
             );
+            */
         }
         (ran_count, full_count, errors.len())
     }
