@@ -56,7 +56,7 @@ impl<'db> PositionalDocument<'db> {
                 Some(
                     self.file
                         .inference(i_s)
-                        .infer_primary(primary, &mut ResultContext::Unknown),
+                        .infer_primary(primary, &mut ResultContext::ExpectUnused),
                 )
             }
             GotoNode::None => None,

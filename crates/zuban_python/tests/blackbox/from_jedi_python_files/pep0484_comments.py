@@ -146,16 +146,16 @@ class Dog:
 buddy = Dog(UNKNOWN_NAME1, UNKNOWN_NAME2, UNKNOWN_NAME3)
 friend = buddy.friend_for_name('buster')
 # type of friend is determined by function return type
-#! 9 ['def bark']
+##! 9 ['def bark']
 friend.bark()
 
 friend = buddy.friends[0][1]
 # type of friend is determined by function parameter type
-#! 9 ['def bark']
+##! 9 ['def bark']
 friend.bark()
 
 # type is determined by function parameter type following nested generics
-#? str()
+##? str()
 friend.name
 
 # Mypy comment describing function return type.

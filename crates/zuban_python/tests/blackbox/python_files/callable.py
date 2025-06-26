@@ -66,7 +66,7 @@ ret[0]
 ret[1]
 #? float()
 ret[2]
-#? list
+#?
 ret[3]
 
 ret = callables[1](set)
@@ -76,7 +76,7 @@ ret[0]
 ret[1]
 #? float()
 ret[2]
-#? set
+#?
 ret[3]
 
 callables = Foo(1.0).return_callable7(7)("")
