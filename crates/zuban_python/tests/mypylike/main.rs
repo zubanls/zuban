@@ -273,6 +273,7 @@ impl TestCase<'_, '_> {
             &mut config.follow_untyped_imports,
             "--follow-untyped-imports",
         );
+        set_bool_flag(&mut config.use_joins, "--use-joins");
         set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
         set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
         set_reverse_bool_flag(&mut config.local_partial_types, "--no-local-partial-types");
@@ -282,6 +283,7 @@ impl TestCase<'_, '_> {
             &mut config.allow_untyped_globals,
             "--disallow-untyped-globals",
         );
+        set_reverse_bool_flag(&mut config.use_joins, "--no-use-joins");
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";

@@ -62,7 +62,11 @@ impl<'db> Inference<'db, '_, '_> {
             };
             let t = t.avoid_implicit_literal(self.i_s.db);
             if let Some(r) = result.take() {
-                result = Some(r.common_base_type(self.i_s, &t));
+                result = Some(if self.flags().use_joins {
+                    r.common_base_type(self.i_s, &t)
+                } else {
+                    r.simplified_union(self.i_s, &t)
+                })
             } else {
                 result = Some(t)
             }

@@ -331,6 +331,9 @@ pub struct TypeCheckerFlags {
 
     pub extra_checks: bool,
     pub case_sensitive: bool,
+
+    // Non-mypy settings
+    pub use_joins: bool,
 }
 
 impl Default for TypeCheckerFlags {
@@ -370,6 +373,7 @@ impl Default for TypeCheckerFlags {
             disabled_error_codes: vec![],
             extra_checks: false,
             case_sensitive: true,
+            use_joins: false,
         }
     }
 }
@@ -404,6 +408,7 @@ impl TypeCheckerFlags {
             allow_redefinition: false,
             local_partial_types: false,
             allow_untyped_globals: false,
+            use_joins: true,
             ..Default::default()
         }
     }

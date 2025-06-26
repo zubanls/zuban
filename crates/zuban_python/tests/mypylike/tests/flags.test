@@ -482,3 +482,8 @@ foo = MyClass()
 reveal_type(foo.attr)  # N: Revealed type is "Any | None"
 
 foo.attr = 1
+
+[case list_inference_mypy_no_compatible]
+# flags: --no-mypy-compatible
+x = [1, ""]
+reveal_type(x[0])  # N: Revealed type is "int | str"
