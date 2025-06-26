@@ -19,7 +19,7 @@ use crate::{
         FLOW_ANALYSIS,
     },
     format_data::FormatData,
-    inference_state::InferenceState,
+    inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{
         calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArgs, ErrorStrs,
@@ -196,7 +196,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any(AnyCause::Unannotated);
         }
 
-        let inner_i_s = &i_s.with_func_context(self);
+        let had_error = &Cell::new(false);
+        let inner_i_s = &i_s
+            .with_func_context(self)
+            .with_mode(Mode::AvoidErrors { had_error });
         let reference = self.unannotated_return_reference();
         if reference.point().calculated() {
             return reference.maybe_inferred(inner_i_s).unwrap();
