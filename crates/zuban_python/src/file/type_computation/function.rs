@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell};
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{
     Decorated, FunctionDef, FunctionParent, NodeIndex, ParamAnnotation, ParamKind,
@@ -14,8 +14,8 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        AnyCause, StringSlice, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
-        TypeVarManager,
+        AnyCause, StringSlice, Type, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind,
+        TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarManager,
     },
     type_helpers::{Class, Function},
 };
@@ -195,7 +195,24 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if type_var_reference.point().calculated() {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
         }
-        let (type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s, class);
+        let (mut type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s, class);
+        if type_vars.is_empty() && !i_s.db.project.settings.mypy_compatible {
+            let node = self.node();
+            if !node.is_typed() {
+                type_vars = TypeVarLikes::new(
+                    node.params()
+                        .iter()
+                        .map(|_| {
+                            TypeVarLike::TypeVar(Rc::new(TypeVar::new_self(
+                                TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_known(Type::Any(
+                                    AnyCause::Todo,
+                                ))),
+                            )))
+                        })
+                        .collect(),
+                )
+            }
+        }
         match type_vars.len() {
             0 => type_var_reference
                 .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),

@@ -1,0 +1,6 @@
+[case mypy_no_compatible_untyped_func_exec]
+# flags: --no-mypy-compatible
+def f(x):
+    return (x, "")
+
+reveal_type(f(1))  # N: Revealed type is "tuple[int, Literal['']?]"

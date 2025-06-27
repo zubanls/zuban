@@ -448,6 +448,10 @@ impl TypeVarLikes {
         self.0.iter()
     }
 
+    pub fn get(&self, index: usize) -> Option<&TypeVarLike> {
+        self.0.get(index)
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         debug_assert!(!self.is_empty());
         format!(

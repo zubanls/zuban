@@ -39,8 +39,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, IterCause, IterInfos, Literal,
         LiteralKind, LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
-        WithUnpack,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarName, TypeVarUsage,
+        UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind, Function,
@@ -3810,16 +3810,28 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
                 } else if self.i_s.current_function().is_some() {
+                    let new_any = |param_index| {
+                        if let Some(TypeVarLike::TypeVar(tv)) =
+                            func.type_vars(self.i_s.db).get(param_index)
+                        {
+                            if tv.name == TypeVarName::Self_ {
+                                return Type::TypeVar(TypeVarUsage::new(
+                                    tv.clone(),
+                                    func.as_link(),
+                                    param_index.into(),
+                                ));
+                            }
+                        }
+                        Type::Any(AnyCause::Unannotated)
+                    };
                     if specific == Specific::MaybeSelfParam {
                         match func.first_param_kind(self.i_s) {
                             FirstParamKind::Self_ => to_inferred(false),
                             FirstParamKind::ClassOfSelf => to_inferred(true),
-                            FirstParamKind::InStaticmethod => {
-                                Inferred::from_type(Type::Any(AnyCause::Unannotated))
-                            }
+                            FirstParamKind::InStaticmethod => Inferred::from_type(new_any(0)),
                         }
                     } else {
-                        for param in func_node.params().iter() {
+                        for (i, param) in func_node.params().iter().enumerate() {
                             if param.name_def().index() == name_def.index() {
                                 return match param.kind() {
                                     ParamKind::Star => Inferred::from_type(
@@ -3828,9 +3840,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     ParamKind::StarStar => Inferred::from_type(new_class!(
                                         self.i_s.db.python_state.dict_node_ref().as_link(),
                                         self.i_s.db.python_state.str_type(),
-                                        Type::Any(AnyCause::Unannotated),
+                                        new_any(i)
                                     )),
-                                    _ => Inferred::new_any(AnyCause::Unannotated),
+                                    _ => Inferred::from_type(new_any(i)),
                                 };
                             }
                         }
