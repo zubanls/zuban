@@ -30,6 +30,10 @@ impl SignatureMatch {
             arbitrary_length_handled: true,
         }
     }
+
+    pub fn bool(&self) -> bool {
+        matches!(self, Self::TrueWithAny { .. } | Self::True { .. })
+    }
 }
 
 impl From<bool> for SignatureMatch {

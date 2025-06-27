@@ -348,6 +348,47 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
+pub(crate) fn calculate_untyped_function_type_vars<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    function: Function<'a, 'a>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
+    add_issue: impl Fn(IssueKind),
+    skip_first_param: bool,
+    type_vars: &TypeVarLikes,
+    match_in_definition: PointLink,
+    replace_self: Option<ReplaceSelfInMatcher>,
+    result_context: &mut ResultContext,
+    on_type_error: Option<OnTypeError>,
+) -> CalculatedTypeArgs {
+    let func_or_callable = FunctionOrCallable::Function(function);
+    let mut matcher = get_matcher(
+        func_or_callable,
+        function.as_link(),
+        replace_self,
+        type_vars,
+    );
+
+    let matches = match_arguments_against_params(
+        i_s,
+        &mut matcher,
+        func_or_callable,
+        &add_issue,
+        on_type_error,
+        InferrableParamIterator::new(
+            i_s.db,
+            function
+                .iter_untyped_params(i_s.db)
+                .skip(skip_first_param as usize),
+            args,
+        ),
+    );
+    let mut result = matcher.into_type_arguments(i_s, match_in_definition);
+    if result.matches.bool() {
+        result.matches = matches;
+    }
+    result
+}
+
 pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
@@ -558,8 +599,10 @@ pub(crate) fn match_arguments_against_params<
             .map(|s| (prefix.to_owned() + &s).into())
     };
     let too_few_arguments = || {
-        let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-        add_issue(IssueKind::TooFewArguments(s));
+        if on_type_error.is_some() {
+            let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
+            add_issue(IssueKind::TooFewArguments(s));
+        }
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];

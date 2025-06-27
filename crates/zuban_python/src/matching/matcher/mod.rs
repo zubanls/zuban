@@ -12,7 +12,7 @@ use utils::match_arguments_against_params;
 pub(crate) use utils::{
     calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_dunder_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    CalculatedTypeArgs,
+    calculate_untyped_function_type_vars, CalculatedTypeArgs,
 };
 
 use self::{

@@ -14,8 +14,8 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        AnyCause, StringSlice, Type, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind,
-        TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarManager,
+        AnyCause, StringSlice, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarLikes, TypeVarManager,
     },
     type_helpers::{Class, Function},
 };

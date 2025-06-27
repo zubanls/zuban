@@ -22,8 +22,9 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{
-        calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArgs, ErrorStrs,
-        OnTypeError, ReplaceSelfInMatcher, ResultContext,
+        calculate_function_type_vars_and_return, calculate_untyped_function_type_vars,
+        maybe_class_usage, CalculatedTypeArgs, ErrorStrs, OnTypeError, ReplaceSelfInMatcher,
+        ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -38,7 +39,7 @@ use crate::{
         ClassGenerics, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
         GenericClass, GenericItem, NeverCause, ParamType, PropertySetter, ReplaceSelf,
         ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
-        TypeVarLike, TypeVarLikes, WrongPositionalCount,
+        TypeVarLike, TypeVarLikes, TypeVarUsage, WrongPositionalCount,
     },
     type_helpers::Class,
 };
@@ -190,12 +191,35 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn execute_without_annotation(
         &self,
         i_s: &InferenceState<'db, '_>,
-        _args: &dyn Args<'db>,
+        args: &dyn Args<'db>,
     ) -> Inferred {
         if i_s.db.project.settings.mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
         }
+        let return_inf = self.ensure_cached_untyped_return(i_s);
+        let ret_t = return_inf.as_cow_type(i_s);
+        let type_vars = self.type_vars(i_s.db);
+        let calculated = calculate_untyped_function_type_vars(
+            i_s,
+            *self,
+            args.iter(i_s.mode),
+            |_| (),
+            false,
+            type_vars,
+            self.as_link(),
+            None,
+            &mut ResultContext::Unknown,
+            None,
+        );
+        if ret_t.has_type_vars() {
+            calculated.into_return_type(i_s, ret_t.as_ref(), None, &|| None)
+        } else {
+            // If there are no type vars we can just pass the result on.
+            return_inf
+        }
+    }
 
+    fn ensure_cached_untyped_return(&self, i_s: &InferenceState) -> Inferred {
         let had_error = &Cell::new(false);
         let inner_i_s = &i_s
             .with_func_context(self)
@@ -1486,6 +1510,22 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .map(|param| FunctionParam { file, param })
     }
 
+    pub fn iter_untyped_params(
+        &self,
+        db: &'db Database,
+    ) -> impl Iterator<Item = UntypedFunctionParam<'a>> {
+        let type_var_likes = self.type_vars(db);
+        let in_definition = self.as_link();
+        self.iter_params()
+            .enumerate()
+            .map(move |(nth, param)| UntypedFunctionParam {
+                param,
+                in_definition,
+                type_var_likes,
+                nth,
+            })
+    }
+
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<Type>> {
         self.iter_params().next().and_then(|p| {
             let t = p.annotation(i_s.db);
@@ -1807,6 +1847,65 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             let p = self.file.points.get(param_annot.index());
             p.maybe_specific() != Some(Specific::AnnotationOrTypeCommentWithoutTypeVars)
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct UntypedFunctionParam<'x> {
+    param: FunctionParam<'x>,
+    type_var_likes: &'x TypeVarLikes,
+    in_definition: PointLink,
+    nth: usize,
+}
+
+impl<'x> Param<'x> for UntypedFunctionParam<'x> {
+    fn has_default(&self) -> bool {
+        self.param.has_default()
+    }
+
+    fn name(&self, db: &'x Database) -> Option<&str> {
+        self.param.name(db)
+    }
+
+    fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x> {
+        let mut pt = self.param.specific(db);
+        let Some(TypeVarLike::TypeVar(tv)) = self.type_var_likes.get(self.nth) else {
+            recoverable_error!("Did not find type var for untyped param");
+            return pt;
+        };
+        match &mut pt {
+            WrappedParamType::PositionalOnly(t)
+            | WrappedParamType::PositionalOrKeyword(t)
+            | WrappedParamType::KeywordOnly(t)
+            | WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
+            | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
+                *t = Some(Cow::Owned(Type::TypeVar(TypeVarUsage::new(
+                    tv.clone(),
+                    self.in_definition,
+                    self.nth.into(),
+                ))));
+            }
+            _ => {
+                recoverable_error!("Did not handle untyped param {pt:?}");
+            }
+        };
+        pt
+    }
+
+    fn kind(&self, db: &Database) -> ParamKind {
+        self.param.kind(db)
+    }
+
+    fn into_callable_param(self) -> CallableParam {
+        unreachable!("It feels like this might not be necessary")
+    }
+
+    fn has_self_type(&self, _: &Database) -> bool {
+        false
+    }
+
+    fn might_have_type_vars(&self) -> bool {
+        true
     }
 }
 
