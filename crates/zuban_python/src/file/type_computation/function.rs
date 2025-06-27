@@ -202,13 +202,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 type_vars = TypeVarLikes::new(
                     node.params()
                         .iter()
-                        .map(|_| {
-                            TypeVarLike::TypeVar(Rc::new(TypeVar::new_self(
-                                TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_known(Type::Any(
-                                    AnyCause::Todo,
-                                ))),
-                            )))
-                        })
+                        .map(|_| TypeVarLike::TypeVar(Rc::new(TypeVar::for_untyped_param())))
                         .collect(),
                 )
             }

@@ -738,6 +738,7 @@ pub(crate) enum TypeVarLikeName {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarName {
     Name(TypeVarLikeName),
+    UntypedParam,
     Self_,
 }
 
@@ -895,6 +896,18 @@ impl TypeVar {
         }
     }
 
+    pub fn for_untyped_param() -> Self {
+        Self {
+            name: TypeVarName::UntypedParam,
+            scope: ParentScope::Module,
+            kind: TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_known(Type::Any(
+                AnyCause::Unannotated,
+            ))),
+            default: None,
+            variance: TypeVarVariance::Known(Variance::Invariant),
+        }
+    }
+
     pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
         match self.variance {
             TypeVarVariance::Known(variance) => variance,
@@ -928,6 +941,7 @@ impl TypeVar {
         match &self.name {
             TypeVarName::Name(n) => n.as_str(db),
             TypeVarName::Self_ => "Self",
+            TypeVarName::UntypedParam => "UntypedParam",
         }
     }
 
@@ -1034,7 +1048,7 @@ impl TypeVar {
                 format!("{}.{}", n.file(db).qualified_name(db), self.name(db)).into()
             }
 
-            TypeVarName::Self_ => self.name(db).into(),
+            TypeVarName::Self_ | TypeVarName::UntypedParam => self.name(db).into(),
         }
     }
 
@@ -1378,7 +1392,7 @@ impl TypeVarLikeUsage {
         let name = match self {
             Self::TypeVar(t) => match t.type_var.name {
                 TypeVarName::Name(name) => name,
-                TypeVarName::Self_ => return None,
+                TypeVarName::Self_ | TypeVarName::UntypedParam => return None,
             },
             Self::TypeVarTuple(t) => t.type_var_tuple.name,
             Self::ParamSpec(p) => p.param_spec.name,

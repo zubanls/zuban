@@ -3814,7 +3814,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         if let Some(TypeVarLike::TypeVar(tv)) =
                             func.type_vars(self.i_s.db).get(param_index)
                         {
-                            if tv.name == TypeVarName::Self_ {
+                            if tv.name == TypeVarName::UntypedParam {
                                 return Type::TypeVar(TypeVarUsage::new(
                                     tv.clone(),
                                     func.as_link(),

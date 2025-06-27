@@ -202,7 +202,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
                 }
                 TypeVarLikeName::SyntaxNode(point_link) => todo!(),
             },
-            crate::type_::TypeVarName::Self_ => return None,
+            TypeVarName::Self_ | TypeVarName::UntypedParam => return None,
         },
         Type::Type(t) => return type_to_name(db, file, &t),
         Type::Callable(callable) => {
