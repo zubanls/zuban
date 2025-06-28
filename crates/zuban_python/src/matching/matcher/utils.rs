@@ -8,7 +8,7 @@ use super::{
         ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
         ResultContext, SignatureMatch,
     },
-    type_var_matcher::{FunctionOrCallable, TypeVarMatcher},
+    type_var_matcher::TypeVarMatcher,
     ReplaceSelfInMatcher,
 };
 use crate::{
@@ -47,16 +47,20 @@ pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(
     if let Some(c) = callable.defined_in.as_mut() {
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
-    calc_dunder_init_type_vars(
-        i_s,
-        class,
-        FunctionOrCallable::Callable(callable),
-        args,
-        add_issue,
-        skip_first_param,
-        result_context,
-        on_type_error,
-    )
+    calc_dunder_init_type_vars(i_s, class, &callable, |matcher| {
+        calc_type_vars_for_callable_internal(
+            i_s,
+            matcher,
+            &callable,
+            Some(class),
+            args,
+            &add_issue,
+            skip_first_param,
+            class.node_ref.as_link(),
+            result_context,
+            on_type_error,
+        )
+    })
 }
 
 pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
@@ -71,27 +75,27 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
     if let Some(c) = function.class.as_mut() {
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
-    calc_dunder_init_type_vars(
-        i_s,
-        class,
-        FunctionOrCallable::Function(function),
-        args,
-        add_issue,
-        true,
-        result_context,
-        on_type_error,
-    )
+    calc_dunder_init_type_vars(i_s, class, &function, |matcher| {
+        calc_type_vars_for_func_internal(
+            i_s,
+            matcher,
+            &function,
+            Some(class),
+            args,
+            add_issue,
+            true,
+            class.node_ref.as_link(),
+            result_context,
+            on_type_error,
+        )
+    })
 }
 
 fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
-    func_or_callable: FunctionOrCallable<'a>,
-    args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
-    skip_first_param: bool,
-    result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError>,
+    func_or_callable: &dyn FuncLike,
+    check: impl FnOnce(Matcher) -> CalculatedTypeArgs,
 ) -> CalculatedTypeArgs {
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
@@ -114,23 +118,12 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     let as_self_type = || class.as_type(i_s.db);
     let matcher = Matcher::new(
         Some(class),
-        &func_or_callable,
+        func_or_callable,
         tv_matchers,
         Some(&as_self_type),
     );
 
-    let mut type_arguments = calc_type_vars(
-        i_s,
-        matcher,
-        func_or_callable,
-        Some(class),
-        args,
-        add_issue,
-        skip_first_param,
-        match_in_definition,
-        result_context,
-        on_type_error,
-    );
+    let mut type_arguments = check(matcher);
     if !class_matcher_needed {
         type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
             ClassGenerics::List(generics_list) => Some(generics_list),
@@ -328,16 +321,10 @@ pub(crate) fn calc_func_type_vars<'db: 'a, 'a>(
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     debug!("Calculate type vars for {}", function.diagnostic_string());
-    let func_or_callable = FunctionOrCallable::Function(function);
-    calc_type_vars(
+    calc_type_vars_for_func_internal(
         i_s,
-        get_matcher(
-            &func_or_callable,
-            match_in_definition,
-            replace_self,
-            type_vars,
-        ),
-        func_or_callable,
+        get_matcher(&function, match_in_definition, replace_self, type_vars),
+        &function,
         None,
         args,
         add_issue,
@@ -360,7 +347,6 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> CalculatedTypeArgs {
-    let func_or_callable = FunctionOrCallable::Function(function);
     let matcher = get_matcher(&function, function.as_link(), replace_self, type_vars);
     calc_type_vars_with_callback(
         i_s,
@@ -375,7 +361,7 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
             match_arguments_against_params(
                 i_s,
                 matcher,
-                &func_or_callable,
+                &function,
                 &add_issue,
                 Some(on_type_error),
                 InferrableParamIterator::new(
@@ -400,18 +386,17 @@ pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
     replace_self: Option<ReplaceSelf>,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
-    let func_or_callable = FunctionOrCallable::Callable(callable);
     let type_vars = &callable.content.type_vars;
     let x: &dyn Fn() -> Type = &|| replace_self.unwrap()().unwrap_or(Type::Self_);
-    calc_type_vars(
+    calc_type_vars_for_callable_internal(
         i_s,
         get_matcher(
-            &func_or_callable,
+            &callable,
             callable.content.defined_at,
             replace_self.map(|_| x),
             type_vars,
         ),
-        func_or_callable,
+        &callable,
         None,
         args,
         add_issue,
@@ -483,10 +468,10 @@ fn apply_result_context(
     });
 }
 
-fn calc_type_vars<'db: 'a, 'a>(
+fn calc_type_vars_for_func_internal<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     matcher: Matcher,
-    func_or_callable: FunctionOrCallable<'a>,
+    function: &Function<'a, '_>,
     return_class: Option<&Class>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
@@ -498,36 +483,60 @@ fn calc_type_vars<'db: 'a, 'a>(
     calc_type_vars_with_callback(
         i_s,
         matcher,
-        &func_or_callable,
+        function,
         return_class,
         &add_issue,
         match_in_definition,
         result_context,
         on_type_error,
-        |mut matcher| match func_or_callable {
-            FunctionOrCallable::Function(function) => match_arguments_against_params(
+        |mut matcher| {
+            match_arguments_against_params(
                 i_s,
                 &mut matcher,
-                &func_or_callable,
+                function,
                 &add_issue,
                 on_type_error,
                 function.iter_args_with_params(i_s.db, args, skip_first_param),
-            ),
-            FunctionOrCallable::Callable(callable) => match &callable.content.params {
-                CallableParams::Simple(params) => match_arguments_against_params(
-                    i_s,
-                    &mut matcher,
-                    &func_or_callable,
-                    &add_issue,
-                    on_type_error,
-                    InferrableParamIterator::new(
-                        i_s.db,
-                        params.iter().skip(skip_first_param as usize),
-                        args,
-                    ),
+            )
+        },
+    )
+}
+
+fn calc_type_vars_for_callable_internal<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    matcher: Matcher,
+    callable: &Callable<'a>,
+    return_class: Option<&Class>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
+    add_issue: impl Fn(IssueKind),
+    skip_first_param: bool,
+    match_in_definition: PointLink,
+    result_context: &mut ResultContext,
+    on_type_error: Option<OnTypeError>,
+) -> CalculatedTypeArgs {
+    calc_type_vars_with_callback(
+        i_s,
+        matcher,
+        callable,
+        return_class,
+        &add_issue,
+        match_in_definition,
+        result_context,
+        on_type_error,
+        |mut matcher| match &callable.content.params {
+            CallableParams::Simple(params) => match_arguments_against_params(
+                i_s,
+                &mut matcher,
+                callable,
+                &add_issue,
+                on_type_error,
+                InferrableParamIterator::new(
+                    i_s.db,
+                    params.iter().skip(skip_first_param as usize),
+                    args,
                 ),
-                CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
-            },
+            ),
+            CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
         },
     )
 }

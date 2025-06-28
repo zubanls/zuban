@@ -136,7 +136,7 @@ impl FuncLike for Callable<'_> {
         self.content.defined_at
     }
 
-    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes {
+    fn type_vars<'a>(&'a self, _: &'a Database) -> &'a TypeVarLikes {
         &self.content.type_vars
     }
 

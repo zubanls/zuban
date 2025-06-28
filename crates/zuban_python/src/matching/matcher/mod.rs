@@ -6,7 +6,6 @@ use core::fmt;
 use std::{borrow::Cow, collections::HashSet};
 use utils::AlreadySeen;
 
-pub(crate) use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{

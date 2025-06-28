@@ -13,7 +13,7 @@ pub(crate) use match_::{ArgumentIndexWithParam, Match, MismatchReason, Signature
 pub(crate) use matcher::{
     calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
     calc_func_type_vars, calc_untyped_func_type_vars, CalculatedTypeArgs, CheckedTypeRecursion,
-    FunctionOrCallable, Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
+    Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
 };
 pub(crate) use result_context::{CouldBeALiteral, ResultContext};
 pub(crate) use utils::{

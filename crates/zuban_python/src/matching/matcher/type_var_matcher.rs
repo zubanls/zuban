@@ -1,7 +1,3 @@
-use std::borrow::Cow;
-
-use parsa_python_cst::ParamKind;
-
 use super::{
     super::{Match, MismatchReason},
     bound::{Bound, BoundKind},
@@ -9,137 +5,16 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     debug,
-    file::FuncNodeRef,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::MatcherFormatResult,
-    params::Param,
     recoverable_error,
     type_::{
-        AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+        AnyCause, GenericItem, GenericsList, NeverCause, Type, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
-    type_helpers::{Callable, Class, FuncLike, Function},
     utils::join_with_commas,
 };
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum FunctionOrCallable<'a> {
-    Function(Function<'a, 'a>),
-    Callable(Callable<'a>),
-}
-
-impl<'db: 'a, 'a> FunctionOrCallable<'a> {
-    pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
-        match self {
-            Self::Function(f) => FuncNodeRef::return_type(f, i_s),
-            Self::Callable(c) => Cow::Borrowed(&c.content.return_type),
-        }
-    }
-
-    pub fn diagnostic_string(&self, db: &Database) -> Option<String> {
-        match self {
-            Self::Function(f) => Some(f.diagnostic_string()),
-            Self::Callable(c) => c.diagnostic_string(db),
-        }
-    }
-
-    pub fn defined_at(&self) -> PointLink {
-        match self {
-            Self::Function(function) => function.node_ref.as_link(),
-            Self::Callable(callable) => callable.content.defined_at,
-        }
-    }
-
-    pub fn type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
-        match self {
-            Self::Function(function) => FuncNodeRef::type_vars(function, db),
-            Self::Callable(c) => &c.content.type_vars,
-        }
-    }
-
-    pub fn class(&self) -> Option<Class<'a>> {
-        match self {
-            Self::Function(function) => function.class,
-            Self::Callable(c) => c.defined_in,
-        }
-    }
-
-    pub fn first_self_or_class_annotation(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-    ) -> Option<Cow<Type>> {
-        match self {
-            Self::Function(function) => function.first_param_annotation_type(i_s),
-            Self::Callable(c) => c
-                .content
-                .kind
-                .had_first_self_or_class_annotation()
-                .then(|| Cow::Owned(c.content.first_positional_type().unwrap())),
-        }
-    }
-
-    pub fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
-        match self {
-            Self::Function(function) => function.iter_params().any(|p| {
-                p.name(db) == Some(name)
-                    && matches!(
-                        p.kind(db),
-                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                    )
-            }),
-            Self::Callable(c) => match &c.content.params {
-                CallableParams::Simple(params) => params.iter().any(|p| {
-                    p.name.as_ref().is_some_and(|n| {
-                        n.as_str(db) == name
-                            && matches!(
-                                p.type_,
-                                ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
-                            )
-                    })
-                }),
-                _ => false,
-            },
-        }
-    }
-}
-
-impl FuncLike for FunctionOrCallable<'_> {
-    fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
-        self.return_type(i_s)
-    }
-
-    fn diagnostic_string(&self, db: &Database) -> Option<String> {
-        self.diagnostic_string(db)
-    }
-
-    fn defined_at(&self) -> PointLink {
-        self.defined_at()
-    }
-
-    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes {
-        self.type_vars(db)
-    }
-
-    fn class(&self) -> Option<Class> {
-        self.class()
-    }
-
-    fn first_self_or_class_annotation<'a>(
-        &'a self,
-        i_s: &'a InferenceState,
-    ) -> Option<Cow<'a, Type>> {
-        self.first_self_or_class_annotation(i_s)
-    }
-
-    fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
-        self.has_keyword_param_with_name(db, name)
-    }
-
-    fn is_callable(&self) -> bool {
-        matches!(self, Self::Callable(_))
-    }
-}
 
 #[derive(Debug, Default, Clone)]
 pub(super) struct CalculatingTypeArg {
