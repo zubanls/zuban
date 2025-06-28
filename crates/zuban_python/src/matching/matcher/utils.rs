@@ -361,32 +361,38 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
     on_type_error: OnTypeError,
 ) -> CalculatedTypeArgs {
     let func_or_callable = FunctionOrCallable::Function(function);
-    let mut matcher = get_matcher(
+    let matcher = get_matcher(
         func_or_callable,
         function.as_link(),
         replace_self,
         type_vars,
     );
-
-    let matches = match_arguments_against_params(
+    calc_type_vars_with_callback(
         i_s,
-        &mut matcher,
+        matcher,
         func_or_callable,
+        None,
         &add_issue,
+        match_in_definition,
+        result_context,
         Some(on_type_error),
-        InferrableParamIterator::new(
-            i_s.db,
-            function
-                .iter_untyped_params(i_s.db)
-                .skip(skip_first_param as usize),
-            args,
-        ),
-    );
-    let mut result = matcher.into_type_arguments(i_s, match_in_definition);
-    if result.matches.bool() {
-        result.matches = matches;
-    }
-    result
+        |matcher| {
+            match_arguments_against_params(
+                i_s,
+                matcher,
+                func_or_callable,
+                &add_issue,
+                Some(on_type_error),
+                InferrableParamIterator::new(
+                    i_s.db,
+                    function
+                        .iter_untyped_params(i_s.db)
+                        .skip(skip_first_param as usize),
+                    args,
+                ),
+            )
+        },
+    )
 }
 
 pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
@@ -484,7 +490,7 @@ fn apply_result_context(
 
 fn calc_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
-    mut matcher: Matcher,
+    matcher: Matcher,
     func_or_callable: FunctionOrCallable<'a>,
     return_class: Option<&Class>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
@@ -493,6 +499,54 @@ fn calc_type_vars<'db: 'a, 'a>(
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
+) -> CalculatedTypeArgs {
+    calc_type_vars_with_callback(
+        i_s,
+        matcher,
+        func_or_callable,
+        return_class,
+        &add_issue,
+        match_in_definition,
+        result_context,
+        on_type_error,
+        |mut matcher| match func_or_callable {
+            FunctionOrCallable::Function(function) => match_arguments_against_params(
+                i_s,
+                &mut matcher,
+                func_or_callable,
+                &add_issue,
+                on_type_error,
+                function.iter_args_with_params(i_s.db, args, skip_first_param),
+            ),
+            FunctionOrCallable::Callable(callable) => match &callable.content.params {
+                CallableParams::Simple(params) => match_arguments_against_params(
+                    i_s,
+                    &mut matcher,
+                    func_or_callable,
+                    &add_issue,
+                    on_type_error,
+                    InferrableParamIterator::new(
+                        i_s.db,
+                        params.iter().skip(skip_first_param as usize),
+                        args,
+                    ),
+                ),
+                CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
+            },
+        },
+    )
+}
+
+fn calc_type_vars_with_callback<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    mut matcher: Matcher,
+    func_or_callable: FunctionOrCallable<'a>,
+    return_class: Option<&Class>,
+    add_issue: impl Fn(IssueKind),
+    match_in_definition: PointLink,
+    result_context: &mut ResultContext,
+    on_type_error: Option<OnTypeError>,
+    check_params: impl FnOnce(&mut Matcher) -> SignatureMatch,
 ) -> CalculatedTypeArgs {
     let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
@@ -545,31 +599,7 @@ fn calc_type_vars<'db: 'a, 'a>(
             |matcher, return_class| add_init_generics(matcher, return_class),
         )
     }
-    let matches = match func_or_callable {
-        FunctionOrCallable::Function(function) => match_arguments_against_params(
-            i_s,
-            &mut matcher,
-            func_or_callable,
-            &add_issue,
-            on_type_error,
-            function.iter_args_with_params(i_s.db, args, skip_first_param),
-        ),
-        FunctionOrCallable::Callable(callable) => match &callable.content.params {
-            CallableParams::Simple(params) => match_arguments_against_params(
-                i_s,
-                &mut matcher,
-                func_or_callable,
-                &add_issue,
-                on_type_error,
-                InferrableParamIterator::new(
-                    i_s.db,
-                    params.iter().skip(skip_first_param as usize),
-                    args,
-                ),
-            ),
-            CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
-        },
-    };
+    let matches = check_params(&mut matcher);
     let mut result = matcher.into_type_arguments(i_s, match_in_definition);
     if matches!(result.matches, SignatureMatch::False { .. }) {
         if on_type_error.is_some() {
