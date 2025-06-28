@@ -7,7 +7,7 @@ mod overload;
 mod typing;
 
 pub(crate) use bound_method::{BoundMethod, BoundMethodFunction};
-pub(crate) use callable::Callable;
+pub(crate) use callable::{Callable, FuncLike};
 pub(crate) use class::{
     cache_class_name, Class, ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass,
 };

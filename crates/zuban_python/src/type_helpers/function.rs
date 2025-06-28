@@ -43,6 +43,8 @@ use crate::{
     type_helpers::Class,
 };
 
+use super::callable::FuncLike;
+
 #[derive(Clone, Copy)]
 pub(crate) struct Function<'a, 'class> {
     pub node_ref: FuncNodeRef<'a>,
@@ -2126,5 +2128,41 @@ impl GeneratorType {
             }),
             _ => None,
         }
+    }
+}
+
+impl<'a, 'class> FuncLike<'a, 'class> for Function<'a, 'class> {
+    fn return_type(&self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
+        FuncNodeRef::return_type(self, i_s)
+    }
+
+    fn diagnostic_string(&self, _: &Database) -> Option<String> {
+        Some(self.diagnostic_string())
+    }
+
+    fn defined_at(&self) -> PointLink {
+        self.node_ref.as_link()
+    }
+
+    fn type_vars(&self, db: &'a Database) -> &'a TypeVarLikes {
+        FuncNodeRef::type_vars(self, db)
+    }
+
+    fn class(&self) -> Option<Class<'class>> {
+        self.class
+    }
+
+    fn first_self_or_class_annotation(&self, i_s: &InferenceState<'a, '_>) -> Option<Cow<Type>> {
+        self.first_param_annotation_type(i_s)
+    }
+
+    fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
+        self.iter_params().any(|p| {
+            p.name(db) == Some(name)
+                && matches!(
+                    p.kind(db),
+                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                )
+        })
     }
 }

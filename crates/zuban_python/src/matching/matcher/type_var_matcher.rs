@@ -18,7 +18,7 @@ use crate::{
         AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type,
         TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
-    type_helpers::{Callable, Class, Function},
+    type_helpers::{Callable, Class, FuncLike as _, Function},
     utils::join_with_commas,
 };
 
