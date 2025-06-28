@@ -361,16 +361,11 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
     on_type_error: OnTypeError,
 ) -> CalculatedTypeArgs {
     let func_or_callable = FunctionOrCallable::Function(function);
-    let matcher = get_matcher(
-        &func_or_callable,
-        function.as_link(),
-        replace_self,
-        type_vars,
-    );
+    let matcher = get_matcher(&function, function.as_link(), replace_self, type_vars);
     calc_type_vars_with_callback(
         i_s,
         matcher,
-        func_or_callable,
+        &function,
         None,
         &add_issue,
         match_in_definition,
@@ -428,7 +423,7 @@ pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
 }
 
 fn get_matcher<'a>(
-    func_or_callable: &'a FunctionOrCallable<'a>,
+    func_or_callable: &'a dyn FuncLike,
     match_in_definition: PointLink,
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
     type_vars: &TypeVarLikes,
@@ -446,7 +441,7 @@ fn apply_result_context(
     matcher: &mut Matcher,
     result_context: &mut ResultContext,
     return_class: Option<&Class>,
-    func_or_callable: FunctionOrCallable,
+    func_or_callable: &dyn FuncLike,
     on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
 ) {
     result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
@@ -503,7 +498,7 @@ fn calc_type_vars<'db: 'a, 'a>(
     calc_type_vars_with_callback(
         i_s,
         matcher,
-        func_or_callable,
+        &func_or_callable,
         return_class,
         &add_issue,
         match_in_definition,
@@ -540,7 +535,7 @@ fn calc_type_vars<'db: 'a, 'a>(
 fn calc_type_vars_with_callback<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
-    func_or_callable: FunctionOrCallable<'a>,
+    func_or_callable: &dyn FuncLike,
     return_class: Option<&Class>,
     add_issue: impl Fn(IssueKind),
     match_in_definition: PointLink,
