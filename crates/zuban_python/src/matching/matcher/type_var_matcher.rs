@@ -9,6 +9,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     debug,
+    file::FuncNodeRef,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::MatcherFormatResult,
@@ -31,7 +32,7 @@ pub(crate) enum FunctionOrCallable<'a> {
 impl<'db: 'a, 'a> FunctionOrCallable<'a> {
     pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
         match self {
-            Self::Function(f) => f.return_type(i_s),
+            Self::Function(f) => FuncNodeRef::return_type(f, i_s),
             Self::Callable(c) => Cow::Borrowed(&c.content.return_type),
         }
     }
@@ -52,7 +53,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
 
     pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
         match self {
-            Self::Function(function) => function.type_vars(i_s.db),
+            Self::Function(function) => FuncNodeRef::type_vars(function, i_s.db),
             Self::Callable(c) => &c.content.type_vars,
         }
     }

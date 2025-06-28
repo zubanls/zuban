@@ -103,18 +103,18 @@ impl<'a> Callable<'a> {
     }
 }
 
-pub(crate) trait FuncLike<'a, 'class> {
-    fn return_type(&self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type>;
+pub(crate) trait FuncLike {
+    fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type>;
     fn diagnostic_string(&self, db: &Database) -> Option<String>;
     fn defined_at(&self) -> PointLink;
-    fn type_vars(&self, db: &'a Database) -> &'a TypeVarLikes;
-    fn class(&self) -> Option<Class<'class>>;
-    fn first_self_or_class_annotation(&self, i_s: &InferenceState<'a, '_>) -> Option<Cow<Type>>;
+    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes;
+    fn class(&self) -> Option<Class>;
+    fn first_self_or_class_annotation(&self, i_s: &InferenceState) -> Option<Cow<Type>>;
     fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool;
 }
 
-impl<'a> FuncLike<'a, 'a> for Callable<'a> {
-    fn return_type(&self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
+impl FuncLike for Callable<'_> {
+    fn return_type<'a>(&'a self, _: &InferenceState) -> Cow<'a, Type> {
         Cow::Borrowed(&self.content.return_type)
     }
 
@@ -132,15 +132,15 @@ impl<'a> FuncLike<'a, 'a> for Callable<'a> {
         self.content.defined_at
     }
 
-    fn type_vars(&self, _: &'a Database) -> &'a TypeVarLikes {
+    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes {
         &self.content.type_vars
     }
 
-    fn class(&self) -> Option<Class<'a>> {
+    fn class(&self) -> Option<Class> {
         self.defined_in
     }
 
-    fn first_self_or_class_annotation(&self, _: &InferenceState<'a, '_>) -> Option<Cow<Type>> {
+    fn first_self_or_class_annotation(&self, _: &InferenceState) -> Option<Cow<Type>> {
         self.content
             .kind
             .had_first_self_or_class_annotation()

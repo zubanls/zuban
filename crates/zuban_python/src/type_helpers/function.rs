@@ -1502,7 +1502,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         db: &'db Database,
     ) -> impl Iterator<Item = UntypedFunctionParam<'a>> {
-        let type_var_likes = self.type_vars(db);
+        let type_var_likes = self.node_ref.type_vars(db);
         let in_definition = self.as_link();
         self.iter_params()
             .enumerate()
@@ -1682,10 +1682,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn expected_return_type_for_return_stmt(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-    ) -> Cow<'a, Type> {
+    pub fn expected_return_type_for_return_stmt(&self, i_s: &InferenceState<'db, '_>) -> Cow<Type> {
         let mut t = self.return_type(i_s);
         if self.is_generator() {
             t = Cow::Owned(
@@ -2131,8 +2128,8 @@ impl GeneratorType {
     }
 }
 
-impl<'a, 'class> FuncLike<'a, 'class> for Function<'a, 'class> {
-    fn return_type(&self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
+impl FuncLike for Function<'_, '_> {
+    fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
         FuncNodeRef::return_type(self, i_s)
     }
 
@@ -2144,16 +2141,17 @@ impl<'a, 'class> FuncLike<'a, 'class> for Function<'a, 'class> {
         self.node_ref.as_link()
     }
 
-    fn type_vars(&self, db: &'a Database) -> &'a TypeVarLikes {
+    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes {
         FuncNodeRef::type_vars(self, db)
     }
 
-    fn class(&self) -> Option<Class<'class>> {
+    fn class(&self) -> Option<Class> {
         self.class
     }
 
-    fn first_self_or_class_annotation(&self, i_s: &InferenceState<'a, '_>) -> Option<Cow<Type>> {
-        self.first_param_annotation_type(i_s)
+    fn first_self_or_class_annotation(&self, i_s: &InferenceState) -> Option<Cow<Type>> {
+        todo!()
+        //self.first_param_annotation_type(i_s)
     }
 
     fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
