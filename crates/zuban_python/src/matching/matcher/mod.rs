@@ -10,9 +10,8 @@ pub(crate) use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
-    calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_dunder_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    calculate_untyped_function_type_vars, CalculatedTypeArgs,
+    calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
+    calc_func_type_vars, calc_untyped_func_type_vars, CalculatedTypeArgs,
 };
 
 use self::{

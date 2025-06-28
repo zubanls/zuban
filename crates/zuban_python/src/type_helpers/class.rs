@@ -22,10 +22,10 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, FunctionOrOverload, Inferred, MroIndex},
     matching::{
-        calculate_callable_dunder_init_type_vars_and_return,
-        calculate_callable_type_vars_and_return, calculate_class_dunder_init_type_vars_and_return,
-        format_got_expected, maybe_class_usage, ErrorStrs, FunctionOrCallable, Generic, Generics,
-        LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage, ErrorStrs,
+        FunctionOrCallable, Generic, Generics, LookupKind, Match, Matcher, MismatchReason,
+        OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::{
@@ -183,7 +183,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 */
 
-                let calculated_type_args = calculate_class_dunder_init_type_vars_and_return(
+                let calculated_type_args = calc_class_dunder_init_type_vars(
                     i_s,
                     self,
                     func,
@@ -200,7 +200,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let calculated_type_args = match dunder_init_class.as_base_class(i_s.db, self) {
                     Some(class) => {
                         let from_class = matches!(dunder_init_class, TypeOrClass::Class(_));
-                        calculate_callable_dunder_init_type_vars_and_return(
+                        calc_callable_dunder_init_type_vars(
                             i_s,
                             self,
                             Callable::new(&callable_content, from_class.then_some(class)),
@@ -212,7 +212,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                     }
                     // Happens for example when NamedTuples are involved.
-                    None => calculate_callable_type_vars_and_return(
+                    None => calc_callable_type_vars(
                         i_s,
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(i_s.mode),
@@ -246,7 +246,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 ) {
                 OverloadResult::Single(callable) => {
                     // Execute the found function to create the diagnostics.
-                    let result = calculate_callable_dunder_init_type_vars_and_return(
+                    let result = calc_callable_dunder_init_type_vars(
                         i_s,
                         self,
                         callable,

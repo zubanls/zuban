@@ -18,8 +18,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, ErrorTypes, GotType, IteratorContent, LookupKind,
-        Match, OnLookupError, OnTypeError, ResultContext,
+        calc_callable_type_vars, ErrorTypes, GotType, IteratorContent, LookupKind, Match,
+        OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     recoverable_error,
@@ -1031,7 +1031,7 @@ pub(crate) fn execute_type_of_type<'db>(
         Type::Dataclass(d) => dataclass_initialize(d, i_s, args, result_context, on_type_error),
         Type::TypedDict(td) => initialize_typed_dict(td.clone(), i_s, args),
         Type::NamedTuple(nt) => {
-            let calculated_type_vars = calculate_callable_type_vars_and_return(
+            let calculated_type_vars = calc_callable_type_vars(
                 i_s,
                 Callable::new(&nt.__new__, None),
                 args.iter(i_s.mode),

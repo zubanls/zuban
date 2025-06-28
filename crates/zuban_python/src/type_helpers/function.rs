@@ -22,9 +22,8 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{
-        calculate_function_type_vars_and_return, calculate_untyped_function_type_vars,
-        maybe_class_usage, CalculatedTypeArgs, ErrorStrs, OnTypeError, ReplaceSelfInMatcher,
-        ResultContext,
+        calc_func_type_vars, calc_untyped_func_type_vars, maybe_class_usage, CalculatedTypeArgs,
+        ErrorStrs, OnTypeError, ReplaceSelfInMatcher, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -202,7 +201,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let ret_t = return_inf.as_cow_type(i_s);
         let type_vars = self.type_vars(i_s.db);
-        let calculated = calculate_untyped_function_type_vars(
+        let calculated = calc_untyped_func_type_vars(
             i_s,
             *self,
             args.iter(i_s.mode),
@@ -1565,7 +1564,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
-        let calculated_type_vars = calculate_function_type_vars_and_return(
+        let calculated_type_vars = calc_func_type_vars(
             i_s,
             *self,
             args.iter(i_s.mode),

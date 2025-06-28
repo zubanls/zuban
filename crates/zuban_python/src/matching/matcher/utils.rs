@@ -34,7 +34,7 @@ use crate::{
     type_helpers::{Callable, Class, Function},
 };
 
-pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     mut callable: Callable<'a>,
@@ -47,7 +47,7 @@ pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     if let Some(c) = callable.defined_in.as_mut() {
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
-    calculate_dunder_init_type_vars_and_return(
+    calc_dunder_init_type_vars(
         i_s,
         class,
         FunctionOrCallable::Callable(callable),
@@ -59,7 +59,7 @@ pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
-pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     mut function: Function<'a, 'a>,
@@ -71,7 +71,7 @@ pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     if let Some(c) = function.class.as_mut() {
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
-    calculate_dunder_init_type_vars_and_return(
+    calc_dunder_init_type_vars(
         i_s,
         class,
         FunctionOrCallable::Function(function),
@@ -83,7 +83,7 @@ pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
-fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
+fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     func_or_callable: FunctionOrCallable<'a>,
@@ -119,7 +119,7 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
         Some(&as_self_type),
     );
 
-    let mut type_arguments = calculate_type_vars(
+    let mut type_arguments = calc_type_vars(
         i_s,
         matcher,
         func_or_callable,
@@ -315,7 +315,7 @@ impl CalculatedTypeArgs {
     }
 }
 
-pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_func_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
@@ -329,7 +329,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
 ) -> CalculatedTypeArgs {
     debug!("Calculate type vars for {}", function.diagnostic_string());
     let func_or_callable = FunctionOrCallable::Function(function);
-    calculate_type_vars(
+    calc_type_vars(
         i_s,
         get_matcher(
             func_or_callable,
@@ -348,7 +348,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
-pub(crate) fn calculate_untyped_function_type_vars<'db: 'a, 'a>(
+pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
@@ -389,7 +389,7 @@ pub(crate) fn calculate_untyped_function_type_vars<'db: 'a, 'a>(
     result
 }
 
-pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
@@ -402,7 +402,7 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     let func_or_callable = FunctionOrCallable::Callable(callable);
     let type_vars = &callable.content.type_vars;
     let x: &dyn Fn() -> Type = &|| replace_self.unwrap()().unwrap_or(Type::Self_);
-    calculate_type_vars(
+    calc_type_vars(
         i_s,
         get_matcher(
             func_or_callable,
@@ -435,7 +435,7 @@ fn get_matcher<'a>(
     Matcher::new(None, func_or_callable, matcher, replace_self)
 }
 
-fn calculate_type_vars<'db: 'a, 'a>(
+fn calc_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
     func_or_callable: FunctionOrCallable<'a>,
