@@ -38,7 +38,7 @@ use crate::{
         Type, TypeVarKind, TypeVarLike, TypeVarVariance, Variance,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
+        cache_class_name, is_private, Callable, Class, ClassLookupOptions, FirstParamKind,
         FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
         TypeOrClass,
     },
@@ -2228,7 +2228,8 @@ fn create_matcher_with_independent_type_vars<T>(
     c2: &CallableContent,
     callback: impl FnOnce(Matcher, &CallableContent, &CallableContent) -> T,
 ) -> T {
-    let matcher = Matcher::new_reverse_callable_matcher(c1, replace_self);
+    let c = Callable::new(c1, None);
+    let matcher = Matcher::new_reverse_callable_matcher(&c, replace_self);
     if c1.defined_at == c2.defined_at {
         let c2 = c2.change_temporary_matcher_index(db, 1);
         callback(matcher, c1, &c2)

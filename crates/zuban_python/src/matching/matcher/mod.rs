@@ -39,7 +39,7 @@ use crate::{
         TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
         WithUnpack,
     },
-    type_helpers::{Callable, Class, Function},
+    type_helpers::{Callable, Class, FuncLike, Function},
     utils::join_with_commas,
 };
 
@@ -51,7 +51,7 @@ pub(crate) struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
-    pub(crate) func_or_callable: Option<FunctionOrCallable<'a>>,
+    pub(crate) func_or_callable: Option<&'a dyn FuncLike>,
     ignore_promotions: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
@@ -62,7 +62,7 @@ pub(crate) struct Matcher<'a> {
 impl<'a> Matcher<'a> {
     fn new(
         class: Option<&'a Class<'a>>,
-        func_or_callable: FunctionOrCallable<'a>,
+        func_or_callable: &'a dyn FuncLike,
         type_var_matchers: Vec<TypeVarMatcher>,
         replace_self: Option<ReplaceSelfInMatcher<'a>>,
     ) -> Self {
@@ -97,19 +97,20 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_callable_matcher(callable: &'a CallableContent) -> Self {
-        let type_var_matcher = (!callable.type_vars.is_empty())
-            .then(|| TypeVarMatcher::new(callable.defined_at, callable.type_vars.clone()));
+    pub fn new_callable_matcher(callable: &'a Callable<'a>) -> Self {
+        let type_vars = &callable.content.type_vars;
+        let type_var_matcher = (!type_vars.is_empty())
+            .then(|| TypeVarMatcher::new(callable.content.defined_at, type_vars.clone()));
         Self {
             class: None,
             type_var_matchers: type_var_matcher.into_iter().collect(),
-            func_or_callable: Some(FunctionOrCallable::Callable(Callable::new(callable, None))),
+            func_or_callable: Some(callable),
             ..Self::default()
         }
     }
 
     pub fn new_reverse_callable_matcher(
-        callable: &'a CallableContent,
+        callable: &'a Callable<'a>,
         replace_self: Option<ReplaceSelfInMatcher<'a>>,
     ) -> Self {
         Self {
@@ -125,7 +126,7 @@ impl<'a> Matcher<'a> {
     }
 
     pub(crate) fn new_function_matcher(
-        function: Function<'a, 'a>,
+        function: &'a Function<'a, 'a>,
         type_vars: &TypeVarLikes,
         replace_self: ReplaceSelfInMatcher<'a>,
     ) -> Self {
@@ -133,7 +134,7 @@ impl<'a> Matcher<'a> {
             .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.clone()));
         Self {
             type_var_matchers: type_var_matcher.into_iter().collect(),
-            func_or_callable: Some(FunctionOrCallable::Function(function)),
+            func_or_callable: Some(function),
             replace_self: Some(replace_self),
             ..Self::default()
         }
@@ -293,7 +294,7 @@ impl<'a> Matcher<'a> {
                     if let Some(replace_self) = self.replace_self {
                         return replace_self().simple_matches(i_s, value_type, variance);
                     }
-                    if !matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
+                    if self.func_or_callable.is_none_or(|c| c.is_callable()) {
                         // In case we are working within a function, Self is bound already.
                         if let Some(class) = value_type.maybe_class(i_s.db) {
                             if class.use_cached_class_infos(i_s.db).is_final {

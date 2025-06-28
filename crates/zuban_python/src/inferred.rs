@@ -33,7 +33,7 @@ use crate::{
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
-        execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction, Class,
+        execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction, Callable, Class,
         FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass,
     },
 };
@@ -874,7 +874,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 let as_instance = || instance.clone();
                                 let mut matcher = Matcher::new_function_matcher(
-                                    func,
+                                    &func,
                                     func.type_vars(i_s.db),
                                     &as_instance,
                                 );
@@ -2505,7 +2505,8 @@ fn proper_classmethod_callable(
 
             callable.params = CallableParams::Simple(Rc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
-                let mut matcher = Matcher::new_callable_matcher(original_callable);
+                let c = Callable::new(original_callable, None);
+                let mut matcher = Matcher::new_callable_matcher(&c);
                 let t = replace_class_type_vars(i_s.db, t, func_class, &|| Some(as_type()));
                 if !t
                     .is_super_type_of(i_s, &mut matcher, &as_type_type())

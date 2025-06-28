@@ -103,14 +103,18 @@ impl<'a> Callable<'a> {
     }
 }
 
-pub(crate) trait FuncLike {
+pub(crate) trait FuncLike: std::fmt::Debug {
     fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type>;
     fn diagnostic_string(&self, db: &Database) -> Option<String>;
     fn defined_at(&self) -> PointLink;
     fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes;
     fn class(&self) -> Option<Class>;
-    fn first_self_or_class_annotation(&self, i_s: &InferenceState) -> Option<Cow<Type>>;
+    fn first_self_or_class_annotation<'a>(
+        &'a self,
+        i_s: &'a InferenceState,
+    ) -> Option<Cow<'a, Type>>;
     fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool;
+    fn is_callable(&self) -> bool;
 }
 
 impl FuncLike for Callable<'_> {
@@ -160,5 +164,9 @@ impl FuncLike for Callable<'_> {
             }),
             _ => false,
         }
+    }
+
+    fn is_callable(&self) -> bool {
+        true
     }
 }

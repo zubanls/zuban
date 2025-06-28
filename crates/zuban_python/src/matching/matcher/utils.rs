@@ -98,7 +98,7 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     let class_matcher_needed =
         matches!(class.generics, Generics::NotDefinedYet { .. }) && !type_vars.is_empty();
     // Function type vars need to be calculated, so annotations are used.
-    let func_type_vars = func_or_callable.type_vars(i_s);
+    let func_type_vars = func_or_callable.type_vars(i_s.db);
 
     let match_in_definition = class.node_ref.as_link();
     let mut tv_matchers = vec![];
@@ -114,7 +114,7 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     let as_self_type = || class.as_type(i_s.db);
     let matcher = Matcher::new(
         Some(class),
-        func_or_callable,
+        &func_or_callable,
         tv_matchers,
         Some(&as_self_type),
     );
@@ -332,7 +332,7 @@ pub(crate) fn calc_func_type_vars<'db: 'a, 'a>(
     calc_type_vars(
         i_s,
         get_matcher(
-            func_or_callable,
+            &func_or_callable,
             match_in_definition,
             replace_self,
             type_vars,
@@ -362,7 +362,7 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
 ) -> CalculatedTypeArgs {
     let func_or_callable = FunctionOrCallable::Function(function);
     let matcher = get_matcher(
-        func_or_callable,
+        &func_or_callable,
         function.as_link(),
         replace_self,
         type_vars,
@@ -411,7 +411,7 @@ pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
     calc_type_vars(
         i_s,
         get_matcher(
-            func_or_callable,
+            &func_or_callable,
             callable.content.defined_at,
             replace_self.map(|_| x),
             type_vars,
@@ -428,7 +428,7 @@ pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
 }
 
 fn get_matcher<'a>(
-    func_or_callable: FunctionOrCallable<'a>,
+    func_or_callable: &'a FunctionOrCallable<'a>,
     match_in_definition: PointLink,
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
     type_vars: &TypeVarLikes,

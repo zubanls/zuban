@@ -19,7 +19,7 @@ use crate::{
         AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type,
         TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
-    type_helpers::{Callable, Class, FuncLike as _, Function},
+    type_helpers::{Callable, Class, FuncLike, Function},
     utils::join_with_commas,
 };
 
@@ -51,9 +51,9 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
         }
     }
 
-    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
+    pub fn type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
         match self {
-            Self::Function(function) => FuncNodeRef::type_vars(function, i_s.db),
+            Self::Function(function) => FuncNodeRef::type_vars(function, db),
             Self::Callable(c) => &c.content.type_vars,
         }
     }
@@ -101,6 +101,43 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
                 _ => false,
             },
         }
+    }
+}
+
+impl FuncLike for FunctionOrCallable<'_> {
+    fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
+        self.return_type(i_s)
+    }
+
+    fn diagnostic_string(&self, db: &Database) -> Option<String> {
+        self.diagnostic_string(db)
+    }
+
+    fn defined_at(&self) -> PointLink {
+        self.defined_at()
+    }
+
+    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes {
+        self.type_vars(db)
+    }
+
+    fn class(&self) -> Option<Class> {
+        self.class()
+    }
+
+    fn first_self_or_class_annotation<'a>(
+        &'a self,
+        i_s: &'a InferenceState,
+    ) -> Option<Cow<'a, Type>> {
+        self.first_self_or_class_annotation(i_s)
+    }
+
+    fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
+        self.has_keyword_param_with_name(db, name)
+    }
+
+    fn is_callable(&self) -> bool {
+        matches!(self, Self::Callable(_))
     }
 }
 

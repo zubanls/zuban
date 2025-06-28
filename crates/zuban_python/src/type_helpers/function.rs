@@ -2149,9 +2149,11 @@ impl FuncLike for Function<'_, '_> {
         self.class
     }
 
-    fn first_self_or_class_annotation(&self, i_s: &InferenceState) -> Option<Cow<Type>> {
-        todo!()
-        //self.first_param_annotation_type(i_s)
+    fn first_self_or_class_annotation<'a>(
+        &'a self,
+        i_s: &'a InferenceState,
+    ) -> Option<Cow<'a, Type>> {
+        self.first_param_annotation_type(i_s)
     }
 
     fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
@@ -2162,5 +2164,9 @@ impl FuncLike for Function<'_, '_> {
                     ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
                 )
         })
+    }
+
+    fn is_callable(&self) -> bool {
+        false
     }
 }
