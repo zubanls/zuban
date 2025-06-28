@@ -20,3 +20,12 @@ def f[S, T](x: T, y: S):
 
 reveal_type(f(1, b''))  # N: Revealed type is "int"
 reveal_type(f("", b''))  # N: Revealed type is "str"
+
+[case infer_untyped_result_result_context]
+# flags: --no-mypy-compatible
+def f(x):
+    return [x]
+
+reveal_type(f(1))  # N: Revealed type is "list[int]"
+
+x: list[object] = f(1)

@@ -1573,7 +1573,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     type_vars,
                     self.as_link(),
                     None,
-                    &mut ResultContext::Unknown,
+                    result_context,
                     on_type_error,
                 )
             };

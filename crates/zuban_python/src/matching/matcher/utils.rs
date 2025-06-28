@@ -435,6 +435,53 @@ fn get_matcher<'a>(
     Matcher::new(None, func_or_callable, matcher, replace_self)
 }
 
+fn apply_result_context(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    result_context: &mut ResultContext,
+    return_class: Option<&Class>,
+    func_or_callable: FunctionOrCallable,
+    on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
+) {
+    result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
+        if let Some(return_class) = return_class {
+            // This is kind of a special case. Since __init__ has no return annotation, we simply
+            // check if the classes match and then push the generics there.
+            let type_var_likes = return_class.type_vars(i_s);
+            if !type_var_likes.is_empty() {
+                debug_assert!(matches!(
+                    return_class.generics,
+                    Generics::NotDefinedYet { .. }
+                ));
+                if Class::with_self_generics(i_s.db, return_class.node_ref)
+                    .as_type(i_s.db)
+                    .is_sub_type_of(i_s, matcher, expected)
+                    .bool()
+                {
+                    matcher.reset_invalid_bounds_of_context(i_s)
+                } else {
+                    // Here we reset all bounds, because it did not match.
+                    for tv_matcher in &mut matcher.type_var_matchers {
+                        for calc in tv_matcher.calculating_type_args.iter_mut() {
+                            *calc = Default::default();
+                        }
+                    }
+                    on_reset_class_type_vars(matcher, return_class)
+                }
+            }
+        } else {
+            let return_type = func_or_callable.return_type(i_s);
+            // Fill the type var arguments from context
+            return_type.is_sub_type_of(i_s, matcher, expected);
+            matcher.reset_invalid_bounds_of_context(i_s)
+        }
+        debug!(
+            "Finished trying to infer context type arguments: [{}]",
+            matcher.type_var_matchers[0].debug_format(i_s.db)
+        );
+    });
+}
+
 fn calc_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
@@ -449,7 +496,7 @@ fn calc_type_vars<'db: 'a, 'a>(
 ) -> CalculatedTypeArgs {
     let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
-        let mut add_init_generics = |matcher: &mut _, return_class: &Class| {
+        let mut add_init_generics = |matcher: &mut Matcher, return_class: &Class| {
             if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
                 if let Some(func_class) = func_or_callable.class() {
                     // When an __init__ has a self annotation, it's a bit special, because it influences
@@ -489,43 +536,14 @@ fn calc_type_vars<'db: 'a, 'a>(
         if let Some(return_class) = return_class {
             add_init_generics(&mut matcher, return_class)
         }
-        result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
-            if let Some(return_class) = return_class {
-                // This is kind of a special case. Since __init__ has no return annotation, we simply
-                // check if the classes match and then push the generics there.
-                let type_var_likes = return_class.type_vars(i_s);
-                if !type_var_likes.is_empty() {
-                    debug_assert!(matches!(
-                        return_class.generics,
-                        Generics::NotDefinedYet { .. }
-                    ));
-                    if Class::with_self_generics(i_s.db, return_class.node_ref)
-                        .as_type(i_s.db)
-                        .is_sub_type_of(i_s, &mut matcher, expected)
-                        .bool()
-                    {
-                        matcher.reset_invalid_bounds_of_context(i_s)
-                    } else {
-                        // Here we reset all bounds, because it did not match.
-                        for tv_matcher in &mut matcher.type_var_matchers {
-                            for calc in tv_matcher.calculating_type_args.iter_mut() {
-                                *calc = Default::default();
-                            }
-                        }
-                        add_init_generics(&mut matcher, return_class);
-                    }
-                }
-            } else {
-                let return_type = func_or_callable.return_type(i_s);
-                // Fill the type var arguments from context
-                return_type.is_sub_type_of(i_s, &mut matcher, expected);
-                matcher.reset_invalid_bounds_of_context(i_s)
-            }
-            debug!(
-                "Finished trying to infer context type arguments: [{}]",
-                matcher.type_var_matchers[0].debug_format(i_s.db)
-            );
-        });
+        apply_result_context(
+            i_s,
+            &mut matcher,
+            result_context,
+            return_class,
+            func_or_callable,
+            |matcher, return_class| add_init_generics(matcher, return_class),
+        )
     }
     let matches = match func_or_callable {
         FunctionOrCallable::Function(function) => match_arguments_against_params(
