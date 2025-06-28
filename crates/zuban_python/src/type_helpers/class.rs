@@ -24,8 +24,7 @@ use crate::{
     matching::{
         calc_callable_dunder_init_type_vars, calc_callable_type_vars,
         calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage, ErrorStrs,
-        FunctionOrCallable, Generic, Generics, LookupKind, Match, Matcher, MismatchReason,
-        OnTypeError, ResultContext,
+        Generic, Generics, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::{
@@ -35,6 +34,7 @@ use crate::{
         TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
         Variance,
     },
+    type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
 };
 
@@ -1302,7 +1302,7 @@ impl<'db: 'a, 'a> Class<'a> {
             _ => (),
         }
 
-        let d = |_: &FunctionOrCallable, _: &Database| Some(format!("\"{}\"", self.name()));
+        let d = |_: &dyn FuncLike, _: &Database| Some(format!("\"{}\"", self.name()));
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {

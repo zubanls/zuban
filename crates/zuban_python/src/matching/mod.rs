@@ -30,6 +30,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
+    type_helpers::FuncLike,
     utils::debug_indent,
 };
 
@@ -126,7 +127,7 @@ pub fn avoid_protocol_mismatch(
 }
 
 type OnOverloadMismatch<'a> = Option<&'a dyn Fn()>;
-type GenerateDiagnosticString<'a> = &'a dyn Fn(&FunctionOrCallable, &Database) -> Option<String>;
+type GenerateDiagnosticString<'a> = &'a dyn Fn(&dyn FuncLike, &Database) -> Option<String>;
 
 #[derive(Clone, Copy)]
 pub(crate) struct OnTypeError<'a> {
@@ -172,7 +173,7 @@ impl<'a> OnTypeError<'a> {
 
 // For whatever reason we cannot just pass FunctionOrCallable::diagnostic_string, even though it
 // results in the exactly same behavior. Probably a Rust bug.
-fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> Option<String> {
+fn func_or_callable_diagnostic_string(f: &dyn FuncLike, db: &Database) -> Option<String> {
     f.diagnostic_string(db)
 }
 

@@ -670,7 +670,7 @@ impl<'a> Matcher<'a> {
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
         args: Box<[Arg<'db, '_>]>,
-        func_or_callable: FunctionOrCallable,
+        func_or_callable: &dyn FuncLike,
         add_issue: &dyn Fn(IssueKind),
         on_type_error: Option<OnTypeError>,
         of_function: &dyn Fn(&str) -> Option<Box<str>>,

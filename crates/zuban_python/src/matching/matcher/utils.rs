@@ -31,7 +31,7 @@ use crate::{
         NeverCause, ParamSpecTypeVars, ReplaceSelf, ReplaceTypeVarLikes, Tuple, TupleArgs,
         TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance,
     },
-    type_helpers::{Callable, Class, Function},
+    type_helpers::{Callable, Class, FuncLike, Function},
 };
 
 pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(
@@ -380,7 +380,7 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
             match_arguments_against_params(
                 i_s,
                 matcher,
-                func_or_callable,
+                &func_or_callable,
                 &add_issue,
                 Some(on_type_error),
                 InferrableParamIterator::new(
@@ -513,7 +513,7 @@ fn calc_type_vars<'db: 'a, 'a>(
             FunctionOrCallable::Function(function) => match_arguments_against_params(
                 i_s,
                 &mut matcher,
-                func_or_callable,
+                &func_or_callable,
                 &add_issue,
                 on_type_error,
                 function.iter_args_with_params(i_s.db, args, skip_first_param),
@@ -522,7 +522,7 @@ fn calc_type_vars<'db: 'a, 'a>(
                 CallableParams::Simple(params) => match_arguments_against_params(
                     i_s,
                     &mut matcher,
-                    func_or_callable,
+                    &func_or_callable,
                     &add_issue,
                     on_type_error,
                     InferrableParamIterator::new(
@@ -637,13 +637,13 @@ pub(crate) fn match_arguments_against_params<
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    func_or_callable: FunctionOrCallable,
+    func_or_callable: &dyn FuncLike,
     add_issue: &impl Fn(IssueKind),
     on_type_error: Option<OnTypeError>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let diagnostic_string = |prefix: &str| {
-        (on_type_error.unwrap().generate_diagnostic_string)(&func_or_callable, i_s.db)
+        (on_type_error.unwrap().generate_diagnostic_string)(func_or_callable, i_s.db)
             .map(|s| (prefix.to_owned() + &s).into())
     };
     let too_few_arguments = || {
