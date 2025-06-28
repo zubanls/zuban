@@ -358,7 +358,7 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
     match_in_definition: PointLink,
     replace_self: Option<ReplaceSelfInMatcher>,
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError>,
+    on_type_error: OnTypeError,
 ) -> CalculatedTypeArgs {
     let func_or_callable = FunctionOrCallable::Function(function);
     let mut matcher = get_matcher(
@@ -373,7 +373,7 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
         &mut matcher,
         func_or_callable,
         &add_issue,
-        on_type_error,
+        Some(on_type_error),
         InferrableParamIterator::new(
             i_s.db,
             function

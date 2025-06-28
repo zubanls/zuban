@@ -187,32 +187,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         InferrableParamIterator::new(db, params, args)
     }
 
-    fn execute_without_annotation(
+    fn return_without_annotation(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Args<'db>,
+        calculated: CalculatedTypeArgs,
     ) -> Inferred {
         if i_s.db.project.settings.mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
         }
         let return_inf = self.ensure_cached_untyped_return(i_s);
-        if self.node().has_param_annotations() {
-            return return_inf;
-        }
         let ret_t = return_inf.as_cow_type(i_s);
-        let type_vars = self.type_vars(i_s.db);
-        let calculated = calc_untyped_func_type_vars(
-            i_s,
-            *self,
-            args.iter(i_s.mode),
-            |_| (),
-            false,
-            type_vars,
-            self.as_link(),
-            None,
-            &mut ResultContext::Unknown,
-            None,
-        );
         if ret_t.has_type_vars() {
             calculated.into_return_type(i_s, ret_t.as_ref(), None, &|| None)
         } else {
@@ -1564,18 +1548,36 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
-        let calculated_type_vars = calc_func_type_vars(
-            i_s,
-            *self,
-            args.iter(i_s.mode),
-            |issue| args.add_issue(i_s, issue),
-            skip_first_argument,
-            self.type_vars(i_s.db),
-            self.node_ref.as_link(),
-            replace_self_type,
-            result_context,
-            Some(on_type_error),
-        );
+        let calculated_type_vars =
+            if self.node().is_typed() || i_s.db.project.settings.mypy_compatible {
+                calc_func_type_vars(
+                    i_s,
+                    *self,
+                    args.iter(i_s.mode),
+                    |issue| args.add_issue(i_s, issue),
+                    skip_first_argument,
+                    self.type_vars(i_s.db),
+                    self.node_ref.as_link(),
+                    replace_self_type,
+                    result_context,
+                    Some(on_type_error),
+                )
+            } else {
+                let type_vars = self.type_vars(i_s.db);
+                calc_untyped_func_type_vars(
+                    i_s,
+                    *self,
+                    args.iter(i_s.mode),
+                    |_| (),
+                    false,
+                    type_vars,
+                    self.as_link(),
+                    None,
+                    &mut ResultContext::Unknown,
+                    on_type_error,
+                )
+            };
+
         let result = if let Some(return_annotation) = return_annotation {
             self.apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
                 i_s,
@@ -1598,7 +1600,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            self.execute_without_annotation(i_s, args)
+            self.return_without_annotation(i_s, calculated_type_vars)
         };
         if self.is_async() && !self.is_generator() {
             return Inferred::from_type(new_class!(
