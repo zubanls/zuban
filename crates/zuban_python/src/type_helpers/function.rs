@@ -197,6 +197,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any(AnyCause::Unannotated);
         }
         let return_inf = self.ensure_cached_untyped_return(i_s);
+        if self.node().has_param_annotations() {
+            return return_inf;
+        }
         let ret_t = return_inf.as_cow_type(i_s);
         let type_vars = self.type_vars(i_s.db);
         let calculated = calculate_untyped_function_type_vars(
@@ -1870,7 +1873,11 @@ impl<'x> Param<'x> for UntypedFunctionParam<'x> {
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x> {
         let mut pt = self.param.specific(db);
         let Some(TypeVarLike::TypeVar(tv)) = self.type_var_likes.get(self.nth) else {
-            recoverable_error!("Did not find type var for untyped param");
+            recoverable_error!(
+                "Did not find type var for untyped param {:?}[{}]",
+                self.type_var_likes,
+                self.nth
+            );
             return pt;
         };
         match &mut pt {

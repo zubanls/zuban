@@ -2120,7 +2120,11 @@ impl<'db> FunctionDef<'db> {
     pub fn is_typed(&self) -> bool {
         // A function is considered typed according to Mypy if at least param or return annotation
         // is used.
-        self.return_annotation().is_some() || self.params().iter().any(|p| p.annotation().is_some())
+        self.return_annotation().is_some() || self.has_param_annotations()
+    }
+
+    pub fn has_param_annotations(&self) -> bool {
+        self.params().iter().any(|p| p.annotation().is_some())
     }
 
     pub fn type_params(&self) -> Option<TypeParams<'db>> {

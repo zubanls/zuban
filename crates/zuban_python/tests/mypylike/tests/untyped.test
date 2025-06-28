@@ -4,3 +4,19 @@ def f(x):
     return (x, "")
 
 reveal_type(f(1))  # N: Revealed type is "tuple[int, Literal['']?]"
+
+[case infer_untyped_result_but_typed_param]
+# flags: --no-mypy-compatible
+def f(x: int):
+    return x
+
+reveal_type(f(1))  # N: Revealed type is "int"
+reveal_type(f(""))  # E: Argument 1 to "f" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
+
+[case infer_untyped_result_but_typed_param_with_type_var]
+# flags: --no-mypy-compatible
+def f[S, T](x: T, y: S):
+    return x
+
+reveal_type(f(1, b''))  # N: Revealed type is "int"
+reveal_type(f("", b''))  # N: Revealed type is "str"
