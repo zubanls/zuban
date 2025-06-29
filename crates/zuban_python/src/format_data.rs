@@ -262,7 +262,7 @@ fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<NameIn
                 name_unique_for: tv.in_definition,
                 name_link: link,
             },
-            TypeVarName::Self_ | TypeVarName::UntypedParam => return None,
+            TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => return None,
         },
         _ => unreachable!(),
     })

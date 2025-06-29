@@ -739,7 +739,7 @@ pub(crate) enum TypeVarLikeName {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarName {
     Name(TypeVarLikeName),
-    UntypedParam,
+    UntypedParam { nth: usize },
     Self_,
 }
 
@@ -897,9 +897,9 @@ impl TypeVar {
         }
     }
 
-    pub fn for_untyped_param() -> Self {
+    pub fn for_untyped_param(nth: usize) -> Self {
         Self {
-            name: TypeVarName::UntypedParam,
+            name: TypeVarName::UntypedParam { nth },
             scope: ParentScope::Module,
             kind: TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_known(Type::Any(
                 AnyCause::Unannotated,
@@ -942,7 +942,7 @@ impl TypeVar {
         match &self.name {
             TypeVarName::Name(n) => Cow::Borrowed(n.as_str(db)),
             TypeVarName::Self_ => Cow::Borrowed("Self"),
-            TypeVarName::UntypedParam => Cow::Owned(format!("UntypedParam")),
+            TypeVarName::UntypedParam { nth } => Cow::Owned(format!("T{}", nth + 1)),
         }
     }
 
@@ -1049,7 +1049,7 @@ impl TypeVar {
                 format!("{}.{}", n.file(db).qualified_name(db), self.name(db)).into()
             }
 
-            TypeVarName::Self_ | TypeVarName::UntypedParam => self.name(db).into(),
+            TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => self.name(db).into(),
         }
     }
 
@@ -1393,7 +1393,7 @@ impl TypeVarLikeUsage {
         let name = match self {
             Self::TypeVar(t) => match t.type_var.name {
                 TypeVarName::Name(name) => name,
-                TypeVarName::Self_ | TypeVarName::UntypedParam => return None,
+                TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => return None,
             },
             Self::TypeVarTuple(t) => t.type_var_tuple.name,
             Self::ParamSpec(p) => p.param_spec.name,
