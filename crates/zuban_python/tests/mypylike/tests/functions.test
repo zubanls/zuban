@@ -11,16 +11,18 @@ f = i # E: Incompatible types in assignment (expression has type "Callable[[int,
 f = j
 
 [case subtyping_of_kwargs_with_defaults]
+from typing import Any
+
 class A:
-    def a(self, **kwargs: int): ...
+    def a(self, **kwargs: int) -> Any: ...
 class B(A):
-    def a(self, *, x: str = "", **kwargs: int): ...  # E: Signature of "a" incompatible with supertype "A" \
+    def a(self, *, x: str = "", **kwargs: int) -> Any: ...  # E: Signature of "a" incompatible with supertype "A" \
                                                      # N:      Superclass: \
                                                      # N:          def a(self, **kwargs: int) -> Any \
                                                      # N:      Subclass: \
                                                      # N:          def a(self, *, x: str = ..., **kwargs: int) -> Any
 class C(A):
-    def a(self, *, x: int = 1, **kwargs: int): ...
+    def a(self, *, x: int = 1, **kwargs: int) -> Any: ...
 
 [case infer_unannotated_star_args]
 def foo(*args, **kwargs) -> None:
@@ -280,11 +282,11 @@ def f(x: Any) -> None:
     x(**undefined)  # E: Name "undefined" is not defined
 
 [case callable_return_same_type_should_not_recurse]
-from typing import Callable
+from typing import Callable, Any
 import sys
 R = Callable[[], 'R']
 
-def f(): ...
+def f() -> Any: ...
 def g(y: R): ...
 g(f)
 

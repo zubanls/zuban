@@ -407,7 +407,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 first_param: FirstParamProperties::None,
                 return_type: match type_guard.as_ref() {
                     Some(_) => Cow::Owned(i_s.db.python_state.bool_type()),
-                    None => self.return_type(i_s),
+                    None => self.node_ref.return_type(i_s),
                 },
             };
             let mut callable = self.as_callable_with_options(i_s, options);
@@ -1244,7 +1244,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             i_s,
             AsCallableOptions {
                 first_param,
-                return_type: self.return_type(i_s),
+                return_type: self.inferred_return_type(i_s),
             },
         )
     }
@@ -1261,7 +1261,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 false
             }
             FirstParamProperties::None => {
-                self.return_type(i_s).has_self_type(i_s.db)
+                self.inferred_return_type(i_s).has_self_type(i_s.db)
                     || params_have_self_type_after_self(i_s.db, self.iter_params())
             }
         };
@@ -1696,7 +1696,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn expected_return_type_for_return_stmt(&self, i_s: &InferenceState<'db, '_>) -> Cow<Type> {
-        let mut t = self.return_type(i_s);
+        let mut t = self.node_ref.return_type(i_s);
         if self.is_generator() {
             t = Cow::Owned(
                 GeneratorType::from_type(i_s.db, t)
@@ -2142,8 +2142,12 @@ impl GeneratorType {
 }
 
 impl FuncLike for Function<'_, '_> {
-    fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
-        FuncNodeRef::return_type(self, i_s)
+    fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
+        if i_s.db.project.settings.mypy_compatible || self.return_annotation().is_some() {
+            FuncNodeRef::return_type(self, i_s)
+        } else {
+            Cow::Owned(self.ensure_cached_untyped_return(i_s).as_type(i_s))
+        }
     }
 
     fn diagnostic_string(&self, _: &Database) -> Option<String> {

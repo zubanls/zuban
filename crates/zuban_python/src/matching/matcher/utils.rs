@@ -388,7 +388,7 @@ struct FuncWithReturnType<'a> {
 }
 
 impl FuncLike for FuncWithReturnType<'_> {
-    fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
+    fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
         self.return_inf.as_cow_type(i_s)
     }
 
@@ -498,7 +498,7 @@ fn apply_result_context(
                 }
             }
         } else {
-            let return_type = func_or_callable.return_type(i_s);
+            let return_type = func_or_callable.inferred_return_type(i_s);
             // Fill the type var arguments from context
             return_type.is_sub_type_of(i_s, matcher, expected);
             matcher.reset_invalid_bounds_of_context(i_s)

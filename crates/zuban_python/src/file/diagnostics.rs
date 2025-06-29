@@ -1575,7 +1575,8 @@ impl Inference<'_, '_, '_> {
         block: Block,
     ) {
         let i_s = self.i_s;
-        if function.is_typed() || flags.check_untyped_defs {
+        let is_typed = function.is_typed();
+        if is_typed || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
             if function.type_vars(i_s.db).has_constraints(i_s.db)
                 || function
@@ -1588,45 +1589,51 @@ impl Inference<'_, '_, '_> {
             } else {
                 self.calc_block_diagnostics(block, None, Some(&function))
             }
+            if !is_typed {
+                return;
+            }
         } else {
-            self.calc_untyped_block_diagnostics(block, false)
+            self.calc_untyped_block_diagnostics(block, false);
+            return;
         }
 
-        if function.is_dunder_new() {
-            let mut class = function.class.unwrap();
-            // Here we do not want self generics, we actually want Any generics.
-            class.generics = Generics::NotDefinedYet {
-                class_ref: class.node_ref,
-            };
-            if let Some(callable) = infer_class_method(
-                i_s,
-                class,
-                class,
-                &function.as_callable(i_s, FirstParamProperties::None),
-                None,
-            ) {
-                match &callable.return_type {
-                    Type::Class(_) => {
-                        let t = &callable.return_type;
-                        if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
-                            function.expect_return_annotation_node_ref().add_issue(
-                                i_s,
-                                IssueKind::NewIncompatibleReturnType {
-                                    returns: t.format_short(i_s.db),
-                                    must_return: class.format_short(i_s.db),
-                                },
-                            )
+        if let Some(return_annotation) = function.return_annotation() {
+            if function.is_dunder_new() {
+                let mut class = function.class.unwrap();
+                // Here we do not want self generics, we actually want Any generics.
+                class.generics = Generics::NotDefinedYet {
+                    class_ref: class.node_ref,
+                };
+                if let Some(callable) = infer_class_method(
+                    i_s,
+                    class,
+                    class,
+                    &function.as_callable(i_s, FirstParamProperties::None),
+                    None,
+                ) {
+                    match &callable.return_type {
+                        Type::Class(_) => {
+                            let t = &callable.return_type;
+                            if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
+                                self.add_issue(
+                                    return_annotation.index(),
+                                    IssueKind::NewIncompatibleReturnType {
+                                        returns: t.format_short(i_s.db),
+                                        must_return: class.format_short(i_s.db),
+                                    },
+                                )
+                            }
                         }
+                        Type::Type(_) => (),
+                        Type::Any(_) => (),
+                        Type::Enum(e) if e.class == class.node_ref.as_link() => (),
+                        t => self.add_issue(
+                            return_annotation.index(),
+                            IssueKind::NewMustReturnAnInstance {
+                                got: t.format_short(i_s.db),
+                            },
+                        ),
                     }
-                    Type::Type(_) => (),
-                    Type::Any(_) => (),
-                    Type::Enum(e) if e.class == class.node_ref.as_link() => (),
-                    t => function.expect_return_annotation_node_ref().add_issue(
-                        i_s,
-                        IssueKind::NewMustReturnAnInstance {
-                            got: t.format_short(i_s.db),
-                        },
-                    ),
                 }
             }
         }

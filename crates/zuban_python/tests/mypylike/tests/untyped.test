@@ -29,3 +29,31 @@ def f(x):
 reveal_type(f(1))  # N: Revealed type is "list[int]"
 
 x: list[object] = f(1)
+
+[case type_var_formatting]
+# flags: --no-mypy-compatible
+
+def f(x, y, z):
+    return x, z
+
+def wrap[T](x: T) -> list[T]:
+    return [x]
+
+reveal_type(f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrap(f))  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+
+[case infer_untyped_callables]
+# flags: --no-mypy-compatible
+
+from typing import Callable
+
+def f[S, T](x: Callable[[T], S]) -> tuple[T, S]: ...
+
+def ret_same(x): return x
+def ret_other(x): return 1
+
+reveal_type(ret_same)  # N: Revealed type is "def [T1 <: Any] (x: T1) -> T1"
+reveal_type(ret_other)  # N: Revealed type is "def [T1 <: Any] (x: T1) -> Literal[1]?"
+
+reveal_type(f(ret_same))  # N: Revealed type is "tuple[Any, Never]"
+reveal_type(f(ret_other))  # N: Revealed type is "tuple[Any, int]"

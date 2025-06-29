@@ -417,9 +417,9 @@ from typing import dataclass_transform
 reveal_type(dataclass_transform())  # N: Revealed type is "object"
 
 [case dataclass_transform_wrong_args]
-from typing import dataclass_transform
+from typing import dataclass_transform, Any
 @dataclass_transform(order_default=True)
-def foo(x: int): ...
+def foo(x: int) -> Any: ...
 
 @foo(order=False)  # E: Unexpected keyword argument "order" for "foo"
 class D:

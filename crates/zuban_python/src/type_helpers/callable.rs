@@ -104,7 +104,7 @@ impl<'a> Callable<'a> {
 }
 
 pub(crate) trait FuncLike: std::fmt::Debug {
-    fn return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type>;
+    fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type>;
     fn diagnostic_string(&self, db: &Database) -> Option<String>;
     fn defined_at(&self) -> PointLink;
     fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes;
@@ -118,7 +118,7 @@ pub(crate) trait FuncLike: std::fmt::Debug {
 }
 
 impl FuncLike for Callable<'_> {
-    fn return_type<'a>(&'a self, _: &InferenceState) -> Cow<'a, Type> {
+    fn inferred_return_type<'a>(&'a self, _: &InferenceState) -> Cow<'a, Type> {
         Cow::Borrowed(&self.content.return_type)
     }
 
