@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cell::{Cell, OnceCell},
     hash::{Hash, Hasher},
     ops::AddAssign,
@@ -501,11 +502,11 @@ pub(crate) enum TypeVarLike {
 }
 
 impl TypeVarLike {
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
         match self {
             Self::TypeVar(t) => t.name(db),
-            Self::TypeVarTuple(t) => t.name(db),
-            Self::ParamSpec(s) => s.name(db),
+            Self::TypeVarTuple(t) => Cow::Borrowed(t.name(db)),
+            Self::ParamSpec(s) => Cow::Borrowed(s.name(db)),
         }
     }
 
@@ -937,11 +938,11 @@ impl TypeVar {
         }
     }
 
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
         match &self.name {
-            TypeVarName::Name(n) => n.as_str(db),
-            TypeVarName::Self_ => "Self",
-            TypeVarName::UntypedParam => "UntypedParam",
+            TypeVarName::Name(n) => Cow::Borrowed(n.as_str(db)),
+            TypeVarName::Self_ => Cow::Borrowed("Self"),
+            TypeVarName::UntypedParam => Cow::Owned(format!("UntypedParam")),
         }
     }
 
@@ -1053,7 +1054,7 @@ impl TypeVar {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
-        let mut s = self.name(format_data.db).to_owned();
+        let mut s = self.name(format_data.db).into_owned();
         match self.kind(format_data.db) {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
@@ -1523,7 +1524,7 @@ impl TypeVarLikeUsage {
     pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> String {
         match self {
             Self::TypeVar(usage) => {
-                let mut s = usage.type_var.name(db).to_owned();
+                let mut s = usage.type_var.name(db).into_owned();
                 if let Some(default) = usage.type_var.default(db) {
                     s += " = ";
                     s += &default.format_short(db);

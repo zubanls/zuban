@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use utils::{AlreadySeen, FastHashSet};
 
 use crate::{
@@ -253,7 +255,10 @@ fn short_type_name_with_link<'x>(db: &'x Database, t: &'x Type) -> Option<NameIn
                 }
                 | TypeVarLikeName::SyntaxNode(link),
             ) => NameInfos {
-                name: tv.type_var.name(db),
+                name: match tv.type_var.name(db) {
+                    Cow::Borrowed(n) => n,
+                    Cow::Owned(_) => return None,
+                },
                 name_unique_for: tv.in_definition,
                 name_link: link,
             },
