@@ -192,12 +192,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn return_without_annotation(
         &self,
         i_s: &InferenceState<'db, '_>,
+        return_inf: Inferred,
         calculated: CalculatedTypeArgs,
     ) -> Inferred {
-        if i_s.db.project.settings.mypy_compatible {
-            return Inferred::new_any(AnyCause::Unannotated);
-        }
-        let return_inf = self.ensure_cached_untyped_return(i_s);
         let ret_t = return_inf.as_cow_type(i_s);
         if ret_t.has_type_vars() {
             calculated.into_return_type(i_s, ret_t.as_ref(), None, &|| None)
@@ -1550,6 +1547,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
+        let mut untyped_return_inf = None;
         let calculated_type_vars =
             if self.node().is_typed() || i_s.db.project.settings.mypy_compatible {
                 calc_func_type_vars(
@@ -1565,19 +1563,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     Some(on_type_error),
                 )
             } else {
+                let return_inf = self.ensure_cached_untyped_return(i_s);
                 let type_vars = self.type_vars(i_s.db);
-                calc_untyped_func_type_vars(
+                let result = calc_untyped_func_type_vars(
                     i_s,
-                    *self,
+                    self,
                     args.iter(i_s.mode),
                     |_| (),
                     false,
                     type_vars,
                     self.as_link(),
                     None,
+                    &return_inf,
                     result_context,
                     on_type_error,
-                )
+                );
+                untyped_return_inf = Some(return_inf);
+                result
             };
 
         let result = if let Some(return_annotation) = return_annotation {
@@ -1602,7 +1604,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            self.return_without_annotation(i_s, calculated_type_vars)
+            if let Some(return_inf) = untyped_return_inf {
+                self.return_without_annotation(i_s, return_inf, calculated_type_vars)
+            } else if i_s.db.project.settings.mypy_compatible {
+                // The mypy-compatible case
+                return Inferred::new_any(AnyCause::Unannotated);
+            } else {
+                self.return_without_annotation(
+                    i_s,
+                    self.ensure_cached_untyped_return(i_s),
+                    calculated_type_vars,
+                )
+            }
         };
         if self.is_async() && !self.is_generator() {
             return Inferred::from_type(new_class!(
