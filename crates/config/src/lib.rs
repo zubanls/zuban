@@ -342,7 +342,7 @@ impl Default for TypeCheckerFlags {
             strict_optional: true,
             strict_equality: false,
             implicit_optional: false,
-            check_untyped_defs: false,
+            check_untyped_defs: true,
             ignore_missing_imports: false,
             follow_untyped_imports: false,
             disallow_untyped_defs: false,
@@ -405,6 +405,7 @@ impl TypeCheckerFlags {
 
     pub fn mypy_default() -> Self {
         Self {
+            check_untyped_defs: false,
             allow_redefinition: false,
             local_partial_types: false,
             allow_untyped_globals: false,
