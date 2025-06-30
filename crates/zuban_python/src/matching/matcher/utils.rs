@@ -82,7 +82,7 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
                 i_s,
                 &function,
                 args,
-                |_| (),
+                add_issue,
                 true,
                 class_type_vars,
                 class.as_link(),

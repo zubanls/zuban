@@ -3825,7 +3825,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 return Type::TypeVar(usage);
                             }
                         }
-                        dbg!(func,);
                         Type::Any(AnyCause::Unannotated)
                     };
                     if specific == Specific::MaybeSelfParam {
