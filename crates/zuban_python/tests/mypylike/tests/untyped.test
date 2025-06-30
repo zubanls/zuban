@@ -92,7 +92,7 @@ class C:
 
 c = C("")
 reveal_type(c.x)  # N: Revealed type is "str"
-reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str, __main__.C]"
+reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str, __main__.C[str]]"
 
 [case untyped_method_typed_class]
 # flags: --no-mypy-compatible

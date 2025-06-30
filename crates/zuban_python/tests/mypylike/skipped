@@ -8,8 +8,6 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
 untyped_override_check_untyped_defs_no_mypy_compatible
-untyped_new_type_self_return
-untyped_class
 
 testInitMethodWithImplicitSignature
 testEnumFromEnumMetaBasics

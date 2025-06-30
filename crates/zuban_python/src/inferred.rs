@@ -19,8 +19,8 @@ use crate::{
     inference_state::InferenceState,
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-        maybe_class_usage, replace_class_type_vars, ErrorStrs, Generics, IteratorContent,
-        LookupKind, Matcher, OnLookupError, OnTypeError, ResultContext,
+        maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars, ErrorStrs,
+        Generics, IteratorContent, LookupKind, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -406,21 +406,26 @@ impl<'db: 'slf, 'slf> Inferred {
             let definition = NodeRef::from_link(i_s.db, link);
             if let Some(specific) = definition.point().maybe_specific() {
                 match specific {
-                    Specific::Param | Specific::MaybeSelfParam => {
-                        unimplemented!("might not even happen - remove")
-                        //return i_s.infer_param(&definition);
-                    }
                     Specific::AnnotationOrTypeCommentWithTypeVars
                     | Specific::AnnotationOrTypeCommentFinal => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
                         if attribute_class.needs_generic_remapping_for_attributes(i_s, &t) {
-                            let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
-                                Some(class.as_type(i_s.db))
-                            });
-                            return Inferred::from_type(d.into_owned());
+                            if let Some(d) =
+                                maybe_replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                                    Some(class.as_type(i_s.db))
+                                })
+                            {
+                                return Inferred::from_type(d);
+                            }
                         }
                     }
                     _ => (),
+                }
+            } else if let Some(t) = definition.maybe_type() {
+                if let Some(d) = maybe_replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                    Some(class.as_type(i_s.db))
+                }) {
+                    return Inferred::from_type(d);
                 }
             }
         }

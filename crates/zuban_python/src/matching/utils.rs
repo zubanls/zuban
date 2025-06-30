@@ -12,19 +12,28 @@ use crate::{
     type_helpers::{Callable, Class},
 };
 
+pub fn maybe_replace_class_type_vars<'x>(
+    db: &Database,
+    t: &'x Type,
+    attribute_class: &Class,
+    self_instance: ReplaceSelf,
+) -> Option<Type> {
+    t.replace_type_var_likes_and_self(
+        db,
+        &mut |usage| maybe_class_usage(db, attribute_class, &usage),
+        self_instance,
+    )
+}
+
 pub fn replace_class_type_vars<'x>(
     db: &Database,
     t: &'x Type,
     attribute_class: &Class,
     self_instance: ReplaceSelf,
 ) -> Cow<'x, Type> {
-    t.replace_type_var_likes_and_self(
-        db,
-        &mut |usage| maybe_class_usage(db, attribute_class, &usage),
-        self_instance,
-    )
-    .map(Cow::Owned)
-    .unwrap_or_else(|| Cow::Borrowed(t))
+    maybe_replace_class_type_vars(db, t, attribute_class, self_instance)
+        .map(Cow::Owned)
+        .unwrap_or_else(|| Cow::Borrowed(t))
 }
 
 pub fn replace_class_type_vars_in_callable(
