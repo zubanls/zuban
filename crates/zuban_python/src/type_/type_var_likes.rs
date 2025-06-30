@@ -452,11 +452,15 @@ impl TypeVarLikes {
     pub fn find_untyped_param_type_var(
         &self,
         in_definition: PointLink,
-        index: usize,
+        param_index: usize,
     ) -> Option<TypeVarUsage> {
-        if let TypeVarLike::TypeVar(tv) = self.0.get(index)? {
-            if matches!(tv.name, TypeVarName::UntypedParam { .. }) {
-                return Some(TypeVarUsage::new(tv.clone(), in_definition, index.into()));
+        for (index, x) in self.iter().enumerate() {
+            if let TypeVarLike::TypeVar(tv) = x {
+                if let TypeVarName::UntypedParam { nth } = &tv.name {
+                    if *nth == param_index {
+                        return Some(TypeVarUsage::new(tv.clone(), in_definition, index.into()));
+                    }
+                }
             }
         }
         None

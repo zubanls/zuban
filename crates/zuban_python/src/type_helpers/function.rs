@@ -1580,7 +1580,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     self,
                     args.iter(i_s.mode),
                     |_| (),
-                    false,
+                    skip_first_argument,
                     type_vars,
                     self.as_link(),
                     None,

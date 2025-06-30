@@ -203,6 +203,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                     node.params()
                         .iter()
                         .enumerate()
+                        .skip(class.is_some() as usize)
                         .map(|(i, _)| TypeVarLike::TypeVar(Rc::new(TypeVar::for_untyped_param(i))))
                         .collect(),
                 )

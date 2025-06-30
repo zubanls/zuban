@@ -79,3 +79,31 @@ def f(x):
     1()
     return x
 reveal_type(f(""))  # N: Revealed type is "str"
+
+[case untyped_class]
+# flags: --no-mypy-compatible
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def f(self, x):
+        return (x, self.x, self)
+
+c = C("")
+reveal_type(c.x)  # N: Revealed type is "str"
+reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str, C]"
+
+[case untyped_method_typed_class]
+# flags: --no-mypy-compatible
+
+class C[T]:
+    def __init__(self, x: T):
+        self.x = x
+
+    def f(self, x):
+        return (x, self.x, self)
+
+c = C("")
+reveal_type(c.x)  # N: Revealed type is "str"
+reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str]"
