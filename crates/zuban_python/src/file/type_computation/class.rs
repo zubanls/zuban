@@ -566,7 +566,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == db.python_state.enum_meta_link() {
-                if !self.use_cached_type_vars(db).is_empty() {
+                if !self.use_cached_type_vars(db).is_empty_or_untyped() {
                     self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
                 }
                 class_infos.class_kind = ClassKind::Enum;

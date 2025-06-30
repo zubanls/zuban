@@ -392,6 +392,10 @@ impl TypeVarLikes {
         self.0.is_empty()
     }
 
+    pub fn is_empty_or_untyped(&self) -> bool {
+        self.0.is_empty() || self.has_from_untyped_params()
+    }
+
     pub fn contains_non_default(&self) -> bool {
         self.iter().any(|tv| !tv.has_default())
     }
