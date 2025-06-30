@@ -1049,7 +1049,10 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         let type_var_likes = self.type_vars(&InferenceState::new(format_data.db, self.file));
         // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
-        if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet { .. }) {
+        if !type_var_likes.is_empty()
+            && !matches!(self.generics, Generics::NotDefinedYet { .. })
+            && !type_var_likes.has_from_untyped_params()
+        {
             // Returns something like [str] or [List[int], Set[Any]]
             let strings: Vec<_> = self
                 .generics()
