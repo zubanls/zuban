@@ -37,12 +37,13 @@ class Foo:
         reveal_type(y)  # N: Revealed type is "Any"
 
 [case global_with_late_type_defs]
+# flags: --no-check-untyped-defs
 # Like testGlobalWithoutInitialization, but without type comments
 from typing import List
 
 def foo1() -> None:
     global bar1  # E: Name "bar1" is not defined
-    bar1: List[str] = []  # E: Name "bar1" already defined on line 5
+    bar1: List[str] = []  # E: Name "bar1" already defined on line 6
     reveal_type(bar1)  # N: Revealed type is "Any"
 
 def foo2():
@@ -50,6 +51,7 @@ def foo2():
     bar2: List[str] = []  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 
 [case assigning_in_unannotated_funcs_should_not_generate_errors]
+# flags: --no-check-untyped-defs
 def foo():
     [1][1()] = 1
     [1][1()].x = 1

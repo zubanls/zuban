@@ -681,6 +681,7 @@ aint[1] = 1
 astr[1] = 1  # E: Invalid self argument "A[str]" to attribute function "__setitem__" with type "Callable[[A[int], Any, Any], None]"
 
 [case unannotated_class_init_with_self_def_no_check_untyped_defs]
+# flags: --no-check-untyped-defs
 class C:
     def __init__(self):
         self.x = 1

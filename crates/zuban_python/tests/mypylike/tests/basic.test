@@ -1007,7 +1007,8 @@ def f(char: str) -> None:
     if char <= "\u009f": ...
     if char <= "\u019f": ...
 
-[case nested_class_in_untyped_def_with_forward_reference]
+[case nested_class_in_untyped_def_with_forward_reference_no_check_untyped]
+# flags: --no-check-untyped-defs
 def f(x):
     class Outer:
         def meth(self, x: Nested): ...
@@ -1015,6 +1016,7 @@ def f(x):
         class Nested: ...
 
 [case nested_class_in_untyped_def_and_unreachable_no_crash]
+import sys
 def f(x):
     if sys.platform.startswith('undefined_operating_system'):
         class Outer:

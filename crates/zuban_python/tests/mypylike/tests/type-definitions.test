@@ -532,6 +532,7 @@ def __getattr__(n) -> typing.Any: ...
 __getattr__ = 1  # E: Invalid signature "int" for "__getattr__"
 
 [case type_var_used_in_untyped_function]
+# flags: --no-check-untyped-defs
 from typing import TypeVar
 def f():
     T = TypeVar("T")
