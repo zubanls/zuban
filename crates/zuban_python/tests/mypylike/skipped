@@ -9,7 +9,6 @@ testNewRedefineForStatementIndexNarrowing
 
 untyped_override_check_untyped_defs_no_mypy_compatible
 untyped_class
-untyped_method_typed_class
 
 # Pre-release crashes
 dataclass_post_init_should_not_crash2

@@ -194,10 +194,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         return_inf: Inferred,
         calculated: CalculatedTypeArgs,
+        replace_self_type: Option<ReplaceSelfInMatcher>,
     ) -> Inferred {
         let ret_t = return_inf.as_cow_type(i_s);
-        if ret_t.has_type_vars() {
-            calculated.into_return_type(i_s, ret_t.as_ref(), None, &|| None)
+        if ret_t.has_type_vars() || ret_t.has_self_type(i_s.db) {
+            calculated.into_return_type(i_s, ret_t.as_ref(), self.class.as_ref(), &|| {
+                replace_self_type.map(|replace_self| replace_self())
+            })
         } else {
             // If there are no type vars we can just pass the result on.
             return_inf
@@ -1583,7 +1586,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     skip_first_argument,
                     type_vars,
                     self.as_link(),
-                    None,
+                    replace_self_type,
                     result_context,
                     on_type_error,
                 );
@@ -1620,6 +1623,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     i_s,
                     self.ensure_cached_untyped_return(i_s),
                     calculated_type_vars,
+                    replace_self_type,
                 )
             }
         };
