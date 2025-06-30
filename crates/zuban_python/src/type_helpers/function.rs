@@ -1547,7 +1547,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
-        let mut untyped_return_inf = None;
         let calculated_type_vars =
             if self.node().is_typed() || i_s.db.project.settings.mypy_compatible {
                 calc_func_type_vars(
@@ -1563,7 +1562,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     Some(on_type_error),
                 )
             } else {
-                let return_inf = self.ensure_cached_untyped_return(i_s);
                 let type_vars = self.type_vars(i_s.db);
                 let result = calc_untyped_func_type_vars(
                     i_s,
@@ -1574,11 +1572,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     type_vars,
                     self.as_link(),
                     None,
-                    &return_inf,
                     result_context,
                     on_type_error,
                 );
-                untyped_return_inf = Some(return_inf);
                 result
             };
 
@@ -1604,9 +1600,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            if let Some(return_inf) = untyped_return_inf {
-                self.return_without_annotation(i_s, return_inf, calculated_type_vars)
-            } else if i_s.db.project.settings.mypy_compatible {
+            if i_s.db.project.settings.mypy_compatible {
                 // The mypy-compatible case
                 return Inferred::new_any(AnyCause::Unannotated);
             } else {

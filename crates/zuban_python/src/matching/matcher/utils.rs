@@ -344,19 +344,14 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
     replace_self: Option<ReplaceSelfInMatcher>,
-    return_inf: &Inferred,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> CalculatedTypeArgs {
-    let patched_func = &FuncWithReturnType {
-        func: function,
-        return_inf,
-    };
-    let matcher = get_matcher(patched_func, function.as_link(), replace_self, type_vars);
+    let matcher = get_matcher(function, function.as_link(), replace_self, type_vars);
     calc_type_vars_with_callback(
         i_s,
         matcher,
-        patched_func,
+        function,
         None,
         &add_issue,
         match_in_definition,
@@ -366,7 +361,7 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
             match_arguments_against_params(
                 i_s,
                 matcher,
-                patched_func,
+                function,
                 &add_issue,
                 Some(on_type_error),
                 InferrableParamIterator::new(
@@ -379,43 +374,6 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
             )
         },
     )
-}
-
-#[derive(Debug)]
-struct FuncWithReturnType<'a> {
-    func: &'a Function<'a, 'a>,
-    return_inf: &'a Inferred,
-}
-
-impl FuncLike for FuncWithReturnType<'_> {
-    fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
-        self.return_inf.as_cow_type(i_s)
-    }
-
-    fn diagnostic_string(&self, _: &Database) -> Option<String> {
-        Some(self.func.diagnostic_string())
-    }
-    fn defined_at(&self) -> PointLink {
-        self.func.defined_at()
-    }
-    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes {
-        self.func.type_vars(db)
-    }
-    fn class(&self) -> Option<Class> {
-        self.func.class()
-    }
-    fn first_self_or_class_annotation<'a>(
-        &'a self,
-        i_s: &'a InferenceState,
-    ) -> Option<Cow<'a, Type>> {
-        self.func.first_self_or_class_annotation(i_s)
-    }
-    fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
-        self.func.has_keyword_param_with_name(db, name)
-    }
-    fn is_callable(&self) -> bool {
-        self.func.is_callable()
-    }
 }
 
 pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
