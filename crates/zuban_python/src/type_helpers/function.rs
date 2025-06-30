@@ -1287,9 +1287,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .unwrap_or_else(|| t.clone())
         };
         let return_type = as_type(&options.return_type);
-        let mut callable =
-            self.internal_as_type(i_s, params, needs_self_type, as_type, return_type);
-        callable.type_vars = self.type_vars(i_s.db).clone();
+        let type_vars = self.type_vars(i_s.db).clone();
+        let mut callable = self.internal_as_type(
+            i_s,
+            &type_vars,
+            params,
+            needs_self_type,
+            as_type,
+            return_type,
+        );
+        callable.type_vars = type_vars;
         if matches!(options.first_param, FirstParamProperties::Skip { .. }) {
             // Now the first param was removed, so everything is considered as having an
             // annotation (even if it's an implicit Any).
@@ -1307,6 +1314,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn internal_as_type(
         &self,
         i_s: &InferenceState,
+        type_vars: &TypeVarLikes,
         params: impl Iterator<Item = FunctionParam<'a>>,
         needs_self_type: bool,
         mut as_type: impl FnMut(&Type) -> Type,
@@ -1344,7 +1352,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         let mut new_params = vec![];
         let file_index = self.node_ref.file_index();
-        for p in params {
+        for (i, p) in params.enumerate() {
             if p.param.kind() == ParamKind::Star {
                 if let Some(ts) = p
                     .annotation(i_s.db)
@@ -1391,6 +1399,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 FunctionKind::Staticmethod => Type::Any(AnyCause::Unannotated),
                             }
                         }
+                    } else if let Some(usage) =
+                        type_vars.find_untyped_param_type_var(self.as_link(), i)
+                    {
+                        Type::TypeVar(usage)
                     } else {
                         Type::Any(AnyCause::Unannotated)
                     }
