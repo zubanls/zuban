@@ -190,7 +190,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     result_context,
-                    Some(on_type_error),
+                    on_type_error,
                 );
                 ClassExecutionResult::ClassGenerics(
                     calculated_type_args.type_arguments_into_class_generics(i_s.db),

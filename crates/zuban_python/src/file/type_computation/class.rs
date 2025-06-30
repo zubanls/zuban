@@ -166,7 +166,25 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 .name_resolution_for_types(i_s)
                 .compute_type_params_definition(i_s.as_parent_scope(), type_params, false)
         } else {
-            TypeVarFinder::find_class_type_vars(i_s, self)
+            let mut found = TypeVarFinder::find_class_type_vars(i_s, self);
+            if found.is_empty() {
+                let storage = self.class_storage();
+                if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__") {
+                    if let Some(func) = NodeRef::new(self.file, name_index)
+                        .expect_name()
+                        .name_def()
+                        .unwrap()
+                        .maybe_name_of_func()
+                    {
+                        // Only generate type vars for classes that are not typed at all and have
+                        // initialization params.
+                        if !func.is_typed() && func.params().iter().skip(1).next().is_some() {
+                            found = TypeVarLikes::new_untyped_params(func, true)
+                        }
+                    }
+                }
+            }
+            found
         };
 
         if type_var_likes.is_empty() {

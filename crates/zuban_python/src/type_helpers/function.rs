@@ -1512,10 +1512,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn iter_untyped_params(
         &self,
-        db: &'db Database,
+        in_definition: PointLink,
+        type_var_likes: &'a TypeVarLikes,
     ) -> impl Iterator<Item = UntypedFunctionParam<'a>> {
-        let type_var_likes = self.node_ref.type_vars(db);
-        let in_definition = self.as_link();
         self.iter_params()
             .enumerate()
             .map(move |(nth, param)| UntypedFunctionParam {

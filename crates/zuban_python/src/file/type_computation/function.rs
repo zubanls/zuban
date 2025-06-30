@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell};
 
 use parsa_python_cst::{
     Decorated, FunctionDef, FunctionParent, NodeIndex, ParamAnnotation, ParamKind,
@@ -14,8 +14,8 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        AnyCause, StringSlice, Type, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarLikes, TypeVarManager,
+        AnyCause, StringSlice, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
+        TypeVarManager,
     },
     type_helpers::{Class, Function},
 };
@@ -198,15 +198,8 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let (mut type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s, class);
         if type_vars.is_empty() && !i_s.db.project.settings.mypy_compatible {
             let node = self.node();
-            if !node.is_typed() {
-                type_vars = TypeVarLikes::new(
-                    node.params()
-                        .iter()
-                        .enumerate()
-                        .skip(class.is_some() as usize)
-                        .map(|(i, _)| TypeVarLike::TypeVar(Rc::new(TypeVar::for_untyped_param(i))))
-                        .collect(),
-                )
+            if !node.is_typed() && !["__init__", "__new__"].contains(&node.name().as_code()) {
+                type_vars = TypeVarLikes::new_untyped_params(node, class.is_some())
             }
         }
         match type_vars.len() {

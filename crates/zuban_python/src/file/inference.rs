@@ -3817,6 +3817,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         {
                             return Type::TypeVar(usage);
                         }
+                        if let Some(cls) = func.class {
+                            if let Some(usage) = cls
+                                .type_vars(self.i_s)
+                                .find_untyped_param_type_var(cls.as_link(), param_index)
+                            {
+                                return Type::TypeVar(usage);
+                            }
+                        }
+                        dbg!(func,);
                         Type::Any(AnyCause::Unannotated)
                     };
                     if specific == Specific::MaybeSelfParam {
