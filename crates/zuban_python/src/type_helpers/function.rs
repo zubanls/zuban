@@ -38,7 +38,7 @@ use crate::{
         ClassGenerics, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
         GenericClass, GenericItem, NeverCause, ParamType, PropertySetter, ReplaceSelf,
         ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
-        TypeVarLike, TypeVarLikes, TypeVarUsage, WrongPositionalCount,
+        TypeVarLike, TypeVarLikes, WrongPositionalCount,
     },
     type_helpers::Class,
 };

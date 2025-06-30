@@ -63,3 +63,19 @@ def f[S, T](x: Callable[[T], S]) -> tuple[T, S]: ...
 
 reveal_type(f(ret_same))  # N: Revealed type is "tuple[Never, Never]"
 reveal_type(f(ret_other))  # N: Revealed type is "tuple[Never, int]"
+
+[case untyped_callables_with_errors]
+# flags: --no-mypy-compatible --check-untyped-defs
+
+def f(x):
+    1()  # E: "int" not callable
+    return x
+reveal_type(f(""))  # N: Revealed type is "str"
+
+[case untyped_callables_without_errors]
+# flags: --no-mypy-compatible --no-check-untyped-defs
+
+def f(x):
+    1()
+    return x
+reveal_type(f(""))  # N: Revealed type is "str"

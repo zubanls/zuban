@@ -39,8 +39,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, IterCause, IterInfos, Literal,
         LiteralKind, LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarName, TypeVarUsage,
-        UnionEntry, UnionType, Variance, WithUnpack,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
+        WithUnpack,
     },
     type_helpers::{
         cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind, Function,

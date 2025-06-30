@@ -279,6 +279,7 @@ impl TestCase<'_, '_> {
         set_reverse_bool_flag(&mut config.local_partial_types, "--no-local-partial-types");
         set_reverse_bool_flag(&mut config.disallow_any_generics, "--allow-any-generics");
         set_reverse_bool_flag(&mut config.allow_redefinition, "--disallow-redefinition");
+        set_reverse_bool_flag(&mut config.check_untyped_defs, "--no-check-untyped-defs");
         set_reverse_bool_flag(
             &mut config.allow_untyped_globals,
             "--disallow-untyped-globals",
