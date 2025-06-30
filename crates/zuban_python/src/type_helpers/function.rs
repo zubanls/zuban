@@ -1891,7 +1891,10 @@ impl<'x> Param<'x> for UntypedFunctionParam<'x> {
 
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x> {
         let mut pt = self.param.specific(db);
-        let Some(TypeVarLike::TypeVar(tv)) = self.type_var_likes.get(self.nth) else {
+        let Some(usage) = self
+            .type_var_likes
+            .find_untyped_param_type_var(self.in_definition, self.nth)
+        else {
             recoverable_error!(
                 "Did not find type var for untyped param {:?}[{}]",
                 self.type_var_likes,
@@ -1905,11 +1908,7 @@ impl<'x> Param<'x> for UntypedFunctionParam<'x> {
             | WrappedParamType::KeywordOnly(t)
             | WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
             | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
-                *t = Some(Cow::Owned(Type::TypeVar(TypeVarUsage::new(
-                    tv.clone(),
-                    self.in_definition,
-                    self.nth.into(),
-                ))));
+                *t = Some(Cow::Owned(Type::TypeVar(usage)));
             }
             _ => {
                 recoverable_error!("Did not handle untyped param {pt:?}");

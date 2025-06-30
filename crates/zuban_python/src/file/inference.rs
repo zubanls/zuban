@@ -3809,18 +3809,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let specific = self.point(node_index).specific();
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
-                } else if self.i_s.current_function().is_some() {
+                } else if let Some(func) = self.i_s.current_function() {
                     let new_any = |param_index| {
-                        if let Some(TypeVarLike::TypeVar(tv)) =
-                            func.type_vars(self.i_s.db).get(param_index)
+                        if let Some(usage) = func
+                            .type_vars(self.i_s.db)
+                            .find_untyped_param_type_var(func.as_link(), param_index)
                         {
-                            if matches!(tv.name, TypeVarName::UntypedParam { .. }) {
-                                return Type::TypeVar(TypeVarUsage::new(
-                                    tv.clone(),
-                                    func.as_link(),
-                                    param_index.into(),
-                                ));
-                            }
+                            return Type::TypeVar(usage);
                         }
                         Type::Any(AnyCause::Unannotated)
                     };

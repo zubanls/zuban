@@ -449,10 +449,6 @@ impl TypeVarLikes {
         self.0.iter()
     }
 
-    pub fn get(&self, index: usize) -> Option<&TypeVarLike> {
-        self.0.get(index)
-    }
-
     pub fn find_untyped_param_type_var(
         &self,
         in_definition: PointLink,
