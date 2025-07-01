@@ -161,3 +161,19 @@ NT(C(1))
 def g(x: NT):
     reveal_type(x.x)  # N: Revealed type is "Any"
     reveal_type(x.f(1))  # N: Revealed type is "tuple[__main__.NT, int]"
+
+[case avoid_crash_in_untyped_func]
+# flags: --no-mypy-compatible
+
+class Dog:
+    def __init__(self, friends):
+        self.friends = friends
+
+    def first_friend(self):
+        for friend in self.friends:
+            return friend
+
+buddy = Dog(UNKNOWN_NAME)  # E: Name "UNKNOWN_NAME" is not defined
+reveal_type(buddy.first_friend())  # N: Revealed type is "Any"
+
+reveal_type(Dog([1]).first_friend())  # N: Revealed type is "Any"

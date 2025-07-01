@@ -3889,7 +3889,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if let Some(class) = self.i_s.current_class() {
                 debug_assert!(
                     matches!(class.generics(), Generics::Self_ { .. } | Generics::None,),
-                    "{class:?}",
+                    "{defining_stmt:?} {class:?}",
                 )
             }
         }
