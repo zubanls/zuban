@@ -50,7 +50,7 @@ pub(crate) struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
-    pub(crate) func_or_callable: Option<&'a dyn FuncLike>,
+    pub(crate) func_like: Option<&'a dyn FuncLike>,
     ignore_promotions: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
@@ -61,13 +61,13 @@ pub(crate) struct Matcher<'a> {
 impl<'a> Matcher<'a> {
     fn new(
         class: Option<&'a Class<'a>>,
-        func_or_callable: &'a dyn FuncLike,
+        func_like: &'a dyn FuncLike,
         type_var_matchers: Vec<TypeVarMatcher>,
         replace_self: Option<ReplaceSelfInMatcher<'a>>,
     ) -> Self {
         Self {
             class,
-            func_or_callable: Some(func_or_callable),
+            func_like: Some(func_like),
             type_var_matchers,
             replace_self,
             ..Self::default()
@@ -103,7 +103,7 @@ impl<'a> Matcher<'a> {
         Self {
             class: None,
             type_var_matchers: type_var_matcher.into_iter().collect(),
-            func_or_callable: Some(callable),
+            func_like: Some(callable),
             ..Self::default()
         }
     }
@@ -133,7 +133,7 @@ impl<'a> Matcher<'a> {
             .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.clone()));
         Self {
             type_var_matchers: type_var_matcher.into_iter().collect(),
-            func_or_callable: Some(function),
+            func_like: Some(function),
             replace_self: Some(replace_self),
             ..Self::default()
         }
@@ -242,7 +242,7 @@ impl<'a> Matcher<'a> {
 
     #[inline]
     pub fn might_have_defined_type_vars(&self) -> bool {
-        !self.type_var_matchers.is_empty() || self.func_or_callable.is_some()
+        !self.type_var_matchers.is_empty() || self.func_like.is_some()
     }
 
     #[inline]
@@ -275,8 +275,8 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         match value_type {
             Type::Self_ => {
-                if let Some(func_or_callable) = self.func_or_callable {
-                    if let Some(class) = func_or_callable.class() {
+                if let Some(func_like) = self.func_like {
+                    if let Some(class) = func_like.class() {
                         if let Some(other_class) = i_s.current_class() {
                             if !other_class.class_link_in_mro(i_s.db, class.node_ref.as_link()) {
                                 return Match::new_false();
@@ -293,7 +293,7 @@ impl<'a> Matcher<'a> {
                     if let Some(replace_self) = self.replace_self {
                         return replace_self().simple_matches(i_s, value_type, variance);
                     }
-                    if self.func_or_callable.is_none_or(|c| c.is_callable()) {
+                    if self.func_like.is_none_or(|c| c.is_callable()) {
                         // In case we are working within a function, Self is bound already.
                         if let Some(class) = value_type.maybe_class(i_s.db) {
                             if class.use_cached_class_infos(i_s.db).is_final {
@@ -669,7 +669,7 @@ impl<'a> Matcher<'a> {
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
         args: Box<[Arg<'db, '_>]>,
-        func_or_callable: &dyn FuncLike,
+        func_like: &dyn FuncLike,
         add_issue: &dyn Fn(IssueKind),
         on_type_error: Option<OnTypeError>,
         of_function: &dyn Fn(&str) -> Option<Box<str>>,
@@ -782,7 +782,7 @@ impl<'a> Matcher<'a> {
                 match_arguments_against_params(
                     i_s,
                     &mut Matcher::default(),
-                    func_or_callable,
+                    func_like,
                     &add_issue,
                     on_type_error,
                     iter,
@@ -1011,7 +1011,7 @@ impl<'a> Matcher<'a> {
     }
 
     fn maybe_func_class_for_usage(&self, usage: &TypeVarLikeUsage) -> Option<Class<'a>> {
-        self.func_or_callable
+        self.func_like
             .as_ref()
             .and_then(|f| f.class())
             .filter(|func_class| {
@@ -1061,7 +1061,7 @@ impl<'a> Matcher<'a> {
             type_var_matchers: std::mem::take(&mut self.type_var_matchers),
             checking_type_recursion: Some(checking_type_recursion),
             class: self.class,
-            func_or_callable: self.func_or_callable,
+            func_like: self.func_like,
             ignore_promotions: self.ignore_promotions,
             precise_matching: self.precise_matching,
             ignore_positional_param_names: self.ignore_positional_param_names,
@@ -1645,7 +1645,7 @@ impl fmt::Debug for Matcher<'_> {
                 &self.checking_type_recursion.as_ref().map(|_| "..."),
             )
             .field("class", &self.class)
-            .field("func_or_callable", &self.func_or_callable)
+            .field("func_like", &self.func_like)
             .field("ignore_promotions", &self.ignore_promotions)
             .field("replace_self", &self.replace_self.map(|_| "..."))
             .field(

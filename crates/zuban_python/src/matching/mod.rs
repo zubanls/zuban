@@ -142,7 +142,7 @@ impl<'a> OnTypeError<'a> {
         Self {
             callback,
             on_overload_mismatch: None,
-            generate_diagnostic_string: &func_or_callable_diagnostic_string,
+            generate_diagnostic_string: &func_like_diagnostic_string,
         }
     }
 
@@ -153,7 +153,7 @@ impl<'a> OnTypeError<'a> {
         Self {
             callback,
             on_overload_mismatch,
-            generate_diagnostic_string: &func_or_callable_diagnostic_string,
+            generate_diagnostic_string: &func_like_diagnostic_string,
         }
     }
 
@@ -174,7 +174,7 @@ impl<'a> OnTypeError<'a> {
 
 // For whatever reason we cannot just pass FunctionOrCallable::diagnostic_string, even though it
 // results in the exactly same behavior. Probably a Rust bug.
-fn func_or_callable_diagnostic_string(f: &dyn FuncLike, db: &Database) -> Option<String> {
+fn func_like_diagnostic_string(f: &dyn FuncLike, db: &Database) -> Option<String> {
     f.diagnostic_string(db)
 }
 

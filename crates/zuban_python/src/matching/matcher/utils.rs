@@ -109,7 +109,7 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
 fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &'a Class,
-    func_or_callable: &dyn FuncLike,
+    func_like: &dyn FuncLike,
     check: impl FnOnce(Matcher, &'a TypeVarLikes) -> CalculatedTypeArgs,
 ) -> CalculatedTypeArgs {
     debug!("Calculate __init__ type vars for class {}", class.name());
@@ -117,7 +117,7 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     let class_matcher_needed =
         matches!(class.generics, Generics::NotDefinedYet { .. }) && !type_vars.is_empty();
     // Function type vars need to be calculated, so annotations are used.
-    let func_type_vars = func_or_callable.type_vars(i_s.db);
+    let func_type_vars = func_like.type_vars(i_s.db);
 
     let match_in_definition = class.node_ref.as_link();
     let mut tv_matchers = vec![];
@@ -126,17 +126,12 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     }
     if !func_type_vars.is_empty() {
         tv_matchers.push(TypeVarMatcher::new(
-            func_or_callable.defined_at(),
+            func_like.defined_at(),
             func_type_vars.clone(),
         ));
     }
     let as_self_type = || class.as_type(i_s.db);
-    let matcher = Matcher::new(
-        Some(class),
-        func_or_callable,
-        tv_matchers,
-        Some(&as_self_type),
-    );
+    let matcher = Matcher::new(Some(class), func_like, tv_matchers, Some(&as_self_type));
 
     let mut type_arguments = check(matcher, type_vars);
     if !class_matcher_needed {
@@ -449,7 +444,7 @@ pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
 }
 
 fn get_matcher<'a>(
-    func_or_callable: &'a dyn FuncLike,
+    func_like: &'a dyn FuncLike,
     match_in_definition: PointLink,
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
     type_vars: &TypeVarLikes,
@@ -459,7 +454,7 @@ fn get_matcher<'a>(
     } else {
         vec![TypeVarMatcher::new(match_in_definition, type_vars.clone())]
     };
-    Matcher::new(None, func_or_callable, matcher, replace_self)
+    Matcher::new(None, func_like, matcher, replace_self)
 }
 
 fn apply_result_context(
@@ -467,7 +462,7 @@ fn apply_result_context(
     matcher: &mut Matcher,
     result_context: &mut ResultContext,
     return_class: Option<&Class>,
-    func_or_callable: &dyn FuncLike,
+    func_like: &dyn FuncLike,
     on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
 ) {
     result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
@@ -497,7 +492,7 @@ fn apply_result_context(
                 }
             }
         } else {
-            let return_type = func_or_callable.inferred_return_type(i_s);
+            let return_type = func_like.inferred_return_type(i_s);
             // Fill the type var arguments from context
             return_type.is_sub_type_of(i_s, matcher, expected);
             matcher.reset_invalid_bounds_of_context(i_s)
@@ -585,7 +580,7 @@ fn calc_type_vars_for_callable_internal<'db: 'a, 'a>(
 fn calc_type_vars_with_callback<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
-    func_or_callable: &dyn FuncLike,
+    func_like: &dyn FuncLike,
     return_class: Option<&Class>,
     add_issue: impl Fn(IssueKind),
     match_in_definition: PointLink,
@@ -596,8 +591,8 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
     let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
         let mut add_init_generics = |matcher: &mut Matcher, return_class: &Class| {
-            if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
-                if let Some(func_class) = func_or_callable.class() {
+            if let Some(t) = func_like.first_self_or_class_annotation(i_s) {
+                if let Some(func_class) = func_like.class() {
                     // When an __init__ has a self annotation, it's a bit special, because it influences
                     // the generics.
                     let m = Class::with_self_generics(i_s.db, return_class.node_ref)
@@ -640,7 +635,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
             &mut matcher,
             result_context,
             return_class,
-            func_or_callable,
+            func_like,
             |matcher, return_class| add_init_generics(matcher, return_class),
         )
     }
@@ -663,7 +658,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         if let Some(type_arguments) = &result.type_arguments {
             debug!(
                 "Calculated type vars for {}: [{}]",
-                func_or_callable
+                func_like
                     .diagnostic_string(i_s.db)
                     .as_deref()
                     .unwrap_or("function"),
@@ -682,13 +677,13 @@ pub(crate) fn match_arguments_against_params<
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    func_or_callable: &dyn FuncLike,
+    func_like: &dyn FuncLike,
     add_issue: &impl Fn(IssueKind),
     on_type_error: Option<OnTypeError>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let diagnostic_string = |prefix: &str| {
-        (on_type_error.unwrap().generate_diagnostic_string)(func_or_callable, i_s.db)
+        (on_type_error.unwrap().generate_diagnostic_string)(func_like, i_s.db)
             .map(|s| (prefix.to_owned() + &s).into())
     };
     let too_few_arguments = || {
@@ -893,7 +888,7 @@ pub(crate) fn match_arguments_against_params<
                     i_s,
                     &param_spec,
                     args,
-                    func_or_callable,
+                    func_like,
                     add_issue,
                     on_type_error,
                     &diagnostic_string,
@@ -1039,7 +1034,7 @@ pub(crate) fn match_arguments_against_params<
         }
     }
     let add_keyword_argument_issue = |arg: &Arg, name: &str| {
-        let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
+        let s = match func_like.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
                 "{} gets multiple values for keyword argument \"{name}\"",
                 diagnostic_string("").as_deref().unwrap_or("function"),
