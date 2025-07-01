@@ -674,11 +674,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             )
         };
 
-        let mut inferred = Inferred::from_type(
-            base_t
-                .map(|c| Type::Callable(Rc::new(c)))
-                .unwrap_or_else(|| self.as_type(i_s, FirstParamProperties::None)),
-        );
         let had_first_annotation = self.class.is_none()
             || self
                 .node()
@@ -694,6 +689,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_final = false;
         let mut is_override = false;
         let mut dataclass_transform = None;
+        let mut inferred_decs = vec![];
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
@@ -778,7 +774,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             );
                         }
                     }
-                    inferred = dec_inf.execute(i_s, &KnownArgs::new(&inferred, nr()));
+                    inferred_decs.push((decorator.index(), dec_inf));
                 }
                 InferredDecorator::Overload => is_overload = true,
                 InferredDecorator::Abstractmethod => is_abstract = true,
@@ -798,6 +794,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     dataclass_transform = Some(transform);
                 }
             }
+        }
+        let mut inferred = Inferred::from_type(
+            base_t
+                .map(|c| Type::Callable(Rc::new(c)))
+                .unwrap_or_else(|| {
+                    if is_overload {
+                        self.as_type_without_inferring_return_type(i_s)
+                    } else {
+                        self.as_type(i_s, FirstParamProperties::None)
+                    }
+                }),
+        );
+        for (decorator_index, inferred_dec) in inferred_decs {
+            let nr = NodeRef::new(self.node_ref.file, decorator_index);
+            inferred = inferred_dec.execute(i_s, &KnownArgs::new(&inferred, nr));
         }
         if is_abstract && is_final {
             self.add_issue_onto_start_including_decorator(
@@ -1042,15 +1053,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         continue;
                     }
                     FunctionDetails {
-                        inferred: Inferred::from_type(Type::Callable(Rc::new(
-                            next_func.as_callable_with_options(
-                                i_s,
-                                AsCallableOptions {
-                                    first_param: FirstParamProperties::None,
-                                    return_type: next_func.return_type(i_s),
-                                },
-                            ),
-                        ))),
+                        inferred: Inferred::from_type(
+                            next_func.as_type_without_inferring_return_type(i_s),
+                        ),
                         kind: FunctionKind::Function {
                             had_first_self_or_class_annotation: self
                                 .node()
@@ -1261,6 +1266,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 return_type: self.inferred_return_type(i_s),
             },
         )
+    }
+
+    pub fn as_type_without_inferring_return_type(&self, i_s: &InferenceState) -> Type {
+        Type::Callable(Rc::new(self.as_callable_with_options(
+            i_s,
+            AsCallableOptions {
+                first_param: FirstParamProperties::None,
+                return_type: self.return_type(i_s),
+            },
+        )))
     }
 
     pub fn as_callable_with_options(
