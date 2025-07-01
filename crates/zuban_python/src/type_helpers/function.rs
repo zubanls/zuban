@@ -1042,9 +1042,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         continue;
                     }
                     FunctionDetails {
-                        inferred: Inferred::from_type(
-                            next_func.as_type(i_s, FirstParamProperties::None),
-                        ),
+                        inferred: Inferred::from_type(Type::Callable(Rc::new(
+                            next_func.as_callable_with_options(
+                                i_s,
+                                AsCallableOptions {
+                                    first_param: FirstParamProperties::None,
+                                    return_type: next_func.return_type(i_s),
+                                },
+                            ),
+                        ))),
                         kind: FunctionKind::Function {
                             had_first_self_or_class_annotation: self
                                 .node()
@@ -1269,7 +1275,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 false
             }
             FirstParamProperties::None => {
-                self.inferred_return_type(i_s).has_self_type(i_s.db)
+                options.return_type.has_self_type(i_s.db)
                     || params_have_self_type_after_self(i_s.db, self.iter_params())
             }
         };
