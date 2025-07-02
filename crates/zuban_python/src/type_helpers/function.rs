@@ -1447,7 +1447,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 FunctionKind::Classmethod { .. } => {
                                     Type::Any(AnyCause::Unannotated)
                                 }
-                                FunctionKind::Staticmethod => Type::Any(AnyCause::Unannotated),
+                                FunctionKind::Staticmethod => {
+                                    if let Some(usage) =
+                                        type_vars.find_untyped_param_type_var(self.as_link(), i)
+                                    {
+                                        Type::TypeVar(usage)
+                                    } else {
+                                        Type::Any(AnyCause::Unannotated)
+                                    }
+                                }
                             }
                         }
                     } else if let Some(usage) =

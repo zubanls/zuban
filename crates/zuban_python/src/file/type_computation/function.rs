@@ -199,7 +199,19 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if type_vars.is_empty() && !i_s.db.project.settings.mypy_compatible {
             let node = self.node();
             if !node.is_typed() && !["__init__", "__new__"].contains(&node.name().as_code()) {
-                type_vars = TypeVarLikes::new_untyped_params(node, class.is_some())
+                let mut skip_first = class.is_some();
+                if skip_first {
+                    if let Some(decorated) = node.maybe_decorated() {
+                        for decorator in decorated.decorators().iter() {
+                            if decorator.as_code().contains("staticmethod") {
+                                // TODO this is not proper type inference, but should probably
+                                // suffice for now.
+                                skip_first = false;
+                            }
+                        }
+                    }
+                }
+                type_vars = TypeVarLikes::new_untyped_params(node, skip_first)
             }
         }
         match type_vars.len() {

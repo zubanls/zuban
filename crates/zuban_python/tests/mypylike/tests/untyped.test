@@ -189,7 +189,15 @@ class C:
 def wrap[T](x: T) -> list[T]:
     return [x]
 
-reveal_type(C.f)  # N: Revealed type is ""
-reveal_type(wrap(C.f))  # N: Revealed type is ""
-reveal_type(C().f)  # N: Revealed type is ""
-reveal_type(wrap(C().f))  # N: Revealed type is ""
+wrapped1 = wrap(C.f)
+reveal_type(C.f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped1)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(C.f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped1[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
+wrapped2 = wrap(C().f)
+reveal_type(C().f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped2)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(C().f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped2[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
