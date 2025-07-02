@@ -537,10 +537,33 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         {
             return FirstParamKind::ClassOfSelf;
         }
-        match self.kind(i_s) {
-            FunctionKind::Function { .. } | FunctionKind::Property { .. } => FirstParamKind::Self_,
-            FunctionKind::Classmethod { .. } => FirstParamKind::ClassOfSelf,
-            FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
+        if self.node_ref.point().calculated() {
+            match self.kind(i_s) {
+                FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
+                    FirstParamKind::Self_
+                }
+                FunctionKind::Classmethod { .. } => FirstParamKind::ClassOfSelf,
+                FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
+            }
+        } else {
+            // When inferring params while inferring the return type, the function might not yet
+            // be defined. In that case simply check for static/classmethods
+            if self.class.is_some() {
+                if let Some(decorated) = self.node().maybe_decorated() {
+                    for decorator in decorated.decorators().iter() {
+                        let inf = self.file.inference(i_s).infer_decorator(decorator);
+                        if let Some(saved_link) = inf.maybe_saved_link() {
+                            if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
+                                return FirstParamKind::ClassOfSelf;
+                            }
+                            if saved_link == i_s.db.python_state.staticmethod_node_ref().as_link() {
+                                return FirstParamKind::InStaticmethod;
+                            }
+                        }
+                    }
+                }
+            }
+            FirstParamKind::Self_
         }
     }
 

@@ -177,3 +177,19 @@ buddy = Dog(UNKNOWN_NAME)  # E: Name "UNKNOWN_NAME" is not defined
 reveal_type(buddy.first_friend())  # N: Revealed type is "Any"
 
 reveal_type(Dog([1]).first_friend())  # N: Revealed type is "Any"
+
+[case class_staticmethod]
+# flags: --no-mypy-compatible
+
+class C:
+    @staticmethod
+    def f(x, y, z):
+        return x, z
+
+def wrap[T](x: T) -> list[T]:
+    return [x]
+
+reveal_type(C.f)  # N: Revealed type is ""
+reveal_type(wrap(C.f))  # N: Revealed type is ""
+reveal_type(C().f)  # N: Revealed type is ""
+reveal_type(wrap(C().f))  # N: Revealed type is ""

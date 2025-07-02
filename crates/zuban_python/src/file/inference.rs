@@ -3784,7 +3784,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     self.i_s.db,
                     NodeRef::new(self.file, func_node.index()),
                 );
-                func.ensure_cached_func(self.i_s);
 
                 let to_inferred = |is_classmethod: bool| {
                     let mut t = if func.node_ref.node_index
