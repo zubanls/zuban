@@ -178,7 +178,7 @@ reveal_type(buddy.first_friend())  # N: Revealed type is "Any"
 
 reveal_type(Dog([1]).first_friend())  # N: Revealed type is "Any"
 
-[case class_staticmethod]
+[case untyped_staticmethod]
 # flags: --no-mypy-compatible
 
 class C:
@@ -201,3 +201,27 @@ reveal_type(wrapped2)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3
 reveal_type(C().f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
 reveal_type(wrapped2[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
 
+[case untyped_classmethod]
+# flags: --no-mypy-compatible
+
+class C:
+    @classmethod
+    def f(cls, y, z):
+        reveal_type(cls)  # N: Revealed type is "Type[Self]"
+        reveal_type(y)    # N: Revealed type is "T2"
+        return cls, z
+
+def wrap[T](x: T) -> list[T]:
+    return [x]
+
+wrapped1 = wrap(C.f)
+reveal_type(C.f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]"
+reveal_type(wrapped1)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]]"
+reveal_type(C.f(1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+reveal_type(wrapped1[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+
+wrapped2 = wrap(C().f)
+reveal_type(C().f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]"
+reveal_type(wrapped2)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]]"
+reveal_type(C().f(1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+reveal_type(wrapped2[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
