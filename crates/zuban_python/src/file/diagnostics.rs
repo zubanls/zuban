@@ -1186,287 +1186,50 @@ impl Inference<'_, '_, '_> {
                 function.node_ref.line_one_based(self.i_s.db)
             );
             let _indent = debug_indent();
-            self.calc_func_diagnostics(function, func_node);
+            self.calc_func_diagnostics(function);
         })
     }
 
-    /*
-    pub(crate) fn ensure_x(&self, function: Function) {
+    pub(crate) fn ensure_calculated_function_body(&self, function: Function) {
         // TODO what todo with this?
-        let block_ref = NodeRef::new(self.file, block.index());
-        if block_ref.point().calculated() {
+        let func_node = function.node();
+        let (name_def, _, params, _, body) = func_node.unpack();
+        let body_ref = NodeRef::new(self.file, body.index());
+        if body_ref.point().calculated() {
             return;
         }
-        block_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
-    }
-    */
-
-    fn calc_func_diagnostics(&self, function: Function, func_node: FunctionDef) {
-        let i_s = self.i_s;
         FLOW_ANALYSIS.with(|fa| {
-            let mut is_overload_member = false;
             let unreachable = fa.with_new_func_frame_and_return_unreachable(|| {
                 if func_node.is_empty_generator_function() {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
-                is_overload_member = self
-                    .calc_function_diagnostics_internal_and_return_is_overload(function, func_node)
+                let flags = self.flags();
+                self.file
+                    .inference(&self.i_s.with_func_context(&function))
+                    .function_diagnostics_with_correct_i_s(function, flags, name_def, params, body);
             });
-            let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
-            if is_protocol && function.is_final() && !is_overload_member {
-                function.add_issue_onto_start_including_decorator(
-                    i_s,
-                    IssueKind::ProtocolMemberCannotBeFinal,
-                )
-            }
-            if !unreachable
-                && !is_overload_member
-                && !self.file.is_stub()
-                && function.return_annotation().is_some()
-                && !(self.flags().allow_empty_bodies && function.has_trivial_body(i_s))
-                && !function.is_abstract()
-                && !self.in_type_checking_only_block()
-            {
-                let ret_type = function.expected_return_type_for_return_stmt(i_s);
-                let has_trivial_body = function.has_trivial_body(i_s);
-                let maybe_add_async = || {
-                    if has_trivial_body
-                        && function
-                            .class
-                            .and_then(|c| c.maybe_metaclass(i_s.db))
-                            .is_some_and(|metaclass| {
-                                metaclass == i_s.db.python_state.abc_meta_link()
-                            })
-                    {
-                        self.add_issue(
-                            func_node.name().index(),
-                            IssueKind::Note(
-                                "If the method is meant to be abstract, use @abc.abstractmethod"
-                                    .into(),
-                            ),
-                        );
-                    }
-                };
-                if matches!(ret_type.as_ref(), Type::Never(_)) {
-                    self.add_issue(
-                        func_node.name().index(),
-                        IssueKind::ImplicitReturnInFunctionWithNeverReturn,
-                    );
-                    maybe_add_async()
-                } else {
-                    let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
-                    if self.flags().warn_no_return {
-                        if (!is_valid
-                            || !has_trivial_body
-                                && !matches!(ret_type.as_ref(), Type::None | Type::Any(_)))
-                            && !is_protocol
-                        {
-                            self.add_issue(
-                                func_node.name().index(),
-                                IssueKind::MissingReturnStatement {
-                                    code: if has_trivial_body {
-                                        "empty-body"
-                                    } else {
-                                        "return"
-                                    },
-                                },
-                            );
-                            maybe_add_async()
-                        }
-                    } else if !is_valid {
-                        self.add_issue(
-                            func_node.name().index(),
-                            IssueKind::IncompatibleImplicitReturn {
-                                expected: ret_type.format_short(i_s.db),
-                            },
-                        );
-                        maybe_add_async()
-                    }
-                }
-            }
+            let specific = if unreachable {
+                Specific::FunctionEndIsUnreachable
+            } else {
+                Specific::Analyzed
+            };
+            body_ref.set_point(Point::new_specific(specific, Locality::Todo));
         });
-
-        let (name, _, params, return_annotation, _) = func_node.unpack();
-        let mut params_iterator = params.iter().peekable();
-        if let Some(class) = function.class {
-            if function.kind(i_s) != FunctionKind::Staticmethod || function.is_dunder_new() {
-                let mut was_star = false;
-                let first_param = params_iterator
-                    .peek()
-                    .copied()
-                    .and_then(|p| match p.kind() {
-                        ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
-                            params_iterator.next();
-                            Some(p)
-                        }
-                        ParamKind::KeywordOnly | ParamKind::StarStar => None,
-                        ParamKind::Star => {
-                            was_star = true;
-                            None
-                        }
-                    });
-                if let Some(first_param) = first_param {
-                    if let Some(annotation) = first_param.annotation() {
-                        let undefined_generics_class =
-                            Class::with_undefined_generics(class.node_ref);
-                        let mut class_t = undefined_generics_class.as_type(i_s.db);
-                        let mut original = self.use_cached_param_annotation_type(annotation);
-                        let mut new = None;
-                        match original.as_ref() {
-                            Type::TypeVar(tv) => {
-                                if let TypeVarKind::Bound(b) = tv.type_var.kind(self.i_s.db) {
-                                    new = Some(b.clone());
-                                }
-                            }
-                            Type::Type(t) => {
-                                if let Type::TypeVar(tv) = t.as_ref() {
-                                    if let TypeVarKind::Bound(b) = tv.type_var.kind(self.i_s.db) {
-                                        new = Some(Type::Type(Rc::new(b.clone())));
-                                    }
-                                }
-                            }
-                            _ => (),
-                        };
-                        if let Some(new) = new {
-                            original = Cow::Owned(new)
-                        }
-                        let erased = original
-                            .replace_type_var_likes_and_self(
-                                i_s.db,
-                                &mut |u| Some(u.as_any_generic_item()),
-                                &|| Some(class_t.clone()),
-                            )
-                            .map(Cow::Owned)
-                            .unwrap_or(original);
-                        let erased_is_protocol = match erased.as_ref() {
-                            Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
-                            Type::Type(t) => {
-                                t.maybe_class(i_s.db).is_some_and(|c| c.is_protocol(i_s.db))
-                            }
-                            _ => false,
-                        };
-                        if !erased_is_protocol {
-                            if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
-                                class_t = Type::Type(Rc::new(class_t));
-                            };
-                            if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
-                                let param_name = first_param.name_def().as_code();
-                                let issue = if ["self", "cls"].contains(&param_name) {
-                                    let format_data = &FormatData::new_reveal_type(i_s.db);
-                                    IssueKind::TypeOfSelfIsNotASupertypeOfItsClass {
-                                        self_type: erased.format(format_data),
-                                        class: class_t.format(format_data),
-                                    }
-                                } else {
-                                    IssueKind::SelfArgumentMissing
-                                };
-                                self.add_issue(annotation.index(), issue);
-                            }
-                        }
-                    }
-                } else if !was_star {
-                    function
-                        .node_ref
-                        .add_issue(i_s, IssueKind::MethodWithoutArguments)
-                }
-            }
-        }
-
-        let flags = self.flags();
-        check_for_missing_annotations(i_s, flags, function, name, return_annotation);
-
-        for param in params_iterator {
-            if let Some(annotation) = param.annotation() {
-                let t = self.use_cached_param_annotation_type(annotation);
-                if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Covariant))
-                    && !["__init__", "__new__", "__post_init__"].contains(&name.as_code())
-                {
-                    NodeRef::new(self.file, annotation.index())
-                        .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
-                }
-
-                if param.kind() == ParamKind::StarStar {
-                    if let Type::TypedDict(td) = t.as_ref() {
-                        let mut overlapping_names = vec![];
-                        for member in td.members(i_s.db) {
-                            for p in params.iter() {
-                                let name = member.name.as_str(i_s.db);
-                                if matches!(
-                                    p.kind(),
-                                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                                ) && name == p.name_def().as_code()
-                                {
-                                    overlapping_names.push(format!("\"{name}\""));
-                                    break;
-                                }
-                            }
-                        }
-                        if !overlapping_names.is_empty() {
-                            function.add_issue_for_declaration(
-                                i_s,
-                                IssueKind::TypedDictArgumentNameOverlapWithUnpack {
-                                    names: overlapping_names.join(", ").into(),
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-        }
-
-        if let Some(return_annotation) = return_annotation {
-            let t = self.use_cached_return_annotation_type(return_annotation);
-            if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Contravariant))
-            {
-                NodeRef::new(self.file, return_annotation.index())
-                    .add_issue(i_s, IssueKind::TypeVarContravariantInReturnType);
-            }
-            if function.is_generator() {
-                let expected = if function.is_async() {
-                    &i_s.db.python_state.async_generator_with_any_generics
-                } else {
-                    &i_s.db.python_state.generator_with_any_generics
-                };
-                if !t.is_simple_super_type_of(i_s, expected).bool() {
-                    if function.is_async() {
-                        NodeRef::new(self.file, return_annotation.index())
-                            .add_issue(i_s, IssueKind::InvalidAsyncGeneratorReturnType);
-                    } else {
-                        NodeRef::new(self.file, return_annotation.index())
-                            .add_issue(i_s, IssueKind::InvalidGeneratorReturnType);
-                    }
-                }
-            }
-        }
-        if flags.disallow_any_unimported {
-            /*
-            for param in params
-                .iter()
-                .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
-            {
-                if let Some(annotation) = param.annotation() {
-                    let _t = self.use_cached_param_annotation_type(annotation);
-                    // TODO implement --disallow-any-unimported
-                }
-            }
-            */
-        }
     }
 
-    fn calc_function_diagnostics_internal_and_return_is_overload(
-        &self,
-        function: Function,
-        func_node: FunctionDef,
-    ) -> bool {
+    fn calc_func_diagnostics(&self, function: Function) {
+        self.ensure_calculated_function_body(function);
+
         let i_s = self.i_s;
+
+        let (name_def, type_params, params, return_annotation, body) = function.node().unpack();
+
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
             is_overload_member = true;
             if let Some(implementation) = &o.implementation {
                 let maybe_remap = |class: Class, c: &mut Cow<CallableContent>| {
-                    if c.has_self_type(self.i_s.db)
-                        || !class.use_cached_type_vars(self.i_s.db).is_empty()
-                    {
+                    if c.has_self_type(i_s.db) || !class.use_cached_type_vars(i_s.db).is_empty() {
                         let mut cls = class;
                         cls.generics = Generics::NotDefinedYet {
                             class_ref: class.node_ref,
@@ -1538,8 +1301,6 @@ impl Inference<'_, '_, '_> {
             is_overload_member = !function.is_overload_implementation();
         }
 
-        let (name, type_params, params, _, block) = func_node.unpack();
-
         if let Some(type_params) = type_params {
             self.check_type_params_redefinitions(function.parent_scope(), type_params);
         }
@@ -1578,11 +1339,243 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+
+        let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
+        if is_protocol && function.is_final() && !is_overload_member {
+            function.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::ProtocolMemberCannotBeFinal,
+            )
+        }
+
+        if NodeRef::new(self.file, body.index()).point().specific()
+            != Specific::FunctionEndIsUnreachable
+            && !is_overload_member
+            && !self.file.is_stub()
+            && function.return_annotation().is_some()
+            && !(self.flags().allow_empty_bodies && function.has_trivial_body(i_s))
+            && !function.is_abstract()
+            && !self.in_type_checking_only_block()
+        {
+            let ret_type = function.expected_return_type_for_return_stmt(i_s);
+            let has_trivial_body = function.has_trivial_body(i_s);
+            let maybe_add_async = || {
+                if has_trivial_body
+                    && function
+                        .class
+                        .and_then(|c| c.maybe_metaclass(i_s.db))
+                        .is_some_and(|metaclass| metaclass == i_s.db.python_state.abc_meta_link())
+                {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::Note(
+                            "If the method is meant to be abstract, use @abc.abstractmethod".into(),
+                        ),
+                    );
+                }
+            };
+            if matches!(ret_type.as_ref(), Type::Never(_)) {
+                self.add_issue(
+                    name_def.index(),
+                    IssueKind::ImplicitReturnInFunctionWithNeverReturn,
+                );
+                maybe_add_async()
+            } else {
+                let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
+                if self.flags().warn_no_return {
+                    if (!is_valid
+                        || !has_trivial_body
+                            && !matches!(ret_type.as_ref(), Type::None | Type::Any(_)))
+                        && !is_protocol
+                    {
+                        self.add_issue(
+                            name_def.index(),
+                            IssueKind::MissingReturnStatement {
+                                code: if has_trivial_body {
+                                    "empty-body"
+                                } else {
+                                    "return"
+                                },
+                            },
+                        );
+                        maybe_add_async()
+                    }
+                } else if !is_valid {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::IncompatibleImplicitReturn {
+                            expected: ret_type.format_short(i_s.db),
+                        },
+                    );
+                    maybe_add_async()
+                }
+            }
+        }
+
+        let mut params_iterator = params.iter().peekable();
+        if let Some(class) = function.class {
+            if function.kind(i_s) != FunctionKind::Staticmethod || function.is_dunder_new() {
+                let mut was_star = false;
+                let first_param = params_iterator
+                    .peek()
+                    .copied()
+                    .and_then(|p| match p.kind() {
+                        ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
+                            params_iterator.next();
+                            Some(p)
+                        }
+                        ParamKind::KeywordOnly | ParamKind::StarStar => None,
+                        ParamKind::Star => {
+                            was_star = true;
+                            None
+                        }
+                    });
+                if let Some(first_param) = first_param {
+                    if let Some(annotation) = first_param.annotation() {
+                        let undefined_generics_class =
+                            Class::with_undefined_generics(class.node_ref);
+                        let mut class_t = undefined_generics_class.as_type(i_s.db);
+                        let mut original = self.use_cached_param_annotation_type(annotation);
+                        let mut new = None;
+                        match original.as_ref() {
+                            Type::TypeVar(tv) => {
+                                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
+                                    new = Some(b.clone());
+                                }
+                            }
+                            Type::Type(t) => {
+                                if let Type::TypeVar(tv) = t.as_ref() {
+                                    if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
+                                        new = Some(Type::Type(Rc::new(b.clone())));
+                                    }
+                                }
+                            }
+                            _ => (),
+                        };
+                        if let Some(new) = new {
+                            original = Cow::Owned(new)
+                        }
+                        let erased = original
+                            .replace_type_var_likes_and_self(
+                                i_s.db,
+                                &mut |u| Some(u.as_any_generic_item()),
+                                &|| Some(class_t.clone()),
+                            )
+                            .map(Cow::Owned)
+                            .unwrap_or(original);
+                        let erased_is_protocol = match erased.as_ref() {
+                            Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
+                            Type::Type(t) => {
+                                t.maybe_class(i_s.db).is_some_and(|c| c.is_protocol(i_s.db))
+                            }
+                            _ => false,
+                        };
+                        if !erased_is_protocol {
+                            if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
+                                class_t = Type::Type(Rc::new(class_t));
+                            };
+                            if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
+                                let param_name = first_param.name_def().as_code();
+                                let issue = if ["self", "cls"].contains(&param_name) {
+                                    let format_data = &FormatData::new_reveal_type(i_s.db);
+                                    IssueKind::TypeOfSelfIsNotASupertypeOfItsClass {
+                                        self_type: erased.format(format_data),
+                                        class: class_t.format(format_data),
+                                    }
+                                } else {
+                                    IssueKind::SelfArgumentMissing
+                                };
+                                self.add_issue(annotation.index(), issue);
+                            }
+                        }
+                    }
+                } else if !was_star {
+                    function
+                        .node_ref
+                        .add_issue(i_s, IssueKind::MethodWithoutArguments)
+                }
+            }
+        }
+
         let flags = self.flags();
-        self.file
-            .inference(&i_s.with_func_context(&function))
-            .function_diagnostics_with_correct_i_s(function, flags, name, params, block);
-        is_overload_member
+        check_for_missing_annotations(i_s, flags, function, name_def, return_annotation);
+
+        for param in params_iterator {
+            if let Some(annotation) = param.annotation() {
+                let t = self.use_cached_param_annotation_type(annotation);
+                if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Covariant))
+                    && !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code())
+                {
+                    NodeRef::new(self.file, annotation.index())
+                        .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
+                }
+
+                if param.kind() == ParamKind::StarStar {
+                    if let Type::TypedDict(td) = t.as_ref() {
+                        let mut overlapping_names = vec![];
+                        for member in td.members(i_s.db) {
+                            for p in params.iter() {
+                                let name = member.name.as_str(i_s.db);
+                                if matches!(
+                                    p.kind(),
+                                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                                ) && name == p.name_def().as_code()
+                                {
+                                    overlapping_names.push(format!("\"{name}\""));
+                                    break;
+                                }
+                            }
+                        }
+                        if !overlapping_names.is_empty() {
+                            function.add_issue_for_declaration(
+                                i_s,
+                                IssueKind::TypedDictArgumentNameOverlapWithUnpack {
+                                    names: overlapping_names.join(", ").into(),
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(return_annotation) = return_annotation {
+            let t = self.use_cached_return_annotation_type(return_annotation);
+            if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Contravariant))
+            {
+                NodeRef::new(self.file, return_annotation.index())
+                    .add_issue(i_s, IssueKind::TypeVarContravariantInReturnType);
+            }
+            if function.is_generator() {
+                let expected = if function.is_async() {
+                    &i_s.db.python_state.async_generator_with_any_generics
+                } else {
+                    &i_s.db.python_state.generator_with_any_generics
+                };
+                if !t.is_simple_super_type_of(i_s, expected).bool() {
+                    if function.is_async() {
+                        NodeRef::new(self.file, return_annotation.index())
+                            .add_issue(i_s, IssueKind::InvalidAsyncGeneratorReturnType);
+                    } else {
+                        NodeRef::new(self.file, return_annotation.index())
+                            .add_issue(i_s, IssueKind::InvalidGeneratorReturnType);
+                    }
+                }
+            }
+        }
+        if flags.disallow_any_unimported {
+            /*
+            for param in params
+                .iter()
+                .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
+            {
+                if let Some(annotation) = param.annotation() {
+                    let _t = self.use_cached_param_annotation_type(annotation);
+                    // TODO implement --disallow-any-unimported
+                }
+            }
+            */
+        }
     }
 
     // This is mostly a helper function to avoid using the wrong InferenceState accidentally.

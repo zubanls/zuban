@@ -8,7 +8,6 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
 untyped_override_check_untyped_defs_no_mypy_compatible
-overwrite_any_with_property_setter_should_be_fine
 
 # Pre-release crashes
 dataclass_post_init_should_not_crash2

@@ -458,6 +458,7 @@ pub(crate) enum Specific {
     FirstNameOfNameDef, // Cycles for the same name definition in e.g. different branches
     NameOfNameDef,      // Cycles for the same name definition in e.g. different branches
     Parent,             // Has a link to the parent scope
+    FunctionEndIsUnreachable,
     OverloadUnreachable,
     AnyDueToError,
     InvalidTypeDefinition,
