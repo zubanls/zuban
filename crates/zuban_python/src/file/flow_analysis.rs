@@ -1751,6 +1751,10 @@ impl Inference<'_, '_, '_> {
         }
         let p = name_def_node_ref.point();
         if p.calculating() {
+            debug!(
+                "The symbol {} is already calculating",
+                name_def_node_ref.as_code()
+            );
             return Err(());
         }
         if !p.calculated() {
@@ -1795,7 +1799,15 @@ impl Inference<'_, '_, '_> {
     ) -> Result<(), ()> {
         let mut function = function; // lifetime issues?!
         if let Some(class) = function.class.as_mut() {
-            class.ensure_calculated_diagnostics_for_class(self.i_s.db)?;
+            let result = class.ensure_calculated_diagnostics_for_class(self.i_s.db);
+            if result.is_err() {
+                debug!(
+                    "The class {:?} could not be calculated for func {:?} diagnostics",
+                    class.name(),
+                    function.name()
+                );
+            }
+            result?
         }
 
         fa.with_new_empty_and_delay_further(self.i_s.db, || self.ensure_func_diagnostics(function))

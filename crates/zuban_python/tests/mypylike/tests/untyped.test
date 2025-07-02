@@ -225,3 +225,40 @@ reveal_type(C().f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z:
 reveal_type(wrapped2)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]]"
 reveal_type(C().f(1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
 reveal_type(wrapped2[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+
+[case untyped_property]
+# flags: --no-mypy-compatible
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    @property
+    def f(self):
+        return 1
+
+    @property
+    def g(self):
+        return self.x
+
+    @property
+    def h(self):
+        return self.x
+
+    @h.setter
+    def h(self, value):
+        reveal_type(value)  # N: Revealed type is "T2"
+        self.x = value
+
+c = C("")
+reveal_type(C.f)  # N: Revealed type is "property"
+C.f()  # E: "property" not callable
+reveal_type(c.f)  # N: Revealed type is "Literal[1]?"
+reveal_type(c.g)  # N: Revealed type is "Any"
+reveal_type(c.h)  # N: Revealed type is "Any"
+
+c.f = ""  # E: Property "f" defined in "C" is read-only
+c.g = ""  # E: Property "f" defined in "C" is read-only
+c.g = 1  # E: Property "f" defined in "C" is read-only
+c.h = ""
+c.h = 1

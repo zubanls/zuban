@@ -1366,18 +1366,34 @@ impl<'db: 'a, 'a> Class<'a> {
             .calculated()
         {
             if !db.project.settings.mypy_compatible {
-                self.node_ref.file.ensure_calculated_diagnostics(db)?;
+                let result = self.node_ref.file.ensure_calculated_diagnostics(db);
+                if result.is_err() {
+                    debug!(
+                        "Wanted to calculate class {:?} diagnostics, but could not calculated file {}",
+                        self.name(),
+                        self.file.qualified_name(db)
+                    );
+                }
+                result?;
             }
-            FLOW_ANALYSIS.with(|fa| {
+            let result = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_and_delay_further(db, || {
                     self.file
                         .inference(&InferenceState::from_class(db, self))
                         .calculate_class_block_diagnostics(*self, class_block)
                 })
-            })?;
+            });
+            if result.is_err() {
+                debug!(
+                    "Wanted to calculate class {:?} diagnostics, but could not calculate file {}",
+                    self.name(),
+                    self.file.qualified_name(db)
+                );
+            }
             // At this point we just lose reachability information for the class. This is
             // probably the price we pay, since we allow weird (in reality impossible?) forward
             // statements in Mypy.
+            result?
         }
         Ok(())
     }
