@@ -208,11 +208,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn ensure_cached_untyped_return(&self, i_s: &InferenceState) -> Inferred {
-        let result = self
-            .node_ref
-            .file
-            .inference(&InferenceState::new(i_s.db, self.node_ref.file))
-            .ensure_func_diagnostics(*self);
         let had_error = &Cell::new(false);
         let inner_i_s = &i_s
             .with_func_context(self)
@@ -221,6 +216,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if reference.point().calculated() {
             return reference.maybe_inferred(inner_i_s).unwrap();
         }
+        self.node_ref
+            .file
+            .inference(&InferenceState::new(i_s.db, self.node_ref.file))
+            .ensure_func_diagnostics(*self);
 
         let inference = self.node_ref.file.inference(inner_i_s);
         let mut generator: Option<Inferred> = None;
