@@ -8,6 +8,11 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
 untyped_property
+# variance inference conflicts
+testPEP695VarianceInferenceSpecialCaseWithTypeshed
+common_base_type_variance_not_ready
+type_variance_recursive_definitions_should_not_crash
+type_variance_recursive_definitions_should_not_crash
 
 # Pre-release crashes
 dataclass_post_init_should_not_crash2

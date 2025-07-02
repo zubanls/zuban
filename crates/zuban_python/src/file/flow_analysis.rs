@@ -399,21 +399,15 @@ impl FlowAnalysis {
         result
     }
 
-    pub fn with_new_empty_and_process_delayed_diagnostics(
+    pub fn with_new_empty_and_process_delayed_diagnostics<T>(
         &self,
         db: &Database,
-        callable: impl FnOnce(),
-    ) {
+        callable: impl FnOnce() -> T,
+    ) -> T {
         self.with_new_empty(db, || {
-            callable();
-            self.process_delayed_diagnostics(db, |func| {
-                let result = func
-                    .node_ref
-                    .file
-                    .inference(&InferenceState::new(db, func.node_ref.file))
-                    .ensure_func_diagnostics(func);
-                debug_assert!(result.is_ok());
-            });
+            let result = callable();
+            self.process_delayed_diagnostics(db);
+            result
         })
     }
     pub fn with_new_empty_and_delay_further<T>(
@@ -933,7 +927,7 @@ impl FlowAnalysis {
             })
     }
 
-    pub fn process_delayed_diagnostics(&self, db: &Database, callback: impl Fn(Function)) {
+    pub fn process_delayed_diagnostics(&self, db: &Database) {
         while let Some(delayed) = {
             let mut borrowed = self.delayed_diagnostics.borrow_mut();
             let result = borrowed.pop();
@@ -948,10 +942,18 @@ impl FlowAnalysis {
                             .class
                             .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
                     );
+                    let run = || {
+                        let result = func
+                            .node_ref
+                            .file
+                            .inference(&InferenceState::new(db, func.node_ref.file))
+                            .ensure_func_diagnostics(func);
+                        debug_assert!(result.is_ok());
+                    };
                     if delayed_func.in_type_checking_only_block {
-                        self.with_in_type_checking_only_block(|| callback(func))
+                        self.with_in_type_checking_only_block(|| run())
                     } else {
-                        callback(func)
+                        run()
                     }
                 }
                 DelayedDiagnostic::ClassTypeParams { class_link } => {
