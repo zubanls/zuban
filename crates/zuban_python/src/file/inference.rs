@@ -3809,7 +3809,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let specific = self.point(node_index).specific();
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
-                } else if let Some(func) = self.i_s.current_function() {
+                } else {
                     let new_any = |param_index| {
                         if let Some(usage) = func
                             .type_vars(self.i_s.db)
@@ -3851,11 +3851,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         }
                         unreachable!()
                     }
-                } else if specific == Specific::MaybeSelfParam {
-                    // Usages from lambdas might land here? This feels like a weird case.
-                    Inferred::new_saved(self.file, node_index)
-                } else {
-                    Inferred::new_any(AnyCause::Unannotated)
                 }
             }
             FunctionOrLambda::Lambda(lambda) => lookup_lambda_param(self.i_s, lambda, node_index),
