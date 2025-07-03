@@ -161,9 +161,6 @@ impl Inference<'_, '_, '_> {
                             None,
                         );
                     });
-                    if self.flags().local_partial_types {
-                        fa.check_for_unfinished_partials(self.i_s.db);
-                    }
                 })
             })
         });
