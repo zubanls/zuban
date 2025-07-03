@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     cell::{OnceCell, RefCell},
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     fmt,
     rc::Rc,
 };
@@ -97,7 +97,7 @@ pub(crate) struct PythonFile {
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
     flags: Option<TypeCheckerFlags>,
-    pub(super) delayed_diagnostics: RefCell<Vec<DelayedDiagnostic>>,
+    pub(super) delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
 
     newline_indices: NewlineIndices,
 }

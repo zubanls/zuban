@@ -443,9 +443,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Locality::Todo,
             ));
             if self.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable) {
-                if FLOW_ANALYSIS.with(|fa| fa.in_conditional()) {
-                    self.check_conditional_function_definition(i_s)
-                } else {
+                if !self.check_conditional_function_definition(i_s) {
                     let inference = name_def.file.inference(i_s);
                     if let Some(_) = first_defined_name_of_multi_def(
                         self.node_ref.file,
@@ -462,12 +460,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn check_conditional_function_definition(&self, i_s: &InferenceState) {
-        let Some(first) =
-            first_defined_name_of_multi_def(self.node_ref.file, self.node().name().index())
+    fn check_conditional_function_definition(&self, i_s: &InferenceState) -> bool {
+        let node = self.node();
+        let Some(first) = first_defined_name_of_multi_def(self.node_ref.file, node.name().index())
         else {
-            return;
+            return false;
         };
+        if !node.in_conditional_scope() {
+            return false;
+        }
         // At this point we know it's a conditional redefinition and not just a singular def in an
         // if.
         let inference = self.node_ref.file.inference(i_s);
@@ -485,7 +486,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // This checks whether there is an error or not
             || {
                 let mut had_error = false;
-                if self.node().maybe_decorated().is_none()
+                if node.maybe_decorated().is_none()
                     && NodeRef::new(self.node_ref.file, first)
                         .maybe_name_of_function()
                         .is_some_and(|func| func.maybe_decorated().is_none())
@@ -528,6 +529,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 RedefinitionResult::TypeMismatch(had_error)
             },
         );
+        true
     }
 
     pub fn is_dunder_new(&self) -> bool {

@@ -2163,6 +2163,14 @@ impl<'db> FunctionDef<'db> {
         }
     }
 
+    pub fn in_conditional_scope(&self) -> bool {
+        let parent_block = self.node.parent_until(&[Nonterminal(block)]);
+        parent_block.is_some_and(|block_| {
+            let parent = block_.parent().unwrap();
+            parent.is_type(Nonterminal(if_stmt)) || parent.is_type(Nonterminal(else_block))
+        })
+    }
+
     pub fn unpack(
         &self,
     ) -> (

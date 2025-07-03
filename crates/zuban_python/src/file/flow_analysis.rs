@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     cell::{Cell, RefCell, RefMut},
+    collections::VecDeque,
     rc::Rc,
 };
 
@@ -384,7 +385,7 @@ pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     try_frames: RefCell<Vec<Entries>>,
     loop_details: RefCell<Option<LoopDetails>>,
-    delayed_diagnostics: RefCell<Vec<DelayedDiagnostic>>,
+    delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
     accumulating_types: Cell<usize>, // Can accumulate nested and thereore use this counter like a stack
@@ -426,7 +427,7 @@ impl FlowAnalysis {
     ) -> T {
         let (result, delayed) = self.with_new_empty(db, || {
             let result = callable();
-            let delayed: Vec<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
+            let delayed: VecDeque<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
             (result, delayed)
         });
         self.delayed_diagnostics.borrow_mut().extend(delayed);
@@ -537,17 +538,6 @@ impl FlowAnalysis {
             EntryKind::Type(t) => Some((Inferred::from_type(t.clone()), entry.deleted)),
             EntryKind::OriginalDeclaration => None,
         }
-    }
-
-    pub fn in_conditional(&self) -> bool {
-        let frames = self.frames.borrow();
-        let Some(last) = frames.last() else {
-            //recoverable_error!("in_conditional should not have empty frames");
-            // TODO This should probably not happen, because we are not sure if we are in a
-            // conditional
-            return false;
-        };
-        matches!(last.kind, FrameKind::Conditional)
     }
 
     pub fn in_loop(&self) -> bool {
@@ -926,7 +916,7 @@ impl FlowAnalysis {
     pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
         self.delayed_diagnostics
             .borrow_mut()
-            .push(DelayedDiagnostic::Func(DelayedFunc {
+            .push_back(DelayedDiagnostic::Func(DelayedFunc {
                 func,
                 class,
                 in_type_checking_only_block: self.in_type_checking_only_block.get(),
@@ -936,13 +926,13 @@ impl FlowAnalysis {
     pub fn add_delayed_class_diagnostics(&self, class: PointLink) {
         self.delayed_diagnostics
             .borrow_mut()
-            .push(DelayedDiagnostic::Class(class))
+            .push_back(DelayedDiagnostic::Class(class))
     }
 
     pub fn add_delayed_type_params_variance_inference(&self, class: ClassNodeRef) {
         self.delayed_diagnostics
             .borrow_mut()
-            .push(DelayedDiagnostic::ClassTypeParams {
+            .push_back(DelayedDiagnostic::ClassTypeParams {
                 class_link: class.as_link(),
             })
     }
@@ -950,12 +940,12 @@ impl FlowAnalysis {
     pub(super) fn process_delayed_diagnostics(
         &self,
         db: &Database,
-        delayed: Vec<DelayedDiagnostic>,
+        delayed: VecDeque<DelayedDiagnostic>,
     ) {
         let old = self.delayed_diagnostics.replace(delayed);
         while let Some(delayed) = {
             let mut borrowed = self.delayed_diagnostics.borrow_mut();
-            let result = borrowed.pop();
+            let result = borrowed.pop_front();
             drop(borrowed);
             result
         } {
@@ -968,10 +958,15 @@ impl FlowAnalysis {
                             .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
                     );
                     let run = || {
+                        let i_s = if let Some(cls) = &func.class {
+                            InferenceState::from_class(db, cls)
+                        } else {
+                            InferenceState::new(db, func.node_ref.file)
+                        };
                         let result = func
                             .node_ref
                             .file
-                            .inference(&InferenceState::new(db, func.node_ref.file))
+                            .inference(&i_s)
                             .ensure_func_diagnostics(func);
                         debug_assert!(result.is_ok());
                     };
