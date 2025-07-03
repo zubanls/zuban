@@ -1149,28 +1149,15 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         in_func: Option<&Function>,
     ) {
-        let function = Function::new(NodeRef::new(self.file, f.index()), class);
-        function.cache_func(self.i_s);
-        if let Some(Type::Callable(c)) = function.node_ref.maybe_type() {
-            if c.no_type_check {
-                return;
-            }
-        }
-
+        let func_ref = FuncNodeRef::new(self.file, f.index());
+        Function::new(*func_ref, class).cache_func(self.i_s);
         FLOW_ANALYSIS.with(|fa| {
             if in_func.is_some() {
-                fa.with_reused_narrowings_for_nested_function(
-                    self.i_s.db,
-                    function.node_ref,
-                    || {
-                        let _ = self.ensure_func_diagnostics(function);
-                    },
-                )
+                fa.with_reused_narrowings_for_nested_function(self.i_s.db, func_ref, || {
+                    let _ = self.ensure_func_diagnostics(Function::new(*func_ref, class));
+                })
             } else {
-                fa.add_delayed_func(
-                    function.node_ref.as_link(),
-                    class.map(|c| c.node_ref.as_link()),
-                )
+                fa.add_delayed_func(func_ref.as_link(), class.map(|c| c.node_ref.as_link()))
             }
         })
     }
@@ -1178,6 +1165,12 @@ impl Inference<'_, '_, '_> {
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
+        if let Some(Type::Callable(c)) = function.node_ref.maybe_type() {
+            if c.no_type_check {
+                return Ok(());
+            }
+        }
+
         diagnostics_for_scope(from, || {
             let func_node = function.node();
             debug!(
@@ -1194,7 +1187,6 @@ impl Inference<'_, '_, '_> {
     }
 
     pub(crate) fn ensure_calculated_function_body(&self, function: Function) {
-        // TODO what todo with this?
         let func_node = function.node();
         let (name_def, _, params, _, body) = func_node.unpack();
         let body_ref = NodeRef::new(self.file, body.index());

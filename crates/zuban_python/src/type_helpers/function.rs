@@ -41,6 +41,7 @@ use crate::{
         TypeVarLike, TypeVarLikes, WrongPositionalCount,
     },
     type_helpers::Class,
+    utils::debug_indent,
 };
 
 use super::callable::FuncLike;
@@ -208,6 +209,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn ensure_cached_untyped_return(&self, i_s: &InferenceState) -> Inferred {
+        debug!("Checking cached untyped return for func {}", self.name());
+        let _indent = debug_indent();
         self.node_ref
             .file
             .inference(&InferenceState::new(i_s.db, self.node_ref.file))
