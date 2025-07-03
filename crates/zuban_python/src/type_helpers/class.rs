@@ -1406,7 +1406,6 @@ impl<'db: 'a, 'a> Class<'a> {
             return;
         };
         if class_infos.has_uncalculated_variances() {
-            let file = self.node_ref.file;
             // It is very possible that the diagnostics are already calculating and the result will
             // error, but this does not matter, because we cannot guarantee that all variances are
             // calculated. This is a best effort thing.

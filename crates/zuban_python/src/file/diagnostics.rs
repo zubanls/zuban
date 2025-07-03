@@ -143,9 +143,9 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn ensure_module_symbols_flow_analysis(&self) -> Result<(), ()> {
-        let result = FLOW_ANALYSIS.with(|fa| {
-            fa.with_new_empty_for_file(self.i_s.db, self.file, || {
-                diagnostics_for_scope(NodeRef::new(self.file, 0), || {
+        diagnostics_for_scope(NodeRef::new(self.file, 0), || {
+            FLOW_ANALYSIS.with(|fa| {
+                fa.with_new_empty_for_file(self.i_s.db, self.file, || {
                     let file_path = self.file.file_path(self.i_s.db);
                     let _panic_context = utils::panic_context::enter(file_path.to_string());
                     debug!(
@@ -162,44 +162,44 @@ impl Inference<'_, '_, '_> {
                         );
                     });
                 })
-            })
-        });
-        // TODO this unsafe feels very wrong, because a bit lower we might modify the complex
-        // points.
-        for complex_point in unsafe { self.file.complex_points.iter() } {
-            // Make sure types are calculated and the errors are generated.
-            match complex_point {
-                ComplexPoint::TypeVarLike(tvl) => {
-                    tvl.ensure_calculated_types(self.i_s.db);
+            });
+            // TODO this unsafe feels very wrong, because a bit lower we might modify the complex
+            // points.
+            for complex_point in unsafe { self.file.complex_points.iter() } {
+                // Make sure types are calculated and the errors are generated.
+                match complex_point {
+                    ComplexPoint::TypeVarLike(tvl) => {
+                        tvl.ensure_calculated_types(self.i_s.db);
+                    }
+                    _ => (),
                 }
-                _ => (),
             }
-        }
 
-        if let Some(name_ref) = self.file.lookup_symbol("__getattribute__") {
-            name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
-        }
-        if let Some(name_ref) = self.file.lookup_symbol("__getattr__") {
-            let actual = name_ref.infer_name_of_definition_by_index(self.i_s);
-            let actual = actual.as_cow_type(self.i_s);
-            let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype else {
-                unreachable!();
-            };
-
-            if !Type::Callable(Rc::new(callable.remove_first_positional_param().unwrap()))
-                .is_simple_super_type_of(self.i_s, &actual)
-                .bool()
-            {
-                name_ref.add_issue(
-                    self.i_s,
-                    IssueKind::InvalidSpecialMethodSignature {
-                        type_: actual.format_short(self.i_s.db),
-                        special_method: "__getattr__",
-                    },
-                )
+            if let Some(name_ref) = self.file.lookup_symbol("__getattribute__") {
+                name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
             }
-        }
-        result
+            if let Some(name_ref) = self.file.lookup_symbol("__getattr__") {
+                let actual = name_ref.infer_name_of_definition_by_index(self.i_s);
+                let actual = actual.as_cow_type(self.i_s);
+                let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype
+                else {
+                    unreachable!();
+                };
+
+                if !Type::Callable(Rc::new(callable.remove_first_positional_param().unwrap()))
+                    .is_simple_super_type_of(self.i_s, &actual)
+                    .bool()
+                {
+                    name_ref.add_issue(
+                        self.i_s,
+                        IssueKind::InvalidSpecialMethodSignature {
+                            type_: actual.format_short(self.i_s.db),
+                            special_method: "__getattr__",
+                        },
+                    )
+                }
+            }
+        })
     }
 
     fn check_assignment(&self, assignment: Assignment, class: Option<Class>) {

@@ -913,10 +913,6 @@ impl FlowAnalysis {
         self.partials_in_module.borrow_mut().push(defined_at)
     }
 
-    pub fn check_for_unfinished_partials(&self, db: &Database) {
-        process_unfinished_partials(db, self.partials_in_module.take());
-    }
-
     pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
         self.delayed_diagnostics
             .borrow_mut()
