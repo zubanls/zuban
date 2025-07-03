@@ -814,14 +814,10 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_class_frame(self.i_s, || {
                     self.calc_block_diagnostics(block, Some(c), None);
-                })
+                });
+                fa.add_delayed_class_diagnostics(c.as_link())
             })
         })
-    }
-
-    pub fn ensure_class_diagnostics(&self, class: ClassDef) {
-        //fa.add_delayed_func(func_ref.as_link(), class.map(|c| c.node_ref.as_link()))
-        // TODO
     }
 
     fn calc_class_diagnostics(&self, class: ClassDef) {
@@ -914,9 +910,10 @@ impl Inference<'_, '_, '_> {
         }
 
         let i_s = self.i_s.with_class_context(&c);
-        let inference = self.file.inference(&i_s);
-
-        let result = inference.calculate_class_block_diagnostics(c, block);
+        let result = self
+            .file
+            .inference(&i_s)
+            .calculate_class_block_diagnostics(c, block);
         if !result.is_ok() {
             recoverable_error!(
                 "Calculating the class block failed for: {} line #{} in {}",
@@ -926,7 +923,15 @@ impl Inference<'_, '_, '_> {
             );
             return;
         }
+    }
 
+    pub fn ensure_class_diagnostics(&self, class_node_ref: ClassNodeRef) {
+        let class = class_node_ref.maybe_class().unwrap();
+        let db = self.i_s.db;
+        let c = Class::with_self_generics(db, class_node_ref);
+        let (type_params, arguments, block) = class.unpack();
+        let c = Class::with_self_generics(db, class_node_ref);
+        let class_infos = class_node_ref.use_cached_class_infos(db);
         if let Some(t) = class_infos.undefined_generics_type.get() {
             if let Type::Dataclass(d) = t.as_ref() {
                 if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
@@ -1004,8 +1009,12 @@ impl Inference<'_, '_, '_> {
             },
             |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue),
         );
+
+        let i_s = self.i_s.with_class_context(&c);
         for (name, index) in c.class_storage.class_symbol_table.iter() {
-            inference.check_function_override(c, *index, name)
+            self.file
+                .inference(&i_s)
+                .check_function_override(c, *index, name)
         }
         if let Some(node_index) = c
             .class_storage
