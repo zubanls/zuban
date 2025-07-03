@@ -1550,11 +1550,14 @@ impl<'db: 'a, 'a> Class<'a> {
         .into_iter()
         .enumerate()
         {
-            for (name, node_index) in table.iter() {
+            for (name, &node_index) in table.iter() {
                 if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
+                    // Still needs to be calculated so the function is properly initialized for the
+                    // `self.<name>` variables
+                    NodeRef::new(self.file, node_index).infer_name_of_definition_by_index(i_s);
                     continue;
                 }
-                if let Some((inf, attr_kind)) = lookup_member(name, *node_index, i == 1) {
+                if let Some((inf, attr_kind)) = lookup_member(name, node_index, i == 1) {
                     // Mypy allows return types to be the current class.
                     let t = self.erase_return_self_type(inf.as_cow_type(i_s));
                     if let Some(with_object_t) = replace_type_var_with_object(&t) {

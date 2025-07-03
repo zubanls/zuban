@@ -1141,11 +1141,11 @@ impl Inference<'_, '_, '_> {
             return;
         }
 
+        let func_node_ref = FuncNodeRef::new(self.file, func_def.index());
+        Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func(i_s);
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
-        if let Some(ComplexPoint::FunctionOverload(overload)) =
-            NodeRef::new(self.file, func_def.index()).maybe_complex()
-        {
+        if let Some(ComplexPoint::FunctionOverload(overload)) = func_node_ref.maybe_complex() {
             has_override_decorator = overload.is_override;
         } else if let Some(decorated) = func_def.maybe_decorated() {
             let decorators = decorated.decorators();
@@ -1169,7 +1169,6 @@ impl Inference<'_, '_, '_> {
         in_func: Option<&Function>,
     ) {
         let func_ref = FuncNodeRef::new(self.file, f.index());
-        Function::new(*func_ref, class).cache_func(self.i_s);
         FLOW_ANALYSIS.with(|fa| {
             if in_func.is_some() {
                 fa.with_reused_narrowings_for_nested_function(self.i_s.db, func_ref, || {
@@ -1182,6 +1181,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
+        function.cache_func(self.i_s);
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
         if let Some(Type::Callable(c)) = function.node_ref.maybe_type() {

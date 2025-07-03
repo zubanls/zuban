@@ -254,11 +254,11 @@ c = C("")
 reveal_type(C.f)  # N: Revealed type is "property"
 C.f()  # E: "property" not callable
 reveal_type(c.f)  # N: Revealed type is "Literal[1]?"
-reveal_type(c.g)  # N: Revealed type is "Any"
-reveal_type(c.h)  # N: Revealed type is "Any"
+reveal_type(c.g)  # N: Revealed type is "str"
+reveal_type(c.h)  # N: Revealed type is "str"
 
 c.f = ""  # E: Property "f" defined in "C" is read-only
-c.g = ""  # E: Property "f" defined in "C" is read-only
-c.g = 1  # E: Property "f" defined in "C" is read-only
+c.g = ""  # E: Property "g" defined in "C" is read-only
+c.g = 1  # E: Property "g" defined in "C" is read-only
 c.h = ""
 c.h = 1

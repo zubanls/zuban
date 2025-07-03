@@ -7,7 +7,8 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
-untyped_property
+testPEP695InferVarianceSimpleFromAttribute
+overload_not_overlapping_optional
 
 # Pre-release crashes
 dataclass_post_init_should_not_crash2
