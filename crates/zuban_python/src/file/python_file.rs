@@ -469,6 +469,11 @@ impl<'db> PythonFile {
             .calculate_module_diagnostics()
     }
 
+    pub fn ensure_module_symbols_flow_analysis(&self, db: &Database) -> Result<(), ()> {
+        self.inference(&InferenceState::new(db, self))
+            .ensure_module_symbols_flow_analysis()
+    }
+
     pub(super) fn ensure_annotation_file(
         &self,
         db: &'db Database,
