@@ -784,9 +784,18 @@ impl FlowAnalysis {
         self.tos_frame().unreachable |= new_frame.unreachable;
     }
 
-    pub fn with_new_func_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
-        self.with_frame(Frame::new_base_scope(), callable)
-            .unreachable
+    pub fn with_new_func_frame_and_return_unreachable(
+        &self,
+        db: &Database,
+        callable: impl FnOnce(),
+    ) -> bool {
+        let old_partials = self.partials_in_module.take();
+        let result = self
+            .with_frame(Frame::new_base_scope(), callable)
+            .unreachable;
+        let new_partials = self.partials_in_module.replace(old_partials);
+        process_unfinished_partials(db, new_partials);
+        result
     }
 
     pub fn with_frame_that_exports_widened_entries<T>(

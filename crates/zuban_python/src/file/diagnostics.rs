@@ -1202,7 +1202,7 @@ impl Inference<'_, '_, '_> {
             return;
         }
         FLOW_ANALYSIS.with(|fa| {
-            let unreachable = fa.with_new_func_frame_and_return_unreachable(|| {
+            let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
                 if func_node.is_empty_generator_function() {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
