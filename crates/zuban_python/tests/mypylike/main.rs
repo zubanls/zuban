@@ -95,6 +95,9 @@ struct CliArgs {
     #[arg(num_args = 0..)]
     filters: Vec<String>,
 
+    #[arg(long)]
+    start_at: Option<String>,
+
     #[arg(short = 'x')]
     stop_after_first_error: bool,
 }
@@ -893,6 +896,7 @@ fn main() -> ExitCode {
     let mut error_count = 0;
     let file_count = files.len();
     let mut error_summary = String::new();
+    let mut allowed_to_run_when_start_at = false;
     for (from_mypy_test_suite, file) in files {
         let code = read_to_string(&file).unwrap();
         let code = REPLACE_COMMENTS.replace_all(&code, "");
@@ -904,6 +908,13 @@ fn main() -> ExitCode {
                 && !filters.iter().any(|s| s == file_name)
             {
                 continue;
+            }
+            if let Some(name) = &cli_args.start_at {
+                if case.name == *name || file_name == name {
+                    allowed_to_run_when_start_at = true;
+                } else if !allowed_to_run_when_start_at {
+                    continue;
+                }
             }
             if skipped
                 .iter()
