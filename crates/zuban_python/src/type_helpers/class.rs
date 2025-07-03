@@ -1410,12 +1410,7 @@ impl<'db: 'a, 'a> Class<'a> {
             // It is very possible that the diagnostics are already calculating and the result will
             // error, but this does not matter, because we cannot guarantee that all variances are
             // calculated. This is a best effort thing.
-            // It also feels strange that we have to type check a whole file to know the variance
-            // of a class. But we at least need to do narrowing for the file, because the variance
-            // may depend on self variables, which may depend on inferred file state.
-            if let Err(()) = file.ensure_calculated_diagnostics(db) {
-                // If the file is already being type checked, we simply try to infer the variance
-                // without the narrowed types.
+            if class_infos.has_uncalculated_variances() {
                 self.infer_variance_of_type_params(db, false);
             }
         }
