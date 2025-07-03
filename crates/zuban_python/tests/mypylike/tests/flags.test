@@ -484,6 +484,14 @@ reveal_type(foo.attr)  # N: Revealed type is "Any | None"
 
 foo.attr = 1
 
+[case local_partial_in_function]
+# flags: --local-partial-types
+def f() -> None:
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
+
+a = []
+a.append(1)
+
 [case list_inference_mypy_no_compatible]
 # flags: --no-mypy-compatible
 x = [1, ""]

@@ -409,7 +409,12 @@ impl FlowAnalysis {
             debug_assert!(self.delayed_diagnostics.borrow().is_empty());
             *self.delayed_diagnostics.borrow_mut() = file.delayed_diagnostics.take();
             let result = callable();
-            *file.delayed_diagnostics.borrow_mut() = self.delayed_diagnostics.take();
+            let delayed = self.delayed_diagnostics.take();
+            if db.project.flags.local_partial_types {
+                *file.delayed_diagnostics.borrow_mut() = delayed;
+            } else {
+                self.process_delayed_diagnostics(db, delayed)
+            }
             result
         })
     }
