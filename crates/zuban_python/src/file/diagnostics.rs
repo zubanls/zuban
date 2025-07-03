@@ -819,6 +819,11 @@ impl Inference<'_, '_, '_> {
         })
     }
 
+    pub fn ensure_class_diagnostics(&self, class: ClassDef) {
+        //fa.add_delayed_func(func_ref.as_link(), class.map(|c| c.node_ref.as_link()))
+        // TODO
+    }
+
     fn calc_class_diagnostics(&self, class: ClassDef) {
         debug!(
             "Diagnostics for class {} ({}({}:{}):#{})",
@@ -891,6 +896,37 @@ impl Inference<'_, '_, '_> {
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
         }
+        if let MetaclassState::Some(link) = class_infos.metaclass {
+            if link == db.python_state.enum_meta_link() {
+                if let Some(t) = class_infos.undefined_generics_type.get() {
+                    if let Type::Enum(enum_) = t.as_ref() {
+                        // Precalculate the enum values here.
+                        // We need to calculate here, because otherwise the normal class
+                        // calculation will do it for us, which will infer different values.
+                        for member in enum_.members.iter() {
+                            if member.value.is_some() {
+                                member.infer_value(self.i_s, &enum_);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let i_s = self.i_s.with_class_context(&c);
+        let inference = self.file.inference(&i_s);
+
+        let result = inference.calculate_class_block_diagnostics(c, block);
+        if !result.is_ok() {
+            recoverable_error!(
+                "Calculating the class block failed for: {} line #{} in {}",
+                class.name().as_code(),
+                class_node_ref.line_one_based(i_s.db),
+                self.file_path()
+            );
+            return;
+        }
+
         if let Some(t) = class_infos.undefined_generics_type.get() {
             if let Type::Dataclass(d) = t.as_ref() {
                 if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
@@ -954,33 +990,7 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
-                if let Some(t) = class_infos.undefined_generics_type.get() {
-                    if let Type::Enum(enum_) = t.as_ref() {
-                        // Precalculate the enum values here.
-                        // We need to calculate here, because otherwise the normal class
-                        // calculation will do it for us, which will infer different values.
-                        for member in enum_.members.iter() {
-                            if member.value.is_some() {
-                                member.infer_value(self.i_s, &enum_);
-                            }
-                        }
-                    }
-                }
             }
-        }
-
-        let i_s = self.i_s.with_class_context(&c);
-        let inference = self.file.inference(&i_s);
-
-        let result = inference.calculate_class_block_diagnostics(c, block);
-        if !result.is_ok() {
-            recoverable_error!(
-                "Calculating the class block failed for: {} line #{} in {}",
-                class.name().as_code(),
-                class_node_ref.line_one_based(i_s.db),
-                self.file_path()
-            );
-            return;
         }
 
         check_multiple_inheritance(

@@ -362,6 +362,7 @@ struct LoopDetails {
 #[derive(Debug, Clone, Copy)]
 pub enum DelayedDiagnostic {
     Func(DelayedFunc),
+    Class(PointLink),
     ClassTypeParams { class_link: PointLink },
 }
 
@@ -932,6 +933,12 @@ impl FlowAnalysis {
             }))
     }
 
+    pub fn add_delayed_class(&self, class: PointLink) {
+        self.delayed_diagnostics
+            .borrow_mut()
+            .push(DelayedDiagnostic::Class(class))
+    }
+
     pub fn add_delayed_type_params_variance_inference(&self, class: ClassNodeRef) {
         self.delayed_diagnostics
             .borrow_mut()
@@ -973,6 +980,13 @@ impl FlowAnalysis {
                     } else {
                         run()
                     }
+                }
+                DelayedDiagnostic::Class(c) => {
+                    let node_ref = NodeRef::from_link(db, c);
+                    node_ref
+                        .file
+                        .inference(&InferenceState::new(db, node_ref.file))
+                        .ensure_class_diagnostics(node_ref.maybe_class().unwrap());
                 }
                 DelayedDiagnostic::ClassTypeParams { class_link } => {
                     ClassNodeRef::from_link(db, class_link).infer_variance_of_type_params(db, true);
