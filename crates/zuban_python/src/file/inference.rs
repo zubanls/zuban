@@ -3646,7 +3646,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // This is typically a global in the module scope, which is completely useless.
                     let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
                     let inference = node_ref.file.inference(i_s);
-                    if let Err(()) = inference.calculate_diagnostics() {
+                    if let Err(()) = inference.calculate_module_diagnostics() {
                         // It feels weird that we add this to the global node.
                         node_ref.add_issue(
                             self.i_s,
@@ -3703,7 +3703,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .inference(&InferenceState::new(self.i_s.db, node_ref.file))
                 .with_correct_context(global_redirect, |inference| {
                     let ensure_flow_analysis = || {
-                        if inference.calculate_diagnostics().is_err() {
+                        if inference.calculate_module_diagnostics().is_err() {
                             add_issue(IssueKind::CannotDetermineType {
                                 for_: node_ref.as_code().into(),
                             });

@@ -136,9 +136,15 @@ lazy_static::lazy_static! {
 }
 
 impl Inference<'_, '_, '_> {
-    pub fn calculate_diagnostics(&self) -> Result<(), ()> {
+    pub fn calculate_module_diagnostics(&self) -> Result<(), ()> {
+        let result = self.ensure_module_symbols_flow_analysis();
+        self.file.process_delayed_diagnostics(self.i_s.db);
+        result
+    }
+
+    pub fn ensure_module_symbols_flow_analysis(&self) -> Result<(), ()> {
         let result = FLOW_ANALYSIS.with(|fa| {
-            fa.with_new_empty_and_process_delayed_diagnostics(self.i_s.db, || {
+            fa.with_new_empty_for_file(self.i_s.db, self.file, || {
                 diagnostics_for_scope(NodeRef::new(self.file, 0), || {
                     let file_path = self.file.file_path(self.i_s.db);
                     let _panic_context = utils::panic_context::enter(file_path.to_string());

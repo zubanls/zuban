@@ -13,9 +13,11 @@ use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
 
 use super::{
     file_state::File,
+    flow_analysis::DelayedDiagnostic,
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
     name_resolution::NameResolution,
+    FLOW_ANALYSIS,
 };
 use crate::{
     database::{
@@ -95,6 +97,7 @@ pub(crate) struct PythonFile {
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
     flags: Option<TypeCheckerFlags>,
+    pub(super) delayed_diagnostics: RefCell<Vec<DelayedDiagnostic>>,
 
     newline_indices: NewlineIndices,
 }
@@ -313,6 +316,7 @@ impl<'db> PythonFile {
             stub_cache: is_stub.then(StubCache::default),
             ignore_type_errors,
             flags,
+            delayed_diagnostics: Default::default(),
         }
     }
 
@@ -462,7 +466,7 @@ impl<'db> PythonFile {
 
     pub fn ensure_calculated_diagnostics(&self, db: &Database) -> Result<(), ()> {
         self.inference(&InferenceState::new(db, self))
-            .calculate_diagnostics()
+            .calculate_module_diagnostics()
     }
 
     pub(super) fn ensure_annotation_file(
@@ -768,6 +772,13 @@ impl<'db> PythonFile {
         match self.super_file {
             Some(super_file) => db.loaded_python_file(super_file.file).original_file(db),
             None => self,
+        }
+    }
+
+    pub fn process_delayed_diagnostics(&self, db: &Database) {
+        let delayed = self.delayed_diagnostics.take();
+        if !delayed.is_empty() {
+            FLOW_ANALYSIS.with(|fa| fa.process_delayed_diagnostics(db, delayed));
         }
     }
 }

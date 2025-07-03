@@ -359,13 +359,13 @@ struct LoopDetails {
     loop_frame_index: usize,
 }
 
-#[derive(Debug)]
-pub(crate) enum DelayedDiagnostic {
+#[derive(Debug, Clone, Copy)]
+pub enum DelayedDiagnostic {
     Func(DelayedFunc),
     ClassTypeParams { class_link: PointLink },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub(crate) struct DelayedFunc {
     pub func: PointLink,
     pub class: Option<PointLink>,
@@ -399,14 +399,17 @@ impl FlowAnalysis {
         result
     }
 
-    pub fn with_new_empty_and_process_delayed_diagnostics<T>(
+    pub fn with_new_empty_for_file<T>(
         &self,
         db: &Database,
+        file: &PythonFile,
         callable: impl FnOnce() -> T,
     ) -> T {
         self.with_new_empty(db, || {
+            debug_assert!(self.delayed_diagnostics.borrow().is_empty());
+            *self.delayed_diagnostics.borrow_mut() = file.delayed_diagnostics.take();
             let result = callable();
-            self.process_delayed_diagnostics(db);
+            *file.delayed_diagnostics.borrow_mut() = self.delayed_diagnostics.take();
             result
         })
     }
@@ -927,7 +930,12 @@ impl FlowAnalysis {
             })
     }
 
-    pub fn process_delayed_diagnostics(&self, db: &Database) {
+    pub(super) fn process_delayed_diagnostics(
+        &self,
+        db: &Database,
+        delayed: Vec<DelayedDiagnostic>,
+    ) {
+        let old = self.delayed_diagnostics.replace(delayed);
         while let Some(delayed) = {
             let mut borrowed = self.delayed_diagnostics.borrow_mut();
             let result = borrowed.pop();
@@ -961,7 +969,8 @@ impl FlowAnalysis {
                 }
             }
         }
-        debug_assert!(self.delayed_diagnostics.borrow().is_empty())
+        debug_assert!(self.delayed_diagnostics.borrow().is_empty());
+        *self.delayed_diagnostics.borrow_mut() = old;
     }
 
     pub fn start_accumulating_types(&self) {
