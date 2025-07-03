@@ -237,13 +237,13 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub fn infer_variance_of_type_params(self, db: &Database, check_narrowed: bool) {
-        // To avoid recursions, we add calculating to the block node.
-        let class_block_ref = NodeRef::new(self.file, self.node().block().index());
-        let old_point = class_block_ref.point();
-        if old_point.calculating() {
+        // To avoid recursions, we add calculating to the : node on class.
+        let colon_ref = NodeRef::new(self.file, self.node().block().index() - 1);
+        let point = colon_ref.point();
+        if point.calculating() || point.calculated() {
             return;
         }
-        class_block_ref.set_point(Point::new_calculating());
+        colon_ref.set_point(Point::new_calculating());
 
         let type_var_likes = self.use_cached_type_vars(db);
         let class = Class::with_self_generics(db, self);
@@ -273,7 +273,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 variance
             });
         }
-        class_block_ref.set_point(old_point);
+        colon_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
     }
 }
 
