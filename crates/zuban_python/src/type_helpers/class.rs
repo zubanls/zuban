@@ -1365,8 +1365,10 @@ impl<'db: 'a, 'a> Class<'a> {
             .get(class_block.index())
             .calculated()
         {
+            let i_s = &InferenceState::from_class(db, self);
+            let inference = self.file.inference(i_s);
             if !db.project.settings.mypy_compatible {
-                let result = self.node_ref.file.ensure_calculated_diagnostics(db);
+                let result = inference.ensure_module_symbols_flow_analysis();
                 if result.is_err() {
                     debug!(
                         "Wanted to calculate class {:?} diagnostics, but could not calculated file {}",
@@ -1378,9 +1380,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let result = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_and_delay_further(db, || {
-                    self.file
-                        .inference(&InferenceState::from_class(db, self))
-                        .calculate_class_block_diagnostics(*self, class_block)
+                    inference.calculate_class_block_diagnostics(*self, class_block)
                 })
             });
             if result.is_err() {

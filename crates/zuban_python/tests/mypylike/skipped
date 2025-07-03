@@ -8,6 +8,11 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
 untyped_property
+flag_or_for_member
+flow_analysis_member_loops
+lambda_isinstance_should_not_crash
+isinstance_on_generic_inherited_with_access2
+redefine_in_module_class_access_from_outside
 
 # Pre-release crashes
 dataclass_post_init_should_not_crash2
