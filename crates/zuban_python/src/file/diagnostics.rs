@@ -10,6 +10,7 @@ use parsa_python_cst::*;
 
 use super::{
     first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, ClassNodeRef, FuncNodeRef,
+    OtherDefinitionIterator,
 };
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
@@ -1171,6 +1172,20 @@ impl Inference<'_, '_, '_> {
         let func = Function::new(NodeRef::new(self.file, f.index()), class);
         if self.in_conditional() {
             // Conditionals functions need narrowing and we therefore initialize them here.
+            let current_index = f.name().index();
+            // Also cache all the functions before this definition to make sure that overloads are
+            // loaded correctly
+            for n in OtherDefinitionIterator::new(&self.file.points, current_index) {
+                if n < current_index {
+                    let name_def = NodeRef::new(self.file, n)
+                        .name_def_ref_of_name()
+                        .expect_name_def();
+                    if let Some(f) = name_def.maybe_name_of_func() {
+                        Function::new(NodeRef::new(self.file, f.index()), class)
+                            .cache_func(self.i_s);
+                    }
+                }
+            }
             func.cache_func(self.i_s);
         }
         FLOW_ANALYSIS.with(|fa| {

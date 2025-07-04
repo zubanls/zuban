@@ -16,7 +16,6 @@ callable_subtyping_keyword_only_default_params2
 unpacked_typeddict_compatible_with_broader_kwargs1
 unpacked_typeddict_compatible_with_broader_kwargs2
 func_unpack_with_type_var_tuple_vs_arbitrary_len
-testOverloadIfMerging
 
 # Pre-release crashes
 dataclass_post_init_should_not_crash2
