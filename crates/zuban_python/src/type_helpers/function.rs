@@ -443,8 +443,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Locality::Todo,
             ));
             if self.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable) {
-                if !self.check_conditional_function_definition(i_s) {
-                    let inference = name_def.file.inference(i_s);
+                let inference = name_def.file.inference(i_s);
+                if inference.in_conditional() {
+                    self.check_conditional_function_definition(i_s)
+                } else {
                     if let Some(_) = first_defined_name_of_multi_def(
                         self.node_ref.file,
                         name_def.name_ref_of_name_def().node_index,
@@ -460,15 +462,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn check_conditional_function_definition(&self, i_s: &InferenceState) -> bool {
+    fn check_conditional_function_definition(&self, i_s: &InferenceState) {
         let node = self.node();
         let Some(first) = first_defined_name_of_multi_def(self.node_ref.file, node.name().index())
         else {
-            return false;
+            return;
         };
-        if !node.in_conditional_scope() {
-            return false;
-        }
         // At this point we know it's a conditional redefinition and not just a singular def in an
         // if.
         let inference = self.node_ref.file.inference(i_s);
@@ -529,7 +528,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 RedefinitionResult::TypeMismatch(had_error)
             },
         );
-        true
     }
 
     pub fn is_dunder_new(&self) -> bool {

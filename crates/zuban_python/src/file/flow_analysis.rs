@@ -1516,9 +1516,17 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.in_type_checking_only_block.get())
     }
 
-    #[expect(dead_code)]
-    pub fn in_loop(&self) -> bool {
-        FLOW_ANALYSIS.with(|fa| fa.in_loop())
+    pub fn in_conditional(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| {
+            let frames = fa.frames.borrow();
+            let Some(last) = frames.last() else {
+                //recoverable_error!("in_conditional should not have empty frames");
+                // TODO This should probably not happen, because we are not sure if we are in a
+                // conditional
+                return false;
+            };
+            matches!(last.kind, FrameKind::Conditional)
+        })
     }
 
     pub fn mark_current_frame_unreachable(&self) {

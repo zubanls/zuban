@@ -1168,14 +1168,18 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         in_func: Option<&Function>,
     ) {
-        let func_ref = FuncNodeRef::new(self.file, f.index());
+        let func = Function::new(NodeRef::new(self.file, f.index()), class);
+        if self.in_conditional() {
+            // Conditionals functions need narrowing and we therefore initialize them here.
+            func.cache_func(self.i_s);
+        }
         FLOW_ANALYSIS.with(|fa| {
             if in_func.is_some() {
-                fa.with_reused_narrowings_for_nested_function(self.i_s.db, func_ref, || {
-                    let _ = self.ensure_func_diagnostics(Function::new(*func_ref, class));
+                fa.with_reused_narrowings_for_nested_function(self.i_s.db, func.node_ref, || {
+                    let _ = self.ensure_func_diagnostics(func);
                 })
             } else {
-                fa.add_delayed_func(func_ref.as_link(), class.map(|c| c.node_ref.as_link()))
+                fa.add_delayed_func(func.as_link(), class.map(|c| c.node_ref.as_link()))
             }
         })
     }
