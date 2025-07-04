@@ -929,8 +929,7 @@ impl Inference<'_, '_, '_> {
     pub fn ensure_class_diagnostics(&self, class_node_ref: ClassNodeRef) {
         let class = class_node_ref.maybe_class().unwrap();
         let db = self.i_s.db;
-        let c = Class::with_self_generics(db, class_node_ref);
-        let (type_params, arguments, block) = class.unpack();
+        let (type_params, arguments, _) = class.unpack();
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = class_node_ref.use_cached_class_infos(db);
         if let Some(t) = class_infos.undefined_generics_type.get() {

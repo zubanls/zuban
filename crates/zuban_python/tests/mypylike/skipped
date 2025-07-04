@@ -7,11 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
-testDataclassTransformOverloadsDecoratorOnOverload
-testDataclassTransformOverloadsDecoratorOnImpl
-testMultipassAndCircularDependency
-testPEP695InferVarianceNotReadyForJoin
-
 # Pre-release crashes
 dataclass_post_init_should_not_crash2
 # Pre-release regressions

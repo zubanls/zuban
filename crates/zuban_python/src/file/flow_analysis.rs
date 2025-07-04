@@ -540,10 +540,6 @@ impl FlowAnalysis {
         }
     }
 
-    pub fn in_loop(&self) -> bool {
-        self.loop_details.borrow().is_some()
-    }
-
     pub fn is_unreachable(&self) -> bool {
         self.frames.borrow().last().unwrap().unreachable
     }

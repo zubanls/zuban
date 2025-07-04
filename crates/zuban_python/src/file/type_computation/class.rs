@@ -1896,6 +1896,8 @@ fn maybe_dataclass_transform_func(
     func: FuncNodeRef,
 ) -> Option<DataclassTransformObj> {
     let decorated = func.node().maybe_decorated()?;
+    Function::new_with_unknown_parent(db, *func)
+        .ensure_cached_func(&InferenceState::new(db, func.file));
     if let Some(ComplexPoint::FunctionOverload(overload)) = func.maybe_complex() {
         overload.dataclass_transform.clone()
     } else {
