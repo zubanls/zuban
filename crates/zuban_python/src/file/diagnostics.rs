@@ -1170,23 +1170,35 @@ impl Inference<'_, '_, '_> {
         in_func: Option<&Function>,
     ) {
         let func = Function::new(NodeRef::new(self.file, f.index()), class);
-        if self.in_conditional() {
-            // Conditionals functions need narrowing and we therefore initialize them here.
-            let current_index = f.name().index();
-            // Also cache all the functions before this definition to make sure that overloads are
-            // loaded correctly
-            for n in OtherDefinitionIterator::new(&self.file.points, current_index) {
-                if n < current_index {
-                    let name_def = NodeRef::new(self.file, n)
-                        .name_def_ref_of_name()
-                        .expect_name_def();
-                    if let Some(f) = name_def.maybe_name_of_func() {
-                        Function::new(NodeRef::new(self.file, f.index()), class)
-                            .cache_func(self.i_s);
+        // In general we need a few work arounds here, because we try to not infer the full
+        // function types here. Otherwise we would have to infer decorators, function returns and
+        // other things here already that could easily be done later.
+        {
+            // We need to make sure that the first name always has a definition inserted so flow
+            // analysis works normal.
+            let n = f.name_def();
+            if first_defined_name(self.file, n.name_index()) == n.name_index() {
+                self.add_initial_name_definition(n);
+            }
+
+            if self.in_conditional() {
+                // Conditionals functions need narrowing and we therefore initialize them here.
+                let current_index = f.name().index();
+                // Also cache all the functions before this definition to make sure that overloads are
+                // loaded correctly
+                for n in OtherDefinitionIterator::new(&self.file.points, current_index) {
+                    if n < current_index {
+                        let name_def = NodeRef::new(self.file, n)
+                            .name_def_ref_of_name()
+                            .expect_name_def();
+                        if let Some(f) = name_def.maybe_name_of_func() {
+                            Function::new(NodeRef::new(self.file, f.index()), class)
+                                .cache_func(self.i_s);
+                        }
                     }
                 }
+                func.cache_func(self.i_s);
             }
-            func.cache_func(self.i_s);
         }
         FLOW_ANALYSIS.with(|fa| {
             if in_func.is_some() {
