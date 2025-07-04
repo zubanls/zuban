@@ -1195,7 +1195,6 @@ impl Inference<'_, '_, '_> {
         }
 
         diagnostics_for_scope(from, || {
-            let func_node = function.node();
             debug!(
                 "Diagnostics for function {} ({}({}:{}):#{})",
                 function.name(),

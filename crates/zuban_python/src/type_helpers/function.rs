@@ -619,7 +619,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     // definition.
                     for n in OtherDefinitionIterator::new(&file.points, current_index) {
                         let n_def = n - NAME_TO_FUNCTION_DIFF;
-                        if !is_ov_unreachable(file.points.get(n_def)) {
+                        let new_p = file.points.get(n_def);
+                        if new_p.calculated() && !is_ov_unreachable(new_p) {
                             pre_unreachable = n_def;
                         }
                     }

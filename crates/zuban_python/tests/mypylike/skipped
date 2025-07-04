@@ -7,7 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
-testPropertyWithExtraMethod
 testDataclassTransformOverloadsDecoratorOnOverload
 testDataclassTransformOverloadsDecoratorOnImpl
 testMultipassAndCircularDependency
@@ -18,9 +17,6 @@ unpacked_typeddict_compatible_with_broader_kwargs1
 unpacked_typeddict_compatible_with_broader_kwargs2
 func_unpack_with_type_var_tuple_vs_arbitrary_len
 testOverloadIfMerging
-
-testSingleOverload2
-testDecorateOverloadedFunction
 
 # Pre-release crashes
 dataclass_post_init_should_not_crash2
