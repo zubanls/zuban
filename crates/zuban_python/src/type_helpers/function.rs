@@ -1622,7 +1622,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     ) -> Inferred {
         let return_annotation = self.return_annotation();
         let calculated_type_vars =
-            if self.node().is_typed() || i_s.db.project.settings.mypy_compatible {
+            if self.node().is_typed() || !i_s.db.project.settings.infer_untyped_returns() {
                 calc_func_type_vars(
                     i_s,
                     *self,
@@ -1674,7 +1674,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            if i_s.db.project.settings.mypy_compatible {
+            if !i_s.db.project.settings.infer_untyped_returns() {
                 // The mypy-compatible case
                 return Inferred::new_any(AnyCause::Unannotated);
             } else {
@@ -2211,7 +2211,7 @@ impl GeneratorType {
 
 impl FuncLike for Function<'_, '_> {
     fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
-        if i_s.db.project.settings.mypy_compatible || self.return_annotation().is_some() {
+        if !i_s.db.project.settings.infer_untyped_returns() || self.return_annotation().is_some() {
             FuncNodeRef::return_type(self, i_s)
         } else {
             Cow::Owned(self.ensure_cached_untyped_return(i_s).as_type(i_s))

@@ -161,13 +161,14 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         if point.calculated() {
             return TypeVarLikes::load_saved_type_vars(i_s.db, node_ref);
         }
-        let type_var_likes = if let Some(type_params) = self.node().type_params() {
+        let node = self.node();
+        let type_var_likes = if let Some(type_params) = node.type_params() {
             self.file
                 .name_resolution_for_types(i_s)
                 .compute_type_params_definition(i_s.as_parent_scope(), type_params, false)
         } else {
             let mut found = TypeVarFinder::find_class_type_vars(i_s, self);
-            if found.is_empty() {
+            if found.is_empty() && i_s.db.project.settings.infer_untyped_returns() {
                 let storage = self.class_storage();
                 if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__") {
                     if let Some(func) = NodeRef::new(self.file, name_index)
@@ -605,13 +606,24 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             was_typed_dict = Some(td);
         }
 
+        if type_vars.is_empty() && db.project.settings.infer_untyped_returns() {
+            for base in class_infos.mro.iter() {
+                if base.is_direct_base {
+                    if let Type::Class(c) = &base.type_ {
+                        if c.class(db).type_vars(i_s).has_from_untyped_params() {
+                            //
+                        }
+                    }
+                }
+            }
+        }
+
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
 
         if let Some(dataclass) = was_dataclass {
             dataclass_init_func(&dataclass, db);
         }
-
         // Now that the class has been saved, we can use it like an actual class. We have to do
         // some member initialization things with TypedDicts, Enums, etc.
         let class = Class::with_undefined_generics(self.node_ref);

@@ -239,11 +239,11 @@ class C:
 
     @property
     def g(self):
-        return self.x
+        return (self.x, self)
 
     @property
     def h(self):
-        return self.x
+        return (self.x, self)
 
     @h.setter
     def h(self, value):
@@ -254,11 +254,27 @@ c = C("")
 reveal_type(C.f)  # N: Revealed type is "property"
 C.f()  # E: "property" not callable
 reveal_type(c.f)  # N: Revealed type is "Literal[1]?"
-reveal_type(c.g)  # N: Revealed type is "str"
-reveal_type(c.h)  # N: Revealed type is "str"
+reveal_type(c.g)  # N: Revealed type is "tuple[str, __main__.C]"
+reveal_type(c.h)  # N: Revealed type is "tuple[str, __main__.C]"
 
 c.f = ""  # E: Property "f" defined in "C" is read-only
 c.g = ""  # E: Property "g" defined in "C" is read-only
 c.g = 1  # E: Property "g" defined in "C" is read-only
 c.h = ""
 c.h = 1
+
+class D(C): ...
+
+d = D(b"")
+
+reveal_type(D.f)  # N: Revealed type is "property"
+D.f()  # E: "property" not callable
+reveal_type(d.f)  # N: Revealed type is "Literal[1]?"
+reveal_type(d.g)  # N: Revealed type is "tuple[Any, __main__.D]"
+reveal_type(d.h)  # N: Revealed type is "tuple[Any, __main__.D]"
+
+d.f = ""  # E: Property "f" defined in "C" is read-only
+d.g = ""  # E: Property "g" defined in "C" is read-only
+d.g = 1  # E: Property "g" defined in "C" is read-only
+d.h = ""
+d.h = 1
