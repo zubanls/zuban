@@ -1554,7 +1554,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
                     // Still needs to be calculated so the function is properly initialized for the
                     // `self.<name>` variables
-                    NodeRef::new(self.file, node_index).infer_name_of_definition_by_index(i_s);
+                    NodeRef::new(self.file, node_index)
+                        .infer_name_of_definition_by_index(&i_s.with_class_context(self));
                     continue;
                 }
                 if let Some((inf, attr_kind)) = lookup_member(name, node_index, i == 1) {
