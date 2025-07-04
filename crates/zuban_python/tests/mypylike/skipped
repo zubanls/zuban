@@ -7,8 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
-# Pre-release crashes
-dataclass_post_init_should_not_crash2
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef
@@ -401,6 +399,8 @@ testReplaceIsDataclass
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
+# dataclass InitVar should be ok
+dataclass_post_init_should_not_crash2
 
 # multiline annotations
 testMultilineQuotedAnnotation

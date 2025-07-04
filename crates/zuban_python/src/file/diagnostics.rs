@@ -33,10 +33,10 @@ use crate::{
     params::{matches_params, Param, WrappedParamType, WrappedStar},
     recoverable_error,
     type_::{
-        format_callable_params, merge_class_type_vars, AnyCause, CallableContent, CallableParams,
-        ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericItem, GenericsList,
-        IterCause, Literal, LiteralKind, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes,
-        Type, TypeVarKind, TypeVarLike, TypeVarVariance, Variance,
+        dataclass_post_init_func, format_callable_params, merge_class_type_vars, AnyCause,
+        CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind, FunctionOverload,
+        GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult, NeverCause,
+        ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarVariance, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Callable, Class, ClassLookupOptions, FirstParamKind,
@@ -1093,7 +1093,7 @@ impl Inference<'_, '_, '_> {
                     name,
                     LookupKind::OnlyType,
                 );
-                let __post_init__ = dataclass.expect_calculated_post_init();
+                let __post_init__ = dataclass_post_init_func(&dataclass, i_s.db);
                 let original_details = LookupDetails {
                     class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
                     lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(

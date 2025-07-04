@@ -522,7 +522,7 @@ class OpSignature:
 [case dataclass_post_init_should_not_crash2]
 import m
 
-def _construct_named_inputs_and_attrs(signature: m.OpSignature): ...
+def f(signature: m.OpSignature): ...
 
 [file m.py]
 import dataclasses
@@ -534,4 +534,8 @@ EMPTY = bool()
 class OpSignature:
     default: dataclasses.InitVar[Any] = EMPTY
 
-    def __post_init__(self) -> None: ...
+    def __post_init__(self) -> None: ...  # E: Signature of "__post_init__" incompatible with supertype "dataclass" \
+                                          # N:      Superclass: \
+                                          # N:          def __post_init__(self, default: Any) -> None \
+                                          # N:      Subclass: \
+                                          # N:          def __post_init__(self) -> None
