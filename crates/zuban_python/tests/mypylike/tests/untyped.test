@@ -338,3 +338,74 @@ class D(B, A): ...
 reveal_type(C(1).x)  # N: Revealed type is "int"
 D(1)  # E: Missing positional argument "y" in call to "D"
 reveal_type(D('', 1).x)  # N: Revealed type is "str"
+
+[case untyped_dataclass_method]
+# flags: --no-mypy-compatible
+from dataclasses import dataclass
+
+@dataclass
+class C[T]:
+    x: T
+
+    def foo(self, x):
+        return (x, self.x)
+
+class D(C[int]): ...
+class E[T](C[T]): ...
+
+reveal_type(C(1).foo(""))  # N: Revealed type is "tuple[str, int]"
+
+d = D("")  # E: Argument 1 to "D" has incompatible type "str"; expected "int"
+reveal_type(d.foo(b''))  # N: Revealed type is "tuple[bytes, int]"
+
+# TODO this is wrong
+reveal_type(E(1).foo(""))  # N: Revealed type is "tuple[Never, int]"
+
+[case untyped_enum_method]
+# flags: --no-mypy-compatible
+from enum import Enum
+
+class C(Enum):
+    X = 1
+    Y = 2
+
+    def foo(self, x):
+        return (x, self.X)
+
+class D(C): ...  # E: Cannot extend enum with existing members: "C"
+
+reveal_type(C(1).foo(""))  # N: Revealed type is "tuple[str, Literal[__main__.C.X]?]"
+
+[case untyped_namedtuple_method]
+# flags: --no-mypy-compatible
+from typing import NamedTuple
+
+class C(NamedTuple):
+    x: int
+    y: str
+
+    def foo(self, x):
+        return (self.x, self[1], x)
+
+class D(C): ...
+
+reveal_type(C(1, "").foo(b""))  # N: Revealed type is "tuple[int, str, bytes]"
+reveal_type(D(1, "").foo(b""))  # N: Revealed type is "tuple[int, str, bytes]"
+
+[case untyped_new_type_as_self]
+# flags: --no-mypy-compatible
+
+from typing import NewType
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def foo(self, x):
+        return (self, self.x, x)
+
+N = NewType("N", C)
+
+def f(n: N):
+    reveal_type(n.foo(b""))  # N: Revealed type is "tuple[__main__.N, Any, bytes]"
+    reveal_type(n.foo(b""))  # N: Revealed type is "tuple[__main__.N, Any, bytes]"
