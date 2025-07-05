@@ -607,11 +607,24 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
 
         if type_vars.is_empty() && db.project.settings.infer_untyped_returns() {
-            for base in class_infos.mro.iter() {
+            // TODO this is a weird place to put it, we also override type vars here and it's
+            // especially questionable that we inherit from the first type vars and not from the
+            // same class that has the __init__/__new__ that the rest of our logic uses. However
+            // it's kind of hard to unite these pieces, because of different layers of
+            // abstractions.
+            for base in class_infos.mro.iter_mut() {
                 if base.is_direct_base {
-                    if let Type::Class(c) = &base.type_ {
-                        if c.class(db).type_vars(i_s).has_from_untyped_params() {
-                            //
+                    if let Type::Class(c) = &mut base.type_ {
+                        let base_class = c.class(db);
+                        let base_type_vars = base_class.type_vars(i_s);
+                        if base_type_vars.has_from_untyped_params() {
+                            self.type_vars_node_ref().insert_complex(
+                                ComplexPoint::TypeVarLikes(base_type_vars.clone()),
+                                Locality::Todo,
+                            );
+                            c.generics = ClassGenerics::List(
+                                base_type_vars.as_self_generic_list(self.as_link()),
+                            );
                         }
                     }
                 }

@@ -270,8 +270,8 @@ d = D(b"")
 reveal_type(D.f)  # N: Revealed type is "property"
 D.f()  # E: "property" not callable
 reveal_type(d.f)  # N: Revealed type is "Literal[1]?"
-reveal_type(d.g)  # N: Revealed type is "tuple[Any, __main__.D]"
-reveal_type(d.h)  # N: Revealed type is "tuple[Any, __main__.D]"
+reveal_type(d.g)  # N: Revealed type is "tuple[bytes, __main__.D]"
+reveal_type(d.h)  # N: Revealed type is "tuple[bytes, __main__.D]"
 
 d.f = ""  # E: Property "f" defined in "C" is read-only
 d.g = ""  # E: Property "g" defined in "C" is read-only

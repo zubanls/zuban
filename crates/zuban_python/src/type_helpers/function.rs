@@ -1958,11 +1958,12 @@ impl<'x> Param<'x> for UntypedFunctionParam<'x> {
             .type_var_likes
             .find_untyped_param_type_var(self.in_definition, self.nth)
         else {
-            recoverable_error!(
+            debug!(
                 "Did not find type var for untyped param {:?}[{}]",
-                self.type_var_likes,
-                self.nth
+                self.type_var_likes, self.nth
             );
+            // TODO Currently with multi-inheritance this can happen if the wrong __init__/__new__
+            // is chosen.
             return pt;
         };
         match &mut pt {
