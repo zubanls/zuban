@@ -625,6 +625,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             c.generics = ClassGenerics::List(
                                 base_type_vars.as_self_generic_list(self.as_link()),
                             );
+                            break;
                         }
                     }
                 }

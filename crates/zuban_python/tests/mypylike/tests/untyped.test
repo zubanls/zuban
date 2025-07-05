@@ -201,6 +201,20 @@ reveal_type(wrapped2)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3
 reveal_type(C().f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
 reveal_type(wrapped2[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
 
+class D(C): ...
+
+wrapped3 = wrap(D.f)
+reveal_type(D.f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped3)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(D.f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped3[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
+wrapped4 = wrap(D().f)
+reveal_type(D().f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped4)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(D().f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped4[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
 [case untyped_classmethod]
 # flags: --no-mypy-compatible
 
@@ -225,6 +239,20 @@ reveal_type(C().f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z:
 reveal_type(wrapped2)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]]"
 reveal_type(C().f(1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
 reveal_type(wrapped2[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+
+class D(C): ...
+
+wrapped3 = wrap(D.f)
+reveal_type(D.f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]"
+reveal_type(wrapped3)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]]"
+reveal_type(D.f(1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
+reveal_type(wrapped3[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
+
+wrapped4 = wrap(D().f)
+reveal_type(D().f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]"
+reveal_type(wrapped4)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]]"
+reveal_type(D().f(1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
+reveal_type(wrapped4[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
 
 [case untyped_property]
 # flags: --no-mypy-compatible
@@ -278,3 +306,35 @@ d.g = ""  # E: Property "g" defined in "C" is read-only
 d.g = 1  # E: Property "g" defined in "C" is read-only
 d.h = ""
 d.h = 1
+
+[case untyped_multi_inheritance1]
+# flags: --no-mypy-compatible
+class A:
+    def __init__(self, x):
+        self.x = x
+
+class B: ...
+
+class C(A, B): ...
+class D(B, A): ...
+
+reveal_type(C(1).x)  # N: Revealed type is "int"
+reveal_type(D(1).x)  # N: Revealed type is "int"
+
+[case untyped_multi_inheritance2]
+# flags: --no-mypy-compatible
+class A:
+    def __init__(self, x):
+        self.x = x
+
+class B:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+class C(A, B): ...
+class D(B, A): ...
+
+reveal_type(C(1).x)  # N: Revealed type is "int"
+D(1)  # E: Missing positional argument "y" in call to "D"
+reveal_type(D('', 1).x)  # N: Revealed type is "str"
