@@ -3,6 +3,7 @@ use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 use parsa_python_cst::{
     Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamIterator,
     ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
+    YieldExprContent,
 };
 
 use crate::{
@@ -229,9 +230,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut result: Option<Inferred> = None;
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
-                ReturnOrYield::Return(ret) =>
-                // TODO multiple returns, this is an early exit
-                {
+                ReturnOrYield::Return(ret) => {
                     let inf = if let Some(star_expressions) = ret.star_expressions() {
                         inference
                             .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
@@ -245,22 +244,40 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     });
                 }
                 ReturnOrYield::Yield(yield_expr) => {
-                    let inf = inference.infer_yield_expr(yield_expr, &mut ResultContext::Unknown);
+                    let inf = match yield_expr.unpack() {
+                        YieldExprContent::StarExpressions(s) => {
+                            inference.infer_star_expressions(s, &mut ResultContext::Unknown)
+                        }
+                        YieldExprContent::YieldFrom(yield_from) => {
+                            inference.infer_yield_from_expr(yield_from)
+                        }
+                        YieldExprContent::None => Inferred::new_none(),
+                    };
                     generator = Some(if let Some(g) = generator {
-                        g.simplified_union(inner_i_s, inf)
+                        inf.simplified_union(inner_i_s, g)
                     } else {
                         inf
                     });
                 }
             }
         }
-        if generator.is_some() {
-            todo!()
-            // TODO
+        if let Some(generator) = generator {
+            let t = generator.as_type(i_s);
+            result = Some(Inferred::from_type(if self.is_async() {
+                new_class!(i_s.db.python_state.async_generator_link(), t, Type::None,)
+            } else {
+                let ret_t = if let Some(result) = result {
+                    result
+                        .as_type(i_s)
+                        .simplified_union(i_s, &Type::Any(AnyCause::Todo))
+                } else {
+                    Type::Any(AnyCause::Todo)
+                };
+                new_class!(i_s.db.python_state.generator_link(), t, Type::None, ret_t)
+            }));
         }
-        result
-            .unwrap_or_else(|| Inferred::new_none())
-            .save_redirect(i_s, reference.file, reference.node_index)
+        let result = result.unwrap_or_else(|| Inferred::new_none());
+        result.save_redirect(i_s, reference.file, reference.node_index)
     }
 
     pub fn parent_class(&self, db: &'db Database) -> Option<Class<'class>> {

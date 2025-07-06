@@ -705,31 +705,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // The name binder already added an issue here.
                     return Inferred::new_any_from_error();
                 }
-                let expr_result = self.infer_expression(yield_from.expression());
-                let added_iter_issue = Cell::new(false);
-                let iter_result = expr_result.type_lookup_and_execute(
-                    i_s,
-                    from.file,
-                    "__iter__",
-                    &NoArgs::new(from),
-                    &|_| {
-                        if !added_iter_issue.get() {
-                            added_iter_issue.set(true);
-                            from.add_issue(
-                                i_s,
-                                IssueKind::YieldFromCannotBeApplied {
-                                    to: expr_result.format_short(i_s),
-                                },
-                            )
-                        }
-                    },
-                );
-                let yields = iter_result.type_lookup_and_execute_with_attribute_error(
-                    i_s,
-                    from,
-                    "__next__",
-                    &NoArgs::new(from),
-                );
+                let (iter_result, yields) = self.infer_yield_from_details(yield_from);
                 generator.yield_type.error_if_not_matches(
                     i_s,
                     &yields,
@@ -774,6 +750,46 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         } else {
             Inferred::new_none()
         }
+    }
+
+    fn infer_yield_from_details(&self, yield_from: YieldFrom) -> (Inferred, Inferred) {
+        let from = NodeRef::new(self.file, yield_from.index());
+        let expr_result = self.infer_expression(yield_from.expression());
+        let added_iter_issue = Cell::new(false);
+        let iter_result = expr_result.type_lookup_and_execute(
+            self.i_s,
+            self.file,
+            "__iter__",
+            &NoArgs::new(from),
+            &|_| {
+                if !added_iter_issue.get() {
+                    added_iter_issue.set(true);
+                    from.add_issue(
+                        self.i_s,
+                        IssueKind::YieldFromCannotBeApplied {
+                            to: expr_result.format_short(self.i_s),
+                        },
+                    )
+                }
+            },
+        );
+        let yields = iter_result.type_lookup_and_execute_with_attribute_error(
+            self.i_s,
+            from,
+            "__next__",
+            &NoArgs::new(from),
+        );
+        (
+            iter_result,
+            yields.save_redirect(self.i_s, self.file, yield_from.index()),
+        )
+    }
+
+    pub fn infer_yield_from_expr(&self, yield_from: YieldFrom) -> Inferred {
+        if let Some(inferred) = self.check_point_cache(yield_from.index()) {
+            return inferred;
+        }
+        self.infer_yield_from_details(yield_from).1
     }
 
     fn infer_target(&self, target: Target, from_aug_assign: bool) -> Option<Inferred> {

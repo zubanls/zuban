@@ -409,3 +409,58 @@ N = NewType("N", C)
 def f(n: N):
     reveal_type(n.foo(b""))  # N: Revealed type is "tuple[__main__.N, Any, bytes]"
     reveal_type(n.foo(b""))  # N: Revealed type is "tuple[__main__.N, Any, bytes]"
+
+[case untyped_multi_return]
+# flags: --no-mypy-compatible
+def f(x):
+    if x:
+        return x
+    else:
+        return int()
+
+reveal_type(f(1))  # N: Revealed type is "int"
+reveal_type(f(""))  # N: Revealed type is "int | str"
+
+[case untyped_generator]
+# flags: --no-mypy-compatible
+
+def f(x):
+    yield x
+
+def g(x):
+    yield from [x]
+
+def h():
+    yield int()
+    yield
+
+def i():
+    yield
+
+def j(x):
+    yield x
+    yield str()
+    return b''
+
+reveal_type(f(1))  # N: Revealed type is "typing.Generator[int, None, Any]"
+reveal_type(next(f("")))  # N: Revealed type is "str"
+
+reveal_type(g(1))  # N: Revealed type is "typing.Generator[int, None, Any]"
+reveal_type(next(g("")))  # N: Revealed type is "str"
+
+reveal_type(h())  # N: Revealed type is "typing.Generator[int | None, None, Any]"
+reveal_type(next(h()))  # N: Revealed type is "int | None"
+
+reveal_type(i())  # N: Revealed type is "typing.Generator[None, None, Any]"
+reveal_type(next(i()))  # N: Revealed type is "None"
+
+reveal_type(j(1))  # N: Revealed type is "typing.Generator[str, None, Literal[b'']? | Any]"
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def foo(self, x):
+        yield (self.x, x)
+
+reveal_type(C(1).foo(b""))  # N: Revealed type is "typing.Generator[tuple[int, bytes], None, Any]"
