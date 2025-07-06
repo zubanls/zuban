@@ -8,7 +8,7 @@ use std::cell::Cell;
 use parsa_python_cst::{CodeIndex, GotoNode, Name as CSTName, NameParent};
 
 use crate::{
-    database::{Database, ParentScope},
+    database::{Database, ParentScope, PointKind},
     debug,
     file::{ClassInitializer, File, FuncNodeRef, PythonFile},
     inference_state::{InferenceState, Mode},
@@ -71,10 +71,17 @@ impl<'db> PositionalDocument<'db> {
             self.position
         );
         match leaf {
-            GotoNode::Name(name) => Some({
+            GotoNode::Name(name) => {
                 // TODO fix parent_scope
-                TreeName::new(self.db, self.file, ParentScope::Module, name)
-            }),
+                let p = self.file.points.get(name.index());
+                if p.calculated() && p.kind() == PointKind::Redirect {
+                    let node_ref = p.as_redirected_node_ref(self.db);
+                    if let Some(n) = node_ref.maybe_name() {
+                        return Some(TreeName::new(self.db, self.file, ParentScope::Module, n));
+                    }
+                }
+                None
+            }
             GotoNode::Primary(_) => {
                 // TODO
                 None

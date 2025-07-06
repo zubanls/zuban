@@ -510,7 +510,7 @@ def typed_dict_test_foo(arg: Foo):
     #? ['as_integer_ratio']
     an_int.as_integer_rati
 
-#! ['class Foo']
+#! ['class Foo(typing.TypedDict):']
 d: Foo
 #? str()
 d['foo']

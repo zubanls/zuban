@@ -89,7 +89,14 @@ impl TestFile<'_> {
                             column: case.column,
                         },
                         false,
-                        |name| name.target_range_code().to_owned(),
+                        |name| {
+                            name.target_range_code()
+                                .split('\n')
+                                .next()
+                                .unwrap()
+                                .trim()
+                                .to_owned()
+                        },
                     );
                     if actual != expected {
                         errors.push(format!(

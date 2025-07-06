@@ -4076,7 +4076,13 @@ impl<'db> NameDef<'db> {
 
     pub fn definition_range(&self) -> (NodeIndex, NodeIndex) {
         // Mostly used for LSP's targetRange in gotoDefinition, etc
-        let parent = self.node.parent().unwrap();
+        let mut parent = self.node.parent().unwrap();
+        while matches!(
+            parent.type_(),
+            Nonterminal(star_targets | star_target | single_target)
+        ) {
+            parent = parent.parent().unwrap();
+        }
         (parent.start(), parent.end())
     }
 
