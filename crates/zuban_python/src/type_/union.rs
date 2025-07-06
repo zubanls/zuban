@@ -152,7 +152,7 @@ fn merge_simplified_union_type(
         if additional.type_.is_object(i_s.db) {
             return MergeSimplifiedUnionResult::Done(additional.type_);
         }
-        if additional.type_.has_any(i_s) {
+        if additional.type_.has_any(i_s) || matches!(&additional.type_, Type::TypeVar(_)) {
             if !new_types
                 .iter()
                 .any(|entry| entry.type_ == additional.type_)
