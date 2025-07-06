@@ -464,3 +464,55 @@ class C:
         yield (self.x, x)
 
 reveal_type(C(1).foo(b""))  # N: Revealed type is "typing.Generator[tuple[int, bytes], None, Any]"
+
+[case untyped_async_generator]
+# flags: --no-mypy-compatible
+
+async def f(x):
+    yield x
+
+async def g(x):
+    yield x
+    yield 1
+
+async def check():
+    reveal_type(f(1))  # N: Revealed type is "typing.AsyncGenerator[int, None]"
+    async for x in f(1):
+        reveal_type(x)  # N: Revealed type is "int"
+
+    async for y in f(""):
+        reveal_type(y)  # N: Revealed type is "str"
+
+    async for z in g(""):
+        reveal_type(z)  # N: Revealed type is "str | int"
+
+[case untyped_async]
+# flags: --no-mypy-compatible
+
+async def f(x):
+    return x
+
+async def g(x):
+    return [await f(x)]
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    async def foo(self, x):
+        return (self, self.x, x)
+
+class D(C): ...
+
+async def check():
+    c = C(1)
+    reveal_type(await c.foo(""))  # N: Revealed type is "tuple[__main__.C, int, str]"
+    d = D(1)
+    reveal_type(await d.foo(""))  # N: Revealed type is "tuple[__main__.D, int, str]"
+
+    reveal_type(await f(1))  # N: Revealed type is "int"
+    reveal_type(await f(""))  # N: Revealed type is "str"
+
+    reveal_type(g(1))  # N: Revealed type is "typing.Coroutine[Any, Any, list[int]]"
+    reveal_type(await g(1))  # N: Revealed type is "list[int]"
+    reveal_type(await g(""))  # N: Revealed type is "list[str]"
