@@ -419,7 +419,7 @@ def f(x):
         return int()
 
 reveal_type(f(1))  # N: Revealed type is "int"
-reveal_type(f(""))  # N: Revealed type is "int | str"
+reveal_type(f(""))  # N: Revealed type is "str | int"
 
 [case untyped_generator]
 # flags: --no-mypy-compatible
@@ -516,3 +516,35 @@ async def check():
     reveal_type(g(1))  # N: Revealed type is "typing.Coroutine[Any, Any, list[int]]"
     reveal_type(await g(1))  # N: Revealed type is "list[int]"
     reveal_type(await g(""))  # N: Revealed type is "list[str]"
+
+[case untyped_recursion1]
+# flags: --no-mypy-compatible
+def f(x):
+    return f(x)
+
+reveal_type(f(1))  # N: Revealed type is "Any"
+
+[case untyped_recursion2]
+# flags: --no-mypy-compatible
+def f(x):
+    if x:
+        return f(x)
+    else:
+        return x
+
+reveal_type(f(1))  # N: Revealed type is "Any | int"
+reveal_type(f(""))  # N: Revealed type is "Any | str"
+
+[case untyped_recursion3]
+# flags: --no-mypy-compatible
+def f(x):
+    if x:
+        return x
+    else:
+        return g(x)
+
+def g(x):
+    return f(x)
+
+reveal_type(f(1))  # N: Revealed type is "int | Any"
+reveal_type(f(""))  # N: Revealed type is "str | Any"

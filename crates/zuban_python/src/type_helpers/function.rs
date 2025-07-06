@@ -210,20 +210,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn ensure_cached_untyped_return(&self, i_s: &InferenceState) -> Inferred {
+        let had_error = &Cell::new(false);
+        let inner_i_s = &i_s
+            .with_func_context(self)
+            .with_mode(Mode::AvoidErrors { had_error });
+        let reference = self.unannotated_return_reference();
+        let p = reference.point();
+        if p.calculated() {
+            return reference.maybe_inferred(inner_i_s).unwrap();
+        }
+        if p.calculating() {
+            return Inferred::new_any_from_error();
+        }
+        reference.set_point(Point::new_calculating());
         debug!("Checking cached untyped return for func {}", self.name());
         let _indent = debug_indent();
         self.node_ref
             .file
             .inference(&InferenceState::new(i_s.db, self.node_ref.file))
             .ensure_calculated_function_body(*self);
-        let had_error = &Cell::new(false);
-        let inner_i_s = &i_s
-            .with_func_context(self)
-            .with_mode(Mode::AvoidErrors { had_error });
-        let reference = self.unannotated_return_reference();
-        if reference.point().calculated() {
-            return reference.maybe_inferred(inner_i_s).unwrap();
-        }
 
         let inference = self.node_ref.file.inference(inner_i_s);
         let mut generator: Option<Inferred> = None;
@@ -238,7 +243,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         Inferred::new_none()
                     };
                     result = Some(if let Some(r) = result {
-                        r.simplified_union(inner_i_s, inf)
+                        inf.simplified_union(inner_i_s, r)
                     } else {
                         inf
                     });
