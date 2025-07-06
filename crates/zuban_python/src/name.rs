@@ -5,29 +5,32 @@ use vfs::NormalizedPath;
 
 use crate::{
     database::{Database, ParentScope},
-    file::PythonFile,
+    file::{File as _, PythonFile},
     node_ref::NodeRef,
     type_::{DbString, Type},
+    PositionInfos,
 };
 
+pub type Range<'a> = (PositionInfos<'a>, PositionInfos<'a>);
 pub type Names = Vec<Box<dyn Name>>;
 
 pub trait Name: fmt::Debug {
     fn name(&self) -> &str;
+    fn code(&self) -> &str;
     fn file_path(&self) -> &NormalizedPath;
     fn qualified_name(&self) -> String;
     fn is_implementation(&self) -> bool {
         true
     }
     fn kind(&self) -> SymbolKind;
-    /*
-    fn type_hint(&self) -> Option<String> {
-        None
+
+    fn name_range(&self) -> Range;
+    // Can e.g. be the full name
+    fn target_range(&self) -> Range;
+    fn target_range_code(&self) -> &str {
+        let (start, end) = self.target_range();
+        start.code_until(end)
     }
-    fn signatures(&self) -> Signatures {
-        vec![]
-    }
-    */
 }
 
 #[derive(Debug)]
@@ -44,11 +47,20 @@ impl Name for ValueName<'_> {
     fn file_path(&self) -> &NormalizedPath {
         self.name.file_path()
     }
+    fn code(&self) -> &str {
+        self.name.code()
+    }
     fn qualified_name(&self) -> String {
         self.name.qualified_name()
     }
     fn kind(&self) -> SymbolKind {
         self.name.kind()
+    }
+    fn name_range(&self) -> Range {
+        self.name.name_range()
+    }
+    fn target_range(&self) -> Range {
+        self.name.target_range()
     }
 }
 
@@ -95,6 +107,9 @@ impl<'db> Name for TreeName<'db> {
     fn file_path(&self) -> &NormalizedPath {
         self.db.file_path(self.file.file_index)
     }
+    fn code(&self) -> &str {
+        self.file.tree.code()
+    }
 
     fn qualified_name(&self) -> String {
         self.parent_scope.qualified_name(
@@ -111,6 +126,27 @@ impl<'db> Name for TreeName<'db> {
 
     fn kind(&self) -> SymbolKind {
         SymbolKind::Object
+    }
+
+    fn name_range(&self) -> Range {
+        (
+            self.file
+                .byte_to_position_infos(self.db, self.cst_name.start()),
+            self.file
+                .byte_to_position_infos(self.db, self.cst_name.end()),
+        )
+    }
+    fn target_range(&self) -> Range {
+        if let Some(name_def) = self.cst_name.name_def() {
+            let (start, end) = name_def.definition_range();
+            (
+                self.file.byte_to_position_infos(self.db, start),
+                self.file.byte_to_position_infos(self.db, end),
+            )
+        } else {
+            // This should not really happen
+            self.name_range()
+        }
     }
 }
 
@@ -130,6 +166,9 @@ impl<'db> Name for ModuleName<'db> {
     fn file_path(&self) -> &NormalizedPath {
         self.db.file_path(self.file.file_index)
     }
+    fn code(&self) -> &str {
+        self.file.tree.code()
+    }
 
     fn qualified_name(&self) -> String {
         self.file.qualified_name(self.db)
@@ -142,6 +181,13 @@ impl<'db> Name for ModuleName<'db> {
 
     fn kind(&self) -> SymbolKind {
         SymbolKind::Module
+    }
+
+    fn name_range(&self) -> Range {
+        unimplemented!()
+    }
+    fn target_range(&self) -> Range {
+        todo!()
     }
 }
 

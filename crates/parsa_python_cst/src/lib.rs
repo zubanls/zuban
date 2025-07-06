@@ -4074,6 +4074,12 @@ impl<'db> NameDef<'db> {
         }
     }
 
+    pub fn definition_range(&self) -> (NodeIndex, NodeIndex) {
+        // Mostly used for LSP's targetRange in gotoDefinition, etc
+        let parent = self.node.parent().unwrap();
+        (parent.start(), parent.end())
+    }
+
     pub fn name_can_be_overwritten(&self) -> bool {
         let parent = self.node.parent().unwrap();
         // The following nodes can not be overwritten:

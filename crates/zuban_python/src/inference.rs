@@ -63,38 +63,25 @@ impl<'db> PositionalDocument<'db> {
         }
     }
 
-    /*
-    fn infer_operator_leaf(&self, _db: &Database, _leaf: Keyword) -> Inferred {
-        /*
-        if ["(", "[", "{", ")", "]", "}"]
-            .iter()
-            .any(|&x| x == leaf.as_str())
-        {
-            if let Some(primary) = leaf.maybe_primary_parent() {
-                let i_s = InferenceState::new(db);
-                return self
-                    .inference(&i_s)
-                    .infer_primary(primary, &mut ResultContext::Unknown);
+    fn goto_name(&self) -> Option<TreeName> {
+        let leaf = self.file.tree.goto_node(self.position);
+        debug!(
+            "Goto for position {}->{:?} on leaf {leaf:?}",
+            self.file.file_path(&self.db),
+            self.position
+        );
+        match leaf {
+            GotoNode::Name(name) => Some({
+                // TODO fix parent_scope
+                TreeName::new(self.db, self.file, ParentScope::Module, name)
+            }),
+            GotoNode::Primary(_) => {
+                // TODO
+                None
             }
-        }
-        */
-        unimplemented!()
-    }
-
-    pub fn infer_definition(&self) -> impl Iterator<Item = T> {
-        /*
-        let i_s = InferenceState::new(self.db);
-        self.file
-            .inference(&i_s)
-            .infer_name_of_definition(self.cst_name);
-        */
-        match NameOrKeywordLookup::from_position(&self.file.tree, self.position) {
-            NameOrKeywordLookup::Name(name) => TreeName::new(self.db, self.file, name).infer(),
-            NameOrKeywordLookup::Keyword(_) => return vec![],
-            NameOrKeywordLookup::None => return vec![],
+            GotoNode::None => None,
         }
     }
-    */
 
     pub fn complete(&self) -> Names {
         unimplemented!()
@@ -113,9 +100,17 @@ impl<'db, C> GotoResolver<'db, C> {
 }
 
 impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
-    pub fn goto(&self, follow_imports: bool) -> impl Iterator<Item = T> {
+    pub fn goto<R: FromIterator<T>>(self, follow_imports: bool) -> R {
+        if let Some(n) = self.infos.goto_name() {
+            return std::iter::once((self.on_result)(&n)).collect();
+        }
         let callback = self.on_result;
-        std::iter::empty().map(move |n| callback(n))
+        GotoResolver {
+            infos: self.infos,
+            on_result: &|n: ValueName| callback(&n),
+        }
+        .infer_type_definition()
+        .collect()
     }
 }
 

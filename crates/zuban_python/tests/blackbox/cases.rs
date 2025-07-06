@@ -82,8 +82,21 @@ impl TestFile<'_> {
                         ));
                     }
                 }
-                CaseType::Goto(_) => {
-                    ran_count -= 1;
+                CaseType::Goto(expected) => {
+                    let actual: Vec<_> = document.goto(
+                        InputPosition::Utf8Bytes {
+                            line: case.line,
+                            column: case.column,
+                        },
+                        false,
+                        |name| name.target_range_code().to_owned(),
+                    );
+                    if actual != expected {
+                        errors.push(format!(
+                            "{file_name}: Line #{} {expected:?} != {actual:?}",
+                            case.line,
+                        ));
+                    }
                 }
                 CaseType::Complete(_) => {
                     ran_count -= 1;
