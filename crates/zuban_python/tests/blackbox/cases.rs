@@ -22,6 +22,7 @@ struct TestCase {
 #[derive(Debug)]
 enum CaseType {
     Infer(HashSet<String>),
+    Goto(Vec<String>),
     Complete(Vec<String>),
 }
 
@@ -81,6 +82,9 @@ impl TestFile<'_> {
                         ));
                     }
                 }
+                CaseType::Goto(_) => {
+                    ran_count -= 1;
+                }
                 CaseType::Complete(_) => {
                     ran_count -= 1;
                     // TODO implement complete tests
@@ -105,8 +109,7 @@ impl TestFile<'_> {
         let mut cases = vec![];
         let lines: Vec<_> = self.code.split('\n').collect();
         for (line_nr, line) in lines.iter().enumerate() {
-            let trimmed = line.trim_start();
-            if let Some(stripped) = trimmed.strip_prefix("#?") {
+            if let Some((kind, stripped)) = find_test_kind(line) {
                 let mut names: Vec<_> = stripped.trim_start().split(' ').collect();
                 let rest;
                 let column = {
@@ -115,7 +118,7 @@ impl TestFile<'_> {
                         rest = names.join(" ");
                         c
                     } else {
-                        rest = trimmed[2..].trim().to_owned();
+                        rest = stripped.trim().to_owned();
                         lines[line_nr + 1].len()
                     }
                 };
@@ -123,20 +126,23 @@ impl TestFile<'_> {
                     // Splittling leaves an empty string if nothing is provided
                     names.pop();
                 }
-                let type_ = if trimmed.ends_with(']') {
-                    CaseType::Complete(
-                        rest[1..rest.len() - 1]
-                            .split(',')
-                            .filter(|x| !x.is_empty())
-                            .map(|quoted| {
-                                let quoted = quoted.trim();
-                                // Strip quotes
-                                quoted[1..quoted.len() - 1].to_owned()
-                            })
-                            .collect(),
-                    )
-                } else {
-                    CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect())
+                let unpack_list = || {
+                    rest[1..rest.len() - 1]
+                        .split(',')
+                        .filter(|x| !x.is_empty())
+                        .map(|quoted| {
+                            let quoted = quoted.trim();
+                            // Strip quotes
+                            quoted[1..quoted.len() - 1].to_owned()
+                        })
+                        .collect()
+                };
+                let type_ = match kind {
+                    TestKind::Infer => {
+                        CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect())
+                    }
+                    TestKind::Goto => CaseType::Goto(unpack_list()),
+                    TestKind::Complete => CaseType::Complete(unpack_list()),
                 };
                 cases.push(TestCase {
                     // We need to add one, because we're evaluating the next line
@@ -148,6 +154,30 @@ impl TestFile<'_> {
         }
         cases
     }
+}
+
+enum TestKind {
+    Infer,
+    Goto,
+    Complete,
+}
+
+fn find_test_kind(line: &str) -> Option<(TestKind, &str)> {
+    let trimmed = line.trim_start();
+    Some(if let Some(stripped) = trimmed.strip_prefix("#?") {
+        (
+            if trimmed.ends_with(']') {
+                TestKind::Complete
+            } else {
+                TestKind::Infer
+            },
+            stripped,
+        )
+    } else if let Some(stripped) = trimmed.strip_prefix("#!") {
+        (TestKind::Goto, stripped)
+    } else {
+        return None;
+    })
 }
 
 impl std::fmt::Debug for TestFile<'_> {
