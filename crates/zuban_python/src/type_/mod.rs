@@ -1118,8 +1118,11 @@ impl Type {
                 debug!("TODO Self could contain Any?");
                 false
             }
-            Self::TypeVar(_)
-            | Self::None
+            Self::TypeVar(tv) => match &tv.type_var.kind(i_s.db) {
+                TypeVarKind::Bound(bound) => bound.has_any_internal(i_s, already_checked),
+                TypeVarKind::Unrestricted | TypeVarKind::Constraints(_) => false,
+            },
+            Self::None
             | Self::Never(_)
             | Self::Literal { .. }
             | Self::ParamSpecArgs(_)
