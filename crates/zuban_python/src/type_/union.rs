@@ -178,7 +178,7 @@ fn merge_simplified_union_type(
             }
             additional_t => {
                 for (i, current) in new_types.iter().enumerate() {
-                    if current.type_.has_any(i_s) {
+                    if current.type_.has_any(i_s) || matches!(&current.type_, Type::TypeVar(_)) {
                         continue;
                     }
                     match &current.type_ {

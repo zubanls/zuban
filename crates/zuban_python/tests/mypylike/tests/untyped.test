@@ -454,7 +454,7 @@ reveal_type(next(h()))  # N: Revealed type is "int | None"
 reveal_type(i())  # N: Revealed type is "typing.Generator[None, None, Any]"
 reveal_type(next(i()))  # N: Revealed type is "None"
 
-reveal_type(j(1))  # N: Revealed type is "typing.Generator[str, None, Literal[b'']? | Any]"
+reveal_type(j(1))  # N: Revealed type is "typing.Generator[int | str, None, Literal[b'']? | Any]"
 
 class C:
     def __init__(self, x):
@@ -484,7 +484,7 @@ async def check():
         reveal_type(y)  # N: Revealed type is "str"
 
     async for z in g(""):
-        reveal_type(z)  # N: Revealed type is "str | int"
+        reveal_type(z)  # N: Revealed type is "str | Literal[1]?"
 
 [case untyped_async]
 # flags: --no-mypy-compatible
