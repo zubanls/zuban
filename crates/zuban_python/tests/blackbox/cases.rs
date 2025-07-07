@@ -31,7 +31,6 @@ impl TestFile<'_> {
         let path = project
             .vfs_handler()
             .normalize_uncheck_abs_path(self.path.to_str().unwrap());
-        let file_name = self.path.file_name().unwrap().to_str().unwrap();
         let document = project
             .document(&PathWithScheme::with_file_scheme(path.clone()))
             .unwrap();
@@ -113,6 +112,7 @@ impl TestFile<'_> {
                 println!("{error}");
             }
             /*
+            let file_name = self.path.file_name().unwrap().to_str().unwrap();
             println!(
                 "{file_name} Ran {ran_count} tests with {} errors",
                 errors.len()

@@ -7,6 +7,7 @@ use crate::{
     debug,
     file::{File as _, PythonFile},
     inference::{with_i_s_non_self, PositionalDocument},
+    inference_state::InferenceState,
     recoverable_error,
     type_::Type,
     type_helpers::{Class, TypeOrClass},
@@ -71,20 +72,14 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 };
 
                 with_i_s_non_self(db, file, self.infos.scope, |i_s| {
-                    for mut t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
-                        let mut is_instance = true;
+                    for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
                         if let Type::Type(inner) = t {
-                            is_instance = false;
-                            t = inner.as_ref()
-                        }
-                        if let Type::Self_ = t {
-                            if let Some(cls) = i_s.current_class() {
-                                self.add_for_mro(&cls.as_type(db), is_instance)
-                            } else {
-                                recoverable_error!("TODO caught Self that is not within a class");
+                            for t in inner.iter_with_unpacked_unions(db) {
+                                self.add_for_mro(i_s, t, false)
                             }
+                        } else {
+                            self.add_for_mro(i_s, t, true)
                         }
-                        self.add_for_mro(t, is_instance)
                     }
                 })
             }
@@ -92,7 +87,15 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         };
     }
 
-    fn add_for_mro(&mut self, t: &Type, is_instance: bool) {
+    fn add_for_mro(&mut self, i_s: &InferenceState, t: &Type, is_instance: bool) {
+        if let Type::Self_ = t {
+            if let Some(cls) = i_s.current_class() {
+                self.add_for_mro(i_s, &cls.as_type(i_s.db), is_instance)
+            } else {
+                recoverable_error!("TODO caught Self that is not within a class");
+            }
+        }
+
         for (_, type_or_class) in t.mro(self.infos.db) {
             match type_or_class {
                 TypeOrClass::Type(t) => match t.as_ref() {
