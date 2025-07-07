@@ -29,14 +29,14 @@ use std::cell::OnceCell;
 use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
 use inference::{GotoResolver, PositionalDocument};
-use parsa_python_cst::Tree;
+use parsa_python_cst::{CodeIndex, GotoNode, Tree};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 pub use database::Mode;
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
-use file::File;
+use file::{File, PythonFile};
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
@@ -191,8 +191,8 @@ impl<'project> Document<'project> {
         python_file.diagnostics(&self.project.db)
     }
 
-    fn positional_document(&self, position: InputPosition) -> PositionalDocument {
-        PositionalDocument::new(
+    fn positional_document(&self, position: InputPosition) -> PositionalDocument<GotoNode> {
+        PositionalDocument::for_goto(
             &self.project.db,
             self.project.db.loaded_python_file(self.file_index),
             position,
@@ -229,7 +229,12 @@ impl<'project> Document<'project> {
         position: InputPosition,
         on_completion: impl Fn(&dyn Completion) -> T,
     ) -> Vec<T> {
-        CompletionResolver::complete(self.positional_document(position), on_completion)
+        CompletionResolver::complete(
+            &self.project.db,
+            self.project.db.loaded_python_file(self.file_index),
+            position,
+            on_completion,
+        )
     }
 }
 
@@ -242,6 +247,16 @@ pub enum InputPosition {
     CodePoints { line: usize, column: usize },
 }
 
+impl InputPosition {
+    fn to_code_index(self, file: &PythonFile) -> CodeIndex {
+        match self {
+            InputPosition::NthByte(pos) => pos as u32,
+            InputPosition::Utf8Bytes { line, column } => file.line_column_to_byte(line, column),
+            InputPosition::Utf16CodeUnits { line: _, column: _ } => todo!(),
+            InputPosition::CodePoints { line: _, column: _ } => todo!(),
+        }
+    }
+}
 /*
 impl<'a> Script<'a> {
     fn leaf(&self, position: Position) -> Leaf {

@@ -11,7 +11,7 @@ use std::{
 };
 
 pub use bytes::parse_python_bytes_literal;
-pub use completion::{CompletionNode, RestNode};
+pub use completion::{CompletionNode, RestNode, Scope};
 pub use match_stmt::{
     CasePattern, KeyEntryInPattern, MappingPatternItem, ParamPattern, PatternKind,
     SequencePatternItem, StarPatternContent, SubjectExprContent,
@@ -151,7 +151,7 @@ impl Tree {
         node.as_code().get(..40).unwrap_or_else(|| node.as_code())
     }
 
-    pub fn goto_node(&self, position: CodeIndex) -> GotoNode {
+    pub fn goto_node(&self, position: CodeIndex) -> (Scope, GotoNode) {
         // First check the token left and right of the cursor
         let mut left = self.0.leaf_by_position(position);
         let mut right = left;
@@ -219,7 +219,7 @@ impl Tree {
                 Nonterminal(_) | ErrorNonterminal(_) => unreachable!(),
             }
         }
-        match left.type_() {
+        let goto_node = match left.type_() {
             Terminal(t) | ErrorTerminal(t) => match t {
                 TerminalType::Name => {
                     let parent = left.parent().unwrap();
@@ -241,7 +241,8 @@ impl Tree {
             }
             PyNodeType::ErrorKeyword => GotoNode::None,
             Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
-        }
+        };
+        (self.scope_for_node(left), goto_node)
     }
 }
 

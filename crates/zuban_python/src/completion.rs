@@ -9,10 +9,30 @@ use crate::{
     inference::PositionalDocument,
     inference_state::{InferenceState, Mode},
     type_helpers::{Class, TypeOrClass},
+    InputPosition,
 };
 
+impl<'db> PositionalDocument<'db, CompletionNode<'db>> {
+    pub fn for_completion(db: &'db Database, file: &'db PythonFile, pos: InputPosition) -> Self {
+        let position = pos.to_code_index(file);
+        let (scope, node) = file.tree.completion_node(position);
+        debug!(
+            "Complete on position {}->{pos:?} on leaf {node:?}",
+            file.file_path(&db),
+        );
+        let result = file.ensure_calculated_diagnostics(db);
+        debug_assert!(result.is_ok());
+        Self {
+            db,
+            file,
+            scope,
+            node,
+        }
+    }
+}
+
 pub(crate) struct CompletionResolver<'db, C, T> {
-    pub infos: PositionalDocument<'db>,
+    pub infos: PositionalDocument<'db, CompletionNode<'db>>,
     pub on_result: C,
     items: Vec<(CompletionSortPriority<'db>, T)>,
     added_names: HashSet<&'db str>,
@@ -20,9 +40,14 @@ pub(crate) struct CompletionResolver<'db, C, T> {
 }
 
 impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> {
-    pub fn complete(infos: PositionalDocument<'db>, on_result: C) -> Vec<T> {
+    pub fn complete(
+        db: &'db Database,
+        file: &'db PythonFile,
+        position: InputPosition,
+        on_result: C,
+    ) -> Vec<T> {
         let mut slf = Self {
-            infos,
+            infos: PositionalDocument::for_completion(db, file, position),
             on_result,
             items: vec![],
             added_names: Default::default(),
@@ -36,19 +61,12 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     fn fill_items(&mut self) {
         let db = self.infos.db;
         let file = self.infos.file;
-        let leaf = file.tree.completion_node(self.infos.position);
-        debug!(
-            "Complete on position {}->{:?} on leaf {leaf:?}",
-            file.file_path(db),
-            self.infos.position
-        );
-        let mut found: Vec<(CompletionSortPriority, T)> = vec![];
-        match leaf {
+        match &self.infos.node {
             CompletionNode::Attribute { base, rest } => {
                 self.should_start_with = Some(rest.as_code());
                 let inf = match base {
-                    PrimaryOrAtom::Primary(p) => self.infos.infer_primary(p),
-                    PrimaryOrAtom::Atom(a) => self.infos.infer_atom(a),
+                    PrimaryOrAtom::Primary(p) => self.infos.infer_primary(*p),
+                    PrimaryOrAtom::Atom(a) => self.infos.infer_atom(*a),
                 };
 
                 let had_error = &Cell::new(false);

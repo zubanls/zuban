@@ -5,7 +5,7 @@
 
 use std::cell::Cell;
 
-use parsa_python_cst::{Atom, CodeIndex, GotoNode, Name as CSTName, NameParent, Primary};
+use parsa_python_cst::{Atom, GotoNode, Name as CSTName, NameParent, Primary, Scope};
 
 use crate::{
     database::{Database, ParentScope, PointKind},
@@ -20,33 +20,33 @@ use crate::{
     InputPosition, ValueName,
 };
 
-pub(crate) struct PositionalDocument<'db> {
+pub(crate) struct PositionalDocument<'db, T> {
     pub db: &'db Database,
     pub file: &'db PythonFile,
-    pub position: CodeIndex,
+    pub scope: Scope,
+    pub node: T,
 }
 
-impl<'db> PositionalDocument<'db> {
-    pub fn new(db: &'db Database, file: &'db PythonFile, position: InputPosition) -> Self {
-        let position = match position {
-            InputPosition::NthByte(pos) => pos as u32,
-            InputPosition::Utf8Bytes { line, column } => file.line_column_to_byte(line, column),
-            InputPosition::Utf16CodeUnits { line: _, column: _ } => todo!(),
-            InputPosition::CodePoints { line: _, column: _ } => todo!(),
-        };
-        Self { db, file, position }
+impl<'db> PositionalDocument<'db, GotoNode<'db>> {
+    pub fn for_goto(db: &'db Database, file: &'db PythonFile, pos: InputPosition) -> Self {
+        let position = pos.to_code_index(file);
+        let (scope, node) = file.tree.goto_node(position);
+        debug!(
+            "Position for goto-like operation {}->{pos:?} on leaf {node:?}",
+            file.file_path(&db),
+        );
+        let result = file.ensure_calculated_diagnostics(db);
+        debug_assert!(result.is_ok());
+        Self {
+            db,
+            file,
+            scope,
+            node,
+        }
     }
 
     fn infer_position(&self) -> Option<Inferred> {
-        let result = self.file.ensure_calculated_diagnostics(&self.db);
-        debug_assert!(result.is_ok());
-        let leaf = self.file.tree.goto_node(self.position);
-        debug!(
-            "Infer for position {}->{:?} on leaf {leaf:?}",
-            self.file.file_path(&self.db),
-            self.position
-        );
-        match leaf {
+        match self.node {
             GotoNode::Name(name) => Some(self.infer_name(name)),
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::None => None,
@@ -54,13 +54,7 @@ impl<'db> PositionalDocument<'db> {
     }
 
     fn goto_name(&self) -> Option<TreeName> {
-        let leaf = self.file.tree.goto_node(self.position);
-        debug!(
-            "Goto for position {}->{:?} on leaf {leaf:?}",
-            self.file.file_path(&self.db),
-            self.position
-        );
-        match leaf {
+        match self.node {
             GotoNode::Name(name) => {
                 // TODO fix parent_scope
                 let p = self.file.points.get(name.index());
@@ -79,8 +73,10 @@ impl<'db> PositionalDocument<'db> {
             GotoNode::None => None,
         }
     }
+}
 
-    pub fn with_i_s<T>(&self, callback: impl FnOnce(&InferenceState) -> T) -> T {
+impl<'db, T> PositionalDocument<'db, T> {
+    pub fn with_i_s<R>(&self, callback: impl FnOnce(&InferenceState) -> R) -> R {
         let had_error = &Cell::new(false);
         let i_s =
             &InferenceState::new(self.db, self.file).with_mode(Mode::AvoidErrors { had_error });
@@ -127,12 +123,12 @@ impl<'db> PositionalDocument<'db> {
 }
 
 pub(crate) struct GotoResolver<'db, C> {
-    pub infos: PositionalDocument<'db>,
+    pub infos: PositionalDocument<'db, GotoNode<'db>>,
     pub on_result: C,
 }
 
 impl<'db, C> GotoResolver<'db, C> {
-    pub(crate) fn new(infos: PositionalDocument<'db>, on_result: C) -> Self {
+    pub(crate) fn new(infos: PositionalDocument<'db, GotoNode<'db>>, on_result: C) -> Self {
         Self { infos, on_result }
     }
 }
