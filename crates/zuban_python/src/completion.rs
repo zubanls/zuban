@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashSet};
+use std::collections::HashSet;
 
 use parsa_python_cst::{CompletionNode, PrimaryOrAtom};
 
@@ -7,6 +7,7 @@ use crate::{
     debug,
     file::{File as _, PythonFile},
     inference::{with_i_s_non_self, PositionalDocument},
+    recoverable_error,
     type_::Type,
     type_helpers::{Class, TypeOrClass},
     InputPosition,
@@ -70,23 +71,20 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 };
 
                 with_i_s_non_self(db, file, self.infos.scope, |i_s| {
-                    for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
-                        let mut check = Cow::Borrowed(t);
+                    for mut t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
+                        let mut is_instance = true;
+                        if let Type::Type(inner) = t {
+                            is_instance = false;
+                            t = inner.as_ref()
+                        }
                         if let Type::Self_ = t {
                             if let Some(cls) = i_s.current_class() {
-                                check = Cow::Owned(cls.as_type(i_s.db));
+                                self.add_for_mro(&cls.as_type(db), is_instance)
+                            } else {
+                                recoverable_error!("TODO caught Self that is not within a class");
                             }
                         }
-                        for (_, type_or_class) in check.mro(db) {
-                            match type_or_class {
-                                TypeOrClass::Type(t) => match t.as_ref() {
-                                    _ => {
-                                        debug!("TODO ignored completions for type {t:?}");
-                                    }
-                                },
-                                TypeOrClass::Class(c) => self.add_class_symbols(c),
-                            }
-                        }
+                        self.add_for_mro(t, is_instance)
                     }
                 })
             }
@@ -94,7 +92,20 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         };
     }
 
-    fn add_class_symbols(&mut self, c: Class) {
+    fn add_for_mro(&mut self, t: &Type, is_instance: bool) {
+        for (_, type_or_class) in t.mro(self.infos.db) {
+            match type_or_class {
+                TypeOrClass::Type(t) => match t.as_ref() {
+                    _ => {
+                        debug!("TODO ignored completions for type {t:?}");
+                    }
+                },
+                TypeOrClass::Class(c) => self.add_class_symbols(c, is_instance),
+            }
+        }
+    }
+
+    fn add_class_symbols(&mut self, c: Class, is_instance: bool) {
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
         for (symbol, _node_index) in storage.class_symbol_table.iter() {
             if !self.maybe_add(symbol) {
@@ -109,18 +120,20 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             self.items
                 .push((CompletionSortPriority::Default(symbol), result))
         }
-        for (symbol, _node_index) in storage.self_symbol_table.iter() {
-            if !self.maybe_add(symbol) {
-                continue;
+        if is_instance {
+            for (symbol, _node_index) in storage.self_symbol_table.iter() {
+                if !self.maybe_add(symbol) {
+                    continue;
+                }
+                let result = (self.on_result)(&CompletionTreeName {
+                    db: self.infos.db,
+                    file: self.infos.file,
+                    name: symbol,
+                    kind: CompletionKind::Field,
+                });
+                self.items
+                    .push((CompletionSortPriority::Default(symbol), result))
             }
-            let result = (self.on_result)(&CompletionTreeName {
-                db: self.infos.db,
-                file: self.infos.file,
-                name: symbol,
-                kind: CompletionKind::Field,
-            });
-            self.items
-                .push((CompletionSortPriority::Default(symbol), result))
         }
     }
 

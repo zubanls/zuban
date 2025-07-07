@@ -76,7 +76,8 @@ class VarClass:
         self.var_
 
 
-#? ['var_class1', 'var_class2', 'var_instance1']
+# jedi-diff: #? ['var_class1', 'var_class2', 'var_instance1']
+#? ['var_class1', 'var_class2', 'var_instance1', 'var_instance2']
 VarClass.var_
 #? int()
 VarClass.var_instance1
