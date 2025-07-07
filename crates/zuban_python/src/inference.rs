@@ -5,7 +5,7 @@
 
 use std::cell::Cell;
 
-use parsa_python_cst::{CodeIndex, GotoNode, Name as CSTName, NameParent};
+use parsa_python_cst::{Atom, CodeIndex, GotoNode, Name as CSTName, NameParent, Primary};
 
 use crate::{
     database::{Database, ParentScope, PointKind},
@@ -14,16 +14,16 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::ResultContext,
-    name::{ModuleName, Name, Names, TreeName},
+    name::{ModuleName, Name, TreeName},
     node_ref::NodeRef,
     type_::{Type, TypeVarLikeName, TypeVarName},
     InputPosition, ValueName,
 };
 
 pub(crate) struct PositionalDocument<'db> {
-    db: &'db Database,
-    file: &'db PythonFile,
-    position: CodeIndex,
+    pub db: &'db Database,
+    pub file: &'db PythonFile,
+    pub position: CodeIndex,
 }
 
 impl<'db> PositionalDocument<'db> {
@@ -46,19 +46,9 @@ impl<'db> PositionalDocument<'db> {
             self.file.file_path(&self.db),
             self.position
         );
-        let had_error = &Cell::new(false);
-        let i_s =
-            &InferenceState::new(self.db, self.file).with_mode(Mode::AvoidErrors { had_error });
         match leaf {
-            GotoNode::Name(name) => Some(infer_name(i_s, self.file, name)),
-            GotoNode::Primary(primary) => {
-                let n = NodeRef::new(self.file, primary.index());
-                Some(
-                    self.file
-                        .inference(i_s)
-                        .infer_primary(primary, &mut ResultContext::ExpectUnused),
-                )
-            }
+            GotoNode::Name(name) => Some(self.infer_name(name)),
+            GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::None => None,
         }
     }
@@ -90,14 +80,55 @@ impl<'db> PositionalDocument<'db> {
         }
     }
 
-    pub fn complete(&self) -> Names {
-        unimplemented!()
+    pub fn with_i_s<T>(&self, callback: impl FnOnce(&InferenceState) -> T) -> T {
+        let had_error = &Cell::new(false);
+        let i_s =
+            &InferenceState::new(self.db, self.file).with_mode(Mode::AvoidErrors { had_error });
+        callback(i_s)
+    }
+
+    fn infer_name(&self, name: CSTName) -> Inferred {
+        match name.parent() {
+            NameParent::NameDef(_) => todo!(),
+            NameParent::Atom(atom) => self.infer_atom(atom),
+            NameParent::Primary(_) => todo!(),
+            NameParent::PrimaryTarget(_) => todo!(),
+            NameParent::Kwarg(_) => todo!(),
+            NameParent::KeywordPattern(_) => todo!(),
+            NameParent::ImportFromAsName(_) => todo!(),
+            NameParent::DottedName(_) => todo!(),
+            NameParent::FStringConversion(_) => todo!(),
+        }
+        /*
+        let p = node_ref.point();
+        if p.calculated() {
+            if p.kind() == PointKind::Redirect {
+                let redirected_to = p.as_redirected_node_ref(self.db);
+            }
+        }
+        */
+    }
+
+    pub fn infer_atom(&self, atom: Atom) -> Inferred {
+        let n = NodeRef::new(self.file, atom.index());
+        if let Some(inf) = self.with_i_s(|i_s| n.maybe_inferred(i_s)) {
+            return inf;
+        }
+        Inferred::new_never(crate::type_::NeverCause::Other) // TODO?
+    }
+
+    pub fn infer_primary(&self, primary: Primary) -> Inferred {
+        self.with_i_s(|i_s| {
+            self.file
+                .inference(i_s)
+                .infer_primary(primary, &mut ResultContext::ExpectUnused)
+        })
     }
 }
 
 pub(crate) struct GotoResolver<'db, C> {
-    infos: PositionalDocument<'db>,
-    on_result: C,
+    pub infos: PositionalDocument<'db>,
+    pub on_result: C,
 }
 
 impl<'db, C> GotoResolver<'db, C> {
@@ -152,6 +183,7 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     }
 }
 
+#[expect(unused)]
 enum NameLike<'db> {
     TreeName(TreeName<'db>),
     ModuleName(ModuleName<'db>),
@@ -202,7 +234,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
                 TypeVarLikeName::InString { name_node, .. } => {
                     from_node_ref(NodeRef::from_link(db, name_node))
                 }
-                TypeVarLikeName::SyntaxNode(point_link) => todo!(),
+                TypeVarLikeName::SyntaxNode(_) => todo!(),
             },
             TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => return None,
         },
@@ -246,32 +278,4 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             return None;
         }
     }))
-}
-
-fn infer_name(i_s: &InferenceState, file: &PythonFile, name: CSTName) -> Inferred {
-    match name.parent() {
-        NameParent::NameDef(_) => todo!(),
-        NameParent::Atom(atom) => {
-            let n = NodeRef::new(file, atom.index());
-            if let Some(inf) = n.maybe_inferred(i_s) {
-                return inf;
-            }
-        }
-        NameParent::Primary(_) => todo!(),
-        NameParent::PrimaryTarget(_) => todo!(),
-        NameParent::Kwarg(_) => todo!(),
-        NameParent::KeywordPattern(_) => todo!(),
-        NameParent::ImportFromAsName(_) => todo!(),
-        NameParent::DottedName(_) => todo!(),
-        NameParent::FStringConversion(_) => todo!(),
-    }
-    /*
-    let p = node_ref.point();
-    if p.calculated() {
-        if p.kind() == PointKind::Redirect {
-            let redirected_to = p.as_redirected_node_ref(self.db);
-        }
-    }
-    */
-    Inferred::new_never(crate::type_::NeverCause::Other) // TODO
 }

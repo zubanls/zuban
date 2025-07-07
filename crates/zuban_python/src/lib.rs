@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
 mod arguments;
+mod completion;
 mod database;
 mod diagnostics;
 mod file;
@@ -25,6 +26,7 @@ mod utils;
 
 use std::cell::OnceCell;
 
+pub use completion::{Completion, CompletionKind};
 use inference::{GotoResolver, PositionalDocument};
 use parsa_python_cst::Tree;
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
@@ -221,8 +223,12 @@ impl<'project> Document<'project> {
         GotoResolver::new(self.positional_document(position), on_name).infer_implementation()
     }
 
-    pub fn complete(&self, position: InputPosition) {
-        self.positional_document(position).complete();
+    pub fn complete<T>(
+        &self,
+        position: InputPosition,
+        on_completion: impl Fn(&dyn Completion) -> T,
+    ) -> Vec<T> {
+        GotoResolver::new(self.positional_document(position), on_completion).complete()
     }
 }
 

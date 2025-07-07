@@ -245,7 +245,7 @@ def testnewtype2(y: WrappingType2):
     #?
     y
     #? []
-    ##y.
+    y.
 
 # The type of a NewType is equivalent to the type of its underlying type.
 MyInt = typing.NewType('MyInt', int)

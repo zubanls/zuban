@@ -1,4 +1,5 @@
 mod bytes;
+mod completion;
 mod match_stmt;
 mod strings;
 
@@ -10,6 +11,7 @@ use std::{
 };
 
 pub use bytes::parse_python_bytes_literal;
+pub use completion::{CompletionNode, RestNode};
 pub use match_stmt::{
     CasePattern, KeyEntryInPattern, MappingPatternItem, ParamPattern, PatternKind,
     SequencePatternItem, StarPatternContent, SubjectExprContent,
@@ -3449,7 +3451,7 @@ impl<'db> Iterator for ComparisonIterator<'db> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum PrimaryOrAtom<'db> {
     Primary(Primary<'db>),
     Atom(Atom<'db>),

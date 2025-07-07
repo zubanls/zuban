@@ -50,30 +50,28 @@ impl TestFile<'_> {
                 continue;
             }
             ran_count += 1;
+            let position = InputPosition::Utf8Bytes {
+                line: case.line,
+                column: case.column,
+            };
             match case.type_ {
                 CaseType::Infer(expected) => {
                     let actual: HashSet<_> = document
-                        .infer_type_definition(
-                            InputPosition::Utf8Bytes {
-                                line: case.line,
-                                column: case.column,
-                            },
-                            |name| {
-                                let mut n = if *name.file_path() == *path {
-                                    name.name().to_owned()
-                                } else {
-                                    let mut s = name.qualified_name();
-                                    if let Some(rest) = s.strip_prefix("builtins.") {
-                                        s = rest.to_string();
-                                    }
-                                    s
-                                };
-                                if name.is_instance() {
-                                    n.push_str("()");
+                        .infer_type_definition(position, |name| {
+                            let mut n = if *name.file_path() == *path {
+                                name.name().to_owned()
+                            } else {
+                                let mut s = name.qualified_name();
+                                if let Some(rest) = s.strip_prefix("builtins.") {
+                                    s = rest.to_string();
                                 }
-                                n
-                            },
-                        )
+                                s
+                            };
+                            if name.is_instance() {
+                                n.push_str("()");
+                            }
+                            n
+                        })
                         .collect();
                     if actual != expected {
                         errors.push(format!(
@@ -83,21 +81,14 @@ impl TestFile<'_> {
                     }
                 }
                 CaseType::Goto(expected) => {
-                    let actual: Vec<_> = document.goto(
-                        InputPosition::Utf8Bytes {
-                            line: case.line,
-                            column: case.column,
-                        },
-                        false,
-                        |name| {
-                            name.target_range_code()
-                                .split('\n')
-                                .next()
-                                .unwrap()
-                                .trim()
-                                .to_owned()
-                        },
-                    );
+                    let actual: Vec<_> = document.goto(position, false, |name| {
+                        name.target_range_code()
+                            .split('\n')
+                            .next()
+                            .unwrap()
+                            .trim()
+                            .to_owned()
+                    });
                     if actual != expected {
                         errors.push(format!(
                             "{file_name}: Line #{} {expected:?} != {actual:?}",
@@ -105,9 +96,15 @@ impl TestFile<'_> {
                         ));
                     }
                 }
-                CaseType::Complete(_) => {
-                    ran_count -= 1;
-                    // TODO implement complete tests
+                CaseType::Complete(expected) => {
+                    let actual: Vec<_> =
+                        document.complete(position, |name| name.label().to_owned());
+                    if actual != expected {
+                        errors.push(format!(
+                            "{file_name}: Line #{} {expected:?} != {actual:?}",
+                            case.line,
+                        ));
+                    }
                 }
             }
         }
