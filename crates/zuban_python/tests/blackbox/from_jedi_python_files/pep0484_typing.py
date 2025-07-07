@@ -209,7 +209,7 @@ class TestDict(typing.Dict[str, int]):
         pass
 
 def testdict(x: TestDict):
-    #? ["setdud", "setdefault"]
+    #? ["setdefault", "setdud"]
     x.setd
     for key in x.keys():
         #? str()
@@ -219,7 +219,7 @@ def testdict(x: TestDict):
         value
 
 x = TestDict()
-#? ["setdud", "setdefault"]
+#? ["setdefault", "setdud"]
 x.setd
 for key in x.keys():
     #? str()
@@ -263,7 +263,7 @@ class TestDefaultDict(typing.DefaultDict[str, int]):
         pass
 
 def testdict(x: TestDefaultDict):
-    #? ["setdud", "setdefault"]
+    #? ["setdefault", "setdud"]
     x.setd
     for key in x.keys():
         #? str()
@@ -273,7 +273,7 @@ def testdict(x: TestDefaultDict):
         value
 
 x = TestDefaultDict()
-#? ["setdud", "setdefault"]
+#? ["setdefault", "setdud"]
 x.setd
 for key in x.keys():
     #? str()

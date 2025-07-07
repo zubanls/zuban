@@ -4,7 +4,14 @@ use crate::{Atom, Primary, PrimaryOrAtom, Tree};
 
 impl Tree {
     pub fn completion_node(&self, position: CodeIndex) -> CompletionNode {
-        let leaf = self.0.leaf_by_position(position);
+        let mut leaf = self.0.leaf_by_position(position);
+        if leaf.start() == position {
+            if let Some(n) = leaf.previous_leaf() {
+                if n.end() == position {
+                    leaf = n;
+                }
+            }
+        }
         let rest = RestNode::new(leaf, position);
         if position < leaf.start() {
             if leaf.prefix().contains("#") {
@@ -61,5 +68,9 @@ impl<'db> RestNode<'db> {
             }
         }
         false
+    }
+
+    pub fn as_code(&self) -> &'db str {
+        &self.node.as_code()[..(self.position - self.node.start()) as usize]
     }
 }

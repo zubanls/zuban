@@ -1,15 +1,39 @@
+use std::{cell::Cell, collections::HashSet};
+
 use parsa_python_cst::{CompletionNode, PrimaryOrAtom};
 
 use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
-    inference::GotoResolver,
+    inference::PositionalDocument,
+    inference_state::{InferenceState, Mode},
     type_helpers::{Class, TypeOrClass},
 };
 
-impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> GotoResolver<'db, C> {
-    pub fn complete(&self) -> Vec<T> {
+pub(crate) struct CompletionResolver<'db, C, T> {
+    pub infos: PositionalDocument<'db>,
+    pub on_result: C,
+    items: Vec<(CompletionSortPriority<'db>, T)>,
+    added_names: HashSet<&'db str>,
+    should_start_with: Option<&'db str>,
+}
+
+impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> {
+    pub fn complete(infos: PositionalDocument<'db>, on_result: C) -> Vec<T> {
+        let mut slf = Self {
+            infos,
+            on_result,
+            items: vec![],
+            added_names: Default::default(),
+            should_start_with: None,
+        };
+        slf.fill_items();
+        slf.items.sort_by_key(|item| item.0);
+        slf.items.into_iter().map(|(_, item)| item).collect()
+    }
+
+    fn fill_items(&mut self) {
         let db = self.infos.db;
         let file = self.infos.file;
         let leaf = file.tree.completion_node(self.infos.position);
@@ -20,43 +44,66 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> GotoResolver<'db, C> {
         );
         let mut found: Vec<(CompletionSortPriority, T)> = vec![];
         match leaf {
-            CompletionNode::Attribute { base, rest: _rest } => {
+            CompletionNode::Attribute { base, rest } => {
+                self.should_start_with = Some(rest.as_code());
                 let inf = match base {
                     PrimaryOrAtom::Primary(p) => self.infos.infer_primary(p),
                     PrimaryOrAtom::Atom(a) => self.infos.infer_atom(a),
                 };
 
-                self.infos.with_i_s(|i_s| {
-                    for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
-                        for (_, type_or_class) in t.mro(db) {
-                            match type_or_class {
-                                TypeOrClass::Type(_) => (),
-                                TypeOrClass::Class(c) => self.add_class_symbols(&mut found, c),
-                            }
+                let had_error = &Cell::new(false);
+                let i_s = &InferenceState::new(db, file).with_mode(Mode::AvoidErrors { had_error });
+
+                for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
+                    for (_, type_or_class) in t.mro(db) {
+                        match type_or_class {
+                            TypeOrClass::Type(_) => (),
+                            TypeOrClass::Class(c) => self.add_class_symbols(c),
                         }
                     }
-                })
+                }
             }
             CompletionNode::Global { .. } => (),
         };
-        found.sort_by_key(|item| item.0);
-        found.into_iter().map(|(_, item)| item).collect()
     }
 
-    fn add_class_symbols(&self, results: &mut Vec<(CompletionSortPriority<'db>, T)>, c: Class) {
+    fn add_class_symbols(&mut self, c: Class) {
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
-        for (_symbol, _node_index) in storage.class_symbol_table.iter() {
-            //
-        }
-        for (symbol, _node_index) in storage.self_symbol_table.iter() {
+        for (symbol, _node_index) in storage.class_symbol_table.iter() {
+            if !self.maybe_add(symbol) {
+                continue;
+            }
             let result = (self.on_result)(&CompletionTreeName {
                 db: self.infos.db,
                 file: self.infos.file,
                 name: symbol,
                 kind: CompletionKind::Field,
             });
-            results.push((CompletionSortPriority::Default(symbol), result))
+            self.items
+                .push((CompletionSortPriority::Default(symbol), result))
         }
+        for (symbol, _node_index) in storage.self_symbol_table.iter() {
+            if !self.maybe_add(symbol) {
+                continue;
+            }
+            let result = (self.on_result)(&CompletionTreeName {
+                db: self.infos.db,
+                file: self.infos.file,
+                name: symbol,
+                kind: CompletionKind::Field,
+            });
+            self.items
+                .push((CompletionSortPriority::Default(symbol), result))
+        }
+    }
+
+    fn maybe_add(&mut self, symbol: &'db str) -> bool {
+        if let Some(starts_with) = self.should_start_with {
+            if !symbol.starts_with(starts_with) {
+                return false;
+            }
+        }
+        self.added_names.insert(symbol)
     }
 }
 

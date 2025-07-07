@@ -26,6 +26,7 @@ mod utils;
 
 use std::cell::OnceCell;
 
+use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
 use inference::{GotoResolver, PositionalDocument};
 use parsa_python_cst::Tree;
@@ -228,7 +229,7 @@ impl<'project> Document<'project> {
         position: InputPosition,
         on_completion: impl Fn(&dyn Completion) -> T,
     ) -> Vec<T> {
-        GotoResolver::new(self.positional_document(position), on_completion).complete()
+        CompletionResolver::complete(self.positional_document(position), on_completion)
     }
 }
 
