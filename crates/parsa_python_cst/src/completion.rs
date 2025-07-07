@@ -47,7 +47,7 @@ impl Tree {
             ])
             .expect("There should always be a file");
         if scope_node.is_type(Nonterminal(file)) {
-            Scope::File
+            Scope::Module
         } else if scope_node.is_type(Nonterminal(function_def)) {
             Scope::Function(scope_node.index)
         } else if scope_node.is_type(Nonterminal(class_def)) {
@@ -60,7 +60,7 @@ impl Tree {
 }
 
 pub enum Scope {
-    File,
+    Module,
     Class(NodeIndex),
     Function(NodeIndex),
     Lambda(NodeIndex),

@@ -78,9 +78,15 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 impl<'db, T> PositionalDocument<'db, T> {
     pub fn with_i_s<R>(&self, callback: impl FnOnce(&InferenceState) -> R) -> R {
         let had_error = &Cell::new(false);
-        let i_s =
-            &InferenceState::new(self.db, self.file).with_mode(Mode::AvoidErrors { had_error });
-        callback(i_s)
+        let parent_scope = match self.scope {
+            Scope::Module => ParentScope::Module,
+            Scope::Function(index) => ParentScope::Function(index),
+            Scope::Class(index) => ParentScope::Class(index),
+            Scope::Lambda(index) => todo!(),
+        };
+        InferenceState::run_with_parent_scope(self.db, self.file, parent_scope, |i_s| {
+            callback(&i_s.with_mode(Mode::AvoidErrors { had_error }))
+        })
     }
 
     fn infer_name(&self, name: CSTName) -> Inferred {
