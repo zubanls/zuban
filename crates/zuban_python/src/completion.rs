@@ -6,7 +6,8 @@ use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
-    inference::PositionalDocument,
+    inference::{with_i_s_non_self, PositionalDocument},
+    type_::Type,
     type_helpers::{Class, TypeOrClass},
     InputPosition,
 };
@@ -68,18 +69,28 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     PrimaryOrAtom::Atom(a) => self.infos.infer_atom(*a),
                 };
 
-                for t in self
-                    .infos
-                    .with_i_s(|i_s| inf.as_type(i_s))
-                    .iter_with_unpacked_unions(db)
-                {
-                    for (_, type_or_class) in t.mro(db) {
-                        match type_or_class {
-                            TypeOrClass::Type(_) => (),
-                            TypeOrClass::Class(c) => self.add_class_symbols(c),
+                with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
+                    for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
+                        for (_, type_or_class) in t.mro(db) {
+                            match type_or_class {
+                                TypeOrClass::Type(t) => match t.as_ref() {
+                                    Type::Self_ => {
+                                        /*
+                                        self
+                                            .infos
+                                            .with_i_s(|i_s| inf.as_type(i_s))
+                                        i_s.curr
+                                        */
+                                    }
+                                    _ => {
+                                        debug!("TODO ignored completions for type {t:?}");
+                                    }
+                                },
+                                TypeOrClass::Class(c) => self.add_class_symbols(c),
+                            }
                         }
                     }
-                }
+                })
             }
             CompletionNode::Global { .. } => (),
         };

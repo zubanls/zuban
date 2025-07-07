@@ -59,6 +59,7 @@ impl Tree {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum Scope {
     Module,
     Class(NodeIndex),

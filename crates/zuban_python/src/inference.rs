@@ -77,16 +77,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 
 impl<'db, T> PositionalDocument<'db, T> {
     pub fn with_i_s<R>(&self, callback: impl FnOnce(&InferenceState) -> R) -> R {
-        let had_error = &Cell::new(false);
-        let parent_scope = match self.scope {
-            Scope::Module => ParentScope::Module,
-            Scope::Function(index) => ParentScope::Function(index),
-            Scope::Class(index) => ParentScope::Class(index),
-            Scope::Lambda(index) => todo!(),
-        };
-        InferenceState::run_with_parent_scope(self.db, self.file, parent_scope, |i_s| {
-            callback(&i_s.with_mode(Mode::AvoidErrors { had_error }))
-        })
+        with_i_s_non_self(self.db, self.file, self.scope, callback)
     }
 
     fn infer_name(&self, name: CSTName) -> Inferred {
@@ -126,6 +117,24 @@ impl<'db, T> PositionalDocument<'db, T> {
                 .infer_primary(primary, &mut ResultContext::ExpectUnused)
         })
     }
+}
+
+pub(crate) fn with_i_s_non_self<R>(
+    db: &Database,
+    file: &PythonFile,
+    scope: Scope,
+    callback: impl FnOnce(&InferenceState) -> R,
+) -> R {
+    let had_error = &Cell::new(false);
+    let parent_scope = match scope {
+        Scope::Module => ParentScope::Module,
+        Scope::Function(index) => ParentScope::Function(index),
+        Scope::Class(index) => ParentScope::Class(index),
+        Scope::Lambda(_) => todo!(),
+    };
+    InferenceState::run_with_parent_scope(db, file, parent_scope, |i_s| {
+        callback(&i_s.with_mode(Mode::AvoidErrors { had_error }))
+    })
 }
 
 pub(crate) struct GotoResolver<'db, C> {
