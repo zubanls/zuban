@@ -1,4 +1,4 @@
-use std::{cell::Cell, collections::HashSet};
+use std::collections::HashSet;
 
 use parsa_python_cst::{CompletionNode, PrimaryOrAtom};
 
@@ -7,7 +7,6 @@ use crate::{
     debug,
     file::{File as _, PythonFile},
     inference::PositionalDocument,
-    inference_state::{InferenceState, Mode},
     type_helpers::{Class, TypeOrClass},
     InputPosition,
 };
@@ -69,10 +68,11 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     PrimaryOrAtom::Atom(a) => self.infos.infer_atom(*a),
                 };
 
-                let had_error = &Cell::new(false);
-                let i_s = &InferenceState::new(db, file).with_mode(Mode::AvoidErrors { had_error });
-
-                for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
+                for t in self
+                    .infos
+                    .with_i_s(|i_s| inf.as_type(i_s))
+                    .iter_with_unpacked_unions(db)
+                {
                     for (_, type_or_class) in t.mro(db) {
                         match type_or_class {
                             TypeOrClass::Type(_) => (),
