@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
 use parsa_python_cst::{CompletionNode, PrimaryOrAtom};
 
@@ -69,19 +69,17 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     PrimaryOrAtom::Atom(a) => self.infos.infer_atom(*a),
                 };
 
-                with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
+                with_i_s_non_self(db, file, self.infos.scope, |i_s| {
                     for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
-                        for (_, type_or_class) in t.mro(db) {
+                        let mut check = Cow::Borrowed(t);
+                        if let Type::Self_ = t {
+                            if let Some(cls) = i_s.current_class() {
+                                check = Cow::Owned(cls.as_type(i_s.db));
+                            }
+                        }
+                        for (_, type_or_class) in check.mro(db) {
                             match type_or_class {
                                 TypeOrClass::Type(t) => match t.as_ref() {
-                                    Type::Self_ => {
-                                        /*
-                                        self
-                                            .infos
-                                            .with_i_s(|i_s| inf.as_type(i_s))
-                                        i_s.curr
-                                        */
-                                    }
                                     _ => {
                                         debug!("TODO ignored completions for type {t:?}");
                                     }
