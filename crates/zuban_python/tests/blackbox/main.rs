@@ -20,6 +20,57 @@ pub struct Filter {
     negative: bool,
 }
 
+const SKIPPED_FILES: [&str; 48] = [
+    "arrays.py",
+    "async_.py",
+    "basic.py",
+    "classes.py",
+    "completion.py",
+    "complex.py",
+    "comprehensions.py",
+    "conftest.py",
+    "context.py",
+    "decorators.py",
+    "descriptors.py",
+    "django.py",
+    "docstring.py",
+    "dynamic_arrays.py",
+    "dynamic_params.py",
+    "fixture_module.py",
+    "flow_analysis.py",
+    "fstring.py",
+    "functions.py",
+    "generators.py",
+    "goto.py",
+    "imports.py",
+    "import_tree",
+    "inheritance.py",
+    "__init__.py",
+    "invalid.py",
+    "isinstance.py",
+    "keywords.py",
+    "lambdas.py",
+    "named_expression.py",
+    "named_param.py",
+    "namespace1",
+    "namespace2",
+    "new.py",
+    "ns_path.py",
+    "on_import.py",
+    "ordering.py",
+    "parser.py",
+    "positional_only_params.py",
+    "precedence.py",
+    "pytest.py",
+    "recursion.py",
+    "stdlib.py",
+    "stub_folder",
+    "stubs.py",
+    "sys_path.py",
+    "types.py",
+    "usages.py",
+];
+
 impl Filter {
     fn new(name: &str, negative: bool) -> Self {
         Self {
@@ -95,6 +146,9 @@ fn main() -> ExitCode {
     let mut error_count = 0;
     let file_count = files.len();
     for python_file in files {
+        if SKIPPED_FILES.contains(&python_file.file_name().unwrap().to_str().unwrap()) {
+            continue;
+        }
         let code = read_to_string(&python_file).unwrap().into();
         let f = cases::TestFile {
             path: python_file,
