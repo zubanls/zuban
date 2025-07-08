@@ -6,7 +6,7 @@ use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
-    inference::{with_i_s_non_self, PositionalDocument},
+    inference::{unpack_union_types, with_i_s_non_self, PositionalDocument},
     inference_state::InferenceState,
     recoverable_error,
     type_::Type,
@@ -69,13 +69,12 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 let inf = self.infos.infer_primary_or_atom(*base);
 
                 with_i_s_non_self(db, file, self.infos.scope, |i_s| {
-                    for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {
-                        if let Type::Type(inner) = t {
-                            for t in inner.iter_with_unpacked_unions(db) {
-                                self.add_for_mro(i_s, t, false)
-                            }
-                        } else {
-                            self.add_for_mro(i_s, t, true)
+                    for t in
+                        unpack_union_types(db, inf.as_cow_type(i_s)).iter_with_unpacked_unions(db)
+                    {
+                        match t {
+                            Type::Type(t) => self.add_for_mro(i_s, t, false),
+                            t => self.add_for_mro(i_s, t, true),
                         }
                     }
                 })

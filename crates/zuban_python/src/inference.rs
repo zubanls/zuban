@@ -317,7 +317,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
     }))
 }
 
-pub fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a, Type> {
+pub(crate) fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a, Type> {
     if t.iter_with_unpacked_unions(db)
         .any(|t| matches!(t, Type::Type(x) if x.is_union_like(db)))
     {
