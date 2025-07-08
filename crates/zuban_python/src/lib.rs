@@ -199,12 +199,12 @@ impl<'project> Document<'project> {
         )
     }
 
-    pub fn goto<T, R: FromIterator<T>>(
+    pub fn goto<T>(
         &self,
         position: InputPosition,
         follow_imports: bool,
         on_name: impl for<'a> Fn(&dyn Name) -> T + Copy,
-    ) -> R {
+    ) -> Vec<T> {
         GotoResolver::new(self.positional_document(position), on_name).goto(follow_imports)
     }
 

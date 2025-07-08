@@ -526,11 +526,11 @@ d.bar
 #! []
 d.foo
 
-#? []
+#? ['setdefault']
 Foo.set
 #? ['setdefault']
 d.setdefaul
-#? []
+#? ['setdefault']
 Foo.setdefaul
 
 #? 5 ["'foo"]

@@ -15,10 +15,10 @@ use crate::{
     file::{ClassInitializer, File, FuncNodeRef, PythonFile},
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
-    matching::ResultContext,
+    matching::{LookupKind, ResultContext},
     name::{ModuleName, Name, TreeName},
     node_ref::NodeRef,
-    type_::{Type, TypeVarLikeName, TypeVarName, UnionType},
+    type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
     InputPosition, ValueName,
 };
 
@@ -137,8 +137,8 @@ impl<'db, C> GotoResolver<'db, C> {
 }
 
 impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
-    pub fn goto<R: FromIterator<T>>(self, follow_imports: bool) -> R {
-        if let Some(names) = self.goto_name::<R>() {
+    pub fn goto(self, follow_imports: bool) -> Vec<T> {
+        if let Some(names) = self.goto_name() {
             return names;
         }
         let callback = self.on_result;
@@ -150,37 +150,58 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         .collect()
     }
 
-    fn goto_name<R: FromIterator<T>>(&self) -> Option<R> {
+    fn goto_name(&self) -> Option<Vec<T>> {
+        let db = self.infos.db;
+        let file = self.infos.file;
+        let callback_if_name = |node_ref: NodeRef| {
+            let n = node_ref.maybe_name()?;
+            let tree_name = TreeName::new(db, node_ref.file, ParentScope::Module, n);
+            Some((self.on_result)(&tree_name))
+        };
         let lookup_on_name = |name: CSTName| {
             // TODO fix parent_scope
-            let db = self.infos.db;
-            let file = self.infos.file;
             let p = file.points.get(name.index());
             if p.calculated() && p.kind() == PointKind::Redirect {
                 let node_ref = p.as_redirected_node_ref(db);
-                if let Some(n) = node_ref.maybe_name() {
-                    let tree_name = TreeName::new(db, file, ParentScope::Module, n);
-                    return Some(std::iter::once((self.on_result)(&tree_name)).collect());
-                }
+                callback_if_name(node_ref).map(|r| vec![r])
+            } else {
+                None
             }
-            None
         };
         match self.infos.node {
             GotoNode::Name(name) => lookup_on_name(name),
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
                     let base = self.infos.infer_primary_or_atom(primary.first());
-                    // base.lookup(i_s)
+                    let mut results = vec![];
                     self.infos.with_i_s(|i_s| {
-                        /*
-                        unpack_union_types(base.as_cow_type(i_s))
-                            .iter_with_unpacked_unions()
-                            .map(|t| match t {
-                                Type::Type(t) =>
-                            })
-                        */
-                        None
-                    })
+                        for t in unpack_union_types(db, base.as_cow_type(i_s))
+                            .iter_with_unpacked_unions(db)
+                        {
+                            let lookup = t.lookup(
+                                i_s,
+                                file,
+                                name.as_code(),
+                                LookupKind::Normal,
+                                &mut ResultContext::Unknown,
+                                &|_issue| (),
+                                &|_t_of_attr_error| (),
+                            );
+                            if let LookupResult::GotoName { name, .. } = lookup {
+                                if let Some(result) = callback_if_name(NodeRef::from_link(db, name))
+                                {
+                                    results.push(result);
+                                    continue;
+                                }
+                            }
+                            if let Some(inf) = lookup.into_maybe_inferred() {
+                                if let Some(name) = type_to_name(db, file, &inf.as_cow_type(i_s)) {
+                                    results.push((self.on_result)(name.as_name()))
+                                }
+                            }
+                        }
+                    });
+                    (!results.is_empty()).then_some(results)
                 }),
                 _ => None,
             },
@@ -299,7 +320,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             )
         }
         Type::Dataclass(_) => todo!(),
-        Type::TypedDict(_) => todo!(),
+        Type::TypedDict(td) => todo!(),
         Type::NamedTuple(_) => todo!(),
         Type::Enum(_) => todo!(),
         Type::EnumMember(_) => todo!(),
