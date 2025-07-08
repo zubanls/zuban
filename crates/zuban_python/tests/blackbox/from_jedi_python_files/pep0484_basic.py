@@ -192,16 +192,16 @@ class NotCalledClass:
     def __init__(self, x):
         self.x: int = x
         self.y: int = ''
-        ##? int()
+        #? int()
         self.x
-        ##? int()
+        #? int()
         self.y
-        ##? int()
+        #? int()
         self.y
         self.z: int
         self.z = ''
-        ##? str() int()
+        #? int()
         self.z
         self.w: float
-        ##? float()
+        #? float()
         self.w
