@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use parsa_python_cst::{CompletionNode, PrimaryOrAtom};
+use parsa_python_cst::CompletionNode;
 
 use crate::{
     database::Database,
@@ -66,10 +66,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         match &self.infos.node {
             CompletionNode::Attribute { base, rest } => {
                 self.should_start_with = Some(rest.as_code());
-                let inf = match base {
-                    PrimaryOrAtom::Primary(p) => self.infos.infer_primary(*p),
-                    PrimaryOrAtom::Atom(a) => self.infos.infer_atom(*a),
-                };
+                let inf = self.infos.infer_primary_or_atom(*base);
 
                 with_i_s_non_self(db, file, self.infos.scope, |i_s| {
                     for t in inf.as_type(i_s).iter_with_unpacked_unions(db) {

@@ -3,9 +3,11 @@
  * standard type checking. Type checking should always be done first.
  * */
 
-use std::cell::Cell;
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
-use parsa_python_cst::{Atom, GotoNode, Name as CSTName, NameParent, Primary, Scope};
+use parsa_python_cst::{
+    Atom, GotoNode, Name as CSTName, NameParent, Primary, PrimaryContent, PrimaryOrAtom, Scope,
+};
 
 use crate::{
     database::{Database, ParentScope, PointKind},
@@ -16,7 +18,7 @@ use crate::{
     matching::ResultContext,
     name::{ModuleName, Name, TreeName},
     node_ref::NodeRef,
-    type_::{Type, TypeVarLikeName, TypeVarName},
+    type_::{Type, TypeVarLikeName, TypeVarName, UnionType},
     InputPosition, ValueName,
 };
 
@@ -49,27 +51,6 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         match self.node {
             GotoNode::Name(name) => Some(self.infer_name(name)),
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
-            GotoNode::None => None,
-        }
-    }
-
-    fn goto_name(&self) -> Option<TreeName> {
-        match self.node {
-            GotoNode::Name(name) => {
-                // TODO fix parent_scope
-                let p = self.file.points.get(name.index());
-                if p.calculated() && p.kind() == PointKind::Redirect {
-                    let node_ref = p.as_redirected_node_ref(self.db);
-                    if let Some(n) = node_ref.maybe_name() {
-                        return Some(TreeName::new(self.db, self.file, ParentScope::Module, n));
-                    }
-                }
-                None
-            }
-            GotoNode::Primary(_) => {
-                // TODO
-                None
-            }
             GotoNode::None => None,
         }
     }
@@ -117,6 +98,13 @@ impl<'db, T> PositionalDocument<'db, T> {
                 .infer_primary(primary, &mut ResultContext::ExpectUnused)
         })
     }
+
+    pub fn infer_primary_or_atom(&self, p_or_a: PrimaryOrAtom) -> Inferred {
+        match p_or_a {
+            PrimaryOrAtom::Primary(p) => self.infer_primary(p),
+            PrimaryOrAtom::Atom(a) => self.infer_atom(a),
+        }
+    }
 }
 
 pub(crate) fn with_i_s_non_self<R>(
@@ -150,8 +138,8 @@ impl<'db, C> GotoResolver<'db, C> {
 
 impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     pub fn goto<R: FromIterator<T>>(self, follow_imports: bool) -> R {
-        if let Some(n) = self.infos.goto_name() {
-            return std::iter::once((self.on_result)(&n)).collect();
+        if let Some(names) = self.goto_name::<R>() {
+            return names;
         }
         let callback = self.on_result;
         GotoResolver {
@@ -160,6 +148,44 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         }
         .infer_type_definition()
         .collect()
+    }
+
+    fn goto_name<R: FromIterator<T>>(&self) -> Option<R> {
+        let lookup_on_name = |name: CSTName| {
+            // TODO fix parent_scope
+            let db = self.infos.db;
+            let file = self.infos.file;
+            let p = file.points.get(name.index());
+            if p.calculated() && p.kind() == PointKind::Redirect {
+                let node_ref = p.as_redirected_node_ref(db);
+                if let Some(n) = node_ref.maybe_name() {
+                    let tree_name = TreeName::new(db, file, ParentScope::Module, n);
+                    return Some(std::iter::once((self.on_result)(&tree_name)).collect());
+                }
+            }
+            None
+        };
+        match self.infos.node {
+            GotoNode::Name(name) => lookup_on_name(name),
+            GotoNode::Primary(primary) => match primary.second() {
+                PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
+                    let base = self.infos.infer_primary_or_atom(primary.first());
+                    // base.lookup(i_s)
+                    self.infos.with_i_s(|i_s| {
+                        /*
+                        unpack_union_types(base.as_cow_type(i_s))
+                            .iter_with_unpacked_unions()
+                            .map(|t| match t {
+                                Type::Type(t) =>
+                            })
+                        */
+                        None
+                    })
+                }),
+                _ => None,
+            },
+            GotoNode::None => None,
+        }
     }
 }
 
@@ -225,7 +251,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             let parent_scope = ClassInitializer::from_node_ref(node_ref)
                 .class_storage
                 .parent_scope;
-            TreeName::new(db, file, parent_scope, node_ref.node().name())
+            TreeName::new(db, node_ref.file, parent_scope, node_ref.node().name())
         }
         Type::None => lookup(db.python_state.types(), "NoneType")?,
         Type::Tuple(tup) => {
@@ -289,4 +315,35 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             return None;
         }
     }))
+}
+
+pub fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a, Type> {
+    if t.iter_with_unpacked_unions(db)
+        .any(|t| matches!(t, Type::Type(x) if x.is_union_like(db)))
+    {
+        return Cow::Owned(Type::Union(UnionType::from_types(
+            t.iter_with_unpacked_unions(db)
+                .map(|t| {
+                    let mut unpacked = None;
+                    let mut non_unpacked = None;
+                    match t {
+                        Type::Type(t) if t.is_union_like(db) => {
+                            unpacked = Some(
+                                t.iter_with_unpacked_unions(db)
+                                    .map(|t| Type::Type(Rc::new(t.clone()))),
+                            )
+                        }
+                        _ => non_unpacked = Some(t.clone()),
+                    };
+                    unpacked
+                        .into_iter()
+                        .flatten()
+                        .chain(non_unpacked.into_iter())
+                })
+                .flatten()
+                .collect(),
+            true,
+        )));
+    }
+    t
 }

@@ -438,7 +438,7 @@ def foo(a: typing.List, b: typing.Dict, c: typing.MutableMapping) -> typing.Type
     b.setd
     #? ['setdefault']
     c.setd
-    #? MutableMapping()
+    #? typing.MutableMapping()
     c
     #?
     c['asdf']
