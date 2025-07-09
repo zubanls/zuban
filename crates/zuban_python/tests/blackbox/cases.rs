@@ -139,7 +139,7 @@ impl TestFile<'_> {
                         lines[line_nr + 1].len()
                     }
                 };
-                if names.last().unwrap().is_empty() {
+                if names.last().is_some_and(|last| last.is_empty()) {
                     // Splittling leaves an empty string if nothing is provided
                     names.pop();
                 }

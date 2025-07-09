@@ -234,11 +234,11 @@ def reset_missing_bracket(): pass
 # function calls
 # -----------------
 
-def foo(arg):
+def foo_func(arg):
     return arg
 
 
-x = foo(x for x in [1])
+x = foo_func(x for x in [1])
 
 #? int()
 next(x)

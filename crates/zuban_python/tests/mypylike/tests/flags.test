@@ -509,3 +509,22 @@ reveal_type(x[0])  # N: Revealed type is "int | str"
 # flags: --no-mypy-compatible
 def f():
     1()  # E: "int" not callable
+
+[case set_inference_mypy_no_compatible]
+# flags: --no-mypy-compatible
+x = {1, ""}
+reveal_type(next(iter(x)))  # N: Revealed type is "int | str"
+
+[case dict_inference_mypy_no_compatible]
+# flags: --no-mypy-compatible
+x = {1: 1.0, "": b''}
+reveal_type(x)  # N: Revealed type is "dict[int | str, float | bytes]"
+reveal_type(x[0])  # N: Revealed type is "float | bytes"
+reveal_type(x[""])  # N: Revealed type is "float | bytes"
+x[b'']  # E: Invalid index type "bytes" for "dict[int | str, float | bytes]"; expected type "int | str"
+
+y = {1: 1.0, **{"": b''}}
+reveal_type(y)  # N: Revealed type is "dict[int | str, float | bytes]"
+reveal_type(y[0])  # N: Revealed type is "float | bytes"
+reveal_type(y[""])  # N: Revealed type is "float | bytes"
+y[b'']  # E: Invalid index type "bytes" for "dict[int | str, float | bytes]"; expected type "int | str"
