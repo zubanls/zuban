@@ -6,7 +6,7 @@ b = (a:=1, a)
 
 #? int()
 b[0]
-#?
+#? int()
 b[1]
 
 # Should not fail

@@ -6,7 +6,8 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{
-    Atom, GotoNode, Name as CSTName, NameParent, Primary, PrimaryContent, PrimaryOrAtom, Scope,
+    Atom, GotoNode, Name as CSTName, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom,
+    Scope,
 };
 
 use crate::{
@@ -49,7 +50,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 
     fn infer_position(&self) -> Option<Inferred> {
         match self.node {
-            GotoNode::Name(name) => Some(self.infer_name(name)),
+            GotoNode::Name(name) => self.infer_name(name),
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::None => None,
         }
@@ -61,13 +62,16 @@ impl<'db, T> PositionalDocument<'db, T> {
         with_i_s_non_self(self.db, self.file, self.scope, callback)
     }
 
-    fn infer_name(&self, name: CSTName) -> Inferred {
+    fn infer_name(&self, name: CSTName) -> Option<Inferred> {
         match name.parent() {
-            NameParent::NameDef(_) => todo!(),
+            NameParent::NameDef(name_def) => self.maybe_inferred_node_index(name_def.index()),
             NameParent::Atom(atom) => self.infer_atom(atom),
             NameParent::Primary(_) => todo!(),
             NameParent::PrimaryTarget(_) => todo!(),
-            NameParent::Kwarg(_) => todo!(),
+            NameParent::Kwarg(_) => {
+                debug!("TODO kwarg infer");
+                None
+            }
             NameParent::KeywordPattern(_) => todo!(),
             NameParent::ImportFromAsName(_) => todo!(),
             NameParent::DottedName(_) => todo!(),
@@ -83,12 +87,13 @@ impl<'db, T> PositionalDocument<'db, T> {
         */
     }
 
-    pub fn infer_atom(&self, atom: Atom) -> Inferred {
-        let n = NodeRef::new(self.file, atom.index());
-        if let Some(inf) = self.with_i_s(|i_s| n.maybe_inferred(i_s)) {
-            return inf;
-        }
-        Inferred::new_never(crate::type_::NeverCause::Other) // TODO?
+    pub fn infer_atom(&self, atom: Atom) -> Option<Inferred> {
+        self.maybe_inferred_node_index(atom.index())
+    }
+
+    pub fn maybe_inferred_node_index(&self, node_index: NodeIndex) -> Option<Inferred> {
+        let n = NodeRef::new(self.file, node_index);
+        self.with_i_s(|i_s| n.maybe_inferred(i_s))
     }
 
     pub fn infer_primary(&self, primary: Primary) -> Inferred {
@@ -99,9 +104,9 @@ impl<'db, T> PositionalDocument<'db, T> {
         })
     }
 
-    pub fn infer_primary_or_atom(&self, p_or_a: PrimaryOrAtom) -> Inferred {
+    pub fn infer_primary_or_atom(&self, p_or_a: PrimaryOrAtom) -> Option<Inferred> {
         match p_or_a {
-            PrimaryOrAtom::Primary(p) => self.infer_primary(p),
+            PrimaryOrAtom::Primary(p) => Some(self.infer_primary(p)),
             PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         }
     }
@@ -172,7 +177,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             GotoNode::Name(name) => lookup_on_name(name),
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
-                    let base = self.infos.infer_primary_or_atom(primary.first());
+                    let base = self.infos.infer_primary_or_atom(primary.first())?;
                     let mut results = vec![];
                     self.infos.with_i_s(|i_s| {
                         for t in unpack_union_types(db, base.as_cow_type(i_s))
@@ -320,7 +325,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             )
         }
         Type::Dataclass(_) => todo!(),
-        Type::TypedDict(td) => todo!(),
+        Type::TypedDict(_td) => todo!(),
         Type::NamedTuple(_) => todo!(),
         Type::Enum(_) => todo!(),
         Type::EnumMember(_) => todo!(),

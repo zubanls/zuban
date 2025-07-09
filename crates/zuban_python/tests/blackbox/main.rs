@@ -20,7 +20,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 48] = [
+const SKIPPED_FILES: [&str; 47] = [
     "arrays.py",
     "async_.py",
     "basic.py",
@@ -50,7 +50,6 @@ const SKIPPED_FILES: [&str; 48] = [
     "isinstance.py",
     "keywords.py",
     "lambdas.py",
-    "named_expression.py",
     "named_param.py",
     "namespace1",
     "namespace2",
