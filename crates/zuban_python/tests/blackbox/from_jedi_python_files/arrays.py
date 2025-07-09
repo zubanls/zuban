@@ -2,10 +2,11 @@
 # basic array lookups
 # -----------------
 
+# jedi-diff: all lists are inferred without positionals
 
-#? int()
+#? int() str()
 [1,""][0]
-#? str()
+#? int() str()
 [1,""][1]
 #? int() str()
 [1,""][2]
@@ -22,7 +23,7 @@ a = list()
 [[a,a,a]][2][100]
 
 c = [[a,""]]
-#? str()
+#? list() str()
 c[0][1]
 
 b = [6,7]
@@ -248,17 +249,17 @@ F().setitem_x
 # dicts
 # -----------------
 dic2 = {'asdf': 3, 'b': 'str'}
-#? int()
+#? int() str()
 dic2['asdf']
-#? None int() str()
+#? types.NoneType() int() str()
 dic2.get('asdf')
 
 # string literal
-#? int()
+#? int() str()
 dic2[r'asdf']
-#? int()
+#? int() str()
 dic2[r'asdf']
-#? int()
+#? int() str()
 dic2[r'as' 'd' u'f']
 #? int() str()
 dic2['just_something']
@@ -291,7 +292,8 @@ f()
 d = dict({'a':''})
 def y(a):
     return a
-#?
+# jedi-diff: #?
+#? str()
 y(**d)
 
 #? str()
@@ -322,7 +324,7 @@ d.get('a')
 some_dct = dict({'a': 1, 'b': ''}, a=1.0)
 #? float()
 some_dct['a']
-#? str()
+#? int() float() str()
 some_dct['b']
 #? int() float() str()
 some_dct['c']
@@ -390,7 +392,7 @@ class GetItemWithList():
 GetItemWithList()[1]
 
 for i in 0, 2:
-    #? int() str()
+    #? int() float() str()
     GetItemWithList()[i]
 
 
@@ -505,25 +507,30 @@ tuple({1})[0]
 # -----------------
 
 a, *b, c = [1, 'b', list, dict]
-#? int()
+#? str() int() dict list
 a
-#?
+# jedi-diff: #?
+#? list()
 b
-#? list
+#? str() int() list dict
 c
 
 # Not valid syntax
 a, *b, *c = [1, 'd', list]
 #? int()
 a
-#?
+# jedi-diff: #?
+#? list()
 b
-#?
+# jedi-diff: #?
+#? list()
 c
 
 lc = [x for a, *x in [(1, '', 1.0)]]
 
-#?
+# jedi-diff #?
+#? str() float()
 lc[0][0]
-#?
+# jedi-diff #?
+#? str() float()
 lc[0][1]

@@ -21,8 +21,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 40] = [
-    "arrays.py",
+const SKIPPED_FILES: [&str; 39] = [
     "async_.py",
     "basic.py",
     "completion.py",
@@ -67,6 +66,7 @@ const SKIPPED_FILES: [&str; 40] = [
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
+        ("arrays.py", 49),
         ("classes.py", 24),
         ("comprehensions.py", 36),
         ("descriptors.py", 2),
