@@ -1370,6 +1370,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             let original_inf = self.infer_name_of_definition_by_index(first_index);
+            if self.i_s.db.mode == Mode::LanguageServer {
+                // This information is only needed if we need to access it again and otherwise
+                // irrelevant, because we only acccess the information of the first name def.
+                save(name_def.index(), &original_inf);
+            }
             check_assign_including_partials(first_index, &original_inf, None)
         } else {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
