@@ -20,6 +20,7 @@ use crate::{
     name::{ModuleName, Name, TreeName},
     node_ref::NodeRef,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
+    type_helpers::TypeOrClass,
     InputPosition, ValueName,
 };
 
@@ -112,11 +113,11 @@ impl<'db, T> PositionalDocument<'db, T> {
     }
 }
 
-pub(crate) fn with_i_s_non_self<R>(
-    db: &Database,
+pub(crate) fn with_i_s_non_self<'db, R>(
+    db: &'db Database,
     file: &PythonFile,
     scope: Scope,
-    callback: impl FnOnce(&InferenceState) -> R,
+    callback: impl FnOnce(&InferenceState<'db, '_>) -> R,
 ) -> R {
     let had_error = &Cell::new(false);
     let parent_scope = match scope {
@@ -221,23 +222,22 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         let callback = self.on_result;
         let file = self.infos.file;
         let db = self.infos.db;
-        inf.map(|t| {
-            t.as_type(&InferenceState::new(db, file))
-                .into_iter_with_unpacked_unions(db, true)
-        })
-        .into_iter()
-        .flatten()
-        .filter_map(move |e| {
-            debug!(
-                "Part of inferring type definition: {:?}",
-                e.type_.format_short(db)
-            );
-            Some(callback(ValueName {
-                name: type_to_name(db, file, &e.type_)?.as_name(),
-                db,
-                type_: &e.type_,
-            }))
-        })
+        let scope = self.infos.scope;
+        self.infos
+            .with_i_s(|i_s| inf.map(|t| t.as_type(i_s).into_iter_with_unpacked_unions(db, true)))
+            .into_iter()
+            .flatten()
+            .filter_map(move |e| {
+                debug!(
+                    "Part of inferring type definition: {:?}",
+                    e.type_.format_short(db)
+                );
+                Some(callback(ValueName {
+                    name: type_to_name(db, file, &e.type_)?.as_name(),
+                    db,
+                    type_: &e.type_,
+                }))
+            })
     }
 
     pub fn infer_implementation(&self) -> impl Iterator<Item = T> + 'db {
@@ -331,8 +331,13 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         Type::EnumMember(_) => todo!(),
         Type::Module(_) => todo!(),
         Type::Namespace(_) => todo!(),
-        Type::Super { .. } => {
-            debug!("TODO super");
+        Type::Super { class, .. } => {
+            // TODO this only cares about one class, when it could care about all bases
+            for base in class.class(db).bases(db) {
+                if let TypeOrClass::Class(base) = base {
+                    return type_to_name(db, file, &base.as_type(db));
+                }
+            }
             return None;
         }
         Type::CustomBehavior(_) => todo!(),

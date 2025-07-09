@@ -488,12 +488,15 @@ class TestSuper(Super):
     #?
     super()
     def test(self):
-        #? SuperCopy()
+        #? Super()
         super()
+        super_var = super()
+        #? Super()
+        super_var
         #? ['a']
         super().a
         if 1:
-            #? SuperCopy()
+            #? Super()
             super()
         def a():
             #?

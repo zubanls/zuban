@@ -85,7 +85,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         db: &'db Database,
         file: &PythonFile,
         parent_scope: ParentScope,
-        callback: impl FnOnce(InferenceState) -> T,
+        callback: impl FnOnce(InferenceState<'db, '_>) -> T,
     ) -> T {
         let class;
         let func;
