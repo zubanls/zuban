@@ -10,7 +10,7 @@ use crate::{
     inference_state::InferenceState,
     recoverable_error,
     type_::Type,
-    type_helpers::{Class, TypeOrClass},
+    type_helpers::{is_private, Class, TypeOrClass},
     InputPosition,
 };
 
@@ -109,7 +109,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     fn add_class_symbols(&mut self, c: Class, is_instance: bool) {
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
         for (symbol, _node_index) in storage.class_symbol_table.iter() {
-            if !self.maybe_add(symbol) {
+            if !self.maybe_add(symbol) || is_private(symbol) {
                 continue;
             }
             let result = (self.on_result)(&CompletionTreeName {
@@ -123,7 +123,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         }
         if is_instance {
             for (symbol, _node_index) in storage.self_symbol_table.iter() {
-                if !self.maybe_add(symbol) {
+                if !self.maybe_add(symbol) || is_private(symbol) {
                     continue;
                 }
                 let result = (self.on_result)(&CompletionTreeName {

@@ -67,7 +67,7 @@ const SKIPPED_FILES: [&str; 41] = [
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
-        ("classes.py", 32),
+        ("classes.py", 27),
         ("descriptors.py", 2),
         ("functions.py", 57),
         ("inheritance.py", 3),
