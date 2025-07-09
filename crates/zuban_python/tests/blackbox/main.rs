@@ -21,7 +21,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 39] = [
+const SKIPPED_FILES: [&str; 40] = [
     "arrays.py",
     "async_.py",
     "basic.py",
@@ -61,6 +61,8 @@ const SKIPPED_FILES: [&str; 39] = [
     "sys_path.py",
     "types.py",
     "usages.py",
+    // Our own
+    "unreachable_no_crash.py",
 ];
 
 lazy_static::lazy_static! {
@@ -70,7 +72,7 @@ lazy_static::lazy_static! {
         ("descriptors.py", 2),
         ("functions.py", 57),
         ("inheritance.py", 3),
-        ("isinstance.py", 10),
+        ("isinstance.py", 3),
         ("parser.py", 2),
         ("pep0484_generic_passthroughs.py", 5),
         ("pep0484_typing.py", 3),
