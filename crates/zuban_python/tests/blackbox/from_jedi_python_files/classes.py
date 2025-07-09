@@ -7,10 +7,12 @@ def find_class():
         TestClass.ret
 
 class FindClass():
-    #? []
+    # jedi-diff #? []
+    #? ["ret"]
     TestClass.ret
     if a:
-        #? []
+        # jedi-diff #? []
+        #? ["ret"]
         TestClass.ret
 
     def find_class(self):
@@ -146,6 +148,8 @@ A().addition = None
 A(1).addition = None
 #? 1 A
 A(1).addition = None
+#! 8 []
+A().addition = None
 a = A()
 #? 8 int()
 a.addition = None
@@ -155,11 +159,11 @@ a.addition = None
 # inheritance
 # -----------------
 
-class Base(object):
+class BaseClass(object):
     def method_base(self):
         return 1
 
-class SuperClass(Base):
+class SuperClass(BaseClass):
     class_super = 3
     def __init__(self):
         self.var_super = ''
@@ -199,13 +203,13 @@ SubClass.class_
 # inheritance of builtins
 # -----------------
 
-class Base(str):
+class BaseWithStr(str):
     pass
 
 #? ['upper']
-Base.upper
+BaseWithStr.upper
 #? ['upper']
-Base().upper
+BaseWithStr().upper
 
 # -----------------
 # dynamic inheritance
@@ -220,7 +224,8 @@ def classgetter():
 
 class Dude(classgetter()):
     def react(self):
-        #? ['shout']
+        # jedi-diff: #? ['shout']
+        #? []
         self.s
 
 # -----------------
@@ -290,7 +295,7 @@ V(1).d()
 # -----------------
 # ordering
 # -----------------
-class A():
+class Ordering():
     def b(self):
         #? int()
         a_func()
@@ -305,23 +310,23 @@ def a_func():
     return 1
 
 #? int()
-A().b()
+Ordering().b()
 #? str()
-A().a_func()
+Ordering().a_func()
 
 # -----------------
 # nested classes
 # -----------------
-class A():
+class A1():
     class B():
         pass
     def b(self):
         return 1.0
 
 #? float()
-A().b()
+A1().b()
 
-class A():
+class A2():
     def b(self):
         class B():
             def b(self):
@@ -329,7 +334,7 @@ class A():
         return B().b()
 
 #? list()
-A().b()
+A2().b()
 
 # -----------------
 # ducktyping
@@ -357,7 +362,8 @@ a[1]
 
 #? float()
 WithoutMethod.blub(WithoutMethod())
-#? str()
+# jedi-diff: #? str()
+#? float()
 WithoutMethod.blub(B())
 
 # -----------------
@@ -535,30 +541,30 @@ class TestX(object):
 # mro method
 # -----------------
 
-class A(object):
+class C(object):
     a = 3
 
 #? ['mro']
-A.mro
+C.mro
 #? []
-A().mro
+C().mro
 
 
 # -----------------
 # mro resolution
 # -----------------
 
-class B(A()):
+class D(C()):
     b = 3
 
 #?
-B.a
+D.a
 #?
-B().a
+D().a
 #? int()
-B.b
+D.b
 #? int()
-B().b
+D().b
 
 
 # -----------------
@@ -570,17 +576,18 @@ from import_tree.classes import Config2, BaseClass
 class Config(BaseClass):
     """#884"""
 
-#? Config2()
+#? import_tree.classes.Config2()
 Config.mode
 
-#? int()
+# jedi-diff: #? int()
+#?
 Config.mode2
 
 
 # -----------------
 # Nested class/def/class
 # -----------------
-class Foo(object):
+class Foo2(object):
     a = 3
     def create_class(self):
         class X():
@@ -589,16 +596,16 @@ class Foo(object):
         return X
 
 #? int()
-Foo().create_class().a
+Foo2().create_class().a
 #? float()
-Foo().b
+Foo2().b
 
-class Foo(object):
+class Foo3(object):
     def comprehension_definition(self):
         return [1 for self.b in [1]]
 
 #? int()
-Foo().b
+Foo3().b
 
 # -----------------
 # default arguments

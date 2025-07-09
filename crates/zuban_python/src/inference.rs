@@ -331,7 +331,10 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
         Type::EnumMember(_) => todo!(),
         Type::Module(_) => todo!(),
         Type::Namespace(_) => todo!(),
-        Type::Super { .. } => todo!(),
+        Type::Super { .. } => {
+            debug!("TODO super");
+            return None;
+        }
         Type::CustomBehavior(_) => todo!(),
         Type::DataclassTransformObj(_) => todo!(),
         Type::Self_ => todo!(),
