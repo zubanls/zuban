@@ -1,7 +1,7 @@
 def x():
     return
 
-#? None
+#? types.NoneType()
 x()
 
 def array(first_param):
@@ -110,7 +110,8 @@ def recursion2(a):
         else:
             return a
 
-#? int() str()
+# jedi-diff: #? int() str()
+#? int()
 recursion2(1)
 
 # -----------------
@@ -331,13 +332,16 @@ exe3 = kwargs_func(**{k: v for k, v in [(a, 3), ('b', 4.0)]})
 
 # Should resolve to the same as 2 but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-#? 
+# jedi-diff: #? 
+#? int() float()
 exe3['a']
 
-#? 
+# jedi-diff: #? 
+#? int() float()
 exe3['b']
 
-#? 
+# jedi-diff: #? 
+#? int() float()
 exe3['c']
 
 # -----------------

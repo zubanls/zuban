@@ -1,6 +1,7 @@
 mod cases;
 
 use std::{
+    collections::HashMap,
     env,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
@@ -20,7 +21,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 47] = [
+const SKIPPED_FILES: [&str; 46] = [
     "arrays.py",
     "async_.py",
     "basic.py",
@@ -39,7 +40,6 @@ const SKIPPED_FILES: [&str; 47] = [
     "fixture_module.py",
     "flow_analysis.py",
     "fstring.py",
-    "functions.py",
     "generators.py",
     "goto.py",
     "imports.py",
@@ -69,6 +69,14 @@ const SKIPPED_FILES: [&str; 47] = [
     "types.py",
     "usages.py",
 ];
+
+lazy_static::lazy_static! {
+    static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
+        ("functions.py", 57),
+        ("pep0484_generic_passthroughs.py", 5),
+        ("pep0484_typing.py", 3),
+    ]);
+}
 
 impl Filter {
     fn new(name: &str, negative: bool) -> Self {
@@ -143,27 +151,43 @@ fn main() -> ExitCode {
     let mut full_count = 0;
     let mut ran_count = 0;
     let mut error_count = 0;
-    let file_count = files.len();
+    let mut unexpected_error_count = 0;
+    let mut file_count = 0;
+    let mut should_error_out = false;
     for python_file in files {
-        if SKIPPED_FILES.contains(&python_file.file_name().unwrap().to_str().unwrap()) {
+        let file_name = &python_file.file_name().unwrap().to_str().unwrap();
+        if SKIPPED_FILES.contains(file_name) {
             continue;
         }
         let code = read_to_string(&python_file).unwrap().into();
         let f = cases::TestFile {
-            path: python_file,
+            path: &python_file,
             code,
             filters: &filters,
         };
         let (ran, full, errors) = f.test(&mut project);
         ran_count += ran;
         full_count += full;
+
+        if let Some(&expected) = EXPECTED_TEST_FAILURES.get(file_name) {
+            if expected != errors {
+                unexpected_error_count += errors.checked_sub(expected).unwrap_or(0);
+                println!("Expected {expected} errors for {file_name}, but had {errors}");
+                should_error_out = true;
+            }
+        } else {
+            unexpected_error_count += errors;
+            should_error_out |= errors > 0
+        }
         error_count += errors;
+        file_count += 1;
     }
     println!(
-        "Ran {ran_count} of {full_count} ({error_count} errors) blackbox tests in {file_count} files; finished in {:.2}s",
+        "Ran {ran_count} of {full_count} ({unexpected_error_count} unexpected errors; \
+         {error_count} expected) blackbox tests in {file_count} files; finished in {:.2}s",
         start.elapsed().as_secs_f32(),
     );
-    ExitCode::from((error_count > 0) as u8)
+    ExitCode::from(should_error_out as u8)
 }
 
 fn mypy_path() -> Vec<Rc<NormalizedPath>> {

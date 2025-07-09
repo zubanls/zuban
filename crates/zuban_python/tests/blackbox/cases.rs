@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{collections::HashSet, path::PathBuf};
+use std::{collections::HashSet, path::Path};
 
 use vfs::PathWithScheme;
 use zuban_python::{InputPosition, Name};
@@ -7,7 +7,7 @@ use zuban_python::{InputPosition, Name};
 use crate::Filter;
 
 pub struct TestFile<'a> {
-    pub path: PathBuf,
+    pub path: &'a Path,
     pub code: Box<str>,
     pub filters: &'a [Filter],
 }
