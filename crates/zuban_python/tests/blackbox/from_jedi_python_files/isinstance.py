@@ -1,3 +1,6 @@
+# jedi-diff: added this
+ass = i = j = k = undefined()
+
 if isinstance(i, str):
     #? str()
     i
@@ -59,7 +62,8 @@ def fooooo2(obj):
 a
 # In earlier versions of Jedi, this returned both datetime and int, but now
 # Jedi does flow checks and realizes that the top return isn't executed.
-#? int()
+# jedi-diff: #? int()
+# int() datetime.date()
 fooooo2('')
 
 
@@ -88,7 +92,8 @@ class Test():
     def boo(self):
         if isinstance(self.testing, str):
             # TODO this is wrong, it should only be str.
-            #? str() int()
+            # jedi-diff: #? str() int()
+            #? str()
             self.testing
             #? Test()
             self
@@ -97,7 +102,8 @@ class Test():
 # Syntax
 # -----------------
 
-#?
+# jedi-diff: #?
+#? bool()
 isinstance(1, int())
 
 # -----------------
@@ -106,7 +112,8 @@ isinstance(1, int())
 
 def ayyyyyye(obj):
     if isinstance(obj.obj, str):
-        #?
+        # jedi-diff: #?
+        #? str()
         obj.obj
         #?
         obj
