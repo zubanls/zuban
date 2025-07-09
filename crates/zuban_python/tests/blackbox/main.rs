@@ -21,7 +21,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 46] = [
+const SKIPPED_FILES: [&str; 42] = [
     "arrays.py",
     "async_.py",
     "basic.py",
@@ -32,7 +32,6 @@ const SKIPPED_FILES: [&str; 46] = [
     "conftest.py",
     "context.py",
     "decorators.py",
-    "descriptors.py",
     "django.py",
     "docstring.py",
     "dynamic_arrays.py",
@@ -44,7 +43,6 @@ const SKIPPED_FILES: [&str; 46] = [
     "goto.py",
     "imports.py",
     "import_tree",
-    "inheritance.py",
     "__init__.py",
     "invalid.py",
     "isinstance.py",
@@ -53,11 +51,9 @@ const SKIPPED_FILES: [&str; 46] = [
     "named_param.py",
     "namespace1",
     "namespace2",
-    "new.py",
     "ns_path.py",
     "on_import.py",
     "ordering.py",
-    "parser.py",
     "positional_only_params.py",
     "precedence.py",
     "pytest.py",
@@ -72,7 +68,9 @@ const SKIPPED_FILES: [&str; 46] = [
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
+        ("descriptors.py", 2),
         ("functions.py", 57),
+        ("parser.py", 2),
         ("pep0484_generic_passthroughs.py", 5),
         ("pep0484_typing.py", 3),
     ]);

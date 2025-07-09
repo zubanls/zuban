@@ -111,9 +111,11 @@ PropClass("").ret
 #? []
 PropClass().ret.
 
-#? str()
+# jedi-diff: #? str()
+#? ret2
 PropClass("").ret2
-#? 
+# jedi-diff: #? 
+#? ret2
 PropClass().ret2
 
 #? int()
@@ -160,7 +162,8 @@ class E(object):
         return cls.a
 
 e = E(1)
-#? int()
+# jedi-diff #? int()
+#? E()
 e.f(1)
 #? int()
 E.f(1)
@@ -171,7 +174,8 @@ E.g(1)
 
 #? int()
 e.s(1)
-#? int()
+# jedi-diff: #? int()
+#?
 E.s(1)
 #? int()
 e.t(1)

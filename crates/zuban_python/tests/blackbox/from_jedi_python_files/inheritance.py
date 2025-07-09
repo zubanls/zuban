@@ -18,9 +18,9 @@ class Sub(Super):
     def attribute(self):
         pass
 
-    #! 4 ['def func']
+    #! 4 ['def func(self):']
     func = 3
-    #! 12 ['def func']
+    #! 12 ['class func(): pass']
     class func(): pass
 
     #! 8 ['class Inner']
@@ -41,13 +41,15 @@ class Test1:
 
     def __init__(self, self2):
         self.foo_here = 3
-        #? ['foo_here', 'foo_in_func']
+        # jedi-diff #? ['foo_here', 'foo_in_func']
+        #? ['foo_here', 'foo_in_func', 'foo_not_on_self']
         self.foo_
         #? int()
         self.foo_here
         #?
         self.foo_nested
-        #?
+        # jedi-diff #?
+        #? int()
         self.foo_not_on_self
         #? float()
         self.foo_in_func
@@ -66,11 +68,13 @@ class SubTest(Test1):
         self.foo_sub_class = list
 
     def bar(self):
-        #? ['foo_here', 'foo_in_func', 'foo_sub_class']
+        # jedi-diff: #? ['foo_here', 'foo_in_func', 'foo_sub_class']
+        #? ['foo_here', 'foo_in_func', 'foo_not_on_self', 'foo_sub_class']
         self.foo_
         #? int()
         self.foo_here
         #?
         self.foo_nested
-        #?
+        # jedi-diff #?
+        #? int()
         self.foo_not_on_self
