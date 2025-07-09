@@ -19,6 +19,7 @@ use crate::{
     matching::{LookupKind, ResultContext},
     name::{ModuleName, Name, TreeName},
     node_ref::NodeRef,
+    recoverable_error,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::TypeOrClass,
     InputPosition, ValueName,
@@ -201,7 +202,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                                 }
                             }
                             if let Some(inf) = lookup.into_maybe_inferred() {
-                                if let Some(name) = type_to_name(db, file, &inf.as_cow_type(i_s)) {
+                                if let Some(name) = type_to_name(i_s, file, &inf.as_cow_type(i_s)) {
                                     results.push((self.on_result)(name.as_name()))
                                 }
                             }
@@ -233,7 +234,10 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                     e.type_.format_short(db)
                 );
                 Some(callback(ValueName {
-                    name: type_to_name(db, file, &e.type_)?.as_name(),
+                    name: with_i_s_non_self(db, file, scope, |i_s| {
+                        type_to_name(i_s, file, &e.type_)
+                    })?
+                    .as_name(),
                     db,
                     type_: &e.type_,
                 }))
@@ -261,7 +265,12 @@ impl NameLike<'_> {
     }
 }
 
-fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Option<NameLike<'db>> {
+fn type_to_name<'db>(
+    i_s: &InferenceState<'db, '_>,
+    file: &'db PythonFile,
+    t: &Type,
+) -> Option<NameLike<'db>> {
+    let db = i_s.db;
     let from_node_ref = |node_ref: NodeRef<'db>| {
         TreeName::new(
             db,
@@ -301,7 +310,7 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             },
             TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => return None,
         },
-        Type::Type(t) => return type_to_name(db, file, &t),
+        Type::Type(t) => return type_to_name(i_s, file, &t),
         Type::Callable(callable) => {
             let node_ref = NodeRef::from_link(db, callable.defined_at);
             if let Some(func) = node_ref.maybe_function() {
@@ -335,14 +344,21 @@ fn type_to_name<'db>(db: &'db Database, file: &'db PythonFile, t: &Type) -> Opti
             // TODO this only cares about one class, when it could care about all bases
             for base in class.class(db).bases(db) {
                 if let TypeOrClass::Class(base) = base {
-                    return type_to_name(db, file, &base.as_type(db));
+                    return type_to_name(i_s, file, &base.as_type(db));
                 }
             }
             return None;
         }
         Type::CustomBehavior(_) => todo!(),
         Type::DataclassTransformObj(_) => todo!(),
-        Type::Self_ => todo!(),
+        Type::Self_ => {
+            if let Some(cls) = i_s.current_class() {
+                return type_to_name(i_s, file, &cls.as_type(db));
+            } else {
+                recoverable_error!("Could not find the current class for Self");
+                return None;
+            }
+        }
         Type::Union(_) | Type::Never(_) => {
             // This probably only happens for Type[int | str], which should probably be handled
             // separately.
