@@ -95,14 +95,29 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         }
 
         for (_, type_or_class) in t.mro(self.infos.db) {
-            match type_or_class {
-                TypeOrClass::Type(t) => match t.as_ref() {
-                    _ => {
-                        debug!("TODO ignored completions for type {t:?}");
+            self.add_for_type_or_class(type_or_class, is_instance)
+        }
+    }
+
+    fn add_for_type_or_class(&mut self, type_or_class: TypeOrClass, is_instance: bool) {
+        match type_or_class {
+            TypeOrClass::Type(t) => match t.as_ref() {
+                Type::Super {
+                    class,
+                    mro_index: _,
+                    ..
+                } => {
+                    // TODO this is not fully correct, because some base classes might have been
+                    // skipped with the mro_index
+                    for base in class.class(self.infos.db).bases(self.infos.db) {
+                        self.add_for_type_or_class(base, is_instance)
                     }
-                },
-                TypeOrClass::Class(c) => self.add_class_symbols(c, is_instance),
-            }
+                }
+                _ => {
+                    debug!("TODO ignored completions for type {t:?}");
+                }
+            },
+            TypeOrClass::Class(c) => self.add_class_symbols(c, is_instance),
         }
     }
 
