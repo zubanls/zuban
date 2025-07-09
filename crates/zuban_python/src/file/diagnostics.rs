@@ -467,6 +467,11 @@ impl Inference<'_, '_, '_> {
                         self.calc_with_stmt(with_stmt, class, func, true)
                     }
                 },
+                StmtLikeContent::BrokenScope(broken) => {
+                    // For now process these as part of the current scope, since this is part of
+                    // the parser's error recovery
+                    self.calc_stmts_diagnostics(broken.iter_stmt_likes(), class, func)
+                }
                 StmtLikeContent::Error(_) | StmtLikeContent::Newline => {}
             };
             self.set_point(

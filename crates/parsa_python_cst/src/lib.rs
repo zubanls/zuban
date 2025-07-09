@@ -533,6 +533,9 @@ create_nonterminal_structs!(
     TypeParamBound: type_param_bound
     TypeParamDefault: type_param_default
     TypeParamStarredDefault: type_param_starred_default
+
+    // Error recovery
+    BrokenScope: broken_scope
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -1377,6 +1380,14 @@ impl<'db> Iterator for TargetIterator<'db> {
     }
 }
 
+impl<'db> BrokenScope<'db> {
+    pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
+        let mut iterator = self.node.iter_children();
+        let indent_leaf = iterator.next().unwrap(); // get rid of indent leaf
+        StmtLikeIterator::from_stmt_iterator(indent_leaf, iterator)
+    }
+}
+
 impl<'db> Block<'db> {
     pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
         let mut iterator = self.node.iter_children();
@@ -1622,6 +1633,7 @@ pub enum StmtLikeContent<'db> {
     WithStmt(WithStmt<'db>),
     MatchStmt(MatchStmt<'db>),
     Error(Error<'db>),
+    BrokenScope(BrokenScope<'db>),
     Newline,
 }
 
@@ -1684,6 +1696,8 @@ impl<'db> StmtLikeContent<'db> {
             Self::MatchStmt(MatchStmt::new(child))
         } else if child.is_type(Nonterminal(async_stmt)) {
             Self::AsyncStmt(AsyncStmt::new(child))
+        } else if child.is_type(Nonterminal(broken_scope)) {
+            Self::BrokenScope(BrokenScope::new(child))
         } else {
             debug_assert_eq!(child.type_(), Terminal(TerminalType::Newline));
             Self::Newline

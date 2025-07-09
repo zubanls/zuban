@@ -28,6 +28,7 @@ create_grammar!(
           simple_stmts | Newline
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
         | function_def | class_def | decorated | async_stmt | match_stmt
+        | broken_scope
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
@@ -36,6 +37,9 @@ create_grammar!(
         | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
     async_stmt: "async" (function_def | with_stmt | for_stmt)
+
+    // Only relevant for error recovery, can happen e.g. with a syntax error in an if expression
+    broken_scope: Indent stmt+ Dedent
 
     // SIMPLE STATEMENTS
     // =================

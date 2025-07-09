@@ -31,14 +31,14 @@ def test_assignments2():
         match = ''
     #? str()
     Foo.match
-    #? 13 int()
+    #? 13 
     if Foo.match := 1:
         #? str()
         Foo.match
     #? str()
     Foo.match
 
-    #?
+    #? str()
     y
     #? 16 str()
     if y := Foo.match:

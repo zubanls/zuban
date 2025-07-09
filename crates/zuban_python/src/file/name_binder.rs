@@ -601,6 +601,9 @@ impl<'db> NameBinder<'db> {
                     }
                     continue;
                 }
+                StmtLikeContent::BrokenScope(broken) => {
+                    self.index_stmts(broken.iter_stmt_likes(), false)
+                }
                 StmtLikeContent::Newline | StmtLikeContent::PassStmt(_) => (),
             };
             last_was_an_error = false;
