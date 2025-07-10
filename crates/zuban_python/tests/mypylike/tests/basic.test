@@ -983,7 +983,7 @@ x = 1
 
 [file n.py]
 def err()(value: str) -> str  # E: invalid syntax
-    return value  # E: "return" outside function
+    return value  # E: "return" outside function  # E: invalid syntax
 x = 1
 
 [case avoid_bracket_slowdown]
@@ -1114,5 +1114,16 @@ def short_type(obj: object) -> str:
 def f() -> None:
     x = 1
     if asd fds:  # E: invalid syntax
-        reveal_type(x)  # N: Revealed type is "int"
+        reveal_type(x)  # E: invalid syntax # N: Revealed type is "int"
     reveal_type(x)  # N: Revealed type is "int"
+
+[case broken_scope1]
+a = 1
+ b = 1  # E: invalid syntax
+c = 1
+
+[case broken_scope2]
+a = 1
+if bool()  # E: invalid syntax
+    b = 1  # E: invalid syntax
+c = 1

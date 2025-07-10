@@ -602,6 +602,7 @@ impl<'db> NameBinder<'db> {
                     continue;
                 }
                 StmtLikeContent::BrokenScope(broken) => {
+                    self.add_issue(broken.index(), IssueKind::InvalidSyntax);
                     self.index_stmts(broken.iter_stmt_likes(), false)
                 }
                 StmtLikeContent::Newline | StmtLikeContent::PassStmt(_) => (),
