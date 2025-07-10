@@ -4,7 +4,8 @@ definition = 3
 #! 0 ['a = definition']
 a = definition
 
-#! []
+# jedi-diff: #! []
+#! ['b = a']
 b
 #! ['a = definition']
 a
@@ -20,14 +21,15 @@ cd = c
 #! 0 ['cd = e']
 cd = e
 
-#! ['module math']
+#! ['math']
 import math
-#! ['module math']
+#! ['import math']
 math
 
-#! ['module math']
+#! ['import math']
 b = math
-#! ['b = math']
+# jedi-diff: #! ['b = math']
+#! ['b = a']
 b
 
 #! 18 ['foo = 10']
@@ -39,11 +41,12 @@ foo = 10;print(foo)
 class C(object):
     x = 3
     def b(self):
-        #! ['b = math']
+        # jedi-diff: #! ['b = math']
+        #! ['b = a']
         b
-        #! ['def b']
+        #! ['def b(self):']
         self.b
-        #! 14 ['def b']
+        #! 14 ['def b(self):']
         self.b()
         #! 14 ['def b']
         self.b.
@@ -55,25 +58,26 @@ class C(object):
         self.x.
         return 1
 
-    #! ['def b']
+    #! ['def b(self):']
     b
 
-#! ['b = math']
+# jedi-diff: #! ['b = math']
+#! ['b = a']
 b
 
-#! ['def b']
+#! ['def b(self):']
 C.b
-#! ['def b']
+#! ['def b(self):']
 C().b
-#! 0 ['class C']
+#! 0 ['class C(object):']
 C().b
-#! 0 ['class C']
+#! 0 ['class C(object):']
 C().b
 
 D = C
-#! ['def b']
+#! ['def b(self):']
 D.b
-#! ['def b']
+#! ['def b(self):']
 D().b
 
 #! 0 ['D = C']
@@ -84,11 +88,19 @@ D().b
 def c():
     return ''
 
-#! ['def c']
+# jedi-diff: #! ['def c']
+#! ['c = b']
 c
-#! 0 ['def c']
+# jedi-diff: #! 0 ['def c']
+#! 0 ['c = b']
 c()
 
+def func():
+    ...
+#! ['def func():']
+func
+#! 0 ['def func():']
+func()
 
 class ClassVar():
     x = 3
@@ -106,7 +118,7 @@ ClassVar().x = ''
 
 # Recurring use of the same var name, github #315
 def f(t=None):
-    #! 9 ['param t=None']
+    #! 9 ['t=None']
     t = t or 1
 
 
@@ -126,11 +138,11 @@ class Bar:
         print("bar")
 class Baz(Foo, Bar):
     def baz(self):
-        #! ['def foo']
+        #! ['def foo(self):']
         super().foo
-        #! ['def bar']
+        #! ['def bar(self):']
         super().bar
-        #! ['instance Foo']
+        #! ['class Foo:']
         super()
 
 # -----------------
@@ -196,7 +208,7 @@ func().b()
 # on itself
 # -----------------
 
-#! 7 ['class ClassDef']
+#! 7 ['class ClassDef():']
 class ClassDef():
     """ abc """
     pass
@@ -220,16 +232,16 @@ ab1(ClassDef);ab2(ClassDef);ab3(ClassDef)
 # -----------------
 
 for i in range(1):
-    #! ['for i in range(1): i']
+    #! ['for i in range(1):']
     i
 
 for key, value in [(1,2)]:
-    #! ['for key, value in [(1,2)]: key']
+    #! ['for ke", "alue in [(", ")]: key']
     key
 
-#! 4 ['for y in [1]: y']
+#! 4 ['for y in [1]:']
 for y in [1]:
-    #! ['for y in [1]: y']
+    #! ['for y in [1]:']
     y
 
 # -----------------
@@ -247,12 +259,12 @@ class ClassDec():
     def class_func(func):
         return func
 
-#! 14 ['def class_func']
+#! 14 ['def class_func(func):']
 @ClassDec.class_func
 def x():
     pass
 
-#! 2 ['class ClassDec']
+#! 2 ['class ClassDec():']
 @ClassDec.class_func
 def z():
     pass

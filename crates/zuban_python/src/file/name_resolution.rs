@@ -89,10 +89,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     ) {
         match dotted_as_name.unpack() {
             DottedAsNameContent::Simple(name_def, rest) => {
-                if self.point(name_def.index()).calculated() {
+                let node_ref = NodeRef::new(self.file, name_def.index());
+                if node_ref.point().calculated() {
                     // It was already assigned (probably during type computation)
                     return;
                 }
+                node_ref.set_point(Point::new_calculating());
+
                 let result = self.global_import(name_def.name());
                 assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
                 if let Some(rest) = rest {
@@ -100,12 +103,17 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         self.cache_import_dotted_name(rest, result);
                     }
                 }
+                if node_ref.point().calculating() {
+                    node_ref.set_point(Point::new_uncalculated())
+                }
             }
             DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                if self.point(as_name_def.index()).calculated() {
+                let node_ref = NodeRef::new(self.file, as_name_def.index());
+                if node_ref.point().calculated() {
                     // It was already assigned (probably during type computation)
                     return;
                 }
+                node_ref.set_point(Point::new_calculating());
 
                 let result = self.cache_import_dotted_name(dotted_name, None);
                 let inf = match result {
@@ -113,6 +121,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     None => Inferred::new_module_not_found(),
                 };
                 assign_to_name_def(as_name_def, Some(inf));
+                if node_ref.point().calculating() {
+                    node_ref.set_point(Point::new_uncalculated())
+                }
             }
         }
     }
@@ -239,7 +250,6 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             if cfg!(debug_assertions) {
                 let p = self.point(name_def.index());
                 debug_assert!(!p.calculated(), "{p:?}");
-                debug_assert!(!p.calculating(), "{p:?}");
             }
             let write_name_def = self.is_allowed_to_assign_on_import_without_narrowing(name_def);
             let inf = inf.unwrap_or_else(|| {

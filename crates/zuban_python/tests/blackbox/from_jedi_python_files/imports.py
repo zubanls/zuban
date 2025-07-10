@@ -83,7 +83,8 @@ def scope_from_import_variable():
     #? 
     from import_tree.mod2.fake import c
 
-    #? 
+    # jedi-diff #? 
+    #? int()
     a
     #? 
     c
@@ -175,12 +176,12 @@ import os
 #? ['dirname']
 os.path.dirname
 
-from os.path import (
-    expanduser
+from sys import (
+    path
 )
 
-#? os.path.expanduser
-expanduser
+#? list()
+path
 
 from itertools import (tee,
                        islice)

@@ -21,9 +21,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 5] = [
-    "goto.py",
-    "imports.py",
+const SKIPPED_FILES: [&str; 3] = [
     "ordering.py",
     "pytest.py",
     // Our own
@@ -63,6 +61,8 @@ lazy_static::lazy_static! {
         ("docstring.py", 39),
         ("django.py", 72),
         ("dynamic_params.py", 18),
+        ("imports.py", 35),
+        ("goto.py", 28),
         ("invalid.py", 10),
         ("keywords.py", 8),
         ("named_param.py", 27),

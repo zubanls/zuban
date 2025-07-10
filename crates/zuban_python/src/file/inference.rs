@@ -4586,7 +4586,8 @@ impl StarImportResult {
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
         match self {
             Self::Link(link) => {
-                NodeRef::from_link(i_s.db, *link).infer_name_of_definition_by_index(i_s)
+                let node_ref = NodeRef::from_link(i_s.db, *link);
+                node_ref.infer_name_of_definition_by_index(i_s)
             }
             Self::AnyDueToError => Inferred::new_any_from_error(),
         }

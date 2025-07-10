@@ -185,10 +185,11 @@ impl<'db> Name for ModuleName<'db> {
     }
 
     fn name_range(&self) -> Range {
-        unimplemented!()
+        let start_of_file = self.file.byte_to_position_infos(self.db, 0);
+        (start_of_file, start_of_file)
     }
     fn target_range(&self) -> Range {
-        todo!()
+        self.name_range()
     }
 }
 
