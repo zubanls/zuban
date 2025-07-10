@@ -2986,10 +2986,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
                             return None;
                         }
+                        let mut inf = self.infer_primary(prim, &mut ResultContext::Unknown);
+                        if !self.point(index).calculated() {
+                            // This could have been set in infer_primary (especially in
+                            // language server mode)
+                            inf = inf.save_redirect(self.i_s, self.file, index);
+                        }
                         Some((
-                            self.infer_primary(prim, &mut ResultContext::Unknown)
-                                .save_redirect(self.i_s, self.file, index)
-                                .maybe_saved_node_ref(self.i_s.db)?,
+                            inf.maybe_saved_node_ref(self.i_s.db)?,
                             primary_or_atom,
                             None,
                         ))
@@ -3288,7 +3292,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let specific = match atom.unpack() {
             Name(n) => {
                 let result = self.infer_name_reference(n);
-                return if self.i_s.db.mode == Mode::LanguageServer {
+                return if self.i_s.db.mode == Mode::LanguageServer
+                    && !self.point(atom.index()).calculated()
+                    // Avoid saving cycles, so that they are treated the same in all modes (easier
+                    // for consistent test results).
+                    && result.maybe_specific(self.i_s.db) != Some(Specific::Cycle)
+                {
                     // This information is needed when doing goto/completions
                     result.save_redirect(i_s, self.file, atom.index())
                 } else {

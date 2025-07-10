@@ -635,7 +635,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     if std::cfg!(debug_assertions) {
                         let node_ref = NodeRef::new(file, index);
                         panic!(
-                            "Why overwrite? New: {self:?} Previous: {node_ref:?} line {}",
+                            "Why overwrite? New: {:?} Previous: {node_ref:?} line {}",
+                            self.debug_info(i_s.db),
                             node_ref.line_one_based(i_s.db)
                         );
                     }

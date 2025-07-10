@@ -923,7 +923,7 @@ impl fmt::Debug for Database {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     TypeCheckingOnly,
     LanguageServer,

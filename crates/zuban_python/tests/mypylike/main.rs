@@ -98,6 +98,10 @@ struct CliArgs {
     #[arg(long)]
     start_at: Option<String>,
 
+    /// Runs only the tests for typechecking and not language server
+    #[arg(long)]
+    only_typecheck: bool,
+
     #[arg(short = 'x')]
     stop_after_first_error: bool,
 }
@@ -797,11 +801,11 @@ impl Replacer for TypeStuffReplacer {
     }
 }
 
-fn calculate_filters(args: Vec<String>) -> Vec<String> {
+fn calculate_filters(args: &[String]) -> Vec<&str> {
     let mut filters = vec![];
-    for s in args.into_iter().skip(1) {
+    for s in args.iter().skip(1) {
         if s != "mypy" {
-            filters.push(s)
+            filters.push(s.as_str())
         }
     }
     filters
@@ -811,6 +815,7 @@ struct ProjectsCache {
     base_project: Option<Project>,
     base_version: PythonVersion,
     map: HashMap<(Settings, TypeCheckerFlags), Project>,
+    mode: Mode,
 }
 
 fn set_mypy_path(options: &mut ProjectOptions) {
@@ -826,14 +831,15 @@ fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> PathWithScheme {
 }
 
 impl ProjectsCache {
-    fn new(reuse_db: bool) -> Self {
+    fn new(reuse_db: bool, mode: Mode) -> Self {
         let mut po = ProjectOptions::mypy_default();
         let base_version = po.settings.python_version;
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
-            base_project: reuse_db.then(|| Project::without_watcher(po, Mode::TypeCheckingOnly)),
+            base_project: reuse_db.then(|| Project::without_watcher(po, mode)),
             base_version,
+            mode,
             map: Default::default(),
         }
     }
@@ -848,7 +854,7 @@ impl ProjectsCache {
             let project = if key.0.python_version == self.base_version {
                 self.try_to_reuse_project_parts(options)
             } else {
-                Project::without_watcher(options, Mode::TypeCheckingOnly)
+                Project::without_watcher(options, self.mode)
             };
             self.map.insert(key.clone(), project);
         }
@@ -860,7 +866,7 @@ impl ProjectsCache {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
             options.settings.typeshed_path = Some(test_utils::typeshed_path());
-            Project::without_watcher(options, Mode::TypeCheckingOnly)
+            Project::without_watcher(options, self.mode)
         }
     }
 }
@@ -885,13 +891,35 @@ fn main() -> ExitCode {
     // Avoid the --, because that's the only way how we can accept flags like --foo like
     // cargo test mypy -- -- --foo. Otherwise libtest? complains, if we just use -- once.
     let cli_args = CliArgs::parse_from(env::args().filter(|arg| arg != "--"));
-    let filters = calculate_filters(cli_args.filters);
+    let filters = calculate_filters(&cli_args.filters);
 
     let skipped = skipped();
 
     let files = find_mypy_style_files();
+
+    let mut error_count = run(
+        &cli_args,
+        Mode::TypeCheckingOnly,
+        &files,
+        &skipped,
+        &filters,
+    );
+    if !cli_args.only_typecheck && error_count == 0 {
+        error_count += run(&cli_args, Mode::LanguageServer, &files, &skipped, &filters)
+    }
+
+    ExitCode::from((error_count > 0) as u8)
+}
+
+fn run(
+    cli_args: &CliArgs,
+    mode: Mode,
+    files: &[(bool, PathBuf)],
+    skipped: &[Skipped],
+    filters: &[&str],
+) -> usize {
     let start = Instant::now();
-    let mut projects = ProjectsCache::new(!cli_args.no_reuse_db);
+    let mut projects = ProjectsCache::new(!cli_args.no_reuse_db, mode);
     let mut full_count = 0;
     let mut passed_count = 0;
     let mut error_count = 0;
@@ -903,10 +931,10 @@ fn main() -> ExitCode {
         let code = REPLACE_COMMENTS.replace_all(&code, "");
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
-        for case in mypy_style_cases(file_name, &code, from_mypy_test_suite) {
+        for case in mypy_style_cases(file_name, &code, *from_mypy_test_suite) {
             if !filters.is_empty()
-                && !filters.contains(&case.name)
-                && !filters.iter().any(|s| s == file_name)
+                && !filters.contains(&&*case.name)
+                && !filters.iter().any(|s| *s == file_name)
             {
                 continue;
             }
@@ -919,7 +947,7 @@ fn main() -> ExitCode {
             }
             if skipped
                 .iter()
-                .any(|s| s.is_skip(case.file_name, &case.name) && !filters.contains(&case.name))
+                .any(|s| s.is_skip(case.file_name, &case.name) && !filters.contains(&&*case.name))
             {
                 //println!("Skipped: {}", case.name);
                 full_count += 1;
@@ -959,10 +987,14 @@ fn main() -> ExitCode {
     };
     println!(
         "Passed {passed_count} of {full_count} ({error_count} error{error_s}) \
-         mypy-like tests in {file_count} files; finished in {:.2}s",
+         mypy-like tests in {file_count} files; finished in {:.2}s (mode={})",
         start.elapsed().as_secs_f32(),
+        match mode {
+            Mode::TypeCheckingOnly => "type-checking",
+            Mode::LanguageServer => "language-server",
+        }
     );
-    ExitCode::from((error_count > 0) as u8)
+    error_count
 }
 
 fn mypy_style_cases<'a, 'b>(

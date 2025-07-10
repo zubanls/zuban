@@ -1,0 +1,10 @@
+[case no-errors-in-unreachable]
+# flags: --warn-unreachable
+
+import typing
+def foo() -> typing.Never: ...
+
+foo()
+abc = 1  # E: Statement is unreachable
+1()
+abc
