@@ -51,8 +51,11 @@ from . import import_tree as ren
 import json as 
 
 import os
-#? os.path.join
+# Has different paths depending on operating system so we're removing the test and adding another one
+# jedi-diff: #? posixpath.join
 from os.path import join
+#? typing.get_origin
+from typing import get_origin
 
 # -----------------
 # special positions -> edge cases
@@ -99,7 +102,7 @@ from .. import run
 from not_a_module import 
 
 
-#137
+#? json
 import json
 #? 23 json.dump
 from json import load, dump

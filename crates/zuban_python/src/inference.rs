@@ -76,7 +76,10 @@ impl<'db, T> PositionalDocument<'db, T> {
             }
             NameParent::KeywordPattern(_) => todo!(),
             NameParent::ImportFromAsName(_) => todo!(),
-            NameParent::DottedName(_) => todo!(),
+            NameParent::DottedName(_) => {
+                debug!("TODO dotted name infer");
+                None
+            }
             NameParent::FStringConversion(_) => todo!(),
         }
         /*
@@ -252,7 +255,6 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     }
 }
 
-#[expect(unused)]
 enum NameLike<'db> {
     TreeName(TreeName<'db>),
     ModuleName(ModuleName<'db>),
@@ -302,7 +304,10 @@ fn type_to_name<'db>(
         }
         Type::Any(_) => return None,
         Type::Intersection(_) => todo!(),
-        Type::FunctionOverload(_) => todo!(),
+        Type::FunctionOverload(overload) => {
+            let first = overload.iter_functions().next().unwrap();
+            return type_to_name(i_s, file, &Type::Callable(first.clone()));
+        }
         Type::TypeVar(tv) => match tv.type_var.name {
             TypeVarName::Name(tvl_name) => match tvl_name {
                 TypeVarLikeName::InString { name_node, .. } => {
@@ -340,7 +345,12 @@ fn type_to_name<'db>(
         Type::NamedTuple(_) => todo!(),
         Type::Enum(_) => todo!(),
         Type::EnumMember(_) => todo!(),
-        Type::Module(_) => todo!(),
+        Type::Module(file_index) => {
+            return Some(NameLike::ModuleName(ModuleName {
+                db,
+                file: db.loaded_python_file(*file_index),
+            }))
+        }
         Type::Namespace(_) => todo!(),
         Type::Super { class, .. } => {
             // TODO this only cares about one class, when it could care about all bases

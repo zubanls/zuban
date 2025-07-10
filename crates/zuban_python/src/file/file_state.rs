@@ -3,7 +3,7 @@ use std::{any::Any, pin::Pin, rc::Rc};
 
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
-use vfs::FileIndex;
+use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
     database::Database,
@@ -25,7 +25,7 @@ pub trait File: std::fmt::Debug {
         byte: CodeIndex,
     ) -> PositionInfos<'db>;
 
-    fn file_path<'db>(&self, db: &'db Database) -> &'db str {
+    fn file_path<'db>(&self, db: &'db Database) -> &'db NormalizedPath {
         db.file_path(self.file_index())
     }
     fn code(&self) -> &str;

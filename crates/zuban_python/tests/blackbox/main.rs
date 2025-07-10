@@ -21,11 +21,10 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 7] = [
+const SKIPPED_FILES: [&str; 6] = [
     "goto.py",
     "imports.py",
     "invalid.py",
-    "on_import.py",
     "ordering.py",
     "pytest.py",
     // Our own
@@ -68,6 +67,7 @@ lazy_static::lazy_static! {
         ("keywords.py", 8),
         ("named_param.py", 27),
         ("ns_path.py", 4),
+        ("on_import.py", 22),
         ("sys_path.py", 4),
         ("usages.py", 0),
         ("stubs.py", 19),

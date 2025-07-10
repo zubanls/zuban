@@ -7,7 +7,7 @@ use crate::{
     database::{Database, ParentScope},
     file::{File as _, PythonFile},
     node_ref::NodeRef,
-    type_::{DbString, Type},
+    type_::Type,
     PositionInfos,
 };
 
@@ -71,7 +71,10 @@ impl ValueName<'_> {
 
     /// This is mostly for testing, you should probably not use this.
     pub fn is_instance(&self) -> bool {
-        !matches!(self.type_, Type::Type(_) | Type::Callable(_))
+        !matches!(
+            self.type_,
+            Type::Type(_) | Type::Callable(_) | Type::Module(_) | Type::FunctionOverload(_)
+        )
     }
 }
 
@@ -151,20 +154,18 @@ impl<'db> Name for TreeName<'db> {
 }
 
 #[derive(Debug)]
-pub struct ModuleName<'db> {
-    db: &'db Database,
-    file: &'db PythonFile,
-    parent_scope: ParentScope,
-    name: DbString,
+pub(crate) struct ModuleName<'db> {
+    pub db: &'db Database,
+    pub file: &'db PythonFile,
 }
 
 impl<'db> Name for ModuleName<'db> {
     fn name(&self) -> &str {
-        self.name.as_str(self.db)
+        self.file.name_and_parent_dir(self.db).0
     }
 
     fn file_path(&self) -> &NormalizedPath {
-        self.db.file_path(self.file.file_index)
+        self.file.file_path(self.db)
     }
     fn code(&self) -> &str {
         self.file.tree.code()
