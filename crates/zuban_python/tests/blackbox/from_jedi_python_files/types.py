@@ -5,7 +5,8 @@
 #? ['imag']
 int.imag
 
-#? []
+# jedi-diff: #? []
+#? ['is_integer']
 int.is_integer
 
 #? ['is_integer']
@@ -48,14 +49,16 @@ arr2.app
 arr.count(1)
 
 x = []
-#?
+# jedi-diff: #?
+#? int()
 x.pop()
 x = [3]
 #? int()
 x.pop()
 x = []
 x.append(1.0)
-#? float()
+# jedi-diff: #? float()
+#? int()
 x.pop()
 
 # -----------------
@@ -63,7 +66,7 @@ x.pop()
 # -----------------
 dic = {}
 
-#? ['copy', 'clear']
+#? ['clear', 'copy']
 dic.c
 
 dic2 = dict(a=1, b=2)
@@ -81,15 +84,18 @@ dic2['asdf']
 
 d = {'a': 3, 1.0: list}
 
-#? int() list
+# jedi-diff: #? int() list
+#?
 d.values()[0]
-##? int() list
-dict(d).values()[0]
+#? int() list
+next(iter(d.values()))
+#? int() list
+next(iter(dict(d).values()))
 
-#? str()
-d.items()[0][0]
-#? int()
-d.items()[0][1]
+#? float() str()
+next(iter(d.items()))[0]
+#? int() list
+next(iter(d.items()))[1]
 
 (a, b), = {a:1 for a in [1.0]}.items()
 #? float()
@@ -145,20 +151,24 @@ dc = {v: 3 for v in ['a']}
 #? dict()
 {**dc}
 
-#? str()
+# jedi-diff: #? str()
+#? str() int() list
 {**d, "b": "b"}["b"]
 
-#? str()
+# jedi-diff: #? str()
+#? str() int()
 {**dc, "b": "b"}["b"]
 
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-#? 
+# jedi-diff: #? 
+#? int() list
 {**d}["a"]
 
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-#? 
+# jedi-diff: #? 
+#? int()
 {**dc}["a"]
 
 s = {1, 2, 3}
@@ -172,7 +182,9 @@ s = {1, 2, 3}
 s = {1, 2, 3}
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
+# jedi-diff: #? 
 #? 
+#? int()
 {*s}.pop()
 
 #? int()
@@ -180,7 +192,8 @@ s = {1, 2, 3}
 
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-#? 
+# jedi-diff: #? 
+#? int()
 [*s][0]
 
 #? int()

@@ -33,6 +33,10 @@ if False:
     with open("") as defined_in_false:
         #? ['flush']
         defined_in_false.flu
+else:
+    with open("") as defined_in_true:
+        #? ['flush']
+        defined_in_false.flu
 
 # -----------------
 # Return checks
@@ -44,7 +48,8 @@ def foo(x):
     else:
         return ''
 
-#? int()
+# jedi-diff: #? int()
+#? int() str()
 foo(1)
 
 
@@ -81,6 +86,7 @@ def test_function():
         return True
     return "False"
 
+# jedi-diff: #? bool() str()
 #? bool() str()
 test_function()
 
@@ -96,7 +102,8 @@ def elif_flows1(x):
     else:
         return ''
 
-#? float()
+# jedi-diff: #? float()
+#? float() str()
 elif_flows1(1)
 
 
@@ -111,6 +118,7 @@ def elif_flows2(x):
     except ValueError:
         return set
 
+# jedi-diff: #? str() set
 #? str() set
 elif_flows2(1)
 
@@ -126,6 +134,7 @@ def elif_flows3(x):
     except ValueError:
         return set
 
+# jedi-diff: #? int() set
 #? int() set
 elif_flows3(1)
 
@@ -138,9 +147,11 @@ def check(a):
     return ''
     return set
 
-#? int()
+# jedi-diff: #? int()
+#? int() str()
 check(None)
-#? str()
+# jedi-diff: #? str()
+#? int() str()
 check('asb')
 
 a = list
@@ -188,7 +199,8 @@ def elif_name(x):
         a = x
     return a
 
-#? int() set
+# jedi-diff: #? int() set
+#? int() set str()
 elif_name(set)
 
 if 0:
@@ -216,19 +228,26 @@ def isinst(x):
         return tuple
     return 1
 
-#? dict
+# jedi-diff: #? dict
+#? dict set list tuple int()
 isinst(A())
-#? set
+# jedi-diff: #? set
+#? dict set list tuple int()
 isinst(True)
-#? set
+# jedi-diff: #? set
+#? dict set list tuple int()
 isinst(1)
-#? tuple
+# jedi-diff: #? tuple
+#? dict set list tuple int()
 isinst(2)
-#? list
+# jedi-diff: #? list
+#? dict set list tuple int()
 isinst(1.0)
-#? tuple
+# jedi-diff: #? tuple
+#? dict set list tuple int()
 isinst(False)
-#? int()
+# jedi-diff: #? int()
+#? dict set list tuple int()
 isinst('')
 
 # -----------------

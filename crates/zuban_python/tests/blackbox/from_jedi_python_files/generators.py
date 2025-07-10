@@ -1,13 +1,13 @@
 # -----------------
 # yield statement
 # -----------------
-def gen():
+def genfirst():
     if random.choice([0, 1]):
         yield 1
     else:
         yield ""
 
-gen_exe = gen()
+gen_exe = genfirst()
 #? int() str()
 next(gen_exe)
 
@@ -28,7 +28,8 @@ next(gen_ret()).
 a = ''
 if gen_ret():
     a = 3
-#? int()
+# jedi-diff #? int()
+#? int() str()
 a
 
 
@@ -165,9 +166,11 @@ def simple2():
     yield ""
 
 a, b = simple2()
-#? int()
+# jedi-diff: #? int()
+#? int() str()
 a
-#? str()
+# jedi-diff: #? str()
+#? int() str()
 b
 
 a, = (a for a in [1])
@@ -254,9 +257,11 @@ def yield_from_multiple():
     return 2.0
 
 x, y = yield_from_multiple()
-#? int()
+# jedi-diff: #? int()
+#? int() str()
 x
-#? str()
+# jedi-diff: #? str()
+#? int() str()
 y
 
 def test_nested():
@@ -266,12 +271,15 @@ def test_nested():
     yield x
 
 x, y, z = test_nested()
-#? int()
+# jedi-diff: #? int()
+#? float() int() str()
 x
-#? str()
+# jedi-diff: #? str()
+#? float() int() str()
 y
 # For whatever reason this is currently empty
-#? float()
+# jedi-diff: #? float()
+#? float() int() str()
 z
 
 

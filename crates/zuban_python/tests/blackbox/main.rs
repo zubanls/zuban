@@ -21,45 +21,16 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 39] = [
-    "async_.py",
-    "basic.py",
+const SKIPPED_FILES: [&str; 10] = [
     "completion.py",
-    "complex.py",
-    "conftest.py",
-    "context.py",
-    "decorators.py",
-    "django.py",
     "docstring.py",
-    "dynamic_arrays.py",
     "dynamic_params.py",
-    "fixture_module.py",
-    "flow_analysis.py",
-    "fstring.py",
-    "generators.py",
     "goto.py",
     "imports.py",
-    "import_tree",
-    "__init__.py",
     "invalid.py",
-    "keywords.py",
-    "lambdas.py",
-    "named_param.py",
-    "namespace1",
-    "namespace2",
-    "ns_path.py",
     "on_import.py",
     "ordering.py",
-    "positional_only_params.py",
-    "precedence.py",
     "pytest.py",
-    "recursion.py",
-    "stdlib.py",
-    "stub_folder",
-    "stubs.py",
-    "sys_path.py",
-    "types.py",
-    "usages.py",
     // Our own
     "unreachable_no_crash.py",
 ];
@@ -67,15 +38,39 @@ const SKIPPED_FILES: [&str; 39] = [
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
         ("arrays.py", 49),
+        ("async_.py", 5),
+        ("basic.py", 29),
         ("classes.py", 24),
         ("comprehensions.py", 36),
+        ("decorators.py", 33),
         ("descriptors.py", 2),
+        ("dynamic_arrays.py", 29),
+        ("flow_analysis.py", 22),
+        ("fstring.py", 9),
         ("functions.py", 57),
+        ("generators.py", 13),
         ("inheritance.py", 3),
+        ("__init__.py", 1),
         ("isinstance.py", 3),
+        ("lambdas.py", 18),
         ("parser.py", 2),
         ("pep0484_generic_passthroughs.py", 5),
         ("pep0484_typing.py", 3),
+        ("positional_only_params.py", 3),
+        ("precedence.py", 17),
+        ("stdlib.py", 46),
+        ("types.py", 9),
+
+        // TODO work on these files
+        ("context.py", 6),
+        ("conftest.py", 1),
+        ("django.py", 72),
+        ("keywords.py", 8),
+        ("named_param.py", 27),
+        ("ns_path.py", 4),
+        ("sys_path.py", 4),
+        ("usages.py", 0),
+        ("stubs.py", 19),
     ]);
 }
 
@@ -157,7 +152,7 @@ fn main() -> ExitCode {
     let mut should_error_out = false;
     for python_file in files {
         let file_name = &python_file.file_name().unwrap().to_str().unwrap();
-        if SKIPPED_FILES.contains(file_name) {
+        if SKIPPED_FILES.contains(file_name) || !file_name.ends_with(".py") {
             continue;
         }
         let code = read_to_string(&python_file).unwrap().into();
@@ -185,8 +180,9 @@ fn main() -> ExitCode {
     }
     println!(
         "Ran {ran_count} of {full_count} ({unexpected_error_count} unexpected errors; \
-         {error_count} expected) blackbox tests in {file_count} files; finished in {:.2}s",
+         {expected} expected) blackbox tests in {file_count} files; finished in {:.2}s",
         start.elapsed().as_secs_f32(),
+        expected = error_count - unexpected_error_count,
     );
     ExitCode::from(should_error_out as u8)
 }

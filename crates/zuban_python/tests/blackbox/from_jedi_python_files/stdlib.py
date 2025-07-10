@@ -25,7 +25,8 @@ next(reversed(yielder()))
 #?
 next(reversed())
 
-#? str() bytes()
+# jedi-diff: #? str() bytes()
+#? str()
 next(open(''))
 
 #? int()
@@ -54,44 +55,48 @@ type([])
 def x():
     yield 1
 generator = type(x())
-#? generator
+# jedi-diff: #? generator
+#? typing.Generator
 type(x for x in [])
 #? type(x)
 type(lambda: x)
 
 import math
 import os
-#? type(os)
+# jedi-diff: #? type(os)
+#? types.ModuleType
 type(math)
-class X(): pass
+class XX(): pass
 #? type
-type(X)
+type(XX)
 
 # -----------------
 # type() calls with multiple parameters
 # -----------------
 
-X = type('X', (object,), dict(a=1))
+Xt = type('Xt', (object,), dict(a=1))
 
 # Doesn't work yet.
 #?
-X.a
+Xt.a
 #?
-X
+Xt
 
 if os.path.isfile():
     #? ['abspath']
     fails = os.path.abspath
 
 # The type vars and other underscored things from typeshed should not be
-# findable.
-#?
+# findable. (in zuban errors are raised, but you can find them)
+# jedi-diff: #?
+#? typing.TypeVar()
 os._T
 
 
 with open('foo') as f:
     for line in f.readlines():
-        #? str() bytes()
+        # jedi-diff: #? str() bytes()
+        #? str()
         line
 # -----------------
 # enumerate
@@ -128,9 +133,10 @@ import weakref
 #? int()
 weakref.proxy(1)
 
-#? weakref.ref()
+# jedi-diff: #? weakref.ref()
+#? weakref.ReferenceType()
 weakref.ref(1)
-#? int() None
+#? int() types.NoneType()
 weakref.ref(1)()
 
 # -----------------
@@ -221,23 +227,23 @@ with contextlib.closing('asd') as string:
 @contextlib.contextmanager
 def cm1() -> Iterator[float]:
     yield 1
-with cm1() as x:
+with cm1() as xcontext:
     #? float()
-    x
+    xcontext
 
 @contextlib.contextmanager
 def cm2() -> float:
     yield 1
-with cm2() as x:
+with cm2() as xcontext:
     #?
-    x
+    xcontext
 
 @contextlib.contextmanager
 def cm3():
     yield 3
-with cm3() as x:
+with cm3() as xcontext:
     #? int()
-    x
+    xcontext
 
 # -----------------
 # operator
@@ -344,26 +350,26 @@ class Test(metaclass=Meta):
 
 import enum
 
-class X(enum.Enum):
+class XE(enum.Enum):
     attr_x = 3
     attr_y = 2.0
 
 #? ['mro']
-X.mro
+XE.mro
 #? ['attr_x', 'attr_y']
-X.attr_
+XE.attr_
 #? str()
-X.attr_x.name
+XE.attr_x.name
 #? int()
-X.attr_x.value
+XE.attr_x.value
 #? str()
-X.attr_y.name
+XE.attr_y.name
 #? float()
-X.attr_y.value
+XE.attr_y.value
 #? str()
-X().name
+XE().name
 #? float()
-X().attr_x.attr_y.value
+XE().attr_x.attr_y.value
 
 # -----------------
 # functools
@@ -462,15 +468,15 @@ X().just_partial('')[1]
 # python >= 3.8
 
 @functools.lru_cache
-def x() -> int: ...
+def cached_x() -> int: ...
 @functools.lru_cache()
-def y() -> float: ...
+def cached_y() -> float: ...
 @functools.lru_cache(8)
-def z() -> str: ...
+def cached_z() -> str: ...
 
 #? int()
-x()
+cached_x()
 #? float()
-y()
+cached_y()
 #? str()
-z()
+cached_z()

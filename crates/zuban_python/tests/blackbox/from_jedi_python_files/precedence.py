@@ -5,20 +5,25 @@ multiplications, etc.
 # -----------------
 # numbers
 # -----------------
-x = [1, 'a', 1.0]
+# jedi-diff: x = [1, 'a', 1.0]
+x = (1, 'a', 1.0)
 
-#? int() str() float()
+# jedi-diff: #? int() str() float()
+#?
 x[12]
 
-#? float()
+# jedi-diff: #? float()
+#? int() str() float()
 x[1 + 1]
 
 index = 0 + 1
 
-#? str()
+# jedi-diff: #? str()
+#? int() str() float()
 x[index]
 
-#? int()
+# jedi-diff: #? int()
+#? int() str() float()
 x[1 + (-1)]
 
 def calculate(number):
@@ -26,7 +31,8 @@ def calculate(number):
 
 constant = 1
 
-#? float()
+# jedi-diff: #? float()
+#? int() str() float()
 x[calculate(1)]
 
 def calculate(number):
@@ -77,14 +83,16 @@ x = [1, 'a', 1.0]
 i = 0
 i += 1
 i += 1
-#? float()
+# jedi-diff: #? float()
+#? int() str() float()
 x[i]
 
 i = 1
 i += 1
 i -= 3
 i += 1
-#? int()
+# jedi-diff: #? int()
+#? int() str() float()
 x[i]
 
 # -----------------

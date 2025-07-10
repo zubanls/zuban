@@ -38,14 +38,17 @@ arr.insert(0, 1.0)
 arr.insert(0)
 arr.insert()
 
-#? float() str()
+# jedi-diff: #? float() str()
+#? str()
 arr[10]
 
 for a in arr:
-    #? float() str()
+    # jedi-diff: #? float() str()
+    #? str()
     a
 
-#? float() str()
+# jedi-diff: #? float() str()
+#? str()
 list(arr)[10]
 
 # -----------------
@@ -58,13 +61,15 @@ arr.extend([])
 arr.extend("")
 arr.extend(list)  # should ignore
 
-#? float() int() str()
+# jedi-diff: #? float() int() str()
+#? float()
 arr[100]
 
 a = set(arr)
 a.update(list(["", 1]))
 
-#? float() int() str()
+# jedi-diff: #? float() int() str()
+#? float()
 list(a)[0]
 # -----------------
 # set/list initialized as functions
@@ -99,11 +104,13 @@ s.add("ahh")
 lst = list(s)
 lst.append({})
 
-#? dict() int() float() str()
+# jedi-diff: #? dict() int() float() str()
+#? int()
 lst[0]
 
 # should work with tuple conversion, too.
-#? dict() int() float() str()
+# jedi-diff: #? dict() int() float() str()
+#? int()
 tuple(lst)[0]
 
 # but not with an iterator
@@ -126,7 +133,8 @@ lst = list(s)
 lst.append({})
 lst += [E()]
 
-#? dict() int() float() str() C() D() E()
+# jedi-diff: #? dict() int() float() str() C() D() E()
+#? int()
 lst[0]
 
 # -----------------
@@ -148,16 +156,18 @@ res = add_to_arr(arr3, 1)
 arr_append(arr3, 'str')
 app(set())
 
-#? float() str() int() set()
+# jedi-diff: #? float() str() int() set()
+#? float()
 arr3[10]
 
-#? float() str() int() set()
+# jedi-diff: #? float() str() int() set()
+#? float()
 res[10]
 
 # -----------------
 # returns, special because the module dicts are not correct here.
 # -----------------
-def blub():
+def blub1():
     a = []
     a.append(1.0)
     #? float()
@@ -165,37 +175,38 @@ def blub():
     return a
 
 #? float()
-blub()[0]
+blub1()[0]
 
 # list with default
-def blub():
+def blub2():
     a = list([1])
     a.append(1.0)
     return a
 
-#? int() float()
-blub()[0]
+# jedi-diff #? int() float()
+#? int()
+blub2()[0]
 
 # empty list
-def blub():
+def blub3():
     a = list()
     a.append(1.0)
     return a
 #? float()
-blub()[0]
+blub3()[0]
 
 # with if
-def blub():
+def blub4():
     if 1:
         a = []
         a.append(1.0)
         return a
 
 #? float()
-blub()[0]
+blub4()[0]
 
 # with else clause
-def blub():
+def blub5():
     if random.choice([0, 1]):
          1
     else:
@@ -204,7 +215,7 @@ def blub():
         return a
 
 #? int()
-blub()[0]
+blub5()[0]
 # -----------------
 # returns, the same for classes
 # -----------------
@@ -259,7 +270,8 @@ a = set([1.0])
 a.update(a)
 a.update([1])
 
-#? float() int()
+# jedi-diff: #? float() int()
+#? float()
 list(a)[0]
 
 def first(a):
@@ -304,7 +316,8 @@ lst = list(st)
 
 lst.append('')
 
-#? float() int() str()
+# jedi-diff: #? float() int() str()
+#? float()
 lst[0]
 
 # -----------------
@@ -315,9 +328,11 @@ some_lst = [int]
 some_lst[3] = str
 #? int
 some_lst[0]
-#? str
+# jedi-diff #? str
+#? int
 some_lst[3]
-#? int str
+# jedi-diff #? int str
+#? int
 some_lst[2]
 
 some_lst[0] = tuple
@@ -328,11 +343,14 @@ some_lst[1]
 
 some_lst2 = list([1])
 some_lst2[3] = ''
-#? int() str()
+# jedi-diff #? int() str()
+#? int()
 some_lst2[0]
-#? str()
+# jedi-diff #? str()
+#? int()
 some_lst2[3]
-#? int() str()
+# jedi-diff #? int() str()
+#? int()
 some_lst2[2]
 
 some_lst3 = []
@@ -365,11 +383,14 @@ something[3]
 some_dct = {'a': float, 1: int}
 some_dct['x'] = list
 some_dct['y'] = tuple
-#? list
+# jedi-diff #? list
+#? int float
 some_dct['x']
-#? int float list tuple
+# jedi-diff: #? int float list tuple
+#? int float
 some_dct['unknown']
-#? float
+# jedi-diff: #? float
+#? int float
 some_dct['a']
 
 some_dct = dict({'a': 1, 1: ''})

@@ -35,7 +35,8 @@ def to_list(iterable):
 def recursion1(foo):
     return to_list(to_list(foo)) + recursion1(foo)
 
-#? int()
+# jedi-diff: #? int()
+#?
 recursion1([1,2])[0]
 
 
@@ -69,12 +70,14 @@ class InstanceAttributeIfs:
 
         #? int()
         self.a1
-        #? int() str()
+        # jedi-diff: #? int() str()
+        #? int()
         self.a2
 
 #? int()
 InstanceAttributeIfs().a1
-#? int() str()
+# jedi-diff: #? int() str()
+#? int()
 InstanceAttributeIfs().a2
 
 
@@ -82,7 +85,8 @@ InstanceAttributeIfs().a2
 class A:
     def a(self, b):
         for x in [self.a(i) for i in b]:
-            #?
+            # jedi-diff: #?
+            #? types.NoneType()
             x
 
 class B:
@@ -101,7 +105,8 @@ foo
 while True:
     bar = int
     bar = bar  # type: bar
-    #? int()
+    # jedi-diff: #? int()
+    #? int
     bar
 
 
@@ -113,5 +118,8 @@ class Comprehension:
         self.foo = (self.foo,)
 
 
-#? int() tuple()
+# jedi-diff: #? int() tuple()
+#?
 Comprehension(1).foo[0]
+#? int()
+Comprehension(1).foo

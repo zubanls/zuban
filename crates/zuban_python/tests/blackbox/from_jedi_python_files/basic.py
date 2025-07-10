@@ -213,7 +213,8 @@ del deleted_var
 deleted_var
 #? []
 deleted_var
-#! []
+# jedi-diff: #! []
+#! ["deleted_var = 3"]
 deleted_var
 
 # -----------------
@@ -388,7 +389,8 @@ with open('') as f:
     #? ['closed']
     f.closed
     for line in f:
-        #? str() bytes()
+        # jedi-diff: #? str() bytes()
+        #? str()
         line
 
 with open('') as f1, open('') as f2:
@@ -422,7 +424,7 @@ with open("a"), open("b") as bfile:
 # -----------------
 
 some_array = ['', '']
-#! ['def upper']
+#! ["def upper(self: LiteralString) -> LiteralString: ..."]
 some_array[some_not_defined_index].upper
 
 # -----------------

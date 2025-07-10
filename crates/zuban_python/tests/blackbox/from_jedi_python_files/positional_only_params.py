@@ -29,7 +29,9 @@ positional_only_call2(SOMETHING_UNDEFINED)
 positional_only_call2(SOMETHING_UNDEFINED, '')
 
 # Maybe change this? Because it's actually not correct
-#? int() str()
+# jedi-diff: #? int() str()
+#? str()
 positional_only_call2(a=1, b='')
-#? tuple str()
+# jedi-diff: #? tuple str()
+#? str()
 positional_only_call2(b='', a=tuple)

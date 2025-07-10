@@ -31,7 +31,7 @@ class A():
     async def b(c=1, d=2):
         return 1
 
-#! 9 ['def b']
+#! 9 ['def b(c=1, d=2):']
 await A.b()
 
 #! 11 ['param d=2']
