@@ -315,4 +315,12 @@ parametrize_snapshots!(
             (x,) += 1
             z
         "#);
+    complex_dedents_no_crash: dedent(r#"
+        def f():
+            asdf = 3
+             asdf
+            asdf(
+            asdf
+        class X: ...
+        "#);
 );
