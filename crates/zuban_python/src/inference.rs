@@ -28,7 +28,7 @@ use crate::{
 pub(crate) struct PositionalDocument<'db, T> {
     pub db: &'db Database,
     pub file: &'db PythonFile,
-    pub scope: Scope,
+    pub scope: Scope<'db>,
     pub node: T,
 }
 
@@ -125,7 +125,9 @@ pub(crate) fn with_i_s_non_self<'db, R>(
         Scope::Module => ParentScope::Module,
         Scope::Function(index) => ParentScope::Function(index),
         Scope::Class(index) => ParentScope::Class(index),
-        Scope::Lambda(_) => todo!(),
+        Scope::Lambda(lambda) => {
+            return with_i_s_non_self(db, file, lambda.parent_scope(), callback)
+        }
     };
     InferenceState::run_with_parent_scope(db, file, parent_scope, |i_s| {
         callback(&i_s.with_mode(Mode::AvoidErrors { had_error }))

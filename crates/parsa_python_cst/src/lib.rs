@@ -11,6 +11,7 @@ use std::{
 };
 
 pub use bytes::parse_python_bytes_literal;
+use completion::scope_for_node;
 pub use completion::{CompletionNode, RestNode, Scope};
 pub use match_stmt::{
     CasePattern, KeyEntryInPattern, MappingPatternItem, ParamPattern, PatternKind,
@@ -242,7 +243,7 @@ impl Tree {
             PyNodeType::ErrorKeyword => GotoNode::None,
             Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
         };
-        (self.scope_for_node(left), goto_node)
+        (scope_for_node(left), goto_node)
     }
 }
 
@@ -3909,6 +3910,10 @@ impl<'db> Lambda<'db> {
             iterator.next();
         }
         (params, Expression::new(iterator.next().unwrap()))
+    }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
     }
 }
 

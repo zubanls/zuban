@@ -18,7 +18,8 @@ arr = [tuple()]
 for a in [1,2]:
     arr.append(a);
 
-#? int() tuple()
+# jedi-diff: #? int() tuple()
+#? tuple()
 arr[10]
 #? int()
 arr[10].index()
@@ -90,8 +91,8 @@ for i in lst: i
 # -----------------
 # renames / type changes
 # -----------------
-arr = []
-arr2 = arr
+arr_new = []
+arr2 = arr_new
 arr2.append('')
 #? str()
 arr2[0]
@@ -219,7 +220,7 @@ blub5()[0]
 # -----------------
 # returns, the same for classes
 # -----------------
-class C():
+class F():
     def blub(self, b):
         if 1:
             a = []
@@ -248,19 +249,19 @@ class C():
         return self.b
 
 #? int()
-C().blub(1)[0]
+F().blub(1)[0]
 #? float()
-C().blub2(1)[0]
+F().blub2(1)[0]
 
 #? int()
-C().a[0]
+F().a[0]
 #? int()
-C().literal_arr(1)[0]
+F().literal_arr(1)[0]
 
 #? float()
-C().b[0]
+F().b[0]
 #? float()
-C().list_arr(1.0)[0]
+F().list_arr(1.0)[0]
 
 # -----------------
 # array recursions
@@ -336,9 +337,11 @@ some_lst[3]
 some_lst[2]
 
 some_lst[0] = tuple
-#? tuple
+# jedi-diff #? tuple
+#? int
 some_lst[0]
-#? int str tuple
+# jedi-diff: #? int str tuple
+#? int
 some_lst[1]
 
 some_lst2 = list([1])
@@ -364,9 +367,11 @@ some_lst3[0]
 
 some_set = {int}
 some_set[3] = str
-#? int
+# jedi-diff: #? int
+#?
 some_set[0]
-#? int
+# jedi-diff: #? int
+#?
 some_set[3]
 
 something = object()
@@ -396,23 +401,30 @@ some_dct['a']
 some_dct = dict({'a': 1, 1: ''})
 #? int() str()
 some_dct['la']
-#? int()
+# jedi-diff: #? int()
+#? int() str()
 some_dct['a']
 
 some_dct['x'] = list
 some_dct['y'] = tuple
-#? list
+# jedi-diff: #? list
+#? str() int()
 some_dct['x']
-#? int() str() list tuple
+# jedi-diff #? int() str() list tuple
+#? int() str()
 some_dct['unknown']
 k = 'a'
-#? int()
+# jedi-diff: #? int()
+#? int() str()
 some_dct[k]
 
 some_other_dct = dict(some_dct, c=set)
-#? int()
+# jedi-diff: #? int()
+#? set
 some_other_dct['a']
-#? list
+# jedi-diff: #? list
+#? set
 some_other_dct['x']
+# jedi-diff: #? set
 #? set
 some_other_dct['c']

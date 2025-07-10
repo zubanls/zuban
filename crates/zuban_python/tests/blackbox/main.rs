@@ -21,10 +21,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 10] = [
-    "completion.py",
-    "docstring.py",
-    "dynamic_params.py",
+const SKIPPED_FILES: [&str; 7] = [
     "goto.py",
     "imports.py",
     "invalid.py",
@@ -44,7 +41,7 @@ lazy_static::lazy_static! {
         ("comprehensions.py", 36),
         ("decorators.py", 33),
         ("descriptors.py", 2),
-        ("dynamic_arrays.py", 29),
+        ("dynamic_arrays.py", 18),
         ("flow_analysis.py", 22),
         ("fstring.py", 9),
         ("functions.py", 57),
@@ -62,9 +59,12 @@ lazy_static::lazy_static! {
         ("types.py", 9),
 
         // TODO work on these files
+        ("completion.py", 6),
         ("context.py", 6),
         ("conftest.py", 1),
+        ("docstring.py", 39),
         ("django.py", 72),
+        ("dynamic_params.py", 18),
         ("keywords.py", 8),
         ("named_param.py", 27),
         ("ns_path.py", 4),

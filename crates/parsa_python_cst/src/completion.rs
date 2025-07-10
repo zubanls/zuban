@@ -1,11 +1,11 @@
 use parsa_python::{CodeIndex, NodeIndex, NonterminalType::*, PyNode, PyNodeType::Nonterminal};
 
-use crate::{Atom, Primary, PrimaryOrAtom, Tree};
+use crate::{Atom, Lambda, Primary, PrimaryOrAtom, Tree};
 
 impl Tree {
     pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode) {
         let mut leaf = self.0.leaf_by_position(position);
-        let scope = self.scope_for_node(leaf);
+        let scope = scope_for_node(leaf);
         if leaf.start() == position {
             if let Some(n) = leaf.previous_leaf() {
                 if n.end() == position {
@@ -36,35 +36,35 @@ impl Tree {
         }
         (scope, CompletionNode::Global { rest: Some(rest) })
     }
+}
 
-    pub(crate) fn scope_for_node(&self, node: PyNode) -> Scope {
-        let scope_node = node
-            .parent_until(&[
-                Nonterminal(file),
-                Nonterminal(class_def),
-                Nonterminal(function_def),
-                Nonterminal(lambda),
-            ])
-            .expect("There should always be a file");
-        if scope_node.is_type(Nonterminal(file)) {
-            Scope::Module
-        } else if scope_node.is_type(Nonterminal(function_def)) {
-            Scope::Function(scope_node.index)
-        } else if scope_node.is_type(Nonterminal(class_def)) {
-            Scope::Class(scope_node.index)
-        } else {
-            debug_assert_eq!(scope_node.type_(), Nonterminal(lambda));
-            Scope::Class(scope_node.index)
-        }
+pub(crate) fn scope_for_node<'db>(node: PyNode<'db>) -> Scope<'db> {
+    let scope_node = node
+        .parent_until(&[
+            Nonterminal(file),
+            Nonterminal(class_def),
+            Nonterminal(function_def),
+            Nonterminal(lambda),
+        ])
+        .expect("There should always be a file");
+    if scope_node.is_type(Nonterminal(file)) {
+        Scope::Module
+    } else if scope_node.is_type(Nonterminal(function_def)) {
+        Scope::Function(scope_node.index)
+    } else if scope_node.is_type(Nonterminal(class_def)) {
+        Scope::Class(scope_node.index)
+    } else {
+        debug_assert_eq!(scope_node.type_(), Nonterminal(lambda));
+        Scope::Lambda(Lambda::new(scope_node))
     }
 }
 
 #[derive(Copy, Clone)]
-pub enum Scope {
+pub enum Scope<'db> {
     Module,
     Class(NodeIndex),
     Function(NodeIndex),
-    Lambda(NodeIndex),
+    Lambda(Lambda<'db>),
 }
 
 #[derive(Debug)]
