@@ -101,6 +101,8 @@ struct CliArgs {
     /// Runs only the tests for typechecking and not language server
     #[arg(long)]
     only_typecheck: bool,
+    #[arg(long)]
+    only_language_server: bool,
 
     #[arg(short = 'x')]
     stop_after_first_error: bool,

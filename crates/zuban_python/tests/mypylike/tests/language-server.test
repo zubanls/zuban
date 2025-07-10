@@ -1,4 +1,4 @@
-[case no-errors-in-unreachable]
+[case no_errors_in_unreachable]
 # flags: --warn-unreachable
 
 import typing

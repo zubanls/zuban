@@ -44,6 +44,7 @@ use crate::{
         TypeOrClass,
     },
     utils::debug_indent,
+    Mode,
 };
 
 const IGNORED_INHERITANCE_NAMES: [&str; 5] = [
@@ -372,113 +373,125 @@ impl Inference<'_, '_, '_> {
                         break;
                     }
                     */
-                    break;
+                    if self.i_s.db.mode == Mode::LanguageServer {
+                        self.i_s.avoid_errors_within(|avoid_errors_i_s| {
+                            self.file
+                                .inference(avoid_errors_i_s)
+                                .handle_stmt_like(stmt_like, class, func);
+                        });
+                        continue;
+                    }
+                    return;
                 }
             }
+            self.handle_stmt_like(stmt_like, class, func)
+        }
+    }
 
-            match stmt_like.node {
-                StmtLikeContent::Assignment(assignment) => self.check_assignment(assignment, class),
-                StmtLikeContent::StarExpressions(star_exprs) => {
-                    self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
-                }
-                StmtLikeContent::ReturnStmt(return_stmt) => {
-                    self.calc_return_stmt_diagnostics(func, return_stmt);
-                    self.mark_current_frame_unreachable()
-                }
-                StmtLikeContent::YieldExpr(yield_expr) => {
-                    self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
-                }
-                StmtLikeContent::RaiseStmt(raise_stmt) => {
-                    if let Some((expr, from_expr)) = raise_stmt.unpack() {
-                        self.check_valid_raise_type(expr, false);
-                        if let Some(from_expr) = from_expr {
-                            self.check_valid_raise_type(from_expr, true)
-                        }
-                    }
-                    self.mark_current_frame_unreachable()
-                }
-                StmtLikeContent::ImportFrom(import_from) => {
-                    self.check_import_from(import_from, class, func)
-                }
-                StmtLikeContent::ImportName(import_name) => {
-                    self.cache_import_name(import_name);
-                }
-                StmtLikeContent::PassStmt(_) => {}
-                StmtLikeContent::GlobalStmt(global) => {
-                    if self.i_s.in_module_context() {
-                        // TODO actually use a future assignment to it to determine the type.
-                        for name_def in global.iter_name_defs() {
-                            self.set_point(
-                                name_def.index(),
-                                Point::new_specific(Specific::AnyDueToError, Locality::File),
-                            );
-                        }
-                        self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel)
+    fn handle_stmt_like(
+        &self,
+        stmt_like: StmtLikeIteratorItem,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        match stmt_like.node {
+            StmtLikeContent::Assignment(assignment) => self.check_assignment(assignment, class),
+            StmtLikeContent::StarExpressions(star_exprs) => {
+                self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
+            }
+            StmtLikeContent::ReturnStmt(return_stmt) => {
+                self.calc_return_stmt_diagnostics(func, return_stmt);
+                self.mark_current_frame_unreachable()
+            }
+            StmtLikeContent::YieldExpr(yield_expr) => {
+                self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
+            }
+            StmtLikeContent::RaiseStmt(raise_stmt) => {
+                if let Some((expr, from_expr)) = raise_stmt.unpack() {
+                    self.check_valid_raise_type(expr, false);
+                    if let Some(from_expr) = from_expr {
+                        self.check_valid_raise_type(from_expr, true)
                     }
                 }
-                StmtLikeContent::NonlocalStmt(_) => {}
-                StmtLikeContent::AssertStmt(assert_stmt) => {
-                    self.flow_analysis_for_assert(assert_stmt);
+                self.mark_current_frame_unreachable()
+            }
+            StmtLikeContent::ImportFrom(import_from) => {
+                self.check_import_from(import_from, class, func)
+            }
+            StmtLikeContent::ImportName(import_name) => {
+                self.cache_import_name(import_name);
+            }
+            StmtLikeContent::PassStmt(_) => {}
+            StmtLikeContent::GlobalStmt(global) => {
+                if self.i_s.in_module_context() {
+                    // TODO actually use a future assignment to it to determine the type.
+                    for name_def in global.iter_name_defs() {
+                        self.set_point(
+                            name_def.index(),
+                            Point::new_specific(Specific::AnyDueToError, Locality::File),
+                        );
+                    }
+                    self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel)
                 }
-                StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
-                StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
-                StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
-                StmtLikeContent::TypeAlias(type_alias) => {
-                    self.ensure_compute_type_alias_from_syntax(type_alias);
-                    self.assign_type_alias_name(type_alias);
-                }
-                StmtLikeContent::FunctionDef(f) => {
+            }
+            StmtLikeContent::NonlocalStmt(_) => {}
+            StmtLikeContent::AssertStmt(assert_stmt) => {
+                self.flow_analysis_for_assert(assert_stmt);
+            }
+            StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
+            StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
+            StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
+            StmtLikeContent::TypeAlias(type_alias) => {
+                self.ensure_compute_type_alias_from_syntax(type_alias);
+                self.assign_type_alias_name(type_alias);
+            }
+            StmtLikeContent::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+            StmtLikeContent::ClassDef(class) => self.calc_class_diagnostics(class),
+            StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
+                Decoratee::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+                Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
+                Decoratee::AsyncFunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+            },
+            StmtLikeContent::IfStmt(if_stmt) => {
+                self.flow_analysis_for_if_stmt(if_stmt, class, func)
+            }
+            StmtLikeContent::ForStmt(for_stmt) => {
+                self.flow_analysis_for_for_stmt(for_stmt, class, func, false)
+            }
+            StmtLikeContent::TryStmt(try_stmt) => {
+                self.flow_analysis_for_try_stmt(try_stmt, class, func)
+            }
+            StmtLikeContent::WhileStmt(while_stmt) => {
+                self.flow_analysis_for_while_stmt(while_stmt, class, func)
+            }
+            StmtLikeContent::WithStmt(with_stmt) => {
+                self.calc_with_stmt(with_stmt, class, func, false)
+            }
+            StmtLikeContent::MatchStmt(match_stmt) => {
+                self.flow_analysis_for_match_stmt(match_stmt, class, func)
+            }
+            StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                AsyncStmtContent::FunctionDef(f) => {
                     self.maybe_delay_func_diagnostics(f, class, func)
                 }
-                StmtLikeContent::ClassDef(class) => self.calc_class_diagnostics(class),
-                StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
-                    Decoratee::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
-                    Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
-                    Decoratee::AsyncFunctionDef(f) => {
-                        self.maybe_delay_func_diagnostics(f, class, func)
-                    }
-                },
-                StmtLikeContent::IfStmt(if_stmt) => {
-                    self.flow_analysis_for_if_stmt(if_stmt, class, func)
+                AsyncStmtContent::ForStmt(for_stmt) => {
+                    self.flow_analysis_for_for_stmt(for_stmt, class, func, true)
                 }
-                StmtLikeContent::ForStmt(for_stmt) => {
-                    self.flow_analysis_for_for_stmt(for_stmt, class, func, false)
+                AsyncStmtContent::WithStmt(with_stmt) => {
+                    self.calc_with_stmt(with_stmt, class, func, true)
                 }
-                StmtLikeContent::TryStmt(try_stmt) => {
-                    self.flow_analysis_for_try_stmt(try_stmt, class, func)
-                }
-                StmtLikeContent::WhileStmt(while_stmt) => {
-                    self.flow_analysis_for_while_stmt(while_stmt, class, func)
-                }
-                StmtLikeContent::WithStmt(with_stmt) => {
-                    self.calc_with_stmt(with_stmt, class, func, false)
-                }
-                StmtLikeContent::MatchStmt(match_stmt) => {
-                    self.flow_analysis_for_match_stmt(match_stmt, class, func)
-                }
-                StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
-                    AsyncStmtContent::FunctionDef(f) => {
-                        self.maybe_delay_func_diagnostics(f, class, func)
-                    }
-                    AsyncStmtContent::ForStmt(for_stmt) => {
-                        self.flow_analysis_for_for_stmt(for_stmt, class, func, true)
-                    }
-                    AsyncStmtContent::WithStmt(with_stmt) => {
-                        self.calc_with_stmt(with_stmt, class, func, true)
-                    }
-                },
-                StmtLikeContent::BrokenScope(broken) => {
-                    // For now process these as part of the current scope, since this is part of
-                    // the parser's error recovery
-                    self.calc_stmts_diagnostics(broken.iter_stmt_likes(), class, func)
-                }
-                StmtLikeContent::Error(_) | StmtLikeContent::Newline => {}
-            };
-            self.set_point(
-                stmt_like.parent_index,
-                Point::new_specific(Specific::Analyzed, Locality::Todo),
-            );
-        }
+            },
+            StmtLikeContent::BrokenScope(broken) => {
+                // For now process these as part of the current scope, since this is part of
+                // the parser's error recovery
+                self.calc_stmts_diagnostics(broken.iter_stmt_likes(), class, func)
+            }
+            StmtLikeContent::Error(_) | StmtLikeContent::Newline => {}
+        };
+        self.set_point(
+            stmt_like.parent_index,
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
+        );
     }
 
     fn stmt_is_allowed_when_unreachable(&self, s: StmtLikeContent) -> bool {
