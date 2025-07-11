@@ -805,10 +805,8 @@ impl Replacer for TypeStuffReplacer {
 
 fn calculate_filters(args: &[String]) -> Vec<&str> {
     let mut filters = vec![];
-    for s in args.iter().skip(1) {
-        if s != "mypy" {
-            filters.push(s.as_str())
-        }
+    for s in args.iter() {
+        filters.push(s.as_str())
     }
     filters
 }
@@ -899,13 +897,16 @@ fn main() -> ExitCode {
 
     let files = find_mypy_style_files();
 
-    let mut error_count = run(
-        &cli_args,
-        Mode::TypeCheckingOnly,
-        &files,
-        &skipped,
-        &filters,
-    );
+    let mut error_count = 0;
+    if !cli_args.only_language_server {
+        error_count += run(
+            &cli_args,
+            Mode::TypeCheckingOnly,
+            &files,
+            &skipped,
+            &filters,
+        );
+    }
     if !cli_args.only_typecheck && error_count == 0 {
         error_count += run(&cli_args, Mode::LanguageServer, &files, &skipped, &filters)
     }

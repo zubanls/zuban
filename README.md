@@ -27,18 +27,13 @@ and store it at:
 You might want to run `cargo install cargo-insta` and run `cargo insta` for
 reviewing some tests (especially with parsers).
 
-I usually use this to test:
+With debug enabled and other potentially useful cases:
 
-    CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test -- --nocapture
-
-or:
-
-    CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test -- --nocapture
-
-with debug enabled:
-
-    RUST_BACKTRACE=1 CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test --features zuban_debug
-    CARGO_TARGET_DIR=/tmp/cargo_target  cargo test --features zuban_debug
+    cargo test --features zuban_debug
+    cargo test --test mypylike -- --only-typecheck testGenericMethodReturnType
+    cargo test --test mypylike -- --only-language-server
+    RUSTFLAGS="-Z macro-backtrace" cargo test
+    cargo test -- --nocapture
 
 Debugging:
 

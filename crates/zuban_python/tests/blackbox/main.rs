@@ -111,7 +111,7 @@ fn calculate_filters(args: &[String]) -> Vec<Filter> {
             filters.last_mut().unwrap().lines.push(line);
         } else if let Some(stripped) = c.strip_prefix('!') {
             filters.push(Filter::new(stripped, true));
-        } else if c != "blackbox" {
+        } else {
             filters.push(Filter::new(c, false));
         }
     }
@@ -122,9 +122,6 @@ fn main() -> ExitCode {
     logging_config::setup_logging(None).unwrap();
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
-    if cli_args.iter().any(|s| s.as_str() == "mypy") {
-        return ExitCode::from(0);
-    }
 
     let po = ProjectOptions::new(
         Settings {
