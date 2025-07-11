@@ -38,7 +38,7 @@ lazy_static::lazy_static! {
         ("decorators.py", 33),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 18),
-        ("flow_analysis.py", 22),
+        ("flow_analysis.py", 17),
         ("fstring.py", 9),
         ("functions.py", 57),
         ("generators.py", 13),
@@ -63,7 +63,7 @@ lazy_static::lazy_static! {
         ("dynamic_params.py", 18),
         ("imports.py", 35),
         ("goto.py", 28),
-        ("invalid.py", 10),
+        ("invalid.py", 8),
         ("keywords.py", 8),
         ("named_param.py", 27),
         ("ns_path.py", 4),
@@ -147,6 +147,7 @@ fn main() -> ExitCode {
     let mut unexpected_error_count = 0;
     let mut file_count = 0;
     let mut should_error_out = false;
+    let mut end_messages = vec![];
     for python_file in files {
         let file_name = &python_file.file_name().unwrap().to_str().unwrap();
         if SKIPPED_FILES.contains(file_name) || !file_name.ends_with(".py") {
@@ -165,7 +166,9 @@ fn main() -> ExitCode {
         if let Some(&expected) = EXPECTED_TEST_FAILURES.get(file_name) {
             if expected != errors && ran > 0 {
                 unexpected_error_count += errors.checked_sub(expected).unwrap_or(0);
-                println!("Expected {expected} errors for {file_name}, but had {errors}");
+                end_messages.push(format!(
+                    "Expected {expected} errors for {file_name}, but had {errors}"
+                ));
                 should_error_out = true;
             }
         } else {
@@ -174,6 +177,13 @@ fn main() -> ExitCode {
         }
         error_count += errors;
         file_count += 1;
+    }
+    for message in end_messages {
+        println!("{message}");
+    }
+    if !filters.is_empty() && ran_count == 0 {
+        println!("Did not find any file for filters {filters:?}");
+        should_error_out = true
     }
     println!(
         "Ran {ran_count} of {full_count} ({unexpected_error_count} unexpected errors; \
