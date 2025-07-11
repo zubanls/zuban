@@ -120,7 +120,8 @@ class A(object):
     def before(self):
         self.b = 3
         # TODO should this be so? include entries after cursor?
-        #? int() str() list
+        # jedi-diff: #? int() str() list
+        #? str()
         self.b
         self.b = list
 
@@ -132,7 +133,8 @@ class A(object):
         self.after
 
         self.c = 3
-        #? int()
+        # jedi-diff: #? int()
+        #? set()
         self.c
 
     def after(self):

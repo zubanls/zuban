@@ -1141,3 +1141,8 @@ a = 1
 if bool()  # E: invalid syntax
     b = 1  # E: invalid syntax
 c = 1
+
+[case diagnostics_after_trailing_semicolon_regression]
+a = 1;
+
+1()  # E: "int" not callable

@@ -323,4 +323,11 @@ parametrize_snapshots!(
             asdf
         class X: ...
         "#);
+    semicolon: dedent(r#"
+        temp = 1;
+        class A:
+            a = 3
+            #? int()
+            a
+        "#);
 );

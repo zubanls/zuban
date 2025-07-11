@@ -1736,7 +1736,7 @@ impl<'db> StmtLikeIterator<'db> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct StmtLikeIteratorItem<'db> {
     pub parent_index: NodeIndex,
     pub node: StmtLikeContent<'db>,
@@ -1748,7 +1748,7 @@ impl<'db> Iterator for StmtLikeIterator<'db> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(node) = self.simple_stmts.next() {
             if node.is_type(Terminal(TerminalType::Newline)) {
-                return None;
+                return self.next();
             }
             return Some(StmtLikeIteratorItem {
                 parent_index: node.index,

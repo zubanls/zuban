@@ -21,8 +21,6 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 1] = ["ordering.py"];
-
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
         ("arrays.py", 49),
@@ -65,6 +63,7 @@ lazy_static::lazy_static! {
         ("pytest.py", 37),
         ("on_import.py", 22),
         ("sys_path.py", 4),
+        ("ordering.py", 7),
         ("usages.py", 0),
         ("stubs.py", 19),
     ]);
@@ -146,7 +145,7 @@ fn main() -> ExitCode {
     let mut end_messages = vec![];
     for python_file in files {
         let file_name = &python_file.file_name().unwrap().to_str().unwrap();
-        if SKIPPED_FILES.contains(file_name) || !file_name.ends_with(".py") {
+        if !file_name.ends_with(".py") {
             continue;
         }
         let code = read_to_string(&python_file).unwrap().into();
