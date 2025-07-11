@@ -3720,6 +3720,7 @@ impl<'db> DelTargets<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum ReturnOrYield<'db> {
     Return(ReturnStmt<'db>),
     Yield(YieldExpr<'db>),

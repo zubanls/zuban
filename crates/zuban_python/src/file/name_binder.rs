@@ -609,17 +609,28 @@ impl<'db> NameBinder<'db> {
             };
             last_was_an_error = false;
         }
-        for stmt_like in stmts.by_ref() {
-            match stmt_like.node {
-                StmtLikeContent::YieldExpr(y) => self.index_return_or_yield(y.index()),
-                StmtLikeContent::Error(error) if error.is_dedent() => {
+        if let Some(stmt_like) = stmts.clone().next() {
+            if let StmtLikeContent::Error(error) = stmt_like.node {
+                if error.is_dedent() {
                     // If we encounter an invalid dedent in the statement list, we don't want to
                     // abort after a return or break. We have broken code that needs to be fixed
                     // first. Otherwise names will not be accessible from other modules.
                     return self.index_stmts(stmts, ordered);
                 }
-                _ => (),
             }
+            let mut latest = self.latest_return_or_yield;
+            // Index the other statements even though they aren't actually reachable. We want to
+            // keep the information of the latest yields, because they indicate that something is a
+            // generator even though it might not be reachable. This creates a new symbol table
+            // that is discarded later. This is not necessary for normal type checking, but
+            // useful for the language server, because people might want to use goto/completions in
+            // unreachable parts like `if sys.platform == "win32" when on Linux.
+            self.with_nested(self.kind, self.scope_node, |binder| {
+                binder.latest_return_or_yield = latest;
+                binder.index_stmts(stmts, ordered);
+                latest = binder.latest_return_or_yield;
+            });
+            self.latest_return_or_yield = latest
         }
     }
 

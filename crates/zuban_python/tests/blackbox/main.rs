@@ -21,12 +21,7 @@ pub struct Filter {
     negative: bool,
 }
 
-const SKIPPED_FILES: [&str; 3] = [
-    "ordering.py",
-    "pytest.py",
-    // Our own
-    "unreachable_no_crash.py",
-];
+const SKIPPED_FILES: [&str; 1] = ["ordering.py"];
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
@@ -38,7 +33,7 @@ lazy_static::lazy_static! {
         ("decorators.py", 33),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 18),
-        ("flow_analysis.py", 17),
+        ("flow_analysis.py", 18),
         ("fstring.py", 9),
         ("functions.py", 57),
         ("generators.py", 13),
@@ -67,6 +62,7 @@ lazy_static::lazy_static! {
         ("keywords.py", 8),
         ("named_param.py", 27),
         ("ns_path.py", 4),
+        ("pytest.py", 37),
         ("on_import.py", 22),
         ("sys_path.py", 4),
         ("usages.py", 0),

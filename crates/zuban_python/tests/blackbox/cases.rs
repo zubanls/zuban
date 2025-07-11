@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::{collections::HashSet, path::Path};
 
 use vfs::PathWithScheme;

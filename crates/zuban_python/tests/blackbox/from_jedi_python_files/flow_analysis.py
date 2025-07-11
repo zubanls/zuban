@@ -270,7 +270,8 @@ if 0:
         within_flow
         #? str()
         foobar
-    #?
+    # jedi-diff: #?
+    #? int()
     nested
 
 if False:

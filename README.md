@@ -32,8 +32,9 @@ With debug enabled and other potentially useful cases:
     cargo test --features zuban_debug
     cargo test --test mypylike -- --only-typecheck testGenericMethodReturnType
     cargo test --test mypylike -- --only-language-server
-    RUSTFLAGS="-Z macro-backtrace" cargo test
     cargo test -- --nocapture
+    RUSTFLAGS="-Z macro-backtrace" cargo test
+    CARGO_TARGET_DIR=/tmp/cargo_target cargo test
 
 Debugging:
 
