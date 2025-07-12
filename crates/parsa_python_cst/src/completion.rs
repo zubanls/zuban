@@ -3,7 +3,7 @@ use parsa_python::{CodeIndex, NodeIndex, NonterminalType::*, PyNode, PyNodeType:
 use crate::{Atom, Lambda, Primary, PrimaryOrAtom, Tree};
 
 impl Tree {
-    pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode) {
+    pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode, RestNode) {
         let mut leaf = self.0.leaf_by_position(position);
         let scope = scope_for_node(leaf);
         if leaf.start() == position {
@@ -16,7 +16,7 @@ impl Tree {
         let rest = RestNode::new(self, leaf, position);
         if position < leaf.start() {
             if leaf.prefix().contains("#") {
-                return (scope, CompletionNode::Global { rest: None });
+                return (scope, CompletionNode::Global, rest);
             }
         }
         if let Some(previous) = leaf.previous_leaf() {
@@ -29,12 +29,12 @@ impl Tree {
                         base = Some(PrimaryOrAtom::Primary(Primary::new(before_dot)))
                     }
                     if let Some(base) = base {
-                        return (scope, CompletionNode::Attribute { base, rest });
+                        return (scope, CompletionNode::Attribute { base }, rest);
                     }
                 }
             }
         }
-        (scope, CompletionNode::Global { rest: Some(rest) })
+        (scope, CompletionNode::Global, rest)
     }
 }
 
@@ -69,13 +69,8 @@ pub enum Scope<'db> {
 
 #[derive(Debug)]
 pub enum CompletionNode<'db> {
-    Attribute {
-        base: PrimaryOrAtom<'db>,
-        rest: RestNode<'db>,
-    },
-    Global {
-        rest: Option<RestNode<'db>>,
-    },
+    Attribute { base: PrimaryOrAtom<'db> },
+    Global,
 }
 
 /// Holds all kinds of nodes including invalid ones that might be valid starts for completion.

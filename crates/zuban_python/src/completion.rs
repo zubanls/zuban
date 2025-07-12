@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use parsa_python_cst::CompletionNode;
+use parsa_python_cst::{CompletionNode, RestNode};
 
 use crate::{
     database::Database,
@@ -14,10 +14,12 @@ use crate::{
     InputPosition,
 };
 
-impl<'db> PositionalDocument<'db, CompletionNode<'db>> {
+type CompletionInfo<'db> = (CompletionNode<'db>, RestNode<'db>);
+
+impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
     pub fn for_completion(db: &'db Database, file: &'db PythonFile, pos: InputPosition) -> Self {
         let position = pos.to_code_index(file);
-        let (scope, node) = file.tree.completion_node(position);
+        let (scope, node, rest) = file.tree.completion_node(position);
         debug!(
             "Complete on position {}->{pos:?} on leaf {node:?}",
             file.file_path(&db),
@@ -28,13 +30,13 @@ impl<'db> PositionalDocument<'db, CompletionNode<'db>> {
             db,
             file,
             scope,
-            node,
+            node: (node, rest),
         }
     }
 }
 
 pub(crate) struct CompletionResolver<'db, C, T> {
-    pub infos: PositionalDocument<'db, CompletionNode<'db>>,
+    pub infos: PositionalDocument<'db, CompletionInfo<'db>>,
     pub on_result: C,
     items: Vec<(CompletionSortPriority<'db>, T)>,
     added_names: HashSet<&'db str>,
@@ -67,9 +69,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     fn fill_items(&mut self) {
         let db = self.infos.db;
         let file = self.infos.file;
-        match &self.infos.node {
-            CompletionNode::Attribute { base, rest } => {
-                self.should_start_with = Some(rest.as_code());
+        self.should_start_with = Some(self.infos.node.1.as_code());
+        match &self.infos.node.0 {
+            CompletionNode::Attribute { base } => {
                 let inf = self.infos.infer_primary_or_atom(*base);
                 with_i_s_non_self(db, file, self.infos.scope, |i_s| {
                     for t in
@@ -82,8 +84,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     }
                 })
             }
-            CompletionNode::Global { rest } => {
-                self.should_start_with = rest.as_ref().map(|rest| rest.as_code());
+            CompletionNode::Global => {
                 self.add_module_completions(self.infos.file);
                 self.add_module_completions(self.infos.db.python_state.builtins());
             }
