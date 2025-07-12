@@ -13,7 +13,7 @@ impl Tree {
                 }
             }
         }
-        let rest = RestNode::new(leaf, position);
+        let rest = RestNode::new(self, leaf, position);
         if position < leaf.start() {
             if leaf.prefix().contains("#") {
                 return (scope, CompletionNode::Global { rest: None });
@@ -79,15 +79,19 @@ pub enum CompletionNode<'db> {
 }
 
 /// Holds all kinds of nodes including invalid ones that might be valid starts for completion.
-#[derive(Debug)]
 pub struct RestNode<'db> {
+    tree: &'db Tree,
     node: PyNode<'db>,
     position: CodeIndex,
 }
 
 impl<'db> RestNode<'db> {
-    fn new(node: PyNode<'db>, position: CodeIndex) -> Self {
-        Self { node, position }
+    fn new(tree: &'db Tree, node: PyNode<'db>, position: CodeIndex) -> Self {
+        Self {
+            tree,
+            node,
+            position,
+        }
     }
 
     pub fn is_string(&self) -> bool {
@@ -101,6 +105,15 @@ impl<'db> RestNode<'db> {
     }
 
     pub fn as_code(&self) -> &'db str {
-        &self.node.as_code()[..(self.position - self.node.start()) as usize]
+        &self.tree.code()[self.node.start() as usize..self.position as usize]
+    }
+}
+
+impl std::fmt::Debug for RestNode<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(RestNode))
+            .field("node", &self.node)
+            .field("position", &self.position)
+            .finish()
     }
 }

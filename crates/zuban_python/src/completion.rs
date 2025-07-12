@@ -48,6 +48,10 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         position: InputPosition,
         on_result: C,
     ) -> Vec<T> {
+        let _panic_context = utils::panic_context::enter(format!(
+            "completions for {} position {position:?}",
+            file.file_path(db)
+        ));
         let mut slf = Self {
             infos: PositionalDocument::for_completion(db, file, position),
             on_result,
@@ -78,8 +82,28 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     }
                 })
             }
-            CompletionNode::Global { .. } => (),
+            CompletionNode::Global { rest } => {
+                self.should_start_with = rest.as_ref().map(|rest| rest.as_code());
+                self.add_module_completions(self.infos.file);
+                self.add_module_completions(self.infos.db.python_state.builtins());
+            }
         };
+    }
+
+    fn add_module_completions(&mut self, file: &'db PythonFile) {
+        for (symbol, _node_index) in file.symbol_table.iter() {
+            if !self.maybe_add(symbol) {
+                continue;
+            }
+            let result = (self.on_result)(&CompletionTreeName {
+                db: self.infos.db,
+                file: self.infos.file,
+                name: symbol,
+                kind: CompletionKind::Variable,
+            });
+            self.items
+                .push((CompletionSortPriority::Default(symbol), result))
+        }
     }
 
     fn add_for_mro(&mut self, i_s: &InferenceState, t: &Type, is_instance: bool) {
