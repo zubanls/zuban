@@ -67,7 +67,7 @@ impl<'db, T> PositionalDocument<'db, T> {
     fn infer_name(&self, name: CSTName) -> Option<Inferred> {
         match name.parent() {
             NameParent::NameDef(name_def) => self.maybe_inferred_node_index(name_def.index()),
-            NameParent::Atom(atom) => self.infer_atom(atom),
+            NameParent::Atom(atom) => Some(self.infer_atom(atom)),
             NameParent::Primary(_) => todo!(),
             NameParent::PrimaryTarget(_) => todo!(),
             NameParent::Kwarg(_) => {
@@ -92,11 +92,15 @@ impl<'db, T> PositionalDocument<'db, T> {
         */
     }
 
-    pub fn infer_atom(&self, atom: Atom) -> Option<Inferred> {
-        self.maybe_inferred_node_index(atom.index())
+    pub fn infer_atom(&self, atom: Atom) -> Inferred {
+        self.with_i_s(|i_s| {
+            self.file
+                .inference(i_s)
+                .infer_atom(atom, &mut ResultContext::Unknown)
+        })
     }
 
-    pub fn maybe_inferred_node_index(&self, node_index: NodeIndex) -> Option<Inferred> {
+    fn maybe_inferred_node_index(&self, node_index: NodeIndex) -> Option<Inferred> {
         let n = NodeRef::new(self.file, node_index);
         self.with_i_s(|i_s| n.maybe_inferred(i_s))
     }
@@ -109,9 +113,9 @@ impl<'db, T> PositionalDocument<'db, T> {
         })
     }
 
-    pub fn infer_primary_or_atom(&self, p_or_a: PrimaryOrAtom) -> Option<Inferred> {
+    pub fn infer_primary_or_atom(&self, p_or_a: PrimaryOrAtom) -> Inferred {
         match p_or_a {
-            PrimaryOrAtom::Primary(p) => Some(self.infer_primary(p)),
+            PrimaryOrAtom::Primary(p) => self.infer_primary(p),
             PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         }
     }
@@ -184,7 +188,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             GotoNode::Name(name) => lookup_on_name(name),
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
-                    let base = self.infos.infer_primary_or_atom(primary.first())?;
+                    let base = self.infos.infer_primary_or_atom(primary.first());
                     let mut results = vec![];
                     self.infos.with_i_s(|i_s| {
                         for t in unpack_union_types(db, base.as_cow_type(i_s))

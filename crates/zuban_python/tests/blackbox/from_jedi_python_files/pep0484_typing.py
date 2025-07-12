@@ -484,11 +484,9 @@ class Foo(typing.TypedDict):
     an_int: int
     #! ['foo: str']
     foo
-    # jedi-diff: #? str()
-    #?
+    #? str()
     foo
-    # jedi-diff: #? int()
-    #?
+    #? int()
     an_int
 
 def typed_dict_test_foo(arg: Foo):
@@ -543,8 +541,7 @@ d["bar"]
 class Bar(Foo):
     another_variable: int
 
-    # jedi-diff #? int()
-    #?
+    #? int()
     another_variable
     #! ["another_variable: int"]
     another_variable

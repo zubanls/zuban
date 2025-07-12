@@ -66,10 +66,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         match &self.infos.node {
             CompletionNode::Attribute { base, rest } => {
                 self.should_start_with = Some(rest.as_code());
-                let Some(inf) = self.infos.infer_primary_or_atom(*base) else {
-                    return;
-                };
-
+                let inf = self.infos.infer_primary_or_atom(*base);
                 with_i_s_non_self(db, file, self.infos.scope, |i_s| {
                     for t in
                         unpack_union_types(db, inf.as_cow_type(i_s)).iter_with_unpacked_unions(db)
