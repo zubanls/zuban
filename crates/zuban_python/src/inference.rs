@@ -54,6 +54,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         match self.node {
             GotoNode::Name(name) => self.infer_name(name),
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
+            GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
             GotoNode::None => None,
         }
     }
@@ -221,7 +222,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 }),
                 _ => None,
             },
-            GotoNode::None => None,
+            GotoNode::Atom(_) | GotoNode::None => None,
         }
     }
 }

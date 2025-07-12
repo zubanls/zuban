@@ -236,6 +236,8 @@ impl Tree {
                 let parent = left.parent().unwrap();
                 if parent.is_type(Nonterminal(primary)) {
                     GotoNode::Primary(Primary::new(parent))
+                } else if parent.is_type(Nonterminal(atom)) {
+                    GotoNode::Atom(Atom::new(parent))
                 } else {
                     GotoNode::None
                 }
@@ -4508,6 +4510,7 @@ impl<'db> Expressions<'db> {
 pub enum GotoNode<'db> {
     Name(Name<'db>),
     Primary(Primary<'db>),
+    Atom(Atom<'db>),
     None,
 }
 
