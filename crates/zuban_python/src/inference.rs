@@ -6,8 +6,8 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{
-    Atom, DottedName, GotoNode, Name as CSTName, NameParent, NodeIndex, Primary, PrimaryContent,
-    PrimaryOrAtom, Scope,
+    Atom, DottedImportName, GotoNode, Name as CSTName, NameParent, NodeIndex, Primary,
+    PrimaryContent, PrimaryOrAtom, Scope,
 };
 
 use crate::{
@@ -77,7 +77,10 @@ impl<'db, T> PositionalDocument<'db, T> {
             }
             NameParent::KeywordPattern(_) => todo!(),
             NameParent::ImportFromAsName(_) => todo!(),
-            NameParent::DottedName(dotted_name) => Some(self.infer_import_dotted_name(dotted_name)),
+            NameParent::DottedImportName(dotted_name) => {
+                Some(self.infer_dotted_import_name(dotted_name))
+            }
+            NameParent::DottedPatternName(_) => todo!(),
             NameParent::FStringConversion(_) => todo!(),
         }
         /*
@@ -111,7 +114,7 @@ impl<'db, T> PositionalDocument<'db, T> {
         })
     }
 
-    pub fn infer_import_dotted_name(&self, dotted: DottedName) -> Inferred {
+    pub fn infer_dotted_import_name(&self, dotted: DottedImportName) -> Inferred {
         if let Some(import_result) = self.with_i_s(|i_s| {
             self.file
                 .inference(i_s)

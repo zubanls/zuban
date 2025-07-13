@@ -4332,10 +4332,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    pub fn infer_pattern_dotted_name(&self, dotted: DottedName) -> Inferred {
+    pub fn infer_pattern_dotted_name(&self, dotted: DottedPatternName) -> Inferred {
         match dotted.unpack() {
-            DottedNameContent::Name(name) => self.infer_name_reference(name),
-            DottedNameContent::DottedName(dotted_name, name) => {
+            DottedPatternNameContent::Name(name) => self.infer_name_reference(name),
+            DottedPatternNameContent::DottedName(dotted_name, name) => {
                 let result = self.infer_pattern_dotted_name(dotted_name);
                 let node_ref = NodeRef::new(self.file, dotted.index());
                 result

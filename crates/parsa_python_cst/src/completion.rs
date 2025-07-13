@@ -1,6 +1,6 @@
 use parsa_python::{CodeIndex, NodeIndex, NonterminalType::*, PyNode, PyNodeType::Nonterminal};
 
-use crate::{Atom, DottedName, Lambda, NameDef, Primary, PrimaryOrAtom, Tree};
+use crate::{Atom, DottedImportName, Lambda, NameDef, Primary, PrimaryOrAtom, Tree};
 
 impl Tree {
     pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode, RestNode) {
@@ -36,11 +36,11 @@ impl Tree {
                 }
                 "import" => {
                     if let Some(before_imp) = previous.previous_sibling() {
-                        if before_imp.is_type(Nonterminal(dotted_name)) {
+                        if before_imp.is_type(Nonterminal(dotted_import_name)) {
                             return (
                                 scope,
                                 CompletionNode::ImportFromTarget {
-                                    base: DottedName::new(before_imp),
+                                    base: DottedImportName::new(before_imp),
                                 },
                                 rest,
                             );
@@ -88,14 +88,14 @@ pub enum CompletionNode<'db> {
     Attribute {
         base: PrimaryOrAtom<'db>,
     },
-    ImportDottedName {
-        base: DottedName<'db>,
+    DottedImportName {
+        base: DottedImportName<'db>,
     },
     ImportName {
-        path: Option<(NameDef<'db>, Option<DottedName<'db>>)>,
+        path: Option<(NameDef<'db>, Option<DottedImportName<'db>>)>,
     },
     ImportFromTarget {
-        base: DottedName<'db>,
+        base: DottedImportName<'db>,
     },
     Global,
 }

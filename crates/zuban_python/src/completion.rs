@@ -78,10 +78,10 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 self.add_module_completions(self.infos.file);
                 self.add_module_completions(self.infos.db.python_state.builtins());
             }
-            CompletionNode::ImportDottedName { base } => todo!(),
+            CompletionNode::DottedImportName { base } => todo!(),
             CompletionNode::ImportName { path } => todo!(),
             CompletionNode::ImportFromTarget { base } => {
-                let inf = self.infos.infer_import_dotted_name(*base);
+                let inf = self.infos.infer_dotted_import_name(*base);
                 self.add_attribute_completions(inf)
             }
         }

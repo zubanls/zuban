@@ -1,5 +1,5 @@
 use crate::{
-    Block, CaseBlock, ClassPattern, DottedName, DoubleStarPattern, GroupPattern, Guard,
+    Block, CaseBlock, ClassPattern, DottedPatternName, DoubleStarPattern, GroupPattern, Guard,
     KeyValuePattern, KeywordPattern, LiteralPattern, MappingPattern, MatchStmt, Name, NameDef,
     NamedExpression, OpenSequencePattern, OrPattern, Pattern, SequencePattern,
     StarLikeExpressionIterator, StarPattern, SubjectExpr, WildcardPattern,
@@ -67,7 +67,7 @@ pub enum CasePattern<'db> {
 pub enum PatternKind<'db> {
     NameDef(NameDef<'db>),
     WildcardPattern(WildcardPattern<'db>),
-    DottedName(DottedName<'db>),
+    DottedName(DottedPatternName<'db>),
     ClassPattern(ClassPattern<'db>),
     LiteralPattern(LiteralPattern<'db>),
     GroupPattern(GroupPattern<'db>),
@@ -92,8 +92,8 @@ fn pattern_node_to_kind(node: PyNode) -> PatternKind {
         PatternKind::NameDef(NameDef::new(node))
     } else if node.is_type(Nonterminal(wildcard_pattern)) {
         PatternKind::WildcardPattern(WildcardPattern::new(node))
-    } else if node.is_type(Nonterminal(dotted_name)) {
-        PatternKind::DottedName(DottedName::new(node))
+    } else if node.is_type(Nonterminal(dotted_pattern_name)) {
+        PatternKind::DottedName(DottedPatternName::new(node))
     } else if node.is_type(Nonterminal(class_pattern)) {
         PatternKind::ClassPattern(ClassPattern::new(node))
     } else if node.is_type(Nonterminal(literal_pattern)) {
@@ -111,9 +111,14 @@ fn pattern_node_to_kind(node: PyNode) -> PatternKind {
 }
 
 impl<'db> ClassPattern<'db> {
-    pub fn unpack(&self) -> (DottedName<'db>, impl Iterator<Item = ParamPattern<'db>>) {
+    pub fn unpack(
+        &self,
+    ) -> (
+        DottedPatternName<'db>,
+        impl Iterator<Item = ParamPattern<'db>>,
+    ) {
         let mut iterator = self.node.iter_children();
-        let dotted = DottedName::new(iterator.next().unwrap());
+        let dotted = DottedPatternName::new(iterator.next().unwrap());
         iterator.next();
         let param_pattern_node = iterator.next().unwrap();
         let param_siblings = if param_pattern_node.is_type(Nonterminal(param_patterns)) {
@@ -222,7 +227,7 @@ impl<'db> KeyValuePattern<'db> {
         let key = if first.is_type(Nonterminal(literal_pattern)) {
             KeyEntryInPattern::LiteralPattern(LiteralPattern::new(first))
         } else {
-            KeyEntryInPattern::DottedName(DottedName::new(first))
+            KeyEntryInPattern::DottedName(DottedPatternName::new(first))
         };
         iterator.next();
         let value = Pattern::new(iterator.next().unwrap());
@@ -232,7 +237,7 @@ impl<'db> KeyValuePattern<'db> {
 
 pub enum KeyEntryInPattern<'db> {
     LiteralPattern(LiteralPattern<'db>),
-    DottedName(DottedName<'db>),
+    DottedName(DottedPatternName<'db>),
 }
 
 impl<'db> DoubleStarPattern<'db> {

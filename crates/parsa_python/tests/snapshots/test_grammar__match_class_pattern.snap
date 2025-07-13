@@ -20,7 +20,7 @@ file: 0-136
     Keyword: 14-18 "case"
     pattern: 19-22
      class_pattern: 19-22
-      dotted_name: 19-20
+      dotted_pattern_name: 19-20
        Name: 19-20 "A"
       Keyword: 20-21 "("
       Keyword: 21-22 ")"
@@ -39,7 +39,7 @@ file: 0-136
     Keyword: 41-45 "case"
     pattern: 46-53
      class_pattern: 46-53
-      dotted_name: 46-47
+      dotted_pattern_name: 46-47
        Name: 46-47 "B"
       Keyword: 47-48 "("
       param_patterns: 48-52
@@ -68,7 +68,7 @@ file: 0-136
     Keyword: 72-76 "case"
     pattern: 77-86
      class_pattern: 77-86
-      dotted_name: 77-78
+      dotted_pattern_name: 77-78
        Name: 77-78 "B"
       Keyword: 78-79 "("
       param_patterns: 79-85
@@ -100,7 +100,7 @@ file: 0-136
     Keyword: 105-109 "case"
     pattern: 110-121
      class_pattern: 110-121
-      dotted_name: 110-111
+      dotted_pattern_name: 110-111
        Name: 110-111 "B"
       Keyword: 111-112 "("
       param_patterns: 112-120

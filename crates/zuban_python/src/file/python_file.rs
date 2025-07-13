@@ -449,7 +449,7 @@ impl<'db> PythonFile {
                 if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
                     // Only import `foo.bar as bar` can be a submodule.
                     // `import foo.bar` just exports the name foo.
-                    if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
+                    if let DottedImportNameContent::DottedName(super_, _) = dotted.unpack() {
                         submodule_reexport(
                             self.name_resolution_for_types(i_s)
                                 .cache_import_dotted_name(super_, None),

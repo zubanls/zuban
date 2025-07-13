@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DefiningStmt, DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom,
-    ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    DefiningStmt, DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent,
+    ImportFrom, ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use utils::AlreadySeen;
 
@@ -279,7 +279,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub fn cache_import_dotted_name(
         &self,
-        dotted: DottedName,
+        dotted: DottedImportName,
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
         let node_ref = NodeRef::new(self.file, dotted.index());
@@ -340,7 +340,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             result
         };
         let result = match dotted.unpack() {
-            DottedNameContent::Name(name) => {
+            DottedImportNameContent::Name(name) => {
                 if let Some(base) = base {
                     infer_name(self, base, name)
                 } else {
@@ -351,7 +351,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     result
                 }
             }
-            DottedNameContent::DottedName(dotted_name, name) => {
+            DottedImportNameContent::DottedName(dotted_name, name) => {
                 let result = self.cache_import_dotted_name(dotted_name, base)?;
                 infer_name(self, result, name)
             }

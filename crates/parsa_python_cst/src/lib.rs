@@ -280,7 +280,7 @@ pub enum InterestingNode<'db> {
     Ternary(Ternary<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
-    DottedName(DottedName<'db>),
+    DottedPatternName(DottedPatternName<'db>),
     Walrus(Walrus<'db>),
 }
 pub struct InterestingNodes<'db>(SearchIterator<'db>);
@@ -306,8 +306,8 @@ impl<'db> Iterator for InterestingNodes<'db> {
                 InterestingNode::Comprehension(Comprehension::new(n))
             } else if n.is_type(Nonterminal(dict_comprehension)) {
                 InterestingNode::DictComprehension(DictComprehension::new(n))
-            } else if n.is_type(Nonterminal(dotted_name)) {
-                InterestingNode::DottedName(DottedName::new(n))
+            } else if n.is_type(Nonterminal(dotted_pattern_name)) {
+                InterestingNode::DottedPatternName(DottedPatternName::new(n))
             } else {
                 debug_assert_eq!(n.type_(), Nonterminal(walrus));
                 InterestingNode::Walrus(Walrus::new(n))
@@ -383,7 +383,7 @@ macro_rules! create_struct {
                     Nonterminal(ternary),
                     Nonterminal(comprehension),
                     Nonterminal(dict_comprehension),
-                    Nonterminal(dotted_name),
+                    Nonterminal(dotted_pattern_name),
                     Nonterminal(walrus),
                 ];
                 InterestingNodes(self.node.search(SEARCH_NAMES, true))
@@ -443,7 +443,7 @@ create_nonterminal_structs!(
 
     ImportFrom: import_from
     ImportName: import_name
-    DottedName: dotted_name
+    DottedImportName: dotted_import_name
     DottedAsName: dotted_as_name
     ImportFromAsName: import_from_as_name
 
@@ -530,6 +530,7 @@ create_nonterminal_structs!(
     DoubleStarPattern: double_star_pattern
     ClassPattern: class_pattern
     KeywordPattern: keyword_pattern
+    DottedPatternName: dotted_pattern_name
 
     TypeParams: type_params
     TypeParam: type_param
@@ -611,8 +612,10 @@ impl<'db> Name<'db> {
             NameParent::KeywordPattern(KeywordPattern::new(parent))
         } else if parent.is_type(Nonterminal(import_from_as_name)) {
             NameParent::ImportFromAsName(ImportFromAsName::new(parent))
-        } else if parent.is_type(Nonterminal(dotted_name)) {
-            NameParent::DottedName(DottedName::new(parent))
+        } else if parent.is_type(Nonterminal(dotted_import_name)) {
+            NameParent::DottedImportName(DottedImportName::new(parent))
+        } else if parent.is_type(Nonterminal(dotted_pattern_name)) {
+            NameParent::DottedPatternName(DottedPatternName::new(parent))
         } else {
             assert!(
                 parent.is_type(Nonterminal(fstring_conversion)),
@@ -715,7 +718,8 @@ pub enum NameParent<'db> {
     Kwarg(Kwarg<'db>),
     KeywordPattern(KeywordPattern<'db>),
     ImportFromAsName(ImportFromAsName<'db>),
-    DottedName(DottedName<'db>),
+    DottedImportName(DottedImportName<'db>),
+    DottedPatternName(DottedPatternName<'db>),
     FStringConversion(FStringConversion<'db>),
 }
 
@@ -2779,13 +2783,13 @@ impl<'db> Iterator for AssignmentTargetIterator<'db> {
 }
 
 impl<'db> ImportFrom<'db> {
-    pub fn level_with_dotted_name(&self) -> (usize, Option<DottedName<'db>>) {
-        // | "from" ("." | "...")* dotted_name "import" import_from_targets
+    pub fn level_with_dotted_name(&self) -> (usize, Option<DottedImportName<'db>>) {
+        // | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
         let mut level = 0;
         for node in self.node.iter_children().skip(1) {
-            if node.is_type(Nonterminal(dotted_name)) {
-                return (level, Some(DottedName::new(node)));
+            if node.is_type(Nonterminal(dotted_import_name)) {
+                return (level, Some(DottedImportName::new(node)));
             } else if node.as_code() == "." {
                 level += 1;
             } else if node.as_code() == "..." {
@@ -2876,36 +2880,47 @@ impl<'db> ImportFromAsName<'db> {
     }
 }
 
-impl<'db> DottedName<'db> {
+impl<'db> DottedImportName<'db> {
+    pub fn unpack(&self) -> DottedImportNameContent<'db> {
+        let mut children = self.node.iter_children();
+        let first = children.next().unwrap();
+        if first.is_type(Terminal(TerminalType::Name)) {
+            DottedImportNameContent::Name(Name::new(first))
+        } else {
+            children.next();
+            let name = children.next().unwrap();
+            DottedImportNameContent::DottedName(DottedImportName::new(first), Name::new(name))
+        }
+    }
+}
+
+pub enum DottedImportNameContent<'db> {
+    DottedName(DottedImportName<'db>, Name<'db>),
+    Name(Name<'db>),
+}
+
+impl<'db> DottedPatternName<'db> {
     pub fn first_name(&self) -> Name<'db> {
         let n = self.node.next_leaf().unwrap();
         Name::new(n)
     }
 
-    pub fn unpack(&self) -> DottedNameContent<'db> {
+    pub fn unpack(&self) -> DottedPatternNameContent<'db> {
         let mut children = self.node.iter_children();
         let first = children.next().unwrap();
         if first.is_type(Terminal(TerminalType::Name)) {
-            DottedNameContent::Name(Name::new(first))
+            DottedPatternNameContent::Name(Name::new(first))
         } else {
             children.next();
             let name = children.next().unwrap();
-            DottedNameContent::DottedName(DottedName::new(first), Name::new(name))
+            DottedPatternNameContent::DottedName(DottedPatternName::new(first), Name::new(name))
         }
     }
 }
 
-pub enum DottedNameContent<'db> {
-    DottedName(DottedName<'db>, Name<'db>),
+pub enum DottedPatternNameContent<'db> {
+    DottedName(DottedPatternName<'db>, Name<'db>),
     Name(Name<'db>),
-}
-
-impl<'db> DottedNameContent<'db> {
-    pub fn last_name(&self) -> Name<'db> {
-        match self {
-            Self::Name(name) | Self::DottedName(_, name) => *name,
-        }
-    }
 }
 
 impl<'db> ImportName<'db> {
@@ -2929,8 +2944,8 @@ impl<'db> Iterator for DottedAsNameIterator<'db> {
 }
 
 pub enum DottedAsNameContent<'db> {
-    Simple(NameDef<'db>, Option<DottedName<'db>>),
-    WithAs(DottedName<'db>, NameDef<'db>),
+    Simple(NameDef<'db>, Option<DottedImportName<'db>>),
+    WithAs(DottedImportName<'db>, NameDef<'db>),
 }
 
 impl<'db> DottedAsName<'db> {
@@ -2941,11 +2956,11 @@ impl<'db> DottedAsName<'db> {
         if first.is_type(Nonterminal(name_def)) {
             DottedAsNameContent::Simple(
                 NameDef::new(first),
-                maybe_second.map(|s| DottedName::new(s.next_sibling().unwrap())),
+                maybe_second.map(|s| DottedImportName::new(s.next_sibling().unwrap())),
             )
         } else {
             DottedAsNameContent::WithAs(
-                DottedName::new(first),
+                DottedImportName::new(first),
                 NameDef::new(maybe_second.unwrap().next_sibling().unwrap()),
             )
         }
