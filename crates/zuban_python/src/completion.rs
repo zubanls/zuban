@@ -6,6 +6,7 @@ use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
+    imports::ImportResult,
     inference::{unpack_union_types, with_i_s_non_self, PositionalDocument},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -78,8 +79,21 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 self.add_module_completions(self.infos.file);
                 self.add_module_completions(self.infos.db.python_state.builtins());
             }
-            CompletionNode::DottedImportName { base } => todo!(),
             CompletionNode::ImportName { path } => todo!(),
+            CompletionNode::DottedImportName { base } => {
+                if let Some(import_result) = self.infos.with_i_s(|i_s| {
+                    self.infos
+                        .file
+                        .inference(i_s)
+                        .cache_import_dotted_name(*base, None)
+                }) {
+                    match import_result {
+                        ImportResult::File(file_index) => {}
+                        ImportResult::Namespace(rc) => todo!(),
+                        ImportResult::PyTypedMissing => (),
+                    }
+                }
+            }
             CompletionNode::ImportFromTarget { base } => {
                 let inf = self.infos.infer_dotted_import_name(*base);
                 self.add_attribute_completions(inf)

@@ -28,6 +28,14 @@ impl Tree {
                             base = Some(PrimaryOrAtom::Atom(Atom::new(before_dot)))
                         } else if before_dot.is_type(Nonterminal(primary)) {
                             base = Some(PrimaryOrAtom::Primary(Primary::new(before_dot)))
+                        } else if before_dot.is_type(Nonterminal(dotted_import_name)) {
+                            return (
+                                scope,
+                                CompletionNode::DottedImportName {
+                                    base: DottedImportName::new(before_dot),
+                                },
+                                rest,
+                            );
                         }
                         if let Some(base) = base {
                             return (scope, CompletionNode::Attribute { base }, rest);
