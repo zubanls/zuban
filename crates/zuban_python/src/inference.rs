@@ -77,10 +77,7 @@ impl<'db, T> PositionalDocument<'db, T> {
             }
             NameParent::KeywordPattern(_) => todo!(),
             NameParent::ImportFromAsName(_) => todo!(),
-            NameParent::DottedName(_) => {
-                debug!("TODO dotted name infer");
-                None
-            }
+            NameParent::DottedName(dotted_name) => Some(self.infer_import_dotted_name(dotted_name)),
             NameParent::FStringConversion(_) => todo!(),
         }
         /*
