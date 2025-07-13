@@ -43,7 +43,7 @@ lazy_static::lazy_static! {
         ("pep0484_typing.py", 3),
         ("positional_only_params.py", 3),
         ("precedence.py", 11),
-        ("stdlib.py", 46),
+        ("stdlib.py", 45),
 
         // TODO work on these files
         ("completion.py", 6),
@@ -52,18 +52,18 @@ lazy_static::lazy_static! {
         ("docstring.py", 39),
         ("django.py", 72),
         ("dynamic_params.py", 18),
-        ("imports.py", 33),
+        ("imports.py", 30),
         ("goto.py", 28),
         ("invalid.py", 5),
         ("keywords.py", 8),
         ("named_param.py", 27),
         ("ns_path.py", 4),
         ("pytest.py", 32),
-        ("on_import.py", 22),
+        ("on_import.py", 20),
         ("sys_path.py", 4),
         ("ordering.py", 7),
         ("usages.py", 0),
-        ("stubs.py", 19),
+        ("stubs.py", 12),
     ]);
 }
 

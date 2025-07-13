@@ -6,8 +6,8 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{
-    Atom, GotoNode, Name as CSTName, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom,
-    Scope,
+    Atom, DottedName, GotoNode, Name as CSTName, NameParent, NodeIndex, Primary, PrimaryContent,
+    PrimaryOrAtom, Scope,
 };
 
 use crate::{
@@ -112,6 +112,18 @@ impl<'db, T> PositionalDocument<'db, T> {
                 .inference(i_s)
                 .infer_primary(primary, &mut ResultContext::ExpectUnused)
         })
+    }
+
+    pub fn infer_import_dotted_name(&self, dotted: DottedName) -> Inferred {
+        if let Some(import_result) = self.with_i_s(|i_s| {
+            self.file
+                .inference(i_s)
+                .cache_import_dotted_name(dotted, None)
+        }) {
+            import_result.as_inferred()
+        } else {
+            Inferred::new_any_from_error()
+        }
     }
 
     pub fn infer_primary_or_atom(&self, p_or_a: PrimaryOrAtom) -> Inferred {

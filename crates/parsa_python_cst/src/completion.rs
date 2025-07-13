@@ -1,6 +1,6 @@
 use parsa_python::{CodeIndex, NodeIndex, NonterminalType::*, PyNode, PyNodeType::Nonterminal};
 
-use crate::{Atom, Lambda, Primary, PrimaryOrAtom, Tree};
+use crate::{Atom, DottedName, Lambda, NameDef, Primary, PrimaryOrAtom, Tree};
 
 impl Tree {
     pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode, RestNode) {
@@ -20,18 +20,34 @@ impl Tree {
             }
         }
         if let Some(previous) = leaf.previous_leaf() {
-            if previous.as_code() == "." {
-                if let Some(before_dot) = previous.previous_sibling() {
-                    let mut base = None;
-                    if before_dot.is_type(Nonterminal(atom)) {
-                        base = Some(PrimaryOrAtom::Atom(Atom::new(before_dot)))
-                    } else if before_dot.is_type(Nonterminal(primary)) {
-                        base = Some(PrimaryOrAtom::Primary(Primary::new(before_dot)))
-                    }
-                    if let Some(base) = base {
-                        return (scope, CompletionNode::Attribute { base }, rest);
+            match previous.as_code() {
+                "." => {
+                    if let Some(before_dot) = previous.previous_sibling() {
+                        let mut base = None;
+                        if before_dot.is_type(Nonterminal(atom)) {
+                            base = Some(PrimaryOrAtom::Atom(Atom::new(before_dot)))
+                        } else if before_dot.is_type(Nonterminal(primary)) {
+                            base = Some(PrimaryOrAtom::Primary(Primary::new(before_dot)))
+                        }
+                        if let Some(base) = base {
+                            return (scope, CompletionNode::Attribute { base }, rest);
+                        }
                     }
                 }
+                "import" => {
+                    if let Some(before_imp) = previous.previous_sibling() {
+                        if before_imp.is_type(Nonterminal(dotted_name)) {
+                            return (
+                                scope,
+                                CompletionNode::ImportFromTarget {
+                                    base: DottedName::new(before_imp),
+                                },
+                                rest,
+                            );
+                        }
+                    }
+                }
+                _ => (),
             }
         }
         (scope, CompletionNode::Global, rest)
@@ -69,7 +85,18 @@ pub enum Scope<'db> {
 
 #[derive(Debug)]
 pub enum CompletionNode<'db> {
-    Attribute { base: PrimaryOrAtom<'db> },
+    Attribute {
+        base: PrimaryOrAtom<'db>,
+    },
+    ImportDottedName {
+        base: DottedName<'db>,
+    },
+    ImportName {
+        path: Option<(NameDef<'db>, Option<DottedName<'db>>)>,
+    },
+    ImportFromTarget {
+        base: DottedName<'db>,
+    },
     Global,
 }
 

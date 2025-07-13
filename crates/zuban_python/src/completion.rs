@@ -8,6 +8,7 @@ use crate::{
     file::{File as _, PythonFile},
     inference::{unpack_union_types, with_i_s_non_self, PositionalDocument},
     inference_state::InferenceState,
+    inferred::Inferred,
     recoverable_error,
     type_::Type,
     type_helpers::{is_private, Class, TypeOrClass},
@@ -67,28 +68,23 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn fill_items(&mut self) {
-        let db = self.infos.db;
-        let file = self.infos.file;
         self.should_start_with = Some(self.infos.node.1.as_code());
         match &self.infos.node.0 {
             CompletionNode::Attribute { base } => {
                 let inf = self.infos.infer_primary_or_atom(*base);
-                with_i_s_non_self(db, file, self.infos.scope, |i_s| {
-                    for t in
-                        unpack_union_types(db, inf.as_cow_type(i_s)).iter_with_unpacked_unions(db)
-                    {
-                        match t {
-                            Type::Type(t) => self.add_for_mro(i_s, t, false),
-                            t => self.add_for_mro(i_s, t, true),
-                        }
-                    }
-                })
+                self.add_attribute_completions(inf)
             }
             CompletionNode::Global => {
                 self.add_module_completions(self.infos.file);
                 self.add_module_completions(self.infos.db.python_state.builtins());
             }
-        };
+            CompletionNode::ImportDottedName { base } => todo!(),
+            CompletionNode::ImportName { path } => todo!(),
+            CompletionNode::ImportFromTarget { base } => {
+                let inf = self.infos.infer_import_dotted_name(*base);
+                self.add_attribute_completions(inf)
+            }
+        }
     }
 
     fn add_module_completions(&mut self, file: &'db PythonFile) {
@@ -105,6 +101,19 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             self.items
                 .push((CompletionSortPriority::Default(symbol), result))
         }
+    }
+
+    fn add_attribute_completions(&mut self, inf: Inferred) {
+        let db = self.infos.db;
+        let file = self.infos.file;
+        with_i_s_non_self(db, file, self.infos.scope, |i_s| {
+            for t in unpack_union_types(db, inf.as_cow_type(i_s)).iter_with_unpacked_unions(db) {
+                match t {
+                    Type::Type(t) => self.add_for_mro(i_s, t, false),
+                    t => self.add_for_mro(i_s, t, true),
+                }
+            }
+        })
     }
 
     fn add_for_mro(&mut self, i_s: &InferenceState, t: &Type, is_instance: bool) {
@@ -134,6 +143,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     for base in class.class(self.infos.db).bases(self.infos.db) {
                         self.add_for_type_or_class(base, is_instance)
                     }
+                }
+                Type::Module(module) => {
+                    self.add_module_completions(self.infos.db.loaded_python_file(*module))
                 }
                 _ => {
                     debug!("TODO ignored completions for type {t:?}");

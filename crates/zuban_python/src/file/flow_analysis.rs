@@ -2648,12 +2648,12 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::WildcardPattern(_) => (),
             PatternKind::DottedName(dotted_name) => {
-                self.infer_dotted_name(dotted_name);
+                self.infer_pattern_dotted_name(dotted_name);
                 // TODO use this
             }
             PatternKind::ClassPattern(class_pattern) => {
                 let (dotted, params) = class_pattern.unpack();
-                self.infer_dotted_name(dotted);
+                self.infer_pattern_dotted_name(dotted);
                 for param in params {
                     match param {
                         ParamPattern::Positional(pat) => {
