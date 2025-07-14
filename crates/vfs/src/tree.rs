@@ -141,7 +141,7 @@ pub enum DirectoryEntry {
 }
 
 impl DirectoryEntry {
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             DirectoryEntry::File(file) => &file.name,
             DirectoryEntry::Directory(dir) => &dir.name,
