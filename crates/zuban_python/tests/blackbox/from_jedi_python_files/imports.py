@@ -261,9 +261,9 @@ from . import import_tree as imp_tree
 #? str()
 imp_tree.a
 
-from . import datetime as mod1
+from . import datetime as mod3
 #? []
-mod1.
+mod3.
 
 # self import
 # this can cause recursions

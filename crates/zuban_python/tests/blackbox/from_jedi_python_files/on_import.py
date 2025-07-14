@@ -1,5 +1,5 @@
 def from_names():
-    #? ['mod1', 'base']
+    #? ['base', 'mod1']
     from import_tree.pkg.
     #? ['path']
     from os.
@@ -25,7 +25,7 @@ import sqlite3
 # classes is a local module that has an __init__.py and can therefore not be
 # found.
 # jedi-diff: #? []
-#? ["classes"]
+#? ['classes']
 import classes
 
 #? ['timedelta']
@@ -89,14 +89,14 @@ from import_tree.p import pkg
 from .import_tree import 
 #? 10 ['run']
 from ..run import 
-#? ['run']
+##? ['run']
 from ..run
-#? 10 ['run']
+##? 10 ['run']
 from ..run.
 #? []
 from ..run.
 
-#? ['run']
+##? ['run']
 from .. import run
 
 #? []

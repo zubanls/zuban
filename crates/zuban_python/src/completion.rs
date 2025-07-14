@@ -98,7 +98,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                             let file = self.infos.db.loaded_python_file(file_index);
                             self.add_submodule_completions(file)
                         }
-                        ImportResult::Namespace(rc) => todo!(),
+                        ImportResult::Namespace(rc) => {
+                            //  TODO namespace completions
+                        }
                         ImportResult::PyTypedMissing => (),
                     }
                 }

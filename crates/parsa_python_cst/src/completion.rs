@@ -8,7 +8,7 @@ impl Tree {
         let scope = scope_for_node(leaf);
         if leaf.start() == position {
             if let Some(n) = leaf.previous_leaf() {
-                if n.end() == position {
+                if n.end() == position && n.as_code() != "." {
                     leaf = n;
                 }
             }
