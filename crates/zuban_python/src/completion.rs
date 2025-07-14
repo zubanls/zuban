@@ -177,6 +177,12 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 recoverable_error!("TODO caught Self that is not within a class");
             }
         }
+        if let Type::Any(_) = t {
+            // I decided to not return any completions here to signal the user a difference between
+            // object and Any. This essentially removes all the dunder methods that are present on
+            // object.
+            return;
+        }
 
         for (_, type_or_class) in t.mro(self.infos.db) {
             self.add_for_type_or_class(type_or_class, is_instance)
