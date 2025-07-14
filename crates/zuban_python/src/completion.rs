@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use parsa_python_cst::{CompletionNode, RestNode};
-use vfs::{Directory, DirectoryEntry, Parent};
+use vfs::{Directory, DirectoryEntry, Entries, Parent};
 
 use crate::{
     database::Database,
@@ -80,9 +80,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 self.add_module_completions(self.infos.file);
                 self.add_module_completions(self.infos.db.python_state.builtins());
             }
-            CompletionNode::ImportName { path: None } => {
-                // TODO add global completions
-            }
+            CompletionNode::ImportName { path: None } => self.add_global_completions(),
             CompletionNode::ImportName {
                 path: Some((name_def, rest_path)),
             } => {
@@ -130,46 +128,56 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         self.add_submodule_completions(file)
     }
 
+    fn add_global_completions(&mut self) {
+        for workspace in self.infos.db.vfs.workspaces.iter() {
+            self.directory_entries_completions(&workspace.entries)
+        }
+    }
+
     fn add_submodule_completions(&mut self, file: &'db PythonFile) {
         let db = self.infos.db;
         let (file_entry, is_package) = file.file_entry_and_is_package(db);
         if is_package {
             if let Parent::Directory(dir) = &file_entry.parent {
                 let dir = dir.upgrade().unwrap();
-                for entry in &Directory::entries(&*db.vfs.handler, &dir).iter() {
-                    let name: &str = match entry {
-                        DirectoryEntry::File(f) => {
-                            if let Some(stripped_name) = f
-                                .name
-                                .strip_suffix(".py")
-                                .or_else(|| file_entry.name.strip_suffix(".pyi"))
-                            {
-                                if stripped_name == "__init__" {
-                                    continue;
-                                }
-                                stripped_name
-                            } else {
-                                continue;
-                            }
+                self.directory_entries_completions(Directory::entries(&*db.vfs.handler, &dir))
+            }
+        }
+    }
+
+    fn directory_entries_completions(&mut self, entries: &Entries) {
+        for entry in &entries.iter() {
+            let name: &str = match entry {
+                DirectoryEntry::File(f) => {
+                    if let Some(stripped_name) = f
+                        .name
+                        .strip_suffix(".py")
+                        .or_else(|| f.name.strip_suffix(".pyi"))
+                    {
+                        if stripped_name == "__init__" {
+                            continue;
                         }
-                        DirectoryEntry::Directory(dir) => &dir.name,
-                        DirectoryEntry::MissingEntry(_) => continue,
-                    };
-                    // Unsafe: The name always lives as long as 'db, because file entries are
-                    // only cleaned up once this lifetime is released.
-                    let name: &'db str = unsafe { std::mem::transmute(name) };
-                    if !self.maybe_add(name) {
+                        stripped_name
+                    } else {
                         continue;
                     }
-                    let result = (self.on_result)(&CompletionDirEntry {
-                        db: self.infos.db,
-                        name,
-                        entry,
-                    });
-                    self.items
-                        .push((CompletionSortPriority::Default(name), result))
                 }
+                DirectoryEntry::Directory(dir) => &dir.name,
+                DirectoryEntry::MissingEntry(_) => continue,
+            };
+            // Unsafe: The name always lives as long as 'db, because file entries are
+            // only cleaned up once this lifetime is released.
+            let name: &'db str = unsafe { std::mem::transmute(name) };
+            if !self.maybe_add(name) {
+                continue;
             }
+            let result = (self.on_result)(&CompletionDirEntry {
+                db: self.infos.db,
+                name,
+                entry,
+            });
+            self.items
+                .push((CompletionSortPriority::Default(name), result))
         }
     }
 

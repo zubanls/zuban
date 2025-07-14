@@ -24,7 +24,8 @@ import sqlite3
 
 # classes is a local module that has an __init__.py and can therefore not be
 # found.
-#? []
+# jedi-diff: #? []
+#? ["classes"]
 import classes
 
 #? ['timedelta']
