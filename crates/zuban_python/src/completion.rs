@@ -99,6 +99,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 let inf = self.infos.infer_dotted_import_name(*base);
                 self.add_attribute_completions(inf)
             }
+            CompletionNode::AsNewName => (),
         }
     }
 

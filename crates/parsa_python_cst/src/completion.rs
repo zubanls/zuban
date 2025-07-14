@@ -55,6 +55,9 @@ impl Tree {
                         }
                     }
                 }
+                "as" => {
+                    return (scope, CompletionNode::AsNewName, rest);
+                }
                 _ => (),
             }
         }
@@ -105,6 +108,7 @@ pub enum CompletionNode<'db> {
     ImportFromTarget {
         base: DottedImportName<'db>,
     },
+    AsNewName,
     Global,
 }
 
