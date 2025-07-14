@@ -108,6 +108,14 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 self.add_attribute_completions(inf)
             }
             CompletionNode::AsNewName => (),
+            CompletionNode::NecessaryKeyword(keyword) => {
+                let keyword = *keyword;
+                let result = (self.on_result)(&KeywordCompletion { keyword });
+                self.items
+                    .push((CompletionSortPriority::Default(keyword), result))
+            }
+            CompletionNode::AfterDefKeyword => (),
+            CompletionNode::AfterClassKeyword => (),
         }
     }
 
@@ -339,6 +347,24 @@ impl Completion for CompletionDirEntry<'_, '_> {
             DirectoryEntry::MissingEntry(missing_entry) => unreachable!(),
         }
         */
+        None
+    }
+}
+
+struct KeywordCompletion {
+    keyword: &'static str,
+}
+
+impl<'db> Completion for KeywordCompletion {
+    fn label(&self) -> &str {
+        self.keyword
+    }
+
+    fn kind(&self) -> CompletionKind {
+        CompletionKind::Keyword
+    }
+
+    fn file_path(&self) -> Option<&str> {
         None
     }
 }

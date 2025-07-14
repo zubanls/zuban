@@ -60,7 +60,27 @@ impl Tree {
                 "as" => {
                     return (scope, CompletionNode::AsNewName, rest);
                 }
-                _ => (),
+                "def" => {
+                    return (scope, CompletionNode::AfterDefKeyword, rest);
+                }
+                "class" => {
+                    return (scope, CompletionNode::AfterClassKeyword, rest);
+                }
+                _ => {
+                    if let Some(parent) = previous.parent() {
+                        if parent.is_type(Nonterminal(dotted_import_name)) {
+                            if let Some(before) = parent.previous_sibling() {
+                                if before.as_code() == "from" {
+                                    return (
+                                        scope,
+                                        CompletionNode::NecessaryKeyword("import"),
+                                        rest,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         (scope, CompletionNode::Global, rest)
@@ -111,6 +131,9 @@ pub enum CompletionNode<'db> {
         base: DottedImportName<'db>,
     },
     AsNewName,
+    NecessaryKeyword(&'static str),
+    AfterDefKeyword,
+    AfterClassKeyword,
     Global,
 }
 
