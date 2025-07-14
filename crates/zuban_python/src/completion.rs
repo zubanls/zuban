@@ -96,7 +96,10 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         .cache_import_dotted_name(*base, None)
                 }) {
                     match import_result {
-                        ImportResult::File(file_index) => {}
+                        ImportResult::File(file_index) => {
+                            let file = self.infos.db.loaded_python_file(file_index);
+                            self.add_submodule_completions(file)
+                        }
                         ImportResult::Namespace(rc) => todo!(),
                         ImportResult::PyTypedMissing => (),
                     }
@@ -111,7 +114,6 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn add_module_completions(&mut self, file: &'db PythonFile) {
-        let db = self.infos.db;
         for (symbol, _node_index) in file.symbol_table.iter() {
             if !self.maybe_add(symbol) {
                 continue;
@@ -125,18 +127,26 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             self.items
                 .push((CompletionSortPriority::Default(symbol), result))
         }
+        self.add_submodule_completions(file)
+    }
+
+    fn add_submodule_completions(&mut self, file: &'db PythonFile) {
+        let db = self.infos.db;
         let (file_entry, is_package) = file.file_entry_and_is_package(db);
         if is_package {
             if let Parent::Directory(dir) = &file_entry.parent {
                 let dir = dir.upgrade().unwrap();
                 for entry in &Directory::entries(&*db.vfs.handler, &dir).iter() {
                     let name: &str = match entry {
-                        DirectoryEntry::File(file) => {
-                            if let Some(stripped_name) = file_entry
+                        DirectoryEntry::File(f) => {
+                            if let Some(stripped_name) = f
                                 .name
                                 .strip_suffix(".py")
                                 .or_else(|| file_entry.name.strip_suffix(".pyi"))
                             {
+                                if stripped_name == "__init__" {
+                                    continue;
+                                }
                                 stripped_name
                             } else {
                                 continue;
