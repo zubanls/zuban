@@ -80,7 +80,14 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 self.add_module_completions(self.infos.file);
                 self.add_module_completions(self.infos.db.python_state.builtins());
             }
-            CompletionNode::ImportName { path } => todo!(),
+            CompletionNode::ImportName { path: None } => {
+                // TODO add global completions
+            }
+            CompletionNode::ImportName {
+                path: Some((name_def, rest_path)),
+            } => {
+                todo!()
+            }
             CompletionNode::DottedImportName { base } => {
                 if let Some(import_result) = self.infos.with_i_s(|i_s| {
                     self.infos

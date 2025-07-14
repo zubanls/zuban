@@ -53,6 +53,8 @@ impl Tree {
                                 rest,
                             );
                         }
+                    } else {
+                        return (scope, CompletionNode::ImportName { path: None }, rest);
                     }
                 }
                 "as" => {
