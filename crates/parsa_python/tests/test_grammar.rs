@@ -330,4 +330,6 @@ parametrize_snapshots!(
             #? int()
             a
         "#);
+    completion_on_func_call1: "f(3).\n";
+    completion_on_func_call2: "f(1 for a in []).\n";
 );

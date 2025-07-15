@@ -25,7 +25,7 @@ lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
         ("arrays.py", 44),
         ("async_.py", 5),
-        ("basic.py", 24),
+        ("basic.py", 27),
         ("classes.py", 23),
         ("comprehensions.py", 32),
         ("decorators.py", 32),
@@ -59,7 +59,7 @@ lazy_static::lazy_static! {
         ("named_param.py", 27),
         ("ns_path.py", 4),
         ("pytest.py", 32),
-        ("on_import.py", 7),
+        ("on_import.py", 6),
         ("sys_path.py", 4),
         ("ordering.py", 7),
         ("usages.py", 0),

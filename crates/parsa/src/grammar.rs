@@ -97,8 +97,8 @@ enum ModeData<'a> {
 struct BacktrackingPoint<'a> {
     tree_node_count: usize,
     token_index: usize,
-    fallback_plan: &'a Plan,
     children_count: usize,
+    fallback_plan: &'a Plan,
 }
 
 struct StackNode<'a> {
@@ -371,6 +371,9 @@ impl<'a, T: Token> Grammar<T> {
         if plan.mode == PlanMode::LeftRecursive && !tos_mut.can_omit_children() {
             tos_mut.children_count = 1;
             tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
+            // Backtracking should not be enabled for left recursion. It can be enabled again for
+            // parts of the new node, but the old node is finished and should not be changed again.
+            tos_mut.mode = ModeData::LL;
 
             update_tree_node_position(&mut stack.tree_nodes, tos_mut);
 
@@ -395,9 +398,6 @@ impl<'a, T: Token> Grammar<T> {
             let children_count = tos.children_count;
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            if matches!(push.stack_mode, StackMode::Alternative(_)) {
-                enabled_token_recording = true;
-            }
             match push.stack_mode {
                 StackMode::LL => {
                     stack.push(
@@ -411,6 +411,7 @@ impl<'a, T: Token> Grammar<T> {
                     );
                 }
                 StackMode::Alternative(alternative_plan) => {
+                    enabled_token_recording = true;
                     stack.push(
                         push.node_type,
                         stack.tos().tree_node_index,
