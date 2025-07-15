@@ -7,7 +7,7 @@ use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
-    imports::ImportResult,
+    imports::{global_import, ImportResult},
     inference::{unpack_union_types, with_i_s_non_self, PositionalDocument},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -84,26 +84,24 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             CompletionNode::ImportName {
                 path: Some((name_def, rest_path)),
             } => {
-                todo!()
+                if rest_path.is_some() {
+                    todo!()
+                }
+                let mut result = global_import(self.infos.db, self.infos.file, name_def.as_code());
+                if let Some(rest_path) = rest_path {
+                    self.infos.with_i_s(|i_s| {
+                        //
+                    });
+                }
+                self.add_import_result_completions(result)
             }
             CompletionNode::DottedImportName { base } => {
-                if let Some(import_result) = self.infos.with_i_s(|i_s| {
+                self.add_import_result_completions(self.infos.with_i_s(|i_s| {
                     self.infos
                         .file
                         .inference(i_s)
                         .cache_import_dotted_name(*base, None)
-                }) {
-                    match import_result {
-                        ImportResult::File(file_index) => {
-                            let file = self.infos.db.loaded_python_file(file_index);
-                            self.add_submodule_completions(file)
-                        }
-                        ImportResult::Namespace(rc) => {
-                            //  TODO namespace completions
-                        }
-                        ImportResult::PyTypedMissing => (),
-                    }
-                }
+                }))
             }
             CompletionNode::ImportFromTarget { base } => {
                 let inf = self.infos.infer_dotted_import_name(*base);
@@ -118,6 +116,19 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             }
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
+        }
+    }
+
+    fn add_import_result_completions(&mut self, import_result: Option<ImportResult>) {
+        match import_result {
+            Some(ImportResult::File(file_index)) => {
+                let file = self.infos.db.loaded_python_file(file_index);
+                self.add_submodule_completions(file)
+            }
+            Some(ImportResult::Namespace(rc)) => {
+                //  TODO namespace completions
+            }
+            None | Some(ImportResult::PyTypedMissing) => (),
         }
     }
 

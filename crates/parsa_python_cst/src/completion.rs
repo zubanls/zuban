@@ -1,4 +1,9 @@
-use parsa_python::{CodeIndex, NodeIndex, NonterminalType::*, PyNode, PyNodeType::Nonterminal};
+use parsa_python::{
+    CodeIndex, NodeIndex,
+    NonterminalType::*,
+    PyNode,
+    PyNodeType::{self, Nonterminal},
+};
 
 use crate::{Atom, DottedImportName, Lambda, NameDef, Primary, PrimaryOrAtom, Tree};
 
@@ -36,6 +41,19 @@ impl Tree {
                                 scope,
                                 CompletionNode::DottedImportName {
                                     base: DottedImportName::new(before_dot),
+                                },
+                                rest,
+                            );
+                        } else if before_dot.is_type(Nonterminal(name_def))
+                            && before_dot
+                                .parent()
+                                .unwrap()
+                                .is_type(PyNodeType::ErrorNonterminal(dotted_as_name))
+                        {
+                            return (
+                                scope,
+                                CompletionNode::ImportName {
+                                    path: Some((NameDef::new(before_dot), None)),
                                 },
                                 rest,
                             );
