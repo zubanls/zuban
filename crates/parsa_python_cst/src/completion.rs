@@ -13,6 +13,9 @@ impl Tree {
                 }
             }
         }
+        if leaf.end() == position && leaf.as_code() == "." {
+            leaf = leaf.next_leaf().unwrap();
+        }
         let rest = RestNode::new(self, leaf, position);
         if position < leaf.start() {
             if leaf.prefix().contains("#") {
@@ -164,6 +167,10 @@ impl<'db> RestNode<'db> {
     }
 
     pub fn as_code(&self) -> &'db str {
+        // TODO it feels weird that we don't involve the prefix especially for comments
+        if self.position < self.node.start() {
+            return "";
+        }
         &self.tree.code()[self.node.start() as usize..self.position as usize]
     }
 }

@@ -79,7 +79,7 @@ from import_tree.pkg.mod1 import not_existant,    # whitespace before
 from import_tree.pkg.mod1 import not_existant, 
 #? 22 ['base', 'mod1']
 from import_tree.pkg. import mod1
-#? 17 ['mod1', 'mod2', 'random', 'pkg', 'references', 'rename1', 'rename2', 'classes', 'globals', 'recurse_class1', 'recurse_class2', 'invisible_pkg', 'flow_import']
+#? 17 ['classes', 'flow_import', 'globals', 'invisible_pkg', 'mod1', 'mod2', 'pkg', 'random', 'recurse_class1', 'recurse_class2', 'references', 'rename1', 'rename2']
 from import_tree. import new_pkg
 
 #? 18 ['pkg']
