@@ -183,7 +183,6 @@ s = {1, 2, 3}
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
 # jedi-diff: #? 
-#? 
 #? int()
 {*s}.pop()
 

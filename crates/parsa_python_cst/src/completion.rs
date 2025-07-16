@@ -105,6 +105,15 @@ impl Tree {
                             );
                         }
                     }
+                    if let Some(leaf_parent) = leaf.parent() {
+                        if leaf_parent.is_type(ErrorNonterminal(import_from_targets)) {
+                            return (
+                                scope,
+                                import_from_target_node(leaf_parent.parent().unwrap()),
+                                rest,
+                            );
+                        }
+                    }
                 }
             }
         }

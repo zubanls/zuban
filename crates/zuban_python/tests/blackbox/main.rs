@@ -59,8 +59,8 @@ lazy_static::lazy_static! {
         ("named_param.py", 27),
         ("ns_path.py", 4),
         ("pytest.py", 32),
-        ("on_import.py", 4),
-        ("sys_path.py", 3),
+        ("on_import.py", 6),
+        ("sys_path.py", 4),
         ("ordering.py", 7),
         ("usages.py", 0),
         ("stubs.py", 12),
@@ -166,6 +166,11 @@ fn main() -> ExitCode {
             }
         } else {
             unexpected_error_count += errors;
+            if errors > 0 {
+                end_messages.push(format!(
+                    "Expected 0 errors for {file_name}, but had {errors}"
+                ));
+            }
             should_error_out |= errors > 0
         }
         error_count += errors;

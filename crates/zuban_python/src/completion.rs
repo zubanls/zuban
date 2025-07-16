@@ -25,8 +25,9 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
         let (scope, node, rest) = file.tree.completion_node(position);
         let result = file.ensure_calculated_diagnostics(db);
         debug!(
-            "Complete on position {}->{pos:?} on leaf {node:?}",
+            "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
             file.file_path(&db),
+            rest.as_code()
         );
         debug_assert!(result.is_ok());
         Self {
@@ -209,6 +210,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             for t in unpack_union_types(db, inf.as_cow_type(i_s)).iter_with_unpacked_unions(db) {
                 match t {
                     Type::Type(t) => self.add_for_mro(i_s, t, false),
+                    Type::Module(module) => {
+                        self.add_module_completions(self.infos.db.loaded_python_file(*module))
+                    }
                     t => self.add_for_mro(i_s, t, true),
                 }
             }
@@ -248,9 +252,6 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     for base in class.class(self.infos.db).bases(self.infos.db) {
                         self.add_for_type_or_class(base, is_instance)
                     }
-                }
-                Type::Module(module) => {
-                    self.add_module_completions(self.infos.db.loaded_python_file(*module))
                 }
                 _ => {
                     debug!("TODO ignored completions for type {t:?}");

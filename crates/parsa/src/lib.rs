@@ -809,7 +809,11 @@ macro_rules! create_grammar {
                 );
                 for (i, node) in self.internal_tree.nodes[..index].iter().enumerate().rev() {
                     if node.type_.is_leaf() {
-                        return self.node(i as $crate::NodeIndex, node)
+                        let node = self.node(i as $crate::NodeIndex, node);
+                        if node.end() < position {
+                            return node.next_leaf().unwrap()
+                        }
+                        return node
                     }
                 }
                 unreachable!();

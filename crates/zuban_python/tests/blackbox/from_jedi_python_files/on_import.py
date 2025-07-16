@@ -77,6 +77,14 @@ from import_tree.pkg import pkg
 from import_tree.pkg.mod1 import not_existant,    # whitespace before
 #? ['a', 'foobar', '__name__', '__doc__', '__file__', '__package__']
 from import_tree.pkg.mod1 import not_existant, 
+#? ['a', 'foobar', '__name__', '__doc__', '__file__', '__package__']
+from import_tree.pkg.mod1 import not_existant,
+#? 33 ['a', 'foobar', '__name__', '__doc__', '__file__', '__package__']
+from import_tree.pkg.mod1 import , not_existant
+#? 36 ['foobar']
+from import_tree.pkg.mod1 import foo, not_existant
+#? ['foobar']
+from import_tree.pkg.mod1 import not_existant, foo
 #? 22 ['base', 'mod1']
 from import_tree.pkg. import mod1
 #? 17 ['classes', 'flow_import', 'globals', 'invisible_pkg', 'mod1', 'mod2', 'pkg', 'random', 'recurse_class1', 'recurse_class2', 'references', 'rename1', 'rename2']
