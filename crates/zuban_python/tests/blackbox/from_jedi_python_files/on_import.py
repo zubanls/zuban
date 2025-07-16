@@ -1,8 +1,33 @@
 def from_names():
     #? ['base', 'mod1']
     from import_tree.pkg.
+    #? ['mod1']
+    from import_tree.pkg.mod
     #? ['path']
     from os.
+
+    #? --contains-subset ["import_tree", "math", "os"]
+    from 
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from . import
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from . import whatever
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import_
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import_tree.
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import_tree.pkg
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import_tree import 
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import_tree. import 
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import_tree.pkg import 
+    #? 9 --contains-subset ["import_tree", "math", "os"]
+    from import_tree.pkg import a
 
 def from_names_goto():
     from import_tree import pkg
@@ -92,6 +117,17 @@ from import_tree. import new_pkg
 
 #? 18 ['pkg']
 from import_tree.p import pkg
+
+#? 14 ['import_tree']
+from import_tre import 
+#? 14 ['import_tree']
+from import_tre import whatever
+#? 18 ['pkg']
+from import_tree.p import 
+#? 18 ['pkg']
+from import_tree.p import whatever
+#? 17 --contains-subset ['mod1', 'pkg']
+from import_tree. import whatever
 
 #? 17 ['import_tree']
 from .import_tree import 

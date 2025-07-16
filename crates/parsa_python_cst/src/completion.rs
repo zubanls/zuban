@@ -43,8 +43,20 @@ impl Tree {
                         } else if before_dot.is_type(Nonterminal(dotted_import_name)) {
                             return (
                                 scope,
-                                CompletionNode::DottedImportName {
-                                    base: DottedImportName::new(before_dot),
+                                CompletionNode::ImportFromFirstPart {
+                                    base: Some(DottedImportName::new(before_dot)),
+                                    dots: 0,
+                                },
+                                rest,
+                            );
+                        } else if before_dot.is_type(Nonterminal(dotted_import_name)) {
+                            return (
+                                scope,
+                                CompletionNode::ImportFromFirstPart {
+                                    base: Some(DottedImportName::new(before_dot)),
+                                    dots: from_import_dots_before_node(
+                                        before_dot.previous_leaf().unwrap(),
+                                    ),
                                 },
                                 rest,
                             );
@@ -65,6 +77,21 @@ impl Tree {
                         if let Some(base) = base {
                             return (scope, CompletionNode::Attribute { base }, rest);
                         }
+                    }
+                }
+                "from" | "..." => {
+                    if matches!(
+                        previous.parent().unwrap().type_(),
+                        Nonterminal(import_from) | ErrorNonterminal(import_from)
+                    ) {
+                        return (
+                            scope,
+                            CompletionNode::ImportFromFirstPart {
+                                base: None,
+                                dots: from_import_dots_before_node(previous),
+                            },
+                            rest,
+                        );
                     }
                 }
                 "import" => {
@@ -89,40 +116,64 @@ impl Tree {
                 "class" => {
                     return (scope, CompletionNode::AfterClassKeyword, rest);
                 }
-                _ => {
-                    if let Some(parent) = previous.parent() {
-                        if parent.is_type(Nonterminal(dotted_import_name)) {
-                            if let Some(before) = parent.previous_sibling() {
-                                if before.as_code() == "from" {
-                                    return (
-                                        scope,
-                                        CompletionNode::NecessaryKeyword("import"),
-                                        rest,
-                                    );
-                                }
-                            }
-                        } else if parent.is_type(ErrorNonterminal(import_from_targets)) {
-                            return (
-                                scope,
-                                import_from_target_node(parent.parent().unwrap()),
-                                rest,
-                            );
+                _ => (),
+            }
+            if let Some(parent) = previous.parent() {
+                if parent.is_type(Nonterminal(dotted_import_name)) {
+                    if let Some(before) = parent.previous_sibling() {
+                        if before.as_code() == "from" {
+                            return (scope, CompletionNode::NecessaryKeyword("import"), rest);
                         }
                     }
-                    if let Some(leaf_parent) = leaf.parent() {
-                        if leaf_parent.is_type(ErrorNonterminal(import_from_targets)) {
+                } else if parent.is_type(ErrorNonterminal(import_from_targets)) {
+                    return (
+                        scope,
+                        import_from_target_node(parent.parent().unwrap()),
+                        rest,
+                    );
+                } else if parent.is_type(Nonterminal(dotted_import_name)) {
+                    return (
+                        scope,
+                        CompletionNode::ImportFromFirstPart {
+                            dots: 0,
+                            base: None,
+                        },
+                        rest,
+                    );
+                }
+                /*
+                        } else if before_dot.is_type(Nonterminal(dotted_import_name)) {
                             return (
                                 scope,
-                                import_from_target_node(leaf_parent.parent().unwrap()),
+                                CompletionNode::DottedImportName {
+                                    base: DottedImportName::new(before_dot),
+                                },
                                 rest,
                             );
-                        }
-                    }
+                */
+            }
+            if let Some(leaf_parent) = leaf.parent() {
+                if leaf_parent.is_type(ErrorNonterminal(import_from_targets)) {
+                    return (
+                        scope,
+                        import_from_target_node(leaf_parent.parent().unwrap()),
+                        rest,
+                    );
                 }
             }
         }
         (scope, CompletionNode::Global, rest)
     }
+}
+
+fn from_import_dots_before_node(leaf: PyNode) -> usize {
+    debug_assert!(leaf.is_leaf());
+    let count = match leaf.as_code() {
+        "." => 1,
+        "..." => 3,
+        _ => return 0,
+    };
+    count + from_import_dots_before_node(leaf.previous_leaf().unwrap())
 }
 
 fn import_from_target_node(node: PyNode) -> CompletionNode {
@@ -188,11 +239,12 @@ pub enum CompletionNode<'db> {
     Attribute {
         base: PrimaryOrAtom<'db>,
     },
-    DottedImportName {
-        base: DottedImportName<'db>,
-    },
     ImportName {
         path: Option<(NameDef<'db>, Option<DottedImportName<'db>>)>,
+    },
+    ImportFromFirstPart {
+        dots: usize,
+        base: Option<DottedImportName<'db>>,
     },
     ImportFromTarget {
         dots: usize,

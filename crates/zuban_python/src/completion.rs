@@ -96,13 +96,17 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 }
                 self.add_import_result_completions(result)
             }
-            CompletionNode::DottedImportName { base } => {
-                self.add_import_result_completions(self.infos.with_i_s(|i_s| {
-                    self.infos
-                        .file
-                        .inference(i_s)
-                        .cache_import_dotted_name(*base, None)
-                }))
+            CompletionNode::ImportFromFirstPart { dots, base } => {
+                if let Some(base) = base {
+                    self.add_import_result_completions(self.infos.with_i_s(|i_s| {
+                        self.infos
+                            .file
+                            .inference(i_s)
+                            .cache_import_dotted_name(*base, None)
+                    }))
+                } else {
+                    self.add_global_completions()
+                }
             }
             CompletionNode::ImportFromTarget { base, dots } => {
                 let inf = self.infos.infer_dotted_import_name(*dots, *base);
