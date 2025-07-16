@@ -23,11 +23,11 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
     pub fn for_completion(db: &'db Database, file: &'db PythonFile, pos: InputPosition) -> Self {
         let position = pos.to_code_index(file);
         let (scope, node, rest) = file.tree.completion_node(position);
+        let result = file.ensure_calculated_diagnostics(db);
         debug!(
             "Complete on position {}->{pos:?} on leaf {node:?}",
             file.file_path(&db),
         );
-        let result = file.ensure_calculated_diagnostics(db);
         debug_assert!(result.is_ok());
         Self {
             db,

@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use vfs::PathWithScheme;
-use zuban_python::{InputPosition, Name};
+use zuban_python::{Document, InputPosition, Name, Project};
 
 use crate::Filter;
 
@@ -25,14 +25,38 @@ enum CaseType {
     Complete(Vec<String>),
 }
 
+enum DocumentKeeper<'project> {
+    Uninitialized(&'project mut Project, PathWithScheme),
+    Document(Document<'project>),
+    InBetweenStates,
+}
+
+impl<'project> DocumentKeeper<'project> {
+    fn get(&mut self) -> &Document {
+        match self {
+            Self::Uninitialized(..) => {
+                let Self::Uninitialized(project, path_with_scheme) =
+                    std::mem::replace(self, Self::InBetweenStates)
+                else {
+                    unreachable!()
+                };
+                let document: Document<'project> = (*project).document(&path_with_scheme).unwrap();
+                *self = Self::Document(document);
+                self.get()
+            }
+            Self::Document(doc) => doc,
+            Self::InBetweenStates => unreachable!(),
+        }
+    }
+}
+
 impl TestFile<'_> {
     pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize, usize) {
         let path = project
             .vfs_handler()
             .normalize_uncheck_abs_path(self.path.to_str().unwrap());
-        let document = project
-            .document(&PathWithScheme::with_file_scheme(path.clone()))
-            .unwrap();
+        let path_with_scheme = PathWithScheme::with_file_scheme(path.clone());
+        let mut document = DocumentKeeper::Uninitialized(project, path_with_scheme);
         let cases = self.find_test_cases();
         let full_count = cases.len();
         let mut ran_count = 0;
@@ -55,6 +79,7 @@ impl TestFile<'_> {
             match case.type_ {
                 CaseType::Infer(expected) => {
                     let actual: HashSet<_> = document
+                        .get()
                         .infer_type_definition(position, |name| {
                             let mut n = if *name.file_path() == *path {
                                 name.name().to_owned()
@@ -79,7 +104,7 @@ impl TestFile<'_> {
                     }
                 }
                 CaseType::Goto(expected) => {
-                    let actual: Vec<_> = document.goto(position, false, |name| {
+                    let actual: Vec<_> = document.get().goto(position, false, |name| {
                         name.target_range_code()
                             .split('\n')
                             .next()
@@ -95,8 +120,9 @@ impl TestFile<'_> {
                     }
                 }
                 CaseType::Complete(expected) => {
-                    let actual: Vec<_> =
-                        document.complete(position, |name| name.label().to_owned());
+                    let actual: Vec<_> = document
+                        .get()
+                        .complete(position, |name| name.label().to_owned());
                     if actual != expected {
                         errors.push(format!(
                             "{file_name}: Line #{} {expected:?} != {actual:?}",
