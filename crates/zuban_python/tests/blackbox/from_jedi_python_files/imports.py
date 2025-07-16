@@ -9,10 +9,12 @@ def scope_basic():
     #? int()
     mod1.a
 
-    #? []
+    # jedi-diff: #? []
+    #? ['a']
     import_tree.a
 
-    #? []
+    # jedi-diff: #? []
+    #? ['mod1']
     import_tree.mod1
 
     import import_tree

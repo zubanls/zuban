@@ -115,6 +115,22 @@ from import_tree.pkg. import mod1
 #? 17 ['classes', 'flow_import', 'globals', 'invisible_pkg', 'mod1', 'mod2', 'pkg', 'random', 'recurse_class1', 'recurse_class2', 'references', 'rename1', 'rename2']
 from import_tree. import new_pkg
 
+#? ['foobar']
+from import_tree.pkg.mod1 import (not_existant, foo
+#? 51 ['foobar']
+from import_tree.pkg.mod1 import (not_existant, foo)
+#? 48 --contains-subset ['a', 'foobar', '__file__']
+from import_tree.pkg.mod1 import (not_existant, )
+from import_tree.pkg.mod1 import (
+    not_existant,
+#? ['foobar']
+    foo
+from import_tree.pkg.mod1 import (
+    not_existant,
+#? ['foobar']
+    foo
+)
+
 #? 18 ['pkg']
 from import_tree.p import pkg
 
