@@ -22,7 +22,10 @@ struct TestCase {
 enum CaseType {
     Infer(HashSet<String>),
     Goto(Vec<String>),
-    Complete(Vec<String>),
+    Complete {
+        expected: Vec<String>,
+        contains_subset: bool,
+    },
 }
 
 enum DocumentKeeper<'project> {
@@ -119,11 +122,23 @@ impl TestFile<'_> {
                         ));
                     }
                 }
-                CaseType::Complete(expected) => {
+                CaseType::Complete {
+                    expected,
+                    contains_subset,
+                } => {
                     let actual: Vec<_> = document
                         .get()
                         .complete(position, |name| name.label().to_owned());
-                    if actual != expected {
+                    if contains_subset {
+                        for expected_item in expected {
+                            if !actual.contains(&expected_item) {
+                                errors.push(format!(
+                                    "{file_name}: Line #{} Expected {expected_item:?} in {actual:?}",
+                                    case.line,
+                                ));
+                            }
+                        }
+                    } else if actual != expected {
                         errors.push(format!(
                             "{file_name}: Line #{} {expected:?} != {actual:?}",
                             case.line,
@@ -150,25 +165,39 @@ impl TestFile<'_> {
     fn find_test_cases(&self) -> Vec<TestCase> {
         let mut cases = vec![];
         let lines: Vec<_> = self.code.split('\n').collect();
-        for (line_nr, line) in lines.iter().enumerate() {
+        for (mut line_nr, line) in lines.iter().enumerate() {
             if let Some((kind, stripped)) = find_test_kind(line) {
                 let mut names: Vec<_> = stripped.trim_start().split(' ').collect();
-                let rest;
                 let column = {
                     if let Ok(c) = names[0].parse() {
                         names.remove(0);
-                        rest = names.join(" ");
                         c
                     } else {
-                        rest = stripped.trim().to_owned();
                         lines[line_nr + 1].len()
                     }
                 };
+                let mut contains_subset = false;
+                loop {
+                    match names.get(0) {
+                        Some(&"--add-lines") => {
+                            names.remove(0);
+                            line_nr += names.remove(1).parse::<usize>().unwrap();
+                        }
+                        Some(&"--contains-subset") => {
+                            assert!(matches!(kind, TestKind::Complete));
+                            names.remove(0);
+                            contains_subset = true;
+                        }
+                        _ => break,
+                    }
+                }
+
                 if names.last().is_some_and(|last| last.is_empty()) {
                     // Splittling leaves an empty string if nothing is provided
                     names.pop();
                 }
                 let unpack_list = || {
+                    let rest = names.join(" ");
                     rest[1..rest.len() - 1]
                         .split(',')
                         .filter(|x| !x.is_empty())
@@ -184,7 +213,10 @@ impl TestFile<'_> {
                         CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect())
                     }
                     TestKind::Goto => CaseType::Goto(unpack_list()),
-                    TestKind::Complete => CaseType::Complete(unpack_list()),
+                    TestKind::Complete => CaseType::Complete {
+                        expected: unpack_list(),
+                        contains_subset,
+                    },
                 };
                 cases.push(TestCase {
                     // We need to add one, because we're evaluating the next line

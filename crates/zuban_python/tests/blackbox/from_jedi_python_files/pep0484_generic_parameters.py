@@ -382,7 +382,8 @@ values(custom_partial2_instance)[0]
 
 custom_partial2_unbound_instance: CustomPartialGeneric2 = NotImplemented
 
-#? []
+# jedi-diff: #? []
+#? --contains-subset ['help', 'dir']
 first(custom_partial2_unbound_instance)
 
 #? str()
