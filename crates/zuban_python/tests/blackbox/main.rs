@@ -59,7 +59,7 @@ lazy_static::lazy_static! {
         ("named_param.py", 27),
         ("ns_path.py", 4),
         ("pytest.py", 32),
-        ("on_import.py", 2),
+        ("on_import.py", 1),
         ("sys_path.py", 4),
         ("ordering.py", 7),
         ("usages.py", 0),

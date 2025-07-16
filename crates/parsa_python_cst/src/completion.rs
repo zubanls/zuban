@@ -45,15 +45,6 @@ impl Tree {
                                 scope,
                                 CompletionNode::ImportFromFirstPart {
                                     base: Some(DottedImportName::new(before_dot)),
-                                    dots: 0,
-                                },
-                                rest,
-                            );
-                        } else if before_dot.is_type(Nonterminal(dotted_import_name)) {
-                            return (
-                                scope,
-                                CompletionNode::ImportFromFirstPart {
-                                    base: Some(DottedImportName::new(before_dot)),
                                     dots: from_import_dots_before_node(
                                         before_dot.previous_leaf().unwrap(),
                                     ),
@@ -70,6 +61,20 @@ impl Tree {
                                 scope,
                                 CompletionNode::ImportName {
                                     path: Some((NameDef::new(before_dot), None)),
+                                },
+                                rest,
+                            );
+                        } else if matches!(
+                            previous.parent().unwrap().type_(),
+                            Nonterminal(import_from) | ErrorNonterminal(import_from)
+                        ) {
+                            return (
+                                scope,
+                                CompletionNode::ImportFromFirstPart {
+                                    base: None,
+                                    dots: from_import_dots_before_node(
+                                        before_dot.previous_leaf().unwrap(),
+                                    ),
                                 },
                                 rest,
                             );
