@@ -145,7 +145,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 kind: CompletionKind::Variable,
             });
             self.items
-                .push((CompletionSortPriority::Default(symbol), result))
+                .push((CompletionSortPriority::new_symbol(symbol), result))
         }
         self.add_submodule_completions(file)
     }
@@ -199,7 +199,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 entry,
             });
             self.items
-                .push((CompletionSortPriority::Default(name), result))
+                .push((CompletionSortPriority::new_symbol(name), result))
         }
     }
 
@@ -211,7 +211,14 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 match t {
                     Type::Type(t) => self.add_for_mro(i_s, t, false),
                     Type::Module(module) => {
-                        self.add_module_completions(self.infos.db.loaded_python_file(*module))
+                        self.add_module_completions(self.infos.db.loaded_python_file(*module));
+                        // Theoretically all object dunder methods are also importable, but I think
+                        // they offer no real value
+                        self.add_class_symbols_with_check(
+                            i_s.db.python_state.module_instance().class,
+                            false,
+                            |name| ["__init__", "__getattr__", "__path__"].contains(&name),
+                        );
                     }
                     t => self.add_for_mro(i_s, t, true),
                 }
@@ -262,9 +269,18 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn add_class_symbols(&mut self, c: Class, is_instance: bool) {
+        self.add_class_symbols_with_check(c, is_instance, |_| false)
+    }
+
+    fn add_class_symbols_with_check(
+        &mut self,
+        c: Class,
+        is_instance: bool,
+        should_ignore: impl Fn(&str) -> bool,
+    ) {
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
         for (symbol, _node_index) in storage.class_symbol_table.iter() {
-            if !self.maybe_add(symbol) || is_private(symbol) {
+            if !self.maybe_add(symbol) || is_private(symbol) || should_ignore(symbol) {
                 continue;
             }
             let result = (self.on_result)(&CompletionTreeName {
@@ -274,11 +290,11 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 kind: CompletionKind::Field,
             });
             self.items
-                .push((CompletionSortPriority::Default(symbol), result))
+                .push((CompletionSortPriority::new_symbol(symbol), result))
         }
         if is_instance {
             for (symbol, _node_index) in storage.self_symbol_table.iter() {
-                if !self.maybe_add(symbol) || is_private(symbol) {
+                if !self.maybe_add(symbol) || is_private(symbol) || should_ignore(symbol) {
                     continue;
                 }
                 let result = (self.on_result)(&CompletionTreeName {
@@ -288,7 +304,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     kind: CompletionKind::Field,
                 });
                 self.items
-                    .push((CompletionSortPriority::Default(symbol), result))
+                    .push((CompletionSortPriority::new_symbol(symbol), result))
             }
         }
     }
@@ -389,7 +405,17 @@ enum CompletionSortPriority<'db> {
     //NamedParam, // e.g. def foo(*, bar) => `foo(b` completes to bar=
     //EnumMember(&'db str),
     Default(&'db str),
-    //Dunder, // e.g. __eq__
+    Dunder(&'db str), // e.g. __eq__
+}
+
+impl<'db> CompletionSortPriority<'db> {
+    fn new_symbol(symbol: &'db str) -> Self {
+        if symbol.starts_with("__") && symbol.ends_with("__") {
+            Self::Dunder(symbol)
+        } else {
+            Self::Default(symbol)
+        }
+    }
 }
 
 /// Copied from LSP

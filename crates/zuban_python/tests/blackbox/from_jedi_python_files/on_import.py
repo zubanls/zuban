@@ -73,13 +73,13 @@ import datetime.date
 
 #? 21 ['import']
 from import_tree.pkg import pkg
-#? 49 ['a', 'foobar', '__name__', '__doc__', '__file__', '__package__']
+#? 49 ['a', 'foobar', "__dict__", "__doc__", "__file__", "__loader__", "__name__", "__package__", "__spec__"]
 from import_tree.pkg.mod1 import not_existant,    # whitespace before
-#? ['a', 'foobar', '__name__', '__doc__', '__file__', '__package__']
+#? ['a', 'foobar', "__dict__", "__doc__", "__file__", "__loader__", "__name__", "__package__", "__spec__"]
 from import_tree.pkg.mod1 import not_existant, 
-#? ['a', 'foobar', '__name__', '__doc__', '__file__', '__package__']
+#? ['a', 'foobar', "__dict__", "__doc__", "__file__", "__loader__", "__name__", "__package__", "__spec__"]
 from import_tree.pkg.mod1 import not_existant,
-#? 33 ['a', 'foobar', '__name__', '__doc__', '__file__', '__package__']
+#? 33 ['a', 'foobar', "__dict__", "__doc__", "__file__", "__loader__", "__name__", "__package__", "__spec__"]
 from import_tree.pkg.mod1 import , not_existant
 #? 36 ['foobar']
 from import_tree.pkg.mod1 import foo, not_existant
