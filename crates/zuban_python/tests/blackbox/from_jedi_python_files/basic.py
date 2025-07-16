@@ -12,17 +12,21 @@ int(str)
 # -----------------
 # should not complete
 # -----------------
-#? []
+# jedi-diff: #? []
+#? --contains-not TypeVar --contains-subset ["help", "any"]
 .
-#? []
+# jedi-diff: #? []
+#? --contains-subset ["help", "any"]
 str..
-#? []
+# jedi-diff: #? []
+#? --contains-subset ["help", "any"]
 a(0):.
 #? 2 []
 0x0
 #? []
 1j
-#? ['and', 'or', 'if', 'is', 'in', 'not']
+# jedi-diff: #? ['and', 'or', 'if', 'is', 'in', 'not']
+#? --contains-subset ["help", "any"]
 1j 
 x = None()
 #?

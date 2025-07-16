@@ -25,6 +25,7 @@ enum CaseType {
     Complete {
         expected: Vec<String>,
         contains_subset: bool,
+        contains_not: Vec<String>,
     },
 }
 
@@ -125,10 +126,20 @@ impl TestFile<'_> {
                 CaseType::Complete {
                     expected,
                     contains_subset,
+                    contains_not,
                 } => {
                     let actual: Vec<_> = document
                         .get()
                         .complete(position, |name| name.label().to_owned());
+                    for should_not_be_in_there in contains_not {
+                        if actual.contains(&should_not_be_in_there) {
+                            errors.push(format!(
+                                "{file_name}: Line #{} Expected {should_not_be_in_there:?} \
+                                 to not be in {actual:?}",
+                                case.line,
+                            ));
+                        }
+                    }
                     if contains_subset {
                         for expected_item in expected {
                             if !actual.contains(&expected_item) {
@@ -177,6 +188,7 @@ impl TestFile<'_> {
                     }
                 };
                 let mut contains_subset = false;
+                let mut contains_not = vec![];
                 loop {
                     match names.get(0) {
                         Some(&"--add-lines") => {
@@ -187,6 +199,15 @@ impl TestFile<'_> {
                             assert!(matches!(kind, TestKind::Complete));
                             names.remove(0);
                             contains_subset = true;
+                        }
+                        Some(&"--contains-not") => {
+                            assert!(matches!(kind, TestKind::Complete));
+                            names.remove(0);
+                            contains_subset = true;
+                            contains_not.push(names.remove(0).to_string());
+                        }
+                        Some(name) if name.starts_with("--") => {
+                            panic!("Did not expect option {name} in {:?}:#{line_nr}", self.path)
                         }
                         _ => break,
                     }
@@ -216,6 +237,7 @@ impl TestFile<'_> {
                     TestKind::Complete => CaseType::Complete {
                         expected: unpack_list(),
                         contains_subset,
+                        contains_not,
                     },
                 };
                 cases.push(TestCase {
