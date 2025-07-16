@@ -123,39 +123,23 @@ impl Tree {
                 }
                 _ => (),
             }
-            if let Some(parent) = previous.parent() {
-                if parent.is_type(Nonterminal(dotted_import_name)) {
+            let parent = previous.parent().unwrap();
+            match parent.type_() {
+                Nonterminal(dotted_import_name) => {
                     if let Some(before) = parent.previous_sibling() {
                         if before.as_code() == "from" {
                             return (scope, CompletionNode::NecessaryKeyword("import"), rest);
                         }
                     }
-                } else if parent.is_type(ErrorNonterminal(import_from_targets)) {
+                }
+                Nonterminal(import_from_targets) | ErrorNonterminal(import_from_targets) => {
                     return (
                         scope,
                         import_from_target_node(parent.parent().unwrap()),
                         rest,
                     );
-                } else if parent.is_type(Nonterminal(dotted_import_name)) {
-                    return (
-                        scope,
-                        CompletionNode::ImportFromFirstPart {
-                            dots: 0,
-                            base: None,
-                        },
-                        rest,
-                    );
                 }
-                /*
-                        } else if before_dot.is_type(Nonterminal(dotted_import_name)) {
-                            return (
-                                scope,
-                                CompletionNode::DottedImportName {
-                                    base: DottedImportName::new(before_dot),
-                                },
-                                rest,
-                            );
-                */
+                _ => (),
             }
             if let Some(leaf_parent) = leaf.parent() {
                 if leaf_parent.is_type(ErrorNonterminal(import_from_targets)) {
