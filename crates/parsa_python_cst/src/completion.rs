@@ -13,7 +13,11 @@ impl Tree {
         let scope = scope_for_node(leaf);
         if leaf.start() == position {
             if let Some(n) = leaf.previous_leaf() {
-                if n.end() == position && n.as_code() != "." {
+                // Only use the previous leaf if we are not on a control character.
+                if n.end() == position && {
+                    let next_char = n.as_code().chars().next().unwrap();
+                    next_char.is_alphanumeric() || next_char == '_'
+                } {
                     leaf = n;
                 }
             }
