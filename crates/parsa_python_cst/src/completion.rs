@@ -2,7 +2,7 @@ use parsa_python::{
     CodeIndex, NodeIndex,
     NonterminalType::*,
     PyNode,
-    PyNodeType::{self, Nonterminal},
+    PyNodeType::{ErrorNonterminal, Nonterminal},
 };
 
 use crate::{Atom, DottedImportName, Lambda, NameDef, Primary, PrimaryOrAtom, Tree};
@@ -48,7 +48,7 @@ impl Tree {
                             && before_dot
                                 .parent()
                                 .unwrap()
-                                .is_type(PyNodeType::ErrorNonterminal(dotted_as_name))
+                                .is_type(ErrorNonterminal(dotted_as_name))
                         {
                             return (
                                 scope,
@@ -68,9 +68,7 @@ impl Tree {
                         if before_imp.is_type(Nonterminal(dotted_import_name)) {
                             return (
                                 scope,
-                                CompletionNode::ImportFromTarget {
-                                    base: DottedImportName::new(before_imp),
-                                },
+                                import_from_target_node(before_imp.parent().unwrap()),
                                 rest,
                             );
                         }
@@ -99,6 +97,12 @@ impl Tree {
                                     );
                                 }
                             }
+                        } else if parent.is_type(ErrorNonterminal(import_from_targets)) {
+                            return (
+                                scope,
+                                import_from_target_node(parent.parent().unwrap()),
+                                rest,
+                            );
                         }
                     }
                 }
@@ -106,6 +110,35 @@ impl Tree {
         }
         (scope, CompletionNode::Global, rest)
     }
+}
+
+fn import_from_target_node(node: PyNode) -> CompletionNode {
+    debug_assert!(
+        matches!(
+            node.type_(),
+            Nonterminal(import_from) | ErrorNonterminal(import_from),
+        ),
+        "{:?}",
+        node.type_()
+    );
+    let mut dots = 0;
+    for child in node.iter_children().skip(1) {
+        if child.is_type(Nonterminal(dotted_import_name)) {
+            return CompletionNode::ImportFromTarget {
+                base: Some(DottedImportName::new(child)),
+                dots,
+            };
+        } else {
+            match child.as_code() {
+                "import" => break,
+                "." => dots += 1,
+                "..." => dots += 3,
+                _ => unreachable!(),
+            }
+        }
+    }
+    debug_assert_ne!(dots, 0);
+    CompletionNode::ImportFromTarget { base: None, dots }
 }
 
 pub(crate) fn scope_for_node<'db>(node: PyNode<'db>) -> Scope<'db> {
@@ -149,7 +182,8 @@ pub enum CompletionNode<'db> {
         path: Option<(NameDef<'db>, Option<DottedImportName<'db>>)>,
     },
     ImportFromTarget {
-        base: DottedImportName<'db>,
+        dots: usize,
+        base: Option<DottedImportName<'db>>,
     },
     AsNewName,
     NecessaryKeyword(&'static str),

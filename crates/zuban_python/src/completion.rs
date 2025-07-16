@@ -103,8 +103,8 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         .cache_import_dotted_name(*base, None)
                 }))
             }
-            CompletionNode::ImportFromTarget { base } => {
-                let inf = self.infos.infer_dotted_import_name(*base);
+            CompletionNode::ImportFromTarget { base, dots } => {
+                let inf = self.infos.infer_dotted_import_name(*dots, *base);
                 self.add_attribute_completions(inf)
             }
             CompletionNode::AsNewName => (),

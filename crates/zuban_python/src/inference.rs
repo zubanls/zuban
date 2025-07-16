@@ -14,6 +14,7 @@ use crate::{
     database::{Database, ParentScope, PointKind},
     debug,
     file::{ClassInitializer, File, FuncNodeRef, PythonFile},
+    imports::ImportResult,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{LookupKind, ResultContext},
@@ -78,7 +79,7 @@ impl<'db, T> PositionalDocument<'db, T> {
             NameParent::KeywordPattern(_) => todo!(),
             NameParent::ImportFromAsName(_) => todo!(),
             NameParent::DottedImportName(dotted_name) => {
-                Some(self.infer_dotted_import_name(dotted_name))
+                Some(self.infer_dotted_import_name(0, Some(dotted_name)))
             }
             NameParent::DottedPatternName(_) => todo!(),
             NameParent::FStringConversion(_) => todo!(),
@@ -114,12 +115,24 @@ impl<'db, T> PositionalDocument<'db, T> {
         })
     }
 
-    pub fn infer_dotted_import_name(&self, dotted: DottedImportName) -> Inferred {
-        if let Some(import_result) = self.with_i_s(|i_s| {
-            self.file
-                .inference(i_s)
-                .cache_import_dotted_name(dotted, None)
-        }) {
+    pub fn infer_dotted_import_name(
+        &self,
+        dots: usize,
+        dotted: Option<DottedImportName>,
+    ) -> Inferred {
+        let mut import_result = None;
+        if dots > 0 {
+            // TODO dots
+            return Inferred::new_any_from_error();
+        }
+        if let Some(dotted) = dotted {
+            import_result = self.with_i_s(|i_s| {
+                self.file
+                    .inference(i_s)
+                    .cache_import_dotted_name(dotted, import_result)
+            })
+        }
+        if let Some(import_result) = import_result {
             import_result.as_inferred()
         } else {
             Inferred::new_any_from_error()
