@@ -45,10 +45,10 @@ impl Tree {
                                 rest,
                             );
                         } else if before_dot.is_type(Nonterminal(name_def))
-                            && before_dot
-                                .parent()
-                                .unwrap()
-                                .is_type(ErrorNonterminal(dotted_as_name))
+                            && matches!(
+                                before_dot.parent().unwrap().type_(),
+                                Nonterminal(dotted_as_name) | ErrorNonterminal(dotted_as_name)
+                            )
                         {
                             return (
                                 scope,
