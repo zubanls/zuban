@@ -216,3 +216,33 @@ def dataclass_test(a: D_A, b: D_B, c: NormalWithDataclass):
     b.attr_
     #? ['attr_x', 'attr_y', 'attr_z']
     c.attr_
+
+from typing import dataclass_transform
+
+@dataclass_transform()
+def my_dataclass(cls):
+    ...
+
+#? 1 my_dataclass
+my_dataclass()
+
+#? my_dataclass
+@my_dataclass
+class DataclassTransformClass:
+    attr: int
+
+#! ["def my_dataclass(cls):"]
+@my_dataclass
+class OtherDataclassTransformClass:
+    attr: int
+
+@dataclass_transform()
+class SomeTransfomer: ...
+
+def use_dataclass_transform(x: DataclassTransformClass):
+    #? DataclassTransformClass()
+    x
+    #? int()
+    x.attr
+    #? ['attr']
+    x.att

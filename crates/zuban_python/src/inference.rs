@@ -360,7 +360,8 @@ fn type_to_name<'db>(
             ))
         }
         Type::Dataclass(dataclass) => add(&from_class_node_ref(dataclass.class.node_ref(db))),
-        Type::DataclassTransformObj(_) => todo!(),
+        // It seems like dataclass transform is only used as an internal type
+        Type::DataclassTransformObj(_) => (),
         Type::TypedDict(_td) => todo!(),
         Type::NamedTuple(_) => todo!(),
         Type::Enum(_) => todo!(),
