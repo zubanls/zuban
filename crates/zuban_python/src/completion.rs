@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
 use parsa_python_cst::{CompletionNode, RestNode};
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
@@ -255,26 +255,34 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         let db = self.infos.db;
         let file = self.infos.file;
         with_i_s_non_self(db, file, self.infos.scope, |i_s| {
-            for t in unpack_union_types(db, inf.as_cow_type(i_s)).iter_with_unpacked_unions(db) {
-                match t {
-                    Type::Type(t) => self.add_for_mro(i_s, t, false),
-                    Type::Module(module) => {
-                        self.add_module_completions(self.infos.db.loaded_python_file(*module));
-                        self.add_module_type_completions()
-                    }
-                    Type::Namespace(ns) => {
-                        self.add_namespace_completions(ns);
-                        self.add_module_type_completions()
-                    }
-                    Type::Intersection(intersection) => {
-                        for t in intersection.iter_entries() {
-                            self.add_for_mro(i_s, t, true)
-                        }
-                    }
-                    t => self.add_for_mro(i_s, t, true),
-                }
-            }
+            self.add_attribute_completions_for_type(i_s, &inf.as_cow_type(i_s))
         })
+    }
+
+    fn add_attribute_completions_for_type(&mut self, i_s: &InferenceState, t: &Type) {
+        let db = self.infos.db;
+        for t in unpack_union_types(db, Cow::Borrowed(t)).iter_with_unpacked_unions(db) {
+            match t {
+                Type::Type(t) => self.add_for_mro(i_s, t, false),
+                Type::Module(module) => {
+                    self.add_module_completions(self.infos.db.loaded_python_file(*module));
+                    self.add_module_type_completions()
+                }
+                Type::Namespace(ns) => {
+                    self.add_namespace_completions(ns);
+                    self.add_module_type_completions()
+                }
+                Type::Intersection(intersection) => {
+                    for t in intersection.iter_entries() {
+                        self.add_attribute_completions_for_type(i_s, t)
+                    }
+                }
+                Type::RecursiveType(rec) => {
+                    self.add_attribute_completions_for_type(i_s, rec.calculated_type(db))
+                }
+                t => self.add_for_mro(i_s, t, true),
+            }
+        }
     }
 
     fn add_for_mro(&mut self, i_s: &InferenceState, t: &Type, is_instance: bool) {

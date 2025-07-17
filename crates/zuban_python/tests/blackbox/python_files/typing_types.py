@@ -141,3 +141,20 @@ def param_spec_goto[**P](
     kwargs
     #! ["**P"]
     P
+
+type Recursive = A | list[Recursive]
+
+def recursive_types(x: Recursive):
+    #? --contains-subset ["append", "hello_a", "hello_both"]
+    x.
+    #? ["hello_a", "hello_both"]
+    x.hello
+    #? --contains-subset ["append", "hello_a", "hello_both"]
+    x[0].
+    #? ["hello_a", "hello_both"]
+    x[0].hello
+
+    #? A() list()
+    x
+    #? A() list()
+    x[0]

@@ -350,7 +350,7 @@ fn type_to_name<'db>(
                 add(&callable)
             }
         }
-        Type::RecursiveType(_) => todo!(),
+        Type::RecursiveType(rec) => type_to_name(i_s, file, rec.calculated_type(db), add),
         Type::NewType(n) => add(&from_node_ref(NodeRef::from_link(db, n.name_node))),
         Type::ParamSpecArgs(usage) | Type::ParamSpecKwargs(usage) => {
             add(&from_type_var_like_name(usage.param_spec.name))
