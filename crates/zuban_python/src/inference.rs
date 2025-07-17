@@ -182,7 +182,6 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             on_result: &|n: ValueName| callback(&n),
         }
         .infer_type_definition()
-        .collect()
     }
 
     fn goto_name(&self) -> Option<Vec<T>> {
@@ -230,9 +229,10 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                                 }
                             }
                             if let Some(inf) = lookup.into_maybe_inferred() {
-                                if let Some(name) = type_to_name(i_s, file, &inf.as_cow_type(i_s)) {
-                                    results.push((self.on_result)(name.as_name()))
-                                }
+                                let t = inf.as_cow_type(i_s);
+                                type_to_name(i_s, file, &t, &mut |name| {
+                                    results.push((self.on_result)(name))
+                                })
                             }
                         }
                     });
@@ -246,49 +246,32 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
 }
 
 impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
-    pub fn infer_type_definition(&self) -> impl Iterator<Item = T> + 'db {
-        let inf = self.infos.infer_position();
+    pub fn infer_type_definition(&self) -> Vec<T> {
+        let mut result = vec![];
+        let Some(inf) = self.infos.infer_position() else {
+            return result;
+        };
         let callback = self.on_result;
         let file = self.infos.file;
         let db = self.infos.db;
         let scope = self.infos.scope;
-        self.infos
-            .with_i_s(|i_s| inf.map(|t| t.as_type(i_s).into_iter_with_unpacked_unions(db, true)))
-            .into_iter()
-            .flatten()
-            .filter_map(move |e| {
+        with_i_s_non_self(db, file, scope, |i_s| {
+            for type_ in inf.as_cow_type(i_s).iter_with_unpacked_unions(db) {
                 debug!(
                     "Part of inferring type definition: {:?}",
-                    e.type_.format_short(db)
+                    type_.format_short(db)
                 );
-                Some(callback(ValueName {
-                    name: with_i_s_non_self(db, file, scope, |i_s| {
-                        type_to_name(i_s, file, &e.type_)
-                    })?
-                    .as_name(),
-                    db,
-                    type_: &e.type_,
-                }))
-            })
+                type_to_name(i_s, file, &type_, &mut |name| {
+                    result.push(callback(ValueName { name, db, type_ }))
+                })
+            }
+        });
+        result
     }
 
-    pub fn infer_implementation(&self) -> impl Iterator<Item = T> + 'db {
+    pub fn infer_implementation(&self) -> Vec<T> {
         // TODO should goto stub
         self.infer_type_definition()
-    }
-}
-
-enum NameLike<'db> {
-    TreeName(TreeName<'db>),
-    ModuleName(ModuleName<'db>),
-}
-
-impl NameLike<'_> {
-    fn as_name(&self) -> &dyn Name {
-        match self {
-            NameLike::TreeName(n) => n,
-            NameLike::ModuleName(n) => n,
-        }
     }
 }
 
@@ -296,7 +279,8 @@ fn type_to_name<'db>(
     i_s: &InferenceState<'db, '_>,
     file: &'db PythonFile,
     t: &Type,
-) -> Option<NameLike<'db>> {
+    add: &mut impl FnMut(&dyn Name),
+) {
     let db = i_s.db;
     let from_node_ref = |node_ref: NodeRef<'db>| {
         TreeName::new(
@@ -315,62 +299,70 @@ fn type_to_name<'db>(
         }
     };
     let lookup = |module: &'db PythonFile, name| Some(from_node_ref(module.lookup_symbol(name)?));
-    Some(NameLike::TreeName(match t {
+    match t {
         Type::Class(c) => {
             let node_ref = c.node_ref(db);
             let parent_scope = ClassInitializer::from_node_ref(node_ref)
                 .class_storage
                 .parent_scope;
-            TreeName::new(db, node_ref.file, parent_scope, node_ref.node().name())
+            add(&TreeName::new(
+                db,
+                node_ref.file,
+                parent_scope,
+                node_ref.node().name(),
+            ))
         }
-        Type::None => lookup(db.python_state.types(), "NoneType")?,
+        Type::None => {
+            if let Some(n) = lookup(db.python_state.types(), "NoneType") {
+                add(&n)
+            }
+        }
         Type::Tuple(tup) => {
             let node_ref = tup.class(db).node_ref.to_db_lifetime(db);
-            TreeName::new(
+            add(&TreeName::new(
                 db,
                 node_ref.file,
                 ParentScope::Module,
                 node_ref.node().name(),
-            )
+            ))
         }
-        Type::Any(_) => return None,
+        Type::Any(_) => (),
         Type::Intersection(intersection) => {
             for t in intersection.iter_entries() {
-                return type_to_name(i_s, file, &t);
+                type_to_name(i_s, file, &t, add);
             }
-            return None;
         }
         Type::FunctionOverload(overload) => {
             let first = overload.iter_functions().next().unwrap();
-            return type_to_name(i_s, file, &Type::Callable(first.clone()));
+            type_to_name(i_s, file, &Type::Callable(first.clone()), add)
         }
         Type::TypeVar(tv) => match tv.type_var.name {
-            TypeVarName::Name(tvl_name) => from_type_var_like_name(tvl_name),
-            TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => return None,
+            TypeVarName::Name(tvl_name) => add(&from_type_var_like_name(tvl_name)),
+            TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => (),
         },
-        Type::Type(t) => return type_to_name(i_s, file, &t),
+        Type::Type(t) => return type_to_name(i_s, file, &t, add),
         Type::Callable(callable) => {
             let node_ref = NodeRef::from_link(db, callable.defined_at);
             if let Some(func) = node_ref.maybe_function() {
                 let parent_scope = FuncNodeRef::from_node_ref(node_ref).parent_scope();
-                TreeName::new(db, node_ref.file, parent_scope, func.name())
-            } else {
-                lookup(db.python_state.typing(), "Callable")?
+                add(&TreeName::new(db, node_ref.file, parent_scope, func.name()))
+            } else if let Some(callable) = lookup(db.python_state.typing(), "Callable") {
+                add(&callable)
             }
         }
         Type::RecursiveType(_) => todo!(),
-        Type::NewType(n) => from_node_ref(NodeRef::from_link(db, n.name_node)),
+        Type::NewType(n) => add(&from_node_ref(NodeRef::from_link(db, n.name_node))),
         Type::ParamSpecArgs(usage) | Type::ParamSpecKwargs(usage) => {
-            from_type_var_like_name(usage.param_spec.name)
+            add(&from_type_var_like_name(usage.param_spec.name))
         }
         Type::Literal(l) => {
             let node_ref = l.fallback_node_ref(db);
-            TreeName::new(
+            add(&TreeName::new(
                 db,
                 node_ref.file,
                 ParentScope::Module,
                 node_ref.node().name(),
-            )
+            ))
         }
         Type::Dataclass(_) => todo!(),
         Type::DataclassTransformObj(_) => todo!(),
@@ -378,43 +370,36 @@ fn type_to_name<'db>(
         Type::NamedTuple(_) => todo!(),
         Type::Enum(_) => todo!(),
         Type::EnumMember(_) => todo!(),
-        Type::Module(file_index) => {
-            return Some(NameLike::ModuleName(ModuleName {
-                db,
-                file: db.loaded_python_file(*file_index),
-            }))
-        }
+        Type::Module(file_index) => add(&ModuleName {
+            db,
+            file: db.loaded_python_file(*file_index),
+        }),
         Type::Namespace(_) => {
             // Namespaces cannot be used in goto
-            return None;
         }
         Type::Super { class, .. } => {
             // TODO this only cares about one class, when it could care about all bases
             for base in class.class(db).bases(db) {
                 if let TypeOrClass::Class(base) = base {
-                    return type_to_name(i_s, file, &base.as_type(db));
+                    type_to_name(i_s, file, &base.as_type(db), add)
                 }
             }
-            return None;
         }
         Type::CustomBehavior(_) => {
             debug!("TODO implement goto for custom behavior");
-            return None;
         }
         Type::Self_ => {
             if let Some(cls) = i_s.current_class() {
-                return type_to_name(i_s, file, &cls.as_type(db));
+                type_to_name(i_s, file, &cls.as_type(db), add)
             } else {
                 recoverable_error!("Could not find the current class for Self");
-                return None;
             }
         }
         Type::Union(_) | Type::Never(_) => {
             // This probably only happens for Type[int | str], which should probably be handled
             // separately.
-            return None;
         }
-    }))
+    }
 }
 
 pub(crate) fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a, Type> {

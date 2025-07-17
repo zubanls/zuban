@@ -99,6 +99,7 @@ impl TestFile<'_> {
                             }
                             n
                         })
+                        .into_iter()
                         .collect();
                     if actual != expected {
                         errors.push(format!(

@@ -129,11 +129,12 @@ class X():
 X(foo=x)
 
 
+class Super: ...
 # Multiple inheritance
 class Foo:
     def foo(self):
         print("foo")
-class Bar:
+class Bar(Super):
     def bar(self):
         print("bar")
 class Baz(Foo, Bar):
@@ -142,7 +143,7 @@ class Baz(Foo, Bar):
         super().foo
         #! ['def bar(self):']
         super().bar
-        #! ['class Foo:']
+        #! ['class Foo:', "class Bar(Super):"]
         super()
 
 # -----------------

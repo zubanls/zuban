@@ -211,8 +211,8 @@ impl<'project> Document<'project> {
     pub fn infer_type_definition<'slf, T>(
         &'slf self,
         position: InputPosition,
-        on_name: impl for<'a> Fn(ValueName) -> T + Copy + 'slf,
-    ) -> impl Iterator<Item = T> + 'slf {
+        on_name: impl for<'a> Fn(ValueName) -> T + Copy,
+    ) -> Vec<T> {
         GotoResolver::new(self.positional_document(position), on_name).infer_type_definition()
     }
 
@@ -220,7 +220,7 @@ impl<'project> Document<'project> {
         &'slf self,
         position: InputPosition,
         on_name: impl for<'a> Fn(ValueName) -> T + Copy + 'slf,
-    ) -> impl Iterator<Item = T> + 'slf {
+    ) -> Vec<T> {
         GotoResolver::new(self.positional_document(position), on_name).infer_implementation()
     }
 
