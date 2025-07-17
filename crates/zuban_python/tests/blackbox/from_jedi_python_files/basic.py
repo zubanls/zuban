@@ -8,6 +8,24 @@ int()
 #? 4 str
 int(str)
 
+#? --contains-subset ['any', 'str', 'int', 'Exception']
+
+def mymethod():
+    #? --contains-subset ['any', 'str', 'int', 'Exception']
+
+    #? ["staticmethod", "str"]
+    st
+
+class MyClass:
+    #? --contains-subset ['any', 'str', 'int', 'Exception', 'mymethod']
+
+    #? ["staticmethod", "str"]
+    st
+
+#? --contains-subset ['upper', 'lower', '__eq__']
+str.
+
+
 
 # -----------------
 # should not complete
