@@ -69,19 +69,13 @@ impl<'db, T> PositionalDocument<'db, T> {
         match name.parent() {
             NameParent::NameDef(name_def) => self.maybe_inferred_node_index(name_def.index()),
             NameParent::Atom(atom) => Some(self.infer_atom(atom)),
-            NameParent::Primary(_) => todo!(),
-            NameParent::PrimaryTarget(_) => todo!(),
-            NameParent::Kwarg(_) => {
-                debug!("TODO kwarg infer");
-                None
-            }
-            NameParent::KeywordPattern(_) => todo!(),
-            NameParent::ImportFromAsName(_) => todo!(),
             NameParent::DottedImportName(dotted_name) => {
                 Some(self.infer_dotted_import_name(0, Some(dotted_name)))
             }
-            NameParent::DottedPatternName(_) => todo!(),
-            NameParent::FStringConversion(_) => todo!(),
+            other => {
+                debug!("TODO infer {other:?}");
+                None
+            }
         }
         /*
         let p = node_ref.point();

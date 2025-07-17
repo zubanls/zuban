@@ -419,7 +419,7 @@ impl Completion for CompletionDirEntry<'_, '_> {
         /*
         match &self.entry {
             DirectoryEntry::File(file_entry) => file_entry.absolute_path(),
-            DirectoryEntry::Directory(_) => todo!(),
+            DirectoryEntry::Directory(_) => ...,
             DirectoryEntry::MissingEntry(missing_entry) => unreachable!(),
         }
         */
