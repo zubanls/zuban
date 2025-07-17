@@ -38,3 +38,31 @@ def union(x: A | B):
     x.hello_a
     #! ["hello_b: int"]
     x.hello_b
+
+#? 21
+def param_spec_infer[**P](
+        #? 20 typing.ParamSpecArgs()
+        *args: P.args,
+        #? 23 typing.ParamSpecKwargs()
+        **kwargs: P.kwargs,
+        ):
+    #? P()
+    args
+    #? P()
+    kwargs
+    #? typing.ParamSpec()
+    P
+
+#! 21 []
+def param_spec_goto[**P](
+        #! 20 ['def args(self) -> ParamSpecArgs: ...']
+        *args: P.args,
+        #! 23 ["def kwargs(self) -> ParamSpecKwargs: ..."]
+        **kwargs: P.kwargs,
+        ):
+    #! ["*args: P.args"]
+    args
+    #! ["**kwargs: P.kwargs"]
+    kwargs
+    #! ["**P"]
+    P

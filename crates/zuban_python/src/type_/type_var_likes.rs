@@ -1201,7 +1201,7 @@ impl Eq for TypeVarTuple {}
 
 #[derive(Debug, Clone)]
 pub(crate) struct ParamSpec {
-    name: TypeVarLikeName,
+    pub name: TypeVarLikeName,
     scope: ParentScope,
     default: Option<TypeLikeInTypeVar<CallableParams>>,
 }

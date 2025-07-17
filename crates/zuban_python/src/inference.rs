@@ -306,6 +306,14 @@ fn type_to_name<'db>(
             node_ref.expect_name(),
         )
     };
+    let from_type_var_like_name = |tvl_name| match tvl_name {
+        TypeVarLikeName::InString { name_node, .. } => {
+            from_node_ref(NodeRef::from_link(db, name_node))
+        }
+        TypeVarLikeName::SyntaxNode(link) => {
+            from_node_ref(NodeRef::from_link(db, link).name_ref_of_name_def())
+        }
+    };
     let lookup = |module: &'db PythonFile, name| Some(from_node_ref(module.lookup_symbol(name)?));
     Some(NameLike::TreeName(match t {
         Type::Class(c) => {
@@ -332,12 +340,7 @@ fn type_to_name<'db>(
             return type_to_name(i_s, file, &Type::Callable(first.clone()));
         }
         Type::TypeVar(tv) => match tv.type_var.name {
-            TypeVarName::Name(tvl_name) => match tvl_name {
-                TypeVarLikeName::InString { name_node, .. } => {
-                    from_node_ref(NodeRef::from_link(db, name_node))
-                }
-                TypeVarLikeName::SyntaxNode(_) => todo!(),
-            },
+            TypeVarName::Name(tvl_name) => from_type_var_like_name(tvl_name),
             TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => return None,
         },
         Type::Type(t) => return type_to_name(i_s, file, &t),
@@ -352,8 +355,9 @@ fn type_to_name<'db>(
         }
         Type::RecursiveType(_) => todo!(),
         Type::NewType(n) => from_node_ref(NodeRef::from_link(db, n.name_node)),
-        Type::ParamSpecArgs(_) => todo!(),
-        Type::ParamSpecKwargs(_) => todo!(),
+        Type::ParamSpecArgs(usage) | Type::ParamSpecKwargs(usage) => {
+            from_type_var_like_name(usage.param_spec.name)
+        }
         Type::Literal(l) => {
             let node_ref = l.fallback_node_ref(db);
             TreeName::new(
@@ -384,7 +388,10 @@ fn type_to_name<'db>(
             }
             return None;
         }
-        Type::CustomBehavior(_) => todo!(),
+        Type::CustomBehavior(_) => {
+            debug!("TODO implement goto for custom behavior");
+            return None;
+        }
         Type::DataclassTransformObj(_) => todo!(),
         Type::Self_ => {
             if let Some(cls) = i_s.current_class() {
