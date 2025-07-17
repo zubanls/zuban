@@ -283,3 +283,60 @@ def enum_test(e: Enum1, f: FunctionalEnum):
     f.item_b
     #! [""FunctionalEnum""]
     f.item_b
+
+from typing import TypedDict, NamedTuple
+class TD(TypedDict):
+    x: int
+
+class SubTD(TD):
+    y: str
+
+FunctionalTD = TypedDict('FunctionalTD', {'z': int})
+
+def test_typed_dict(td: TD, sub: SubTD, f: FunctionalTD):
+    #? TD()
+    td
+    #? SubTD()
+    sub
+    #? FunctionalTD()
+    f
+    #! ["td: TD"]
+    td
+    #! ["sub: SubTD"]
+    sub
+    #! ["f: FunctionalTD"]
+    f
+
+    #?
+    td.x
+    #?
+    td.y
+    #?
+    sub.x
+    #?
+    sub.y
+    #?
+    f.z
+
+    #? ['items']
+    td.item
+    #? --contains-subset ['items', 'pop']
+    td.
+    #? ['items']
+    sub.item
+    #? --contains-subset ['items', 'pop']
+    sub.
+    #? ['items']
+    f.item
+    #? --contains-subset ['items', 'pop']
+    f.
+
+    def merge[T](x: T, y: T) -> T: ...
+
+    merged = merge(td, f)
+    #? TD() FunctionalTD()
+    merged
+    #? ['items']
+    merged.item
+    #?
+    merged.x

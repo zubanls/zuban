@@ -325,6 +325,8 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 }
                 Type::Enum(enum_) => self.add_enum_completions(enum_, is_instance),
                 Type::EnumMember(member) => self.add_enum_completions(&member.enum_, is_instance),
+                // TypedDicts have no relevant completions, the base class takes care of it
+                Type::TypedDict(_) => (),
                 _ => {
                     debug!("TODO ignored completions for type {t:?}");
                 }

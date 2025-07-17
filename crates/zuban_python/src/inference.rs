@@ -13,7 +13,8 @@ use parsa_python_cst::{
 use crate::{
     database::{Database, ParentScope, PointKind},
     debug,
-    file::{ClassInitializer, File, FuncNodeRef, PythonFile},
+    file::{ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile},
+    format_data::FormatData,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{LookupKind, ResultContext},
@@ -362,7 +363,18 @@ fn type_to_name<'db>(
         Type::Dataclass(dataclass) => add(&from_class_node_ref(dataclass.class.node_ref(db))),
         // It seems like dataclass transform is only used as an internal type
         Type::DataclassTransformObj(_) => (),
-        Type::TypedDict(_td) => todo!(),
+        Type::TypedDict(td) => {
+            let node_ref = NodeRef::from_link(db, td.defined_at);
+            if let Some(_) = node_ref.maybe_class() {
+                add(&from_class_node_ref(ClassNodeRef::from_node_ref(node_ref)))
+            } else {
+                add(&NodeName::new(
+                    db,
+                    node_ref,
+                    &td.name_or_fallback(&FormatData::new_short(db)),
+                ))
+            }
+        }
         Type::NamedTuple(_) => todo!(),
         Type::Enum(enum_) => {
             if enum_.from_functional_definition(db) {
