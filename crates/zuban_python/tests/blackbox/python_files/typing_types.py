@@ -39,7 +39,59 @@ def union(x: A | B):
     #! ["hello_b: int"]
     x.hello_b
 
-#? 21
+#? 20 typing.TypeVar()
+def type_var_infer[T](
+        #? 12 typing.TypeVar()
+        x: T,
+        #? 16 typing.TypeVar()
+        *args: T,
+        #? 19 typing.TypeVar()
+        **kwargs: T,
+        ):
+    #? tuple()
+    args
+    #? dict()
+    kwargs
+    #? typing.TypeVar()
+    T
+
+#! 19 ['class TypeVar:']
+def type_var_goto[T](
+        #! 12 ["T"]
+        x: T,
+        #! 16 ["T"]
+        *args: T,
+        #! 19 ["T"]
+        **kwargs: T,
+        ):
+    #! ["*args: T"]
+    args
+    #! ["**kwargs: T"]
+    kwargs
+    #! ["T"]
+    T
+
+#? 26 typing.TypeVarTuple()
+def type_var_tuple_infer[*Ts](
+        #? 17 typing.TypeVarTuple()
+        *args: *Ts,
+        ):
+    #? tuple()
+    args
+    #? typing.TypeVarTuple()
+    Ts
+
+#! 26 ['class TypeVarTuple:']
+def type_var_tuple_goto[*Ts](
+        #! 16 ["*Ts"]
+        *args: *Ts,
+        ):
+    #! ["*args: *Ts"]
+    args
+    #! ["*Ts"]
+    Ts
+
+#? 24 typing.ParamSpec()
 def param_spec_infer[**P](
         #? 20 typing.ParamSpecArgs()
         *args: P.args,
@@ -53,7 +105,7 @@ def param_spec_infer[**P](
     #? typing.ParamSpec()
     P
 
-#! 21 []
+#! 23 ["class ParamSpec:"]
 def param_spec_goto[**P](
         #! 20 ['def args(self) -> ParamSpecArgs: ...']
         *args: P.args,
