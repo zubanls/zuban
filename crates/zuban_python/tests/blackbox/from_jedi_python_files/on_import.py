@@ -40,6 +40,41 @@ def builtin_test():
     #? ['mmap']
     import mmap
 
+
+def import_name_completions():
+    #? --contains-subset ['pkg', 'mod1', 'mod2']
+    import import_tree.
+    #? 25 --contains-subset ['pkg', 'mod1', 'mod2']
+    import import_tree.   # whitespace
+
+    #? ['pkg']
+    import import_tree.pkg
+
+    #? ['base', 'mod1']
+    import import_tree.pkg.
+    #? 27 ['base', 'mod1']
+    import import_tree.pkg.   # whitespace
+
+    #? ['base']
+    import import_tree.pkg.bas
+
+def import_name_completions_with_as():
+    #? 23 --contains-subset ['pkg', 'mod1', 'mod2']
+    import import_tree. as a1
+    #? 25 --contains-subset ['pkg', 'mod1', 'mod2']
+    import import_tree.   as a2 # whitespace
+
+    #? 26 ['mod1', 'mod2']
+    import import_tree.mod as a3
+
+    #? 27 ['base', 'mod1']
+    import import_tree.pkg. as a4
+    #? 29 ['base', 'mod1']
+    import import_tree.pkg.   as a5 # whitespace
+
+    #? 30 ['base']
+    import import_tree.pkg.bas as a6
+
 # -----------------
 # completions within imports
 # -----------------

@@ -72,26 +72,27 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
 
     fn fill_items(&mut self) {
         self.should_start_with = Some(self.infos.node.1.as_code());
+        let file = self.infos.file;
+        let db = self.infos.db;
         match &self.infos.node.0 {
             CompletionNode::Attribute { base } => {
                 let inf = self.infos.infer_primary_or_atom(*base);
                 self.add_attribute_completions(inf)
             }
             CompletionNode::Global => {
-                self.add_module_completions(self.infos.file);
-                self.add_module_completions(self.infos.db.python_state.builtins());
+                self.add_module_completions(file);
+                self.add_module_completions(db.python_state.builtins());
             }
             CompletionNode::ImportName { path: None } => self.add_global_completions(),
             CompletionNode::ImportName {
                 path: Some((name_def, rest_path)),
             } => {
-                if rest_path.is_some() {
-                    todo!()
-                }
-                let mut result = global_import(self.infos.db, self.infos.file, name_def.as_code());
-                if let Some(rest_path) = rest_path {
+                let mut result = global_import(db, file, name_def.as_code());
+                if let Some(dotted) = rest_path {
                     self.infos.with_i_s(|i_s| {
-                        //
+                        result = file
+                            .inference(i_s)
+                            .cache_import_dotted_name(*dotted, result.take())
                     });
                 }
                 self.add_import_result_completions(result)

@@ -41,6 +41,25 @@ impl Tree {
                         } else if before_dot.is_type(Nonterminal(primary)) {
                             base = Some(PrimaryOrAtom::Primary(Primary::new(before_dot)))
                         } else if before_dot.is_type(Nonterminal(dotted_import_name)) {
+                            let before_import_names = before_dot.previous_leaf().unwrap();
+                            if before_import_names.as_code() == "." {
+                                let maybe_name_def =
+                                    before_import_names.previous_sibling().unwrap();
+                                if maybe_name_def.is_type(Nonterminal(name_def)) {
+                                    // This is the case where we are in import_name
+                                    let name_def_ = NameDef::new(maybe_name_def);
+                                    return (
+                                        scope,
+                                        CompletionNode::ImportName {
+                                            path: Some((
+                                                name_def_,
+                                                Some(DottedImportName::new(before_dot)),
+                                            )),
+                                        },
+                                        rest,
+                                    );
+                                }
+                            }
                             return (
                                 scope,
                                 CompletionNode::ImportFromFirstPart {
