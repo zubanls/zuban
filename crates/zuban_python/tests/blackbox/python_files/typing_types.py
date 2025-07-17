@@ -318,6 +318,8 @@ def test_typed_dict(td: TD, sub: SubTD, f: FunctionalTD):
     #?
     f.z
 
+    #? []
+    td.x
     #? ['items']
     td.item
     #? --contains-subset ['items', 'pop']
@@ -340,3 +342,52 @@ def test_typed_dict(td: TD, sub: SubTD, f: FunctionalTD):
     merged.item
     #?
     merged.x
+
+class NT(NamedTuple):
+    attr_x: int
+
+class SubNT(NT):
+    attr_y: str
+
+FunctionalNT = NamedTuple('FunctionalNT', [('attr_z', int)])
+
+class SubFunctionalNT(FunctionalNT):
+    attr_zz: str
+
+def test_named_tuple(td: NT, sub: SubNT, f: FunctionalNT, g: SubFunctionalNT):
+    #? NT()
+    td
+    #? SubNT()
+    sub
+    #? FunctionalNT()
+    f
+    #? SubFunctionalNT()
+    g
+    #! ["td: NT"]
+    td
+    #! ["f: FunctionalNT"]
+    f
+
+    #? ['attr_x']
+    td.attr_
+    #? ['attr_x', 'attr_y']
+    sub.attr_
+    #? ['attr_z']
+    f.attr_
+    #? --contains-subset ['attr_z', 'count', 'index', '__getitem__']
+    f.
+    #? --contains-subset ['attr_z', 'attr_zz', 'count', 'index', '__getitem__']
+    g.
+    #? --contains-subset ['count', 'index', 'attr_x', 'attr_y', '__getitem__']
+    sub.
+
+    #? int()
+    td.attr_x
+    #? int()
+    sub.attr_x
+    #? int()
+    f.attr_z
+    #? int()
+    g.attr_z
+    #? str()
+    g.attr_zz

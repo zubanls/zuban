@@ -12,7 +12,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     recoverable_error,
-    type_::{Enum, EnumMemberDefinition, Namespace, Type},
+    type_::{CallableParam, Enum, EnumMemberDefinition, Namespace, Type},
     type_helpers::{is_private, Class, TypeOrClass},
     InputPosition,
 };
@@ -327,6 +327,24 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 Type::EnumMember(member) => self.add_enum_completions(&member.enum_, is_instance),
                 // TypedDicts have no relevant completions, the base class takes care of it
                 Type::TypedDict(_) => (),
+                Type::NamedTuple(nt) => {
+                    for param in nt.params() {
+                        let comp = NamedTupleMemberCompletion {
+                            db,
+                            param,
+                            file: nt.__new__.defined_at.file,
+                        };
+                        if !self.maybe_add_cow(Cow::Owned(comp.label().into())) {
+                            continue;
+                        }
+                        let result = (self.on_result)(&comp);
+                        // TODO fix this name for sorting
+                        self.items
+                            .push((CompletionSortPriority::Default(""), result))
+                    }
+                    let tup_cls = db.python_state.tuple_class_with_generics_to_be_defined();
+                    self.add_class_symbols(tup_cls, is_instance)
+                }
                 _ => {
                     debug!("TODO ignored completions for type {t:?}");
                 }
@@ -505,6 +523,26 @@ impl Completion for EnumMemberCompletion<'_> {
 
     fn file_path(&self) -> Option<&str> {
         Some(&self.db.file_path(self.enum_.defined_at.file))
+    }
+}
+
+struct NamedTupleMemberCompletion<'db> {
+    db: &'db Database,
+    file: FileIndex,
+    param: &'db CallableParam,
+}
+
+impl Completion for NamedTupleMemberCompletion<'_> {
+    fn label(&self) -> &str {
+        self.param.name.as_ref().unwrap().as_str(self.db)
+    }
+
+    fn kind(&self) -> CompletionKind {
+        CompletionKind::Field
+    }
+
+    fn file_path(&self) -> Option<&str> {
+        Some(&self.db.file_path(self.file))
     }
 }
 
