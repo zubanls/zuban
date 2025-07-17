@@ -167,3 +167,52 @@ def recursive_types(x: Recursive):
     x[0]
     #! ["x: Recursive"]
     x
+
+from dataclasses import dataclass
+
+@dataclass
+class D_A():
+    attr_x: str
+
+@dataclass
+class D_B(D_A):
+    attr_y: list[int]
+
+class NormalWithDataclass(D_B):
+    attr_z: set[bytes]
+
+#? --contains-subset ['attr_x', 'attr_y']
+D_B().
+#? ['attr_x', 'attr_y']
+D_B().attr_
+#? D_B()
+D_B()
+
+#? --contains-subset ['attr_x', 'attr_y', 'attr_z']
+NormalWithDataclass().
+#? ['attr_x', 'attr_y', 'attr_z']
+NormalWithDataclass().attr_
+#? NormalWithDataclass()
+NormalWithDataclass()
+
+def dataclass_test(a: D_A, b: D_B, c: NormalWithDataclass):
+    #? D_A()
+    a
+    #? D_B()
+    b
+    #? NormalWithDataclass()
+    c
+
+    #? str()
+    a.attr_x
+    #? str()
+    b.attr_x
+    #? str()
+    c.attr_x
+
+    #? ['attr_x']
+    a.attr_
+    #? ['attr_x', 'attr_y']
+    b.attr_
+    #? ['attr_x', 'attr_y', 'attr_z']
+    c.attr_

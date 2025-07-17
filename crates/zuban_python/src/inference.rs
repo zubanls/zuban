@@ -298,20 +298,15 @@ fn type_to_name<'db>(
             from_node_ref(NodeRef::from_link(db, link).name_ref_of_name_def())
         }
     };
+    let from_class_node_ref = |node_ref| {
+        let parent_scope = ClassInitializer::from_node_ref(node_ref)
+            .class_storage
+            .parent_scope;
+        TreeName::new(db, node_ref.file, parent_scope, node_ref.node().name())
+    };
     let lookup = |module: &'db PythonFile, name| Some(from_node_ref(module.lookup_symbol(name)?));
     match t {
-        Type::Class(c) => {
-            let node_ref = c.node_ref(db);
-            let parent_scope = ClassInitializer::from_node_ref(node_ref)
-                .class_storage
-                .parent_scope;
-            add(&TreeName::new(
-                db,
-                node_ref.file,
-                parent_scope,
-                node_ref.node().name(),
-            ))
-        }
+        Type::Class(c) => add(&from_class_node_ref(c.node_ref(db))),
         Type::None => {
             if let Some(n) = lookup(db.python_state.types(), "NoneType") {
                 add(&n)
@@ -364,7 +359,7 @@ fn type_to_name<'db>(
                 node_ref.node().name(),
             ))
         }
-        Type::Dataclass(_) => todo!(),
+        Type::Dataclass(dataclass) => add(&from_class_node_ref(dataclass.class.node_ref(db))),
         Type::DataclassTransformObj(_) => todo!(),
         Type::TypedDict(_td) => todo!(),
         Type::NamedTuple(_) => todo!(),

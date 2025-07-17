@@ -319,6 +319,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         self.add_for_type_or_class(base, is_instance)
                     }
                 }
+                Type::Dataclass(dataclass) => {
+                    self.add_class_symbols(dataclass.class(self.infos.db), is_instance)
+                }
                 _ => {
                     debug!("TODO ignored completions for type {t:?}");
                 }
