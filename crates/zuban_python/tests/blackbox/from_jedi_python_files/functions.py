@@ -65,10 +65,10 @@ multi_line_call(
 def asdf(a):
     return a
 
-x = asdf(a=1,
+xx = asdf(a=1,
     )
 #? int()
-x
+xx
 
 # -----------------
 # double execution
@@ -426,18 +426,22 @@ nested_kw(a=3.0, b=1)
 nested_kw(b=1, a=r"")
 #? []
 nested_kw(1, '').
-#? []
+# jedi-diff: #? []
+#? --contains-subset ['upper', '__init__']
 nested_kw(a='').
 
 #? int()
 nested_kw2(b=1)
-#? int()
+# jedi-diff: #? int()
+#? int() float()
 nested_kw2(b=1, c=1.0)
-#? int()
+# jedi-diff: #? int()
+#? int() float()
 nested_kw2(c=1.0, b=1)
 #? []
 nested_kw2('').
-#? []
+# jedi-diff: #? []
+#? --contains-subset ['upper', '__init__']
 nested_kw2(a='').
 #? []
 nested_kw2('', b=1).

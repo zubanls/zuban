@@ -437,7 +437,7 @@ impl<'db> PythonFile {
         };
         match import {
             NameImportParent::ImportFromAsName(imp) => {
-                let import_from = imp.import_from();
+                let import_from = imp.import_from()?;
                 // from . import x simply imports the module that exists in the same
                 // directory anyway and should not be considered a reexport.
                 submodule_reexport(

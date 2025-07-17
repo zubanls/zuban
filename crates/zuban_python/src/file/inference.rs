@@ -1287,7 +1287,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         // name.
                         match name_def.maybe_import() {
                             Some(NameImportParent::ImportFromAsName(i)) => {
-                                node_ref = NodeRef::new(self.file, i.import_from().index())
+                                if let Some(imp) = i.import_from() {
+                                    node_ref = NodeRef::new(self.file, imp.index())
+                                }
                             }
                             Some(NameImportParent::DottedAsName(i)) => {
                                 node_ref = NodeRef::new(self.file, i.import().index())
@@ -4030,7 +4032,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     AssignKind::Normal,
                 )
             }
-            DefiningStmt::MatchStmt(_) => {
+            DefiningStmt::MatchStmt(_) | DefiningStmt::Error(_) => {
                 // This should basically only ever happen on weird error cases where errors are
                 // added in other places. We assign Any to make sure
                 self.assign_to_name_def_simple(

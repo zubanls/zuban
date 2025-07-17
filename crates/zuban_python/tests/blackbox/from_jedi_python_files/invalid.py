@@ -52,7 +52,8 @@ def indentfault():
     asd(
  indentback
 
-#? []
+ #jedi-diff: #? []
+#? --contains-subset ['__hash__', '__eq__']
 indentfault().
 
 def openbrace2():
@@ -114,7 +115,8 @@ a
 # No completions for for loops without the right syntax
 for for_local in :
     for_local
-#? []
+# jedi-diff: #? []
+#? ['for_local']
 for_local
 #? 
 for_local
@@ -175,18 +177,19 @@ import datetime as
 # -----------------
 
 call = ''
-invalid = .call
+invalid1 = .call
 #? 
-invalid
+invalid1
 
-invalid = call?.call
+invalid2 = call?.call
 #? str()
-invalid
+invalid2
 
 # comma
-invalid = ,call
-#? str()
-invalid
+invalid3 = ,call
+# jedi-diff: #? str()
+#?
+invalid3
 
 
 # -----------------

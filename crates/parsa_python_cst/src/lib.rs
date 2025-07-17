@@ -316,6 +316,28 @@ impl<'db> Iterator for InterestingNodes<'db> {
     }
 }
 
+macro_rules! create_interesting_node_searcher {
+    ($name:ident) => {
+        impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
+            fn search_interesting_nodes(&self) -> InterestingNodes<'db> {
+                const SEARCH_NAMES: &[PyNodeType] = &[
+                    Terminal(TerminalType::Name),
+                    Nonterminal(conjunction),
+                    Nonterminal(disjunction),
+                    Nonterminal(yield_expr),
+                    Nonterminal(lambda),
+                    Nonterminal(ternary),
+                    Nonterminal(comprehension),
+                    Nonterminal(dict_comprehension),
+                    Nonterminal(dotted_pattern_name),
+                    Nonterminal(walrus),
+                ];
+                InterestingNodes(self.node.search(SEARCH_NAMES, true))
+            }
+        }
+    };
+}
+
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
@@ -372,23 +394,7 @@ macro_rules! create_struct {
             }
         }
 
-        impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
-            fn search_interesting_nodes(&self) -> InterestingNodes<'db> {
-                const SEARCH_NAMES: &[PyNodeType] = &[
-                    Terminal(TerminalType::Name),
-                    Nonterminal(conjunction),
-                    Nonterminal(disjunction),
-                    Nonterminal(yield_expr),
-                    Nonterminal(lambda),
-                    Nonterminal(ternary),
-                    Nonterminal(comprehension),
-                    Nonterminal(dict_comprehension),
-                    Nonterminal(dotted_pattern_name),
-                    Nonterminal(walrus),
-                ];
-                InterestingNodes(self.node.search(SEARCH_NAMES, true))
-            }
-        }
+        create_interesting_node_searcher!($name);
     };
 }
 
@@ -780,6 +786,7 @@ pub enum DefiningStmt<'db> {
     TypeAlias(TypeAlias<'db>),
     GlobalStmt(GlobalStmt<'db>),
     NonlocalStmt(NonlocalStmt<'db>),
+    Error(Error<'db>),
 }
 
 impl DefiningStmt<'_> {
@@ -803,6 +810,7 @@ impl DefiningStmt<'_> {
             DefiningStmt::TypeAlias(a) => a.index(),
             DefiningStmt::GlobalStmt(g) => g.index(),
             DefiningStmt::NonlocalStmt(n) => n.index(),
+            DefiningStmt::Error(e) => e.index(),
         }
     }
 }
@@ -2871,12 +2879,10 @@ impl<'db> ImportFromAsName<'db> {
         name.index() != name_d.name_index() && name.as_code() == name_d.as_code()
     }
 
-    pub fn import_from(&self) -> ImportFrom<'db> {
-        let import_from_node = self
-            .node
+    pub fn import_from(&self) -> Option<ImportFrom<'db>> {
+        self.node
             .parent_until(&[Nonterminal(import_from)])
-            .expect("There should always be an import_from");
-        ImportFrom::new(import_from_node)
+            .map(ImportFrom::new)
     }
 }
 
@@ -3982,9 +3988,10 @@ impl<'db> NameDef<'db> {
                 Nonterminal(stmt),
                 Nonterminal(import_from_as_name),
                 Nonterminal(dotted_as_name),
+                ErrorNonterminal(stmt),
             ])
             .unwrap();
-        if node.is_type(Nonterminal(stmt)) {
+        if node.is_type(Nonterminal(stmt)) || node.is_type(ErrorNonterminal(stmt)) {
             None
         } else if node.is_type(Nonterminal(import_from_as_name)) {
             Some(NameImportParent::ImportFromAsName(ImportFromAsName::new(
@@ -4018,6 +4025,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(type_alias),
                 Nonterminal(global_stmt),
                 Nonterminal(nonlocal_stmt),
+                ErrorNonterminal(stmt),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(function_def)) {
@@ -4054,6 +4062,10 @@ impl<'db> NameDef<'db> {
             DefiningStmt::GlobalStmt(GlobalStmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
             DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
+            DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
+        } else if stmt_node.is_type(ErrorNonterminal(stmt)) {
+            DefiningStmt::Error(Error::new(stmt_node))
         } else {
             unreachable!(
                 "Reached a previously unknown defining statement {:?}",
@@ -4622,6 +4634,7 @@ pub struct Error<'db> {
 impl<'db> Error<'db> {
     #[inline]
     pub fn new(node: PyNode<'db>) -> Self {
+        debug_assert!(node.is_error_recovery_node());
         Self { node }
     }
 
@@ -4651,3 +4664,5 @@ impl<'db> Error<'db> {
             && self.node.nth_child(0).maybe_error_leaf() == Some(TerminalType::Dedent)
     }
 }
+
+create_interesting_node_searcher!(Error);

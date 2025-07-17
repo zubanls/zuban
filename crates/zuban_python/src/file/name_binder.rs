@@ -599,6 +599,7 @@ impl<'db> NameBinder<'db> {
                         last_was_an_error = true;
                         self.add_issue(error.index(), IssueKind::InvalidSyntax);
                     }
+                    self.index_non_block_node(&error, false);
                     continue;
                 }
                 StmtLikeContent::BrokenScope(broken) => {

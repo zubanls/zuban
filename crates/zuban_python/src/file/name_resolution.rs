@@ -197,9 +197,16 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         as_name: ImportFromAsName,
         assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
     ) {
-        let import_from = as_name.import_from();
-        let from_first_part = self.import_from_first_part(import_from);
-        self.cache_import_from_part(import_from, &from_first_part, as_name, assign_to_name_def)
+        if let Some(import_from) = as_name.import_from() {
+            let from_first_part = self.import_from_first_part(import_from);
+            self.cache_import_from_part(import_from, &from_first_part, as_name, assign_to_name_def)
+        } else {
+            assign_to_name_def(
+                as_name.name_def(),
+                PointResolution::Inferred(Inferred::new_any_from_error()),
+                None,
+            )
+        }
     }
 
     pub(super) fn resolve_import_from_name_def_without_narrowing(

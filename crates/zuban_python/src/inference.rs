@@ -395,10 +395,13 @@ fn type_to_name<'db>(
                 recoverable_error!("Could not find the current class for Self");
             }
         }
-        Type::Union(_) | Type::Never(_) => {
-            // This probably only happens for Type[int | str], which should probably be handled
-            // separately.
+        Type::Union(union) => {
+            // This shouldn't typically be reached, because we iterate over unions above
+            for t in union.iter() {
+                type_to_name(i_s, file, t, add)
+            }
         }
+        Type::Never(_) => (),
     }
 }
 

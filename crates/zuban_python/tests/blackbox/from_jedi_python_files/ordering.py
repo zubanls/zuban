@@ -75,11 +75,11 @@ a(2)
 #? []
 a(2).func
 
-a_param = 3
+a_param = ""
 def func(a_param):
-    # should not be int
+    # should not be str
     #? []
-    a_param.
+    a_param.uppe
 
 from os import path
 
@@ -126,7 +126,8 @@ class A(object):
         self.b = list
 
         self.a = 1
-        #? str() int()
+        # jedi-diff: #? str() int()
+        #? list()
         self.a
 
         #? ['after']
@@ -155,7 +156,8 @@ a.append
 #? []
 a.real
 
-#? str() int()
+# jedi-diff: #? str() int()
+#? list()
 a.a
 
 a = 3

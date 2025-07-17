@@ -157,4 +157,13 @@ def recursive_types(x: Recursive):
     #? A() list()
     x
     #? A() list()
+    z = x[0]
+    #? A() list()
+    z
+
+    #! ["z = x[0]"]
+    z
+    #! ["class A:", "class list(MutableSequence[_T]):"]
     x[0]
+    #! ["x: Recursive"]
+    x
