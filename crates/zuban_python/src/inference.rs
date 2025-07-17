@@ -378,7 +378,10 @@ fn type_to_name<'db>(
                 file: db.loaded_python_file(*file_index),
             }))
         }
-        Type::Namespace(_) => todo!(),
+        Type::Namespace(_) => {
+            // Namespaces cannot be used in goto
+            return None;
+        }
         Type::Super { class, .. } => {
             // TODO this only cares about one class, when it could care about all bases
             for base in class.class(db).bases(db) {

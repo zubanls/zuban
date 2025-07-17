@@ -157,6 +157,9 @@ def namespace_imports():
     #? ['mod1']
     namespace1.pkg1.pkg2.mod1
 
+    #?
+    namespace1
+
 
 def test_import_priorities():
     """
