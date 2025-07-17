@@ -52,7 +52,7 @@ lazy_static::lazy_static! {
         ("docstring.py", 39),
         ("django.py", 72),
         ("dynamic_params.py", 18),
-        ("imports.py", 14),
+        ("imports.py", 12),
         ("goto.py", 28),
         ("invalid.py", 5),
         ("keywords.py", 9),

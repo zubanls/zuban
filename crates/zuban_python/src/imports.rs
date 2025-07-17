@@ -307,13 +307,29 @@ fn load_init_file(
     None
 }
 
-pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<ImportResult> {
+pub enum ImportAncestor {
+    Found(ImportResult),
+    Workspace,
+    NoParentModule,
+}
+
+pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> ImportAncestor {
     debug_assert!(level > 0);
-    let mut parent = file.file_entry(db).parent.maybe_dir().ok()?;
-    for _ in 1..level {
-        parent = parent.parent.maybe_dir().ok()?;
+    let invalid = |current_level| match level - current_level {
+        0 => ImportAncestor::Workspace,
+        _ => ImportAncestor::NoParentModule,
+    };
+    let mut parent = match file.file_entry(db).parent.maybe_dir() {
+        Ok(dir) => dir,
+        Err(_) => return invalid(1),
+    };
+    for i in 1..level {
+        parent = match parent.parent.maybe_dir() {
+            Ok(dir) => dir,
+            Err(_) => return invalid(i + 1),
+        };
     }
-    Some(match load_init_file(db, &parent, file.file_index) {
+    ImportAncestor::Found(match load_init_file(db, &parent, file.file_index) {
         Some(index) => ImportResult::File(index),
         None => ImportResult::Namespace(Rc::new(Namespace {
             directories: [parent].into(),

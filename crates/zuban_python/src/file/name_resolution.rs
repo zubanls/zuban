@@ -10,7 +10,9 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::File,
-    imports::{find_ancestor, global_import, namespace_import, ImportResult},
+    imports::{
+        find_import_ancestor, global_import, namespace_import, ImportAncestor, ImportResult,
+    },
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -166,14 +168,24 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub(super) fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
         let (level, dotted_name) = import_from.level_with_dotted_name();
-        let maybe_level_file = (level > 0)
-            .then(|| {
-                find_ancestor(self.i_s.db, self.file, level).or_else(|| {
+        let maybe_level_file = if level > 0 {
+            match find_import_ancestor(self.i_s.db, self.file, level) {
+                ImportAncestor::Found(import_result) => Some(import_result),
+                ImportAncestor::Workspace => {
                     self.add_issue(import_from.index(), IssueKind::NoParentModule);
+                    // This is not correct in theory, we should simply abort here. However in
+                    // practice this can be useful, because if the sys path is wrong this still
+                    // provides some information, especially with completions/goto.
                     None
-                })
-            })
-            .flatten();
+                }
+                ImportAncestor::NoParentModule => {
+                    self.add_issue(import_from.index(), IssueKind::NoParentModule);
+                    return None;
+                }
+            }
+        } else {
+            None
+        };
         match dotted_name {
             Some(dotted_name) => self.cache_import_dotted_name(dotted_name, maybe_level_file),
             None => maybe_level_file,

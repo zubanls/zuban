@@ -145,7 +145,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     fn add_specific_module_completions(
         &mut self,
         file: &'db PythonFile,
-        mut already_visited: &mut HashSet<FileIndex>,
+        already_visited: &mut HashSet<FileIndex>,
     ) {
         let db = self.infos.db;
         for (symbol, _node_index) in file.symbol_table.iter() {

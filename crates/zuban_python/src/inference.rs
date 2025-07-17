@@ -14,7 +14,6 @@ use crate::{
     database::{Database, ParentScope, PointKind},
     debug,
     file::{ClassInitializer, File, FuncNodeRef, PythonFile},
-    imports::ImportResult,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{LookupKind, ResultContext},
