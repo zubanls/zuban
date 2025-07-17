@@ -110,6 +110,7 @@ impl<'db> Name for TreeName<'db> {
     fn file_path(&self) -> &NormalizedPath {
         self.db.file_path(self.file.file_index)
     }
+
     fn code(&self) -> &str {
         self.file.tree.code()
     }
@@ -150,6 +151,59 @@ impl<'db> Name for TreeName<'db> {
             // This should not really happen
             self.name_range()
         }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct NodeName<'db> {
+    db: &'db Database,
+    node_ref: NodeRef<'db>,
+    name: &'db str,
+}
+
+impl<'db> NodeName<'db> {
+    pub(crate) fn new(db: &'db Database, node_ref: NodeRef<'db>, name: &'db str) -> Self {
+        Self { db, node_ref, name }
+    }
+}
+
+impl<'db> Name for NodeName<'db> {
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn file_path(&self) -> &NormalizedPath {
+        self.node_ref.file.file_path(self.db)
+    }
+
+    fn code(&self) -> &str {
+        self.node_ref.file.tree.code()
+    }
+
+    fn qualified_name(&self) -> String {
+        self.name().to_string()
+    }
+
+    fn is_implementation(&self) -> bool {
+        // TODO this is incomplete
+        !self.node_ref.file.is_stub()
+    }
+
+    fn kind(&self) -> SymbolKind {
+        SymbolKind::Object
+    }
+
+    fn name_range(&self) -> Range {
+        let n = self.node_ref;
+        let start = n.node_start_position();
+        let end = n.node_end_position();
+        (
+            n.file.byte_to_position_infos(self.db, start),
+            n.file.byte_to_position_infos(self.db, end),
+        )
+    }
+    fn target_range(&self) -> Range {
+        self.name_range()
     }
 }
 

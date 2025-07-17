@@ -384,6 +384,10 @@ impl<'file> NodeRef<'file> {
         self.file.tree.node_start_position(self.node_index)
     }
 
+    pub fn node_end_position(self) -> CodeIndex {
+        self.file.tree.node_end_position(self.node_index)
+    }
+
     pub fn line_one_based(&self, db: &Database) -> usize {
         self.file
             .byte_to_position_infos(db, self.node_start_position())

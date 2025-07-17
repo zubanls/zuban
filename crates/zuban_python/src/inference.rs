@@ -17,7 +17,7 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{LookupKind, ResultContext},
-    name::{ModuleName, Name, TreeName},
+    name::{ModuleName, Name, NodeName, TreeName},
     node_ref::NodeRef,
     recoverable_error,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
@@ -364,8 +364,25 @@ fn type_to_name<'db>(
         Type::DataclassTransformObj(_) => (),
         Type::TypedDict(_td) => todo!(),
         Type::NamedTuple(_) => todo!(),
-        Type::Enum(_) => todo!(),
-        Type::EnumMember(_) => todo!(),
+        Type::Enum(enum_) => {
+            if enum_.from_functional_definition(db) {
+                add(&NodeName::new(
+                    db,
+                    NodeRef::from_link(db, enum_.defined_at),
+                    enum_.name.as_str(db),
+                ))
+            } else {
+                add(&from_class_node_ref(*enum_.class(db)))
+            }
+        }
+        Type::EnumMember(member) => {
+            if let Some(node_ref) = member.name_node(db) {
+                add(&from_node_ref(node_ref))
+            } else {
+                // If we have no name we just goto the enum.
+                type_to_name(i_s, file, &Type::Enum(member.enum_.clone()), add)
+            }
+        }
         Type::Module(file_index) => add(&ModuleName {
             db,
             file: db.loaded_python_file(*file_index),

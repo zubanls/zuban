@@ -246,3 +246,40 @@ def use_dataclass_transform(x: DataclassTransformClass):
     x.attr
     #? ['attr']
     x.att
+
+from enum import Enum
+
+class Enum1(Enum):
+    value_a = 1
+    value_b = "value_a"
+
+    def value_getter(self) -> str:
+        return""
+
+#? ['value_a', 'value_b', 'value_getter']
+Enum1.value_
+#! ['value_a = 1']
+Enum1.value_a
+#? value_a()
+Enum1.value_a
+
+FunctionalEnum = Enum("FunctionalEnum", {"item_a": int, "item_b": str})
+
+def enum_test(e: Enum1, f: FunctionalEnum):
+    #? ['value_a', 'value_b', 'value', 'value_getter']
+    e.valu
+    #? Enum1()
+    e
+    #? value_b()
+    e.value_b
+    #! ["value_b = "value_a""]
+    e.value_b
+
+    #? ['item_a', 'item_b']
+    f.item
+    #? FunctionalEnum()
+    f
+    #? FunctionalEnum()
+    f.item_b
+    #! [""FunctionalEnum""]
+    f.item_b
