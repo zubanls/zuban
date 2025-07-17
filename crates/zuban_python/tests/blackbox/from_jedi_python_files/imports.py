@@ -149,6 +149,14 @@ def namespace_imports():
     #? ['mod1']
     from namespace1.pkg1.pkg2.
 
+    import namespace1
+    #? ['pkg1']
+    namespace1.pkg
+    #? ['pkg2']
+    namespace1.pkg1.pkg
+    #? ['mod1']
+    namespace1.pkg1.pkg2.mod1
+
 
 def test_import_priorities():
     """

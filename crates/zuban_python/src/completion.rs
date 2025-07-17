@@ -12,7 +12,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     recoverable_error,
-    type_::Type,
+    type_::{Namespace, Type},
     type_helpers::{is_private, Class, TypeOrClass},
     InputPosition,
 };
@@ -132,14 +132,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 let file = self.infos.db.loaded_python_file(file_index);
                 self.add_submodule_completions(file)
             }
-            Some(ImportResult::Namespace(namespace)) => {
-                for dir in namespace.directories.iter() {
-                    self.directory_entries_completions(Directory::entries(
-                        &*self.infos.db.vfs.handler,
-                        &dir,
-                    ))
-                }
-            }
+            Some(ImportResult::Namespace(namespace)) => self.add_namespace_completions(&namespace),
             None | Some(ImportResult::PyTypedMissing) => (),
         }
     }
@@ -147,6 +140,25 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     fn add_module_completions(&mut self, file: &'db PythonFile) {
         self.add_specific_module_completions(file, &mut HashSet::default());
         self.add_submodule_completions(file)
+    }
+
+    fn add_namespace_completions(&mut self, namespace: &Namespace) {
+        for dir in namespace.directories.iter() {
+            self.directory_entries_completions(Directory::entries(
+                &*self.infos.db.vfs.handler,
+                &dir,
+            ))
+        }
+    }
+
+    fn add_module_type_completions(&mut self) {
+        // Theoretically all object dunder methods are also importable, but I think
+        // they offer no real value
+        self.add_class_symbols_with_check(
+            self.infos.db.python_state.module_instance().class,
+            false,
+            |name| ["__init__", "__getattr__", "__path__"].contains(&name),
+        );
     }
 
     fn add_specific_module_completions(
@@ -248,13 +260,11 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     Type::Type(t) => self.add_for_mro(i_s, t, false),
                     Type::Module(module) => {
                         self.add_module_completions(self.infos.db.loaded_python_file(*module));
-                        // Theoretically all object dunder methods are also importable, but I think
-                        // they offer no real value
-                        self.add_class_symbols_with_check(
-                            i_s.db.python_state.module_instance().class,
-                            false,
-                            |name| ["__init__", "__getattr__", "__path__"].contains(&name),
-                        );
+                        self.add_module_type_completions()
+                    }
+                    Type::Namespace(ns) => {
+                        self.add_namespace_completions(ns);
+                        self.add_module_type_completions()
                     }
                     t => self.add_for_mro(i_s, t, true),
                 }
