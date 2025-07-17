@@ -129,7 +129,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     }
 
     #[inline]
-    pub(super) fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
+    pub fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
         let point = self.point(star_import.star_node);
         if point.calculated() {
             return if point.maybe_specific() == Some(Specific::ModuleNotFound) {

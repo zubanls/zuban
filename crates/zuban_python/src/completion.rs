@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use parsa_python_cst::{CompletionNode, RestNode};
-use vfs::{Directory, DirectoryEntry, Entries, Parent};
+use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
     database::Database,
@@ -138,20 +138,45 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn add_module_completions(&mut self, file: &'db PythonFile) {
+        self.add_specific_module_completions(file, &mut HashSet::default());
+        self.add_submodule_completions(file)
+    }
+
+    fn add_specific_module_completions(
+        &mut self,
+        file: &'db PythonFile,
+        mut already_visited: &mut HashSet<FileIndex>,
+    ) {
+        let db = self.infos.db;
         for (symbol, _node_index) in file.symbol_table.iter() {
             if !self.maybe_add(symbol) {
                 continue;
             }
             let result = (self.on_result)(&CompletionTreeName {
-                db: self.infos.db,
-                file: self.infos.file,
+                db,
+                file,
                 name: symbol,
                 kind: CompletionKind::Variable,
             });
             self.items
                 .push((CompletionSortPriority::new_symbol(symbol), result))
         }
-        self.add_submodule_completions(file)
+        if !file.star_imports.is_empty() {
+            if !already_visited.insert(file.file_index) {
+                // Avoid recursing
+                return;
+            };
+            for star_import in file.star_imports.iter() {
+                if star_import.in_module_scope() {
+                    if let Some(f) = file
+                        .name_resolution_for_inference(&InferenceState::new(db, file))
+                        .star_import_file(star_import)
+                    {
+                        self.add_specific_module_completions(f, already_visited)
+                    }
+                }
+            }
+        }
     }
 
     fn add_global_completions(&mut self) {

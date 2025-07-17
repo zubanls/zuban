@@ -235,17 +235,20 @@ func_with_import().sleep
 # relative imports
 # -----------------
 
-from .import_tree import mod1
-#? int()
-mod1.a
+def test1():
+    from .import_tree import mod1
+    #? int()
+    mod1.a
 
-from ..import_tree import mod1
-#? 
-mod1.a
+def test2():
+    from ..import_tree import mod1
+    #? 
+    mod1.a
 
-from .......import_tree import mod1
-#? 
-mod1.a
+def test3():
+    from .......import_tree import mod1
+    #? 
+    mod1.a
 
 from .. import helpers
 ##? int()
