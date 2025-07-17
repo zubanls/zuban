@@ -4,6 +4,8 @@ class A:
 class B:
     hello_b: int
     hello_both: int
+class C:
+    hello_c: int
 
 def type_of_union(x: type[A | B], a: type[A]):
     #? ["hello_a", "hello_b", "hello_both"]
@@ -38,6 +40,27 @@ def union(x: A | B):
     x.hello_a
     #! ["hello_b: int"]
     x.hello_b
+
+def intersections(a: A):
+    if isinstance(a, B):
+        #? A()
+        a
+        #? ["hello_a", "hello_both"]
+        a.hello
+        #? str()
+        a.hello_both
+
+    if isinstance(a, C):
+        #? A() C()
+        a
+        #? ["hello_a", "hello_both", "hello_c"]
+        a.hello
+        #? str()
+        a.hello_both
+    #? A()
+    a
+    #? ["hello_a", "hello_both"]
+    a.hello
 
 #? 20 typing.TypeVar()
 def type_var_infer[T](

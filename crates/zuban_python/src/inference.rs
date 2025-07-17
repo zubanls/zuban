@@ -334,7 +334,12 @@ fn type_to_name<'db>(
             )
         }
         Type::Any(_) => return None,
-        Type::Intersection(_) => todo!(),
+        Type::Intersection(intersection) => {
+            for t in intersection.iter_entries() {
+                return type_to_name(i_s, file, &t);
+            }
+            return None;
+        }
         Type::FunctionOverload(overload) => {
             let first = overload.iter_functions().next().unwrap();
             return type_to_name(i_s, file, &Type::Callable(first.clone()));
@@ -368,6 +373,7 @@ fn type_to_name<'db>(
             )
         }
         Type::Dataclass(_) => todo!(),
+        Type::DataclassTransformObj(_) => todo!(),
         Type::TypedDict(_td) => todo!(),
         Type::NamedTuple(_) => todo!(),
         Type::Enum(_) => todo!(),
@@ -395,7 +401,6 @@ fn type_to_name<'db>(
             debug!("TODO implement goto for custom behavior");
             return None;
         }
-        Type::DataclassTransformObj(_) => todo!(),
         Type::Self_ => {
             if let Some(cls) = i_s.current_class() {
                 return type_to_name(i_s, file, &cls.as_type(db));

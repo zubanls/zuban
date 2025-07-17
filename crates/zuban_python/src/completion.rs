@@ -266,6 +266,11 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         self.add_namespace_completions(ns);
                         self.add_module_type_completions()
                     }
+                    Type::Intersection(intersection) => {
+                        for t in intersection.iter_entries() {
+                            self.add_for_mro(i_s, t, true)
+                        }
+                    }
                     t => self.add_for_mro(i_s, t, true),
                 }
             }
