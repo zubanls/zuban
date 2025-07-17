@@ -141,6 +141,14 @@ def broken_import():
     #! ['module json']
     from json
 
+def namespace_imports():
+    #? ['pkg1']
+    from namespace1.pkg
+    #? ['pkg2']
+    from namespace1.pkg1.pkg
+    #? ['mod1']
+    from namespace1.pkg1.pkg2.
+
 
 def test_import_priorities():
     """

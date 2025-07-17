@@ -97,7 +97,8 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 }
                 self.add_import_result_completions(result)
             }
-            CompletionNode::ImportFromFirstPart { dots, base } => {
+            CompletionNode::ImportFromFirstPart { dots: _, base } => {
+                // TODO use dots
                 if let Some(base) = base {
                     self.add_import_result_completions(self.infos.with_i_s(|i_s| {
                         self.infos
@@ -131,8 +132,13 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 let file = self.infos.db.loaded_python_file(file_index);
                 self.add_submodule_completions(file)
             }
-            Some(ImportResult::Namespace(rc)) => {
-                //  TODO namespace completions
+            Some(ImportResult::Namespace(namespace)) => {
+                for dir in namespace.directories.iter() {
+                    self.directory_entries_completions(Directory::entries(
+                        &*self.infos.db.vfs.handler,
+                        &dir,
+                    ))
+                }
             }
             None | Some(ImportResult::PyTypedMissing) => (),
         }
