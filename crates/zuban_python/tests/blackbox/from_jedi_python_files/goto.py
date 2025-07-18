@@ -50,7 +50,7 @@ class C(object):
         self.b()
         #! 14 ['def b']
         self.b.
-        #! 11 ['param self']
+        #! 11 ['self']
         self.b
         #! ['x = 3']
         self.x

@@ -116,12 +116,13 @@ impl TestFile<'_> {
                     follow_imports,
                 } => {
                     let actual: Vec<_> = document.get().goto(position, follow_imports, |name| {
-                        name.target_range_code()
-                            .split('\n')
-                            .next()
-                            .unwrap()
-                            .trim()
-                            .to_owned()
+                        let code = name.target_range_code().split('\n').next().unwrap().trim();
+                        // TODO this should probably check if it's a module
+                        if code.is_empty() {
+                            format!("module {}", name.qualified_name())
+                        } else {
+                            code.to_owned()
+                        }
                     });
                     if actual != expected {
                         errors.push(format!(
