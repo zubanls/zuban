@@ -4131,7 +4131,15 @@ impl<'db> NameDef<'db> {
         let mut parent = self.node.parent().unwrap();
         while matches!(
             parent.type_(),
-            Nonterminal(star_targets | star_target | single_target)
+            Nonterminal(
+                star_targets
+                    | star_target
+                    | single_target
+                    | import_from_as_name
+                    | import_from_targets
+                    | dotted_as_names
+                    | dotted_as_name
+            )
         ) {
             parent = parent.parent().unwrap();
         }

@@ -54,7 +54,7 @@ lazy_static::lazy_static! {
         ("django.py", 72),
         ("dynamic_params.py", 18),
         ("imports.py", 11),
-        ("goto.py", 27),
+        ("goto.py", 25),
         ("keywords.py", 9),
         ("named_param.py", 27),
         ("ns_path.py", 4),
