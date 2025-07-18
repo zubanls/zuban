@@ -21,7 +21,10 @@ struct TestCase {
 #[derive(Debug)]
 enum CaseType {
     Infer(HashSet<String>),
-    Goto(Vec<String>),
+    Goto {
+        expected: Vec<String>,
+        follow_imports: bool,
+    },
     Complete {
         expected: Vec<String>,
         contains_subset: bool,
@@ -108,8 +111,11 @@ impl TestFile<'_> {
                         ));
                     }
                 }
-                CaseType::Goto(expected) => {
-                    let actual: Vec<_> = document.get().goto(position, false, |name| {
+                CaseType::Goto {
+                    expected,
+                    follow_imports,
+                } => {
+                    let actual: Vec<_> = document.get().goto(position, follow_imports, |name| {
                         name.target_range_code()
                             .split('\n')
                             .next()
@@ -189,6 +195,7 @@ impl TestFile<'_> {
                     }
                 };
                 let mut contains_subset = false;
+                let mut follow_imports = false;
                 let mut contains_not = vec![];
                 loop {
                     match names.get(0) {
@@ -197,15 +204,20 @@ impl TestFile<'_> {
                             line_nr += names.remove(1).parse::<usize>().unwrap();
                         }
                         Some(&"--contains-subset") => {
-                            assert!(matches!(kind, TestKind::Complete));
+                            assert_eq!(kind, TestKind::Complete);
                             names.remove(0);
                             contains_subset = true;
                         }
                         Some(&"--contains-not") => {
-                            assert!(matches!(kind, TestKind::Complete));
+                            assert_eq!(kind, TestKind::Complete);
                             names.remove(0);
                             contains_subset = true;
                             contains_not.push(names.remove(0).to_string());
+                        }
+                        Some(&"--follow-imports") => {
+                            assert_eq!(kind, TestKind::Goto);
+                            names.remove(0);
+                            follow_imports = true;
                         }
                         Some(name) if name.starts_with("--") => {
                             panic!("Did not expect option {name} in {:?}:#{line_nr}", self.path)
@@ -234,7 +246,10 @@ impl TestFile<'_> {
                     TestKind::Infer => {
                         CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect())
                     }
-                    TestKind::Goto => CaseType::Goto(unpack_list()),
+                    TestKind::Goto => CaseType::Goto {
+                        expected: unpack_list(),
+                        follow_imports,
+                    },
                     TestKind::Complete => CaseType::Complete {
                         expected: unpack_list(),
                         contains_subset,
@@ -253,6 +268,7 @@ impl TestFile<'_> {
     }
 }
 
+#[derive(Debug, PartialEq)]
 enum TestKind {
     Infer,
     Goto,
