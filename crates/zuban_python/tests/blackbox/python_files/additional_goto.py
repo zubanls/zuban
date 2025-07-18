@@ -1,4 +1,4 @@
-def normal_imports() -> None:
+def normal_imports():
     import import_tree
     #! ['import import_tree']
     import_tree
@@ -16,3 +16,90 @@ def normal_imports() -> None:
     a
     #! --follow-imports ["a = 1"]
     a
+
+def nested_import_name():
+    import import_tree.pkg
+    #! ['import import_tree.pkg']
+    import_tree
+    #! --follow-imports ['module import_tree']
+    import_tree
+
+def alias_as_import_name():
+    import import_tree as imp1
+    #! ['import import_tree as imp1']
+    imp1
+    #! --follow-imports ['module import_tree']
+    imp1
+
+    import import_tree.mod2 as imp2
+    #! ['import import_tree.mod2 as imp2']
+    imp2
+    #! --follow-imports ['module import_tree.mod2']
+    imp2
+
+    # a is not a module, but a statement
+    import import_tree.mod2.a as imp2
+    #! ['import import_tree.mod2 as imp2']
+    imp2
+    #! --follow-imports ['module import_tree.mod2']
+    imp2
+
+def alias_as_import_from():
+    from import_tree import mod1 as m1
+    #! ['from import_tree import mod1 as m1']
+    m1
+    #! --follow-imports ["module import_tree.mod1"]
+    m1
+
+    from import_tree.mod1 import a as a1
+    #! ['from import_tree.mod1 import a as a1']
+    a1
+    #! --follow-imports ["a = 1"]
+    a1
+
+def import_from_multi1():
+    from import_tree.mod1 import \
+        a as a1,foobarbaz,undefined
+    #! ['from import_tree.mod1 import \']
+    a1
+    #! --follow-imports ["a = 1"]
+    a1
+
+    #! ['from import_tree.mod1 import \']
+    foobarbaz
+    #! --follow-imports ["foobarbaz = 3.0"]
+    foobarbaz
+    #? float()
+    foobarbaz
+
+    #! ['from import_tree.mod1 import \']
+    undefined
+    #! ['from import_tree.mod1 import \']
+    undefined
+    #?
+    undefined
+
+def import_from_multi2():
+    from import_tree.mod1 import (
+        a as a1,
+        foobarbaz,
+        undefined
+    )
+    #! ['from import_tree.mod1 import (']
+    a1
+    #! --follow-imports ["a = 1"]
+    a1
+
+    #! ['from import_tree.mod1 import (']
+    foobarbaz
+    #! --follow-imports ["foobarbaz = 3.0"]
+    foobarbaz
+    #? float()
+    foobarbaz
+
+    #! ['from import_tree.mod1 import (']
+    undefined
+    #! ['from import_tree.mod1 import (']
+    undefined
+    #?
+    undefined
