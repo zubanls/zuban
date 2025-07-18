@@ -174,7 +174,7 @@ impl<'db, C> GotoResolver<'db, C> {
 
 impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     pub fn goto(self, follow_imports: bool) -> Vec<T> {
-        if let Some(names) = self.goto_name() {
+        if let Some(names) = self.goto_name(follow_imports) {
             return names;
         }
         let callback = self.on_result;
@@ -185,7 +185,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         .infer_type_definition()
     }
 
-    fn goto_name(&self) -> Option<Vec<T>> {
+    fn goto_name(&self, follow_imports: bool) -> Option<Vec<T>> {
         let db = self.infos.db;
         let file = self.infos.file;
         let callback_if_name = |node_ref: NodeRef| {

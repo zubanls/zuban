@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use vfs::PathWithScheme;
-use zuban_python::{Document, InputPosition, Name, Project};
+use zuban_python::{Document, InputPosition, Name, Project, SymbolKind};
 
 use crate::Filter;
 
@@ -116,12 +116,15 @@ impl TestFile<'_> {
                     follow_imports,
                 } => {
                     let actual: Vec<_> = document.get().goto(position, follow_imports, |name| {
-                        let code = name.target_range_code().split('\n').next().unwrap().trim();
-                        // TODO this should probably check if it's a module
-                        if code.is_empty() {
+                        if name.kind() == SymbolKind::Module {
                             format!("module {}", name.qualified_name())
                         } else {
-                            code.to_owned()
+                            name.target_range_code()
+                                .split('\n')
+                                .next()
+                                .unwrap()
+                                .trim()
+                                .to_owned()
                         }
                     });
                     if actual != expected {
