@@ -230,7 +230,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             );
                         }
                         None => {
-                            // We can not assign in all cases here, for example in the precense of
+                            // We can not assign in all cases here, for example in the presence of
                             // a module __getattr__, we don't know the assignment type, yet.
                             if let PointResolution::Inferred(inf) = pr {
                                 found_pr = Some(PointResolution::Inferred(inf.save_redirect(

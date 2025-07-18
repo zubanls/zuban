@@ -6,12 +6,12 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{
-    Atom, DottedImportName, GotoNode, Name as CSTName, NameParent, NodeIndex, Primary,
-    PrimaryContent, PrimaryOrAtom, Scope,
+    Atom, DottedImportName, GotoNode, Name as CSTName, NameImportParent, NameParent, NodeIndex,
+    Primary, PrimaryContent, PrimaryOrAtom, Scope,
 };
 
 use crate::{
-    database::{Database, ParentScope, PointKind},
+    database::{Database, ParentScope, Point, PointKind},
     debug,
     file::{ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile},
     format_data::FormatData,
@@ -185,20 +185,58 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         .infer_type_definition()
     }
 
+    fn check_node_ref_and_maybe_follow_import(
+        &self,
+        node_ref: NodeRef,
+        follow_imports: bool,
+    ) -> Option<T> {
+        let n = node_ref.maybe_name()?;
+        let db = self.infos.db;
+        if follow_imports {
+            if let Some(name_def) = n.name_def() {
+                let on_module = |p: Point| {
+                    let file = db.loaded_python_file(p.file_index());
+                    let name = ModuleName { db, file };
+                    return Some((self.on_result)(&name));
+                };
+                match name_def.maybe_import() {
+                    Some(NameImportParent::ImportFromAsName(_)) => {
+                        let p = NodeRef::new(node_ref.file, name_def.index()).point();
+                        match p.kind() {
+                            PointKind::Redirect => {
+                                return self.check_node_ref_and_maybe_follow_import(
+                                    p.as_redirected_node_ref(db),
+                                    follow_imports,
+                                );
+                            }
+                            PointKind::FileReference => return on_module(p),
+                            _ => (),
+                        }
+                    }
+                    Some(NameImportParent::DottedAsName(_)) => {
+                        let p = NodeRef::new(node_ref.file, name_def.index()).point();
+                        if p.kind() == PointKind::FileReference {
+                            return on_module(p);
+                        }
+                    }
+                    None => (),
+                }
+            }
+        }
+        let tree_name = TreeName::new(db, node_ref.file, ParentScope::Module, n);
+        Some((self.on_result)(&tree_name))
+    }
+
     fn goto_name(&self, follow_imports: bool) -> Option<Vec<T>> {
         let db = self.infos.db;
         let file = self.infos.file;
-        let callback_if_name = |node_ref: NodeRef| {
-            let n = node_ref.maybe_name()?;
-            let tree_name = TreeName::new(db, node_ref.file, ParentScope::Module, n);
-            Some((self.on_result)(&tree_name))
-        };
         let lookup_on_name = |name: CSTName| {
             // TODO fix parent_scope
             let p = file.points.get(name.index());
             if p.calculated() && p.kind() == PointKind::Redirect {
                 let node_ref = p.as_redirected_node_ref(db);
-                callback_if_name(node_ref).map(|r| vec![r])
+                self.check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
+                    .map(|r| vec![r])
             } else {
                 None
             }
@@ -223,8 +261,10 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                                 &|_t_of_attr_error| (),
                             );
                             if let LookupResult::GotoName { name, .. } = lookup {
-                                if let Some(result) = callback_if_name(NodeRef::from_link(db, name))
-                                {
+                                if let Some(result) = self.check_node_ref_and_maybe_follow_import(
+                                    NodeRef::from_link(db, name),
+                                    follow_imports,
+                                ) {
                                     results.push(result);
                                     continue;
                                 }
