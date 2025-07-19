@@ -1,12 +1,12 @@
 use std::{borrow::Cow, collections::HashSet};
 
-use parsa_python_cst::{CompletionNode, RestNode};
+use parsa_python_cst::{ClassDef, CompletionNode, FunctionDef, NodeIndex, RestNode, Scope};
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
-    database::Database,
+    database::{Database, ParentScope},
     debug,
-    file::{File as _, PythonFile},
+    file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile},
     imports::{global_import, ImportResult},
     inference::{unpack_union_types, with_i_s_non_self, PositionalDocument},
     inference_state::InferenceState,
@@ -80,10 +80,32 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 self.add_attribute_completions(inf)
             }
             CompletionNode::Global => {
-                self.add_module_completions(file);
-                self.add_module_completions(db.python_state.builtins());
+                let reachable_scopes = &mut ReachableScopesIterator {
+                    file,
+                    current: Some(self.infos.scope),
+                };
+                for scope in reachable_scopes {
+                    let node_index = match scope {
+                        Scope::Module => self.add_module_completions(file),
+                        Scope::Class(cls) => {
+                            // TODO class completions
+                        }
+                        Scope::Function(func) => {
+                            // TODO func completions
+                            self.add_star_imports_completions(
+                                file,
+                                func.index(),
+                                &mut Default::default(),
+                            )
+                        }
+                        Scope::Lambda(lambda) => {
+                            // TODO lambda
+                        }
+                    };
+                }
+                self.add_module_completions(db.python_state.builtins())
             }
-            CompletionNode::ImportName { path: None } => self.add_global_completions(),
+            CompletionNode::ImportName { path: None } => self.add_global_import_completions(),
             CompletionNode::ImportName {
                 path: Some((name_def, rest_path)),
             } => {
@@ -107,7 +129,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                             .cache_import_dotted_name(*base, None)
                     }))
                 } else {
-                    self.add_global_completions()
+                    self.add_global_import_completions()
                 }
             }
             CompletionNode::ImportFromTarget { base, dots } => {
@@ -185,20 +207,29 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 // Avoid recursing
                 return;
             };
-            for star_import in file.star_imports.iter() {
-                if star_import.in_module_scope() {
-                    if let Some(f) = file
-                        .name_resolution_for_inference(&InferenceState::new(db, file))
-                        .star_import_file(star_import)
-                    {
-                        self.add_specific_module_completions(f, already_visited)
-                    }
+            self.add_star_imports_completions(file, 0, already_visited)
+        }
+    }
+
+    fn add_star_imports_completions(
+        &mut self,
+        file: &PythonFile,
+        scope: NodeIndex,
+        already_visited: &mut HashSet<FileIndex>,
+    ) {
+        for star_import in file.star_imports.iter() {
+            if star_import.scope == scope {
+                if let Some(f) = file
+                    .name_resolution_for_inference(&InferenceState::new(self.infos.db, file))
+                    .star_import_file(star_import)
+                {
+                    self.add_specific_module_completions(f, already_visited)
                 }
             }
         }
     }
 
-    fn add_global_completions(&mut self) {
+    fn add_global_import_completions(&mut self) {
         for workspace in self.infos.db.vfs.workspaces.iter() {
             self.directory_entries_completions(&workspace.entries)
         }
@@ -423,6 +454,51 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             }
         }
         self.added_names.insert(symbol)
+    }
+}
+
+pub struct ReachableScopesIterator<'db> {
+    file: &'db PythonFile,
+    current: Option<Scope<'db>>,
+}
+
+impl<'db> Iterator for ReachableScopesIterator<'db> {
+    type Item = Scope<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut check = self.current.take()?;
+        let mut parent_scope = |scope| match scope {
+            Scope::Module => Ok(()),
+            Scope::Class(c) => Err(ClassNodeRef::new(self.file, c.index())
+                .class_storage()
+                .parent_scope),
+            Scope::Function(f) => Err(FuncNodeRef::new(self.file, f.index()).parent_scope()),
+            Scope::Lambda(l) => {
+                self.current = Some(l.parent_scope());
+                Ok(())
+            }
+        };
+        loop {
+            match parent_scope(check) {
+                // Case was already handled
+                Ok(()) => {
+                    return Some(check);
+                }
+                Err(ParentScope::Module) => {
+                    self.current = Some(Scope::Module);
+                    return Some(check);
+                }
+                Err(ParentScope::Function(f)) => {
+                    self.current = Some(Scope::Function(FunctionDef::by_index(&self.file.tree, f)));
+                    return Some(check);
+                }
+                Err(ParentScope::Class(c)) => {
+                    // Parent classes are not reachable for name lookups and therefore need to be
+                    // skipped
+                    check = Scope::Class(ClassDef::by_index(&self.file.tree, c));
+                }
+            }
+        }
     }
 }
 
