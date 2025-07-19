@@ -25,7 +25,7 @@ lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
         ("arrays.py", 44),
         ("async_.py", 4),
-        ("basic.py", 24),
+        ("basic.py", 23),
         ("classes.py", 23),
         ("comprehensions.py", 32),
         ("decorators.py", 31),
@@ -56,7 +56,7 @@ lazy_static::lazy_static! {
         ("imports.py", 9),
         ("goto.py", 8),
         ("keywords.py", 9),
-        ("named_param.py", 27),
+        ("named_param.py", 25),
         ("ns_path.py", 4),
         ("pytest.py", 33),
         ("sys_path.py", 4),
@@ -141,7 +141,7 @@ fn main() -> ExitCode {
     let mut end_messages = vec![];
     for python_file in files {
         let file_name = &python_file.file_name().unwrap().to_str().unwrap();
-        if !file_name.ends_with(".py") {
+        if !file_name.ends_with(".py") && !file_name.ends_with(".pyi") {
             continue;
         }
         let code = read_to_string(&python_file).unwrap().into();

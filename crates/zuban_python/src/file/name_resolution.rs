@@ -1158,7 +1158,7 @@ fn is_valid_builtins_export(name: &str) -> bool {
     !name.starts_with('_') || is_magic_method(name)
 }
 
-fn is_reexport_issue(db: &Database, name_ref: NodeRef) -> bool {
+pub fn is_reexport_issue(db: &Database, name_ref: NodeRef) -> bool {
     if !name_ref.file.is_stub() && !name_ref.file.flags(db).no_implicit_reexport {
         return false;
     }

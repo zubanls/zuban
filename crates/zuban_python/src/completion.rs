@@ -6,11 +6,12 @@ use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 use crate::{
     database::{Database, ParentScope},
     debug,
-    file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile},
+    file::{is_reexport_issue, ClassNodeRef, File as _, FuncNodeRef, PythonFile},
     imports::{global_import, ImportResult},
     inference::{unpack_union_types, with_i_s_non_self, PositionalDocument},
     inference_state::InferenceState,
     inferred::Inferred,
+    node_ref::NodeRef,
     recoverable_error,
     type_::{CallableParam, Enum, EnumMemberDefinition, Namespace, Type},
     type_helpers::{is_private, Class, TypeOrClass},
@@ -86,7 +87,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 };
                 for scope in reachable_scopes {
                     match scope {
-                        Scope::Module => self.add_module_completions(file),
+                        Scope::Module => self.add_global_module_completions(file),
                         Scope::Class(cls) => {
                             let storage = ClassNodeRef::new(file, cls.index()).class_storage();
                             for (symbol, _node_index) in storage.class_symbol_table.iter() {
@@ -172,8 +173,12 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn add_module_completions(&mut self, file: &'db PythonFile) {
-        self.add_specific_module_completions(file, &mut HashSet::default());
+        self.add_specific_module_completions(file, true, &mut HashSet::default());
         self.add_submodule_completions(file)
+    }
+
+    fn add_global_module_completions(&mut self, file: &'db PythonFile) {
+        self.add_specific_module_completions(file, false, &mut HashSet::default());
     }
 
     fn add_namespace_completions(&mut self, namespace: &Namespace) {
@@ -198,9 +203,15 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     fn add_specific_module_completions(
         &mut self,
         file: &'db PythonFile,
+        check_reexports: bool,
         already_visited: &mut HashSet<FileIndex>,
     ) {
-        for (symbol, _node_index) in file.symbol_table.iter() {
+        for (symbol, &node_index) in file.symbol_table.iter() {
+            // Stubs sometimes import thing like typing without reexporting it, look at builtins.py
+            // for example.
+            if check_reexports && is_reexport_issue(self.infos.db, NodeRef::new(file, node_index)) {
+                continue;
+            }
             self.maybe_add_tree_name(symbol)
         }
         if !file.star_imports.is_empty() {
@@ -224,7 +235,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     .name_resolution_for_inference(&InferenceState::new(self.infos.db, file))
                     .star_import_file(star_import)
                 {
-                    self.add_specific_module_completions(f, already_visited)
+                    self.add_specific_module_completions(f, true, already_visited)
                 }
             }
         }

@@ -102,3 +102,10 @@ def lambda_completion(lambda_outer):
 
     #? ["lambda_completion", "lambda_inner_inner", "lambda_nested", "lambda_outer"]
     x = lambda lambda_nested: lambda lambda_inner_inner: lambda_
+
+# Should not complete, because it's in typing and not builtins
+#? []
+TypeVa
+
+#? []
+import_tre
