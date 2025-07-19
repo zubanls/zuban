@@ -89,6 +89,11 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         Scope::Module => self.add_module_completions(file),
                         Scope::Class(cls) => {
                             // TODO class completions
+                            self.add_star_imports_completions(
+                                file,
+                                cls.index(),
+                                &mut Default::default(),
+                            )
                         }
                         Scope::Function(func) => {
                             // TODO func completions
