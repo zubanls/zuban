@@ -103,3 +103,40 @@ def import_from_multi2():
     undefined
     #?
     undefined
+
+def on_import_no_follow():
+    #! 22 ['module import_tree.mod1']
+    from import_tree.mod1 import (
+        #! 14 ["a = 1"]
+        a as a1,
+        #! 9 []
+        a as a2,
+        #! 9 ["a = 1"]
+        a,
+        #! 14 ["foobarbaz = 3.0"]
+        foobarbaz,
+        #! 14 []
+        undefined
+    )
+    #! ['a = 1']
+    from import_tree.mod1 import a
+    #! ['module import_tree.mod1']
+    from import_tree import mod1
+    #! ['module import_tree']
+    import import_tree
+    #! 14 ['module import_tree']
+    import import_tree.mod1
+    #! ['module import_tree.mod1']
+    import import_tree.mod1
+    #! []
+    import import_tree.mod1.a
+
+    #! 14 ['module import_tree']
+    import import_tree.mod1 as m1
+    #! 26 ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+    #! ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+
+def on_import_follow():
+    ...
