@@ -109,3 +109,23 @@ TypeVa
 
 #? []
 import_tre
+
+def dunder_all_test():
+    import dunder_all_file
+    #? ["attr_x", "attr_y"]
+    dunder_all_file.attr_
+
+    import dunder_all_file_i
+    #? ["attr_x", "attr_y"]
+    dunder_all_file_i.attr_
+
+    #? ["attr_x", "attr_y"]
+    from dunder_all_file import attr_
+
+    #? ["attr_x", "attr_y"]
+    from dunder_all_file_i import attr_
+
+def dunder_all_star_import_test():
+    from dunder_all_file import *
+    #? ['attr_x']
+    attr_

@@ -1062,13 +1062,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             return None;
         }
         let other_file = self.star_import_file(star_import)?;
-        if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
-            // Name not in __all__
-            if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {
-                debug!("Name {name} found in star imports, but it's not in __all__");
-                return None;
-            }
-        } else if name.starts_with('_') {
+        if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
             return None;
         }
 

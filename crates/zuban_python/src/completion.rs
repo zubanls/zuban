@@ -173,12 +173,12 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn add_module_completions(&mut self, file: &'db PythonFile) {
-        self.add_specific_module_completions(file, true, &mut HashSet::default());
+        self.add_specific_module_completions(file, true, false, &mut HashSet::default());
         self.add_submodule_completions(file)
     }
 
     fn add_global_module_completions(&mut self, file: &'db PythonFile) {
-        self.add_specific_module_completions(file, false, &mut HashSet::default());
+        self.add_specific_module_completions(file, false, false, &mut HashSet::default());
     }
 
     fn add_namespace_completions(&mut self, namespace: &Namespace) {
@@ -204,12 +204,17 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         &mut self,
         file: &'db PythonFile,
         check_reexports: bool,
+        check_dunder_all: bool,
         already_visited: &mut HashSet<FileIndex>,
     ) {
+        let db = self.infos.db;
         for (symbol, &node_index) in file.symbol_table.iter() {
             // Stubs sometimes import thing like typing without reexporting it, look at builtins.py
             // for example.
-            if check_reexports && is_reexport_issue(self.infos.db, NodeRef::new(file, node_index)) {
+            if check_reexports && is_reexport_issue(db, NodeRef::new(file, node_index)) {
+                continue;
+            }
+            if check_dunder_all && !file.is_name_exported_for_star_import(db, symbol) {
                 continue;
             }
             self.maybe_add_tree_name(symbol)
@@ -235,7 +240,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     .name_resolution_for_inference(&InferenceState::new(self.infos.db, file))
                     .star_import_file(star_import)
                 {
-                    self.add_specific_module_completions(f, true, already_visited)
+                    self.add_specific_module_completions(f, true, true, already_visited)
                 }
             }
         }

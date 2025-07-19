@@ -613,6 +613,19 @@ impl<'db> PythonFile {
             .as_deref()
     }
 
+    pub fn is_name_exported_for_star_import(&self, db: &Database, name: &str) -> bool {
+        if let Some(dunder) = self.maybe_dunder_all(db) {
+            // Name not in __all__
+            if !dunder.iter().any(|x| x.as_str(db) == name) {
+                debug!("Name {name} found in star imports, but it's not in __all__");
+                return false;
+            }
+        } else if name.starts_with('_') {
+            return false;
+        }
+        true
+    }
+
     fn gather_dunder_all_modifications(
         &self,
         db: &Database,
