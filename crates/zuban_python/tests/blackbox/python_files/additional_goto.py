@@ -220,18 +220,18 @@ def on_star_import_attr_follow1():
     from import_tree import pkg
     #? float()
     pkg.pi
-    ##! ["pi: Final[float]"]
+    #! ["pi: Final[float]"]
     pkg.pi
-    ##! --follow-imports ["pi: Final[float]"]
+    #! --follow-imports ["pi: Final[float]"]
     pkg.pi
 
 def on_star_import_attr_follow2():
     import import_tree
     #? float()
     import_tree.pkg.pi
-    ##! ["pi: Final[float]"]
+    #! ["pi: Final[float]"]
     import_tree.pkg.pi
-    ##! --follow-imports ["pi: Final[float]"]
+    #! --follow-imports ["pi: Final[float]"]
     import_tree.pkg.pi
 
 def on_star_import_attr_follow3():

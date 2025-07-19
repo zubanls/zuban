@@ -544,7 +544,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let i_s = self.i_s;
-        if let Some(r) = self.resolve_star_import_name(name_str, Some(save_to_index), &narrow_name)
+        if let Some((r, _)) =
+            self.resolve_star_import_name(name_str, Some(save_to_index), &narrow_name)
         {
             return r;
         }
@@ -885,8 +886,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             (resolved, Some(name_ref.as_link()))
         } else if let Some(r) = self.file.sub_module_lookup(db, name) {
             (PointResolution::Inferred(r.into_inferred()), None)
-        } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
-            (r, None)
+        } else if let Some((r, points_to)) =
+            self.resolve_star_import_name(name, None, &|_, _, _| None)
+        {
+            (r, points_to)
         } else if let Some(r) = self.file.lookup_symbol("__getattr__") {
             (PointResolution::ModuleGetattrName(r), None)
         } else {
@@ -931,7 +934,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         name: &str,
         save_to_index: Option<NodeIndex>,
         narrow_name: &dyn Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
-    ) -> Option<PointResolution<'file>> {
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let star_imp = self.lookup_from_star_import(name, true)?;
         Some(match star_imp {
             StarImportResult::Link(link) => match save_to_index {
@@ -940,22 +943,31 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         save_to_index,
                         Point::new_redirect(link.file, link.node_index, Locality::Todo),
                     );
-                    self.resolve_point(save_to_index, narrow_name).unwrap()
+                    (
+                        self.resolve_point(save_to_index, narrow_name).unwrap(),
+                        Some(link),
+                    )
                 }
                 None => {
                     let node_ref = NodeRef::from_link(self.i_s.db, link);
-                    self.with_new_file(node_ref.file)
-                        .resolve_name(node_ref.expect_name(), narrow_name)
+                    (
+                        self.with_new_file(node_ref.file)
+                            .resolve_name(node_ref.expect_name(), narrow_name),
+                        Some(link),
+                    )
                 }
             },
-            StarImportResult::AnyDueToError => PointResolution::Inferred(match save_to_index {
-                Some(save_to_index) => {
-                    star_imp
-                        .as_inferred(self.i_s)
-                        .save_redirect(self.i_s, self.file, save_to_index)
-                }
-                None => star_imp.as_inferred(self.i_s),
-            }),
+            StarImportResult::AnyDueToError => (
+                PointResolution::Inferred(match save_to_index {
+                    Some(save_to_index) => star_imp.as_inferred(self.i_s).save_redirect(
+                        self.i_s,
+                        self.file,
+                        save_to_index,
+                    ),
+                    None => star_imp.as_inferred(self.i_s),
+                }),
+                None,
+            ),
         })
     }
 
