@@ -12,7 +12,6 @@ use crate::{
 impl Tree {
     pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode, RestNode) {
         let mut leaf = self.0.leaf_by_position(position);
-        let scope = scope_for_node(leaf);
         if leaf.start() == position {
             if let Some(n) = leaf.previous_leaf() {
                 // Only use the previous leaf if we are not on a control character.
@@ -27,6 +26,7 @@ impl Tree {
         if leaf.end() == position && leaf.as_code() == "." {
             leaf = leaf.next_leaf().unwrap();
         }
+        let scope = scope_for_node(leaf);
         let rest = RestNode::new(self, leaf, position);
         if position < leaf.start() {
             if leaf.prefix().contains("#") {

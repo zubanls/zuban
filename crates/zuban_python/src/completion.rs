@@ -109,7 +109,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                             )
                         }
                         Scope::Lambda(lambda) => {
-                            // TODO lambda
+                            for param in lambda.params() {
+                                self.maybe_add_tree_name(param.name_def().as_code())
+                            }
                         }
                     };
                 }

@@ -94,3 +94,11 @@ class StarCompletions3:
     from import_tree import pkg
     #? ["comb", "copysign", "cos", "cosh"]
     pkg.co
+
+
+def lambda_completion(lambda_outer):
+    #? ["lambda_completion", "lambda_inner", "lambda_outer"]
+    x = lambda lambda_inner: lambda_
+
+    #? ["lambda_completion", "lambda_inner_inner", "lambda_nested", "lambda_outer"]
+    x = lambda lambda_nested: lambda lambda_inner_inner: lambda_
