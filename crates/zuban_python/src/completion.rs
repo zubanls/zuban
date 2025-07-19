@@ -195,17 +195,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     ) {
         let db = self.infos.db;
         for (symbol, _node_index) in file.symbol_table.iter() {
-            if !self.maybe_add(symbol) {
-                continue;
-            }
-            let result = (self.on_result)(&CompletionTreeName {
-                db,
-                file,
-                name: symbol,
-                kind: CompletionKind::Variable,
-            });
-            self.items
-                .push((CompletionSortPriority::new_symbol(symbol), result))
+            self.maybe_add_tree_name(symbol)
         }
         if !file.star_imports.is_empty() {
             if !already_visited.insert(file.file_index) {
@@ -459,6 +449,20 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             }
         }
         self.added_names.insert(symbol)
+    }
+
+    fn maybe_add_tree_name(&mut self, symbol: &'db str) {
+        if !self.maybe_add(symbol) {
+            return;
+        }
+        let result = (self.on_result)(&CompletionTreeName {
+            db: self.infos.db,
+            file: self.infos.file,
+            name: symbol,
+            kind: CompletionKind::Variable,
+        });
+        self.items
+            .push((CompletionSortPriority::new_symbol(symbol), result))
     }
 }
 
