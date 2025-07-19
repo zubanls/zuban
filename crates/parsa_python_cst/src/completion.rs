@@ -1,11 +1,13 @@
 use parsa_python::{
-    CodeIndex, NodeIndex,
+    CodeIndex,
     NonterminalType::*,
     PyNode,
     PyNodeType::{ErrorNonterminal, Nonterminal},
 };
 
-use crate::{Atom, DottedImportName, Lambda, NameDef, Primary, PrimaryOrAtom, Tree};
+use crate::{
+    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryOrAtom, Tree,
+};
 
 impl Tree {
     pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode, RestNode) {
@@ -225,9 +227,9 @@ pub(crate) fn scope_for_node<'db>(node: PyNode<'db>) -> Scope<'db> {
     if scope_node.is_type(Nonterminal(file)) {
         Scope::Module
     } else if scope_node.is_type(Nonterminal(function_def)) {
-        Scope::Function(scope_node.index)
+        Scope::Function(FunctionDef::new(scope_node))
     } else if scope_node.is_type(Nonterminal(class_def)) {
-        Scope::Class(scope_node.index)
+        Scope::Class(ClassDef::new(scope_node))
     } else {
         debug_assert_eq!(scope_node.type_(), Nonterminal(lambda));
         Scope::Lambda(Lambda::new(scope_node))
@@ -237,8 +239,8 @@ pub(crate) fn scope_for_node<'db>(node: PyNode<'db>) -> Scope<'db> {
 #[derive(Copy, Clone)]
 pub enum Scope<'db> {
     Module,
-    Class(NodeIndex),
-    Function(NodeIndex),
+    Class(ClassDef<'db>),
+    Function(FunctionDef<'db>),
     Lambda(Lambda<'db>),
 }
 

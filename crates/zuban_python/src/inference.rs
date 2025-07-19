@@ -151,8 +151,8 @@ pub(crate) fn with_i_s_non_self<'db, R>(
     let had_error = &Cell::new(false);
     let parent_scope = match scope {
         Scope::Module => ParentScope::Module,
-        Scope::Function(index) => ParentScope::Function(index),
-        Scope::Class(index) => ParentScope::Class(index),
+        Scope::Function(f) => ParentScope::Function(f.index()),
+        Scope::Class(c) => ParentScope::Class(c.index()),
         Scope::Lambda(lambda) => {
             return with_i_s_non_self(db, file, lambda.parent_scope(), callback)
         }
