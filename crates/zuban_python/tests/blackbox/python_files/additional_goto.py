@@ -257,3 +257,31 @@ def on_star_import_attr_follow4():
     import_tree.pkg.pi
     #! 18 ["module import_tree.pkg"]
     import_tree.pkg.pi
+
+def on_star_import_nested_stars():
+    from import_tree.pkg import *
+    #! ["pi: Final[float]"]
+    pi
+    #! --follow-imports ["pi: Final[float]"]
+    pi
+    #? float()
+    pi
+
+    #! ["a = list"]
+    a
+    #! --follow-imports ["a = list"]
+    a
+    #? list
+    a
+
+def nested_import_goto_no_follow():
+    #! ["from import_tree.random import a as c"]
+    from import_tree.mod1 import c
+    #! ["from import_tree.mod1 import c"]
+    c
+
+def nested_import_goto_follow():
+    #! --follow-imports ["a = set"]
+    from import_tree.mod1 import c
+    #! --follow-imports ["a = set"]
+    c
