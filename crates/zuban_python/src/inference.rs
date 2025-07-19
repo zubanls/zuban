@@ -235,11 +235,20 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             let p = file.points.get(name.index());
             if p.calculated() && p.kind() == PointKind::Redirect {
                 let node_ref = p.as_redirected_node_ref(db);
-                self.check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
-                    .map(|r| vec![r])
-            } else {
-                None
+                return self
+                    .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
+                    .map(|r| vec![r]);
             }
+            if let Some(name_def) = name.name_def() {
+                let p = file.points.get(name_def.index());
+                if p.calculated() && p.kind() == PointKind::Redirect {
+                    let node_ref = p.as_redirected_node_ref(db);
+                    return self
+                        .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
+                        .map(|r| vec![r]);
+                }
+            }
+            None
         };
         match self.infos.node {
             GotoNode::Name(name) => lookup_on_name(name),

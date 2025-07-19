@@ -139,4 +139,36 @@ def on_import_no_follow():
     import import_tree.mod1 as m2
 
 def on_import_follow():
-    ...
+    #! 22 --follow-imports ['module import_tree.mod1']
+    from import_tree.mod1 import (
+        #! 14 --follow-imports ["a = 1"]
+        a as a1,
+        #! 9 --follow-imports []
+        a as a2,
+        #! 9 --follow-imports ["a = 1"]
+        a,
+        #! 14 --follow-imports ["foobarbaz = 3.0"]
+        foobarbaz,
+        #! 14 --follow-imports []
+        undefined
+    )
+    #! ['a = 1']
+    from import_tree.mod1 import a
+    #! --follow-imports ['module import_tree.mod1']
+    from import_tree import mod1
+    #! --follow-imports ['module import_tree']
+    import import_tree
+    #! 14 --follow-imports ['module import_tree']
+    import import_tree.mod1
+    #! --follow-imports ['module import_tree.mod1']
+    import import_tree.mod1
+    #! --follow-imports []
+    import import_tree.mod1.a
+
+    #! 14 --follow-imports ['module import_tree']
+    import import_tree.mod1 as m1
+    #! 26 --follow-imports ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+    #! --follow-imports ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+
