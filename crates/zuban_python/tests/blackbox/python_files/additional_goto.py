@@ -205,3 +205,55 @@ def on_import_infer():
     import import_tree.mod1 as m2
     #? import_tree.mod1
     import import_tree.mod1 as m2
+
+def on_star_import_follow():
+    # pkg has a star import of math
+    from import_tree.pkg import *
+    #? float()
+    pi
+    #! ["pi: Final[float]"]
+    pi
+    #! --follow-imports ["pi: Final[float]"]
+    pi
+
+def on_star_import_attr_follow1():
+    from import_tree import pkg
+    #? float()
+    pkg.pi
+    ##! ["pi: Final[float]"]
+    pkg.pi
+    ##! --follow-imports ["pi: Final[float]"]
+    pkg.pi
+
+def on_star_import_attr_follow2():
+    import import_tree
+    #? float()
+    import_tree.pkg.pi
+    ##! ["pi: Final[float]"]
+    import_tree.pkg.pi
+    ##! --follow-imports ["pi: Final[float]"]
+    import_tree.pkg.pi
+
+def on_star_import_attr_follow3():
+    import import_tree
+    #! 8 --follow-imports ["module import_tree"]
+    import_tree.pkg.pi
+    #! 18 --follow-imports ["module import_tree.pkg"]
+    import_tree.pkg.pi
+
+    #! 8 ["import import_tree"]
+    import_tree.pkg.pi
+    #! 18 ["module import_tree.pkg"]
+    import_tree.pkg.pi
+
+def on_star_import_attr_follow4():
+    import import_tree.pkg
+    #! 8 --follow-imports ["module import_tree"]
+    import_tree.pkg.pi
+    #! 18 --follow-imports ["module import_tree.pkg"]
+    import_tree.pkg.pi
+
+    #! 8 ["import import_tree.pkg"]
+    import_tree.pkg.pi
+    #! 18 ["module import_tree.pkg"]
+    import_tree.pkg.pi
