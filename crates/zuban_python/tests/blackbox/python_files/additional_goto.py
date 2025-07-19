@@ -109,7 +109,7 @@ def on_import_no_follow():
     from import_tree.mod1 import (
         #! 14 ["a = 1"]
         a as a1,
-        #! 9 []
+        #! 9 ["a = 1"]
         a as a2,
         #! 9 ["a = 1"]
         a,
@@ -143,7 +143,7 @@ def on_import_follow():
     from import_tree.mod1 import (
         #! 14 --follow-imports ["a = 1"]
         a as a1,
-        #! 9 --follow-imports []
+        #! 9 --follow-imports ["a = 1"]
         a as a2,
         #! 9 --follow-imports ["a = 1"]
         a,
@@ -169,6 +169,39 @@ def on_import_follow():
     import import_tree.mod1 as m1
     #! 26 --follow-imports ['module import_tree.mod1']
     import import_tree.mod1 as m2
-    #! --follow-imports ['module import_tree.mod1']
+    #! ['module import_tree.mod1']
     import import_tree.mod1 as m2
 
+def on_import_infer():
+    #? 22 import_tree.mod1
+    from import_tree.mod1 import (
+        #? 14 int()
+        a as a1,
+        #? 9 int()
+        a as a2,
+        #? 9 int()
+        a,
+        #? 14 float()
+        foobarbaz,
+        #? 14
+        undefined
+    )
+    #? int()
+    from import_tree.mod1 import a
+    #? import_tree.mod1
+    from import_tree import mod1
+    #? import_tree
+    import import_tree
+    #? 14 import_tree
+    import import_tree.mod1
+    #? import_tree.mod1
+    import import_tree.mod1
+    #? 
+    import import_tree.mod1.a
+
+    #? 14 import_tree
+    import import_tree.mod1 as m1
+    #? 26 import_tree.mod1
+    import import_tree.mod1 as m2
+    #? import_tree.mod1
+    import import_tree.mod1 as m2

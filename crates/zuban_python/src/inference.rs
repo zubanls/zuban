@@ -54,6 +54,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     fn infer_position(&self) -> Option<Inferred> {
         match self.node {
             GotoNode::Name(name) => self.infer_name(name),
+            GotoNode::ImportFromAsName(as_name) => self.infer_name(as_name.name_def().name()),
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
             GotoNode::None => None,
@@ -239,15 +240,6 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                     .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
                     .map(|r| vec![r]);
             }
-            if let Some(name_def) = name.name_def() {
-                let p = file.points.get(name_def.index());
-                if p.calculated() && p.kind() == PointKind::Redirect {
-                    let node_ref = p.as_redirected_node_ref(db);
-                    return self
-                        .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
-                        .map(|r| vec![r]);
-                }
-            }
             None
         };
         match self.infos.node {
@@ -290,6 +282,16 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 }),
                 _ => None,
             },
+            GotoNode::ImportFromAsName(as_name) => {
+                let p = file.points.get(as_name.name_def().index());
+                if p.calculated() && p.kind() == PointKind::Redirect {
+                    let node_ref = p.as_redirected_node_ref(db);
+                    return self
+                        .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
+                        .map(|r| vec![r]);
+                }
+                None
+            }
             GotoNode::Atom(_) | GotoNode::None => None,
         }
     }

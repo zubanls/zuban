@@ -226,6 +226,15 @@ impl Tree {
                     let parent = left.parent().unwrap();
                     if parent.is_type(Nonterminal(primary)) {
                         GotoNode::Primary(Primary::new(parent))
+                    } else if parent.is_type(Nonterminal(import_from_as_name)) {
+                        GotoNode::ImportFromAsName(ImportFromAsName::new(parent))
+                    } else if parent.is_type(Nonterminal(name_def)) {
+                        let par_parent = parent.parent().unwrap();
+                        if par_parent.is_type(Nonterminal(import_from_as_name)) {
+                            GotoNode::ImportFromAsName(ImportFromAsName::new(par_parent))
+                        } else {
+                            GotoNode::Name(Name::new(left))
+                        }
                     } else {
                         GotoNode::Name(Name::new(left))
                     }
@@ -4544,6 +4553,7 @@ impl<'db> Expressions<'db> {
 #[derive(Debug)]
 pub enum GotoNode<'db> {
     Name(Name<'db>),
+    ImportFromAsName(ImportFromAsName<'db>),
     Primary(Primary<'db>),
     Atom(Atom<'db>),
     None,
