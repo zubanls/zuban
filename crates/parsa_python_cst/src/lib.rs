@@ -2282,6 +2282,28 @@ impl<'db> FunctionDef<'db> {
             _ => false,
         }
     }
+
+    pub fn on_name_def_in_scope(&self, callback: &mut impl FnMut(NameDef<'db>)) {
+        for p in self.params().iter() {
+            callback(p.name_def())
+        }
+        const SEARCH_NAME_DEFS: &[PyNodeType] = &[
+            Nonterminal(name_def),
+            Nonterminal(function_def),
+            Nonterminal(class_def),
+            Nonterminal(lambda),
+            Nonterminal(t_primary),
+        ];
+        for node in self.body().node.search(SEARCH_NAME_DEFS, true) {
+            if node.is_type(Nonterminal(name_def)) {
+                callback(NameDef::new(node))
+            } else if node.is_type(Nonterminal(function_def)) {
+                callback(FunctionDef::new(node).name_def())
+            } else if node.is_type(Nonterminal(class_def)) {
+                callback(ClassDef::new(node).name_def())
+            }
+        }
+    }
 }
 
 pub enum FunctionParent<'db> {

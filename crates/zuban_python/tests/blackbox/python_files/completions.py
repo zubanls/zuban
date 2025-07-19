@@ -1,3 +1,16 @@
+var_global1 = 1
+def func_completions():
+    def var_nested():
+        var_inner = 1
+        #? ["var_global1", "var_global2", "var_inner", "var_local1", "var_local2", "var_nested"]
+        var_
+    var_local1 = 1
+    #? ["var_global1", "var_global2", "var_local1", "var_local2", "var_nested"]
+    var_
+    var_local2 = 1
+
+var_global2 = 1
+
 def star_completions1():
     from math import *
     #? ['cos', 'cosh']

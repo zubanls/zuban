@@ -96,7 +96,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                             )
                         }
                         Scope::Function(func) => {
-                            // TODO func completions
+                            func.on_name_def_in_scope(&mut |name_def| {
+                                self.maybe_add_tree_name(name_def.as_code())
+                            });
                             self.add_star_imports_completions(
                                 file,
                                 func.index(),
