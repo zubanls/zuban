@@ -88,7 +88,10 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     let node_index = match scope {
                         Scope::Module => self.add_module_completions(file),
                         Scope::Class(cls) => {
-                            // TODO class completions
+                            let storage = ClassNodeRef::new(file, cls.index()).class_storage();
+                            for (symbol, _node_index) in storage.class_symbol_table.iter() {
+                                self.maybe_add_tree_name(symbol)
+                            }
                             self.add_star_imports_completions(
                                 file,
                                 cls.index(),
@@ -477,7 +480,7 @@ impl<'db> Iterator for ReachableScopesIterator<'db> {
     type Item = Scope<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut check = self.current.take()?;
+        let result = self.current.take()?;
         let mut parent_scope = |scope| match scope {
             Scope::Module => Ok(()),
             Scope::Class(c) => Err(ClassNodeRef::new(self.file, c.index())
@@ -489,19 +492,20 @@ impl<'db> Iterator for ReachableScopesIterator<'db> {
                 Ok(())
             }
         };
+        let mut check = result;
         loop {
             match parent_scope(check) {
                 // Case was already handled
                 Ok(()) => {
-                    return Some(check);
+                    return Some(result);
                 }
                 Err(ParentScope::Module) => {
                     self.current = Some(Scope::Module);
-                    return Some(check);
+                    return Some(result);
                 }
                 Err(ParentScope::Function(f)) => {
                     self.current = Some(Scope::Function(FunctionDef::by_index(&self.file.tree, f)));
-                    return Some(check);
+                    return Some(result);
                 }
                 Err(ParentScope::Class(c)) => {
                     // Parent classes are not reachable for name lookups and therefore need to be

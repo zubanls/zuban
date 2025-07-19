@@ -11,6 +11,23 @@ def func_completions():
 
 var_global2 = 1
 
+
+class ClassCompletions:
+    def var_nested(self):
+        var_inner = 1
+        #? ["var_global1", "var_global2", "var_inner"]
+        var_
+        #? ["var_in_other", "var_local1", "var_local2", "var_nested", "var_other"]
+        self.var_
+    var_local1 = 1
+    #? ["var_global1", "var_global2", "var_local1", "var_local2", "var_nested", "var_other"]
+    var_
+    var_local2 = 1
+
+    def var_other(self):
+        self.var_in_other = 1
+
+
 def star_completions1():
     from math import *
     #? ['cos', 'cosh']

@@ -48,7 +48,7 @@ lazy_static::lazy_static! {
 
         // TODO work on these files
         ("completion.py", 6),
-        ("context.py", 6),
+        ("context.py", 4),
         ("conftest.py", 1),
         ("docstring.py", 38),
         ("django.py", 72),

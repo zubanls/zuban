@@ -236,7 +236,7 @@ pub(crate) fn scope_for_node<'db>(node: PyNode<'db>) -> Scope<'db> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Scope<'db> {
     Module,
     Class(ClassDef<'db>),
