@@ -1,7 +1,8 @@
 # goto command tests are different in syntax
 
 definition = 3
-#! 0 ['a = definition']
+# jedi-diff: #! 0 ['a = definition']
+#! 0 ['class int:']
 a = definition
 
 # jedi-diff: #! []
@@ -16,12 +17,14 @@ c = b
 c
 
 cd = 1
-#! 1 ['cd = c']
+# jedi-diff: #! 1 ['cd = c']
+#! 1 ['class int:']
 cd = c
-#! 0 ['cd = e']
+# jedi-diff: #! 0 ['cd = e']
+#! 0 ['class int:']
 cd = e
 
-#! ['math']
+#! ['module math']
 import math
 #! ['import math']
 math
@@ -48,7 +51,7 @@ class C(object):
         self.b
         #! 14 ['def b(self):']
         self.b()
-        #! 14 ['def b']
+        #! 14 ['def b(self):']
         self.b.
         #! 11 ['self']
         self.b
@@ -155,39 +158,42 @@ import import_tree
 #! ["a = ''"]
 import_tree.a
 
-#! ['module mod1']
+#! ['module import_tree.mod1']
 import import_tree.mod1
-#! ['module mod1']
+#! ['module import_tree.mod1']
 from import_tree.mod1
 #! ['a = 1']
 import_tree.mod1.a
 
-#! ['module pkg']
+#! ['module import_tree.pkg']
 import import_tree.pkg
 #! ['a = list']
 import_tree.pkg.a
 
-#! ['module mod1']
+#! ['module import_tree.pkg.mod1']
 import import_tree.pkg.mod1
 #! ['a = 1.0']
 import_tree.pkg.mod1.a
 #! ["a = ''"]
 import_tree.a
 
-#! ['module mod1']
+#! ['module import_tree.pkg.mod1']
 from import_tree.pkg import mod1
 #! ['a = 1.0']
 mod1.a
 
-#! ['module mod1']
-from import_tree import mod1
-#! ['a = 1']
-mod1.a
+def other():
+    #! ['module import_tree.mod1']
+    from import_tree import mod1
+    #! ['a = 1']
+    mod1.a
 
 #! ['a = 1.0']
 from import_tree.pkg.mod1 import a
 
-#! ['module os']
+#! ['import os']
+from .imports import os
+#! --follow-imports ['module os']
 from .imports import os
 
 #! ['some_variable = 1']
@@ -240,7 +246,7 @@ for key, value in [(1,2)]:
     #! ['for ke", "alue in [(", ")]: key']
     key
 
-#! 4 ['for y in [1]:']
+#! 4 ['class int:']
 for y in [1]:
     #! ['for y in [1]:']
     y
