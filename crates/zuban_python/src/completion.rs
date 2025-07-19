@@ -85,7 +85,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     current: Some(self.infos.scope),
                 };
                 for scope in reachable_scopes {
-                    let node_index = match scope {
+                    match scope {
                         Scope::Module => self.add_module_completions(file),
                         Scope::Class(cls) => {
                             let storage = ClassNodeRef::new(file, cls.index()).class_storage();
@@ -198,7 +198,6 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         file: &'db PythonFile,
         already_visited: &mut HashSet<FileIndex>,
     ) {
-        let db = self.infos.db;
         for (symbol, _node_index) in file.symbol_table.iter() {
             self.maybe_add_tree_name(symbol)
         }
