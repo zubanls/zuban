@@ -557,7 +557,20 @@ impl<'db> PythonFile {
     pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {
-            let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), false);
+            let file_entry = self.file_entry(db);
+            let (name, parent_dir) = name_and_parent_dir(file_entry, false);
+            if let Some(py_name) = file_entry.name.strip_suffix("i") {
+                if let Some(file_entry) =
+                    file_entry.parent.with_entries(&*db.vfs.handler, |entries| {
+                        match &*entries.search(py_name)? {
+                            DirectoryEntry::File(f) => Some(f.clone()),
+                            _ => None,
+                        }
+                    })
+                {
+                    return db.load_file_from_workspace(&file_entry, false);
+                }
+            }
             match ImportResult::import_non_stub_for_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => {
                     assert_ne!(file_index, self.file_index);

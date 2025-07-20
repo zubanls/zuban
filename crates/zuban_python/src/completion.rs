@@ -174,6 +174,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
 
     fn add_module_completions(&mut self, file: &'db PythonFile) {
         self.add_specific_module_completions(file, true, false, &mut HashSet::default());
+        if let Some(normal_file) = file.normal_file_of_stub_file(self.infos.db) {
+            self.add_specific_module_completions(normal_file, true, false, &mut HashSet::default());
+        }
         self.add_submodule_completions(file)
     }
 
