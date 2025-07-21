@@ -1,0 +1,20 @@
+[case basic_completion]
+#? complete
+from m import functio
+#? complete
+from m import unknown
+
+#? complete
+func
+
+[file m.py]
+
+def function(): ...
+
+[out]
+__main__:2: error: Module "m" has no attribute "functio"
+__main__:4: error: Module "m" has no attribute "unknown"
+__main__:7: error: Name "func" is not defined
+__main__.py:2:complete -> [function]
+__main__.py:4:complete -> []
+__main__.py:7:complete -> [functio, function]

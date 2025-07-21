@@ -487,6 +487,9 @@ impl TestCase<'_, '_> {
             }
             // Add ide_test_results
             for r in &ide_test_results {
+                if !actual.is_empty() && !actual.ends_with('\n') {
+                    actual.push('\n');
+                }
                 actual.push_str(r);
                 actual.push('\n');
             }
