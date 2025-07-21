@@ -35,6 +35,14 @@ impl NewlineIndices {
         let line_infos = |line| {
             let lines = self.lines(code);
             let Some(next_line_start) = lines.get(line) else {
+                if lines.len() == line {
+                    return Ok(if lines.is_empty() {
+                        (0, code)
+                    } else {
+                        let start = lines[line - 1];
+                        (start, &code[start as usize..])
+                    });
+                }
                 return Err(format!(
                     "File has only {} lines, but line {line} is requested",
                     lines.len() + 1
@@ -157,5 +165,45 @@ impl<'code> PositionInfos<'code> {
 
     pub(crate) fn code_until(&self, end_pos: PositionInfos) -> &'code str {
         &self.code[self.byte_position..end_pos.byte_position]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_newline_indices_no_line() {
+        let indices = NewlineIndices::new();
+        let code = "ä";
+        assert!(indices.lines(code).is_empty());
+        assert_eq!(
+            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 2 }),
+            Ok(2)
+        );
+        assert_eq!(
+            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 3 }),
+            Ok(2)
+        );
+        assert!(indices
+            .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 1 })
+            .is_err());
+    }
+
+    #[test]
+    fn test_newline_indices_without_ending_newlines() {
+        let indices = NewlineIndices::new();
+        let code = "x\nä";
+        assert_eq!(
+            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 2 }),
+            Ok(4)
+        );
+        assert_eq!(
+            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 3 }),
+            Ok(4)
+        );
+        assert!(indices
+            .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 1 })
+            .is_err());
     }
 }
