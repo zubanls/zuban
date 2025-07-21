@@ -20,8 +20,8 @@ f
 def f(): ...
 
 [out]
-__main__.py:2:goto -> /mypylike/m.py:2:4
-__main__.py:7:goto -> /mypylike/__main__.py:4:0
-__main__.py:10:goto -> /mypylike/__main__.py:2:14
-__main__.py:12:goto -> /mypylike/m.py:2:4
-__main__.py:15:infer -> /mypylike/m.py:2:4
+__main__.py:2:goto -> m.py:2:4
+__main__.py:7:goto -> __main__.py:4:0
+__main__.py:10:goto -> __main__.py:2:14
+__main__.py:12:goto -> m.py:2:4
+__main__.py:15:infer -> m.py:2:4

@@ -18,6 +18,14 @@ pub trait Name: fmt::Debug {
     fn name(&self) -> &str;
     fn code(&self) -> &str;
     fn file_path(&self) -> &NormalizedPath;
+    fn relative_path(&self, base: &NormalizedPath) -> &str {
+        let p = self.file_path();
+        if let Ok(stripped) = p.as_ref().strip_prefix(base.as_ref()) {
+            stripped.to_str().unwrap()
+        } else {
+            p
+        }
+    }
     fn qualified_name(&self) -> String;
     fn is_implementation(&self) -> bool {
         true

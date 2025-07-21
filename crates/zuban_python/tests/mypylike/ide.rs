@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use shlex::Shlex;
+use vfs::NormalizedPath;
 use zuban_python::{GotoGoal, InputPosition, Name as _, Project};
 
 use crate::base_path_join;
@@ -48,6 +49,7 @@ pub struct InferArgs {
 
 pub(crate) fn find_and_check_ide_tests(
     project: &mut Project,
+    base_path: &NormalizedPath,
     path: &str,
     code: &str,
     output: &mut Vec<String>,
@@ -88,7 +90,7 @@ pub(crate) fn find_and_check_ide_tests(
                             let start = name.name_range().0;
                             format!(
                                 "{}:{}:{}",
-                                name.file_path(),
+                                name.relative_path(base_path),
                                 start.line_one_based(),
                                 start.code_points_column()
                             )
@@ -106,7 +108,7 @@ pub(crate) fn find_and_check_ide_tests(
                             let start = name.name_range().0;
                             format!(
                                 "{}:{}:{}",
-                                name.file_path(),
+                                name.relative_path(base_path),
                                 start.line_one_based(),
                                 start.code_points_column()
                             )

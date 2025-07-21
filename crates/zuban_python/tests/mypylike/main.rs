@@ -389,9 +389,17 @@ impl TestCase<'_, '_> {
             );
             let mut ide_test_results = vec![];
             if !self.from_mypy_test_suite {
-                for (path, code) in &step.files {
-                    find_and_check_ide_tests(project, path, code, &mut ide_test_results)
-                }
+                BASE_PATH.with(|base_path| {
+                    for (path, code) in &step.files {
+                        find_and_check_ide_tests(
+                            project,
+                            base_path,
+                            path,
+                            code,
+                            &mut ide_test_results,
+                        )
+                    }
+                })
             }
 
             for path in &step.deletions {
