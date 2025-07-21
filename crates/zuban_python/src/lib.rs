@@ -8,8 +8,8 @@ mod diagnostics;
 mod file;
 mod format_data;
 mod getitem;
+mod goto;
 mod imports;
-mod inference;
 mod inference_state;
 mod inferred;
 mod lines;
@@ -28,7 +28,7 @@ use std::cell::OnceCell;
 
 use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
-use inference::{GotoResolver, PositionalDocument};
+use goto::{GotoResolver, PositionalDocument};
 use parsa_python_cst::{CodeIndex, GotoNode, Tree};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
