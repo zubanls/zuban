@@ -7,6 +7,9 @@ from m import unknown
 #? complete
 func
 
+#? complete --filter upper --filter lower
+str.
+
 [file m.py]
 
 def function(): ...
@@ -15,6 +18,8 @@ def function(): ...
 __main__:2: error: Module "m" has no attribute "functio"
 __main__:4: error: Module "m" has no attribute "unknown"
 __main__:7: error: Name "func" is not defined
+__main__:10: error: invalid syntax
 __main__.py:2:complete -> [function]
 __main__.py:4:complete -> []
 __main__.py:7:complete -> [functio, function]
+__main__.py:10:complete -> [lower, upper]
