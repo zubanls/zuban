@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use vfs::PathWithScheme;
-use zuban_python::{Document, InputPosition, Name, Project, SymbolKind};
+use zuban_python::{Document, GotoGoal, InputPosition, Name, Project, SymbolKind};
 
 use crate::Filter;
 
@@ -20,9 +20,13 @@ struct TestCase {
 
 #[derive(Debug)]
 enum CaseType {
-    Infer(HashSet<String>),
+    Infer {
+        expected: HashSet<String>,
+        goal: GotoGoal,
+    },
     Goto {
         expected: Vec<String>,
+        goal: GotoGoal,
         follow_imports: bool,
     },
     Complete {
@@ -84,10 +88,10 @@ impl TestFile<'_> {
                 column: case.column,
             };
             match case.type_ {
-                CaseType::Infer(expected) => {
+                CaseType::Infer { expected, goal } => {
                     let actual: HashSet<_> = document
                         .get()
-                        .infer_type_definition(position, |name| {
+                        .infer_definition(position, goal, |name| {
                             let mut n = if *name.file_path() == *path {
                                 name.name().to_owned()
                             } else {
@@ -113,20 +117,22 @@ impl TestFile<'_> {
                 }
                 CaseType::Goto {
                     expected,
+                    goal,
                     follow_imports,
                 } => {
-                    let actual: Vec<_> = document.get().goto(position, follow_imports, |name| {
-                        if name.kind() == SymbolKind::Module {
-                            format!("module {}", name.qualified_name())
-                        } else {
-                            name.target_range_code()
-                                .split('\n')
-                                .next()
-                                .unwrap()
-                                .trim()
-                                .to_owned()
-                        }
-                    });
+                    let actual: Vec<_> =
+                        document.get().goto(position, goal, follow_imports, |name| {
+                            if name.kind() == SymbolKind::Module {
+                                format!("module {}", name.qualified_name())
+                            } else {
+                                name.target_range_code()
+                                    .split('\n')
+                                    .next()
+                                    .unwrap()
+                                    .trim()
+                                    .to_owned()
+                            }
+                        });
                     if actual != expected {
                         errors.push(format!(
                             "{file_name}: Line #{} {expected:?} != {actual:?}",
@@ -200,6 +206,7 @@ impl TestFile<'_> {
                 };
                 let mut contains_subset = false;
                 let mut follow_imports = false;
+                let mut goal = GotoGoal::PreferNonStubs;
                 let mut contains_not = vec![];
                 loop {
                     match names.get(0) {
@@ -222,6 +229,11 @@ impl TestFile<'_> {
                             assert_eq!(kind, TestKind::Goto);
                             names.remove(0);
                             follow_imports = true;
+                        }
+                        Some(&"--prefer-stubs") => {
+                            assert!(matches!(kind, TestKind::Goto | TestKind::Infer));
+                            names.remove(0);
+                            goal = GotoGoal::PreferStubs;
                         }
                         Some(name) if name.starts_with("--") => {
                             panic!("Did not expect option {name} in {:?}:#{line_nr}", self.path)
@@ -247,11 +259,13 @@ impl TestFile<'_> {
                         .collect()
                 };
                 let type_ = match kind {
-                    TestKind::Infer => {
-                        CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect())
-                    }
+                    TestKind::Infer => CaseType::Infer {
+                        expected: names.iter().cloned().map(|x| x.to_owned()).collect(),
+                        goal,
+                    },
                     TestKind::Goto => CaseType::Goto {
                         expected: unpack_list(),
+                        goal,
                         follow_imports,
                     },
                     TestKind::Complete => CaseType::Complete {

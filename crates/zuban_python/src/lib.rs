@@ -28,6 +28,7 @@ use std::cell::OnceCell;
 
 use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
+pub use goto::GotoGoal;
 use goto::{GotoResolver, PositionalDocument};
 use parsa_python_cst::{CodeIndex, GotoNode, Tree};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
@@ -202,26 +203,20 @@ impl<'project> Document<'project> {
     pub fn goto<T>(
         &self,
         position: InputPosition,
+        goal: GotoGoal,
         follow_imports: bool,
         on_name: impl for<'a> Fn(&dyn Name) -> T + Copy,
     ) -> Vec<T> {
-        GotoResolver::new(self.positional_document(position), on_name).goto(follow_imports)
+        GotoResolver::new(self.positional_document(position), goal, on_name).goto(follow_imports)
     }
 
-    pub fn infer_type_definition<'slf, T>(
+    pub fn infer_definition<'slf, T>(
         &'slf self,
         position: InputPosition,
+        goal: GotoGoal,
         on_name: impl for<'a> Fn(ValueName) -> T + Copy,
     ) -> Vec<T> {
-        GotoResolver::new(self.positional_document(position), on_name).infer_type_definition()
-    }
-
-    pub fn infer_implementation<'slf, T>(
-        &'slf self,
-        position: InputPosition,
-        on_name: impl for<'a> Fn(ValueName) -> T + Copy + 'slf,
-    ) -> Vec<T> {
-        GotoResolver::new(self.positional_document(position), on_name).infer_implementation()
+        GotoResolver::new(self.positional_document(position), goal, on_name).infer_type_definition()
     }
 
     pub fn complete<T>(

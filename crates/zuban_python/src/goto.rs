@@ -162,14 +162,30 @@ pub(crate) fn with_i_s_non_self<'db, R>(
     })
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum GotoGoal {
+    PreferStubs,
+    PreferNonStubs,
+    Indifferent,
+}
+
 pub(crate) struct GotoResolver<'db, C> {
-    pub infos: PositionalDocument<'db, GotoNode<'db>>,
-    pub on_result: C,
+    infos: PositionalDocument<'db, GotoNode<'db>>,
+    goal: GotoGoal,
+    on_result: C,
 }
 
 impl<'db, C> GotoResolver<'db, C> {
-    pub(crate) fn new(infos: PositionalDocument<'db, GotoNode<'db>>, on_result: C) -> Self {
-        Self { infos, on_result }
+    pub(crate) fn new(
+        infos: PositionalDocument<'db, GotoNode<'db>>,
+        goal: GotoGoal,
+        on_result: C,
+    ) -> Self {
+        Self {
+            infos,
+            goal,
+            on_result,
+        }
     }
 }
 
@@ -181,6 +197,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         let callback = self.on_result;
         GotoResolver {
             infos: self.infos,
+            goal: self.goal,
             on_result: &|n: ValueName| callback(&n),
         }
         .infer_type_definition()
@@ -319,11 +336,6 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             }
         });
         result
-    }
-
-    pub fn infer_implementation(&self) -> Vec<T> {
-        // TODO should goto stub
-        self.infer_type_definition()
     }
 }
 
