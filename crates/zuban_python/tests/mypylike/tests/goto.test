@@ -28,13 +28,81 @@ __main__.py:15:infer -> m.py:2:4
 
 [case goto_with_bytes]
 import dataclasses
-#? --nth-byte 47 goto
+#? --nth-utf8-byte 47 goto
 
 dataclasses
 
 # out of scope
-#? --nth-byte 1000000000 goto
+#? --nth-utf8-byte 1000000000 goto
 dataclasses
 [out]
 __main__.py:3:goto -> __main__.py:1:7
 __main__.py:8:goto -> ()
+
+[case invalid_nth_byte]
+ä = 1
+#? --nth-utf8-byte 1 goto
+
+[out]
+__main__.py:3:goto -> error: 1 is not a valid char boundary
+
+[case goto_with_utf8_bytes]
+ä𐍈ä = 1
+a = 2
+#? --utf8-bytes-column 8 goto
+ä𐍈ä+a
+
+#? --utf8-bytes-column 9 goto
+ä𐍈ä+a
+
+#? --utf8-bytes-column 1 goto
+ä𐍈ä
+
+# out of scope
+#? --utf8-bytes-column 200 goto
+a
+str
+
+[out]
+__main__.py:4:goto -> __main__.py:1:0
+__main__.py:7:goto -> __main__.py:2:0
+__main__.py:10:goto -> error: Column 1 is not a valid char boundary on line "ä𐍈ä"
+__main__.py:14:goto -> __main__.py:2:0
+
+[case goto_with_utf16_code_units]
+ä𐍈ä = 1
+a = 2
+#? --utf16-code-units-column 4 goto
+ä𐍈ä+a
+
+#? --utf16-code-units-column 5 goto
+ä𐍈ä+a
+
+# out of scope
+#? --utf16-code-units-column 6 goto
+a
+str
+
+[out]
+__main__.py:4:goto -> __main__.py:1:0
+__main__.py:7:goto -> __main__.py:2:0
+__main__.py:11:goto -> __main__.py:2:0
+
+[case goto_with_codepoint_column]
+ä𐍈ä = 1
+a = 2
+#? --codepoint-column 3 goto
+ä𐍈ä+a
+
+#? --codepoint-column 4 goto
+ä𐍈ä+a
+
+# out of scope
+#? --codepoint-column 200 goto
+a
+str
+
+[out]
+__main__.py:4:goto -> __main__.py:1:0
+__main__.py:7:goto -> __main__.py:2:0
+__main__.py:11:goto -> __main__.py:2:0

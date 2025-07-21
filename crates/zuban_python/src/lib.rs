@@ -245,7 +245,7 @@ impl<'project> Document<'project> {
 /// All positions are zero based
 #[derive(Debug, Clone, Copy)]
 pub enum InputPosition {
-    NthByte(usize),
+    NthUTF8Byte(usize),
     Utf8Bytes { line: usize, column: usize },
     Utf16CodeUnits { line: usize, column: usize },
     CodePoints { line: usize, column: usize },

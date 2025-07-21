@@ -41,12 +41,12 @@ impl NewlineIndices {
                 ));
             };
             let start = if line == 0 { 0 } else { lines[line - 1] };
-            Ok((start, &code[start as usize..*next_line_start as usize]))
+            Ok((start, &code[start as usize..*next_line_start as usize - 1]))
         };
 
         // TODO Also column can be bigger than the current line. Currently they are rounded down
         Ok(match input {
-            InputPosition::NthByte(pos) => {
+            InputPosition::NthUTF8Byte(pos) => {
                 let byte = pos.min(code.len());
                 if !code.is_char_boundary(byte) {
                     return Err(format!("{pos} is not a valid char boundary"));
@@ -63,9 +63,12 @@ impl NewlineIndices {
                     ));
                 }
                 //
-                start + column as CodeIndex
+                start + out_column as CodeIndex
             }
-            InputPosition::Utf16CodeUnits { line: _, column: _ } => todo!(),
+            InputPosition::Utf16CodeUnits { line, column } => {
+                let (start, rest_line) = line_infos(line)?;
+                start + utf16_to_utf8_byte_offset(rest_line, column)? as CodeIndex
+            }
             InputPosition::CodePoints { line, column } => {
                 let (start, rest_line) = line_infos(line)?;
                 start
@@ -95,6 +98,27 @@ impl NewlineIndices {
             byte_position: byte_position as usize,
         }
     }
+}
+
+fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> Result<usize, String> {
+    let mut utf16_count = 0;
+
+    for (utf8_idx, c) in s.char_indices() {
+        if utf16_count == utf16_pos {
+            return Ok(utf8_idx);
+        }
+
+        let char_utf16_len = c.len_utf16();
+        if utf16_count + char_utf16_len > utf16_pos {
+            // Position is in the middle of this char -> invalid
+            return Err(format!(
+                "Column {utf16_pos} is not a valid code unit boundary on line {s:?}",
+            ));
+        }
+
+        utf16_count += char_utf16_len;
+    }
+    Ok(s.len())
 }
 
 #[derive(Copy, Clone)]

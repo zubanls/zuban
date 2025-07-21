@@ -13,11 +13,11 @@ pub struct Cli {
     #[arg(long)]
     pub codepoint_column: Option<usize>,
     #[arg(long)]
-    pub utf8_column: Option<usize>,
+    pub utf8_bytes_column: Option<usize>,
     #[arg(long)]
     pub utf16_code_units_column: Option<usize>,
     #[arg(long)]
-    pub nth_byte: Option<usize>,
+    pub nth_utf8_byte: Option<usize>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -66,9 +66,9 @@ pub(crate) fn find_and_check_ide_tests(
                 let line = line_nr + 1;
                 match (
                     cli.codepoint_column,
-                    cli.utf8_column,
+                    cli.utf8_bytes_column,
                     cli.utf16_code_units_column,
-                    cli.nth_byte,
+                    cli.nth_utf8_byte,
                 ) {
                     // The position on which we complete is the end of the next line
                     (None, None, None, None) => InputPosition::CodePoints {
@@ -85,7 +85,7 @@ pub(crate) fn find_and_check_ide_tests(
                     (None, None, Some(column), None) => {
                         InputPosition::Utf16CodeUnits { line, column }
                     }
-                    (None, None, None, Some(nth_byte)) => InputPosition::NthByte(nth_byte),
+                    (None, None, None, Some(nth_byte)) => InputPosition::NthUTF8Byte(nth_byte),
                     _ => panic!("The test should not ever pass multiple position informations"),
                 }
             };
@@ -140,21 +140,24 @@ pub(crate) fn find_and_check_ide_tests(
                     )
                 }
             };
-            output.push(match out {
-                Ok(out) => {
-                    let result = if kind == "complete" {
-                        format!("[{}]", out.join(", "))
-                    } else {
-                        if out.is_empty() {
-                            "()".to_string()
+            output.push(
+                match out {
+                    Ok(out) => {
+                        let result = if kind == "complete" {
+                            format!("[{}]", out.join(", "))
                         } else {
-                            out.join("; ")
-                        }
-                    };
-                    format!("{path}:{}:{kind} -> {}", line_nr + 2, result)
+                            if out.is_empty() {
+                                "()".to_string()
+                            } else {
+                                out.join("; ")
+                            }
+                        };
+                        format!("{path}:{}:{kind} -> {}", line_nr + 2, result)
+                    }
+                    Err(err) => format!("{path}:{}:{kind} -> error: {err}", line_nr + 2),
                 }
-                Err(err) => format!("{path}:{}:{kind} -> error: {err}", line_nr + 2),
-            });
+                .to_lowercase(),
+            );
         }
     }
 }
