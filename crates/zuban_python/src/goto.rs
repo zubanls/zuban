@@ -34,8 +34,12 @@ pub(crate) struct PositionalDocument<'db, T> {
 }
 
 impl<'db> PositionalDocument<'db, GotoNode<'db>> {
-    pub fn for_goto(db: &'db Database, file: &'db PythonFile, pos: InputPosition) -> Self {
-        let position = pos.to_code_index(file);
+    pub fn for_goto(
+        db: &'db Database,
+        file: &'db PythonFile,
+        pos: InputPosition,
+    ) -> Result<Self, String> {
+        let position = file.line_column_to_byte(pos)?;
         let (scope, node) = file.tree.goto_node(position);
         debug!(
             "Position for goto-like operation {}->{pos:?} on leaf {node:?}",
@@ -43,12 +47,12 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         );
         let result = file.ensure_calculated_diagnostics(db);
         debug_assert!(result.is_ok());
-        Self {
+        Ok(Self {
             db,
             file,
             scope,
             node,
-        }
+        })
     }
 
     fn infer_position(&self) -> Option<Inferred> {
@@ -200,7 +204,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             goal: self.goal,
             on_result: &|n: ValueName| callback(&n),
         }
-        .infer_type_definition()
+        .infer_definition()
     }
 
     fn check_node_ref_and_maybe_follow_import(
@@ -315,7 +319,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
 }
 
 impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
-    pub fn infer_type_definition(&self) -> Vec<T> {
+    pub fn infer_definition(&self) -> Vec<T> {
         let mut result = vec![];
         let Some(inf) = self.infos.infer_position() else {
             return result;

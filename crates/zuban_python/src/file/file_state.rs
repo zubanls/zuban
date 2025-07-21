@@ -12,13 +12,13 @@ use crate::{
     inferred::Inferred,
     lines::PositionInfos,
     name::{Name, Names},
-    PythonProject,
+    InputPosition, PythonProject,
 };
 
 pub trait File: std::fmt::Debug {
     fn file_index(&self) -> FileIndex;
 
-    fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
+    fn line_column_to_byte(&self, input: InputPosition) -> Result<CodeIndex, String>;
     fn byte_to_position_infos<'db>(
         &'db self,
         db: &'db Database,

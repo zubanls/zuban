@@ -3,6 +3,8 @@ use std::cell::OnceCell;
 use parsa_python_cst::CodeIndex;
 use regex::Regex;
 
+use crate::InputPosition;
+
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
 }
@@ -17,7 +19,6 @@ impl NewlineIndices {
 
     fn lines(&self, code: &str) -> &[u32] {
         self.0.get_or_init(|| {
-            // TODO probably use a OnceCell or something
             let mut v = vec![];
             for m in NEWLINES.find_iter(code) {
                 v.push(m.end() as CodeIndex);
@@ -26,15 +27,55 @@ impl NewlineIndices {
         })
     }
 
-    pub fn line_column_to_byte(&self, code: &str, line: usize, column: usize) -> CodeIndex {
-        if line == 0 {
-            return column as CodeIndex;
-        }
+    pub fn line_column_to_byte(
+        &self,
+        code: &str,
+        input: InputPosition,
+    ) -> Result<CodeIndex, String> {
+        let line_infos = |line| {
+            let lines = self.lines(code);
+            let Some(next_line_start) = lines.get(line) else {
+                return Err(format!(
+                    "File has only {} lines, but line {line} is requested",
+                    lines.len() + 1
+                ));
+            };
+            let start = if line == 0 { 0 } else { lines[line - 1] };
+            Ok((start, &code[start as usize..*next_line_start as usize]))
+        };
 
-        let byte = self.lines(code)[line - 1];
-        // TODO column can be unicode, is that an issue?
-        // TODO Also column can be bigger than the current line.
-        byte + column as CodeIndex
+        // TODO Also column can be bigger than the current line. Currently they are rounded down
+        Ok(match input {
+            InputPosition::NthByte(pos) => {
+                let byte = pos.min(code.len()) as CodeIndex;
+                if !code.is_char_boundary(pos) {
+                    return Err(format!("{pos} is not a valid char boundary"));
+                }
+                byte
+            }
+            InputPosition::Utf8Bytes { line, column } => {
+                let (start, rest_line) = line_infos(line)?;
+                let out_column = column.min(rest_line.len());
+
+                if !rest_line.is_char_boundary(out_column) {
+                    return Err(format!(
+                        "Column {column} is not a valid char boundary on line {rest_line:?}"
+                    ));
+                }
+                //
+                start + column as CodeIndex
+            }
+            InputPosition::Utf16CodeUnits { line: _, column: _ } => todo!(),
+            InputPosition::CodePoints { line, column } => {
+                let (start, rest_line) = line_infos(line)?;
+                start
+                    + rest_line
+                        .chars()
+                        .take(column)
+                        .map(|c| c.len_utf8() as CodeIndex)
+                        .sum::<CodeIndex>()
+            }
+        })
     }
 
     pub fn position_infos<'code>(
@@ -59,7 +100,7 @@ impl NewlineIndices {
 #[derive(Copy, Clone)]
 pub struct PositionInfos<'code> {
     line: usize, // zero-based line number
-    pub line_offset_in_code: usize,
+    pub(crate) line_offset_in_code: usize,
     code: &'code str,
     pub byte_position: usize,
 }

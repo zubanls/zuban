@@ -106,6 +106,7 @@ impl TestFile<'_> {
                             }
                             n
                         })
+                        .unwrap()
                         .into_iter()
                         .collect();
                     if actual != expected {
@@ -120,8 +121,9 @@ impl TestFile<'_> {
                     goal,
                     follow_imports,
                 } => {
-                    let actual: Vec<_> =
-                        document.get().goto(position, goal, follow_imports, |name| {
+                    let actual: Vec<_> = document
+                        .get()
+                        .goto(position, goal, follow_imports, |name| {
                             if name.kind() == SymbolKind::Module {
                                 format!("module {}", name.qualified_name())
                             } else {
@@ -132,7 +134,8 @@ impl TestFile<'_> {
                                     .trim()
                                     .to_owned()
                             }
-                        });
+                        })
+                        .unwrap();
                     if actual != expected {
                         errors.push(format!(
                             "{file_name}: Line #{} {expected:?} != {actual:?}",
@@ -147,7 +150,8 @@ impl TestFile<'_> {
                 } => {
                     let actual: Vec<_> = document
                         .get()
-                        .complete(position, |name| name.label().to_owned());
+                        .complete(position, |name| name.label().to_owned())
+                        .unwrap();
                     for should_not_be_in_there in contains_not {
                         if actual.contains(&should_not_be_in_there) {
                             errors.push(format!(

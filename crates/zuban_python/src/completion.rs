@@ -21,8 +21,12 @@ use crate::{
 type CompletionInfo<'db> = (CompletionNode<'db>, RestNode<'db>);
 
 impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
-    pub fn for_completion(db: &'db Database, file: &'db PythonFile, pos: InputPosition) -> Self {
-        let position = pos.to_code_index(file);
+    pub fn for_completion(
+        db: &'db Database,
+        file: &'db PythonFile,
+        pos: InputPosition,
+    ) -> Result<Self, String> {
+        let position = file.line_column_to_byte(pos)?;
         let (scope, node, rest) = file.tree.completion_node(position);
         let result = file.ensure_calculated_diagnostics(db);
         debug!(
@@ -31,12 +35,12 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
             rest.as_code()
         );
         debug_assert!(result.is_ok());
-        Self {
+        Ok(Self {
             db,
             file,
             scope,
             node: (node, rest),
-        }
+        })
     }
 }
 
@@ -54,13 +58,13 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         file: &'db PythonFile,
         position: InputPosition,
         on_result: C,
-    ) -> Vec<T> {
+    ) -> Result<Vec<T>, String> {
         let _panic_context = utils::panic_context::enter(format!(
             "completions for {} position {position:?}",
             file.file_path(db)
         ));
         let mut slf = Self {
-            infos: PositionalDocument::for_completion(db, file, position),
+            infos: PositionalDocument::for_completion(db, file, position)?,
             on_result,
             items: vec![],
             added_names: Default::default(),
@@ -68,7 +72,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         };
         slf.fill_items();
         slf.items.sort_by_key(|item| item.0);
-        slf.items.into_iter().map(|(_, item)| item).collect()
+        Ok(slf.items.into_iter().map(|(_, item)| item).collect())
     }
 
     fn fill_items(&mut self) {

@@ -30,14 +30,14 @@ use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
 pub use goto::GotoGoal;
 use goto::{GotoResolver, PositionalDocument};
-use parsa_python_cst::{CodeIndex, GotoNode, Tree};
+use parsa_python_cst::{GotoNode, Tree};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 pub use database::Mode;
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
-use file::{File, PythonFile};
+use file::File;
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
@@ -192,7 +192,10 @@ impl<'project> Document<'project> {
         python_file.diagnostics(&self.project.db)
     }
 
-    fn positional_document(&self, position: InputPosition) -> PositionalDocument<GotoNode> {
+    fn positional_document(
+        &self,
+        position: InputPosition,
+    ) -> Result<PositionalDocument<GotoNode>, String> {
         PositionalDocument::for_goto(
             &self.project.db,
             self.project.db.loaded_python_file(self.file_index),
@@ -206,8 +209,11 @@ impl<'project> Document<'project> {
         goal: GotoGoal,
         follow_imports: bool,
         on_name: impl for<'a> Fn(&dyn Name) -> T + Copy,
-    ) -> Vec<T> {
-        GotoResolver::new(self.positional_document(position), goal, on_name).goto(follow_imports)
+    ) -> Result<Vec<T>, String> {
+        Ok(
+            GotoResolver::new(self.positional_document(position)?, goal, on_name)
+                .goto(follow_imports),
+        )
     }
 
     pub fn infer_definition<'slf, T>(
@@ -215,15 +221,18 @@ impl<'project> Document<'project> {
         position: InputPosition,
         goal: GotoGoal,
         on_name: impl for<'a> Fn(ValueName) -> T + Copy,
-    ) -> Vec<T> {
-        GotoResolver::new(self.positional_document(position), goal, on_name).infer_type_definition()
+    ) -> Result<Vec<T>, String> {
+        Ok(
+            GotoResolver::new(self.positional_document(position)?, goal, on_name)
+                .infer_definition(),
+        )
     }
 
     pub fn complete<T>(
         &self,
         position: InputPosition,
         on_completion: impl Fn(&dyn Completion) -> T,
-    ) -> Vec<T> {
+    ) -> Result<Vec<T>, String> {
         CompletionResolver::complete(
             &self.project.db,
             self.project.db.loaded_python_file(self.file_index),
@@ -242,16 +251,6 @@ pub enum InputPosition {
     CodePoints { line: usize, column: usize },
 }
 
-impl InputPosition {
-    fn to_code_index(self, file: &PythonFile) -> CodeIndex {
-        match self {
-            InputPosition::NthByte(pos) => pos as u32,
-            InputPosition::Utf8Bytes { line, column } => file.line_column_to_byte(line, column),
-            InputPosition::Utf16CodeUnits { line: _, column: _ } => todo!(),
-            InputPosition::CodePoints { line: _, column: _ } => todo!(),
-        }
-    }
-}
 /*
 impl<'a> Script<'a> {
     fn leaf(&self, position: Position) -> Leaf {

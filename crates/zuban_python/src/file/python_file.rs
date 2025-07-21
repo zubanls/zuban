@@ -32,7 +32,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{DbString, LookupResult, Type},
     utils::SymbolTable,
-    TypeCheckerFlags,
+    InputPosition, TypeCheckerFlags,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -111,9 +111,9 @@ impl File for PythonFile {
         self.tree.code()
     }
 
-    fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
+    fn line_column_to_byte(&self, input: InputPosition) -> Result<CodeIndex, String> {
         self.newline_indices
-            .line_column_to_byte(self.tree.code(), line, column)
+            .line_column_to_byte(self.tree.code(), input)
     }
 
     fn byte_to_position_infos<'db>(

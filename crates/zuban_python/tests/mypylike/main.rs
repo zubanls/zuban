@@ -1,3 +1,5 @@
+mod ide;
+
 use std::{
     collections::HashMap,
     env,
@@ -11,6 +13,7 @@ use std::{
 use clap::Parser;
 
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
@@ -384,6 +387,12 @@ impl TestCase<'_, '_> {
                 step,
                 self.from_mypy_test_suite,
             );
+            let mut ide_test_results = vec![];
+            if !self.from_mypy_test_suite {
+                for (path, code) in &step.files {
+                    find_and_check_ide_tests(project, path, code, &mut ide_test_results)
+                }
+            }
 
             for path in &step.deletions {
                 project
@@ -468,6 +477,13 @@ impl TestCase<'_, '_> {
             if actual_lines == [""] {
                 actual_lines.pop();
             }
+            // Add ide_test_results
+            for r in &ide_test_results {
+                actual.push_str(r);
+                actual.push('\n');
+            }
+            actual_lines.extend(ide_test_results);
+
             actual_lines.sort();
 
             // For now we want to compare lower cases, because mypy mixes up list[] and List[]
@@ -824,7 +840,7 @@ fn set_mypy_path(options: &mut ProjectOptions) {
     })
 }
 
-fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> PathWithScheme {
+fn base_path_join(local_fs: &dyn VfsHandler, other: &str) -> PathWithScheme {
     PathWithScheme::with_file_scheme(
         BASE_PATH.with(|base_path| local_fs.normalize_rc_path(local_fs.join(base_path, other))),
     )
