@@ -190,18 +190,17 @@ impl TestCase<'_, '_> {
             project_options = Some(new);
         }
 
-        if matches!(self.file_name, "pep561" | "imports") {
-            let first_line = self.code.split('\n').next().unwrap();
-            if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
-                let current_dir = local_fs.current_dir();
-                let folder = local_fs.join(&current_dir, MYPY_TEST_DATA_PACKAGES_FOLDER);
-                settings.prepended_site_packages.extend(
-                    suffix
-                        .split([';', ','])
-                        .map(|s| local_fs.normalize_rc_path(local_fs.join(&folder, s.trim()))),
-                );
-            };
-        }
+        // Appears mostly in pep561.test
+        let first_line = self.code.split('\n').next().unwrap();
+        if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
+            let current_dir = local_fs.current_dir();
+            let folder = local_fs.join(&current_dir, MYPY_TEST_DATA_PACKAGES_FOLDER);
+            settings.prepended_site_packages.extend(
+                suffix
+                    .split([';', ','])
+                    .map(|s| local_fs.normalize_rc_path(local_fs.join(&folder, s.trim()))),
+            );
+        };
 
         if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
             diagnostic_config.show_error_codes = true;

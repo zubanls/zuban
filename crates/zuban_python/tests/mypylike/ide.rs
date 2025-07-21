@@ -1,9 +1,11 @@
+use std::path::Path;
+
 use clap::{Parser, Subcommand};
 use shlex::Shlex;
 use vfs::NormalizedPath;
 use zuban_python::{GotoGoal, InputPosition, Name as _, Project};
 
-use crate::base_path_join;
+use crate::{base_path_join, get_base};
 
 #[derive(Parser, Debug)]
 #[command()]
@@ -114,7 +116,7 @@ pub(crate) fn find_and_check_ide_tests(
                             let start = name.name_range().0;
                             format!(
                                 "{}:{}:{}",
-                                name.relative_path(base_path),
+                                avoid_path_prefixes(name.relative_path(base_path)),
                                 start.line_one_based(),
                                 start.code_points_column()
                             )
@@ -132,7 +134,7 @@ pub(crate) fn find_and_check_ide_tests(
                             let start = name.name_range().0;
                             format!(
                                 "{}:{}:{}",
-                                name.relative_path(base_path),
+                                avoid_path_prefixes(name.relative_path(base_path)),
                                 start.line_one_based(),
                                 start.code_points_column()
                             )
@@ -159,5 +161,13 @@ pub(crate) fn find_and_check_ide_tests(
                 .to_lowercase(),
             );
         }
+    }
+}
+
+fn avoid_path_prefixes(path: &str) -> &str {
+    if let Ok(p) = Path::new(path).strip_prefix(get_base()) {
+        p.to_str().unwrap()
+    } else {
+        path
     }
 }
