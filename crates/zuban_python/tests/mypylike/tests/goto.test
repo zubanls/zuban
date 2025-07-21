@@ -25,3 +25,16 @@ __main__.py:7:goto -> __main__.py:4:0
 __main__.py:10:goto -> __main__.py:2:14
 __main__.py:12:goto -> m.py:2:4
 __main__.py:15:infer -> m.py:2:4
+
+[case goto_with_bytes]
+import dataclasses
+#? --nth-byte 47 goto
+
+dataclasses
+
+# out of scope
+#? --nth-byte 1000000000 goto
+dataclasses
+[out]
+__main__.py:3:goto -> __main__.py:1:7
+__main__.py:8:goto -> ()

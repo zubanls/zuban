@@ -11,7 +11,13 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
     #[arg(long)]
-    pub column: Option<usize>,
+    pub codepoint_column: Option<usize>,
+    #[arg(long)]
+    pub utf8_column: Option<usize>,
+    #[arg(long)]
+    pub utf16_code_units_column: Option<usize>,
+    #[arg(long)]
+    pub nth_byte: Option<usize>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -56,17 +62,32 @@ pub(crate) fn find_and_check_ide_tests(
                 Cli::parse_from(std::iter::once("".to_string()).chain(Shlex::new(after_comment)));
             let p = base_path_join(project.vfs_handler(), path);
             let document = project.document(&p).unwrap();
-            let position = InputPosition::CodePoints {
-                line: line_nr + 1,
-                column: cli.column.unwrap_or_else(|| {
+            let position = {
+                let line = line_nr + 1;
+                match (
+                    cli.codepoint_column,
+                    cli.utf8_column,
+                    cli.utf16_code_units_column,
+                    cli.nth_byte,
+                ) {
                     // The position on which we complete is the end of the next line
-                    iterator
-                        .peek()
-                        .expect("Expect a line after #?")
-                        .1
-                        .chars()
-                        .count()
-                }),
+                    (None, None, None, None) => InputPosition::CodePoints {
+                        line,
+                        column: iterator
+                            .peek()
+                            .expect("Expect a line after #?")
+                            .1
+                            .chars()
+                            .count(),
+                    },
+                    (Some(column), None, None, None) => InputPosition::CodePoints { line, column },
+                    (None, Some(column), None, None) => InputPosition::Utf8Bytes { line, column },
+                    (None, None, Some(column), None) => {
+                        InputPosition::Utf16CodeUnits { line, column }
+                    }
+                    (None, None, None, Some(nth_byte)) => InputPosition::NthByte(nth_byte),
+                    _ => panic!("The test should not ever pass multiple position informations"),
+                }
             };
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
@@ -124,7 +145,11 @@ pub(crate) fn find_and_check_ide_tests(
                     let result = if kind == "complete" {
                         format!("[{}]", out.join(", "))
                     } else {
-                        out.join("; ")
+                        if out.is_empty() {
+                            "()".to_string()
+                        } else {
+                            out.join("; ")
+                        }
                     };
                     format!("{path}:{}:{kind} -> {}", line_nr + 2, result)
                 }

@@ -47,11 +47,11 @@ impl NewlineIndices {
         // TODO Also column can be bigger than the current line. Currently they are rounded down
         Ok(match input {
             InputPosition::NthByte(pos) => {
-                let byte = pos.min(code.len()) as CodeIndex;
-                if !code.is_char_boundary(pos) {
+                let byte = pos.min(code.len());
+                if !code.is_char_boundary(byte) {
                     return Err(format!("{pos} is not a valid char boundary"));
                 }
-                byte
+                byte as CodeIndex
             }
             InputPosition::Utf8Bytes { line, column } => {
                 let (start, rest_line) = line_infos(line)?;
