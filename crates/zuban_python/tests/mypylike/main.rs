@@ -502,10 +502,10 @@ impl TestCase<'_, '_> {
                 .collect();
             wanted_lower.sort();
 
-            // To check output only sort by filenames, which should be enough.
-            wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
-
             if wanted_lower != actual_lines {
+                // To check output only sort by filenames, which should be enough.
+                wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
+
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
                 result = Err(format!(
                     "\nMismatch:\n\

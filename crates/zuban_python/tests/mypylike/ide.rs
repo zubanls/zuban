@@ -24,9 +24,7 @@ pub enum Commands {
 #[derive(Parser, Debug)]
 pub struct CompleteArgs {
     #[arg(long)]
-    pub contains_subset: bool,
-    #[arg(last = true)]
-    pub expected: Vec<String>,
+    pub contains_subset: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -35,16 +33,12 @@ pub struct GotoArgs {
     pub prefer_stubs: bool,
     #[arg(long)]
     pub follow_imports: bool,
-    #[arg(last = true)]
-    pub expected: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
 pub struct InferArgs {
     #[arg(long)]
     pub prefer_stubs: bool,
-    #[arg(last = true)]
-    pub expected: Vec<String>,
 }
 
 pub(crate) fn find_and_check_ide_tests(
@@ -75,10 +69,13 @@ pub(crate) fn find_and_check_ide_tests(
                 }),
             };
             let (kind, out) = match cli.command {
-                Commands::Complete(complete_args) => {
-                    // TODO
-                    todo!()
-                }
+                Commands::Complete(complete_args) => (
+                    "complete",
+                    document.complete(position, |name| {
+                        // TODO
+                        name.label().to_owned()
+                    }),
+                ),
                 Commands::Goto(goto_args) => {
                     let goal = match goto_args.prefer_stubs {
                         false => GotoGoal::PreferNonStubs,
@@ -117,7 +114,14 @@ pub(crate) fn find_and_check_ide_tests(
                 }
             };
             output.push(match out {
-                Ok(out) => format!("{path}:{}:{kind} -> {}", line_nr + 2, out.join("; ")),
+                Ok(out) => {
+                    let result = if kind == "complete" {
+                        format!("[{}]", out.join(", "))
+                    } else {
+                        out.join("; ")
+                    };
+                    format!("{path}:{}:{kind} -> {}", line_nr + 2, result)
+                }
                 Err(err) => format!("{path}:{}:{kind} -> error: {err}", line_nr + 2),
             });
         }
