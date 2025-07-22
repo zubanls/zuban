@@ -304,3 +304,19 @@ def target_completions():
     x = 1
     #! 5 ['x = 1']
     x = 2
+
+    from import_tree.mod1 import a
+    #! 5 ["from import_tree.mod1 import a"]
+    a = 2
+    #! 5 --follow-imports ['a = 1']
+    a = 3
+
+    w = 1
+    #! 10 ['w = 1']
+    with w: ...
+    #! 20 ['w = 1']
+    with open() as w: ...
+    try:
+        ...
+    #! 12 ['w = 1']
+    except w: ...
