@@ -49,6 +49,8 @@ pub struct GotoArgs {
 pub struct InferArgs {
     #[arg(long)]
     pub prefer_stubs: bool,
+    #[arg(long)]
+    pub show_qualified_name: bool,
 }
 
 pub(crate) fn find_and_check_ide_tests(
@@ -139,12 +141,17 @@ pub(crate) fn find_and_check_ide_tests(
                         "infer",
                         document.infer_definition(position, goal, |vn| {
                             let start = vn.name.name_range().0;
-                            format!(
+                            let mut result = format!(
                                 "{}:{}:{}",
                                 avoid_path_prefixes(vn.name.relative_path(base_path)),
                                 start.line_one_based(),
                                 start.code_points_column()
-                            )
+                            );
+                            if infer_args.show_qualified_name {
+                                result.push(':');
+                                result.push_str(&vn.name.qualified_name());
+                            }
+                            result
                         }),
                     )
                 }
