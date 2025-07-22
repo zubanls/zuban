@@ -94,7 +94,13 @@ impl<'x> Name<'x> {
                     Scope::Module => ParentScope::Module,
                     Scope::Class(class_def) => ParentScope::Class(class_def.index()),
                     Scope::Function(function_def) => ParentScope::Function(function_def.index()),
-                    Scope::Lambda(lambda) => todo!(),
+                    Scope::Lambda(_) => {
+                        return ParentScope::qualified_name_for_unreachable_scope(
+                            n.db,
+                            NodeRef::new(n.file, n.cst_name.index()),
+                            n.cst_name.as_code(),
+                        )
+                    }
                 };
                 parent_scope.qualified_name(
                     n.db,

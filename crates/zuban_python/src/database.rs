@@ -1367,13 +1367,22 @@ impl ParentScope {
                 format!("{}.{}", parent_class.qualified_name(db), name)
             }
             ParentScope::Function(_) => {
-                let line = file
-                    .byte_to_position_infos(db, defined_at.node_start_position())
-                    .line_one_based();
-                // Add the position like `foo.Bar@7`
-                format!("{}.{name}@{line}", file.qualified_name(db))
+                Self::qualified_name_for_unreachable_scope(db, defined_at, name)
             }
         }
+    }
+
+    pub fn qualified_name_for_unreachable_scope(
+        db: &Database,
+        defined_at: NodeRef,
+        name: &str,
+    ) -> String {
+        let line = defined_at
+            .file
+            .byte_to_position_infos(db, defined_at.node_start_position())
+            .line_one_based();
+        // Add the position like `foo.Bar@7`
+        format!("{}.{name}@{line}", defined_at.file.qualified_name(db))
     }
 }
 

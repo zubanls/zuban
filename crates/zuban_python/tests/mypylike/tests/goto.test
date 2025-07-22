@@ -225,19 +225,19 @@ __main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sa
 
 [case simple_file_that_has_stub]
 import m
-#? goto
+#? goto --show-qualified-name
 m.C
-#? goto --prefer-stubs
+#? goto --prefer-stubs --show-qualified-name
 m.C
-#? goto
+#? goto --show-qualified-name
 m.C.f
-#? goto --prefer-stubs
+#? goto --prefer-stubs --show-qualified-name
 m.C.f
 
 x = m.C()
-#? --codepoint-column 3 goto
+#? --codepoint-column 3 goto --show-qualified-name
 x.f(1)
-#? --codepoint-column 3 goto --prefer-stubs
+#? --codepoint-column 3 goto --prefer-stubs --show-qualified-name
 x.f(1)
 
 [file m.py]
@@ -249,9 +249,20 @@ class C:
     def f(self, x: int, /): ...
 
 [out]
-__main__.py:3:goto -> m.py:2:6
-__main__.py:5:goto -> m.pyi:1:6
-__main__.py:7:goto -> m.py:3:8
-__main__.py:9:goto -> m.pyi:2:8
-__main__.py:13:goto -> m.py:3:8
-__main__.py:15:goto -> m.pyi:2:8
+__main__.py:3:goto -> m.py:2:6:m.c
+__main__.py:5:goto -> m.pyi:1:6:m.c
+__main__.py:7:goto -> m.py:3:8:m.C.f
+__main__.py:9:goto -> m.pyi:2:8:m.C.f
+__main__.py:13:goto -> m.py:3:8:m.C.f
+__main__.py:15:goto -> m.pyi:2:8:m.C.f
+
+[case lambda_qualified_name]
+def f():
+    #? goto --show-qualified-name
+    x = lambda y: y
+    #? goto --show-qualified-name
+    x
+
+[out]
+__main__.py:3:goto -> __main__.py:3:15:__main__.y@3
+__main__.py:5:goto -> __main__.py:3:4:__main__.x@3

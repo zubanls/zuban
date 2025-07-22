@@ -41,6 +41,8 @@ pub struct GotoArgs {
     pub prefer_stubs: bool,
     #[arg(long)]
     pub follow_imports: bool,
+    #[arg(long)]
+    pub show_qualified_name: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -114,12 +116,17 @@ pub(crate) fn find_and_check_ide_tests(
                         "goto",
                         document.goto(position, goal, goto_args.follow_imports, |name| {
                             let start = name.name_range().0;
-                            format!(
+                            let mut result = format!(
                                 "{}:{}:{}",
                                 avoid_path_prefixes(name.relative_path(base_path)),
                                 start.line_one_based(),
                                 start.code_points_column()
-                            )
+                            );
+                            if goto_args.show_qualified_name {
+                                result.push(':');
+                                result.push_str(&name.qualified_name());
+                            }
+                            result
                         }),
                     )
                 }
