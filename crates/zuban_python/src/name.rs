@@ -1,11 +1,14 @@
-use parsa_python_cst::Name as CSTName;
+use parsa_python_cst::{ClassDef, FunctionDef, Name as CSTName, Scope};
 use vfs::NormalizedPath;
 
 use crate::{
+    completion::ScopesIterator,
     database::{Database, ParentScope},
-    file::{File as _, PythonFile},
+    file::{ClassNodeRef, File as _, PythonFile},
+    inference_state::InferenceState,
     node_ref::NodeRef,
-    type_::Type,
+    type_::{LookupResult, Type},
+    type_helpers::Class,
     PositionInfos,
 };
 
@@ -156,8 +159,28 @@ impl<'x> Name<'x> {
     pub(crate) fn goto_non_stub(&self) -> Option<Name<'x>> {
         match self {
             Name::TreeName(n) => {
-                // TODO
-                None
+                let db = n.db;
+                let file = n.file.normal_file_of_stub_file(db)?;
+                let scopes = ScopesIterator {
+                    file,
+                    only_reachable: true,
+                    current: Some(match n.parent_scope {
+                        ParentScope::Module => Scope::Module,
+                        ParentScope::Function(f) => {
+                            Scope::Function(FunctionDef::by_index(&file.tree, f))
+                        }
+                        ParentScope::Class(c) => Scope::Class(ClassDef::by_index(&file.tree, c)),
+                    }),
+                };
+                let ref_ = lookup_parent_scope_in_other_file(db, file, scopes)?
+                    .lookup(db, n.cst_name.as_code())?;
+                Some(Self::TreeName(TreeName {
+                    db,
+                    file: ref_.file,
+                    // TODO wrong scope
+                    parent_scope: ParentScope::Module,
+                    cst_name: ref_.maybe_name()?,
+                }))
             }
             Name::ModuleName(n) => {
                 let file = n.file.normal_file_of_stub_file(n.db)?;
@@ -165,6 +188,47 @@ impl<'x> Name<'x> {
             }
             Name::NodeName(_) => None,
         }
+    }
+}
+
+enum FileOrClass<'a> {
+    File(&'a PythonFile),
+    Class(Class<'a>),
+}
+
+impl<'a> FileOrClass<'a> {
+    fn lookup(&self, db: &'a Database, name: &str) -> Option<NodeRef<'a>> {
+        match self {
+            FileOrClass::File(file) => file.lookup_symbol(name),
+            FileOrClass::Class(class) => {
+                let i_s = &InferenceState::from_class(db, class);
+                let LookupResult::GotoName { name, .. } = class.lookup_symbol(i_s, name) else {
+                    return None;
+                };
+                Some(NodeRef::from_link(db, name))
+            }
+        }
+    }
+}
+
+fn lookup_parent_scope_in_other_file<'db>(
+    db: &'db Database,
+    file: &'db PythonFile,
+    mut reachable_scopes: ScopesIterator,
+) -> Option<FileOrClass<'db>> {
+    match reachable_scopes.next()? {
+        Scope::Module => Some(FileOrClass::File(file)),
+        Scope::Class(c) => {
+            let from_parent = lookup_parent_scope_in_other_file(db, file, reachable_scopes)?;
+            let cls = from_parent
+                .lookup(db, c.name().as_code())?
+                .maybe_name_of_class()?;
+            Some(FileOrClass::Class(Class::with_self_generics(
+                db,
+                ClassNodeRef::new(file, cls.index()),
+            )))
+        }
+        Scope::Function(_) | Scope::Lambda(_) => return None,
     }
 }
 

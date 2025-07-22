@@ -85,8 +85,9 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 self.add_attribute_completions(inf)
             }
             CompletionNode::Global => {
-                let reachable_scopes = &mut ReachableScopesIterator {
+                let reachable_scopes = &mut ScopesIterator {
                     file,
+                    only_reachable: true,
                     current: Some(self.infos.scope),
                 };
                 for scope in reachable_scopes {
@@ -495,12 +496,13 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 }
 
-pub struct ReachableScopesIterator<'db> {
-    file: &'db PythonFile,
-    current: Option<Scope<'db>>,
+pub(crate) struct ScopesIterator<'db> {
+    pub file: &'db PythonFile,
+    pub only_reachable: bool,
+    pub current: Option<Scope<'db>>,
 }
 
-impl<'db> Iterator for ReachableScopesIterator<'db> {
+impl<'db> Iterator for ScopesIterator<'db> {
     type Item = Scope<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -520,23 +522,25 @@ impl<'db> Iterator for ReachableScopesIterator<'db> {
         loop {
             match parent_scope(check) {
                 // Case was already handled
-                Ok(()) => {
-                    return Some(result);
-                }
+                Ok(()) => (),
                 Err(ParentScope::Module) => {
                     self.current = Some(Scope::Module);
-                    return Some(result);
                 }
                 Err(ParentScope::Function(f)) => {
                     self.current = Some(Scope::Function(FunctionDef::by_index(&self.file.tree, f)));
-                    return Some(result);
                 }
                 Err(ParentScope::Class(c)) => {
-                    // Parent classes are not reachable for name lookups and therefore need to be
-                    // skipped
                     check = Scope::Class(ClassDef::by_index(&self.file.tree, c));
+                    if self.only_reachable {
+                        // Parent classes are not reachable for name lookups and therefore need to be
+                        // skipped
+                        continue;
+                    } else {
+                        self.current = Some(check);
+                    }
                 }
             }
+            return Some(result);
         }
     }
 }

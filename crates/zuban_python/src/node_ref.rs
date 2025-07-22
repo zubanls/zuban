@@ -19,7 +19,7 @@ use crate::{
     },
     inference_state::InferenceState,
     inferred::Inferred,
-    python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
+    python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
     type_helpers::Function,
 };
@@ -375,9 +375,13 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_name_of_function(&self) -> Option<FunctionDef<'file>> {
-        self.node_index
-            .checked_sub(NAME_TO_FUNCTION_DIFF)
-            .and_then(|node_index| NodeRef::new(self.file, node_index).maybe_function())
+        let n = self.node_index.checked_sub(NAME_TO_FUNCTION_DIFF)?;
+        NodeRef::new(self.file, n).maybe_function()
+    }
+
+    pub fn maybe_name_of_class(&self) -> Option<ClassDef<'file>> {
+        let n = self.node_index.checked_sub(NAME_TO_CLASS_DIFF)?;
+        NodeRef::new(self.file, n).maybe_class()
     }
 
     pub fn node_start_position(self) -> CodeIndex {

@@ -130,11 +130,11 @@ ex
 af
 
 [out]
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
+__main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
 __main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
 __main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
 __main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
+__main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
 __main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
 __main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
 __main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
