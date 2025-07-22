@@ -193,7 +193,7 @@ impl<'db, C> GotoResolver<'db, C> {
     }
 }
 
-impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
+impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     pub fn goto(self, follow_imports: bool) -> Vec<T> {
         if let Some(names) = self.goto_name(follow_imports) {
             return names;
@@ -202,7 +202,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         GotoResolver {
             infos: self.infos,
             goal: self.goal,
-            on_result: &|n: ValueName| callback(&n),
+            on_result: &|n: ValueName| callback(n.name),
         }
         .infer_definition()
     }
@@ -218,8 +218,8 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             if let Some(name_def) = n.name_def() {
                 let on_module = |p: Point| {
                     let file = db.loaded_python_file(p.file_index());
-                    let name = ModuleName { db, file };
-                    return Some((self.on_result)(&name));
+                    let name = Name::ModuleName(ModuleName { db, file });
+                    return Some((self.on_result)(name));
                 };
                 match name_def.maybe_import() {
                     Some(NameImportParent::ImportFromAsName(_)) => {
@@ -245,8 +245,8 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 }
             }
         }
-        let tree_name = TreeName::new(db, node_ref.file, ParentScope::Module, n);
-        Some((self.on_result)(&tree_name))
+        let tree_name = Name::TreeName(TreeName::new(db, node_ref.file, ParentScope::Module, n));
+        Some((self.on_result)(tree_name))
     }
 
     fn goto_name(&self, follow_imports: bool) -> Option<Vec<T>> {
@@ -343,15 +343,15 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     }
 }
 
-fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnMut(&dyn Name)) {
+fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnMut(Name)) {
     let db = i_s.db;
     let from_node_ref = |node_ref: NodeRef<'db>| {
-        TreeName::new(
+        Name::TreeName(TreeName::new(
             db,
             node_ref.file,
             ParentScope::Module,
             node_ref.expect_name(),
-        )
+        ))
     };
     let from_type_var_like_name = |tvl_name| match tvl_name {
         TypeVarLikeName::InString { name_node, .. } => {
@@ -365,24 +365,29 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
         let parent_scope = ClassInitializer::from_node_ref(node_ref)
             .class_storage
             .parent_scope;
-        TreeName::new(db, node_ref.file, parent_scope, node_ref.node().name())
+        Name::TreeName(TreeName::new(
+            db,
+            node_ref.file,
+            parent_scope,
+            node_ref.node().name(),
+        ))
     };
     let lookup = |module: &'db PythonFile, name| Some(from_node_ref(module.lookup_symbol(name)?));
     match t {
-        Type::Class(c) => add(&from_class_node_ref(c.node_ref(db))),
+        Type::Class(c) => add(from_class_node_ref(c.node_ref(db))),
         Type::None => {
             if let Some(n) = lookup(db.python_state.types(), "NoneType") {
-                add(&n)
+                add(n)
             }
         }
         Type::Tuple(tup) => {
             let node_ref = tup.class(db).node_ref.to_db_lifetime(db);
-            add(&TreeName::new(
+            add(Name::TreeName(TreeName::new(
                 db,
                 node_ref.file,
                 ParentScope::Module,
                 node_ref.node().name(),
-            ))
+            )))
         }
         Type::Any(_) => (),
         Type::Intersection(intersection) => {
@@ -395,7 +400,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             type_to_name(i_s, &Type::Callable(first.clone()), add)
         }
         Type::TypeVar(tv) => match tv.type_var.name {
-            TypeVarName::Name(tvl_name) => add(&from_type_var_like_name(tvl_name)),
+            TypeVarName::Name(tvl_name) => add(from_type_var_like_name(tvl_name)),
             TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => (),
         },
         Type::Type(t) => return type_to_name(i_s, &t, add),
@@ -403,68 +408,73 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             let node_ref = NodeRef::from_link(db, callable.defined_at);
             if let Some(func) = node_ref.maybe_function() {
                 let parent_scope = FuncNodeRef::from_node_ref(node_ref).parent_scope();
-                add(&TreeName::new(db, node_ref.file, parent_scope, func.name()))
+                add(Name::TreeName(TreeName::new(
+                    db,
+                    node_ref.file,
+                    parent_scope,
+                    func.name(),
+                )))
             } else if let Some(callable) = lookup(db.python_state.typing(), "Callable") {
-                add(&callable)
+                add(callable)
             }
         }
         Type::RecursiveType(rec) => type_to_name(i_s, rec.calculated_type(db), add),
-        Type::NewType(n) => add(&from_node_ref(NodeRef::from_link(db, n.name_node))),
+        Type::NewType(n) => add(from_node_ref(NodeRef::from_link(db, n.name_node))),
         Type::ParamSpecArgs(usage) | Type::ParamSpecKwargs(usage) => {
-            add(&from_type_var_like_name(usage.param_spec.name))
+            add(from_type_var_like_name(usage.param_spec.name))
         }
         Type::Literal(l) => {
             let node_ref = l.fallback_node_ref(db);
-            add(&TreeName::new(
+            add(Name::TreeName(TreeName::new(
                 db,
                 node_ref.file,
                 ParentScope::Module,
                 node_ref.node().name(),
-            ))
+            )))
         }
-        Type::Dataclass(dataclass) => add(&from_class_node_ref(dataclass.class.node_ref(db))),
+        Type::Dataclass(dataclass) => add(from_class_node_ref(dataclass.class.node_ref(db))),
         // It seems like dataclass transform is only used as an internal type
         Type::DataclassTransformObj(_) => (),
         Type::TypedDict(td) => {
             let node_ref = NodeRef::from_link(db, td.defined_at);
             if let Some(_) = node_ref.maybe_class() {
-                add(&from_class_node_ref(ClassNodeRef::from_node_ref(node_ref)))
+                add(from_class_node_ref(ClassNodeRef::from_node_ref(node_ref)))
             } else {
-                add(&NodeName::new(
+                add(Name::NodeName(NodeName::new(
                     db,
                     node_ref,
                     &td.name_or_fallback(&FormatData::new_short(db)),
-                ))
+                )))
             }
         }
-        Type::NamedTuple(nt) => add(&NodeName::new(
+        Type::NamedTuple(nt) => add(Name::NodeName(NodeName::new(
             db,
             NodeRef::from_link(db, nt.__new__.defined_at),
             nt.name(db),
-        )),
+        ))),
         Type::Enum(enum_) => {
             if enum_.from_functional_definition(db) {
-                add(&NodeName::new(
+                add(Name::NodeName(NodeName::new(
                     db,
                     NodeRef::from_link(db, enum_.defined_at),
                     enum_.name.as_str(db),
-                ))
+                )))
             } else {
-                add(&from_class_node_ref(*enum_.class(db)))
+                add(from_class_node_ref(*enum_.class(db)))
             }
         }
         Type::EnumMember(member) => {
             if let Some(node_ref) = member.name_node(db) {
-                add(&from_node_ref(node_ref))
+                add(from_node_ref(node_ref))
             } else {
                 // If we have no name we just goto the enum.
                 type_to_name(i_s, &Type::Enum(member.enum_.clone()), add)
             }
         }
-        Type::Module(file_index) => add(&ModuleName {
+        Type::Module(file_index) => add(Name::ModuleName(ModuleName {
             db,
             file: db.loaded_python_file(*file_index),
-        }),
+        })),
         Type::Namespace(_) => {
             // Namespaces cannot be used in goto
         }

@@ -208,7 +208,7 @@ impl<'project> Document<'project> {
         position: InputPosition,
         goal: GotoGoal,
         follow_imports: bool,
-        on_name: impl for<'a> Fn(&dyn Name) -> T + Copy,
+        on_name: impl for<'a> Fn(Name) -> T + Copy,
     ) -> Result<Vec<T>, String> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)

@@ -1,5 +1,3 @@
-use std::fmt;
-
 use parsa_python_cst::Name as CSTName;
 use vfs::NormalizedPath;
 
@@ -12,64 +10,19 @@ use crate::{
 };
 
 pub type Range<'a> = (PositionInfos<'a>, PositionInfos<'a>);
-pub type Names = Vec<Box<dyn Name>>;
 
-pub trait Name: fmt::Debug {
-    fn name(&self) -> &str;
-    fn code(&self) -> &str;
-    fn file_path(&self) -> &NormalizedPath;
-    fn relative_path(&self, base: &NormalizedPath) -> &str {
-        let p = self.file_path();
-        if let Ok(stripped) = p.as_ref().strip_prefix(base.as_ref()) {
-            stripped.to_str().unwrap()
-        } else {
-            p
-        }
-    }
-    fn qualified_name(&self) -> String;
-    fn is_implementation(&self) -> bool {
-        true
-    }
-    fn kind(&self) -> SymbolKind;
-
-    fn name_range(&self) -> Range;
-    // Can e.g. be the full name
-    fn target_range(&self) -> Range;
-    fn target_range_code(&self) -> &str {
-        let (start, end) = self.target_range();
-        start.code_until(end)
-    }
+#[derive(Debug)]
+pub enum Name<'db> {
+    TreeName(TreeName<'db>),
+    ModuleName(ModuleName<'db>),
+    NodeName(NodeName<'db>),
 }
 
 #[derive(Debug)]
 pub struct ValueName<'x> {
     pub(crate) db: &'x Database,
     pub(crate) type_: &'x Type,
-    pub(crate) name: &'x dyn Name,
-}
-
-impl Name for ValueName<'_> {
-    fn name(&self) -> &str {
-        self.name.name()
-    }
-    fn file_path(&self) -> &NormalizedPath {
-        self.name.file_path()
-    }
-    fn code(&self) -> &str {
-        self.name.code()
-    }
-    fn qualified_name(&self) -> String {
-        self.name.qualified_name()
-    }
-    fn kind(&self) -> SymbolKind {
-        self.name.kind()
-    }
-    fn name_range(&self) -> Range {
-        self.name.name_range()
-    }
-    fn target_range(&self) -> Range {
-        self.name.target_range()
-    }
+    pub name: Name<'x>,
 }
 
 impl ValueName<'_> {
@@ -86,8 +39,123 @@ impl ValueName<'_> {
     }
 }
 
+impl Name<'_> {
+    pub fn name(&self) -> &str {
+        match self {
+            Name::TreeName(n) => n.cst_name.as_str(),
+            Name::ModuleName(n) => n.file.name_and_parent_dir(n.db).0,
+            Name::NodeName(n) => n.name,
+        }
+    }
+
+    pub fn code(&self) -> &str {
+        self.file().tree.code()
+    }
+
+    fn file(&self) -> &PythonFile {
+        match self {
+            Name::TreeName(TreeName { file, .. })
+            | Name::ModuleName(ModuleName { file, .. })
+            | Name::NodeName(NodeName {
+                node_ref: NodeRef { file, .. },
+                ..
+            }) => file,
+        }
+    }
+
+    pub fn file_path(&self) -> &NormalizedPath {
+        match self {
+            Name::TreeName(TreeName { db, file, .. })
+            | Name::ModuleName(ModuleName { db, file, .. })
+            | Name::NodeName(NodeName {
+                db,
+                node_ref: NodeRef { file, .. },
+                ..
+            }) => file.file_path(db),
+        }
+    }
+
+    pub fn relative_path(&self, base: &NormalizedPath) -> &str {
+        let p = self.file_path();
+        if let Ok(stripped) = p.as_ref().strip_prefix(base.as_ref()) {
+            stripped.to_str().unwrap()
+        } else {
+            p
+        }
+    }
+
+    pub fn qualified_name(&self) -> String {
+        match self {
+            Name::TreeName(n) => n.parent_scope.qualified_name(
+                n.db,
+                NodeRef::new(n.file, n.cst_name.index()),
+                n.cst_name.as_code(),
+            ),
+            Name::ModuleName(n) => n.file.qualified_name(n.db),
+            Name::NodeName(n) => n.name.to_string(),
+        }
+    }
+
+    pub fn is_implementation(&self) -> bool {
+        !self.file().is_stub()
+    }
+
+    pub fn kind(&self) -> SymbolKind {
+        match self {
+            Name::TreeName(_) => SymbolKind::Object,
+            Name::ModuleName(_) => SymbolKind::Module,
+            Name::NodeName(_) => SymbolKind::Object,
+        }
+    }
+
+    pub fn name_range(&self) -> Range {
+        match self {
+            Name::TreeName(n) => (
+                n.file.byte_to_position_infos(n.db, n.cst_name.start()),
+                n.file.byte_to_position_infos(n.db, n.cst_name.end()),
+            ),
+            Name::ModuleName(n) => {
+                let start_of_file = n.file.byte_to_position_infos(n.db, 0);
+                (start_of_file, start_of_file)
+            }
+            Name::NodeName(name) => {
+                let n = name.node_ref;
+                let start = n.node_start_position();
+                let end = n.node_end_position();
+                (
+                    n.file.byte_to_position_infos(name.db, start),
+                    n.file.byte_to_position_infos(name.db, end),
+                )
+            }
+        }
+    }
+    // Can e.g. be the full name
+    pub fn target_range(&self) -> Range {
+        match self {
+            Name::TreeName(n) => {
+                if let Some(name_def) = n.cst_name.name_def() {
+                    let (start, end) = name_def.definition_range();
+                    (
+                        n.file.byte_to_position_infos(n.db, start),
+                        n.file.byte_to_position_infos(n.db, end),
+                    )
+                } else {
+                    // This should not really happen
+                    self.name_range()
+                }
+            }
+            _ => self.name_range(),
+        }
+    }
+
+    pub fn target_range_code(&self) -> &str {
+        let (start, end) = self.target_range();
+        start.code_until(end)
+    }
+}
+
 #[derive(Debug)]
-pub(crate) struct TreeName<'db> {
+pub struct TreeName<'db> {
     db: &'db Database,
     file: &'db PythonFile,
     parent_scope: ParentScope,
@@ -95,7 +163,7 @@ pub(crate) struct TreeName<'db> {
 }
 
 impl<'db> TreeName<'db> {
-    pub fn new(
+    pub(crate) fn new(
         db: &'db Database,
         file: &'db PythonFile,
         parent_scope: ParentScope,
@@ -110,60 +178,8 @@ impl<'db> TreeName<'db> {
     }
 }
 
-impl<'db> Name for TreeName<'db> {
-    fn name(&self) -> &str {
-        self.cst_name.as_str()
-    }
-
-    fn file_path(&self) -> &NormalizedPath {
-        self.db.file_path(self.file.file_index)
-    }
-
-    fn code(&self) -> &str {
-        self.file.tree.code()
-    }
-
-    fn qualified_name(&self) -> String {
-        self.parent_scope.qualified_name(
-            self.db,
-            NodeRef::new(self.file, self.cst_name.index()),
-            self.cst_name.as_code(),
-        )
-    }
-
-    fn is_implementation(&self) -> bool {
-        // TODO this is incomplete
-        !self.file.is_stub()
-    }
-
-    fn kind(&self) -> SymbolKind {
-        SymbolKind::Object
-    }
-
-    fn name_range(&self) -> Range {
-        (
-            self.file
-                .byte_to_position_infos(self.db, self.cst_name.start()),
-            self.file
-                .byte_to_position_infos(self.db, self.cst_name.end()),
-        )
-    }
-    fn target_range(&self) -> Range {
-        if let Some(name_def) = self.cst_name.name_def() {
-            let (start, end) = name_def.definition_range();
-            (
-                self.file.byte_to_position_infos(self.db, start),
-                self.file.byte_to_position_infos(self.db, end),
-            )
-        } else {
-            // This should not really happen
-            self.name_range()
-        }
-    }
-}
-
 #[derive(Debug)]
-pub(crate) struct NodeName<'db> {
+pub struct NodeName<'db> {
     db: &'db Database,
     node_ref: NodeRef<'db>,
     name: &'db str,
@@ -175,84 +191,10 @@ impl<'db> NodeName<'db> {
     }
 }
 
-impl<'db> Name for NodeName<'db> {
-    fn name(&self) -> &str {
-        self.name
-    }
-
-    fn file_path(&self) -> &NormalizedPath {
-        self.node_ref.file.file_path(self.db)
-    }
-
-    fn code(&self) -> &str {
-        self.node_ref.file.tree.code()
-    }
-
-    fn qualified_name(&self) -> String {
-        self.name().to_string()
-    }
-
-    fn is_implementation(&self) -> bool {
-        // TODO this is incomplete
-        !self.node_ref.file.is_stub()
-    }
-
-    fn kind(&self) -> SymbolKind {
-        SymbolKind::Object
-    }
-
-    fn name_range(&self) -> Range {
-        let n = self.node_ref;
-        let start = n.node_start_position();
-        let end = n.node_end_position();
-        (
-            n.file.byte_to_position_infos(self.db, start),
-            n.file.byte_to_position_infos(self.db, end),
-        )
-    }
-    fn target_range(&self) -> Range {
-        self.name_range()
-    }
-}
-
 #[derive(Debug)]
-pub(crate) struct ModuleName<'db> {
-    pub db: &'db Database,
-    pub file: &'db PythonFile,
-}
-
-impl<'db> Name for ModuleName<'db> {
-    fn name(&self) -> &str {
-        self.file.name_and_parent_dir(self.db).0
-    }
-
-    fn file_path(&self) -> &NormalizedPath {
-        self.file.file_path(self.db)
-    }
-    fn code(&self) -> &str {
-        self.file.tree.code()
-    }
-
-    fn qualified_name(&self) -> String {
-        self.file.qualified_name(self.db)
-    }
-
-    fn is_implementation(&self) -> bool {
-        // TODO this is incomplete
-        !self.file.is_stub()
-    }
-
-    fn kind(&self) -> SymbolKind {
-        SymbolKind::Module
-    }
-
-    fn name_range(&self) -> Range {
-        let start_of_file = self.file.byte_to_position_infos(self.db, 0);
-        (start_of_file, start_of_file)
-    }
-    fn target_range(&self) -> Range {
-        self.name_range()
-    }
+pub struct ModuleName<'db> {
+    pub(crate) db: &'db Database,
+    pub(crate) file: &'db PythonFile,
 }
 
 #[derive(Debug, Eq, PartialEq)]

@@ -6,13 +6,8 @@ use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
 use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
-    database::Database,
-    diagnostics::Diagnostic,
-    file::PythonFile,
-    inferred::Inferred,
-    lines::PositionInfos,
-    name::{Name, Names},
-    InputPosition, PythonProject,
+    database::Database, diagnostics::Diagnostic, file::PythonFile, inferred::Inferred,
+    lines::PositionInfos, InputPosition, PythonProject,
 };
 
 pub trait File: std::fmt::Debug {

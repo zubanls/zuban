@@ -3,7 +3,7 @@ use std::path::Path;
 use clap::{Parser, Subcommand};
 use shlex::Shlex;
 use vfs::NormalizedPath;
-use zuban_python::{GotoGoal, InputPosition, Name as _, Project};
+use zuban_python::{GotoGoal, InputPosition, Project};
 
 use crate::{base_path_join, get_base};
 
@@ -130,11 +130,11 @@ pub(crate) fn find_and_check_ide_tests(
                     };
                     (
                         "infer",
-                        document.infer_definition(position, goal, |name| {
-                            let start = name.name_range().0;
+                        document.infer_definition(position, goal, |vn| {
+                            let start = vn.name.name_range().0;
                             format!(
                                 "{}:{}:{}",
-                                avoid_path_prefixes(name.relative_path(base_path)),
+                                avoid_path_prefixes(vn.name.relative_path(base_path)),
                                 start.line_one_based(),
                                 start.code_points_column()
                             )

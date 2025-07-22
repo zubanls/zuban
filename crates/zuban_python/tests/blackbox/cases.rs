@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use vfs::PathWithScheme;
-use zuban_python::{Document, GotoGoal, InputPosition, Name, Project, SymbolKind};
+use zuban_python::{Document, GotoGoal, InputPosition, Project, SymbolKind};
 
 use crate::Filter;
 
@@ -91,17 +91,17 @@ impl TestFile<'_> {
                 CaseType::Infer { expected, goal } => {
                     let actual: HashSet<_> = document
                         .get()
-                        .infer_definition(position, goal, |name| {
-                            let mut n = if *name.file_path() == *path {
-                                name.name().to_owned()
+                        .infer_definition(position, goal, |vn| {
+                            let mut n = if *vn.name.file_path() == *path {
+                                vn.name.name().to_owned()
                             } else {
-                                let mut s = name.qualified_name();
+                                let mut s = vn.name.qualified_name();
                                 if let Some(rest) = s.strip_prefix("builtins.") {
                                     s = rest.to_string();
                                 }
                                 s
                             };
-                            if name.is_instance() {
+                            if vn.is_instance() {
                                 n.push_str("()");
                             }
                             n
