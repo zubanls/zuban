@@ -173,26 +173,44 @@ impl<'x> Name<'x> {
     pub(crate) fn goto_non_stub(&self) -> Option<Name<'x>> {
         match self {
             Name::TreeName(n) => {
-                let db = n.db;
-                let file = n.file.normal_file_of_stub_file(db)?;
-                let result = file.ensure_module_symbols_flow_analysis(db);
-                debug_assert!(result.is_ok());
-
-                let scopes = ScopesIterator {
-                    file,
-                    only_reachable: true,
-                    current: Some(n.parent_scope),
-                };
-                let ref_ = lookup_parent_scope_in_other_file(db, file, scopes)?
-                    .lookup(db, n.cst_name.as_code())?;
-                Some(Self::TreeName(TreeName::with_unknown_parent_scope(
-                    db,
-                    ref_.file,
-                    ref_.maybe_name()?,
-                )))
+                let file = n.file.normal_file_of_stub_file(n.db)?;
+                self.goto_helper(n, file)
             }
             Name::ModuleName(n) => {
                 let file = n.file.normal_file_of_stub_file(n.db)?;
+                Some(Self::ModuleName(ModuleName { db: n.db, file }))
+            }
+            Name::NodeName(_) => None,
+        }
+    }
+
+    fn goto_helper(&self, n: &TreeName<'x>, to_file: &'x PythonFile) -> Option<Self> {
+        let db = n.db;
+        let result = to_file.ensure_module_symbols_flow_analysis(db);
+        debug_assert!(result.is_ok());
+
+        let scopes = ScopesIterator {
+            file: to_file,
+            only_reachable: true,
+            current: Some(n.parent_scope),
+        };
+        let ref_ = lookup_parent_scope_in_other_file(db, to_file, scopes)?
+            .lookup(db, n.cst_name.as_code())?;
+        Some(Self::TreeName(TreeName::with_unknown_parent_scope(
+            db,
+            ref_.file,
+            ref_.maybe_name()?,
+        )))
+    }
+
+    pub(crate) fn goto_stub(&self) -> Option<Name<'x>> {
+        match self {
+            Name::TreeName(n) => {
+                let file = n.file.stub_file_of_normal_file(n.db)?;
+                self.goto_helper(n, file)
+            }
+            Name::ModuleName(n) => {
+                let file = n.file.stub_file_of_normal_file(n.db)?;
                 Some(Self::ModuleName(ModuleName { db: n.db, file }))
             }
             Name::NodeName(_) => None,

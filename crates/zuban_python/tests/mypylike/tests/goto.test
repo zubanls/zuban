@@ -321,6 +321,12 @@ class C:
 x: int
 
 [out]
+m.py:2:goto -> m.pyi:2:6
+m.py:4:goto -> m.pyi:4:8
+m.py:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m.pyi:2:goto -> m.pyi:2:6
+m.pyi:4:goto -> m.pyi:4:8
+m.pyi:7:goto -> typeshed/stdlib/builtins.pyi:231:6
 
 [case goto_stub_directly_on_identifier_to_non_stubs]
 
@@ -343,6 +349,12 @@ class C:
 x: int
 
 [out]
+m.pyi:2:goto -> m.py:2:6
+m.pyi:4:goto -> m.py:4:8
+m.pyi:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m.py:2:goto -> m.py:2:6
+m.py:4:goto -> m.py:4:8
+m.py:7:goto -> typeshed/stdlib/builtins.pyi:231:6
 
 [case goto_primary_target_function_execution]
 from typing import Self

@@ -583,6 +583,38 @@ impl<'db> PythonFile {
         Some(db.loaded_python_file(file_index?))
     }
 
+    pub fn stub_file_of_normal_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
+        if self.is_stub() {
+            return None;
+        }
+        let file_entry = self.file_entry(db);
+        let (name, parent_dir) = name_and_parent_dir(file_entry, false);
+        let name = file_entry.name.strip_suffix(".py")?;
+        let py_name = format!("{name}.pyi");
+        let file_index = if let Some(file_entry) =
+            file_entry.parent.with_entries(&*db.vfs.handler, |entries| {
+                match &*entries.search(&py_name)? {
+                    DirectoryEntry::File(f) => Some(f.clone()),
+                    _ => None,
+                }
+            }) {
+            db.load_file_from_workspace(&file_entry, false)?
+        } else {
+            /*
+            match ImportResult::import_non_stub_for_stub_package(db, self, parent_dir, name)? {
+                ImportResult::File(file_index) => {
+                    assert_ne!(file_index, self.file_index);
+                    file_index
+                }
+                ImportResult::Namespace(_) => return None,
+                ImportResult::PyTypedMissing => unreachable!(),
+            }
+            */
+            return None;
+        };
+        Some(db.loaded_python_file(file_index))
+    }
+
     pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
         self.maybe_dunder_all
             .get_or_init(|| {

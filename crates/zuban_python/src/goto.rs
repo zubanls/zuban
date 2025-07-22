@@ -396,7 +396,7 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
 
 fn goto_with_goal(name: Name, goal: GotoGoal) -> Name {
     match goal {
-        GotoGoal::PreferStubs => name,
+        GotoGoal::PreferStubs => name.goto_stub().unwrap_or(name),
         GotoGoal::PreferNonStubs => name.goto_non_stub().unwrap_or(name),
         GotoGoal::Indifferent => name,
     }
