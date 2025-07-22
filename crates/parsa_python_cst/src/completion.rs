@@ -170,8 +170,7 @@ impl Tree {
                         import_from_target_node(leaf_parent.parent().unwrap()),
                         rest,
                     );
-                }
-                if leaf_parent.is_type(Nonterminal(name_def)) {
+                } else if leaf_parent.is_type(Nonterminal(name_def)) {
                     let parent = leaf_parent.parent().unwrap();
                     if parent.is_type(Nonterminal(t_primary)) {
                         let prim = PrimaryTarget::new(parent);
@@ -181,6 +180,13 @@ impl Tree {
                             rest,
                         );
                     }
+                } else if leaf_parent.is_type(Nonterminal(t_primary)) {
+                    let prim = PrimaryTarget::new(leaf_parent);
+                    return (
+                        scope,
+                        CompletionNode::PrimaryTarget { base: prim.first() },
+                        rest,
+                    );
                 }
             }
         }

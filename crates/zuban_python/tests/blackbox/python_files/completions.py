@@ -138,6 +138,8 @@ def primary_target_completions():
     import_tree.m.a = 4
     #? 22 ['a']
     import_tree.mod1.a = 5
+    #? 22 ['a']
+    import_tree.mod1.a.x = 5
     #? 21 --contains-subset ['a', 'c', 'foobarbaz']
     import_tree.mod1. = 5
     #? 4 --contains-subset ["help", "str"]
