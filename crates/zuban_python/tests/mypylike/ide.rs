@@ -179,9 +179,17 @@ pub(crate) fn find_and_check_ide_tests(
 }
 
 fn avoid_path_prefixes(path: &str) -> &str {
-    if let Ok(p) = Path::new(path).strip_prefix(get_base()) {
-        p.to_str().unwrap()
-    } else {
-        path
+    for prefix in [
+        &get_base(),
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap(),
+    ] {
+        if let Ok(p) = Path::new(path).strip_prefix(prefix) {
+            return p.to_str().unwrap();
+        }
     }
+    path
 }

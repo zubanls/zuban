@@ -3548,7 +3548,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         .save_redirect(self.i_s, self.file, subject_expr.index())
     }
 
-    fn infer_primary_target(
+    pub fn infer_primary_target(
         &self,
         primary_target: PrimaryTarget,
         use_narrows: bool,

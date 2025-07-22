@@ -7,7 +7,7 @@ use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{
     Atom, DottedImportName, GotoNode, Name as CSTName, NameImportParent, NameParent, NodeIndex,
-    Primary, PrimaryContent, PrimaryOrAtom, Scope,
+    Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope,
 };
 
 use crate::{
@@ -60,6 +60,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             GotoNode::Name(name) => self.infer_name(name),
             GotoNode::ImportFromAsName(as_name) => self.infer_name(as_name.name_def().name()),
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
+            GotoNode::PrimaryTarget(target) => self.infer_primary_target(target),
             GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
             GotoNode::None => None,
         }
@@ -143,6 +144,17 @@ impl<'db, T> PositionalDocument<'db, T> {
             PrimaryOrAtom::Primary(p) => self.infer_primary(p),
             PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         }
+    }
+
+    fn infer_primary_target_or_atom(&self, p_or_a: PrimaryTargetOrAtom) -> Option<Inferred> {
+        match p_or_a {
+            PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
+            PrimaryTargetOrAtom::Atom(a) => Some(self.infer_atom(a)),
+        }
+    }
+
+    fn infer_primary_target(&self, target: PrimaryTarget) -> Option<Inferred> {
+        self.with_i_s(|i_s| self.file.inference(i_s).infer_primary_target(target, false))
     }
 }
 
@@ -273,40 +285,15 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
                     let base = self.infos.infer_primary_or_atom(primary.first());
-                    let mut results = vec![];
-                    self.infos.with_i_s(|i_s| {
-                        for t in unpack_union_types(db, base.as_cow_type(i_s))
-                            .iter_with_unpacked_unions(db)
-                        {
-                            let lookup = t.lookup(
-                                i_s,
-                                file,
-                                name.as_code(),
-                                LookupKind::Normal,
-                                &mut ResultContext::Unknown,
-                                &|_issue| (),
-                                &|_t_of_attr_error| (),
-                            );
-                            if let LookupResult::GotoName { name, .. } = lookup {
-                                if let Some(result) = self.check_node_ref_and_maybe_follow_import(
-                                    NodeRef::from_link(db, name),
-                                    follow_imports,
-                                ) {
-                                    results.push(result);
-                                    continue;
-                                }
-                            }
-                            if let Some(inf) = lookup.into_maybe_inferred() {
-                                let t = inf.as_cow_type(i_s);
-                                type_to_name(i_s, &t, &mut |name| {
-                                    let name = goto_with_goal(name, self.goal);
-                                    results.push((self.on_result)(name))
-                                })
-                            }
-                        }
-                    });
-                    (!results.is_empty()).then_some(results)
+                    self.goto_primary_attr(base, name.as_code(), follow_imports)
                 }),
+                _ => None,
+            },
+            GotoNode::PrimaryTarget(target) => match target.second() {
+                PrimaryContent::Attribute(name) => {
+                    let inf = self.infos.infer_primary_target_or_atom(target.first())?;
+                    self.goto_primary_attr(inf, name.as_code(), follow_imports)
+                }
                 _ => None,
             },
             GotoNode::ImportFromAsName(as_name) => {
@@ -321,6 +308,45 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             }
             GotoNode::Atom(_) | GotoNode::None => None,
         }
+    }
+    fn goto_primary_attr(
+        &self,
+        base: Inferred,
+        name: &str,
+        follow_imports: bool,
+    ) -> Option<Vec<T>> {
+        let mut results = vec![];
+        let db = self.infos.db;
+        self.infos.with_i_s(|i_s| {
+            for t in unpack_union_types(db, base.as_cow_type(i_s)).iter_with_unpacked_unions(db) {
+                let lookup = t.lookup(
+                    i_s,
+                    self.infos.file,
+                    name,
+                    LookupKind::Normal,
+                    &mut ResultContext::Unknown,
+                    &|_issue| (),
+                    &|_t_of_attr_error| (),
+                );
+                if let LookupResult::GotoName { name, .. } = lookup {
+                    if let Some(result) = self.check_node_ref_and_maybe_follow_import(
+                        NodeRef::from_link(db, name),
+                        follow_imports,
+                    ) {
+                        results.push(result);
+                        continue;
+                    }
+                }
+                if let Some(inf) = lookup.into_maybe_inferred() {
+                    let t = inf.as_cow_type(i_s);
+                    type_to_name(i_s, &t, &mut |name| {
+                        let name = goto_with_goal(name, self.goal);
+                        results.push((self.on_result)(name))
+                    })
+                }
+            }
+        });
+        (!results.is_empty()).then_some(results)
     }
 }
 

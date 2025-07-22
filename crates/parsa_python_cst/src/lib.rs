@@ -232,9 +232,13 @@ impl Tree {
                         let par_parent = parent.parent().unwrap();
                         if par_parent.is_type(Nonterminal(import_from_as_name)) {
                             GotoNode::ImportFromAsName(ImportFromAsName::new(par_parent))
+                        } else if par_parent.is_type(Nonterminal(t_primary)) {
+                            GotoNode::PrimaryTarget(PrimaryTarget::new(par_parent))
                         } else {
                             GotoNode::Name(Name::new(left))
                         }
+                    } else if parent.is_type(Nonterminal(t_primary)) {
+                        GotoNode::PrimaryTarget(PrimaryTarget::new(parent))
                     } else {
                         GotoNode::Name(Name::new(left))
                     }
@@ -245,6 +249,8 @@ impl Tree {
                 let parent = left.parent().unwrap();
                 if parent.is_type(Nonterminal(primary)) {
                     GotoNode::Primary(Primary::new(parent))
+                } else if parent.is_type(Nonterminal(t_primary)) {
+                    GotoNode::PrimaryTarget(PrimaryTarget::new(parent))
                 } else if parent.is_type(Nonterminal(atom)) {
                     GotoNode::Atom(Atom::new(parent))
                 } else {
@@ -4581,6 +4587,7 @@ pub enum GotoNode<'db> {
     Name(Name<'db>),
     ImportFromAsName(ImportFromAsName<'db>),
     Primary(Primary<'db>),
+    PrimaryTarget(PrimaryTarget<'db>),
     Atom(Atom<'db>),
     None,
 }

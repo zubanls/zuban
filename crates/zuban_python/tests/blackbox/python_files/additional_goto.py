@@ -11,6 +11,20 @@ def normal_imports():
     #! --follow-imports ["module import_tree.mod1"]
     mod1
 
+    #! 5 ["from import_tree import mod1"]
+    mod1.a = 3
+    #! 9 ["a = 1"]
+    mod1.a = 3
+    #! 10 ["a = 1"]
+    mod1.a = 3
+
+    #! 10 ["import import_tree"]
+    import_tree.mod1.a = 3
+    #! 18 ["module import_tree.mod1"]
+    import_tree.mod1.a = 3
+    #! 22 ["a = 1"]
+    import_tree.mod1.a = 3
+
     from import_tree.mod1 import a
     #! ['from import_tree.mod1 import a']
     a

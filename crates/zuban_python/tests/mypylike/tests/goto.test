@@ -299,3 +299,47 @@ def f():
 [out]
 __main__.py:3:goto -> __main__.py:3:15:__main__.y@3
 __main__.py:5:goto -> __main__.py:3:4:__main__.x@3
+
+[case goto_stub_directly_on_identifier_to_stubs]
+
+[file m.py]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file m.pyi]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x: int
+
+[out]
+
+[case goto_stub_directly_on_identifier_to_non_stubs]
+
+[file m.py]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x = 1
+
+[file m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]

@@ -7,6 +7,9 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 
+goto_stub_directly_on_identifier_to_stubs
+goto_stub_directly_on_identifier_to_non_stubs
+
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef
