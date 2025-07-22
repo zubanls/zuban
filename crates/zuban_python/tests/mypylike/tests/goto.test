@@ -343,3 +343,26 @@ class C:
 x: int
 
 [out]
+
+[case goto_primary_target_function_execution]
+from typing import Self
+class X:
+    z = 1
+    def f(self) -> Self:
+        return self
+
+def x(x: X):
+    #? --codepoint-column 7 goto --show-qualified-name
+    x.f().z = 4
+    #? --codepoint-column 8 goto --show-qualified-name
+    x.f().z = 4
+    #? --codepoint-column 9 goto --show-qualified-name
+    x.f().z = 3
+    #? --codepoint-column 10 goto --show-qualified-name
+    x.f().z = 4
+
+[out]
+__main__.py:9:goto -> __main__.py:4:8:__main__.X.f
+__main__.py:11:goto -> __main__.py:2:6:__main__.X
+__main__.py:13:goto -> __main__.py:2:6:__main__.X
+__main__.py:15:goto -> __main__.py:3:4:__main__.X.z
