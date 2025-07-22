@@ -11,9 +11,9 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    database::{Database, ParentScope, Point, PointKind},
+    database::{Database, ParentScope, Point, PointKind, Specific},
     debug,
-    file::{ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile},
+    file::{first_defined_name, ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile},
     format_data::FormatData,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
@@ -272,11 +272,29 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         let file = self.infos.file;
         let lookup_on_name = |name: CSTName| {
             let p = file.points.get(name.index());
-            if p.calculated() && p.kind() == PointKind::Redirect {
-                let node_ref = p.as_redirected_node_ref(db);
-                return self
-                    .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
-                    .map(|r| vec![r]);
+            if p.calculated() {
+                match p.kind() {
+                    PointKind::Redirect => {
+                        let node_ref = p.as_redirected_node_ref(db);
+                        return self
+                            .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
+                            .map(|r| vec![r]);
+                    }
+                    PointKind::Specific => {
+                        if p.specific() == Specific::NameOfNameDef
+                            && name.name_def().unwrap().maybe_import().is_none()
+                        {
+                            let first = first_defined_name(file, name.index());
+                            return self
+                                .check_node_ref_and_maybe_follow_import(
+                                    NodeRef::new(file, first),
+                                    follow_imports,
+                                )
+                                .map(|r| vec![r]);
+                        }
+                    }
+                    _ => (),
+                }
             }
             None
         };

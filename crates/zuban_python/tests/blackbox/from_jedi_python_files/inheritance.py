@@ -14,13 +14,15 @@ class Sub(Super):
     def attribute(self):
         pass
 
-    #! 8 ['attribute = 3']
+    # jedi-diff: #! 8 ['attribute = 3']
+    #! 8 ['def attribute(self):']
     def attribute(self):
         pass
 
     #! 4 ['def func(self):']
     func = 3
-    #! 12 ['class func(): pass']
+    # jedi-diff #! 12 ['class func(): pass']
+    #! 12 ['func = 3']
     class func(): pass
 
     #! 8 ['class Inner']

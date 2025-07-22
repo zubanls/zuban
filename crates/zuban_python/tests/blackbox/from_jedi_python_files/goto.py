@@ -18,10 +18,10 @@ c
 
 cd = 1
 # jedi-diff: #! 1 ['cd = c']
-#! 1 ['class int:']
+#! 1 ['cd = 1']
 cd = c
 # jedi-diff: #! 0 ['cd = e']
-#! 0 ['class int:']
+#! 0 ['cd = 1']
 cd = e
 
 #! ['module math']

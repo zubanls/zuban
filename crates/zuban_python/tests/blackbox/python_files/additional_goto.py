@@ -299,3 +299,8 @@ def nested_import_goto_follow():
     from import_tree.mod1 import c
     #! --follow-imports ["a = set"]
     c
+
+def target_completions():
+    x = 1
+    #! 5 ['x = 1']
+    x = 2
