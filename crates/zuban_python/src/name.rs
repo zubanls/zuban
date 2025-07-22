@@ -39,7 +39,7 @@ impl ValueName<'_> {
     }
 }
 
-impl Name<'_> {
+impl<'x> Name<'x> {
     pub fn name(&self) -> &str {
         match self {
             Name::TreeName(n) => n.cst_name.as_str(),
@@ -151,6 +151,20 @@ impl Name<'_> {
     pub fn target_range_code(&self) -> &str {
         let (start, end) = self.target_range();
         start.code_until(end)
+    }
+
+    pub(crate) fn goto_non_stub(&self) -> Option<Name<'x>> {
+        match self {
+            Name::TreeName(n) => {
+                // TODO
+                None
+            }
+            Name::ModuleName(n) => {
+                let file = n.file.normal_file_of_stub_file(n.db)?;
+                Some(Self::ModuleName(ModuleName { db: n.db, file }))
+            }
+            Name::NodeName(_) => None,
+        }
     }
 }
 

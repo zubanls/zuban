@@ -214,12 +214,15 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     ) -> Option<T> {
         let n = node_ref.maybe_name()?;
         let db = self.infos.db;
+        let ret = |name| {
+            let name = goto_with_goal(name, self.goal);
+            Some((self.on_result)(name))
+        };
         if follow_imports {
             if let Some(name_def) = n.name_def() {
                 let on_module = |p: Point| {
                     let file = db.loaded_python_file(p.file_index());
-                    let name = Name::ModuleName(ModuleName { db, file });
-                    return Some((self.on_result)(name));
+                    return ret(Name::ModuleName(ModuleName { db, file }));
                 };
                 match name_def.maybe_import() {
                     Some(NameImportParent::ImportFromAsName(_)) => {
@@ -245,8 +248,12 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 }
             }
         }
-        let tree_name = Name::TreeName(TreeName::new(db, node_ref.file, ParentScope::Module, n));
-        Some((self.on_result)(tree_name))
+        ret(Name::TreeName(TreeName::new(
+            db,
+            node_ref.file,
+            ParentScope::Module,
+            n,
+        )))
     }
 
     fn goto_name(&self, follow_imports: bool) -> Option<Vec<T>> {
@@ -294,6 +301,7 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                             if let Some(inf) = lookup.into_maybe_inferred() {
                                 let t = inf.as_cow_type(i_s);
                                 type_to_name(i_s, &t, &mut |name| {
+                                    let name = goto_with_goal(name, self.goal);
                                     results.push((self.on_result)(name))
                                 })
                             }
@@ -335,11 +343,20 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                     type_.format_short(db)
                 );
                 type_to_name(i_s, &type_, &mut |name| {
+                    let name = goto_with_goal(name, self.goal);
                     result.push(callback(ValueName { name, db, type_ }))
                 })
             }
         });
         result
+    }
+}
+
+fn goto_with_goal(name: Name, goal: GotoGoal) -> Name {
+    match goal {
+        GotoGoal::PreferStubs => name,
+        GotoGoal::PreferNonStubs => name.goto_non_stub().unwrap_or(name),
+        GotoGoal::Indifferent => name,
     }
 }
 

@@ -203,3 +203,23 @@ __main__.py:14:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sa
 __main__.py:16:infer -> ()
 __main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
 __main__.py:20:infer -> ()
+
+[case goto_on_stub_package_module_both]
+# pkgs: typedpkg, typedpkg-stubs
+from typedpkg import sample
+
+#? goto --follow-imports
+sample
+#? goto --follow-imports --prefer-stubs
+sample
+#? infer
+sample
+#? infer --prefer-stubs
+sample
+
+[out]
+__main__.py:5:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0
+__main__.py:7:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0
+__main__.py:9:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0
+__main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0
+
