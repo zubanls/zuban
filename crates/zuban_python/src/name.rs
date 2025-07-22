@@ -4,7 +4,7 @@ use vfs::NormalizedPath;
 use crate::{
     completion::ScopesIterator,
     database::{Database, ParentScope},
-    file::{ClassNodeRef, File as _, PythonFile},
+    file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
@@ -89,11 +89,19 @@ impl<'x> Name<'x> {
 
     pub fn qualified_name(&self) -> String {
         match self {
-            Name::TreeName(n) => n.parent_scope.qualified_name(
-                n.db,
-                NodeRef::new(n.file, n.cst_name.index()),
-                n.cst_name.as_code(),
-            ),
+            Name::TreeName(n) => {
+                let parent_scope = match n.parent_scope {
+                    Scope::Module => ParentScope::Module,
+                    Scope::Class(class_def) => ParentScope::Class(class_def.index()),
+                    Scope::Function(function_def) => ParentScope::Function(function_def.index()),
+                    Scope::Lambda(lambda) => todo!(),
+                };
+                parent_scope.qualified_name(
+                    n.db,
+                    NodeRef::new(n.file, n.cst_name.index()),
+                    n.cst_name.as_code(),
+                )
+            }
             Name::ModuleName(n) => n.file.qualified_name(n.db),
             Name::NodeName(n) => n.name.to_string(),
         }
@@ -161,26 +169,21 @@ impl<'x> Name<'x> {
             Name::TreeName(n) => {
                 let db = n.db;
                 let file = n.file.normal_file_of_stub_file(db)?;
+                let result = file.ensure_module_symbols_flow_analysis(db);
+                debug_assert!(result.is_ok());
+
                 let scopes = ScopesIterator {
                     file,
                     only_reachable: true,
-                    current: Some(match n.parent_scope {
-                        ParentScope::Module => Scope::Module,
-                        ParentScope::Function(f) => {
-                            Scope::Function(FunctionDef::by_index(&file.tree, f))
-                        }
-                        ParentScope::Class(c) => Scope::Class(ClassDef::by_index(&file.tree, c)),
-                    }),
+                    current: Some(n.parent_scope),
                 };
                 let ref_ = lookup_parent_scope_in_other_file(db, file, scopes)?
                     .lookup(db, n.cst_name.as_code())?;
-                Some(Self::TreeName(TreeName {
+                Some(Self::TreeName(TreeName::with_unknown_parent_scope(
                     db,
-                    file: ref_.file,
-                    // TODO wrong scope
-                    parent_scope: ParentScope::Module,
-                    cst_name: ref_.maybe_name()?,
-                }))
+                    ref_.file,
+                    ref_.maybe_name()?,
+                )))
             }
             Name::ModuleName(n) => {
                 let file = n.file.normal_file_of_stub_file(n.db)?;
@@ -236,7 +239,7 @@ fn lookup_parent_scope_in_other_file<'db>(
 pub struct TreeName<'db> {
     db: &'db Database,
     file: &'db PythonFile,
-    parent_scope: ParentScope,
+    parent_scope: Scope<'db>,
     cst_name: CSTName<'db>,
 }
 
@@ -244,7 +247,7 @@ impl<'db> TreeName<'db> {
     pub(crate) fn new(
         db: &'db Database,
         file: &'db PythonFile,
-        parent_scope: ParentScope,
+        parent_scope: Scope<'db>,
         cst_name: CSTName<'db>,
     ) -> Self {
         Self {
@@ -253,6 +256,64 @@ impl<'db> TreeName<'db> {
             parent_scope,
             file,
         }
+    }
+
+    pub(crate) fn with_unknown_parent_scope(
+        db: &'db Database,
+        file: &'db PythonFile,
+        cst_name: CSTName<'db>,
+    ) -> Self {
+        let mut parent_scope = cst_name.parent_scope();
+        // The parent scope of a function/class name is not the respective func/class
+        match parent_scope {
+            Scope::Class(class_def) => {
+                if class_def.name_def().name_index() == cst_name.index() {
+                    parent_scope = parent_scope_to_scope(
+                        file,
+                        ClassNodeRef::new(file, class_def.index())
+                            .class_storage()
+                            .parent_scope,
+                    )
+                }
+            }
+            Scope::Function(function_def) => {
+                if function_def.name_def().name_index() == cst_name.index() {
+                    parent_scope = parent_scope_to_scope(
+                        file,
+                        FuncNodeRef::new(file, function_def.index()).parent_scope(),
+                    )
+                }
+            }
+            _ => (),
+        }
+        Self {
+            db,
+            cst_name,
+            parent_scope,
+            file,
+        }
+    }
+
+    pub(crate) fn with_parent_scope(
+        db: &'db Database,
+        file: &'db PythonFile,
+        parent_scope: ParentScope,
+        cst_name: CSTName<'db>,
+    ) -> Self {
+        Self {
+            db,
+            cst_name,
+            parent_scope: parent_scope_to_scope(file, parent_scope),
+            file,
+        }
+    }
+}
+
+fn parent_scope_to_scope(file: &PythonFile, parent_scope: ParentScope) -> Scope {
+    match parent_scope {
+        ParentScope::Module => Scope::Module,
+        ParentScope::Function(f) => Scope::Function(FunctionDef::by_index(&file.tree, f)),
+        ParentScope::Class(c) => Scope::Class(ClassDef::by_index(&file.tree, c)),
     }
 }
 

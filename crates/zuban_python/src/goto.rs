@@ -248,10 +248,9 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 }
             }
         }
-        ret(Name::TreeName(TreeName::new(
+        ret(Name::TreeName(TreeName::with_unknown_parent_scope(
             db,
             node_ref.file,
-            ParentScope::Module,
             n,
         )))
     }
@@ -260,7 +259,6 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         let db = self.infos.db;
         let file = self.infos.file;
         let lookup_on_name = |name: CSTName| {
-            // TODO fix parent_scope
             let p = file.points.get(name.index());
             if p.calculated() && p.kind() == PointKind::Redirect {
                 let node_ref = p.as_redirected_node_ref(db);
@@ -363,10 +361,9 @@ fn goto_with_goal(name: Name, goal: GotoGoal) -> Name {
 fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnMut(Name)) {
     let db = i_s.db;
     let from_node_ref = |node_ref: NodeRef<'db>| {
-        Name::TreeName(TreeName::new(
+        Name::TreeName(TreeName::with_unknown_parent_scope(
             db,
             node_ref.file,
-            ParentScope::Module,
             node_ref.expect_name(),
         ))
     };
@@ -382,7 +379,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
         let parent_scope = ClassInitializer::from_node_ref(node_ref)
             .class_storage
             .parent_scope;
-        Name::TreeName(TreeName::new(
+        Name::TreeName(TreeName::with_parent_scope(
             db,
             node_ref.file,
             parent_scope,
@@ -402,7 +399,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             add(Name::TreeName(TreeName::new(
                 db,
                 node_ref.file,
-                ParentScope::Module,
+                Scope::Module,
                 node_ref.node().name(),
             )))
         }
@@ -424,11 +421,10 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
         Type::Callable(callable) => {
             let node_ref = NodeRef::from_link(db, callable.defined_at);
             if let Some(func) = node_ref.maybe_function() {
-                let parent_scope = FuncNodeRef::from_node_ref(node_ref).parent_scope();
-                add(Name::TreeName(TreeName::new(
+                add(Name::TreeName(TreeName::with_parent_scope(
                     db,
                     node_ref.file,
-                    parent_scope,
+                    FuncNodeRef::from_node_ref(node_ref).parent_scope(),
                     func.name(),
                 )))
             } else if let Some(callable) = lookup(db.python_state.typing(), "Callable") {
@@ -442,10 +438,10 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
         }
         Type::Literal(l) => {
             let node_ref = l.fallback_node_ref(db);
-            add(Name::TreeName(TreeName::new(
+            add(Name::TreeName(TreeName::with_parent_scope(
                 db,
                 node_ref.file,
-                ParentScope::Module,
+                node_ref.class_storage().parent_scope,
                 node_ref.node().name(),
             )))
         }

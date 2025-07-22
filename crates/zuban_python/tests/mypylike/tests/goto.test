@@ -223,3 +223,35 @@ __main__.py:7:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/samp
 __main__.py:9:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0
 __main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0
 
+[case simple_file_that_has_stub]
+import m
+#? goto
+m.C
+#? goto --prefer-stubs
+m.C
+#? goto
+m.C.f
+#? goto --prefer-stubs
+m.C.f
+
+x = m.C()
+#? --codepoint-column 3 goto
+x.f(1)
+#? --codepoint-column 3 goto --prefer-stubs
+x.f(1)
+
+[file m.py]
+
+class C:
+    def f(self, x: str): ...
+[file m.pyi]
+class C:
+    def f(self, x: int, /): ...
+
+[out]
+__main__.py:3:goto -> m.py:2:6
+__main__.py:5:goto -> m.pyi:1:6
+__main__.py:7:goto -> m.py:3:8
+__main__.py:9:goto -> m.pyi:2:8
+__main__.py:13:goto -> m.py:3:8
+__main__.py:15:goto -> m.pyi:2:8

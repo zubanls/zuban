@@ -715,6 +715,10 @@ impl<'db> Name<'db> {
         };
         n.node.parent().unwrap().is_type(Nonterminal(function_def))
     }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
 }
 
 #[derive(Debug)]
