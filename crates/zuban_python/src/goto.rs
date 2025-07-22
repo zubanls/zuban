@@ -293,7 +293,7 @@ impl<'db, C: for<'a> Fn(&dyn Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                             }
                             if let Some(inf) = lookup.into_maybe_inferred() {
                                 let t = inf.as_cow_type(i_s);
-                                type_to_name(i_s, file, &t, &mut |name| {
+                                type_to_name(i_s, &t, &mut |name| {
                                     results.push((self.on_result)(name))
                                 })
                             }
@@ -334,7 +334,7 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                     "Part of inferring type definition: {:?}",
                     type_.format_short(db)
                 );
-                type_to_name(i_s, file, &type_, &mut |name| {
+                type_to_name(i_s, &type_, &mut |name| {
                     result.push(callback(ValueName { name, db, type_ }))
                 })
             }
@@ -343,12 +343,7 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     }
 }
 
-fn type_to_name<'db>(
-    i_s: &InferenceState<'db, '_>,
-    file: &'db PythonFile,
-    t: &Type,
-    add: &mut impl FnMut(&dyn Name),
-) {
+fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnMut(&dyn Name)) {
     let db = i_s.db;
     let from_node_ref = |node_ref: NodeRef<'db>| {
         TreeName::new(
@@ -392,18 +387,18 @@ fn type_to_name<'db>(
         Type::Any(_) => (),
         Type::Intersection(intersection) => {
             for t in intersection.iter_entries() {
-                type_to_name(i_s, file, &t, add);
+                type_to_name(i_s, &t, add);
             }
         }
         Type::FunctionOverload(overload) => {
             let first = overload.iter_functions().next().unwrap();
-            type_to_name(i_s, file, &Type::Callable(first.clone()), add)
+            type_to_name(i_s, &Type::Callable(first.clone()), add)
         }
         Type::TypeVar(tv) => match tv.type_var.name {
             TypeVarName::Name(tvl_name) => add(&from_type_var_like_name(tvl_name)),
             TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => (),
         },
-        Type::Type(t) => return type_to_name(i_s, file, &t, add),
+        Type::Type(t) => return type_to_name(i_s, &t, add),
         Type::Callable(callable) => {
             let node_ref = NodeRef::from_link(db, callable.defined_at);
             if let Some(func) = node_ref.maybe_function() {
@@ -413,7 +408,7 @@ fn type_to_name<'db>(
                 add(&callable)
             }
         }
-        Type::RecursiveType(rec) => type_to_name(i_s, file, rec.calculated_type(db), add),
+        Type::RecursiveType(rec) => type_to_name(i_s, rec.calculated_type(db), add),
         Type::NewType(n) => add(&from_node_ref(NodeRef::from_link(db, n.name_node))),
         Type::ParamSpecArgs(usage) | Type::ParamSpecKwargs(usage) => {
             add(&from_type_var_like_name(usage.param_spec.name))
@@ -463,7 +458,7 @@ fn type_to_name<'db>(
                 add(&from_node_ref(node_ref))
             } else {
                 // If we have no name we just goto the enum.
-                type_to_name(i_s, file, &Type::Enum(member.enum_.clone()), add)
+                type_to_name(i_s, &Type::Enum(member.enum_.clone()), add)
             }
         }
         Type::Module(file_index) => add(&ModuleName {
@@ -477,7 +472,7 @@ fn type_to_name<'db>(
             // TODO this only cares about one class, when it could care about all bases
             for base in class.class(db).bases(db) {
                 if let TypeOrClass::Class(base) = base {
-                    type_to_name(i_s, file, &base.as_type(db), add)
+                    type_to_name(i_s, &base.as_type(db), add)
                 }
             }
         }
@@ -486,7 +481,7 @@ fn type_to_name<'db>(
         }
         Type::Self_ => {
             if let Some(cls) = i_s.current_class() {
-                type_to_name(i_s, file, &cls.as_type(db), add)
+                type_to_name(i_s, &cls.as_type(db), add)
             } else {
                 recoverable_error!("Could not find the current class for Self");
             }
@@ -494,7 +489,7 @@ fn type_to_name<'db>(
         Type::Union(union) => {
             // This shouldn't typically be reached, because we iterate over unions above
             for t in union.iter() {
-                type_to_name(i_s, file, t, add)
+                type_to_name(i_s, t, add)
             }
         }
         Type::Never(_) => (),
