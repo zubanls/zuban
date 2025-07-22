@@ -3546,6 +3546,7 @@ impl<'db> PrimaryOrAtom<'db> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum PrimaryTargetOrAtom<'db> {
     PrimaryTarget(PrimaryTarget<'db>),
     Atom(Atom<'db>),

@@ -129,3 +129,16 @@ def dunder_all_star_import_test():
     from dunder_all_file import *
     #? ['attr_x']
     attr_
+
+def primary_target_completions():
+    import import_tree
+    #? 14 ['import_tree']
+    import_tre.mod1.a = 3
+    #? 17 ['mod1', 'mod2']
+    import_tree.m.a = 4
+    #? 22 ['a']
+    import_tree.mod1.a = 5
+    #? 21 --contains-subset ['a', 'c', 'foobarbaz']
+    import_tree.mod1. = 5
+    #? 4 --contains-subset ["help", "str"]
+    .mod1.a = 6

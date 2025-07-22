@@ -6,7 +6,8 @@ use parsa_python::{
 };
 
 use crate::{
-    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryOrAtom, Tree,
+    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryOrAtom,
+    PrimaryTarget, PrimaryTargetOrAtom, Tree,
 };
 
 impl Tree {
@@ -170,6 +171,17 @@ impl Tree {
                         rest,
                     );
                 }
+                if leaf_parent.is_type(Nonterminal(name_def)) {
+                    let parent = leaf_parent.parent().unwrap();
+                    if parent.is_type(Nonterminal(t_primary)) {
+                        let prim = PrimaryTarget::new(parent);
+                        return (
+                            scope,
+                            CompletionNode::PrimaryTarget { base: prim.first() },
+                            rest,
+                        );
+                    }
+                }
             }
         }
         (scope, CompletionNode::Global, rest)
@@ -248,6 +260,9 @@ pub enum Scope<'db> {
 pub enum CompletionNode<'db> {
     Attribute {
         base: PrimaryOrAtom<'db>,
+    },
+    PrimaryTarget {
+        base: PrimaryTargetOrAtom<'db>,
     },
     ImportName {
         path: Option<(NameDef<'db>, Option<DottedImportName<'db>>)>,

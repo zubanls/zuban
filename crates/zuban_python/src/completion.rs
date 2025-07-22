@@ -150,6 +150,11 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     self.add_global_import_completions()
                 }
             }
+            CompletionNode::PrimaryTarget { base } => {
+                if let Some(inf) = self.infos.infer_primary_target_or_atom(*base) {
+                    self.add_attribute_completions(inf)
+                }
+            }
             CompletionNode::ImportFromTarget { base, dots } => {
                 let inf = self.infos.infer_dotted_import_name(*dots, *base);
                 self.add_attribute_completions(inf)

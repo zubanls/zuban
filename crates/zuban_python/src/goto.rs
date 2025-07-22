@@ -146,7 +146,7 @@ impl<'db, T> PositionalDocument<'db, T> {
         }
     }
 
-    fn infer_primary_target_or_atom(&self, p_or_a: PrimaryTargetOrAtom) -> Option<Inferred> {
+    pub fn infer_primary_target_or_atom(&self, p_or_a: PrimaryTargetOrAtom) -> Option<Inferred> {
         match p_or_a {
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
             PrimaryTargetOrAtom::Atom(a) => Some(self.infer_atom(a)),
