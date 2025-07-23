@@ -418,3 +418,89 @@ m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8:m.C.f
 m/__init__.py:7:goto -> m-stubs/__init__.pyi:7:0:m.x
 m/foo.py:2:goto -> m-stubs/foo.pyi:2:0:m.foo.y
 m-stubs/foo.pyi:2:goto -> m/foo.py:2:0:m.foo.y
+
+[case goto_in_namespace_normal_to_stub_and_vice_versa]
+[file pkg/m.py]
+
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file pkg/m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+pkg/m.py:3:goto -> pkg/m.pyi:2:6:pkg.m.C
+pkg/m.py:5:goto -> pkg/m.pyi:4:8:pkg.m.C.f
+pkg/m.py:8:goto -> pkg/m.pyi:7:0:pkg.m.x
+pkg/m.pyi:2:goto -> pkg/m.py:3:6:pkg.m.C
+pkg/m.pyi:4:goto -> pkg/m.py:5:8:pkg.m.C.f
+pkg/m.pyi:7:goto -> pkg/m.py:8:0:pkg.m.x
+
+[case goto_in_package_normal_to_stub_and_vice_versa]
+[file pkg/__init__.py]
+[file pkg/m.py]
+
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file pkg/m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+pkg/m.py:3:goto -> pkg/m.pyi:2:6:pkg.m.C
+pkg/m.py:5:goto -> pkg/m.pyi:4:8:pkg.m.C.f
+pkg/m.py:8:goto -> pkg/m.pyi:7:0:pkg.m.x
+pkg/m.pyi:2:goto -> pkg/m.py:3:6:pkg.m.C
+pkg/m.pyi:4:goto -> pkg/m.py:5:8:pkg.m.C.f
+pkg/m.pyi:7:goto -> pkg/m.py:8:0:pkg.m.x
+
+[case goto_in_nested_package_normal_to_stub_and_vice_versa]
+[file pkg/nested/__init__.py]
+[file pkg/nested/m.py]
+
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file pkg/nested/m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+pkg/nested/m.py:3:goto -> pkg/nested/m.pyi:2:6:pkg.nested.m.C
+pkg/nested/m.py:5:goto -> pkg/nested/m.pyi:4:8:pkg.nested.m.C.f
+pkg/nested/m.py:8:goto -> pkg/nested/m.pyi:7:0:pkg.nested.m.x
+pkg/nested/m.pyi:2:goto -> pkg/nested/m.py:3:6:pkg.nested.m.C
+pkg/nested/m.pyi:4:goto -> pkg/nested/m.py:5:8:pkg.nested.m.C.f
+pkg/nested/m.pyi:7:goto -> pkg/nested/m.py:8:0:pkg.nested.m.x
