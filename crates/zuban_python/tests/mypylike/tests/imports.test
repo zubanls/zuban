@@ -262,7 +262,7 @@ import ns_pkg_w_stubs
 
 a: ns_pkg_w_stubs.untyped
 b: ns_pkg_w_stubs.untyped.A
-c: ns_pkg_w_stubs.typed  # E: Module "ns_pkg_w_stubs-stubs.typed" is not valid as a type \
+c: ns_pkg_w_stubs.typed  # E: Module "ns_pkg_w_stubs.typed" is not valid as a type \
                          # N: Perhaps you meant to use a protocol matching the module structure?
 d: ns_pkg_w_stubs.typed.A  # E: Name "ns_pkg_w_stubs.typed.A" is not defined
 

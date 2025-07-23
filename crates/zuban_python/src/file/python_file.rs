@@ -848,7 +848,8 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
     if let Ok(parent_dir) = dir.parent.maybe_dir() {
         dotted_path_from_dir(&parent_dir) + "." + &dir.name
     } else {
-        dir.name.to_string()
+        let n = &dir.name;
+        n.strip_suffix(STUBS_SUFFIX).unwrap_or(n).to_string()
     }
 }
 

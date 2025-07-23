@@ -133,11 +133,11 @@ af
 [out]
 __main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
 __main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
 __main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
 __main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
 
 [case goto_on_stub_package_only_python]
@@ -196,13 +196,13 @@ af
 
 [out]
 __main__:3: error: Cannot find implementation or library stub for module named "typedpkg.pkg"
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:6:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:8:goto -> __main__.py:3:29:__main__.af
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:12:goto -> __main__.py:3:29:__main__.af
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:14:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:16:infer -> ()
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:20:infer -> ()
 
 [case goto_on_stub_package_module_both]
@@ -220,9 +220,9 @@ sample
 
 [out]
 __main__.py:5:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0:typedpkg.sample
-__main__.py:7:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg-stubs.sample
+__main__.py:7:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
 __main__.py:9:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0:typedpkg.sample
-__main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg-stubs.sample
+__main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
 
 [case simple_goto_file_that_has_stub]
 import m
@@ -392,6 +392,10 @@ class C:
 #? --codepoint-column 1 goto --prefer-stubs
 x = 1
 
+[file m/foo.py]
+#? --codepoint-column 1 goto --prefer-stubs
+y = 1
+
 [file m-stubs/__init__.pyi]
 #? --codepoint-column 7 goto
 class C:
@@ -401,6 +405,10 @@ class C:
 #? --codepoint-column 1 goto
 x: int
 
+[file m-stubs/foo.pyi]
+#? --codepoint-column 1 goto
+y = 1
+
 [out]
 m-stubs/__init__.pyi:2:goto -> m/__init__.py:2:6:m.C
 m-stubs/__init__.pyi:4:goto -> m/__init__.py:4:8:m.C.f
@@ -408,3 +416,5 @@ m-stubs/__init__.pyi:7:goto -> m/__init__.py:7:0:m.x
 m/__init__.py:2:goto -> m-stubs/__init__.pyi:2:6:m.C
 m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8:m.C.f
 m/__init__.py:7:goto -> m-stubs/__init__.pyi:7:0:m.x
+m/foo.py:2:goto -> m-stubs/foo.pyi:2:0:m.foo.y
+m-stubs/foo.pyi:2:goto -> m/foo.py:2:0:m.foo.y
