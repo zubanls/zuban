@@ -323,10 +323,10 @@ x: int
 [out]
 m.py:2:goto -> m.pyi:2:6
 m.py:4:goto -> m.pyi:4:8
-m.py:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m.py:7:goto -> m.pyi:7:0
 m.pyi:2:goto -> m.pyi:2:6
 m.pyi:4:goto -> m.pyi:4:8
-m.pyi:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m.pyi:7:goto -> m.pyi:7:0
 
 [case goto_stub_directly_on_identifier_to_non_stubs]
 
@@ -351,10 +351,10 @@ x: int
 [out]
 m.pyi:2:goto -> m.py:2:6
 m.pyi:4:goto -> m.py:4:8
-m.pyi:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m.pyi:7:goto -> m.py:7:0
 m.py:2:goto -> m.py:2:6
 m.py:4:goto -> m.py:4:8
-m.py:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m.py:7:goto -> m.py:7:0
 
 [case goto_primary_target_function_execution]
 from typing import Self
@@ -400,9 +400,9 @@ class C:
 x: int
 
 [out]
-m/__init__.py:2:goto -> m-stubs/__init__.pyi:2:6
-m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8
-m/__init__.py:7:goto -> typeshed/stdlib/builtins.pyi:231:6
 m-stubs/__init__.pyi:2:goto -> m/__init__.py:2:6
 m-stubs/__init__.pyi:4:goto -> m/__init__.py:4:8
-m-stubs/__init__.pyi:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m-stubs/__init__.pyi:7:goto -> m/__init__.py:7:0
+m/__init__.py:2:goto -> m-stubs/__init__.pyi:2:6
+m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8
+m/__init__.py:7:goto -> m-stubs/__init__.pyi:7:0

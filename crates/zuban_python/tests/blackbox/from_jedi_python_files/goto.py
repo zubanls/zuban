@@ -1,8 +1,7 @@
 # goto command tests are different in syntax
 
 definition = 3
-# jedi-diff: #! 0 ['a = definition']
-#! 0 ['class int:']
+#! 0 ['a = definition']
 a = definition
 
 # jedi-diff: #! []
@@ -225,9 +224,9 @@ class ClassDef():
 # -----------------
 
 param = ClassDef
-#! 8 ['param param']
+#! 8 ['param']
 def ab1(param): pass
-#! 9 ['param param']
+#! 9 ['param']
 def ab2(param): pass
 #! 11 ['param = ClassDef']
 def ab3(a=param): pass
@@ -246,7 +245,7 @@ for key, value in [(1,2)]:
     #! ['for ke", "alue in [(", ")]: key']
     key
 
-#! 4 ['class int:']
+#! 4 ['for y in [1]:']
 for y in [1]:
     #! ['for y in [1]:']
     y

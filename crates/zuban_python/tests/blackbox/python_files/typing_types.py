@@ -78,7 +78,7 @@ def type_var_infer[T](
     #? typing.TypeVar()
     T
 
-#! 19 ['class TypeVar:']
+#! 19 ['T']
 def type_var_goto[T](
         #! 12 ["T"]
         x: T,
@@ -104,7 +104,7 @@ def type_var_tuple_infer[*Ts](
     #? typing.TypeVarTuple()
     Ts
 
-#! 26 ['class TypeVarTuple:']
+#! 26 ['*Ts']
 def type_var_tuple_goto[*Ts](
         #! 16 ["*Ts"]
         *args: *Ts,
@@ -128,7 +128,7 @@ def param_spec_infer[**P](
     #? typing.ParamSpec()
     P
 
-#! 23 ["class ParamSpec:"]
+#! 23 ["**P"]
 def param_spec_goto[**P](
         #! 20 ['def args(self) -> ParamSpecArgs: ...']
         *args: P.args,

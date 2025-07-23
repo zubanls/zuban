@@ -281,8 +281,10 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                             .map(|r| vec![r]);
                     }
                     PointKind::Specific => {
-                        if p.specific() == Specific::NameOfNameDef
-                            && name.name_def().unwrap().maybe_import().is_none()
+                        if matches!(
+                            p.specific(),
+                            Specific::NameOfNameDef | Specific::FirstNameOfNameDef
+                        ) && name.name_def().unwrap().maybe_import().is_none()
                         {
                             let first = first_defined_name(file, name.index());
                             return self
