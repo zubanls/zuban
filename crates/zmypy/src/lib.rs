@@ -376,7 +376,7 @@ fn apply_flags(
         project_options.settings.platform = cli.platform;
     }
     if let Some(python_version) = cli.python_version {
-        project_options.settings.python_version = python_version;
+        project_options.settings.python_version = Some(python_version);
     }
     if let Some(p) = cli.python_executable {
         project_options

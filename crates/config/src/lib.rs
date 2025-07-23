@@ -36,7 +36,7 @@ pub struct ProjectOptions {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Settings {
     pub platform: Option<String>,
-    pub python_version: PythonVersion,
+    pub python_version: Option<PythonVersion>,
     pub environment: Option<Rc<NormalizedPath>>,
     pub mypy_path: Vec<Rc<NormalizedPath>>,
     pub prepended_site_packages: Vec<Rc<NormalizedPath>>,
@@ -47,10 +47,11 @@ pub struct Settings {
 }
 
 impl Default for Settings {
+    // PythonVersion::new(3, 13)
     fn default() -> Self {
         Self {
             platform: None,
-            python_version: PythonVersion::new(3, 13),
+            python_version: None,
             environment: None,
             typeshed_path: std::env::var("ZUBAN_TYPESHED")
                 .ok()
@@ -66,6 +67,11 @@ impl Default for Settings {
 impl Settings {
     pub fn computed_platform(&self) -> &str {
         self.platform.as_deref().unwrap_or("posix")
+    }
+
+    pub fn python_version_or_default(&self) -> PythonVersion {
+        self.python_version
+            .unwrap_or_else(|| PythonVersion::new(3, 13))
     }
 
     pub fn apply_python_executable(
@@ -895,11 +901,11 @@ fn apply_from_base_config(
             settings.apply_python_executable(vfs, current_dir, config_file_path, value.as_str()?)?
         }
         "python_version" => {
-            settings.python_version = if let IniOrTomlValue::Toml(Value::Float(f)) = &value {
+            settings.python_version = Some(if let IniOrTomlValue::Toml(Value::Float(f)) = &value {
                 f.display_repr().parse()?
             } else {
                 value.as_str()?.parse()?
-            }
+            })
         }
         "platform" => settings.platform = Some(value.as_str()?.to_string()),
         _ => return apply_from_config_part(flags, key, value),
@@ -1051,7 +1057,7 @@ mod tests {
     fn test_python_version_valid_mypy_ini() {
         let code = "[mypy]\npython_version = 3.1";
         let opts = project_options_valid(code, true);
-        let version = &opts.settings.python_version;
+        let version = &opts.settings.python_version.unwrap();
         assert_eq!(version.major, 3);
         assert_eq!(version.minor, 1);
     }
@@ -1070,7 +1076,7 @@ mod tests {
     fn test_python_version_valid_pyproject_toml() {
         let code = "[tool.mypy]\npython_version = '3.1'";
         let opts = project_options_valid(code, false);
-        let version = &opts.settings.python_version;
+        let version = &opts.settings.python_version.unwrap();
         assert_eq!(version.major, 3);
         assert_eq!(version.minor, 1);
     }
@@ -1080,7 +1086,7 @@ mod tests {
         let check = |major, minor| {
             let code = format!("[tool.mypy]\npython_version = {major}.{minor}");
             let opts = project_options_valid(&code, false);
-            let version = &opts.settings.python_version;
+            let version = &opts.settings.python_version.unwrap();
             assert_eq!(version.major, major);
             assert_eq!(version.minor, minor);
         };

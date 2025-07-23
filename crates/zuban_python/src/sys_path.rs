@@ -16,7 +16,7 @@ pub(crate) fn create_sys_path(
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
-        let p = site_packages_path_from_venv(env, settings.python_version);
+        let p = site_packages_path_from_venv(env, settings.python_version_or_default());
         sys_path.push(handler.unchecked_normalized_path(
             handler.unchecked_abs_path(
                 p.to_str().expect(

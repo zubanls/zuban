@@ -1382,5 +1382,5 @@ fn calculate_mro_for_class(db: &Database, class: Class) -> Box<[BaseClass]> {
 }
 
 fn legacy_new_type(db: &Database) -> bool {
-    db.project.settings.python_version < PythonVersion::new(3, 10)
+    db.project.settings.python_version_or_default() < PythonVersion::new(3, 10)
 }

@@ -1878,8 +1878,8 @@ fn python_version_matches_tuple(
         return Truthiness::Unknown;
     }
     let mut total_order = Ordering::Equal;
-    for (current, tup_entry) in [settings.python_version.major, settings.python_version.minor]
-        [from..]
+    let python_version = settings.python_version_or_default();
+    for (current, tup_entry) in [python_version.major, python_version.minor][from..]
         .iter()
         .zip(tup.iter())
     {
@@ -1944,7 +1944,7 @@ fn python_version_matches_slice(
                         if let Some(result) = wanted.parse_as_usize().and_then(|x| {
                             check_operand_against_total_order(
                                 comp,
-                                settings.python_version.major.cmp(&x),
+                                settings.python_version_or_default().major.cmp(&x),
                             )
                         }) {
                             return result.into();

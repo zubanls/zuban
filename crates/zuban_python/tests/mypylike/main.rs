@@ -305,7 +305,7 @@ impl TestCase<'_, '_> {
         settings.mypy_compatible = mypy_compatible;
 
         if let Some(version) = arg_after("--python-version") {
-            settings.python_version = version.parse().unwrap();
+            settings.python_version = Some(version.parse().unwrap());
         } else {
             // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
             // different argument types.
@@ -372,7 +372,6 @@ impl TestCase<'_, '_> {
 
         let mut result = Ok(true);
         let project = project.as_mut();
-        let mut need_to_check_previous_tests_for_ide_test_results = false;
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
@@ -407,7 +406,6 @@ impl TestCase<'_, '_> {
                         }
                     }
                 });
-                need_to_check_previous_tests_for_ide_test_results |= !ide_test_results.is_empty()
             }
 
             for path in &step.deletions {
@@ -881,7 +879,7 @@ fn base_path_join(local_fs: &dyn VfsHandler, other: &str) -> PathWithScheme {
 impl ProjectsCache {
     fn new(reuse_db: bool, mode: Mode) -> Self {
         let mut po = ProjectOptions::mypy_default();
-        let base_version = po.settings.python_version;
+        let base_version = po.settings.python_version_or_default();
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
@@ -899,7 +897,7 @@ impl ProjectsCache {
             let mut options = ProjectOptions::new(key.0.clone(), key.1.clone());
             set_mypy_path(&mut options);
             // We can only reuse the project if the python version matches.
-            let project = if key.0.python_version == self.base_version {
+            let project = if key.0.python_version_or_default() == self.base_version {
                 self.try_to_reuse_project_parts(options)
             } else {
                 Project::without_watcher(options, self.mode)
