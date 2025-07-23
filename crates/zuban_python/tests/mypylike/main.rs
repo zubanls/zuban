@@ -865,6 +865,7 @@ struct ProjectsCache {
 }
 
 fn set_mypy_path(options: &mut ProjectOptions) {
+    options.settings.add_global_packages_default = false;
     BASE_PATH.with(|base_path| {
         options.settings.mypy_path.push(base_path.clone());
     })

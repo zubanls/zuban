@@ -531,3 +531,12 @@ __main__.py:3:goto -> ()
 ==
 __main__.py:3:goto -> m.py:3:0:m.C
 m.py:2:goto -> x.py:1:0:x
+
+[case goto_stdlib]
+#? goto --prefer-stubs
+str
+#? goto
+str
+[out]
+__main__.py:2:goto -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
+__main__.py:4:goto -> typeshed/stdlib/builtins.pyi:438:6:builtins.str

@@ -40,6 +40,8 @@ pub struct Settings {
     pub environment: Option<Rc<NormalizedPath>>,
     pub mypy_path: Vec<Rc<NormalizedPath>>,
     pub prepended_site_packages: Vec<Rc<NormalizedPath>>,
+    /// Global packages are added by default (if we are not in a venv)
+    pub add_global_packages_default: bool,
     pub mypy_compatible: bool,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
@@ -57,6 +59,7 @@ impl Default for Settings {
                 .ok()
                 .map(|p| LocalFS::without_watcher().normalized_path_from_current_dir(&p)),
             mypy_path: vec![],
+            add_global_packages_default: true,
             mypy_compatible: false,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
