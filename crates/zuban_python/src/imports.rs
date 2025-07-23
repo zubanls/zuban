@@ -42,7 +42,7 @@ impl ImportResult {
         }
     }
 
-    pub(crate) fn import_non_stub_for_stub_package(
+    pub fn import_non_stub_for_stub_package(
         db: &Database,
         original_file: &PythonFile,
         parent_dir: Option<Rc<Directory>>,
@@ -59,6 +59,25 @@ impl ImportResult {
         } else {
             let name = name.strip_suffix(STUBS_SUFFIX)?;
             global_import_without_stubs_first(db, original_file, name)
+        }
+    }
+
+    pub fn import_stub_for_non_stub_package(
+        db: &Database,
+        original_file: &PythonFile,
+        parent_dir: Option<Rc<Directory>>,
+        name: &str,
+    ) -> Option<Self> {
+        if let Some(parent_dir) = parent_dir {
+            Self::import_stub_for_non_stub_package(
+                db,
+                original_file,
+                parent_dir.parent.maybe_dir().ok(),
+                &parent_dir.name,
+            )?
+            .import(db, original_file, name)
+        } else {
+            global_import_of_stubs_folders(db, original_file, name)
         }
     }
 
@@ -97,23 +116,29 @@ pub fn global_import<'a>(
     name: &'a str,
 ) -> Option<ImportResult> {
     // First try <package>-stubs
-    global_import_without_stubs_first(db, from_file, &format!("{name}{STUBS_SUFFIX}")).or_else(
-        || {
-            python_import_with_needs_exact_case(
-                db,
-                from_file,
-                db.vfs
-                    .workspaces
-                    .iter()
-                    .map(|w| (&w.entries, w.part_of_site_packages())),
-                name,
-                false,
-            )
-        },
-    )
+    global_import_of_stubs_folders(db, from_file, name).or_else(|| {
+        python_import_with_needs_exact_case(
+            db,
+            from_file,
+            db.vfs
+                .workspaces
+                .iter()
+                .map(|w| (&w.entries, w.part_of_site_packages())),
+            name,
+            false,
+        )
+    })
 }
 
-pub fn global_import_without_stubs_first<'a>(
+fn global_import_of_stubs_folders<'a>(
+    db: &'a Database,
+    from_file: &PythonFile,
+    name: &'a str,
+) -> Option<ImportResult> {
+    global_import_without_stubs_first(db, from_file, &format!("{name}{STUBS_SUFFIX}"))
+}
+
+fn global_import_without_stubs_first<'a>(
     db: &'a Database,
     from_file: &PythonFile,
     name: &'a str,

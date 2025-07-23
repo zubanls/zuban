@@ -378,3 +378,31 @@ __main__.py:9:goto -> __main__.py:4:8:__main__.X.f
 __main__.py:11:goto -> __main__.py:2:6:__main__.X
 __main__.py:13:goto -> __main__.py:2:6:__main__.X
 __main__.py:15:goto -> __main__.py:3:4:__main__.X.z
+
+[case goto_stubs_package]
+
+[file m/__init__.py]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file m-stubs/__init__.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+m/__init__.py:2:goto -> m-stubs/__init__.pyi:2:6
+m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8
+m/__init__.py:7:goto -> typeshed/stdlib/builtins.pyi:231:6
+m-stubs/__init__.pyi:2:goto -> m/__init__.py:2:6
+m-stubs/__init__.pyi:4:goto -> m/__init__.py:4:8
+m-stubs/__init__.pyi:7:goto -> typeshed/stdlib/builtins.pyi:231:6
