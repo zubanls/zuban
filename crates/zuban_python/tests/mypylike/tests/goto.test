@@ -67,7 +67,7 @@ str
 [out]
 __main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
 __main__.py:7:goto -> __main__.py:2:0:__main__.a
-__main__.py:10:goto -> error: column 1 is not a valid char boundary on line "ä𐍈ä"
+__main__.py:10:goto -> error: Column 1 is not a valid char boundary on line "ä𐍈ä"
 __main__.py:14:goto -> __main__.py:2:0:__main__.a
 
 [case goto_with_utf16_code_units]
@@ -283,8 +283,8 @@ class C:
     def f(self, x: int, /): ...
 
 [out]
-__main__.py:3:infer -> m.py:2:6:m.c
-__main__.py:5:infer -> m.pyi:1:6:m.c
+__main__.py:3:infer -> m.py:2:6:m.C
+__main__.py:5:infer -> m.pyi:1:6:m.C
 __main__.py:7:infer -> m.py:3:8:m.C.f
 __main__.py:9:infer -> m.pyi:2:8:m.C.f
 __main__.py:13:infer -> m.py:3:8:m.C.f

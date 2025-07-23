@@ -92,7 +92,7 @@ class C(A[List[T]]): ...
 
 C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
 y = C([1])
-reveal_type(y.foo())  # N: Revealed type is "List[int]"
+reveal_type(y.foo())  # N: Revealed type is "list[int]"
 
 [case dataclass_inheritance_method_generics_with_dataclass]
 from typing import TypeVar, Generic, List

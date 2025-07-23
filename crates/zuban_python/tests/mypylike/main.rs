@@ -478,7 +478,13 @@ impl TestCase<'_, '_> {
             let mut actual_lines = actual
                 .trim()
                 .split('\n')
-                .map(|s| s.to_lowercase())
+                .map(|s| {
+                    if self.from_mypy_test_suite {
+                        s.to_lowercase()
+                    } else {
+                        s.to_string()
+                    }
+                })
                 .filter_map(temporarily_skip)
                 .collect::<Vec<_>>();
             if actual_lines == [""] {
@@ -496,22 +502,29 @@ impl TestCase<'_, '_> {
 
             actual_lines.sort();
 
-            // For now we want to compare lower cases, because mypy mixes up list[] and List[]
-            let mut wanted_lower: Vec<_> = wanted
+            let mut wanted_cleaned_up: Vec<_> = wanted
                 .iter()
-                .map(|s| s.to_lowercase())
+                .map(|s| {
+                    if self.from_mypy_test_suite {
+                        // For now we want to compare lower cases, because mypy mixes up list[] and
+                        // List[]
+                        s.to_lowercase()
+                    } else {
+                        s.to_string()
+                    }
+                })
                 .filter_map(temporarily_skip)
                 .collect();
-            wanted_lower.sort();
+            wanted_cleaned_up.sort();
 
-            if wanted_lower != actual_lines {
+            if wanted_cleaned_up != actual_lines {
                 // To check output only sort by filenames, which should be enough.
                 wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
 
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
                 result = Err(format!(
                     "\nMismatch:\n\
-                     Wanted lines: {wanted_lower:?}\n\n\
+                     Wanted lines: {wanted_cleaned_up:?}\n\n\
                      Actual lines: {actual_lines:?}\n\n\
                      Wanted:\n\
                      {wanted}\n\

@@ -144,24 +144,21 @@ pub(crate) fn find_and_check_ide_tests(
                     )
                 }
             };
-            output.push(
-                match out {
-                    Ok(out) => {
-                        let result = if kind == "complete" {
-                            format!("[{}]", out.join(", "))
+            output.push(match out {
+                Ok(out) => {
+                    let result = if kind == "complete" {
+                        format!("[{}]", out.join(", "))
+                    } else {
+                        if out.is_empty() {
+                            "()".to_string()
                         } else {
-                            if out.is_empty() {
-                                "()".to_string()
-                            } else {
-                                out.join("; ")
-                            }
-                        };
-                        format!("{path}:{}:{kind} -> {}", line_nr + 2, result)
-                    }
-                    Err(err) => format!("{path}:{}:{kind} -> error: {err}", line_nr + 2),
+                            out.join("; ")
+                        }
+                    };
+                    format!("{path}:{}:{kind} -> {}", line_nr + 2, result)
                 }
-                .to_lowercase(),
-            );
+                Err(err) => format!("{path}:{}:{kind} -> error: {err}", line_nr + 2),
+            });
         }
     }
 }

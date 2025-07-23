@@ -317,8 +317,8 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     c, d = 1  # E: "int" object is not iterable  [misc]
     c, d = None  # E: "None" object is not iterable  [misc]
 
-    [n for n in x]  # E: Item "None" of "Tuple[int, str] | None" has no attribute "__iter__" (not iterable)  [union-attr]
-    [n for n in y]  # E: Item "int" of "Tuple[int, str] | int" has no attribute "__iter__" (not iterable)  [union-attr]
+    [n for n in x]  # E: Item "None" of "tuple[int, str] | None" has no attribute "__iter__" (not iterable)  [union-attr]
+    [n for n in y]  # E: Item "int" of "tuple[int, str] | int" has no attribute "__iter__" (not iterable)  [union-attr]
     [n for n in 1]  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
     [n for n in None]  # E: "None" has no attribute "__iter__" (not iterable)  [attr-defined]
 

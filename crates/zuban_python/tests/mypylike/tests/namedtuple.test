@@ -66,14 +66,14 @@ S = TypeVar("S")
 class Foo(Generic[S]):
     def foo(self, s: S) -> None:
         NT = NamedTuple("NT", [("key", S), ("value", T)])
-        reveal_type(NT)  # N: Revealed type is "def [T] (key: S, value: T) -> Tuple[S, T, fallback=__main__.NT]"
+        reveal_type(NT)  # N: Revealed type is "def [T] (key: S, value: T) -> tuple[S, T, fallback=__main__.NT]"
 
         wrong_count: NT[int, str] # E: Bad number of arguments for type alias, expected 1, given 2
 
         nt_any: NT
-        reveal_type(nt_any)  # N: Revealed type is "Tuple[S, Any, fallback=__main__.NT]"
+        reveal_type(nt_any)  # N: Revealed type is "tuple[S, Any, fallback=__main__.NT]"
         nts: NT[str]
-        reveal_type(nts)  # N: Revealed type is "Tuple[S, str, fallback=__main__.NT]"
+        reveal_type(nts)  # N: Revealed type is "tuple[S, str, fallback=__main__.NT]"
 
         NT[int](key=1, value=1)  # E: Argument "key" to "NT" has incompatible type "int"; expected "S"
         NT[int](key=s, value=1)
