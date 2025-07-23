@@ -537,6 +537,33 @@ m.py:2:goto -> x.py:1:0:x
 str
 #? goto
 str
+
+import token
+
+#? goto --prefer-stubs
+token.ENDMARKER
+#? goto
+token.ENDMARKER
+
+import os
+#? goto --prefer-stubs
+os.getenv
+#? goto
+os.getenv
+
+
+import importlib
+#? goto --prefer-stubs
+importlib.import_module
+#? goto
+importlib.import_module
+
 [out]
 __main__.py:2:goto -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
 __main__.py:4:goto -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
+__main__.py:9:goto -> typeshed/stdlib/token.pyi:81:0:token.ENDMARKER
+__main__.py:11:goto -> /usr/lib/python3.12/token.py:6:0:token.ENDMARKER
+__main__.py:15:goto -> typeshed/stdlib/os/__init__.pyi:989:4:os.getenv
+__main__.py:17:goto -> /usr/lib/python3.12/os.py:779:4:os.getenv
+__main__.py:22:goto -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:24:goto -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module

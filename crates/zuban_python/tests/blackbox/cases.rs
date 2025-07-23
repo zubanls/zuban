@@ -72,8 +72,8 @@ impl TestFile<'_> {
         let full_count = cases.len();
         let mut ran_count = 0;
         let mut errors = vec![];
+        let file_name = self.path.file_name().unwrap().to_str().unwrap();
         for case in cases {
-            let file_name = self.path.file_name().unwrap().to_str().unwrap();
             if self.filters.iter().any(|f| f.denied(file_name, case.line)) {
                 continue;
             }

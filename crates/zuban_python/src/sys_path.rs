@@ -164,7 +164,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
                         }
                     }
                     Err(err) => {
-                        tracing::warn!("Wanted to list lib dir {lib_path:?}, but got: {err:?}");
+                        tracing::debug!("Wanted to list lib dir {lib_path:?}, but got: {err:?}");
                     }
                 }
                 found.sort();

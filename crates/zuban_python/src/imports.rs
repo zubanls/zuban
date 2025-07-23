@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use utils::match_case;
-use vfs::{Directory, DirectoryEntry, Entries, FileIndex};
+use vfs::{Directory, DirectoryEntry, Entries, FileIndex, WorkspaceKind};
 
 use crate::{
     database::Database,
@@ -48,7 +48,7 @@ impl ImportResult {
         parent_dir: Option<Rc<Directory>>,
         name: &str,
     ) -> Option<Self> {
-        if let Some(parent_dir) = parent_dir {
+        let result = if let Some(parent_dir) = parent_dir {
             Self::import_non_stub_for_stub_package(
                 db,
                 original_file,
@@ -57,8 +57,26 @@ impl ImportResult {
             )?
             .import(db, original_file, name)
         } else {
-            let name = name.strip_suffix(STUBS_SUFFIX)?;
-            global_import_without_stubs_first(db, original_file, name)
+            if let Some(suffix) = name.strip_suffix(STUBS_SUFFIX) {
+                global_import_without_stubs_first(db, original_file, suffix)
+            } else {
+                python_import_with_needs_exact_case(
+                    db,
+                    original_file,
+                    db.vfs
+                        .workspaces
+                        .iter()
+                        .filter(|w| !matches!(w.kind, WorkspaceKind::Typeshed))
+                        .map(|w| (&w.entries, false)),
+                    name,
+                    false,
+                    false,
+                )
+            }
+        };
+        match result {
+            Some(ImportResult::File(f)) if f == original_file.file_index => None,
+            _ => result,
         }
     }
 
@@ -126,6 +144,7 @@ pub fn global_import<'a>(
                 .map(|w| (&w.entries, w.part_of_site_packages())),
             name,
             false,
+            true,
         )
     })
 }
@@ -224,7 +243,7 @@ fn python_import<'x>(
     dirs: impl Iterator<Item = &'x Entries>,
     name: &str,
 ) -> Option<ImportResult> {
-    python_import_with_needs_exact_case(db, from_file, dirs.map(|d| (d, false)), name, false)
+    python_import_with_needs_exact_case(db, from_file, dirs.map(|d| (d, false)), name, false, true)
 }
 
 pub fn python_import_with_needs_exact_case<'x>(
@@ -234,6 +253,7 @@ pub fn python_import_with_needs_exact_case<'x>(
     dirs: impl Iterator<Item = (&'x Entries, bool)>,
     name: &str,
     needs_exact_case: bool,
+    check_stubs: bool,
 ) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
@@ -267,16 +287,21 @@ pub fn python_import_with_needs_exact_case<'x>(
                 DirectoryEntry::File(file) => {
                     // TODO these format!() always allocate a lot and don't seem to be necessary
                     let is_py_file = match_c(db, &file.name, &name_py, needs_exact_case);
-                    if is_py_file || match_c(db, &file.name, &name_pyi, needs_exact_case) {
-                        if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
-                            return Some(ImportResult::PyTypedMissing);
+                    if check_stubs {
+                        if is_py_file || match_c(db, &file.name, &name_pyi, needs_exact_case) {
+                            if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
+                                return Some(ImportResult::PyTypedMissing);
+                            }
+                            let file_index = db.load_file_from_workspace(file, false);
+                            if is_py_file {
+                                python_file_index = file_index.map(|f| (file.clone(), f));
+                            } else {
+                                stub_file_index = file_index.map(|f| (file.clone(), f));
+                            }
                         }
+                    } else if is_py_file {
                         let file_index = db.load_file_from_workspace(file, false);
-                        if is_py_file {
-                            python_file_index = file_index.map(|f| (file.clone(), f));
-                        } else {
-                            stub_file_index = file_index.map(|f| (file.clone(), f));
-                        }
+                        python_file_index = file_index.map(|f| (file.clone(), f));
                     }
                 }
                 DirectoryEntry::MissingEntry { .. } => (),
@@ -288,7 +313,9 @@ pub fn python_import_with_needs_exact_case<'x>(
             return Some(ImportResult::File(file_index));
         }
         dir.add_missing_entry(&name_py, from_file.file_index);
-        dir.add_missing_entry(&name_pyi, from_file.file_index);
+        if check_stubs {
+            dir.add_missing_entry(&name_pyi, from_file.file_index);
+        }
         // The folder should not exist for folder/__init__.py or a namespace.
         if !had_namespace_dir {
             dir.add_missing_entry(name, from_file.file_index);

@@ -130,9 +130,9 @@ def param_spec_infer[**P](
 
 #! 23 ["**P"]
 def param_spec_goto[**P](
-        #! 20 ['def args(self) -> ParamSpecArgs: ...']
+        ##! 20 ['def args(self) -> ParamSpecArgs: ...']
         *args: P.args,
-        #! 23 ["def kwargs(self) -> ParamSpecKwargs: ..."]
+        ##! 23 ["def kwargs(self) -> ParamSpecKwargs: ..."]
         **kwargs: P.kwargs,
         ):
     #! ["*args: P.args"]

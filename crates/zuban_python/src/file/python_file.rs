@@ -393,6 +393,7 @@ impl<'db> PythonFile {
                 )),
                 name,
                 true,
+                true,
             )
             .or_else(|| {
                 if self.in_partial_stubs(db) {
