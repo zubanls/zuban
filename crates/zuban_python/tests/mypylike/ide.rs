@@ -41,16 +41,12 @@ pub struct GotoArgs {
     pub prefer_stubs: bool,
     #[arg(long)]
     pub follow_imports: bool,
-    #[arg(long)]
-    pub show_qualified_name: bool,
 }
 
 #[derive(Parser, Debug)]
 pub struct InferArgs {
     #[arg(long)]
     pub prefer_stubs: bool,
-    #[arg(long)]
-    pub show_qualified_name: bool,
 }
 
 pub(crate) fn find_and_check_ide_tests(
@@ -118,17 +114,13 @@ pub(crate) fn find_and_check_ide_tests(
                         "goto",
                         document.goto(position, goal, goto_args.follow_imports, |name| {
                             let start = name.name_range().0;
-                            let mut result = format!(
-                                "{}:{}:{}",
+                            format!(
+                                "{}:{}:{}:{}",
                                 avoid_path_prefixes(name.relative_path(base_path)),
                                 start.line_one_based(),
-                                start.code_points_column()
-                            );
-                            if goto_args.show_qualified_name {
-                                result.push(':');
-                                result.push_str(&name.qualified_name());
-                            }
-                            result
+                                start.code_points_column(),
+                                name.qualified_name(),
+                            )
                         }),
                     )
                 }
@@ -141,17 +133,13 @@ pub(crate) fn find_and_check_ide_tests(
                         "infer",
                         document.infer_definition(position, goal, |vn| {
                             let start = vn.name.name_range().0;
-                            let mut result = format!(
-                                "{}:{}:{}",
+                            format!(
+                                "{}:{}:{}:{}",
                                 avoid_path_prefixes(vn.name.relative_path(base_path)),
                                 start.line_one_based(),
-                                start.code_points_column()
-                            );
-                            if infer_args.show_qualified_name {
-                                result.push(':');
-                                result.push_str(&vn.name.qualified_name());
-                            }
-                            result
+                                start.code_points_column(),
+                                &vn.name.qualified_name(),
+                            )
                         }),
                     )
                 }

@@ -20,11 +20,12 @@ f
 def f(): ...
 
 [out]
-__main__.py:2:goto -> m.py:2:4
-__main__.py:7:goto -> __main__.py:4:0
-__main__.py:10:goto -> __main__.py:2:14
-__main__.py:12:goto -> m.py:2:4
-__main__.py:15:infer -> m.py:2:4
+__main__.py:2:goto -> m.py:2:4:m.f
+__main__.py:7:goto -> __main__.py:4:0:__main__.a
+__main__.py:10:goto -> __main__.py:2:14:__main__.f
+__main__.py:12:goto -> m.py:2:4:m.f
+__main__.py:15:infer -> m.py:2:4:m.f
+
 
 [case goto_with_bytes]
 import dataclasses
@@ -36,7 +37,7 @@ dataclasses
 #? --nth-utf8-byte 1000000000 goto
 dataclasses
 [out]
-__main__.py:3:goto -> __main__.py:1:7
+__main__.py:3:goto -> __main__.py:1:7:__main__.dataclasses
 __main__.py:8:goto -> ()
 
 [case invalid_nth_byte]
@@ -64,10 +65,10 @@ a
 str
 
 [out]
-__main__.py:4:goto -> __main__.py:1:0
-__main__.py:7:goto -> __main__.py:2:0
-__main__.py:10:goto -> error: Column 1 is not a valid char boundary on line "ä𐍈ä"
-__main__.py:14:goto -> __main__.py:2:0
+__main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
+__main__.py:7:goto -> __main__.py:2:0:__main__.a
+__main__.py:10:goto -> error: column 1 is not a valid char boundary on line "ä𐍈ä"
+__main__.py:14:goto -> __main__.py:2:0:__main__.a
 
 [case goto_with_utf16_code_units]
 ä𐍈ä = 1
@@ -84,9 +85,9 @@ a
 str
 
 [out]
-__main__.py:4:goto -> __main__.py:1:0
-__main__.py:7:goto -> __main__.py:2:0
-__main__.py:11:goto -> __main__.py:2:0
+__main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
+__main__.py:7:goto -> __main__.py:2:0:__main__.a
+__main__.py:11:goto -> __main__.py:2:0:__main__.a
 
 [case goto_with_codepoint_column]
 ä𐍈ä = 1
@@ -103,9 +104,9 @@ a
 str
 
 [out]
-__main__.py:4:goto -> __main__.py:1:0
-__main__.py:7:goto -> __main__.py:2:0
-__main__.py:11:goto -> __main__.py:2:0
+__main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
+__main__.py:7:goto -> __main__.py:2:0:__main__.a
+__main__.py:11:goto -> __main__.py:2:0:__main__.a
 
 [case goto_on_stub_package_both]
 # pkgs: typedpkg, typedpkg-stubs
@@ -130,14 +131,14 @@ ex
 af
 
 [out]
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
-__main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
-__main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
-__main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
-__main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
+__main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
 
 [case goto_on_stub_package_only_python]
 # pkgs: typedpkg
@@ -162,14 +163,14 @@ ex
 af
 
 [out]
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
-__main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
-__main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
-__main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4
-__main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4
+__main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:10:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:18:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
 
 [case goto_on_stub_package_only_stub]
 # pkgs: typedpkg-stubs
@@ -195,13 +196,13 @@ af
 
 [out]
 __main__:3: error: Cannot find implementation or library stub for module named "typedpkg.pkg"
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
-__main__.py:8:goto -> __main__.py:3:29
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
-__main__.py:12:goto -> __main__.py:3:29
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
+__main__.py:6:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:8:goto -> __main__.py:3:29:__main__.af
+__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
+__main__.py:12:goto -> __main__.py:3:29:__main__.af
+__main__.py:14:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
 __main__.py:16:infer -> ()
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4
+__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg-stubs.sample.ex
 __main__.py:20:infer -> ()
 
 [case goto_on_stub_package_module_both]
@@ -218,26 +219,26 @@ sample
 sample
 
 [out]
-__main__.py:5:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0
-__main__.py:7:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0
-__main__.py:9:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0
-__main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0
+__main__.py:5:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0:typedpkg.sample
+__main__.py:7:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg-stubs.sample
+__main__.py:9:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0:typedpkg.sample
+__main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg-stubs.sample
 
 [case simple_goto_file_that_has_stub]
 import m
-#? goto --show-qualified-name
+#? goto
 m.C
-#? goto --prefer-stubs --show-qualified-name
+#? goto --prefer-stubs
 m.C
-#? goto --show-qualified-name
+#? goto
 m.C.f
-#? goto --prefer-stubs --show-qualified-name
+#? goto --prefer-stubs
 m.C.f
 
 x = m.C()
-#? --codepoint-column 3 goto --show-qualified-name
+#? --codepoint-column 3 goto
 x.f(1)
-#? --codepoint-column 3 goto --prefer-stubs --show-qualified-name
+#? --codepoint-column 3 goto --prefer-stubs
 x.f(1)
 
 [file m.py]
@@ -249,8 +250,8 @@ class C:
     def f(self, x: int, /): ...
 
 [out]
-__main__.py:3:goto -> m.py:2:6:m.c
-__main__.py:5:goto -> m.pyi:1:6:m.c
+__main__.py:3:goto -> m.py:2:6:m.C
+__main__.py:5:goto -> m.pyi:1:6:m.C
 __main__.py:7:goto -> m.py:3:8:m.C.f
 __main__.py:9:goto -> m.pyi:2:8:m.C.f
 __main__.py:13:goto -> m.py:3:8:m.C.f
@@ -258,19 +259,19 @@ __main__.py:15:goto -> m.pyi:2:8:m.C.f
 
 [case simple_infer_file_that_has_stub]
 import m
-#? infer --show-qualified-name
+#? infer
 m.C
-#? infer --prefer-stubs --show-qualified-name
+#? infer --prefer-stubs
 m.C
-#? infer --show-qualified-name
+#? infer
 m.C.f
-#? infer --prefer-stubs --show-qualified-name
+#? infer --prefer-stubs
 m.C.f
 
 x = m.C()
-#? --codepoint-column 3 infer --show-qualified-name
+#? --codepoint-column 3 infer
 x.f(1)
-#? --codepoint-column 3 infer --prefer-stubs --show-qualified-name
+#? --codepoint-column 3 infer --prefer-stubs
 x.f(1)
 
 [file m.py]
@@ -291,9 +292,9 @@ __main__.py:15:infer -> m.pyi:2:8:m.C.f
 
 [case lambda_qualified_name]
 def f():
-    #? goto --show-qualified-name
+    #? goto
     x = lambda y: y
-    #? goto --show-qualified-name
+    #? goto
     x
 
 [out]
@@ -321,12 +322,12 @@ class C:
 x: int
 
 [out]
-m.py:2:goto -> m.pyi:2:6
-m.py:4:goto -> m.pyi:4:8
-m.py:7:goto -> m.pyi:7:0
-m.pyi:2:goto -> m.pyi:2:6
-m.pyi:4:goto -> m.pyi:4:8
-m.pyi:7:goto -> m.pyi:7:0
+m.pyi:2:goto -> m.pyi:2:6:m.C
+m.pyi:4:goto -> m.pyi:4:8:m.C.f
+m.pyi:7:goto -> m.pyi:7:0:m.x
+m.py:2:goto -> m.pyi:2:6:m.C
+m.py:4:goto -> m.pyi:4:8:m.C.f
+m.py:7:goto -> m.pyi:7:0:m.x
 
 [case goto_stub_directly_on_identifier_to_non_stubs]
 
@@ -349,12 +350,13 @@ class C:
 x: int
 
 [out]
-m.pyi:2:goto -> m.py:2:6
-m.pyi:4:goto -> m.py:4:8
-m.pyi:7:goto -> m.py:7:0
-m.py:2:goto -> m.py:2:6
-m.py:4:goto -> m.py:4:8
-m.py:7:goto -> m.py:7:0
+m.pyi:2:goto -> m.py:2:6:m.C
+m.pyi:4:goto -> m.py:4:8:m.C.f
+m.pyi:7:goto -> m.py:7:0:m.x
+m.py:2:goto -> m.py:2:6:m.C
+m.py:4:goto -> m.py:4:8:m.C.f
+m.py:7:goto -> m.py:7:0:m.x
+
 
 [case goto_primary_target_function_execution]
 from typing import Self
@@ -364,13 +366,13 @@ class X:
         return self
 
 def x(x: X):
-    #? --codepoint-column 7 goto --show-qualified-name
+    #? --codepoint-column 7 goto
     x.f().z = 4
-    #? --codepoint-column 8 goto --show-qualified-name
+    #? --codepoint-column 8 goto
     x.f().z = 4
-    #? --codepoint-column 9 goto --show-qualified-name
+    #? --codepoint-column 9 goto
     x.f().z = 3
-    #? --codepoint-column 10 goto --show-qualified-name
+    #? --codepoint-column 10 goto
     x.f().z = 4
 
 [out]
@@ -400,9 +402,9 @@ class C:
 x: int
 
 [out]
-m-stubs/__init__.pyi:2:goto -> m/__init__.py:2:6
-m-stubs/__init__.pyi:4:goto -> m/__init__.py:4:8
-m-stubs/__init__.pyi:7:goto -> m/__init__.py:7:0
-m/__init__.py:2:goto -> m-stubs/__init__.pyi:2:6
-m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8
-m/__init__.py:7:goto -> m-stubs/__init__.pyi:7:0
+m-stubs/__init__.pyi:2:goto -> m/__init__.py:2:6:m.C
+m-stubs/__init__.pyi:4:goto -> m/__init__.py:4:8:m.C.f
+m-stubs/__init__.pyi:7:goto -> m/__init__.py:7:0:m.x
+m/__init__.py:2:goto -> m-stubs/__init__.pyi:2:6:m.C
+m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8:m.C.f
+m/__init__.py:7:goto -> m-stubs/__init__.pyi:7:0:m.x
