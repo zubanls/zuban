@@ -504,3 +504,30 @@ pkg/nested/m.py:8:goto -> pkg/nested/m.pyi:7:0:pkg.nested.m.x
 pkg/nested/m.pyi:2:goto -> pkg/nested/m.py:3:6:pkg.nested.m.C
 pkg/nested/m.pyi:4:goto -> pkg/nested/m.py:5:8:pkg.nested.m.C.f
 pkg/nested/m.pyi:7:goto -> pkg/nested/m.py:8:0:pkg.nested.m.x
+
+[case goto_multi_steps]
+import m
+#? goto --follow-imports
+m.C
+
+[file m.py]
+#? --codepoint-column 6 goto
+class C: ...
+[file m.py.2]
+[file m.py.3]
+#? goto
+import x
+C = x.a
+
+[file x.py]
+a = 1
+
+[out]
+m.py:2:goto -> m.py:2:6:m.C
+__main__.py:3:goto -> m.py:2:6:m.C
+==
+__main__:3: error: Module has no attribute "C"
+__main__.py:3:goto -> ()
+==
+__main__.py:3:goto -> m.py:3:0:m.C
+m.py:2:goto -> x.py:1:0:x

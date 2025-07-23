@@ -16,6 +16,7 @@ use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeChec
 use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
+use utils::FastHashSet;
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::{Mode, Project};
 
@@ -371,6 +372,7 @@ impl TestCase<'_, '_> {
 
         let mut result = Ok(true);
         let project = project.as_mut();
+        let mut need_to_check_previous_tests_for_ide_test_results = false;
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
@@ -386,19 +388,26 @@ impl TestCase<'_, '_> {
                 step,
                 self.from_mypy_test_suite,
             );
-            let mut ide_test_results = vec![];
+            let mut ide_test_results: Vec<String> = vec![];
             if !self.from_mypy_test_suite {
                 BASE_PATH.with(|base_path| {
-                    for (path, code) in &step.files {
-                        find_and_check_ide_tests(
-                            project,
-                            base_path,
-                            path,
-                            code,
-                            &mut ide_test_results,
-                        )
+                    let mut previously_checked = FastHashSet::default();
+                    for step in steps.steps.iter().take(i + 1).rev() {
+                        for (path, code) in &step.files {
+                            if !previously_checked.insert(path) {
+                                continue;
+                            }
+                            find_and_check_ide_tests(
+                                project,
+                                base_path,
+                                path,
+                                code,
+                                &mut ide_test_results,
+                            );
+                        }
                     }
-                })
+                });
+                need_to_check_previous_tests_for_ide_test_results |= !ide_test_results.is_empty()
             }
 
             for path in &step.deletions {
