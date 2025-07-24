@@ -585,3 +585,44 @@ __main__.py:15:goto -> typeshed/stdlib/os/__init__.pyi:989:4:os.getenv
 __main__.py:17:goto -> /usr/lib/python3.12/os.py:779:4:os.getenv
 __main__.py:21:goto -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
 __main__.py:23:goto -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
+
+[case infer_stdlib]
+#? infer --prefer-stubs
+str
+#? infer
+str
+
+import token
+
+#? infer --prefer-stubs
+token.ENDMARKER
+#? infer
+token.ENDMARKER
+#? infer --prefer-stubs
+token.ISTERMINAL
+#? infer
+token.ISTERMINAL
+
+import os
+#? infer --prefer-stubs
+os.getenv
+#? infer
+os.getenv
+
+import importlib
+#? infer --prefer-stubs
+importlib.import_module
+#? infer
+importlib.import_module
+
+[out]
+__main__.py:2:infer -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
+__main__.py:4:infer -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
+__main__.py:9:infer -> typeshed/stdlib/builtins.pyi:231:6:builtins.int
+__main__.py:11:infer -> typeshed/stdlib/builtins.pyi:231:6:builtins.int
+__main__.py:13:infer -> typeshed/stdlib/token.pyi:158:4:token.ISTERMINAL
+__main__.py:15:infer -> /usr/lib/python3.12/token.py:135:4:token.ISTERMINAL
+__main__.py:19:infer -> typeshed/stdlib/os/__init__.pyi:989:4:os.getenv
+__main__.py:21:infer -> /usr/lib/python3.12/os.py:779:4:os.getenv
+__main__.py:25:infer -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:27:infer -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
