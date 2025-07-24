@@ -57,7 +57,7 @@ impl<'x> Name<'x> {
         self.file().tree.code()
     }
 
-    fn file(&self) -> &PythonFile {
+    pub(crate) fn file(&self) -> &PythonFile {
         match self {
             Name::TreeName(TreeName { file, .. })
             | Name::ModuleName(ModuleName { file, .. })

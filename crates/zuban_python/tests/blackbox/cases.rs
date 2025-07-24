@@ -326,7 +326,6 @@ impl TestFile<'_> {
 }
 
 fn unpack_references_tuple(line_nr: usize, mut s: &str) -> Vec<(Option<String>, usize, usize)> {
-    dbg!(line_nr, s);
     let mut tuples = vec![];
     while !s.is_empty() {
         s = s.strip_prefix('(').unwrap();
@@ -340,9 +339,8 @@ fn unpack_references_tuple(line_nr: usize, mut s: &str) -> Vec<(Option<String>, 
             identifier = Some(in_string.to_string())
         }
         let (line, column) = in_tuple.split_once(',').unwrap();
-        dbg!(line, column);
         let line_diff = line.trim().parse::<isize>().unwrap();
-        let line = (line_nr as isize + 1 + line_diff) as usize;
+        let line = (line_nr as isize + 2 + line_diff) as usize;
         let column = column.trim().parse().unwrap();
         tuples.push((identifier, line, column));
         s = s.trim_start_matches(',');

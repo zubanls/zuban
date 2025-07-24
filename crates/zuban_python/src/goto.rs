@@ -33,6 +33,21 @@ pub(crate) struct PositionalDocument<'db, T> {
     pub node: T,
 }
 
+impl<T> Clone for PositionalDocument<'_, T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            db: self.db,
+            file: self.file,
+            scope: self.scope,
+            node: self.node.clone(),
+        }
+    }
+}
+impl<T> Copy for PositionalDocument<'_, T> where T: Copy {}
+
 impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     pub fn for_goto(
         db: &'db Database,
@@ -369,8 +384,16 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
         (!results.is_empty()).then_some(results)
     }
 
-    pub fn references(&self, only_check_current_document: bool) -> Vec<T> {
-        vec![]
+    pub fn references(&mut self, only_check_current_document: bool) -> Vec<T> {
+        let callback = &mut self.on_result;
+        let mut definitions = vec![];
+        let to_unique_position = |n: &Name| (n.file().file_index, n.name_range().0.byte_position);
+        let mut results = GotoResolver::new(self.infos, GotoGoal::Indifferent, |n: Name| {
+            definitions.push(to_unique_position(&n));
+            callback(n)
+        })
+        .goto(true);
+        results
     }
 }
 
