@@ -208,7 +208,7 @@ impl<'project> Document<'project> {
         position: InputPosition,
         goal: GotoGoal,
         follow_imports: bool,
-        on_name: impl for<'a> Fn(Name) -> T + Copy,
+        on_name: impl for<'a> Fn(Name) -> T,
     ) -> Result<Vec<T>, String> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
@@ -220,7 +220,7 @@ impl<'project> Document<'project> {
         &'slf self,
         position: InputPosition,
         goal: GotoGoal,
-        on_name: impl for<'a> Fn(ValueName) -> T + Copy,
+        on_name: impl for<'a> Fn(ValueName) -> T,
     ) -> Result<Vec<T>, String> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
@@ -232,7 +232,7 @@ impl<'project> Document<'project> {
         &'slf self,
         position: InputPosition,
         only_check_current_module: bool,
-        on_name: impl for<'a> Fn(Name) -> T + Copy,
+        on_name: impl for<'a> Fn(Name) -> T,
     ) -> Result<Vec<T>, String> {
         Ok(GotoResolver::new(
             self.positional_document(position)?,

@@ -4610,7 +4610,7 @@ impl<'db> Expressions<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum GotoNode<'db> {
     Name(Name<'db>),
     ImportFromAsName(ImportFromAsName<'db>),

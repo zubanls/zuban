@@ -205,36 +205,36 @@ impl<'db, C> GotoResolver<'db, C> {
     }
 }
 
-impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
-    pub fn goto(self, follow_imports: bool) -> Vec<T> {
+impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
+    pub fn goto(mut self, follow_imports: bool) -> Vec<T> {
         if let Some(names) = self.goto_name(follow_imports) {
             return names;
         }
-        let callback = self.on_result;
+        let mut callback = self.on_result;
         GotoResolver {
             infos: self.infos,
             goal: self.goal,
-            on_result: &|n: ValueName| callback(n.name),
+            on_result: &mut |n: ValueName| callback(n.name),
         }
         .infer_definition()
     }
 
     fn check_node_ref_and_maybe_follow_import(
-        &self,
+        &mut self,
         node_ref: NodeRef,
         follow_imports: bool,
     ) -> Option<T> {
         let n = node_ref.maybe_name()?;
         let db = self.infos.db;
-        let ret = |name| {
-            let name = goto_with_goal(name, self.goal);
-            Some((self.on_result)(name))
+        let ret = |slf: &mut Self, name| {
+            let name = goto_with_goal(name, slf.goal);
+            Some((slf.on_result)(name))
         };
         if follow_imports {
             if let Some(name_def) = n.name_def() {
-                let on_module = |p: Point| {
+                let mut on_module = |p: Point| {
                     let file = db.loaded_python_file(p.file_index());
-                    return ret(Name::ModuleName(ModuleName { db, file }));
+                    return ret(self, Name::ModuleName(ModuleName { db, file }));
                 };
                 match name_def.maybe_import() {
                     Some(NameImportParent::ImportFromAsName(_)) => {
@@ -260,17 +260,17 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 }
             }
         }
-        ret(Name::TreeName(TreeName::with_unknown_parent_scope(
-            db,
-            node_ref.file,
-            n,
-        )))
+        ret(
+            self,
+            Name::TreeName(TreeName::with_unknown_parent_scope(db, node_ref.file, n)),
+        )
     }
 
-    fn goto_name(&self, follow_imports: bool) -> Option<Vec<T>> {
+    fn goto_name(&mut self, follow_imports: bool) -> Option<Vec<T>> {
         let db = self.infos.db;
         let file = self.infos.file;
-        let lookup_on_name = |name: CSTName| {
+        let node = self.infos.node;
+        let mut lookup_on_name = |name: CSTName| {
             let p = file.points.get(name.index());
             if p.calculated() {
                 match p.kind() {
@@ -300,7 +300,7 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
             }
             None
         };
-        match self.infos.node {
+        match node {
             GotoNode::Name(name) => lookup_on_name(name),
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
@@ -330,14 +330,14 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         }
     }
     fn goto_primary_attr(
-        &self,
+        &mut self,
         base: Inferred,
         name: &str,
         follow_imports: bool,
     ) -> Option<Vec<T>> {
         let mut results = vec![];
         let db = self.infos.db;
-        self.infos.with_i_s(|i_s| {
+        with_i_s_non_self(db, self.infos.file, self.infos.scope, |i_s| {
             for t in unpack_union_types(db, base.as_cow_type(i_s)).iter_with_unpacked_unions(db) {
                 let lookup = t.lookup(
                     i_s,
@@ -374,13 +374,12 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
     }
 }
 
-impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
-    pub fn infer_definition(&self) -> Vec<T> {
+impl<'db, C: for<'a> FnMut(ValueName) -> T + 'db, T> GotoResolver<'db, C> {
+    pub fn infer_definition(&mut self) -> Vec<T> {
         let mut result = vec![];
         let Some(inf) = self.infos.infer_position() else {
             return result;
         };
-        let callback = self.on_result;
         let file = self.infos.file;
         let db = self.infos.db;
         let scope = self.infos.scope;
@@ -392,6 +391,7 @@ impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {
                 );
                 type_to_name(i_s, &type_, &mut |name| {
                     let name = goto_with_goal(name, self.goal);
+                    let callback = &mut self.on_result;
                     result.push(callback(ValueName { name, db, type_ }))
                 })
             }
