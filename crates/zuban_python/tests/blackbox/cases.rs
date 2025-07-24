@@ -34,6 +34,9 @@ enum CaseType {
         contains_subset: bool,
         contains_not: Vec<String>,
     },
+    References {
+        expected: Vec<(Option<String>, usize, usize)>,
+    },
 }
 
 enum DocumentKeeper<'project> {
@@ -134,6 +137,35 @@ impl TestFile<'_> {
                                     .trim()
                                     .to_owned()
                             }
+                        })
+                        .unwrap();
+                    if actual != expected {
+                        errors.push(format!(
+                            "{file_name}: Line #{} {expected:?} != {actual:?}",
+                            case.line,
+                        ));
+                    }
+                }
+                CaseType::References { expected } => {
+                    let actual: Vec<_> = document
+                        .get()
+                        .references(position, false, |name| {
+                            let identifier = if *name.file_path() == *path {
+                                None
+                            } else {
+                                let s = name.qualified_name();
+                                Some(if name.in_stub() {
+                                    format!("stub:{s}")
+                                } else {
+                                    s
+                                })
+                            };
+                            let start = name.name_range().0;
+                            (
+                                identifier,
+                                start.line_one_based(),
+                                start.code_points_column(),
+                            )
                         })
                         .unwrap();
                     if actual != expected {
@@ -277,6 +309,9 @@ impl TestFile<'_> {
                         contains_subset,
                         contains_not,
                     },
+                    TestKind::References => CaseType::References {
+                        expected: unpack_references_tuple(line_nr, &names.join(" ")),
+                    },
                 };
                 cases.push(TestCase {
                     // We need to add one, because we're evaluating the next line
@@ -290,11 +325,38 @@ impl TestFile<'_> {
     }
 }
 
+fn unpack_references_tuple(line_nr: usize, mut s: &str) -> Vec<(Option<String>, usize, usize)> {
+    dbg!(line_nr, s);
+    let mut tuples = vec![];
+    while !s.is_empty() {
+        s = s.strip_prefix('(').unwrap();
+        let mut in_tuple;
+        (in_tuple, s) = s.split_once(')').unwrap();
+        let mut identifier = None;
+        if let Some(after_opening_string) = in_tuple.strip_prefix('\'') {
+            let in_string;
+            (in_string, in_tuple) = after_opening_string.split_once('\'').unwrap();
+            in_tuple = in_tuple.strip_prefix(',').unwrap();
+            identifier = Some(in_string.to_string())
+        }
+        let (line, column) = in_tuple.split_once(',').unwrap();
+        dbg!(line, column);
+        let line_diff = line.trim().parse::<isize>().unwrap();
+        let line = (line_nr as isize + 1 + line_diff) as usize;
+        let column = column.trim().parse().unwrap();
+        tuples.push((identifier, line, column));
+        s = s.trim_start_matches(',');
+        s = s.trim_start();
+    }
+    tuples
+}
+
 #[derive(Debug, PartialEq)]
 enum TestKind {
     Infer,
     Goto,
     Complete,
+    References,
 }
 
 fn find_test_kind(line: &str) -> Option<(TestKind, &str)> {
@@ -310,6 +372,8 @@ fn find_test_kind(line: &str) -> Option<(TestKind, &str)> {
         )
     } else if let Some(stripped) = trimmed.strip_prefix("#!") {
         (TestKind::Goto, stripped)
+    } else if let Some(stripped) = trimmed.strip_prefix("#<") {
+        (TestKind::References, stripped)
     } else {
         return None;
     })

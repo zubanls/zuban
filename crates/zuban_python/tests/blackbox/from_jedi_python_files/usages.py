@@ -274,7 +274,7 @@ import _sre
 # TODO reenable this, it's currently not working, because of 2/3
 # inconsistencies in typeshed (_sre exists in typeshed/2, but not in
 # typeshed/3).
-##< 0 (-3,7), (0,0), ('_sre', None, None)
+#< 0 (-3,7), (0,0), ('_sre', 0, 0)
 _sre
 
 # -----------------
@@ -389,6 +389,6 @@ if False:
 # -----------------
 
 import socket
-#< (1, 21), (0, 7), ('socket', ..., 6), ('stub:socket', ..., 4), ('imports', ..., 7)
+##< (1, 21), (0, 7), ('socket', ..., 6), ('stub:socket', ..., 4), ('imports', ..., 7)
 socket.SocketIO
 some_socket = socket.SocketIO()

@@ -368,6 +368,10 @@ impl<'db, C: for<'a> Fn(Name) -> T + Copy + 'db, T> GotoResolver<'db, C> {
         });
         (!results.is_empty()).then_some(results)
     }
+
+    pub fn references(&self, only_check_current_document: bool) -> Vec<T> {
+        vec![]
+    }
 }
 
 impl<'db, C: for<'a> Fn(ValueName) -> T + Copy + 'db, T> GotoResolver<'db, C> {

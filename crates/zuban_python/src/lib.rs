@@ -228,6 +228,20 @@ impl<'project> Document<'project> {
         )
     }
 
+    pub fn references<'slf, T>(
+        &'slf self,
+        position: InputPosition,
+        only_check_current_module: bool,
+        on_name: impl for<'a> Fn(Name) -> T + Copy,
+    ) -> Result<Vec<T>, String> {
+        Ok(GotoResolver::new(
+            self.positional_document(position)?,
+            GotoGoal::Indifferent,
+            on_name,
+        )
+        .references(only_check_current_module))
+    }
+
     pub fn complete<T>(
         &self,
         position: InputPosition,

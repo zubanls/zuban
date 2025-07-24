@@ -119,6 +119,10 @@ impl<'x> Name<'x> {
         !self.file().is_stub()
     }
 
+    pub fn in_stub(&self) -> bool {
+        self.file().is_stub()
+    }
+
     pub fn kind(&self) -> SymbolKind {
         match self {
             Name::TreeName(_) => SymbolKind::Object,
