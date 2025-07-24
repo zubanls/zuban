@@ -627,7 +627,41 @@ __main__.py:21:infer -> /usr/lib/python3.12/os.py:779:4:os.getenv
 __main__.py:25:infer -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
 __main__.py:27:infer -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
 
-[case goto_doc_contains]
+[case goto_doc_contains_with_stubs]
+from m import foo
+#? goto --prefer-stubs --doc-is "hello"
+foo
+from m import foo
+#? goto --doc-is "hello"
+
+#? goto --prefer-stubs --follow-imports --doc-is "hello"
+foo
+from m import foo
+#? goto --follow-imports --doc-is "hello"
+
+#? infer --prefer-stubs --doc-is "hello"
+foo
+from m import foo
+#? infer --doc-is "hello"
+foo
+
+[file m.py]
+def foo():
+    """
+    hello
+    """
+
+[file m.pyi]
+def foo(): ...
+[out]
+__main__.py:3:goto -> Doc for __main__.foo did not match: "" does not contain "hello"
+__main__.py:6:goto -> Doc for __main__.foo did not match: "" does not contain "hello"
+__main__.py:8:goto -> Doc for m.foo matched
+__main__.py:11:goto -> Doc for m.foo matched
+__main__.py:13:infer -> Doc for m.foo matched
+__main__.py:16:infer -> Doc for m.foo matched
+
+[case goto_doc_contains_stdlib_compiled]
 #? goto --prefer-stubs --doc-contains "foobar"
 str
 #? goto --doc-contains "foobar"
@@ -637,3 +671,24 @@ str
 str
 #? infer --doc-contains "foobar"
 str
+
+[case goto_doc_contains_stdlib_module_non_compiled]
+def separate_goto():
+    #? goto --prefer-stubs --doc-is "Token constants."
+    import token
+
+def a2():
+    #? goto --doc-is "Token constants."
+    import token
+def a3():
+    #? infer --prefer-stubs --doc-is "Token constants."
+    import token
+def a4():
+    #? infer --doc-is "Token constants."
+    import token
+
+[out]
+__main__.py:3:goto -> Doc for token matched
+__main__.py:7:goto -> Doc for token matched
+__main__.py:10:infer -> Doc for token matched
+__main__.py:13:infer -> Doc for token matched

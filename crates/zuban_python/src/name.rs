@@ -219,12 +219,19 @@ impl<'x> Name<'x> {
         }
     }
 
-    pub fn documentation(&self) -> Cow<str> {
-        match self {
+    pub fn documentation(&self) -> Cow<'x, str> {
+        let result = match self {
             Name::TreeName(n) => n.cst_name.clean_docstring(),
             Name::ModuleName(n) => n.file.tree.root().clean_docstring(),
             Name::NodeName(_) => Cow::Borrowed(""),
+        };
+        if result.is_empty() && self.file().is_stub() {
+            if let Some(name) = self.goto_non_stub() {
+                debug_assert!(!name.file().is_stub());
+                return name.documentation();
+            }
         }
+        result
     }
 }
 

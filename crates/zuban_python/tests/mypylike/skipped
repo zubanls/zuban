@@ -6,6 +6,7 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
+goto_doc_contains_stdlib_compiled
 
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric

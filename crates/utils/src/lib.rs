@@ -1,6 +1,6 @@
 pub mod panic_context;
 
-use std::{cell::UnsafeCell, fmt, path::PathBuf, pin::Pin};
+use std::{borrow::Cow, cell::UnsafeCell, fmt, path::PathBuf, pin::Pin};
 
 use fnv::{FnvHashMap, FnvHashSet};
 
@@ -187,4 +187,32 @@ impl<'a, T> Iterator for AlreadySeenIterator<'a, T> {
         self.0 = first.previous;
         result
     }
+}
+
+pub fn dedent(s: &str) -> String {
+    dedent_cow(Cow::Borrowed(s)).into_owned()
+}
+
+pub fn dedent_cow(s: Cow<str>) -> Cow<str> {
+    let mut indent = usize::MAX;
+    let lines: &Vec<_> = &s.split('\n').collect();
+    for line in lines {
+        if !line.trim().is_empty() {
+            indent = std::cmp::min(indent, line.len() - line.trim_start().len());
+        }
+    }
+    if indent == usize::MAX {
+        return s;
+    }
+    let new_lines: Vec<_> = lines
+        .iter()
+        .map(|line| {
+            if line.len() >= indent {
+                &line[indent..]
+            } else {
+                line
+            }
+        })
+        .collect();
+    Cow::Owned(new_lines.join("\n"))
 }

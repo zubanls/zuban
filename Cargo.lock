@@ -872,6 +872,7 @@ version = "0.0.16"
 dependencies = [
  "parsa_python",
  "tracing",
+ "utils",
 ]
 
 [[package]]
@@ -1243,6 +1244,7 @@ dependencies = [
  "lazy_static",
  "regex",
  "tracing",
+ "utils",
  "vfs",
 ]
 

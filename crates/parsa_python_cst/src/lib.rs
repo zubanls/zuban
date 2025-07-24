@@ -729,16 +729,14 @@ impl<'db> Name<'db> {
     pub fn clean_docstring(&self) -> Cow<'db, str> {
         let docstr = |n: &Self| {
             let name_def_ = n.name_def()?;
-            if let Some(func) = name_def_.maybe_name_of_func() {
-                return func.docstring();
-            }
-            name_def_.maybe_name_of_class()?.docstring()
+            let strings_ = if let Some(func) = name_def_.maybe_name_of_func() {
+                func.docstring()
+            } else {
+                name_def_.maybe_name_of_class()?.docstring()
+            };
+            strings::clean_docstring(strings_?)
         };
-        if let Some(strings_) = docstr(self) {
-            strings::clean_docstring(strings_)
-        } else {
-            Cow::Borrowed("")
-        }
+        docstr(self).unwrap_or_else(|| Cow::Borrowed(""))
     }
 }
 
@@ -889,11 +887,9 @@ impl<'db> File<'db> {
     }
 
     pub fn clean_docstring(&self) -> Cow<'db, str> {
-        if let Some(docstr) = self.docstring() {
-            strings::clean_docstring(docstr)
-        } else {
-            Cow::Borrowed("")
-        }
+        self.docstring()
+            .and_then(|d| strings::clean_docstring(d))
+            .unwrap_or_else(|| Cow::Borrowed(""))
     }
 }
 

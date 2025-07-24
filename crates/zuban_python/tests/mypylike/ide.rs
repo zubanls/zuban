@@ -43,6 +43,8 @@ pub struct GotoArgs {
     pub follow_imports: bool,
     #[arg(long)]
     pub doc_contains: Option<String>,
+    #[arg(long)]
+    pub doc_is: Option<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -51,6 +53,8 @@ pub struct InferArgs {
     pub prefer_stubs: bool,
     #[arg(long)]
     pub doc_contains: Option<String>,
+    #[arg(long)]
+    pub doc_is: Option<String>,
 }
 
 pub(crate) fn find_and_check_ide_tests(
@@ -95,30 +99,43 @@ pub(crate) fn find_and_check_ide_tests(
                     _ => panic!("The test should not ever pass multiple position informations"),
                 }
             };
-            let check_infer_or_goto = |name: &Name, doc_contains: &Option<String>| {
-                let start = name.name_range().0;
-                if let Some(expected_doc) = doc_contains {
-                    let actual = name.documentation();
-                    if actual.contains(expected_doc) {
-                        format!("Doc for {} matched", name.qualified_name())
+            let check_infer_or_goto =
+                |name: &Name, doc_contains: &Option<String>, doc_is: &Option<String>| {
+                    let start = name.name_range().0;
+                    if let Some(expected_doc) = doc_contains {
+                        let actual = name.documentation();
+                        if actual.contains(expected_doc) {
+                            format!("Doc for {} matched", name.qualified_name())
+                        } else {
+                            format!(
+                                "Doc for {} did not match: {:?} does not contain {:?}",
+                                name.qualified_name(),
+                                actual,
+                                expected_doc
+                            )
+                        }
+                    } else if let Some(expected_doc) = doc_is {
+                        let actual = name.documentation();
+                        if &*actual == expected_doc {
+                            format!("Doc for {} matched", name.qualified_name())
+                        } else {
+                            format!(
+                                "Doc for {} did not match: {:?} does not contain {:?}",
+                                name.qualified_name(),
+                                actual,
+                                expected_doc
+                            )
+                        }
                     } else {
                         format!(
-                            "Doc for {} did not match: {:?} does not contain {:?}",
+                            "{}:{}:{}:{}",
+                            avoid_path_prefixes(name.relative_path(base_path)),
+                            start.line_one_based(),
+                            start.code_points_column(),
                             name.qualified_name(),
-                            actual,
-                            expected_doc
                         )
                     }
-                } else {
-                    format!(
-                        "{}:{}:{}:{}",
-                        avoid_path_prefixes(name.relative_path(base_path)),
-                        start.line_one_based(),
-                        start.code_points_column(),
-                        name.qualified_name(),
-                    )
-                }
-            };
+                };
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
                     let mut result = document.complete(position, |name| {
@@ -141,7 +158,7 @@ pub(crate) fn find_and_check_ide_tests(
                     (
                         "goto",
                         document.goto(position, goal, goto_args.follow_imports, |name| {
-                            check_infer_or_goto(&name, &goto_args.doc_contains)
+                            check_infer_or_goto(&name, &goto_args.doc_contains, &goto_args.doc_is)
                         }),
                     )
                 }
@@ -153,7 +170,11 @@ pub(crate) fn find_and_check_ide_tests(
                     (
                         "infer",
                         document.infer_definition(position, goal, |vn| {
-                            check_infer_or_goto(&vn.name, &infer_args.doc_contains)
+                            check_infer_or_goto(
+                                &vn.name,
+                                &infer_args.doc_contains,
+                                &infer_args.doc_is,
+                            )
                         }),
                     )
                 }
