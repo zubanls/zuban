@@ -190,7 +190,7 @@ impl<'x> Name<'x> {
         debug_assert!(result.is_ok());
 
         let scopes = ScopesIterator {
-            file: to_file,
+            file: self.file(),
             only_reachable: true,
             current: Some(n.parent_scope),
         };

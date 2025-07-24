@@ -505,6 +505,25 @@ pkg/nested/m.pyi:2:goto -> pkg/nested/m.py:3:6:pkg.nested.m.C
 pkg/nested/m.pyi:4:goto -> pkg/nested/m.py:5:8:pkg.nested.m.C.f
 pkg/nested/m.pyi:7:goto -> pkg/nested/m.py:8:0:pkg.nested.m.x
 
+[case goto_class_to_def]
+[file m.py]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+[file m.pyi]
+#? --codepoint-column 5 goto
+def C():
+    #? --codepoint-column 9 goto
+    def f(): ...
+
+[out]
+m.pyi:2:goto -> m.py:2:6:m.C
+m.pyi:4:goto -> m.pyi:4:8:m.f@4
+m.py:2:goto -> m.pyi:2:4:m.C
+m.py:4:goto -> m.py:4:8:m.C.f
+
 [case goto_multi_steps]
 import m
 #? goto --follow-imports
@@ -551,7 +570,6 @@ os.getenv
 #? goto
 os.getenv
 
-
 import importlib
 #? goto --prefer-stubs
 importlib.import_module
@@ -565,5 +583,5 @@ __main__.py:9:goto -> typeshed/stdlib/token.pyi:81:0:token.ENDMARKER
 __main__.py:11:goto -> /usr/lib/python3.12/token.py:6:0:token.ENDMARKER
 __main__.py:15:goto -> typeshed/stdlib/os/__init__.pyi:989:4:os.getenv
 __main__.py:17:goto -> /usr/lib/python3.12/os.py:779:4:os.getenv
-__main__.py:22:goto -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
-__main__.py:24:goto -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
+__main__.py:21:goto -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:23:goto -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
