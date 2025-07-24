@@ -1,6 +1,10 @@
+use std::borrow::Cow;
+
 use parsa_python::{
     CodeIndex, NonterminalType::fstring, PyNode, PyNodeType::Nonterminal, SiblingIterator,
 };
+
+use crate::Strings;
 
 #[derive(Debug)]
 pub enum PythonString<'db> {
@@ -254,6 +258,10 @@ pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {
         inner_start_offset: inner_start_offset as CodeIndex,
         had_raw_modifier,
     }
+}
+
+pub(crate) fn clean_docstring(strings: Strings) -> Cow<str> {
+    Cow::Borrowed("")
 }
 
 #[cfg(test)]

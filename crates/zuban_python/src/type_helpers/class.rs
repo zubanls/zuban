@@ -753,7 +753,7 @@ impl<'db: 'a, 'a> Class<'a> {
         bind: impl FnOnce(LookupResult, TypeOrClass<'a>, MroIndex) -> T,
     ) -> T {
         if name == "__doc__" {
-            let t = if self.node().has_docstr() {
+            let t = if self.node().docstring().is_some() {
                 i_s.db.python_state.str_type()
             } else {
                 Type::None

@@ -3,7 +3,7 @@ use std::path::Path;
 use clap::{Parser, Subcommand};
 use shlex::Shlex;
 use vfs::NormalizedPath;
-use zuban_python::{GotoGoal, InputPosition, Project};
+use zuban_python::{GotoGoal, InputPosition, Name, Project};
 
 use crate::{base_path_join, get_base};
 
@@ -41,12 +41,16 @@ pub struct GotoArgs {
     pub prefer_stubs: bool,
     #[arg(long)]
     pub follow_imports: bool,
+    #[arg(long)]
+    pub doc_contains: Option<String>,
 }
 
 #[derive(Parser, Debug)]
 pub struct InferArgs {
     #[arg(long)]
     pub prefer_stubs: bool,
+    #[arg(long)]
+    pub doc_contains: Option<String>,
 }
 
 pub(crate) fn find_and_check_ide_tests(
@@ -91,6 +95,30 @@ pub(crate) fn find_and_check_ide_tests(
                     _ => panic!("The test should not ever pass multiple position informations"),
                 }
             };
+            let check_infer_or_goto = |name: &Name, doc_contains: &Option<String>| {
+                let start = name.name_range().0;
+                if let Some(expected_doc) = doc_contains {
+                    let actual = name.documentation();
+                    if actual.contains(expected_doc) {
+                        format!("Doc for {} matched", name.qualified_name())
+                    } else {
+                        format!(
+                            "Doc for {} did not match: {:?} does not contain {:?}",
+                            name.qualified_name(),
+                            actual,
+                            expected_doc
+                        )
+                    }
+                } else {
+                    format!(
+                        "{}:{}:{}:{}",
+                        avoid_path_prefixes(name.relative_path(base_path)),
+                        start.line_one_based(),
+                        start.code_points_column(),
+                        name.qualified_name(),
+                    )
+                }
+            };
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
                     let mut result = document.complete(position, |name| {
@@ -113,14 +141,7 @@ pub(crate) fn find_and_check_ide_tests(
                     (
                         "goto",
                         document.goto(position, goal, goto_args.follow_imports, |name| {
-                            let start = name.name_range().0;
-                            format!(
-                                "{}:{}:{}:{}",
-                                avoid_path_prefixes(name.relative_path(base_path)),
-                                start.line_one_based(),
-                                start.code_points_column(),
-                                name.qualified_name(),
-                            )
+                            check_infer_or_goto(&name, &goto_args.doc_contains)
                         }),
                     )
                 }
@@ -132,14 +153,7 @@ pub(crate) fn find_and_check_ide_tests(
                     (
                         "infer",
                         document.infer_definition(position, goal, |vn| {
-                            let start = vn.name.name_range().0;
-                            format!(
-                                "{}:{}:{}:{}",
-                                avoid_path_prefixes(vn.name.relative_path(base_path)),
-                                start.line_one_based(),
-                                start.code_points_column(),
-                                &vn.name.qualified_name(),
-                            )
+                            check_infer_or_goto(&vn.name, &infer_args.doc_contains)
                         }),
                     )
                 }

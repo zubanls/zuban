@@ -626,3 +626,14 @@ __main__.py:19:infer -> typeshed/stdlib/os/__init__.pyi:989:4:os.getenv
 __main__.py:21:infer -> /usr/lib/python3.12/os.py:779:4:os.getenv
 __main__.py:25:infer -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
 __main__.py:27:infer -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
+
+[case goto_doc_contains]
+#? goto --prefer-stubs --doc-contains "foobar"
+str
+#? goto --doc-contains "foobar"
+str
+
+#? infer --prefer-stubs --doc-contains "foobar"
+str
+#? infer --doc-contains "foobar"
+str

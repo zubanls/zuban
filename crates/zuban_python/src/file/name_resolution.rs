@@ -621,7 +621,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             .into_maybe_inferred()
                         {
                             if matches!(name_str, "__package__" | "__file__")
-                                || name_str == "__doc__" && self.file.tree.root().has_docstr()
+                                || name_str == "__doc__"
+                                    && self.file.tree.root().docstring().is_some()
                             {
                                 inf = inf.remove_none(i_s);
                             }

@@ -130,7 +130,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut stmts = self.node().body().iter_stmt_likes();
         let mut stmt_like = stmts.next().unwrap();
         // Skip the first docstring
-        if stmt_like.node.is_string() {
+        if stmt_like.node.maybe_string().is_some() {
             let Some(s) = stmts.next() else {
                 return true; // It was simply a docstring
             };

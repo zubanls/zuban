@@ -725,6 +725,21 @@ impl<'db> Name<'db> {
     pub fn parent_scope(&self) -> Scope<'db> {
         scope_for_node(self.node)
     }
+
+    pub fn clean_docstring(&self) -> Cow<'db, str> {
+        let docstr = |n: &Self| {
+            let name_def_ = n.name_def()?;
+            if let Some(func) = name_def_.maybe_name_of_func() {
+                return func.docstring();
+            }
+            name_def_.maybe_name_of_class()?.docstring()
+        };
+        if let Some(strings_) = docstr(self) {
+            strings::clean_docstring(strings_)
+        } else {
+            Cow::Borrowed("")
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -868,10 +883,17 @@ impl<'db> File<'db> {
         StmtLikeIterator::from_stmt_iterator(self.node, self.node.iter_children())
     }
 
-    pub fn has_docstr(&self) -> bool {
-        self.iter_stmt_likes()
-            .next()
-            .is_some_and(|first| first.node.is_string())
+    pub fn docstring(&self) -> Option<Strings<'db>> {
+        let first = self.iter_stmt_likes().next()?;
+        first.node.maybe_string()
+    }
+
+    pub fn clean_docstring(&self) -> Cow<'db, str> {
+        if let Some(docstr) = self.docstring() {
+            strings::clean_docstring(docstr)
+        } else {
+            Cow::Borrowed("")
+        }
     }
 }
 
@@ -1063,9 +1085,15 @@ impl<'db> Expression<'db> {
         node.is_type(Nonterminal(lambda))
     }
 
+    fn maybe_string(&self) -> Option<Strings<'db>> {
+        match self.maybe_unpacked_atom()? {
+            AtomContent::Strings(s) => Some(s),
+            _ => None,
+        }
+    }
+
     pub fn is_string(&self) -> bool {
-        self.maybe_unpacked_atom()
-            .is_some_and(|atom_content| matches!(atom_content, AtomContent::Strings(_)))
+        self.maybe_string().is_some()
     }
 
     pub fn search_names(&self) -> NameIterator<'db> {
@@ -1745,11 +1773,8 @@ impl<'db> StmtLikeContent<'db> {
         }
     }
 
-    pub fn is_string(&self) -> bool {
-        let Some(expr) = self.maybe_simple_expr() else {
-            return false;
-        };
-        expr.is_string()
+    pub fn maybe_string(&self) -> Option<Strings<'db>> {
+        self.maybe_simple_expr()?.maybe_string()
     }
 }
 
@@ -2102,11 +2127,8 @@ impl<'db> ClassDef<'db> {
         }
     }
 
-    pub fn has_docstr(&self) -> bool {
-        self.block()
-            .iter_stmt_likes()
-            .next()
-            .is_some_and(|first| first.node.is_string())
+    pub fn docstring(&self) -> Option<Strings<'db>> {
+        self.block().iter_stmt_likes().next()?.node.maybe_string()
     }
 }
 
@@ -2313,6 +2335,10 @@ impl<'db> FunctionDef<'db> {
                 callback(ClassDef::new(node).name_def())
             }
         }
+    }
+
+    pub fn docstring(&self) -> Option<Strings<'db>> {
+        self.body().iter_stmt_likes().next()?.node.maybe_string()
     }
 }
 
@@ -4217,6 +4243,11 @@ impl<'db> NameDef<'db> {
         let n = self.node.parent().unwrap();
         n.is_type(Nonterminal(function_def))
             .then(|| FunctionDef::new(n))
+    }
+
+    fn maybe_name_of_class(&self) -> Option<ClassDef<'db>> {
+        let n = self.node.parent().unwrap();
+        n.is_type(Nonterminal(class_def)).then(|| ClassDef::new(n))
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {

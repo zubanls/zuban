@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python_cst::{ClassDef, FunctionDef, Name as CSTName, Scope};
 use vfs::NormalizedPath;
 
@@ -214,6 +216,14 @@ impl<'x> Name<'x> {
                 Some(Self::ModuleName(ModuleName { db: n.db, file }))
             }
             Name::NodeName(_) => None,
+        }
+    }
+
+    pub fn documentation(&self) -> Cow<str> {
+        match self {
+            Name::TreeName(n) => n.cst_name.clean_docstring(),
+            Name::ModuleName(n) => n.file.tree.root().clean_docstring(),
+            Name::NodeName(_) => Cow::Borrowed(""),
         }
     }
 }
