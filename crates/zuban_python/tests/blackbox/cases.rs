@@ -1,5 +1,6 @@
-use std::{collections::HashSet, path::Path};
+use std::path::Path;
 
+use utils::FastHashSet;
 use vfs::PathWithScheme;
 use zuban_python::{Document, GotoGoal, InputPosition, Project, ReferencesGoal, SymbolKind};
 
@@ -21,7 +22,7 @@ struct TestCase {
 #[derive(Debug)]
 enum CaseType {
     Infer {
-        expected: HashSet<String>,
+        expected: FastHashSet<String>,
         goal: GotoGoal,
     },
     Goto {
@@ -35,7 +36,7 @@ enum CaseType {
         contains_not: Vec<String>,
     },
     References {
-        expected: Vec<(Option<String>, usize, usize)>,
+        expected: FastHashSet<(Option<String>, usize, usize)>,
     },
 }
 
@@ -92,7 +93,7 @@ impl TestFile<'_> {
             };
             match case.type_ {
                 CaseType::Infer { expected, goal } => {
-                    let actual: HashSet<_> = document
+                    let actual: FastHashSet<_> = document
                         .get()
                         .infer_definition(position, goal, |vn| {
                             let mut n = if *vn.name.file_path() == *path {
@@ -124,7 +125,7 @@ impl TestFile<'_> {
                     goal,
                     follow_imports,
                 } => {
-                    let actual: Vec<_> = document
+                    let actual = document
                         .get()
                         .goto(position, goal, follow_imports, |name| {
                             if name.kind() == SymbolKind::Module {
@@ -147,7 +148,7 @@ impl TestFile<'_> {
                     }
                 }
                 CaseType::References { expected } => {
-                    let actual: Vec<_> = document
+                    let actual = document
                         .get()
                         .references(
                             position,
@@ -172,6 +173,7 @@ impl TestFile<'_> {
                             },
                         )
                         .unwrap();
+                    let actual: FastHashSet<_> = actual.into_iter().collect();
                     if actual != expected {
                         errors.push(format!(
                             "{file_name}: Line #{} {expected:?} != {actual:?}",
@@ -184,7 +186,7 @@ impl TestFile<'_> {
                     contains_subset,
                     contains_not,
                 } => {
-                    let actual: Vec<_> = document
+                    let actual = document
                         .get()
                         .complete(position, |name| name.label().to_owned())
                         .unwrap();
@@ -329,8 +331,11 @@ impl TestFile<'_> {
     }
 }
 
-fn unpack_references_tuple(line_nr: usize, mut s: &str) -> Vec<(Option<String>, usize, usize)> {
-    let mut tuples = vec![];
+fn unpack_references_tuple(
+    line_nr: usize,
+    mut s: &str,
+) -> FastHashSet<(Option<String>, usize, usize)> {
+    let mut tuples = FastHashSet::default();
     while !s.is_empty() {
         s = s.strip_prefix('(').unwrap();
         let mut in_tuple;
@@ -346,7 +351,7 @@ fn unpack_references_tuple(line_nr: usize, mut s: &str) -> Vec<(Option<String>, 
         let line_diff = line.trim().parse::<isize>().unwrap();
         let line = (line_nr as isize + 2 + line_diff) as usize;
         let column = column.trim().parse().unwrap();
-        tuples.push((identifier, line, column));
+        assert!(tuples.insert((identifier, line, column)));
         s = s.trim_start_matches(',');
         s = s.trim_start();
     }

@@ -456,7 +456,6 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
         }
         .as_code();
 
-        let to_unique_position = |n: &Name| (n.file().file_index, n.name_range().0.byte_position);
         let mut is_globally_reachable = false;
         let db = self.infos.db;
 
@@ -464,6 +463,10 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
 
         let Some(_) = GotoResolver::new2(self.infos, GotoGoal::Indifferent, |n| {
             follow_goto_on_imports(n, &mut |name| {
+                if !self.definitions.is_empty() {
+                    // This is an import, definitions were already added
+                    return;
+                }
                 self.definitions.insert(to_unique_position(&name));
 
                 is_globally_reachable |= match &name {
@@ -516,9 +519,12 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
         self.results
     }
 
-    fn find_references_in_file(&self, file: &PythonFile, search_name: &str) {
+    fn find_references_in_file(&mut self, file: &PythonFile, search_name: &str) {
+        let result = file.ensure_calculated_diagnostics(self.infos.db);
+        debug_assert!(result.is_ok());
         for name in file.tree.filter_all_names() {
             if name.as_code() == search_name {
+                let mut add_all_names = false;
                 GotoResolver::new(
                     PositionalDocument::for_goto(
                         self.infos.db,
@@ -528,36 +534,51 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                     .unwrap(),
                     GotoGoal::Indifferent,
                     |n: Name| {
-                        follow_goto_on_imports(n, &mut |_| {
-                            //
+                        follow_goto_on_imports(n, &mut |n| {
+                            if self.definitions.contains(&to_unique_position(&n)) {
+                                add_all_names = true;
+                            } else if add_all_names {
+                                self.results.push((self.on_result)(n));
+                            }
                         })
                     },
                 )
                 .goto_name(false, false);
+                if add_all_names {
+                    let n = Name::TreeName(TreeName::with_unknown_parent_scope(
+                        self.infos.db,
+                        file,
+                        name,
+                    ));
+                    if !self.definitions.contains(&to_unique_position(&n)) {
+                        self.results.push((self.on_result)(n));
+                    }
+                }
             }
         }
     }
 
     fn find_references_in_workspace_entries<'x>(
-        &self,
+        &mut self,
         workspaces_entries: impl Iterator<Item = &'x Entries>,
         search_name: &str,
     ) {
         let db = self.infos.db;
         let in_name_regex = regex::Regex::new(&format!(r"\b{search_name}\b")).unwrap();
-        let maybe_check_file = |file: &Rc<FileEntry>| {
+        let mut files = vec![];
+        let mut maybe_check_file = |file: &Rc<FileEntry>| {
             if let Some(file_index) = file.get_file_index() {
                 let file = db.loaded_python_file(file_index);
                 if in_name_regex.is_match(file.tree.code())
                     || file_index == self.infos.file.file_index
                 {
-                    self.find_references_in_file(file, search_name);
+                    files.push(file);
                 }
             } else {
                 /*
                 let file: &PythonFile = 1;
                 if in_name_regex.is_match(file.tree.code()) {
-                    self.find_references_in_file(file, search_name)
+                    files.push(file)
                 }
                 */
             }
@@ -570,7 +591,14 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                 true
             });
         }
+        for file in files {
+            self.find_references_in_file(file, search_name);
+        }
     }
+}
+
+fn to_unique_position(n: &Name) -> (FileIndex, usize) {
+    (n.file().file_index, n.name_range().0.byte_position)
 }
 
 fn follow_goto_on_imports(name: Name, on_name: &mut impl FnMut(Name)) {
