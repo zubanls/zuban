@@ -262,6 +262,13 @@ impl Tree {
         };
         (scope_for_node(left), goto_node)
     }
+
+    pub fn filter_all_names<'x>(&'x self) -> impl Iterator<Item = Name<'x>> {
+        self.0.nodes().filter_map(|n| {
+            n.is_type(Terminal(TerminalType::Name))
+                .then(|| Name::new(n))
+        })
+    }
 }
 
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {

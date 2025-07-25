@@ -9,8 +9,11 @@ use parsa_python_cst::{
     Atom, DottedImportName, GotoNode, Name as CSTName, NameImportParent, NameParent, NodeIndex,
     Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope,
 };
+use utils::FastHashSet;
+use vfs::{DirectoryEntry, Entries, FileEntry};
 
 use crate::{
+    completion::ScopesIterator,
     database::{Database, ParentScope, Point, PointKind, Specific},
     debug,
     file::{first_defined_name, ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile},
@@ -194,6 +197,14 @@ pub(crate) fn with_i_s_non_self<'db, R>(
 }
 
 #[derive(Copy, Clone, Debug)]
+pub enum ReferencesGoal {
+    OnlyCurrentFile,
+    // This will still include definitions within dependencies
+    OnlyTypeCheckedWorkspaces,
+    AllFilesIncludingDependencies,
+}
+
+#[derive(Copy, Clone, Debug)]
 pub enum GotoGoal {
     PreferStubs,
     PreferNonStubs,
@@ -222,7 +233,7 @@ impl<'db, C> GotoResolver<'db, C> {
 
 impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
     pub fn goto(mut self, follow_imports: bool) -> Vec<T> {
-        if let Some(names) = self.goto_name(follow_imports) {
+        if let Some(names) = self.goto_name(follow_imports, true) {
             return names;
         }
         let mut callback = self.on_result;
@@ -281,7 +292,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
         )
     }
 
-    fn goto_name(&mut self, follow_imports: bool) -> Option<Vec<T>> {
+    fn goto_name(&mut self, follow_imports: bool, check_inferred_attrs: bool) -> Option<Vec<T>> {
         let db = self.infos.db;
         let file = self.infos.file;
         let node = self.infos.node;
@@ -320,14 +331,24 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
                     let base = self.infos.infer_primary_or_atom(primary.first());
-                    self.goto_primary_attr(base, name.as_code(), follow_imports)
+                    self.goto_primary_attr(
+                        base,
+                        name.as_code(),
+                        follow_imports,
+                        check_inferred_attrs,
+                    )
                 }),
                 _ => None,
             },
             GotoNode::PrimaryTarget(target) => match target.second() {
                 PrimaryContent::Attribute(name) => {
                     let inf = self.infos.infer_primary_target_or_atom(target.first())?;
-                    self.goto_primary_attr(inf, name.as_code(), follow_imports)
+                    self.goto_primary_attr(
+                        inf,
+                        name.as_code(),
+                        follow_imports,
+                        check_inferred_attrs,
+                    )
                 }
                 _ => None,
             },
@@ -349,6 +370,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
         base: Inferred,
         name: &str,
         follow_imports: bool,
+        check_inferred_attrs: bool,
     ) -> Option<Vec<T>> {
         let mut results = vec![];
         let db = self.infos.db;
@@ -372,28 +394,165 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                         continue;
                     }
                 }
-                if let Some(inf) = lookup.into_maybe_inferred() {
-                    let t = inf.as_cow_type(i_s);
-                    type_to_name(i_s, &t, &mut |name| {
-                        let name = goto_with_goal(name, self.goal);
-                        results.push((self.on_result)(name))
-                    })
+                if check_inferred_attrs {
+                    if let Some(inf) = lookup.into_maybe_inferred() {
+                        let t = inf.as_cow_type(i_s);
+                        type_to_name(i_s, &t, &mut |name| {
+                            let name = goto_with_goal(name, self.goal);
+                            results.push((self.on_result)(name))
+                        })
+                    }
                 }
             }
         });
         (!results.is_empty()).then_some(results)
     }
 
-    pub fn references(&mut self, only_check_current_document: bool) -> Vec<T> {
+    pub fn references(&mut self, goal: ReferencesGoal) -> Vec<T> {
+        let search_name = match self.infos.node {
+            GotoNode::Name(name) => name,
+            GotoNode::ImportFromAsName(import_from_as_name) => {
+                // TODO
+                return vec![];
+            }
+            GotoNode::Primary(primary) => match primary.second() {
+                PrimaryContent::Attribute(name) => name,
+                _ => return vec![],
+            },
+            GotoNode::PrimaryTarget(primary_target) => match primary_target.second() {
+                PrimaryContent::Attribute(name) => name,
+                _ => return vec![],
+            },
+            GotoNode::Atom(_) | GotoNode::None => return vec![],
+        }
+        .as_code();
+
         let callback = &mut self.on_result;
-        let mut definitions = vec![];
+        let mut definitions = FastHashSet::default();
         let to_unique_position = |n: &Name| (n.file().file_index, n.name_range().0.byte_position);
-        let mut results = GotoResolver::new(self.infos, GotoGoal::Indifferent, |n: Name| {
-            definitions.push(to_unique_position(&n));
-            callback(n)
+        let mut results = vec![];
+        let mut is_globally_reachable = false;
+        let Some(_) = GotoResolver::new(self.infos, GotoGoal::Indifferent, |n: Name| {
+            definitions.insert(to_unique_position(&n));
+            is_globally_reachable |= match &n {
+                Name::TreeName(tree_name) => {
+                    let mut scopes = ScopesIterator {
+                        file: &n.file(),
+                        only_reachable: true,
+                        current: Some(tree_name.parent_scope),
+                    };
+                    !scopes.any(|s| matches!(s, Scope::Function(_) | Scope::Lambda(_)))
+                }
+                _ => true,
+            };
+            let other = if n.in_stub() {
+                n.goto_non_stub()
+            } else {
+                n.goto_stub()
+            };
+            if let Some(other) = other {
+                definitions.insert(to_unique_position(&other));
+                results.push(callback(other))
+            }
+            results.push(callback(n))
         })
-        .goto(true);
+        .goto_name(true, false) else {
+            return vec![];
+        };
+        let db = self.infos.db;
+        match goal {
+            _ if !is_globally_reachable => {
+                self.find_references_in_file(self.infos.file, search_name)
+            }
+            ReferencesGoal::OnlyCurrentFile => {
+                self.find_references_in_file(self.infos.file, search_name)
+            }
+            ReferencesGoal::OnlyTypeCheckedWorkspaces => self.find_references_in_workspace_entries(
+                db.vfs.workspaces.entries_to_type_check(),
+                search_name,
+            ),
+            ReferencesGoal::AllFilesIncludingDependencies => self
+                .find_references_in_workspace_entries(
+                    db.vfs.workspaces.iter().map(|x| &x.entries),
+                    search_name,
+                ),
+        }
+        if let Some(names) = self.goto_name(true, true) {
+            return names;
+        }
         results
+    }
+
+    fn find_references_in_file(&self, file: &PythonFile, search_name: &str) {
+        for name in file.tree.filter_all_names() {
+            if name.as_code() == search_name {
+                GotoResolver::new(
+                    PositionalDocument::for_goto(
+                        self.infos.db,
+                        file,
+                        InputPosition::NthUTF8Byte(name.start() as usize),
+                    )
+                    .unwrap(),
+                    GotoGoal::Indifferent,
+                    |n: Name| {
+                        definitions.push(to_unique_position(&n));
+                        is_globally_reachable |= match &n {
+                            Name::TreeName(tree_name) => {
+                                let mut scopes = ScopesIterator {
+                                    file: &n.file(),
+                                    only_reachable: true,
+                                    current: Some(tree_name.parent_scope),
+                                };
+                                !scopes.any(|s| matches!(s, Scope::Function(_) | Scope::Lambda(_)))
+                            }
+                            _ => true,
+                        };
+                        let other = if n.in_stub() {
+                            n.goto_non_stub()
+                        } else {
+                            n.goto_stub()
+                        };
+                        if let Some(other) = other {
+                            definitions.push(to_unique_position(&other));
+                            results.push(callback(other))
+                        }
+                        results.push(callback(n))
+                    },
+                )
+                .goto_name(true, false);
+            }
+        }
+    }
+
+    fn find_references_in_workspace_entries<'x>(
+        &self,
+        workspaces_entries: impl Iterator<Item = &'x Entries>,
+        search_name: &str,
+    ) {
+        let db = self.infos.db;
+        let in_name_regex = regex::Regex::new(&format!(r"\b{search_name}\b")).unwrap();
+        let maybe_check_file = |file: &Rc<FileEntry>| {
+            if let Some(file_index) = file.get_file_index() {
+                let file = db.loaded_python_file(file_index);
+                if in_name_regex.is_match(file.tree.code())
+                    || file_index == self.infos.file.file_index
+                {
+                    self.find_references_in_file(file, search_name);
+                }
+            } else {
+                if in_name_regex.is_match(file.tree.code()) {
+                    check_file(file);
+                }
+            }
+        };
+        for entries in workspaces_entries {
+            entries.walk_entries(&*db.vfs.handler, &mut |_, dir_entry| {
+                if let DirectoryEntry::File(file) = dir_entry {
+                    maybe_check_file(file)
+                }
+                true
+            });
+        }
     }
 }
 

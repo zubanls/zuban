@@ -790,10 +790,10 @@ macro_rules! create_grammar {
                 self.internal_tree.nodes.len()
             }
 
-            pub fn nodes(&self) -> Vec<$Node> {
+            pub fn nodes(&self) -> impl Iterator<Item=$Node> {
                 self.internal_tree.nodes.iter().enumerate().map(
                     |(index, internal_node)| self.node(index as $crate::NodeIndex, internal_node)
-                ).collect()
+                )
             }
 
             pub fn node_by_index(&self, index: $crate::NodeIndex) -> $Node {
@@ -822,7 +822,7 @@ macro_rules! create_grammar {
 
         impl std::fmt::Debug for $Tree {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.debug_struct("Tree").field("nodes", &self.nodes()).finish()
+                f.debug_struct("Tree").field("nodes", &self.nodes().collect::<Vec<_>>()).finish()
             }
         }
 

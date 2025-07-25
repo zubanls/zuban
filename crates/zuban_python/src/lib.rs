@@ -28,7 +28,7 @@ use std::cell::OnceCell;
 
 use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
-pub use goto::GotoGoal;
+pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument};
 use parsa_python_cst::{GotoNode, Tree};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
@@ -231,7 +231,7 @@ impl<'project> Document<'project> {
     pub fn references<'slf, T>(
         &'slf self,
         position: InputPosition,
-        only_check_current_module: bool,
+        goal: ReferencesGoal,
         on_name: impl for<'a> Fn(Name) -> T,
     ) -> Result<Vec<T>, String> {
         Ok(GotoResolver::new(
@@ -239,7 +239,7 @@ impl<'project> Document<'project> {
             GotoGoal::Indifferent,
             on_name,
         )
-        .references(only_check_current_module))
+        .references(goal))
     }
 
     pub fn complete<T>(
