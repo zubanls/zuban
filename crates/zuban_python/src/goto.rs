@@ -438,7 +438,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
     }
 
     pub fn references(mut self, goal: ReferencesGoal) -> Vec<T> {
-        let search_name = match self.infos.node {
+        let on_name = match self.infos.node {
             GotoNode::Name(name) => name,
             GotoNode::ImportFromAsName(import_from_as_name) => {
                 // TODO
@@ -453,15 +453,15 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                 _ => return vec![],
             },
             GotoNode::Atom(_) | GotoNode::None => return vec![],
-        }
-        .as_code();
+        };
+        let search_name = on_name.as_code();
 
         let mut is_globally_reachable = false;
         let db = self.infos.db;
 
         //  1. Find the original definition
 
-        let Some(_) = GotoResolver::new2(self.infos, GotoGoal::Indifferent, |n| {
+        GotoResolver::new2(self.infos, GotoGoal::Indifferent, |n| {
             follow_goto_on_imports(n, &mut |name| {
                 if !self.definitions.is_empty() {
                     // This is an import, definitions were already added
@@ -493,9 +493,22 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                 self.results.push((self.on_result)(name));
             });
         })
-        .goto_name(false, false) else {
-            return vec![];
-        };
+        .goto_name(false, false);
+        if self.definitions.is_empty() {
+            if on_name.name_def().is_some() {
+                // On imports the goto will not land anywhere, but we still want to perfom
+                // reference search even though the imports are not detectable.
+                let n = Name::TreeName(TreeName::with_unknown_parent_scope(
+                    self.infos.db,
+                    self.infos.file,
+                    on_name,
+                ));
+                self.definitions.insert(to_unique_position(&n));
+                self.results.push((self.on_result)(n))
+            } else {
+                return vec![];
+            }
+        }
 
         // 2. Find all the references to the original definitions
 
