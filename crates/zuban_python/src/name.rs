@@ -282,10 +282,10 @@ fn lookup_parent_scope_in_other_file<'db>(
 
 #[derive(Debug)]
 pub struct TreeName<'db> {
-    db: &'db Database,
-    file: &'db PythonFile,
+    pub(crate) db: &'db Database,
+    pub(crate) file: &'db PythonFile,
     pub(crate) parent_scope: Scope<'db>,
-    cst_name: CSTName<'db>,
+    pub(crate) cst_name: CSTName<'db>,
 }
 
 impl<'db> TreeName<'db> {

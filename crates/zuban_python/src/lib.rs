@@ -29,7 +29,7 @@ use std::cell::OnceCell;
 use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
 pub use goto::{GotoGoal, ReferencesGoal};
-use goto::{GotoResolver, PositionalDocument};
+use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
 use parsa_python_cst::{GotoNode, Tree};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
@@ -234,12 +234,7 @@ impl<'project> Document<'project> {
         goal: ReferencesGoal,
         on_name: impl for<'a> Fn(Name) -> T,
     ) -> Result<Vec<T>, String> {
-        Ok(GotoResolver::new(
-            self.positional_document(position)?,
-            GotoGoal::Indifferent,
-            on_name,
-        )
-        .references(goal))
+        Ok(ReferencesResolver::new(self.positional_document(position)?, on_name).references(goal))
     }
 
     pub fn complete<T>(

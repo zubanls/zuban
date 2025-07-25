@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use vfs::PathWithScheme;
-use zuban_python::{Document, GotoGoal, InputPosition, Project, SymbolKind};
+use zuban_python::{Document, GotoGoal, InputPosition, Project, ReferencesGoal, SymbolKind};
 
 use crate::Filter;
 
@@ -149,24 +149,28 @@ impl TestFile<'_> {
                 CaseType::References { expected } => {
                     let actual: Vec<_> = document
                         .get()
-                        .references(position, false, |name| {
-                            let identifier = if *name.file_path() == *path {
-                                None
-                            } else {
-                                let s = name.qualified_name();
-                                Some(if name.in_stub() {
-                                    format!("stub:{s}")
+                        .references(
+                            position,
+                            ReferencesGoal::OnlyTypeCheckedWorkspaces,
+                            |name| {
+                                let identifier = if *name.file_path() == *path {
+                                    None
                                 } else {
-                                    s
-                                })
-                            };
-                            let start = name.name_range().0;
-                            (
-                                identifier,
-                                start.line_one_based(),
-                                start.code_points_column(),
-                            )
-                        })
+                                    let s = name.qualified_name();
+                                    Some(if name.in_stub() {
+                                        format!("stub:{s}")
+                                    } else {
+                                        s
+                                    })
+                                };
+                                let start = name.name_range().0;
+                                (
+                                    identifier,
+                                    start.line_one_based(),
+                                    start.code_points_column(),
+                                )
+                            },
+                        )
                         .unwrap();
                     if actual != expected {
                         errors.push(format!(
