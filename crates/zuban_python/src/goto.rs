@@ -77,7 +77,9 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     fn infer_position(&self) -> Option<Inferred> {
         match self.node {
             GotoNode::Name(name) => self.infer_name(name),
-            GotoNode::ImportFromAsName(as_name) => self.infer_name(as_name.name_def().name()),
+            GotoNode::ImportFromAsName { import_as_name, .. } => {
+                self.infer_name(import_as_name.name_def().name())
+            }
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::PrimaryTarget(target) => self.infer_primary_target(target),
             GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
@@ -363,8 +365,8 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                 }
                 _ => None,
             },
-            GotoNode::ImportFromAsName(as_name) => {
-                let p = file.points.get(as_name.name_def().index());
+            GotoNode::ImportFromAsName { import_as_name, .. } => {
+                let p = file.points.get(import_as_name.name_def().index());
                 if p.calculated() && p.kind() == PointKind::Redirect {
                     let node_ref = p.as_redirected_node_ref(db);
                     return self
@@ -440,10 +442,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
     pub fn references(mut self, goal: ReferencesGoal) -> Vec<T> {
         let on_name = match self.infos.node {
             GotoNode::Name(name) => name,
-            GotoNode::ImportFromAsName(import_from_as_name) => {
-                // TODO
-                return vec![];
-            }
+            GotoNode::ImportFromAsName { on_name, .. } => on_name,
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => name,
                 _ => return vec![],
