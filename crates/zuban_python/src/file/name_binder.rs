@@ -1149,6 +1149,20 @@ impl<'db> NameBinder<'db> {
                                                 ),
                                             );
                                         }
+                                    } else {
+                                        self.add_point_definition(
+                                            name.name_def().unwrap(),
+                                            Specific::NonlocalVariable,
+                                            IndexingCause::Other,
+                                        );
+                                        self.db_infos.points.set(
+                                            name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+                                            // TODO shouldn't we add an error here?
+                                            Point::new_specific(
+                                                Specific::AnyDueToError,
+                                                Locality::NameBinder,
+                                            ),
+                                        );
                                     }
                                 }
                                 NameDefParent::Primary => (),

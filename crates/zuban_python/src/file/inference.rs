@@ -3697,7 +3697,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     if p.specific() == Specific::AnyDueToError {
                         return Inferred::new_any_from_error();
                     }
-                    debug_assert_eq!(node_ref.point().specific(), Specific::GlobalVariable);
+                    debug_assert_eq!(p.specific(), Specific::GlobalVariable);
                     self.with_correct_context(true, |inference| {
                         inference.infer_name_by_str(node_ref.as_code(), g_or_n_ref.node_index)
                     })
