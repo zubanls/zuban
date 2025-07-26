@@ -1,7 +1,7 @@
 extern crate insta;
 
 use parsa_python::*;
-use test_utils::dedent;
+use utils::dedent;
 
 fn tree_to_string(tree: PyTree) -> String {
     fn recurse(code: &mut String, node: &PyNode, depth: usize) {

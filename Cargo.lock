@@ -863,7 +863,7 @@ dependencies = [
  "lazy_static",
  "parsa",
  "regex",
- "test_utils",
+ "utils",
 ]
 
 [[package]]
