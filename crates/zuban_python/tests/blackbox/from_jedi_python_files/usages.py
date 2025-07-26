@@ -372,13 +372,14 @@ from stub_folder import with_stub
 #< ('stub:stub_folder.with_stub', 5, 4), ('stub_folder.with_stub', 5, 4), (0, 10)
 with_stub.stub_function
 from stub_folder.with_stub_folder.nested_stub_only import in_stub_only
-#< ('stub:stub_folder.with_stub_folder.nested_stub_only', 2, 4), ('stub:stub_folder.with_stub_folder.nested_stub_only', 4, 4), ('stubs', 64, 17), (-2, 58), (0, 0)
+#< ('stub:stub_folder.with_stub_folder.nested_stub_only', 2, 4), ('stub:stub_folder.with_stub_folder.nested_stub_only', 4, 4), ('stubs', 64, 17), ('stubs', 89, 17), (-2, 58), (0, 0)
 in_stub_only
 from stub_folder.with_stub_folder.nested_with_stub import in_python
-#< ('stub_folder.with_stub_folder.nested_with_stub', 1, 0), ('stubs', 68, 17), (-2, 58), (0, 0)
+# jedi-diff: #< ('stub_folder.with_stub_folder.nested_with_stub', 1, 0), ('stubs', 68, 17), (-2, 58), (0, 0)
+#< (-3, 58), (0, 0)
 in_python
 from stub_folder.with_stub_folder.nested_with_stub import in_both
-#< ('stub_folder.with_stub_folder.nested_with_stub', 2, 0), ('stub:stub_folder.with_stub_folder.nested_with_stub', 2, 0), ('stubs', 66, 17), (-2, 58), (0, 0)
+#< ('stub_folder.with_stub_folder.nested_with_stub', 2, 0), ('stub:stub_folder.with_stub_folder.nested_with_stub', 2, 0), ('stubs', 66, 17), ('stubs', 91, 17), (-2, 58), (0, 0)
 in_both
 
 # -----------------
