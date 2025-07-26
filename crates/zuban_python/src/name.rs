@@ -57,7 +57,7 @@ impl<'x> Name<'x> {
         self.file().tree.code()
     }
 
-    pub(crate) fn file(&self) -> &PythonFile {
+    pub(crate) fn file(&self) -> &'x PythonFile {
         match self {
             Name::TreeName(TreeName { file, .. })
             | Name::ModuleName(ModuleName { file, .. })
@@ -65,6 +65,14 @@ impl<'x> Name<'x> {
                 node_ref: NodeRef { file, .. },
                 ..
             }) => file,
+        }
+    }
+
+    pub(crate) fn db(&self) -> &'x Database {
+        match self {
+            Name::TreeName(tree_name) => tree_name.db,
+            Name::ModuleName(module_name) => module_name.db,
+            Name::NodeName(node_name) => node_name.db,
         }
     }
 
@@ -113,6 +121,10 @@ impl<'x> Name<'x> {
             Name::ModuleName(n) => n.file.qualified_name(n.db),
             Name::NodeName(n) => n.name.to_string(),
         }
+    }
+
+    pub fn qualified_name_of_file(&self) -> String {
+        self.file().qualified_name(self.db())
     }
 
     pub fn is_implementation(&self) -> bool {

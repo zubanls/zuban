@@ -578,8 +578,8 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
         let db = self.infos.db;
         let in_name_regex = regex::Regex::new(&format!(r"\b{search_name}\b")).unwrap();
         let mut files = vec![];
-        let mut maybe_check_file = |file: &Rc<FileEntry>| {
-            if let Some(file_index) = file.get_file_index() {
+        let mut maybe_check_file = |file_entry: &Rc<FileEntry>| {
+            if let Some(file_index) = file_entry.get_file_index() {
                 let file = db.loaded_python_file(file_index);
                 if in_name_regex.is_match(file.tree.code())
                     || file_index == self.infos.file.file_index
@@ -587,12 +587,21 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                     files.push(file);
                 }
             } else {
-                /*
-                let file: &PythonFile = 1;
-                if in_name_regex.is_match(file.tree.code()) {
-                    files.push(file)
+                if let Some(file_index) = db.vfs.ensure_file_for_file_entry_with_conditional(
+                    file_entry.clone(),
+                    false,
+                    |code| in_name_regex.is_match(code),
+                    |file_index, code| {
+                        PythonFile::from_file_entry_and_code(
+                            &db.project,
+                            file_index,
+                            file_entry,
+                            code,
+                        )
+                    },
+                ) {
+                    files.push(db.loaded_python_file(file_index));
                 }
-                */
             }
         };
         for entries in workspaces_entries {

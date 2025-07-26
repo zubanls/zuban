@@ -157,7 +157,7 @@ impl TestFile<'_> {
                                 let identifier = if *name.file_path() == *path {
                                     None
                                 } else {
-                                    let s = name.qualified_name();
+                                    let s = name.qualified_name_of_file();
                                     Some(if name.in_stub() {
                                         format!("stub:{s}")
                                     } else {
@@ -348,8 +348,12 @@ fn unpack_references_tuple(
             identifier = Some(in_string.to_string())
         }
         let (line, column) = in_tuple.split_once(',').unwrap();
-        let line_diff = line.trim().parse::<isize>().unwrap();
-        let line = (line_nr as isize + 2 + line_diff) as usize;
+        let line = if identifier.is_some() {
+            line.trim().parse::<usize>().unwrap()
+        } else {
+            let line_diff = line.trim().parse::<isize>().unwrap();
+            (line_nr as isize + 2 + line_diff) as usize
+        };
         let column = column.trim().parse().unwrap();
         assert!(tuples.insert((identifier, line, column)));
         s = s.trim_start_matches(',');

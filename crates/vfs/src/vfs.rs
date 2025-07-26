@@ -293,17 +293,38 @@ impl<F: VfsFile> Vfs<F> {
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex, Box<str>) -> F,
     ) -> Option<FileIndex> {
+        self.ensure_file_for_file_entry_with_conditional(
+            file_entry,
+            invalidates_db,
+            |_| true,
+            new_file,
+        )
+    }
+
+    pub fn ensure_file_for_file_entry_with_conditional(
+        &self,
+        file_entry: Rc<FileEntry>,
+        invalidates_db: bool,
+        should_load: impl Fn(&str) -> bool,
+        new_file: impl FnOnce(FileIndex, Box<str>) -> F,
+    ) -> Option<FileIndex> {
         if let Some(file_index) = file_entry.get_file_index() {
             let file_state = self.file_state(file_index);
             if file_state.file.get().is_some() {
                 return Some(file_index);
             }
             let code = self.handler.read_and_watch_file(&file_state.path)?;
+            if !should_load(&code) {
+                return None;
+            }
             file_state.update(new_file(file_index, code.into()));
             Some(file_index)
         } else {
             let path = file_entry.absolute_path(&*self.handler);
             let code = self.handler.read_and_watch_file(&path)?;
+            if !should_load(&code) {
+                return None;
+            }
             let file_index = self.with_added_file(
                 file_entry.clone(),
                 // The path was previously normalized, because it is created from a Directory
