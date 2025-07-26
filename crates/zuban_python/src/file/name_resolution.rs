@@ -4,6 +4,7 @@ use parsa_python_cst::{
     ImportFrom, ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use utils::AlreadySeen;
+use vfs::FileIndex;
 
 use crate::{
     database::{Database, Locality, Point, PointKind, PointLink, Specific},
@@ -195,7 +196,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub(super) fn assign_import_from_only_particular_name_def(
         &self,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<ModuleAccessDetail>),
     ) {
         if let Some(import_from) = as_name.import_from() {
             let from_first_part = self.import_from_first_part(import_from);
@@ -224,10 +225,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
                     match redirect_to_link {
                         Some(link) => {
-                            self.set_point(
-                                name_def.index(),
-                                link.into_redirect_point(Locality::Todo),
-                            );
+                            self.set_point(name_def.index(), link.into_point(Locality::Todo));
                         }
                         None => {
                             // We can not assign in all cases here, for example in the presence of
@@ -409,7 +407,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         import_from: ImportFrom,
         from_first_part: &Option<ImportResult>,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<ModuleAccessDetail>),
     ) {
         let (import_name, name_def) = as_name.unpack();
 
@@ -472,7 +470,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         from_first_part: &ImportResult,
         import_name: Name,
-    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+    ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let name = import_name.as_str();
         let convert_imp_result = |imp_result| match imp_result {
             ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
@@ -813,7 +811,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         name: &str,
         add_issue: impl Fn(IssueKind),
-    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+    ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let result = self.resolve_module_access_internal(name, add_issue);
         if cfg!(feature = "zuban_debug") {
             if let Some((pr, _)) = &result {
@@ -836,13 +834,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         name: &str,
         add_issue: impl Fn(IssueKind),
-    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+    ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let db = self.i_s.db;
         Some(if let Some(name_ref) = self.file.lookup_symbol(name) {
             if let Some(r) = self.file.maybe_submodule_reexport(self.i_s, name_ref, name) {
                 return Some((
                     PointResolution::Inferred(r.into_inferred()),
-                    Some(name_ref.as_link()),
+                    Some(ModuleAccessDetail::OnName(name_ref.as_link())),
                 ));
             }
             if is_reexport_issue(db, name_ref) {
@@ -873,7 +871,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             node_ref: name_def_ref,
                             global_redirect: true,
                         },
-                        Some(name_ref.as_link()),
+                        Some(ModuleAccessDetail::OnName(name_ref.as_link())),
                     ));
                 }
             }
@@ -884,13 +882,22 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     global_redirect: true,
                 }
             }
-            (resolved, Some(name_ref.as_link()))
+            (
+                resolved,
+                Some(ModuleAccessDetail::OnName(name_ref.as_link())),
+            )
         } else if let Some(r) = self.file.sub_module_lookup(db, name) {
-            (PointResolution::Inferred(r.into_inferred()), None)
+            let to = match r {
+                LookupResult::FileReference(file_index) => {
+                    Some(ModuleAccessDetail::OnFile(file_index))
+                }
+                _ => None,
+            };
+            (PointResolution::Inferred(r.into_inferred()), to)
         } else if let Some((r, points_to)) =
             self.resolve_star_import_name(name, None, &|_, _, _| None)
         {
-            (r, points_to)
+            (r, points_to.map(ModuleAccessDetail::OnName))
         } else if let Some(r) = self.file.lookup_symbol("__getattr__") {
             (PointResolution::ModuleGetattrName(r), None)
         } else {
@@ -1146,6 +1153,22 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub fn set_point(&self, node_index: NodeIndex, p: Point) {
         self.file.points.set(node_index, p)
+    }
+}
+
+pub(crate) enum ModuleAccessDetail {
+    OnName(PointLink),
+    OnFile(FileIndex),
+}
+
+impl ModuleAccessDetail {
+    pub fn into_point(self, locality: Locality) -> Point {
+        match self {
+            ModuleAccessDetail::OnName(link) => link.into_redirect_point(locality),
+            ModuleAccessDetail::OnFile(file_index) => {
+                Point::new_file_reference(file_index, locality)
+            }
+        }
     }
 }
 

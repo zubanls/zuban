@@ -5,7 +5,7 @@ use parsa_python_cst::*;
 use super::{
     diagnostics::{await_aiter_and_next, check_override},
     flow_analysis::has_custom_special_method,
-    name_resolution::NameResolution,
+    name_resolution::{ModuleAccessDetail, NameResolution},
     on_argument_type_error, process_unfinished_partials,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
@@ -151,7 +151,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         &self,
         name_def: NameDef,
         pr: PointResolution,
-        redirect_to_link: Option<PointLink>,
+        redirect_to: Option<ModuleAccessDetail>,
     ) {
         let inf = self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
         self.assign_to_name_def(
@@ -159,9 +159,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             NodeRef::new(self.file, name_def.index()),
             &inf,
             AssignKind::Import,
-            |_, inf| match redirect_to_link {
-                Some(link) if inf.is_saved() => {
-                    self.set_point(name_def.index(), link.into_redirect_point(Locality::Todo));
+            |_, inf| match redirect_to {
+                Some(to) if inf.is_saved() => {
+                    self.set_point(name_def.index(), to.into_point(Locality::Todo));
                 }
                 _ => {
                     inf.clone()

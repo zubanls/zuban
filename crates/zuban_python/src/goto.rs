@@ -399,16 +399,10 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                 }
                 _ => None,
             },
-            GotoNode::ImportFromAsName { import_as_name, .. } => {
-                let p = file.points.get(import_as_name.name_def().index());
-                if p.calculated() && p.kind() == PointKind::Redirect {
-                    let node_ref = p.as_redirected_node_ref(db);
-                    return self
-                        .check_node_ref_and_maybe_follow_import(node_ref, follow_imports)
-                        .map(|r| vec![r]);
-                }
-                None
-            }
+            GotoNode::ImportFromAsName { import_as_name, .. } => Some(vec![self.try_to_follow(
+                NodeRef::new(file, import_as_name.name_def().index()),
+                follow_imports,
+            )??]),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 let ref_ = NodeRef::new(file, name_def.index()).global_or_nonlocal_ref();
                 if let Some(result) = self.try_to_follow(ref_, follow_imports).flatten() {
@@ -447,14 +441,21 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                     &|_issue| (),
                     &|_t_of_attr_error| (),
                 );
-                if let LookupResult::GotoName { name, .. } = lookup {
-                    if let Some(result) = self.check_node_ref_and_maybe_follow_import(
-                        NodeRef::from_link(db, name),
-                        follow_imports,
-                    ) {
-                        results.push(result);
+                match lookup {
+                    LookupResult::GotoName { name, .. } => {
+                        if let Some(result) = self.check_node_ref_and_maybe_follow_import(
+                            NodeRef::from_link(db, name),
+                            follow_imports,
+                        ) {
+                            results.push(result);
+                            continue;
+                        }
+                    }
+                    LookupResult::FileReference(file_index) => {
+                        results.push(self.goto_on_file(file_index));
                         continue;
                     }
+                    _ => (),
                 }
                 if check_inferred_attrs {
                     if let Some(inf) = lookup.into_maybe_inferred() {

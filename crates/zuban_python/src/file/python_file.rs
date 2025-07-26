@@ -16,7 +16,7 @@ use super::{
     flow_analysis::DelayedDiagnostic,
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
-    name_resolution::NameResolution,
+    name_resolution::{ModuleAccessDetail, NameResolution},
     FLOW_ANALYSIS,
 };
 use crate::{
@@ -360,10 +360,12 @@ impl<'db> PythonFile {
         let inference = self.inference(i_s);
         if let Some((pr, redirect_to)) = inference.resolve_module_access(name, &add_issue) {
             let inf = inference.infer_module_point_resolution(pr, add_issue);
-            if let Some(name) = redirect_to {
-                LookupResult::GotoName { inf, name }
-            } else {
-                LookupResult::UnknownName(inf)
+            match redirect_to {
+                Some(ModuleAccessDetail::OnName(name)) => LookupResult::GotoName { inf, name },
+                Some(ModuleAccessDetail::OnFile(file_index)) => {
+                    LookupResult::FileReference(file_index)
+                }
+                None => LookupResult::UnknownName(inf),
             }
         } else {
             LookupResult::None

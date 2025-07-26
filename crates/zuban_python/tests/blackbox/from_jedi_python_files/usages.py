@@ -90,7 +90,7 @@ import module_not_exists
 module_not_exists
 
 
-#< ('import_tree.rename1', 1,0), (0,24), (3,0), (6,17), ('import_tree.rename2', 4,17), (11,17), (14,17), ('imports', 72, 16)
+#< ('import_tree.rename1', 1,0), (0,24), (3,0), (6,17), ('import_tree.rename2', 4,17), (11,17), (14,17), ('imports', 74, 16)
 from import_tree import rename1
 
 #< (0,8), ('import_tree.rename1',3,0), ('import_tree.rename2',4,32), ('import_tree.rename2',6,0), (3,32), (8,32), (5,0)
@@ -101,7 +101,7 @@ from import_tree.rename1 import abc
 #< (-5,8), (-2,32), ('import_tree.rename1', 3,0), ('import_tree.rename2', 4,32), ('import_tree.rename2', 6,0), (0,0), (3,32)
 abc
 
-#< 20 ('import_tree.rename1', 1,0), ('import_tree.rename2', 4,17), (-11,24), (-8,0), (-5,17), (0,17), (3,17), ('imports', 72, 16)
+#< 20 ('import_tree.rename1', 1,0), ('import_tree.rename2', 4,17), (-11,24), (-8,0), (-5,17), (0,17), (3,17), ('imports', 74, 16)
 from import_tree.rename1 import abc
 
 #< (0, 32),
