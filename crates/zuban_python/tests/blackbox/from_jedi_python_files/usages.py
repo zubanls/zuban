@@ -157,7 +157,8 @@ class NestedClass():
         return self
 
 # Shouldn't find a definition, because there's other `instance`.
-#< (0, 14),
+# jedi-diff: #< (0, 14),
+#<
 NestedClass().instance
 
 
@@ -194,7 +195,8 @@ class TestClass(Super):
         self.base_class
         #< (-20,13), (0,13)
         self.base_var
-        #< (0, 18),
+        # jedi-diff: #< (0, 18),
+        #<
         TestClass.base_var
 
 
@@ -248,7 +250,8 @@ def f(**kwargs):
 # No result
 # -----------------
 if isinstance(j, int):
-    #< (0, 4),
+    # jedi-diff: #< (0, 4),
+    #<
     j
 
 # -----------------
@@ -260,7 +263,8 @@ class DynamicParam():
         return
 
 def check(instance):
-    #< 13 (-5,8), (0,13)
+    # jedi-diff: #< 13 (-5,8), (0,13)
+    #< 13
     instance.foo()
 
 check(DynamicParam())
@@ -274,7 +278,8 @@ import _sre
 # TODO reenable this, it's currently not working, because of 2/3
 # inconsistencies in typeshed (_sre exists in typeshed/2, but not in
 # typeshed/3).
-#< 0 (-3,7), (0,0), ('_sre', 0, 0)
+# jedi-diff ##< 0 (-3,7), (0,0), ('_sre', 0, 0)
+#< 0 (-7,7), (0,0)
 _sre
 
 # -----------------
