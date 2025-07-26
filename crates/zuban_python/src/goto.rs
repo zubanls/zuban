@@ -15,7 +15,7 @@ use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
 
 use crate::{
     completion::ScopesIterator,
-    database::{Database, ParentScope, Point, PointKind, Specific},
+    database::{Database, ParentScope, PointKind, Specific},
     debug,
     file::{first_defined_name, ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile},
     format_data::FormatData,
@@ -60,10 +60,12 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     ) -> Result<Self, String> {
         let position = file.line_column_to_byte(pos)?;
         let (scope, node) = file.tree.goto_node(position);
-        debug!(
-            "Position for goto-like operation {}->{pos:?} on leaf {node:?}",
-            file.file_path(&db),
-        );
+        if std::cfg!(debug_assertions) && !matches!(pos, InputPosition::NthUTF8Byte(_)) {
+            debug!(
+                "Position for goto-like operation {}->{pos:?} on leaf {node:?}",
+                file.file_path(&db),
+            );
+        }
         let result = file.ensure_calculated_diagnostics(db);
         debug_assert!(result.is_ok());
         Ok(Self {
@@ -266,9 +268,9 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
         (self.on_result)(name)
     }
 
-    fn goto_on_module_point(&mut self, p: Point) -> T {
+    fn goto_on_file(&mut self, file_index: FileIndex) -> T {
         let db = self.infos.db;
-        let file = db.loaded_python_file(p.file_index());
+        let file = db.loaded_python_file(file_index);
         self.calculate_return(Name::ModuleName(ModuleName { db, file }))
     }
 
@@ -282,7 +284,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                 p.as_redirected_node_ref(self.infos.db),
                 follow_imports,
             )),
-            PointKind::FileReference => Some(Some(self.goto_on_module_point(p))),
+            PointKind::FileReference => Some(Some(self.goto_on_file(p.file_index()))),
             _ => None,
         }
     }
@@ -306,7 +308,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                     Some(NameImportParent::DottedAsName(_)) => {
                         let p = NodeRef::new(node_ref.file, name_def.index()).point();
                         if p.kind() == PointKind::FileReference {
-                            return Some(self.goto_on_module_point(p));
+                            return Some(self.goto_on_file(p.file_index()));
                         }
                     }
                     None => {
@@ -364,6 +366,10 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                     }
                     _ => (),
                 }
+            } else if let NameParent::DottedImportName(_) = name.parent() {
+                // TODO shouldn't this be pre-calculated?
+                let file_index = self.infos.infer_name(name)?.maybe_file(db)?;
+                return Some(vec![self.goto_on_file(file_index)]);
             }
             None
         };
@@ -483,6 +489,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
     }
 
     pub fn references(mut self, goal: ReferencesGoal) -> Vec<T> {
+        debug!("Calculate references for {:?}", self.infos.node);
         let on_name = match self.infos.node {
             GotoNode::Name(name) => name,
             GotoNode::ImportFromAsName { on_name, .. } => on_name,
@@ -549,9 +556,14 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                 self.definitions.insert(to_unique_position(&n));
                 self.results.push((self.on_result)(n))
             } else {
+                debug!("Did not find the original rename definition for {search_name}");
                 return vec![];
             }
         }
+        debug!(
+            "Finding references on {search_name} now for definitions {:?}",
+            &self.definitions
+        );
 
         // 2. Find all the references to the original definitions
 
