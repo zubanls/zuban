@@ -6,8 +6,8 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_cst::{
-    Atom, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName, NameImportParent,
-    NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
+    Atom, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName, NameDefParent,
+    NameImportParent, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
     PrimaryTargetOrAtom, Scope,
 };
 use utils::FastHashSet;
@@ -83,6 +83,9 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::PrimaryTarget(target) => self.infer_primary_target(target),
             GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
+            GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
+                self.infer_name(name_def.name())
+            }
             GotoNode::None => None,
         }
     }
@@ -258,6 +261,32 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
         .infer_definition()
     }
 
+    fn calculate_return(&mut self, name: Name) -> T {
+        let name = goto_with_goal(name, self.goal);
+        (self.on_result)(name)
+    }
+
+    fn goto_on_module_point(&mut self, p: Point) -> T {
+        let db = self.infos.db;
+        let file = db.loaded_python_file(p.file_index());
+        self.calculate_return(Name::ModuleName(ModuleName { db, file }))
+    }
+
+    fn try_to_follow(&mut self, n: NodeRef, follow_imports: bool) -> Option<Option<T>> {
+        let p = n.point();
+        if !p.calculated() {
+            return None;
+        }
+        match p.kind() {
+            PointKind::Redirect => Some(self.check_node_ref_and_maybe_follow_import(
+                p.as_redirected_node_ref(self.infos.db),
+                follow_imports,
+            )),
+            PointKind::FileReference => Some(Some(self.goto_on_module_point(p))),
+            _ => None,
+        }
+    }
+
     fn check_node_ref_and_maybe_follow_import(
         &mut self,
         node_ref: NodeRef,
@@ -265,43 +294,42 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
     ) -> Option<T> {
         let n = node_ref.maybe_name()?;
         let db = self.infos.db;
-        let ret = |slf: &mut Self, name| {
-            let name = goto_with_goal(name, slf.goal);
-            Some((slf.on_result)(name))
-        };
         if follow_imports {
             if let Some(name_def) = n.name_def() {
-                let mut on_module = |p: Point| {
-                    let file = db.loaded_python_file(p.file_index());
-                    return ret(self, Name::ModuleName(ModuleName { db, file }));
-                };
                 match name_def.maybe_import() {
                     Some(NameImportParent::ImportFromAsName(_)) => {
-                        let p = NodeRef::new(node_ref.file, name_def.index()).point();
-                        match p.kind() {
-                            PointKind::Redirect => {
-                                return self.check_node_ref_and_maybe_follow_import(
-                                    p.as_redirected_node_ref(db),
-                                    follow_imports,
-                                );
-                            }
-                            PointKind::FileReference => return on_module(p),
-                            _ => (),
+                        let ref_ = NodeRef::new(node_ref.file, name_def.index());
+                        if let Some(result) = self.try_to_follow(ref_, follow_imports) {
+                            return result;
                         }
                     }
                     Some(NameImportParent::DottedAsName(_)) => {
                         let p = NodeRef::new(node_ref.file, name_def.index()).point();
                         if p.kind() == PointKind::FileReference {
-                            return on_module(p);
+                            return Some(self.goto_on_module_point(p));
                         }
                     }
-                    None => (),
+                    None => {
+                        if matches!(
+                            name_def.parent(),
+                            NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt
+                        ) {
+                            let ref_ = NodeRef::new(self.infos.file, name_def.index())
+                                .global_or_nonlocal_ref();
+                            if let Some(result) = self.try_to_follow(ref_, follow_imports) {
+                                return result;
+                            }
+                        }
+                    }
                 }
             }
         }
-        ret(
-            self,
-            Name::TreeName(TreeName::with_unknown_parent_scope(db, node_ref.file, n)),
+        Some(
+            self.calculate_return(Name::TreeName(TreeName::with_unknown_parent_scope(
+                db,
+                node_ref.file,
+                n,
+            ))),
         )
     }
 
@@ -374,6 +402,21 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
                         .map(|r| vec![r]);
                 }
                 None
+            }
+            GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
+                let ref_ = NodeRef::new(file, name_def.index()).global_or_nonlocal_ref();
+                if let Some(result) = self.try_to_follow(ref_, follow_imports).flatten() {
+                    return Some(vec![result]);
+                } else {
+                    // This essentially just returns the name of the global definition, because we
+                    // could not goto the original.
+                    Some(vec![self.calculate_return(Name::TreeName(TreeName::new(
+                        db,
+                        file,
+                        self.infos.scope,
+                        name_def.name(),
+                    )))])
+                }
             }
             GotoNode::Atom(_) | GotoNode::None => None,
         }
@@ -451,6 +494,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                 PrimaryContent::Attribute(name) => name,
                 _ => return vec![],
             },
+            GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => name_def.name(),
             GotoNode::Atom(_) | GotoNode::None => return vec![],
         };
         let search_name = on_name.as_code();
@@ -461,7 +505,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
         //  1. Find the original definition
 
         GotoResolver::new2(self.infos, GotoGoal::Indifferent, |n| {
-            follow_goto_on_imports(n, &mut |name| {
+            follow_goto_if_necessary(n, &mut |name| {
                 if !self.definitions.is_empty() {
                     // This is an import, definitions were already added
                     return;
@@ -546,7 +590,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                     .unwrap(),
                     GotoGoal::Indifferent,
                     |n: Name| {
-                        follow_goto_on_imports(n, &mut |n| {
+                        follow_goto_if_necessary(n, &mut |n| {
                             if self.definitions.contains(&to_unique_position(&n)) {
                                 add_all_names = true;
                             } else if add_all_names {
@@ -622,8 +666,8 @@ fn to_unique_position(n: &Name) -> (FileIndex, usize) {
     (n.file().file_index, n.name_range().0.byte_position)
 }
 
-fn follow_goto_on_imports(name: Name, on_name: &mut impl FnMut(Name)) {
-    let mut check_import_name = |tree_name: &TreeName, start| {
+fn follow_goto_if_necessary(name: Name, on_name: &mut impl FnMut(Name)) {
+    let mut check_name = |tree_name: &TreeName, start| {
         GotoResolver::new(
             PositionalDocument::for_goto(
                 tree_name.db,
@@ -632,7 +676,7 @@ fn follow_goto_on_imports(name: Name, on_name: &mut impl FnMut(Name)) {
             )
             .unwrap(),
             GotoGoal::Indifferent,
-            |n: Name| follow_goto_on_imports(n, on_name),
+            |n: Name| follow_goto_if_necessary(n, on_name),
         )
         .goto_name(false, false);
     };
@@ -648,21 +692,26 @@ fn follow_goto_on_imports(name: Name, on_name: &mut impl FnMut(Name)) {
                     //
                     let (name, name_def) = as_name.unpack();
                     if name_def.as_code() == name.as_code() {
-                        check_import_name(tree_name, name_def.start())
+                        check_name(tree_name, name_def.start())
                     }
                 }
                 Some(NameImportParent::DottedAsName(dotted)) => match dotted.unpack() {
                     DottedAsNameContent::Simple(name_def, _) => {
-                        check_import_name(tree_name, name_def.start())
+                        check_name(tree_name, name_def.start())
                     }
                     DottedAsNameContent::WithAs(dotted_import_name, name_def) => {
                         // Follow only if it is import foo as foo (maybe used in stubs to reexport)
                         if name_def.as_code() == dotted_import_name.as_code() {
-                            check_import_name(tree_name, name_def.start())
+                            check_name(tree_name, name_def.start())
                         }
                     }
                 },
-                None => (),
+                None => match name_def.parent() {
+                    NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt => {
+                        check_name(tree_name, name_def.start())
+                    }
+                    _ => (),
+                },
             }
         }
     }

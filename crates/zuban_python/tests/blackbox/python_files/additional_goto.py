@@ -320,3 +320,74 @@ def target_completions():
         ...
     #! 12 ['w = 1']
     except w: ...
+
+
+global_x1 = 1
+def global_goto1():
+    #! ['global global_x1']
+    global_x1
+    #! ['global_x1 = 1']
+    global global_x1
+    #! 10 ['global global_x1']
+    global_x1 = 3
+
+global_x2 = 1
+def global_goto2():
+    #! --follow-imports ['global_x2 = 1']
+    global_x2
+    #! --follow-imports ['global_x2 = 1']
+    global global_x2
+    #! 10 --follow-imports ['global_x2 = 1']
+    global_x2 = 3
+
+def global_goto3():
+    #! ['global global_y']
+    global_y
+    #! ['global global_y']
+    global global_y
+    #! 10 ['global global_y']
+    global_y = 3
+
+def global_goto4():
+    #! --follow-imports ['global global_y']
+    global_y
+    #! --follow-imports ['global global_y']
+    global global_y
+    #! 10 --follow-imports ['global global_y']
+    global_y = 3
+
+
+def for_nonlocal_tests():
+    nonlocal_x1 = 1
+    def nonlocal_goto1():
+        #! ['nonlocal nonlocal_x1']
+        nonlocal_x1
+        #! ['nonlocal_x1 = 1']
+        nonlocal nonlocal_x1
+        #! 10 ['nonlocal nonlocal_x1']
+        nonlocal_x1 = 3
+
+    nonlocal_x2 = 1
+    def nonlocal_goto2():
+        #! --follow-imports ['nonlocal_x2 = 1']
+        nonlocal_x2
+        #! --follow-imports ['nonlocal_x2 = 1']
+        nonlocal nonlocal_x2
+        #! 10 --follow-imports ['nonlocal_x2 = 1']
+        nonlocal_x2 = 3
+
+    def nonlocal_goto3():
+        #! ['nonlocal nonlocal_y']
+        nonlocal_y
+        #! ['nonlocal nonlocal_y']
+        nonlocal nonlocal_y
+        #! 10 ['nonlocal nonlocal_y']
+        nonlocal_y = 3
+
+    def nonlocal_goto4():
+        #! --follow-imports ['nonlocal nonlocal_y']
+        nonlocal_y
+        #! --follow-imports ['nonlocal nonlocal_y']
+        nonlocal nonlocal_y
+        #! 10 --follow-imports ['nonlocal nonlocal_y']
+        nonlocal_y = 3

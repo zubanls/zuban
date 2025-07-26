@@ -5,7 +5,6 @@ use parsa_python_cst::*;
 use super::{
     diagnostics::{await_aiter_and_next, check_override},
     flow_analysis::has_custom_special_method,
-    name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
     name_resolution::NameResolution,
     on_argument_type_error, process_unfinished_partials,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
@@ -3690,10 +3689,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                     return inference.infer_point_resolution(pr);
                 }
-                let index = node_ref.node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
-                    + NAME_DEF_TO_NAME_DIFFERENCE;
-                if node_ref.file.points.get(index).calculated() {
-                    self.check_point_cache(index).unwrap()
+                let g_or_n_ref = node_ref.global_or_nonlocal_ref();
+                if g_or_n_ref.point().calculated() {
+                    self.check_point_cache(g_or_n_ref.node_index).unwrap()
                 } else {
                     let p = node_ref.point();
                     if p.specific() == Specific::AnyDueToError {
@@ -3701,7 +3699,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                     debug_assert_eq!(node_ref.point().specific(), Specific::GlobalVariable);
                     self.with_correct_context(true, |inference| {
-                        inference.infer_name_by_str(node_ref.as_code(), index)
+                        inference.infer_name_by_str(node_ref.as_code(), g_or_n_ref.node_index)
                     })
                 }
             }

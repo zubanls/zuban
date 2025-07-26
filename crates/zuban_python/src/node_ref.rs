@@ -2,8 +2,8 @@ use std::fmt;
 
 use parsa_python_cst::{
     Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
-    Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex, Primary, PrimaryTarget,
-    Slices, StarExpression, StarStarExpression, StarredExpression, StringLiteral,
+    Int, Name, NameDef, NameDefParent, NameImportParent, NamedExpression, NodeIndex, Primary,
+    PrimaryTarget, Slices, StarExpression, StarStarExpression, StarredExpression, StringLiteral,
     NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::FileIndex;
@@ -15,7 +15,7 @@ use crate::{
     diagnostics::{Diagnostic, Issue, IssueKind},
     file::{
         ClassInitializer, ClassNodeRef, File, OtherDefinitionIterator, PythonFile,
-        CLASS_TO_CLASS_INFO_DIFFERENCE,
+        CLASS_TO_CLASS_INFO_DIFFERENCE, GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -73,6 +73,20 @@ impl<'file> NodeRef<'file> {
         let n = Self::new(self.file, self.node_index + NAME_DEF_TO_NAME_DIFFERENCE);
         debug_assert!(n.maybe_name().is_some(), "Why is this not a name: {self:?}");
         n
+    }
+
+    pub fn global_or_nonlocal_ref(&self) -> Self {
+        debug_assert!(self.maybe_name_def().is_some());
+        debug_assert!(matches!(
+            self.expect_name_def().parent(),
+            NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt
+        ));
+        let node_index =
+            self.node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE + NAME_DEF_TO_NAME_DIFFERENCE;
+        Self {
+            file: self.file,
+            node_index,
+        }
     }
 
     pub fn point(&self) -> Point {

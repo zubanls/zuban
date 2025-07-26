@@ -240,6 +240,10 @@ impl Tree {
                             }
                         } else if par_parent.is_type(Nonterminal(t_primary)) {
                             GotoNode::PrimaryTarget(PrimaryTarget::new(par_parent))
+                        } else if par_parent.is_type(Nonterminal(global_stmt)) {
+                            GotoNode::GlobalName(NameDef::new(parent))
+                        } else if par_parent.is_type(Nonterminal(nonlocal_stmt)) {
+                            GotoNode::NonlocalName(NameDef::new(parent))
                         } else {
                             GotoNode::Name(Name::new(left))
                         }
@@ -4632,6 +4636,8 @@ pub enum GotoNode<'db> {
     },
     Primary(Primary<'db>),
     PrimaryTarget(PrimaryTarget<'db>),
+    GlobalName(NameDef<'db>),
+    NonlocalName(NameDef<'db>),
     Atom(Atom<'db>),
     None,
 }

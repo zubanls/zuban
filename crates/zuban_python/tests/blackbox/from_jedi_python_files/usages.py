@@ -332,18 +332,20 @@ def whatever_func():
 # -----------------
 # global
 # -----------------
+# jedi-diff: added a global declaration, otherwise an error is added
+my_global = None
 
 def global_usage1():
-    #< (0, 4), (4, 11), (6, 4), (9, 8), (12, 4)
+    #< (-4, 0) (0, 4), (4, 11), (6, 4), (9, 8), (12, 4)
     my_global
 
 def global_definition():
-    #< (-4, 4), (0, 11), (2, 4), (5, 8), (8, 4)
+    #< (-8, 0) (-4, 4), (0, 11), (2, 4), (5, 8), (8, 4)
     global my_global
-    #< 4 (-6, 4), (-2, 11), (0, 4), (3, 8), (6, 4)
+    #< 4 (-10, 0) (-6, 4), (-2, 11), (0, 4), (3, 8), (6, 4)
     my_global = 3
     if WHATEVER:
-        #< 8 (-9, 4), (-5, 11), (-3, 4), (0, 8), (3, 4)
+        #< 8 (-13, 0) (-9, 4), (-5, 11), (-3, 4), (0, 8), (3, 4)
         my_global = 4
 
 def global_usage2()
