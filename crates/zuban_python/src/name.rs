@@ -6,7 +6,7 @@ use vfs::NormalizedPath;
 use crate::{
     completion::ScopesIterator,
     database::{Database, ParentScope},
-    file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile},
+    file::{ClassNodeRef, File, FuncNodeRef, PythonFile},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
@@ -74,6 +74,10 @@ impl<'x> Name<'x> {
             Name::ModuleName(module_name) => module_name.db,
             Name::NodeName(node_name) => node_name.db,
         }
+    }
+
+    pub fn file_uri(&self) -> String {
+        self.db().vfs.file_path(self.file().file_index).as_uri()
     }
 
     pub fn file_path(&self) -> &NormalizedPath {

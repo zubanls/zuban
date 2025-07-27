@@ -130,12 +130,7 @@ impl Server {
         R: lsp_types::request::Request,
         R::Params: Serialize,
     {
-        let response = self.connection.request_with_response::<R>(params);
-        if let Some(err) = response.error {
-            panic!("error response: {err:#?}");
-        }
-        let actual = response.result.unwrap();
-
+        let actual = self.connection.request_with_expected_response::<R>(params);
         if let Some((expected_part, actual_part)) = find_mismatch(&expected_resp, &actual) {
             panic!(
                 "JSON mismatch\nExpected:\n{}\nWas:\n{}\nExpected part:\n{}\nActual part:\n{}\n",

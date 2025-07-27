@@ -11,11 +11,14 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    request::{DocumentDiagnosticRequest, HoverRequest},
+    request::{
+        DocumentDiagnosticRequest, GotoDeclaration, GotoDefinition, GotoImplementation,
+        GotoTypeDefinition, HoverRequest,
+    },
     DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, HoverParams, NumberOrString, PartialResultParams, Position,
-    PositionEncodingKind, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
-    WorkDoneProgressParams,
+    DocumentDiagnosticReportResult, GotoDefinitionParams, HoverParams, NumberOrString,
+    PartialResultParams, Position, PositionEncodingKind, TextDocumentIdentifier,
+    TextDocumentPositionParams, Uri, WorkDoneProgressParams,
 };
 
 mod connection;
@@ -1135,40 +1138,79 @@ fn check_goto_likes() {
     let server = Project::with_fixture(
         r#"
         [file m.py]
-        class C:
+        class Class:
             """
             doc 🫶 love 
             """
-        D = C
+
+        d = Class()
         "#,
     )
     .into_server();
 
     // Open an in memory file that doesn't otherwise exist
     let path = "n.py";
-    let code = "from m import C";
-    server.open_in_memory_file(path, code);
+    server.open_in_memory_file(path, "from m import d\nd");
 
     let text_document_position_params =
-        TextDocumentPositionParams::new(server.doc_id(path), Position::new(0, code.len() as u32));
+        TextDocumentPositionParams::new(server.doc_id(path), Position::new(1, 0));
 
-    {
-        let response = server.request_with_expected_response::<HoverRequest>(HoverParams {
-            text_document_position_params,
+    // Hover
+    server.request_and_expect_json::<HoverRequest>(
+        HoverParams {
+            text_document_position_params: text_document_position_params.clone(),
             work_done_progress_params: Default::default(),
-        });
-        assert_eq!(
-            response,
-            json!({
-                "contents": {
-                    "kind": "plaintext",
-                    "value": "doc 🫶 love",
-                },
-                "range": {
-                    "start": {"line": 0, "character": code.len() - 1},
-                    "end": {"line": 0, "character": code.len()},
-                }
-            })
-        )
-    }
+        },
+        json!({
+            "contents": {
+                "kind": "plaintext",
+                "value": "doc 🫶 love",
+            },
+            "range": {
+                "start": {"line": 1, "character": 0},
+                "end": {"line": 1, "character": 1},
+            }
+        }),
+    );
+
+    let params = GotoDefinitionParams {
+        text_document_position_params,
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let expected_goto = json!([{
+        "uri": &server.doc_id("m.py").uri,
+        "range": {
+            "start": {"line": 5, "character": 0},
+            "end": {"line": 5, "character": 1},
+        }
+    }]);
+    // Goto Declaration
+    server.request_and_expect_json::<GotoDeclaration>(
+        params.clone(),
+        json!([{
+            "uri": &server.doc_id("n.py").uri,
+            "range": {
+                "start": {"line": 0, "character": 14},
+                "end": {"line": 0, "character": 15},
+            }
+        }]),
+    );
+
+    // Goto Definition
+    server.request_and_expect_json::<GotoDefinition>(params.clone(), expected_goto.clone());
+    // Goto Type Definition
+    server.request_and_expect_json::<GotoTypeDefinition>(params.clone(), expected_goto);
+
+    // Goto Implementation
+    server.request_and_expect_json::<GotoImplementation>(
+        params,
+        json!([{
+            "uri": &server.doc_id("m.py").uri,
+            "range": {
+                "start": {"line": 0, "character": 6},
+                "end": {"line": 0, "character": 11},
+            }
+        }]),
+    );
 }

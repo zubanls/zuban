@@ -1,11 +1,18 @@
+use std::str::FromStr;
+
 use anyhow::bail;
 use lsp_types::{
+    request::{
+        GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
+        GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
+    },
     Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, Hover, HoverContents,
-    HoverParams, MarkupContent, MarkupKind, Position, RelatedFullDocumentDiagnosticReport,
-    TextDocumentIdentifier, TextDocumentPositionParams,
+    DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, GotoDefinitionParams,
+    GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, MarkupContent, MarkupKind,
+    Position, RelatedFullDocumentDiagnosticReport, TextDocumentIdentifier,
+    TextDocumentPositionParams, Uri,
 };
-use zuban_python::{Document, InputPosition, PositionInfos, Severity};
+use zuban_python::{Document, GotoGoal, InputPosition, Name, PositionInfos, Severity};
 
 use crate::{
     capabilities::NegotiatedEncoding,
@@ -112,6 +119,65 @@ impl GlobalState<'_> {
                 documentation_result.on_symbol_range,
             )),
         }))
+    }
+
+    pub fn handle_goto_declaration(
+        &mut self,
+        params: GotoDeclarationParams,
+    ) -> anyhow::Result<Option<GotoDeclarationResponse>> {
+        self.run_goto_like(params, |document, pos, on_result| {
+            document.goto(pos, GotoGoal::Indifferent, false, on_result)
+        })
+    }
+
+    pub fn handle_goto_definition(
+        &mut self,
+        params: GotoDefinitionParams,
+    ) -> anyhow::Result<Option<GotoDefinitionResponse>> {
+        self.run_goto_like(params, |document, pos, on_result| {
+            document.goto(pos, GotoGoal::PreferNonStubs, true, on_result)
+        })
+    }
+
+    pub fn handle_goto_implementation(
+        &mut self,
+        params: GotoImplementationParams,
+    ) -> anyhow::Result<Option<GotoImplementationResponse>> {
+        self.run_goto_like(params, |document, pos, on_result| {
+            document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
+        })
+    }
+
+    pub fn handle_goto_type_definition(
+        &mut self,
+        params: GotoTypeDefinitionParams,
+    ) -> anyhow::Result<Option<GotoTypeDefinitionResponse>> {
+        self.run_goto_like(params, |document, pos, on_result| {
+            document.goto(pos, GotoGoal::PreferStubs, true, on_result)
+        })
+    }
+
+    fn run_goto_like(
+        &mut self,
+        params: GotoDefinitionParams,
+        run: impl FnOnce(
+            Document,
+            InputPosition,
+            &dyn Fn(Name) -> Location,
+        ) -> anyhow::Result<Vec<Location>>,
+    ) -> anyhow::Result<Option<GotoDefinitionResponse>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
+        let result = run(document, pos, &|name| {
+            Location::new(
+                Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+                Self::to_range(encoding, name.name_range()),
+            )
+        })?;
+        if result.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(result.into()))
     }
 
     fn document_with_pos(
