@@ -174,10 +174,17 @@ impl TestFile<'_> {
                             },
                         )
                         .unwrap();
-                    let actual: FastHashSet<_> = actual.into_iter().collect();
-                    if actual != expected {
+                    let actual_len = actual.len();
+                    let actual_set: FastHashSet<_> = actual.iter().cloned().collect();
+                    if actual_set != expected {
                         errors.push(format!(
                             "{file_name}: Line #{} {expected:?} != {actual:?}",
+                            case.line,
+                        ));
+                    }
+                    if actual_len != expected.len() {
+                        errors.push(format!(
+                            "{file_name}: Line #{} Length mismatch {expected:?} != {actual:?}",
                             case.line,
                         ));
                     }

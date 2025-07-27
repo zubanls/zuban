@@ -537,7 +537,6 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                     // This is an import, definitions were already added
                     return;
                 }
-                self.definitions.insert(to_unique_position(&name));
 
                 is_globally_reachable |= match &name {
                     Name::TreeName(tree_name) => {
@@ -564,6 +563,8 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                         self.results.push((self.on_result)(other))
                     }
                 }
+
+                self.definitions.insert(to_unique_position(&name));
                 if should_add_results
                     || include_declarations && name.file().file_index == self.infos.file.file_index
                 {
@@ -574,8 +575,12 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
         .goto_name(false, false);
         if self.definitions.is_empty() {
             if on_name.name_def().is_some() {
-                // On imports the goto will not land anywhere, but we still want to perfom
-                // reference search even though the imports are not detectable.
+                debug!(
+                    "Did not find the original rename definition, \
+                        but we're using the one below the cursor"
+                );
+                // On imports that cannot be found goto will not land anywhere, but we still want
+                // to perfom reference search even though the imports are not detectable.
                 let n = Name::TreeName(TreeName::with_unknown_parent_scope(
                     self.infos.db,
                     self.infos.file,
@@ -633,8 +638,6 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                         follow_goto_if_necessary(n, &mut |n| {
                             if self.definitions.contains(&to_unique_position(&n)) {
                                 add_all_names = true;
-                            } else if add_all_names {
-                                self.results.push((self.on_result)(n));
                             }
                         })
                     },
@@ -748,7 +751,7 @@ fn follow_goto_if_necessary(name: Name, on_name: &mut impl FnMut(Name)) {
                 },
                 None => match name_def.parent() {
                     NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt => {
-                        check_name(tree_name, name_def.start())
+                        check_name(tree_name, name_def.start());
                     }
                     _ => (),
                 },

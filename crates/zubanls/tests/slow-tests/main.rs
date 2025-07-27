@@ -1286,19 +1286,6 @@ fn check_goto_likes() {
           {
             "range": {
               "start": {
-                "line": 0,
-                "character": 14,
-              },
-              "end": {
-                "line": 0,
-                "character": 15,
-              },
-            },
-            "uri": &npy,
-          },
-          {
-            "range": {
-              "start": {
                 "line": 1,
                 "character": 0,
               },
@@ -1338,19 +1325,6 @@ fn check_goto_likes() {
           {
             "range": {
               "start": {
-                "line": 0,
-                "character": 14,
-              },
-              "end": {
-                "line": 0,
-                "character": 15,
-              },
-            },
-            "uri": &npy,
-          },
-          {
-            "range": {
-              "start": {
                 "line": 1,
                 "character": 0,
               },
@@ -1372,19 +1346,6 @@ fn check_goto_likes() {
             partial_result_params: Default::default(),
         },
         json!([
-          {
-            "range": {
-              "start": {
-                "line": 0,
-                "character": 14,
-              },
-              "end": {
-                "line": 0,
-                "character": 15,
-              },
-            },
-            "kind": DocumentHighlightKind::WRITE,
-          },
           {
             "range": {
               "start": {
