@@ -7,6 +7,7 @@ use lsp_types::{
     WorkspaceFolder,
 };
 use serde::{de::DeserializeOwned, Serialize};
+use serde_json::Value;
 
 pub(crate) fn path_to_uri(path: &str) -> Uri {
     assert!(!path.starts_with("file:"));
@@ -124,17 +125,25 @@ impl Connection {
         self.expect_response()
     }
 
+    pub fn request_with_expected_response<R>(&self, params: R::Params) -> Value
+    where
+        R: lsp_types::request::Request,
+        R::Params: Serialize,
+    {
+        let response = self.request_with_response::<R>(params);
+        if let Some(error) = response.error {
+            panic!("Unexpected error: {error:?}")
+        }
+        response.result.expect("Expected result")
+    }
+
     pub(crate) fn request<R>(&self, params: R::Params) -> R::Result
     where
         R: lsp_types::request::Request,
         R::Params: Serialize,
         R::Result: DeserializeOwned,
     {
-        let response = self.request_with_response::<R>(params);
-        if let Some(error) = response.error {
-            panic!("Unexpected error: {error:?}")
-        }
-        let value = response.result.expect("Expected result");
+        let value = self.request_with_expected_response::<R>(params);
         serde_json::from_value(value.clone())
             .unwrap_or_else(|e| panic!("Failed to deserialize {}: {e}; {value}", R::METHOD))
     }

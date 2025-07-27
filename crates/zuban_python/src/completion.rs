@@ -25,7 +25,7 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
         db: &'db Database,
         file: &'db PythonFile,
         pos: InputPosition,
-    ) -> Result<Self, String> {
+    ) -> anyhow::Result<Self> {
         let position = file.line_column_to_byte(pos)?;
         let (scope, node, rest) = file.tree.completion_node(position);
         let result = file.ensure_calculated_diagnostics(db);
@@ -58,7 +58,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         file: &'db PythonFile,
         position: InputPosition,
         on_result: C,
-    ) -> Result<Vec<T>, String> {
+    ) -> anyhow::Result<Vec<T>> {
         let _panic_context = utils::panic_context::enter(format!(
             "completions for {} position {position:?}",
             file.file_path(db)

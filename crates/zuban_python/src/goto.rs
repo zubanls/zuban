@@ -22,7 +22,7 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{LookupKind, ResultContext},
-    name::{ModuleName, Name, NodeName, TreeName},
+    name::{ModuleName, Name, NodeName, Range, TreeName},
     node_ref::NodeRef,
     recoverable_error,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
@@ -57,7 +57,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         db: &'db Database,
         file: &'db PythonFile,
         pos: InputPosition,
-    ) -> Result<Self, String> {
+    ) -> anyhow::Result<Self> {
         let position = file.line_column_to_byte(pos)?;
         let (scope, node) = file.tree.goto_node(position);
         if std::cfg!(debug_assertions) && !matches!(pos, InputPosition::NthUTF8Byte(_)) {
@@ -226,7 +226,7 @@ pub(crate) struct GotoResolver<'db, C> {
 }
 
 impl<'db, C> GotoResolver<'db, C> {
-    pub(crate) fn new(
+    pub fn new(
         infos: PositionalDocument<'db, GotoNode<'db>>,
         goal: GotoGoal,
         on_result: C,
@@ -236,6 +236,25 @@ impl<'db, C> GotoResolver<'db, C> {
             goal,
             on_result,
         }
+    }
+
+    pub fn on_node_range(&self) -> Option<Range<'db>> {
+        let node_index = match self.infos.node {
+            GotoNode::Name(name) => name.index(),
+            GotoNode::ImportFromAsName { on_name, .. } => on_name.index(),
+            GotoNode::Primary(primary) => primary.index(),
+            GotoNode::PrimaryTarget(primary_target) => primary_target.index(),
+            GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => name_def.index(),
+            GotoNode::Atom(atom) => atom.index(),
+            GotoNode::None => return None,
+        };
+        let file = self.infos.file;
+        let start = file.tree.node_start_position(node_index);
+        let end = file.tree.node_end_position(node_index);
+        Some((
+            file.byte_to_position_infos(self.infos.db, start),
+            file.byte_to_position_infos(self.infos.db, end),
+        ))
     }
 }
 

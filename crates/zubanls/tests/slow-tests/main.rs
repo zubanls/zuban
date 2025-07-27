@@ -11,9 +11,11 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    request::DocumentDiagnosticRequest, DiagnosticServerCapabilities, DocumentDiagnosticParams,
-    DocumentDiagnosticReport, DocumentDiagnosticReportResult, NumberOrString, PartialResultParams,
-    PositionEncodingKind, TextDocumentIdentifier, Uri, WorkDoneProgressParams,
+    request::{DocumentDiagnosticRequest, HoverRequest},
+    DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
+    DocumentDiagnosticReportResult, HoverParams, NumberOrString, PartialResultParams, Position,
+    PositionEncodingKind, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    WorkDoneProgressParams,
 };
 
 mod connection;
@@ -1125,4 +1127,48 @@ fn test_pyproject_with_mypy_config_dir_env_var() {
         server.diagnostics_for_file("test/test_foo.py"),
         ["\"str\" not callable"]
     );
+}
+
+#[test]
+#[serial]
+fn check_goto_likes() {
+    let server = Project::with_fixture(
+        r#"
+        [file m.py]
+        class C:
+            """
+            doc 🫶 love 
+            """
+        D = C
+        "#,
+    )
+    .into_server();
+
+    // Open an in memory file that doesn't otherwise exist
+    let path = "n.py";
+    let code = "from m import C";
+    server.open_in_memory_file(path, code);
+
+    let text_document_position_params =
+        TextDocumentPositionParams::new(server.doc_id(path), Position::new(0, code.len() as u32));
+
+    {
+        let response = server.request_with_expected_response::<HoverRequest>(HoverParams {
+            text_document_position_params,
+            work_done_progress_params: Default::default(),
+        });
+        assert_eq!(
+            response,
+            json!({
+                "contents": {
+                    "kind": "plaintext",
+                    "value": "doc 🫶 love",
+                },
+                "range": {
+                    "start": {"line": 0, "character": code.len() - 1},
+                    "end": {"line": 0, "character": code.len()},
+                }
+            })
+        )
+    }
 }

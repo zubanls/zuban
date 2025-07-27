@@ -30,6 +30,7 @@ use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
 pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
+use name::Range;
 use parsa_python_cst::{GotoNode, Tree};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
@@ -195,7 +196,7 @@ impl<'project> Document<'project> {
     fn positional_document(
         &self,
         position: InputPosition,
-    ) -> Result<PositionalDocument<GotoNode>, String> {
+    ) -> anyhow::Result<PositionalDocument<GotoNode>> {
         PositionalDocument::for_goto(
             &self.project.db,
             self.project.db.loaded_python_file(self.file_index),
@@ -209,7 +210,7 @@ impl<'project> Document<'project> {
         goal: GotoGoal,
         follow_imports: bool,
         on_name: impl for<'a> Fn(Name) -> T,
-    ) -> Result<Vec<T>, String> {
+    ) -> anyhow::Result<Vec<T>> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
                 .goto(follow_imports),
@@ -220,8 +221,8 @@ impl<'project> Document<'project> {
         &'slf self,
         position: InputPosition,
         goal: GotoGoal,
-        on_name: impl for<'a> Fn(ValueName) -> T,
-    ) -> Result<Vec<T>, String> {
+        on_name: impl for<'a> FnMut(ValueName) -> T,
+    ) -> anyhow::Result<Vec<T>> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
                 .infer_definition(),
@@ -233,7 +234,7 @@ impl<'project> Document<'project> {
         position: InputPosition,
         goal: ReferencesGoal,
         on_name: impl for<'a> Fn(Name) -> T,
-    ) -> Result<Vec<T>, String> {
+    ) -> anyhow::Result<Vec<T>> {
         Ok(ReferencesResolver::new(self.positional_document(position)?, on_name).references(goal))
     }
 
@@ -241,7 +242,7 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         on_completion: impl Fn(&dyn Completion) -> T,
-    ) -> Result<Vec<T>, String> {
+    ) -> anyhow::Result<Vec<T>> {
         CompletionResolver::complete(
             &self.project.db,
             self.project.db.loaded_python_file(self.file_index),
@@ -249,6 +250,35 @@ impl<'project> Document<'project> {
             on_completion,
         )
     }
+
+    pub fn documentation(
+        &self,
+        position: InputPosition,
+    ) -> anyhow::Result<Option<DocumentationResult>> {
+        let mut resolver = GotoResolver::new(
+            self.positional_document(position)?,
+            GotoGoal::Indifferent,
+            |n: ValueName| n.name.documentation().to_string(),
+        );
+        let results = resolver.infer_definition();
+        if results.is_empty() {
+            return Ok(None);
+        }
+        let documentation = results.join("\n\n");
+        let Some(on_symbol_range) = resolver.on_node_range() else {
+            // This is probably not reachable
+            return Ok(None);
+        };
+        Ok(Some(DocumentationResult {
+            documentation,
+            on_symbol_range,
+        }))
+    }
+}
+
+pub struct DocumentationResult<'a> {
+    pub documentation: String,
+    pub on_symbol_range: Range<'a>,
 }
 
 /// All positions are zero based

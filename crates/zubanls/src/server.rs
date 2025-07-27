@@ -404,6 +404,7 @@ impl<'sender> GlobalState<'sender> {
             global_state: self,
         }
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
+        .on_sync_mut::<HoverRequest>(GlobalState::handle_hover)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
     }
@@ -550,14 +551,14 @@ impl<'sender> GlobalState<'sender> {
             for path in files {
                 self.sent_diagnostic_count += 1;
                 let project = self.project();
-                let Some(mut document) = project.document(&path) else {
+                let Some(document) = project.document(&path) else {
                     tracing::info!(
                         "Wanted to publish diagnostics for {}, but it does not exist anymore",
                         path.as_uri()
                     );
                     continue;
                 };
-                let diagnostics = Self::diagnostics_for_file(&mut document, encoding);
+                let diagnostics = Self::diagnostics_for_file(document, encoding);
                 tracing::info!(
                     "Publish diagnostics for {}, (#{} overall)",
                     path.as_uri(),

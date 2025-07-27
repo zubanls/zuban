@@ -13,7 +13,7 @@ use crate::{
 pub trait File: std::fmt::Debug {
     fn file_index(&self) -> FileIndex;
 
-    fn line_column_to_byte(&self, input: InputPosition) -> Result<CodeIndex, String>;
+    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<CodeIndex>;
     fn byte_to_position_infos<'db>(
         &'db self,
         db: &'db Database,

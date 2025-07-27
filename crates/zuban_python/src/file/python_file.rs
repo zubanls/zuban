@@ -111,7 +111,7 @@ impl File for PythonFile {
         self.tree.code()
     }
 
-    fn line_column_to_byte(&self, input: InputPosition) -> Result<CodeIndex, String> {
+    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<CodeIndex> {
         self.newline_indices
             .line_column_to_byte(self.tree.code(), input)
     }

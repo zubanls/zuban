@@ -31,7 +31,7 @@ impl NewlineIndices {
         &self,
         code: &str,
         input: InputPosition,
-    ) -> Result<CodeIndex, String> {
+    ) -> anyhow::Result<CodeIndex> {
         let line_infos = |line| {
             let lines = self.lines(code);
             let Some(next_line_start) = lines.get(line) else {
@@ -43,10 +43,10 @@ impl NewlineIndices {
                         (start, &code[start as usize..])
                     });
                 }
-                return Err(format!(
+                anyhow::bail!(
                     "File has only {} lines, but line {line} is requested",
                     lines.len() + 1
-                ));
+                );
             };
             let start = if line == 0 { 0 } else { lines[line - 1] };
             Ok((start, &code[start as usize..*next_line_start as usize - 1]))
@@ -57,7 +57,7 @@ impl NewlineIndices {
             InputPosition::NthUTF8Byte(pos) => {
                 let byte = pos.min(code.len());
                 if !code.is_char_boundary(byte) {
-                    return Err(format!("{pos} is not a valid char boundary"));
+                    anyhow::bail!("{pos} is not a valid char boundary");
                 }
                 byte as CodeIndex
             }
@@ -66,9 +66,9 @@ impl NewlineIndices {
                 let out_column = column.min(rest_line.len());
 
                 if !rest_line.is_char_boundary(out_column) {
-                    return Err(format!(
+                    anyhow::bail!(
                         "Column {column} is not a valid char boundary on line {rest_line:?}"
-                    ));
+                    );
                 }
                 //
                 start + out_column as CodeIndex
@@ -108,7 +108,7 @@ impl NewlineIndices {
     }
 }
 
-fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> Result<usize, String> {
+fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> anyhow::Result<usize> {
     let mut utf16_count = 0;
 
     for (utf8_idx, c) in s.char_indices() {
@@ -119,9 +119,7 @@ fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> Result<usize, String>
         let char_utf16_len = c.len_utf16();
         if utf16_count + char_utf16_len > utf16_pos {
             // Position is in the middle of this char -> invalid
-            return Err(format!(
-                "Column {utf16_pos} is not a valid code unit boundary on line {s:?}",
-            ));
+            anyhow::bail!("Column {utf16_pos} is not a valid code unit boundary on line {s:?}",);
         }
 
         utf16_count += char_utf16_len;
@@ -178,12 +176,16 @@ mod tests {
         let code = "ä";
         assert!(indices.lines(code).is_empty());
         assert_eq!(
-            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 2 }),
-            Ok(2)
+            indices
+                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 2 })
+                .unwrap(),
+            2
         );
         assert_eq!(
-            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 3 }),
-            Ok(2)
+            indices
+                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 3 })
+                .unwrap(),
+            2
         );
         assert!(indices
             .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 1 })
@@ -195,12 +197,16 @@ mod tests {
         let indices = NewlineIndices::new();
         let code = "x\nä";
         assert_eq!(
-            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 2 }),
-            Ok(4)
+            indices
+                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 2 })
+                .unwrap(),
+            4
         );
         assert_eq!(
-            indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 3 }),
-            Ok(4)
+            indices
+                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 3 })
+                .unwrap(),
+            4
         );
         assert!(indices
             .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 1 })
