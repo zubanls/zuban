@@ -9,10 +9,12 @@ use lsp_types::{
     Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, GotoDefinitionParams,
     GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, MarkupContent, MarkupKind,
-    Position, RelatedFullDocumentDiagnosticReport, TextDocumentIdentifier,
+    Position, ReferenceParams, RelatedFullDocumentDiagnosticReport, TextDocumentIdentifier,
     TextDocumentPositionParams, Uri,
 };
-use zuban_python::{Document, GotoGoal, InputPosition, Name, PositionInfos, Severity};
+use zuban_python::{
+    Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,
+};
 
 use crate::{
     capabilities::NegotiatedEncoding,
@@ -192,6 +194,25 @@ impl GlobalState<'_> {
             NegotiatedEncoding::UTF32 => InputPosition::CodePoints { line, column },
         };
         Ok((self.document(position.text_document)?, pos))
+    }
+
+    pub fn handle_references(
+        &mut self,
+        params: ReferenceParams,
+    ) -> anyhow::Result<Option<Vec<Location>>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let (document, pos) = self.document_with_pos(params.text_document_position)?;
+        let result =
+            document.references(pos, ReferencesGoal::OnlyTypeCheckedWorkspaces, |name| {
+                Location::new(
+                    Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+                    Self::to_range(encoding, name.name_range()),
+                )
+            })?;
+        if result.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(result.into()))
     }
 
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {

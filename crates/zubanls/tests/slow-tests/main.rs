@@ -13,12 +13,12 @@ use lsp_server::Response;
 use lsp_types::{
     request::{
         DocumentDiagnosticRequest, GotoDeclaration, GotoDefinition, GotoImplementation,
-        GotoTypeDefinition, HoverRequest,
+        GotoTypeDefinition, HoverRequest, References,
     },
     DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, GotoDefinitionParams, HoverParams, NumberOrString,
-    PartialResultParams, Position, PositionEncodingKind, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri, WorkDoneProgressParams,
+    PartialResultParams, Position, PositionEncodingKind, ReferenceContext, ReferenceParams,
+    TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
 };
 
 mod connection;
@@ -1157,13 +1157,15 @@ fn check_goto_likes() {
     let path = "n.py";
     server.open_in_memory_file(path, "from m import d\nd");
 
-    let text_document_position_params =
-        TextDocumentPositionParams::new(server.doc_id(path), Position::new(1, 0));
+    let mpy = server.doc_id("m.py").uri;
+    let mpyi = server.doc_id("m.pyi").uri;
+    let npy = server.doc_id("n.py").uri;
+    let pos = TextDocumentPositionParams::new(server.doc_id("n.py"), Position::new(1, 0));
 
     // Hover
     server.request_and_expect_json::<HoverRequest>(
         HoverParams {
-            text_document_position_params: text_document_position_params.clone(),
+            text_document_position_params: pos.clone(),
             work_done_progress_params: Default::default(),
         },
         json!({
@@ -1179,7 +1181,7 @@ fn check_goto_likes() {
     );
 
     let params = GotoDefinitionParams {
-        text_document_position_params,
+        text_document_position_params: pos.clone(),
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
@@ -1187,7 +1189,7 @@ fn check_goto_likes() {
     server.request_and_expect_json::<GotoDeclaration>(
         params.clone(),
         json!([{
-            "uri": &server.doc_id("n.py").uri,
+            "uri": &npy,
             "range": {
                 "start": {"line": 0, "character": 14},
                 "end": {"line": 0, "character": 15},
@@ -1199,7 +1201,7 @@ fn check_goto_likes() {
     server.request_and_expect_json::<GotoDefinition>(
         params.clone(),
         json!([{
-            "uri": &server.doc_id("m.py").uri,
+            "uri": &mpy,
             "range": {
                 "start": {"line": 5, "character": 0},
                 "end": {"line": 5, "character": 1},
@@ -1210,7 +1212,7 @@ fn check_goto_likes() {
     server.request_and_expect_json::<GotoTypeDefinition>(
         params.clone(),
         json!([{
-            "uri": &server.doc_id("m.pyi").uri,
+            "uri": &mpyi,
             "range": {
                 "start": {"line": 2, "character": 0},
                 "end": {"line": 2, "character": 1},
@@ -1220,13 +1222,92 @@ fn check_goto_likes() {
 
     // Goto Implementation
     server.request_and_expect_json::<GotoImplementation>(
-        params,
+        params.clone(),
         json!([{
-            "uri": &server.doc_id("m.py").uri,
+            "uri": &mpy,
             "range": {
                 "start": {"line": 0, "character": 6},
                 "end": {"line": 0, "character": 11},
             }
         }]),
+    );
+
+    // References
+    server.request_and_expect_json::<References>(
+        ReferenceParams {
+            text_document_position: pos.clone(),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+            context: ReferenceContext {
+                include_declaration: true,
+            },
+        },
+        json!([
+          {
+            "range": {
+              "start": {
+                "line": 5,
+                "character": 0,
+              },
+              "end": {
+                "line": 5,
+                "character": 1,
+              },
+            },
+            "uri": &mpy,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 2,
+                "character": 0,
+              },
+              "end": {
+                "line": 2,
+                "character": 1,
+              },
+            },
+            "uri": &mpyi,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 14,
+              },
+              "end": {
+                "line": 0,
+                "character": 15,
+              },
+            },
+            "uri": &npy,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 14,
+              },
+              "end": {
+                "line": 0,
+                "character": 15,
+              },
+            },
+            "uri": &npy,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 1,
+                "character": 0,
+              },
+              "end": {
+                "line": 1,
+                "character": 1,
+              },
+            },
+            "uri": &npy,
+          }
+        ]),
     );
 }

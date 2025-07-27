@@ -409,6 +409,7 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<GotoDefinition>(GlobalState::handle_goto_definition)
         .on_sync_mut::<GotoTypeDefinition>(GlobalState::handle_goto_type_definition)
         .on_sync_mut::<GotoImplementation>(GlobalState::handle_goto_implementation)
+        .on_sync_mut::<References>(GlobalState::handle_references)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
     }
