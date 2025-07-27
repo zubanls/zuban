@@ -508,7 +508,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
         }
     }
 
-    pub fn references(mut self, goal: ReferencesGoal) -> Vec<T> {
+    pub fn references(mut self, goal: ReferencesGoal, include_declarations: bool) -> Vec<T> {
         debug!("Calculate references for {:?}", self.infos.node);
         let on_name = match self.infos.node {
             GotoNode::Name(name) => name,
@@ -556,14 +556,17 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                 } else {
                     name.goto_stub()
                 };
-                let should_add_results = !matches!(goal, ReferencesGoal::OnlyCurrentFile);
+                let should_add_results =
+                    include_declarations && !matches!(goal, ReferencesGoal::OnlyCurrentFile);
                 if let Some(other) = other {
                     self.definitions.insert(to_unique_position(&other));
                     if should_add_results {
                         self.results.push((self.on_result)(other))
                     }
                 }
-                if should_add_results || name.file().file_index == self.infos.file.file_index {
+                if should_add_results
+                    || include_declarations && name.file().file_index == self.infos.file.file_index
+                {
                     self.results.push((self.on_result)(name));
                 }
             });

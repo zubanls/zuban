@@ -203,13 +203,17 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<Vec<Location>>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let (document, pos) = self.document_with_pos(params.text_document_position)?;
-        let result =
-            document.references(pos, ReferencesGoal::OnlyTypeCheckedWorkspaces, |name| {
+        let result = document.references(
+            pos,
+            ReferencesGoal::OnlyTypeCheckedWorkspaces,
+            params.context.include_declaration,
+            |name| {
                 Location::new(
                     Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
                     Self::to_range(encoding, name.name_range()),
                 )
-            })?;
+            },
+        )?;
         if result.is_empty() {
             return Ok(None);
         }
@@ -222,7 +226,7 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<Vec<DocumentHighlight>>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
-        let result = document.references(pos, ReferencesGoal::OnlyCurrentFile, |name| {
+        let result = document.references(pos, ReferencesGoal::OnlyCurrentFile, true, |name| {
             DocumentHighlight {
                 range: Self::to_range(encoding, name.name_range()),
                 kind: Some(match name.is_definition() {

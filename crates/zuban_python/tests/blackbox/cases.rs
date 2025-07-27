@@ -153,6 +153,7 @@ impl TestFile<'_> {
                         .references(
                             position,
                             ReferencesGoal::OnlyTypeCheckedWorkspaces,
+                            true,
                             |name| {
                                 let identifier = if *name.file_path() == *path {
                                     None

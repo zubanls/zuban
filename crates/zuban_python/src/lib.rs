@@ -233,9 +233,13 @@ impl<'project> Document<'project> {
         &'slf self,
         position: InputPosition,
         goal: ReferencesGoal,
+        include_declarations: bool,
         on_name: impl for<'a> Fn(Name) -> T,
     ) -> anyhow::Result<Vec<T>> {
-        Ok(ReferencesResolver::new(self.positional_document(position)?, on_name).references(goal))
+        Ok(
+            ReferencesResolver::new(self.positional_document(position)?, on_name)
+                .references(goal, include_declarations),
+        )
     }
 
     pub fn complete<T>(

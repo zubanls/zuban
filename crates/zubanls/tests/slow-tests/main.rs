@@ -1233,7 +1233,7 @@ fn check_goto_likes() {
         }]),
     );
 
-    // References
+    // References with add_declaration = true
     server.request_and_expect_json::<References>(
         ReferenceParams {
             text_document_position: pos.clone(),
@@ -1270,6 +1270,58 @@ fn check_goto_likes() {
             },
             "uri": &mpyi,
           },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 14,
+              },
+              "end": {
+                "line": 0,
+                "character": 15,
+              },
+            },
+            "uri": &npy,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 14,
+              },
+              "end": {
+                "line": 0,
+                "character": 15,
+              },
+            },
+            "uri": &npy,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 1,
+                "character": 0,
+              },
+              "end": {
+                "line": 1,
+                "character": 1,
+              },
+            },
+            "uri": &npy,
+          }
+        ]),
+    );
+    // References with add_declaration = false
+    server.request_and_expect_json::<References>(
+        ReferenceParams {
+            text_document_position: pos.clone(),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+            context: ReferenceContext {
+                include_declaration: false,
+            },
+        },
+        json!([
           {
             "range": {
               "start": {
