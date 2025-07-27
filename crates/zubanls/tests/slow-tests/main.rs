@@ -1144,6 +1144,11 @@ fn check_goto_likes() {
             """
 
         d = Class()
+
+        [file m.pyi]
+        class Class: ...
+
+        d: Class
         "#,
     )
     .into_server();
@@ -1178,13 +1183,6 @@ fn check_goto_likes() {
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let expected_goto = json!([{
-        "uri": &server.doc_id("m.py").uri,
-        "range": {
-            "start": {"line": 5, "character": 0},
-            "end": {"line": 5, "character": 1},
-        }
-    }]);
     // Goto Declaration
     server.request_and_expect_json::<GotoDeclaration>(
         params.clone(),
@@ -1198,9 +1196,27 @@ fn check_goto_likes() {
     );
 
     // Goto Definition
-    server.request_and_expect_json::<GotoDefinition>(params.clone(), expected_goto.clone());
+    server.request_and_expect_json::<GotoDefinition>(
+        params.clone(),
+        json!([{
+            "uri": &server.doc_id("m.py").uri,
+            "range": {
+                "start": {"line": 5, "character": 0},
+                "end": {"line": 5, "character": 1},
+            }
+        }]),
+    );
     // Goto Type Definition
-    server.request_and_expect_json::<GotoTypeDefinition>(params.clone(), expected_goto);
+    server.request_and_expect_json::<GotoTypeDefinition>(
+        params.clone(),
+        json!([{
+            "uri": &server.doc_id("m.pyi").uri,
+            "range": {
+                "start": {"line": 2, "character": 0},
+                "end": {"line": 2, "character": 1},
+            }
+        }]),
+    );
 
     // Goto Implementation
     server.request_and_expect_json::<GotoImplementation>(
