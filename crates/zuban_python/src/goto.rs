@@ -510,19 +510,8 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
 
     pub fn references(mut self, goal: ReferencesGoal, include_declarations: bool) -> Vec<T> {
         debug!("Calculate references for {:?}", self.infos.node);
-        let on_name = match self.infos.node {
-            GotoNode::Name(name) => name,
-            GotoNode::ImportFromAsName { on_name, .. } => on_name,
-            GotoNode::Primary(primary) => match primary.second() {
-                PrimaryContent::Attribute(name) => name,
-                _ => return vec![],
-            },
-            GotoNode::PrimaryTarget(primary_target) => match primary_target.second() {
-                PrimaryContent::Attribute(name) => name,
-                _ => return vec![],
-            },
-            GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => name_def.name(),
-            GotoNode::Atom(_) | GotoNode::None => return vec![],
+        let Some(on_name) = self.infos.node.on_name() else {
+            return vec![];
         };
         let search_name = on_name.as_code();
 

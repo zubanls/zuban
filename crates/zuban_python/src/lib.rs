@@ -278,6 +278,29 @@ impl<'project> Document<'project> {
             on_symbol_range,
         }))
     }
+
+    pub fn is_valid_rename_location(
+        &self,
+        position: InputPosition,
+    ) -> anyhow::Result<Option<Range>> {
+        let document = self.positional_document(position)?;
+        let file = document.file;
+        let Some(name) = document.node.on_name() else {
+            return Ok(None);
+        };
+        let resolver = GotoResolver::new(document, GotoGoal::Indifferent, |_: Name| ());
+        let is_valid = !resolver.goto(false).is_empty();
+        if !is_valid {
+            anyhow::bail!(
+                "The reference {:?} cannot be resolved; rename is therefore not possible.",
+                name.as_code()
+            )
+        }
+        Ok(Some((
+            file.byte_to_position_infos(&self.project.db, name.start()),
+            file.byte_to_position_infos(&self.project.db, name.end()),
+        )))
+    }
 }
 
 pub struct DocumentationResult<'a> {

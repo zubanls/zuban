@@ -4642,6 +4642,25 @@ pub enum GotoNode<'db> {
     None,
 }
 
+impl<'db> GotoNode<'db> {
+    pub fn on_name(&self) -> Option<Name<'db>> {
+        Some(match self {
+            GotoNode::Name(n) => *n,
+            GotoNode::ImportFromAsName { on_name, .. } => *on_name,
+            GotoNode::Primary(p) => match p.second() {
+                PrimaryContent::Attribute(name) => name,
+                _ => return None,
+            },
+            GotoNode::PrimaryTarget(primary_target) => match primary_target.second() {
+                PrimaryContent::Attribute(name) => name,
+                _ => return None,
+            },
+            GotoNode::GlobalName(n) | GotoNode::NonlocalName(n) => n.name(),
+            GotoNode::Atom(_) | GotoNode::None => return None,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),

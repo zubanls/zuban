@@ -209,18 +209,6 @@ impl ClientCapabilities {
         (|| self.caps.window.as_ref()?.work_done_progress)().unwrap_or_default()
     }
 
-    pub(crate) fn will_rename(&self) -> bool {
-        (|| {
-            self.caps
-                .workspace
-                .as_ref()?
-                .file_operations
-                .as_ref()?
-                .will_rename
-        })()
-        .unwrap_or_default()
-    }
-
     pub(crate) fn change_annotation_support(&self) -> bool {
         (|| {
             self.caps

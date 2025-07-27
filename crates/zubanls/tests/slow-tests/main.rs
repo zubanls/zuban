@@ -13,7 +13,7 @@ use lsp_server::Response;
 use lsp_types::{
     request::{
         DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration, GotoDefinition,
-        GotoImplementation, GotoTypeDefinition, HoverRequest, References,
+        GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References,
     },
     DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, DocumentHighlightKind, DocumentHighlightParams,
@@ -1156,7 +1156,7 @@ fn check_goto_likes() {
 
     // Open an in memory file that doesn't otherwise exist
     let path = "n.py";
-    server.open_in_memory_file(path, "from m import d\nd");
+    server.open_in_memory_file(path, "from m import d\nd\ninvalid_reference_for_rename");
 
     let mpy = server.doc_id("m.py").uri;
     let mpyi = server.doc_id("m.pyi").uri;
@@ -1374,4 +1374,38 @@ fn check_goto_likes() {
           }
         ]),
     );
+
+    // Prepare rename
+    {
+        server.request_and_expect_json::<PrepareRenameRequest>(
+            TextDocumentPositionParams::new(server.doc_id("n.py"), Position::new(0, 0)),
+            json!(None::<()>),
+        );
+        server.request_and_expect_json::<PrepareRenameRequest>(
+            pos.clone(),
+            json!({
+              "start": {
+                "line": 1,
+                "character": 0,
+              },
+              "end": {
+                "line": 1,
+                "character": 1,
+              },
+            }),
+        );
+        let err = server
+            .request_with_response::<PrepareRenameRequest>(TextDocumentPositionParams::new(
+                server.doc_id("n.py"),
+                Position::new(2, 0),
+            ))
+            .error
+            .unwrap()
+            .message;
+        assert_eq!(
+            err,
+            "The reference \"invalid_reference_for_rename\" cannot \
+            be resolved; rename is therefore not possible."
+        );
+    }
 }

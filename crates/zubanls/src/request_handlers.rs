@@ -10,8 +10,8 @@ use lsp_types::{
     DocumentDiagnosticReportResult, DocumentHighlight, DocumentHighlightKind,
     DocumentHighlightParams, FullDocumentDiagnosticReport, GotoDefinitionParams,
     GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, MarkupContent, MarkupKind,
-    Position, ReferenceParams, RelatedFullDocumentDiagnosticReport, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri,
+    Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
+    TextDocumentIdentifier, TextDocumentPositionParams, Uri,
 };
 use zuban_python::{
     Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,
@@ -239,6 +239,23 @@ impl GlobalState<'_> {
             return Ok(None);
         }
         Ok(Some(result))
+    }
+
+    pub fn prepare_rename(
+        &mut self,
+        params: TextDocumentPositionParams,
+    ) -> anyhow::Result<Option<PrepareRenameResponse>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let (document, pos) = self.document_with_pos(params)?;
+        let range = document.is_valid_rename_location(pos)?;
+        if let Some((start, end)) = range {
+            Ok(Some(PrepareRenameResponse::Range(Self::to_range(
+                encoding,
+                (start, end),
+            ))))
+        } else {
+            Ok(None)
+        }
     }
 
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {
