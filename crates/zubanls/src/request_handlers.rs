@@ -7,7 +7,8 @@ use lsp_types::{
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
     },
     Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, FullDocumentDiagnosticReport, GotoDefinitionParams,
+    DocumentDiagnosticReportResult, DocumentHighlight, DocumentHighlightKind,
+    DocumentHighlightParams, FullDocumentDiagnosticReport, GotoDefinitionParams,
     GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, MarkupContent, MarkupKind,
     Position, ReferenceParams, RelatedFullDocumentDiagnosticReport, TextDocumentIdentifier,
     TextDocumentPositionParams, Uri,
@@ -213,6 +214,27 @@ impl GlobalState<'_> {
             return Ok(None);
         }
         Ok(Some(result.into()))
+    }
+
+    pub fn handle_document_highlight(
+        &mut self,
+        params: DocumentHighlightParams,
+    ) -> anyhow::Result<Option<Vec<DocumentHighlight>>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
+        let result = document.references(pos, ReferencesGoal::OnlyCurrentFile, |name| {
+            DocumentHighlight {
+                range: Self::to_range(encoding, name.name_range()),
+                kind: Some(match name.is_definition() {
+                    true => DocumentHighlightKind::WRITE,
+                    false => DocumentHighlightKind::READ,
+                }),
+            }
+        })?;
+        if result.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(result))
     }
 
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {

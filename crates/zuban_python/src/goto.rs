@@ -556,11 +556,16 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
                 } else {
                     name.goto_stub()
                 };
+                let should_add_results = !matches!(goal, ReferencesGoal::OnlyCurrentFile);
                 if let Some(other) = other {
                     self.definitions.insert(to_unique_position(&other));
-                    self.results.push((self.on_result)(other))
+                    if should_add_results {
+                        self.results.push((self.on_result)(other))
+                    }
                 }
-                self.results.push((self.on_result)(name));
+                if should_add_results || name.file().file_index == self.infos.file.file_index {
+                    self.results.push((self.on_result)(name));
+                }
             });
         })
         .goto_name(false, false);

@@ -139,6 +139,14 @@ impl<'x> Name<'x> {
         self.file().is_stub()
     }
 
+    pub fn is_definition(&self) -> bool {
+        match self {
+            Name::TreeName(n) => n.cst_name.name_def().is_some(),
+            Name::ModuleName(_) => true,
+            Name::NodeName(_) => false,
+        }
+    }
+
     pub fn kind(&self) -> SymbolKind {
         match self {
             Name::TreeName(_) => SymbolKind::Object,

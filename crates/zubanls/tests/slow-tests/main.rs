@@ -12,13 +12,14 @@ use std::str::FromStr;
 use lsp_server::Response;
 use lsp_types::{
     request::{
-        DocumentDiagnosticRequest, GotoDeclaration, GotoDefinition, GotoImplementation,
-        GotoTypeDefinition, HoverRequest, References,
+        DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration, GotoDefinition,
+        GotoImplementation, GotoTypeDefinition, HoverRequest, References,
     },
     DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, GotoDefinitionParams, HoverParams, NumberOrString,
-    PartialResultParams, Position, PositionEncodingKind, ReferenceContext, ReferenceParams,
-    TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
+    DocumentDiagnosticReportResult, DocumentHighlightKind, DocumentHighlightParams,
+    GotoDefinitionParams, HoverParams, NumberOrString, PartialResultParams, Position,
+    PositionEncodingKind, ReferenceContext, ReferenceParams, TextDocumentIdentifier,
+    TextDocumentPositionParams, Uri, WorkDoneProgressParams,
 };
 
 mod connection;
@@ -1307,6 +1308,56 @@ fn check_goto_likes() {
               },
             },
             "uri": &npy,
+          }
+        ]),
+    );
+
+    // Document Highlights
+    server.request_and_expect_json::<DocumentHighlightRequest>(
+        DocumentHighlightParams {
+            text_document_position_params: pos.clone(),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 14,
+              },
+              "end": {
+                "line": 0,
+                "character": 15,
+              },
+            },
+            "kind": DocumentHighlightKind::WRITE,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 0,
+                "character": 14,
+              },
+              "end": {
+                "line": 0,
+                "character": 15,
+              },
+            },
+            "kind": DocumentHighlightKind::WRITE,
+          },
+          {
+            "range": {
+              "start": {
+                "line": 1,
+                "character": 0,
+              },
+              "end": {
+                "line": 1,
+                "character": 1,
+              },
+            },
+            "kind": DocumentHighlightKind::READ,
           }
         ]),
     );
