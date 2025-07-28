@@ -268,7 +268,7 @@ impl GlobalState<'_> {
         let (document, pos) = self.document_with_pos(params.text_document_position)?;
         let mut changes = document.references_for_rename(pos, &new_name)?;
         Ok(if changes.has_changes() {
-            let mut workspace_changes: Vec<_> = std::mem::take(&mut changes.changes)
+            let workspace_changes: Vec<_> = std::mem::take(&mut changes.changes)
                 .into_iter()
                 .map(|change| {
                     DocumentChangeOperation::Edit(TextDocumentEdit {
@@ -288,17 +288,15 @@ impl GlobalState<'_> {
                             .collect(),
                     })
                 })
-                .collect();
-            for rename in changes.renames() {
-                workspace_changes.push(DocumentChangeOperation::Op(ResourceOp::Rename(
-                    RenameFile {
+                .chain(changes.renames().map(|rename| {
+                    DocumentChangeOperation::Op(ResourceOp::Rename(RenameFile {
                         old_uri: to_uri(rename.from_uri()),
                         new_uri: to_uri(rename.to_uri()),
                         options: None,
                         annotation_id: None,
-                    },
-                )))
-            }
+                    }))
+                }))
+                .collect();
             let edit = WorkspaceEdit {
                 changes: None,
                 document_changes: Some(DocumentChanges::Operations(workspace_changes)),

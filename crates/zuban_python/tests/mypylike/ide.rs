@@ -27,6 +27,7 @@ pub enum Commands {
     Complete(CompleteArgs),
     Goto(GotoArgs),
     Infer(InferArgs),
+    Rename(RenameArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -55,6 +56,12 @@ pub struct InferArgs {
     pub doc_contains: Option<String>,
     #[arg(long)]
     pub doc_is: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct RenameArgs {
+    #[arg()]
+    pub new_name: String,
 }
 
 pub(crate) fn find_and_check_ide_tests(
@@ -136,6 +143,7 @@ pub(crate) fn find_and_check_ide_tests(
                         )
                     }
                 };
+            let test_on_line_nr = line_nr + 2;
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
                     let mut result = document.complete(position, |name| {
@@ -178,6 +186,43 @@ pub(crate) fn find_and_check_ide_tests(
                         }),
                     )
                 }
+                Commands::Rename(rename) => {
+                    match document.references_for_rename(position, &rename.new_name) {
+                        Ok(result) => {
+                            let results = std::iter::once(format!(
+                                "{} -> {}",
+                                result.old_name, result.new_name
+                            ))
+                            .chain(
+                                result
+                                    .changes
+                                    .iter()
+                                    .map(|c| {
+                                        std::iter::once(format!("{}:", c.path.as_uri())).chain(
+                                            c.ranges.iter().map(|(start, end)| {
+                                                format!(
+                                                    " - ({}, {}) -> ({}, {})",
+                                                    start.line_one_based(),
+                                                    start.code_points_column(),
+                                                    end.line_one_based(),
+                                                    end.code_points_column(),
+                                                )
+                                            }),
+                                        )
+                                    })
+                                    .flatten()
+                                    .chain(result.renames().map(|r| {
+                                        format!("Rename: {} -> {}", r.from_uri(), r.to_uri())
+                                    })),
+                            );
+                            output.extend(
+                                results.map(|r| format!("{path}:{test_on_line_nr}:rename: {r}")),
+                            );
+                            continue;
+                        }
+                        Err(err) => ("rename", Err(err)),
+                    }
+                }
             };
             output.push(match out {
                 Ok(out) => {
@@ -190,9 +235,9 @@ pub(crate) fn find_and_check_ide_tests(
                             out.join("; ")
                         }
                     };
-                    format!("{path}:{}:{kind} -> {}", line_nr + 2, result)
+                    format!("{path}:{}:{kind} -> {}", test_on_line_nr, result)
                 }
-                Err(err) => format!("{path}:{}:{kind} -> error: {err}", line_nr + 2),
+                Err(err) => format!("{path}:{}:{kind} -> error: {err}", test_on_line_nr),
             });
         }
     }

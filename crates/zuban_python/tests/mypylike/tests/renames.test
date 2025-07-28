@@ -1,0 +1,22 @@
+[case simple_rename]
+def f():
+    #? --codepoint-column 4 rename foo
+    x = 1
+    if x:
+        x = 2
+    #? rename foo2
+    return x
+
+[out]
+__main__.py:3:rename: x -> foo
+__main__.py:3:rename: file:///mypylike/__main__.py:
+__main__.py:3:rename:  - (3, 4) -> (3, 5)
+__main__.py:3:rename:  - (4, 7) -> (4, 8)
+__main__.py:3:rename:  - (5, 8) -> (5, 9)
+__main__.py:3:rename:  - (7, 11) -> (7, 12)
+__main__.py:7:rename: x -> foo2
+__main__.py:7:rename: file:///mypylike/__main__.py:
+__main__.py:7:rename:  - (3, 4) -> (3, 5)
+__main__.py:7:rename:  - (4, 7) -> (4, 8)
+__main__.py:7:rename:  - (5, 8) -> (5, 9)
+__main__.py:7:rename:  - (7, 11) -> (7, 12)

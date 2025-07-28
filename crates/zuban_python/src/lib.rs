@@ -258,6 +258,7 @@ impl<'project> Document<'project> {
                 db,
                 changes: vec![],
                 file_renames: vec![],
+                old_name: name.as_code(),
                 new_name,
             });
         }
@@ -298,6 +299,7 @@ impl<'project> Document<'project> {
             db,
             changes,
             file_renames,
+            old_name: name.as_code(),
             new_name,
         })
     }
@@ -368,18 +370,22 @@ pub struct DocumentationResult<'a> {
     pub on_symbol_range: Range<'a>,
 }
 
+#[derive(Debug)]
 pub struct SingleFileRenameChanges<'db> {
     pub path: &'db PathWithScheme,
     pub ranges: Vec<Range<'db>>,
 }
 
+#[derive(Debug)]
 pub struct RenameChanges<'db, 'a> {
     db: &'db Database,
     pub changes: Vec<SingleFileRenameChanges<'db>>,
     file_renames: Vec<&'db PathWithScheme>,
-    new_name: &'a str,
+    pub old_name: &'db str,
+    pub new_name: &'a str,
 }
 
+#[derive(Debug)]
 pub struct FileRename<'db, 'a> {
     db: &'db Database,
     from: &'db PathWithScheme,

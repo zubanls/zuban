@@ -127,7 +127,7 @@ fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> anyhow::Result<usize>
     Ok(s.len())
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PositionInfos<'code> {
     line: usize, // zero-based line number
     pub(crate) line_offset_in_code: usize,
