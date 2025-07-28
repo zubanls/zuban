@@ -32,3 +32,15 @@ import foo
 
 [out]
 __main__.py:2:references -> __main__.py:2:7
+
+[case builtin_usages_check_workspace]
+#? references
+str
+[out]
+__main__.py:2:references -> typeshed/stdlib/builtins.pyi:438:6; __main__.py:2:0
+
+[case builtin_usages_only_check_file]
+#? references --only-check-file
+str
+[out]
+__main__.py:2:references -> __main__.py:2:0

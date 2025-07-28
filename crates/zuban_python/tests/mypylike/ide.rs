@@ -62,7 +62,7 @@ pub struct InferArgs {
 #[derive(Parser, Debug)]
 pub struct ReferencesArgs {
     #[arg(long)]
-    check_global: bool,
+    only_check_file: bool,
     #[arg(long)]
     no_include_declarations: bool,
 }
@@ -196,9 +196,9 @@ pub(crate) fn find_and_check_ide_tests(
                     )
                 }
                 Commands::References(references) => {
-                    let goal = match references.check_global {
-                        false => ReferencesGoal::OnlyCurrentFile,
-                        true => ReferencesGoal::AllFilesIncludingDependencies,
+                    let goal = match references.only_check_file {
+                        true => ReferencesGoal::OnlyCurrentFile,
+                        false => ReferencesGoal::OnlyTypeCheckedWorkspaces,
                     };
                     (
                         "references",
