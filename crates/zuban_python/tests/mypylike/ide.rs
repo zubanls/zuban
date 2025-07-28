@@ -38,9 +38,15 @@ pub struct CompleteArgs {
 #[derive(Parser, Debug)]
 pub struct GotoArgs {
     #[arg(long)]
-    pub prefer_stubs: bool,
-    #[arg(long)]
     pub follow_imports: bool,
+    #[command(flatten)]
+    pub common_args: CommonGotoInferArgs,
+}
+
+#[derive(Parser, Debug)]
+pub struct CommonGotoInferArgs {
+    #[arg(long)]
+    pub prefer_stubs: bool,
     #[arg(long)]
     pub no_positions: bool,
     #[arg(long)]
@@ -51,14 +57,8 @@ pub struct GotoArgs {
 
 #[derive(Parser, Debug)]
 pub struct InferArgs {
-    #[arg(long)]
-    pub prefer_stubs: bool,
-    #[arg(long)]
-    pub no_positions: bool,
-    #[arg(long)]
-    pub doc_contains: Option<String>,
-    #[arg(long)]
-    pub doc_is: Option<String>,
+    #[command(flatten)]
+    pub common_args: CommonGotoInferArgs,
 }
 
 #[derive(Parser, Debug)]
@@ -73,6 +73,15 @@ pub struct ReferencesArgs {
 pub struct RenameArgs {
     #[arg()]
     pub new_name: String,
+}
+
+impl CommonGotoInferArgs {
+    fn goto_goal(&self) -> GotoGoal {
+        match self.prefer_stubs {
+            false => GotoGoal::PreferNonStubs,
+            true => GotoGoal::PreferStubs,
+        }
+    }
 }
 
 pub(crate) fn find_and_check_ide_tests(
@@ -117,12 +126,9 @@ pub(crate) fn find_and_check_ide_tests(
                     _ => panic!("The test should not ever pass multiple position informations"),
                 }
             };
-            let check_infer_or_goto = |name: &Name,
-                                       doc_contains: &Option<String>,
-                                       doc_is: &Option<String>,
-                                       no_positions: bool| {
+            let check_infer_or_goto = |name: &Name, common_args: &CommonGotoInferArgs| {
                 let start = name.name_range().0;
-                if let Some(expected_doc) = doc_contains {
+                if let Some(expected_doc) = &common_args.doc_contains {
                     let actual = name.documentation();
                     if actual.contains(expected_doc) {
                         format!("Doc for {} matched", name.qualified_name())
@@ -134,7 +140,7 @@ pub(crate) fn find_and_check_ide_tests(
                             expected_doc
                         )
                     }
-                } else if let Some(expected_doc) = doc_is {
+                } else if let Some(expected_doc) = &common_args.doc_is {
                     let actual = name.documentation();
                     if &*actual == expected_doc {
                         format!("Doc for {} matched", name.qualified_name())
@@ -146,7 +152,7 @@ pub(crate) fn find_and_check_ide_tests(
                             expected_doc
                         )
                     }
-                } else if no_positions {
+                } else if common_args.no_positions {
                     format!(
                         "{}:{}",
                         name.path_relative_to_workspace(),
@@ -178,36 +184,20 @@ pub(crate) fn find_and_check_ide_tests(
                     ("complete", result)
                 }
                 Commands::Goto(goto_args) => {
-                    let goal = match goto_args.prefer_stubs {
-                        false => GotoGoal::PreferNonStubs,
-                        true => GotoGoal::PreferStubs,
-                    };
+                    let goal = goto_args.common_args.goto_goal();
                     (
                         "goto",
                         document.goto(position, goal, goto_args.follow_imports, |name| {
-                            check_infer_or_goto(
-                                &name,
-                                &goto_args.doc_contains,
-                                &goto_args.doc_is,
-                                goto_args.no_positions,
-                            )
+                            check_infer_or_goto(&name, &goto_args.common_args)
                         }),
                     )
                 }
                 Commands::Infer(infer_args) => {
-                    let goal = match infer_args.prefer_stubs {
-                        false => GotoGoal::PreferNonStubs,
-                        true => GotoGoal::PreferStubs,
-                    };
+                    let goal = infer_args.common_args.goto_goal();
                     (
                         "infer",
                         document.infer_definition(position, goal, |vn| {
-                            check_infer_or_goto(
-                                &vn.name,
-                                &infer_args.doc_contains,
-                                &infer_args.doc_is,
-                                infer_args.no_positions,
-                            )
+                            check_infer_or_goto(&vn.name, &infer_args.common_args)
                         }),
                     )
                 }
