@@ -185,7 +185,7 @@ impl std::fmt::Debug for Project {
 }
 
 pub struct Document<'project> {
-    project: &'project mut Project,
+    project: &'project Project,
     file_index: FileIndex,
 }
 
@@ -198,12 +198,9 @@ impl<'project> Document<'project> {
     fn positional_document(
         &self,
         position: InputPosition,
-    ) -> anyhow::Result<PositionalDocument<GotoNode>> {
-        PositionalDocument::for_goto(
-            &self.project.db,
-            self.project.db.loaded_python_file(self.file_index),
-            position,
-        )
+    ) -> anyhow::Result<PositionalDocument<'project, GotoNode<'project>>> {
+        let db = &self.project.db;
+        PositionalDocument::for_goto(db, db.loaded_python_file(self.file_index), position)
     }
 
     pub fn goto<T>(
@@ -248,15 +245,14 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         new_name: &'x str,
-    ) -> anyhow::Result<RenameChanges> {
+    ) -> anyhow::Result<RenameChanges<'project, 'x>> {
         let document = self.positional_document(position)?;
-        let file = document.file;
         let Some(name) = document.node.on_name() else {
             bail!("Could not find a name under the cursor to rename");
         };
-        let mut file_renames = vec![];
+        let mut file_renames: Vec<&'project PythonFile> = vec![];
         let mut file_changes = FastHashMap::default();
-        let references = ReferencesResolver::new(document, |name| match name {
+        let references = ReferencesResolver::new(document, |name| match &name {
             Name::TreeName(tree_name) => {
                 let file_index = tree_name.file.file_index;
                 file_changes
@@ -274,7 +270,7 @@ impl<'project> Document<'project> {
                 name.as_code()
             );
         }
-        let changes: Vec<_> = file_changes
+        let changes: Vec<SingleFileRenameChanges<'project>> = file_changes
             .into_iter()
             .map(|(file_index, changes)| {
                 //

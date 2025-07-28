@@ -17,22 +17,21 @@ use crate::{
 pub type Range<'a> = (PositionInfos<'a>, PositionInfos<'a>);
 
 #[derive(Debug)]
-pub enum Name<'db> {
+pub enum Name<'db, 'x> {
     TreeName(TreeName<'db>),
     ModuleName(ModuleName<'db>),
-    NodeName(NodeName<'db>),
+    NodeName(NodeName<'db, 'x>),
 }
 
 #[derive(Debug)]
-pub struct ValueName<'x> {
-    pub(crate) db: &'x Database,
+pub struct ValueName<'db, 'x> {
     pub(crate) type_: &'x Type,
-    pub name: Name<'x>,
+    pub name: Name<'db, 'x>,
 }
 
-impl ValueName<'_> {
+impl ValueName<'_, '_> {
     pub fn type_description(&self) -> Box<str> {
-        self.type_.format_short(self.db)
+        self.type_.format_short(self.name.db())
     }
 
     /// This is mostly for testing, you should probably not use this.
@@ -44,7 +43,7 @@ impl ValueName<'_> {
     }
 }
 
-impl<'x> Name<'x> {
+impl<'db, 'x> Name<'db, 'x> {
     pub fn name(&self) -> &str {
         match self {
             Name::TreeName(n) => n.cst_name.as_str(),
@@ -57,7 +56,7 @@ impl<'x> Name<'x> {
         self.file().tree.code()
     }
 
-    pub(crate) fn file(&self) -> &'x PythonFile {
+    pub(crate) fn file(&self) -> &'db PythonFile {
         match self {
             Name::TreeName(TreeName { file, .. })
             | Name::ModuleName(ModuleName { file, .. })
@@ -68,7 +67,7 @@ impl<'x> Name<'x> {
         }
     }
 
-    pub(crate) fn db(&self) -> &'x Database {
+    pub(crate) fn db(&self) -> &'db Database {
         match self {
             Name::TreeName(tree_name) => tree_name.db,
             Name::ModuleName(module_name) => module_name.db,
@@ -155,7 +154,7 @@ impl<'x> Name<'x> {
         }
     }
 
-    pub fn name_range(&self) -> Range {
+    pub fn name_range(&self) -> Range<'db> {
         match self {
             Name::TreeName(n) => (
                 n.file.byte_to_position_infos(n.db, n.cst_name.start()),
@@ -200,7 +199,7 @@ impl<'x> Name<'x> {
         start.code_until(end)
     }
 
-    pub(crate) fn goto_non_stub(&self) -> Option<Name<'x>> {
+    pub(crate) fn goto_non_stub(&self) -> Option<Name<'db, 'x>> {
         match self {
             Name::TreeName(n) => {
                 let file = n.file.normal_file_of_stub_file(n.db)?;
@@ -214,7 +213,7 @@ impl<'x> Name<'x> {
         }
     }
 
-    fn goto_helper(&self, n: &TreeName<'x>, to_file: &'x PythonFile) -> Option<Self> {
+    fn goto_helper(&self, n: &TreeName<'db>, to_file: &'db PythonFile) -> Option<Self> {
         let db = n.db;
         let result = to_file.ensure_module_symbols_flow_analysis(db);
         debug_assert!(result.is_ok());
@@ -233,7 +232,7 @@ impl<'x> Name<'x> {
         )))
     }
 
-    pub(crate) fn goto_stub(&self) -> Option<Name<'x>> {
+    pub(crate) fn goto_stub(&self) -> Option<Name<'db, 'x>> {
         match self {
             Name::TreeName(n) => {
                 let file = n.file.stub_file_of_normal_file(n.db)?;
@@ -247,7 +246,7 @@ impl<'x> Name<'x> {
         }
     }
 
-    pub fn documentation(&self) -> Cow<'x, str> {
+    pub fn documentation(&self) -> Cow<'db, str> {
         let result = match self {
             Name::TreeName(n) => n.cst_name.clean_docstring(),
             Name::ModuleName(n) => n.file.tree.root().clean_docstring(),
@@ -387,14 +386,14 @@ fn parent_scope_to_scope(file: &PythonFile, parent_scope: ParentScope) -> Scope 
 }
 
 #[derive(Debug)]
-pub struct NodeName<'db> {
+pub struct NodeName<'db, 'x> {
     db: &'db Database,
     node_ref: NodeRef<'db>,
-    name: &'db str,
+    name: &'x str,
 }
 
-impl<'db> NodeName<'db> {
-    pub(crate) fn new(db: &'db Database, node_ref: NodeRef<'db>, name: &'db str) -> Self {
+impl<'db, 'x> NodeName<'db, 'x> {
+    pub(crate) fn new(db: &'db Database, node_ref: NodeRef<'db>, name: &'x str) -> Self {
         Self { db, node_ref, name }
     }
 }

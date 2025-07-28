@@ -258,7 +258,7 @@ impl<'db, C> GotoResolver<'db, C> {
     }
 }
 
-impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
+impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     // TODO it seems like type inference is wrong at some point in Rust and we have to help it a
     // bit.
     fn new2(infos: PositionalDocument<'db, GotoNode<'db>>, goal: GotoGoal, on_result: C) -> Self {
@@ -277,12 +277,12 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
         GotoResolver {
             infos: self.infos,
             goal: self.goal,
-            on_result: &mut |n: ValueName| callback(n.name),
+            on_result: &mut |n: ValueName<'db, '_>| callback(n.name),
         }
         .infer_definition()
     }
 
-    fn calculate_return(&mut self, name: Name) -> T {
+    fn calculate_return(&mut self, name: Name<'db, '_>) -> T {
         let name = goto_with_goal(name, self.goal);
         (self.on_result)(name)
     }
@@ -310,7 +310,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> GotoResolver<'db, C> {
 
     fn check_node_ref_and_maybe_follow_import(
         &mut self,
-        node_ref: NodeRef,
+        node_ref: NodeRef<'db>,
         follow_imports: bool,
     ) -> Option<T> {
         let n = node_ref.maybe_name()?;
@@ -498,7 +498,7 @@ pub(crate) struct ReferencesResolver<'db, C, T> {
     on_result: C,
 }
 
-impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
+impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
     pub fn new(infos: PositionalDocument<'db, GotoNode<'db>>, on_result: C) -> Self {
         Self {
             infos,
@@ -609,7 +609,7 @@ impl<'db, C: for<'a> FnMut(Name) -> T + 'db, T> ReferencesResolver<'db, C, T> {
         self.results
     }
 
-    fn find_references_in_file(&mut self, file: &PythonFile, search_name: &str) {
+    fn find_references_in_file(&mut self, file: &'db PythonFile, search_name: &str) {
         let result = file.ensure_calculated_diagnostics(self.infos.db);
         debug_assert!(result.is_ok());
         for name in file.tree.filter_all_names() {
@@ -698,8 +698,8 @@ fn to_unique_position(n: &Name) -> (FileIndex, usize) {
     (n.file().file_index, n.name_range().0.byte_position)
 }
 
-fn follow_goto_if_necessary(name: Name, on_name: &mut impl FnMut(Name)) {
-    let mut check_name = |tree_name: &TreeName, start| {
+fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnMut(Name<'db, '_>)) {
+    let mut check_name = |tree_name: &TreeName<'db>, start| {
         GotoResolver::new(
             PositionalDocument::for_goto(
                 tree_name.db,
@@ -708,7 +708,7 @@ fn follow_goto_if_necessary(name: Name, on_name: &mut impl FnMut(Name)) {
             )
             .unwrap(),
             GotoGoal::Indifferent,
-            |n: Name| follow_goto_if_necessary(n, on_name),
+            |n: Name<'db, '_>| follow_goto_if_necessary(n, on_name),
         )
         .goto_name(false, false);
     };
@@ -750,7 +750,7 @@ fn follow_goto_if_necessary(name: Name, on_name: &mut impl FnMut(Name)) {
     on_name(name)
 }
 
-impl<'db, C: for<'a> FnMut(ValueName) -> T + 'db, T> GotoResolver<'db, C> {
+impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     pub fn infer_definition(&mut self) -> Vec<T> {
         let mut result = vec![];
         let Some(inf) = self.infos.infer_position() else {
@@ -768,7 +768,7 @@ impl<'db, C: for<'a> FnMut(ValueName) -> T + 'db, T> GotoResolver<'db, C> {
                 type_to_name(i_s, &type_, &mut |name| {
                     let name = goto_with_goal(name, self.goal);
                     let callback = &mut self.on_result;
-                    result.push(callback(ValueName { name, db, type_ }))
+                    result.push(callback(ValueName { name, type_ }))
                 })
             }
         });
@@ -776,7 +776,7 @@ impl<'db, C: for<'a> FnMut(ValueName) -> T + 'db, T> GotoResolver<'db, C> {
     }
 }
 
-fn goto_with_goal(name: Name, goal: GotoGoal) -> Name {
+fn goto_with_goal<'db, 'x>(name: Name<'db, 'x>, goal: GotoGoal) -> Name<'db, 'x> {
     match goal {
         GotoGoal::PreferStubs => name.goto_stub().unwrap_or(name),
         GotoGoal::PreferNonStubs => name.goto_non_stub().unwrap_or(name),
@@ -784,7 +784,7 @@ fn goto_with_goal(name: Name, goal: GotoGoal) -> Name {
     }
 }
 
-fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnMut(Name)) {
+fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnMut(Name<'db, '_>)) {
     let db = i_s.db;
     let from_node_ref = |node_ref: NodeRef<'db>| {
         Name::TreeName(TreeName::with_unknown_parent_scope(
