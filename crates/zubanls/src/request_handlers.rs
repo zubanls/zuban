@@ -1,24 +1,28 @@
 use std::str::FromStr;
 
 use anyhow::bail;
+use lsp_server::ErrorCode;
 use lsp_types::{
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
     },
-    Diagnostic, DiagnosticSeverity, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, DocumentHighlight, DocumentHighlightKind,
-    DocumentHighlightParams, FullDocumentDiagnosticReport, GotoDefinitionParams,
-    GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, MarkupContent, MarkupKind,
-    Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
-    RenameParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkspaceEdit,
+    Diagnostic, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges,
+    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
+    DocumentHighlight, DocumentHighlightKind, DocumentHighlightParams,
+    FullDocumentDiagnosticReport, GotoDefinitionParams, GotoDefinitionResponse, Hover,
+    HoverContents, HoverParams, Location, MarkupContent, MarkupKind, OneOf,
+    OptionalVersionedTextDocumentIdentifier, Position, PrepareRenameResponse, ReferenceParams,
+    RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
+    ResourceOperationKind, TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams,
+    TextEdit, Uri, WorkspaceEdit,
 };
 use zuban_python::{
     Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,
 };
 
 use crate::{
-    capabilities::NegotiatedEncoding,
+    capabilities::{ClientCapabilities, NegotiatedEncoding},
     server::{GlobalState, LspError},
 };
 
@@ -260,11 +264,48 @@ impl GlobalState<'_> {
 
     pub fn rename(&mut self, params: RenameParams) -> anyhow::Result<Option<WorkspaceEdit>> {
         let encoding = self.client_capabilities.negotiated_encoding();
+        let new_name = params.new_name;
         let (document, pos) = self.document_with_pos(params.text_document_position)?;
-        let changes = document.references_for_rename(pos)?;
-        Ok(if changes {
-            //
-            changes
+        let mut changes = document.references_for_rename(pos, &new_name)?;
+        Ok(if changes.has_changes() {
+            let mut workspace_changes: Vec<_> = std::mem::take(&mut changes.changes)
+                .into_iter()
+                .map(|change| {
+                    DocumentChangeOperation::Edit(TextDocumentEdit {
+                        text_document: OptionalVersionedTextDocumentIdentifier {
+                            uri: to_uri(change.path.as_uri()),
+                            version: None,
+                        },
+                        edits: change
+                            .ranges
+                            .into_iter()
+                            .map(|range| {
+                                OneOf::Left(TextEdit {
+                                    range: Self::to_range(encoding, range),
+                                    new_text: new_name.clone(),
+                                })
+                            })
+                            .collect(),
+                    })
+                })
+                .collect();
+            for rename in changes.renames() {
+                workspace_changes.push(DocumentChangeOperation::Op(ResourceOp::Rename(
+                    RenameFile {
+                        old_uri: to_uri(rename.from_uri()),
+                        new_uri: to_uri(rename.to_uri()),
+                        options: None,
+                        annotation_id: None,
+                    },
+                )))
+            }
+            let edit = WorkspaceEdit {
+                changes: None,
+                document_changes: Some(DocumentChanges::Operations(workspace_changes)),
+                change_annotations: None,
+            };
+            ensure_valid_workspace_edit(&self.client_capabilities, &edit)?;
+            Some(edit)
         } else {
             None
         })
@@ -274,4 +315,52 @@ impl GlobalState<'_> {
         self.shutdown_requested = true;
         Ok(())
     }
+}
+
+fn ensure_valid_workspace_edit(
+    cap: &ClientCapabilities,
+    edit: &WorkspaceEdit,
+) -> anyhow::Result<()> {
+    if let Some(lsp_types::DocumentChanges::Operations(ops)) = edit.document_changes.as_ref() {
+        for op in ops {
+            if let lsp_types::DocumentChangeOperation::Op(doc_change_op) = op {
+                resource_ops_supported(cap, resolve_resource_op(doc_change_op))?
+            }
+        }
+    }
+    Ok(())
+}
+
+fn to_uri(s: String) -> Uri {
+    Uri::from_str(&s).unwrap()
+}
+
+fn resolve_resource_op(op: &ResourceOp) -> ResourceOperationKind {
+    match op {
+        ResourceOp::Create(_) => ResourceOperationKind::Create,
+        ResourceOp::Rename(_) => ResourceOperationKind::Rename,
+        ResourceOp::Delete(_) => ResourceOperationKind::Delete,
+    }
+}
+
+fn resource_ops_supported(
+    cap: &ClientCapabilities,
+    kind: ResourceOperationKind,
+) -> anyhow::Result<()> {
+    if !matches!(cap.workspace_edit_resource_operations(), Some(resops) if resops.contains(&kind)) {
+        return Err(LspError {
+            code: ErrorCode::RequestFailed as i32,
+            message: format!(
+                "Client does not support {} capability.",
+                match kind {
+                    ResourceOperationKind::Create => "create",
+                    ResourceOperationKind::Rename => "rename",
+                    ResourceOperationKind::Delete => "delete",
+                }
+            ),
+        }
+        .into());
+    }
+
+    Ok(())
 }

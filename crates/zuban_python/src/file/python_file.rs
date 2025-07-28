@@ -9,7 +9,7 @@ use std::{
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue};
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent, PathWithScheme};
 
 use super::{
     file_state::File,
@@ -749,6 +749,10 @@ impl<'db> PythonFile {
 
     pub fn file_entry(&self, db: &'db Database) -> &'db Rc<FileEntry> {
         db.vfs.file_entry(self.file_index)
+    }
+
+    pub fn file_path_with_scheme(&self, db: &'db Database) -> &'db PathWithScheme {
+        db.vfs.file_path(self.file_index)
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {

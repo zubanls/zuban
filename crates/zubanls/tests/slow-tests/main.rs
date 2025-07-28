@@ -1420,7 +1420,10 @@ fn check_goto_likes() {
             new_name: "d".into(),
             work_done_progress_params: Default::default(),
         });
-        assert_eq!(err.message, "lala");
+        assert_eq!(
+            err.message,
+            "Could not find a name under the cursor to rename"
+        );
 
         // On "d"
         server.request_and_expect_json::<Rename>(
@@ -1430,7 +1433,84 @@ fn check_goto_likes() {
                 work_done_progress_params: Default::default(),
             },
             json!({
-                "workspace": 1
+              "documentChanges": [
+                {
+                  "edits": [
+                    {
+                      "newText": "new",
+                      "range": {
+                        "start": {
+                          "line": 2,
+                          "character": 0,
+                        },
+                        "end": {
+                          "line": 2,
+                          "character": 1,
+                        },
+                      }
+                    }
+                  ],
+                  "textDocument": {
+                    "uri": &mpyi,
+                    "version": null
+                  }
+                },
+                {
+                  "edits": [
+                    {
+                      "newText": "new",
+                      "range": {
+                        "start": {
+                          "line": 5,
+                          "character": 0,
+                        },
+                        "end": {
+                          "line": 5,
+                          "character": 1,
+                        },
+                      }
+                    }
+                  ],
+                  "textDocument": {
+                    "uri": &mpy,
+                    "version": null
+                  }
+                },
+                {
+                  "edits": [
+                    {
+                      "newText": "new",
+                      "range": {
+                        "start": {
+                          "line": 0,
+                          "character": 14,
+                        },
+                        "end": {
+                          "line": 0,
+                          "character": 15,
+                        },
+                      }
+                    },
+                    {
+                      "newText": "new",
+                      "range": {
+                        "start": {
+                          "line": 1,
+                          "character": 0,
+                        },
+                        "end": {
+                          "line": 1,
+                          "character": 1,
+                        },
+                      }
+                    }
+                  ],
+                  "textDocument": {
+                    "uri": &npy,
+                    "version": null
+                  }
+                }
+              ]
             }),
         );
 
@@ -1455,8 +1535,13 @@ fn check_goto_likes() {
             new_name: "d".into(),
             work_done_progress_params: Default::default(),
         });
-        assert_eq!(err.message, "lala");
+        assert_eq!(
+            err.message,
+            "Could not find the definition of \"invalid_reference_for_rename\" under the cursor"
+        );
 
+        let dpy = server.doc_id("d.py").uri;
+        let dpyi = server.doc_id("d.pyi").uri;
         // On the module "m" on import
         server.request_and_expect_json::<Rename>(
             RenameParams {
@@ -1469,7 +1554,39 @@ fn check_goto_likes() {
                 work_done_progress_params: Default::default(),
             },
             json!({
-                "hello": "foo"
+              "documentChanges": [
+                {
+                  "edits": [
+                    {
+                      "newText": "d",
+                      "range": {
+                        "start": {
+                          "line": 0,
+                          "character": 5,
+                        },
+                        "end": {
+                          "character": 6,
+                          "line": 0,
+                        },
+                      }
+                    }
+                  ],
+                  "textDocument": {
+                    "uri": &npy,
+                    "version": null
+                  }
+                },
+                {
+                  "kind": "rename",
+                  "oldUri": &mpy,
+                  "newUri": &dpy,
+                },
+                {
+                  "kind": "rename",
+                  "oldUri": &mpyi,
+                  "newUri": &dpyi,
+                }
+              ]
             }),
         );
     }

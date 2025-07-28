@@ -24,7 +24,7 @@ mod type_;
 mod type_helpers;
 mod utils;
 
-use std::cell::OnceCell;
+use std::{cell::OnceCell, path::Path};
 
 use ::utils::FastHashMap;
 use anyhow::bail;
@@ -40,7 +40,7 @@ use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 pub use database::Mode;
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
-use file::{File, PythonFile};
+use file::File;
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
@@ -250,17 +250,31 @@ impl<'project> Document<'project> {
         let Some(name) = document.node.on_name() else {
             bail!("Could not find a name under the cursor to rename");
         };
-        let mut file_renames: Vec<&'project PythonFile> = vec![];
+
+        let db = &self.project.db;
+        if name.as_code() == new_name {
+            // The rename doesn't change anything, because the names stay the same
+            return Ok(RenameChanges {
+                db,
+                changes: vec![],
+                file_renames: vec![],
+                new_name,
+            });
+        }
+
+        let mut file_renames: Vec<&'project PathWithScheme> = vec![];
         let mut file_changes = FastHashMap::default();
         let references = ReferencesResolver::new(document, |name| match &name {
             Name::TreeName(tree_name) => {
                 let file_index = tree_name.file.file_index;
                 file_changes
                     .entry(file_index)
-                    .or_insert(vec![])
+                    .or_insert_with(|| vec![])
                     .push(name.name_range());
             }
-            Name::ModuleName(module_name) => file_renames.push(module_name.file),
+            Name::ModuleName(module_name) => {
+                file_renames.push(module_name.file.file_path_with_scheme(db))
+            }
             Name::NodeName(_) => recoverable_error!("Should never reach a node name in rename"),
         })
         .references(ReferencesGoal::OnlyTypeCheckedWorkspaces, true);
@@ -275,12 +289,13 @@ impl<'project> Document<'project> {
             .map(|(file_index, changes)| {
                 //
                 SingleFileRenameChanges {
-                    file: self.project.db.loaded_python_file(file_index),
-                    changes,
+                    path: db.vfs.file_path(file_index),
+                    ranges: changes,
                 }
             })
             .collect();
         Ok(RenameChanges {
+            db,
             changes,
             file_renames,
             new_name,
@@ -353,15 +368,68 @@ pub struct DocumentationResult<'a> {
     pub on_symbol_range: Range<'a>,
 }
 
-pub struct SingleFileRenameChanges<'a> {
-    file: &'a PythonFile,
-    pub changes: Vec<Range<'a>>,
+pub struct SingleFileRenameChanges<'db> {
+    pub path: &'db PathWithScheme,
+    pub ranges: Vec<Range<'db>>,
 }
 
 pub struct RenameChanges<'db, 'a> {
+    db: &'db Database,
     pub changes: Vec<SingleFileRenameChanges<'db>>,
-    file_renames: Vec<&'db PythonFile>,
+    file_renames: Vec<&'db PathWithScheme>,
     new_name: &'a str,
+}
+
+pub struct FileRename<'db, 'a> {
+    db: &'db Database,
+    from: &'db PathWithScheme,
+    new_name: &'a str,
+}
+
+impl<'db> FileRename<'db, '_> {
+    pub fn from(&self) -> &'db PathWithScheme {
+        self.from
+    }
+
+    pub fn from_uri(&self) -> String {
+        self.from.as_uri()
+    }
+
+    pub fn to_uri(&self) -> String {
+        let mut uri = self.from_uri();
+        let path = Path::new(&uri);
+        let mut parent = path.parent().unwrap();
+        let old_name = path.file_stem().unwrap().to_str().unwrap();
+        let extension = path.extension().unwrap().to_str().unwrap().to_string();
+        let mut maybe_init = "".to_string();
+        if old_name == "__init__" {
+            if let Some(par_parent) = parent.parent() {
+                parent = par_parent;
+                maybe_init = format!("{old_name}{}", self.db.vfs.handler.separator())
+            }
+        }
+        uri.truncate(parent.as_os_str().len());
+        uri.push(self.db.vfs.handler.separator());
+        uri += self.new_name;
+        uri += &maybe_init;
+        uri.push('.');
+        uri += &extension;
+        uri
+    }
+}
+
+impl<'db> RenameChanges<'db, '_> {
+    pub fn has_changes(&self) -> bool {
+        !self.changes.is_empty() || !self.file_renames.is_empty()
+    }
+
+    pub fn renames(&self) -> impl Iterator<Item = FileRename> {
+        self.file_renames.iter().map(|from| FileRename {
+            db: self.db,
+            from,
+            new_name: self.new_name,
+        })
+    }
 }
 
 /// All positions are zero based
