@@ -26,6 +26,8 @@ mod utils;
 
 use std::cell::OnceCell;
 
+use ::utils::FastHashMap;
+use anyhow::bail;
 use completion::CompletionResolver;
 pub use completion::{Completion, CompletionKind};
 pub use goto::{GotoGoal, ReferencesGoal};
@@ -38,7 +40,7 @@ use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 pub use database::Mode;
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
-use file::File;
+use file::{File, PythonFile};
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
@@ -242,6 +244,53 @@ impl<'project> Document<'project> {
         )
     }
 
+    pub fn references_for_rename<'x>(
+        &self,
+        position: InputPosition,
+        new_name: &'x str,
+    ) -> anyhow::Result<RenameChanges> {
+        let document = self.positional_document(position)?;
+        let file = document.file;
+        let Some(name) = document.node.on_name() else {
+            bail!("Could not find a name under the cursor to rename");
+        };
+        let mut file_renames = vec![];
+        let mut file_changes = FastHashMap::default();
+        let references = ReferencesResolver::new(document, |name| match name {
+            Name::TreeName(tree_name) => {
+                let file_index = tree_name.file.file_index;
+                file_changes
+                    .entry(file_index)
+                    .or_insert(vec![])
+                    .push(name.name_range());
+            }
+            Name::ModuleName(module_name) => file_renames.push(module_name.file),
+            Name::NodeName(_) => recoverable_error!("Should never reach a node name in rename"),
+        })
+        .references(ReferencesGoal::OnlyTypeCheckedWorkspaces, true);
+        if references.is_empty() {
+            bail!(
+                "Could not find the definition of {:?} under the cursor",
+                name.as_code()
+            );
+        }
+        let changes: Vec<_> = file_changes
+            .into_iter()
+            .map(|(file_index, changes)| {
+                //
+                SingleFileRenameChanges {
+                    file: self.project.db.loaded_python_file(file_index),
+                    changes,
+                }
+            })
+            .collect();
+        Ok(RenameChanges {
+            changes,
+            file_renames,
+            new_name,
+        })
+    }
+
     pub fn complete<T>(
         &self,
         position: InputPosition,
@@ -306,6 +355,17 @@ impl<'project> Document<'project> {
 pub struct DocumentationResult<'a> {
     pub documentation: String,
     pub on_symbol_range: Range<'a>,
+}
+
+pub struct SingleFileRenameChanges<'a> {
+    file: &'a PythonFile,
+    pub changes: Vec<Range<'a>>,
+}
+
+pub struct RenameChanges<'db, 'a> {
+    pub changes: Vec<SingleFileRenameChanges<'db>>,
+    file_renames: Vec<&'db PythonFile>,
+    new_name: &'a str,
 }
 
 /// All positions are zero based

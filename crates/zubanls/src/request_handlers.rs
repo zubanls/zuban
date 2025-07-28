@@ -11,7 +11,7 @@ use lsp_types::{
     DocumentHighlightParams, FullDocumentDiagnosticReport, GotoDefinitionParams,
     GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, MarkupContent, MarkupKind,
     Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
-    TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    RenameParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkspaceEdit,
 };
 use zuban_python::{
     Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,
@@ -256,6 +256,18 @@ impl GlobalState<'_> {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn rename(&mut self, params: RenameParams) -> anyhow::Result<Option<WorkspaceEdit>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let (document, pos) = self.document_with_pos(params.text_document_position)?;
+        let changes = document.references_for_rename(pos)?;
+        Ok(if changes {
+            //
+            changes
+        } else {
+            None
+        })
     }
 
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {

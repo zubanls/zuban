@@ -125,6 +125,21 @@ impl Connection {
         self.expect_response()
     }
 
+    pub(crate) fn request_with_expected_error<R>(
+        &self,
+        params: R::Params,
+    ) -> lsp_server::ResponseError
+    where
+        R: lsp_types::request::Request,
+        R::Params: Serialize,
+    {
+        let response = self.request_with_response::<R>(params);
+        if let Some(result) = response.result {
+            panic!("Unexpected result: {result:?}")
+        }
+        response.error.expect("Expected error")
+    }
+
     pub fn request_with_expected_response<R>(&self, params: R::Params) -> Value
     where
         R: lsp_types::request::Request,

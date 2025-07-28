@@ -14,11 +14,12 @@ use lsp_types::{
     request::{
         DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration, GotoDefinition,
         GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References,
+        Rename,
     },
     DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, DocumentHighlightKind, DocumentHighlightParams,
     GotoDefinitionParams, HoverParams, NumberOrString, PartialResultParams, Position,
-    PositionEncodingKind, ReferenceContext, ReferenceParams, TextDocumentIdentifier,
+    PositionEncodingKind, ReferenceContext, ReferenceParams, RenameParams, TextDocumentIdentifier,
     TextDocumentPositionParams, Uri, WorkDoneProgressParams,
 };
 
@@ -1395,17 +1396,81 @@ fn check_goto_likes() {
             }),
         );
         let err = server
-            .request_with_response::<PrepareRenameRequest>(TextDocumentPositionParams::new(
+            .request_with_expected_error::<PrepareRenameRequest>(TextDocumentPositionParams::new(
                 server.doc_id("n.py"),
                 Position::new(2, 0),
             ))
-            .error
-            .unwrap()
             .message;
         assert_eq!(
             err,
             "The reference \"invalid_reference_for_rename\" cannot \
             be resolved; rename is therefore not possible."
+        );
+    }
+
+    // Rename
+    {
+        // On "from" of the import
+        let err = server.request_with_expected_error::<Rename>(RenameParams {
+            text_document_position: TextDocumentPositionParams::new(
+                server.doc_id("n.py"),
+                Position::new(0, 0),
+            ),
+            // No change!
+            new_name: "d".into(),
+            work_done_progress_params: Default::default(),
+        });
+        assert_eq!(err.message, "lala");
+
+        // On "d"
+        server.request_and_expect_json::<Rename>(
+            RenameParams {
+                text_document_position: pos.clone(),
+                new_name: "new".into(),
+                work_done_progress_params: Default::default(),
+            },
+            json!({
+                "workspace": 1
+            }),
+        );
+
+        // On "d", but rename to "d" again
+        server.request_and_expect_json::<Rename>(
+            RenameParams {
+                text_document_position: pos.clone(),
+                // No change!
+                new_name: "d".into(),
+                work_done_progress_params: Default::default(),
+            },
+            json!(None::<()>),
+        );
+
+        // On "invalid_reference_for_rename", where we don't know its definition
+        let err = server.request_with_expected_error::<Rename>(RenameParams {
+            text_document_position: TextDocumentPositionParams::new(
+                server.doc_id("n.py"),
+                Position::new(2, 0),
+            ),
+            // No change!
+            new_name: "d".into(),
+            work_done_progress_params: Default::default(),
+        });
+        assert_eq!(err.message, "lala");
+
+        // On the module "m" on import
+        server.request_and_expect_json::<Rename>(
+            RenameParams {
+                text_document_position: TextDocumentPositionParams::new(
+                    server.doc_id("n.py"),
+                    Position::new(0, "from m".len() as u32),
+                ),
+                // No change!
+                new_name: "d".into(),
+                work_done_progress_params: Default::default(),
+            },
+            json!({
+                "hello": "foo"
+            }),
         );
     }
 }
