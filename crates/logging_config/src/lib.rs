@@ -16,6 +16,14 @@ use tracing_subscriber::{
 };
 
 pub fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
+    setup_logging_internal(log_file_flag, true)
+}
+
+pub fn setup_logging_without_printing_errors_by_default() -> anyhow::Result<()> {
+    setup_logging_internal(None, false)
+}
+
+fn setup_logging_internal(log_file_flag: Option<PathBuf>, show_errors: bool) -> anyhow::Result<()> {
     if cfg!(windows) {
         // This is required so that windows finds our pdb that is placed right beside the exe.
         // By default it doesn't look at the folder the exe resides in, only in the current working
@@ -38,7 +46,7 @@ pub fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         // usually useful information in there for debugging.
         filter: env::var("ZUBAN_LOG")
             .ok()
-            .unwrap_or_else(|| "error".to_owned()),
+            .unwrap_or_else(|| if show_errors { "error" } else { "off" }.to_owned()),
         profile_filter: env::var("ZUBAN_PROFILE").ok(),
     }
     .init()
