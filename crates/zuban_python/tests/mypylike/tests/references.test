@@ -1,0 +1,34 @@
+[case simple_references]
+#? --codepoint-column 19 references
+with open("x") as x:
+    x.read()
+
+[out]
+__main__.py:2:references -> __main__.py:2:18; __main__.py:3:4
+
+[case simple_references_no_declarations]
+#? --codepoint-column 19 references --no-include-declarations
+with open("x") as x:
+    x.read()
+
+[out]
+__main__.py:2:references -> __main__.py:3:4
+
+[case file_references]
+#? references
+import foo
+
+[file foo.py]
+[file foo.pyi]
+
+[out]
+__main__.py:2:references -> __main__.py:2:7
+
+[case file_references_no_declarations]
+#? references --no-include-declarations
+import foo
+
+[file foo.py]
+
+[out]
+__main__.py:2:references -> __main__.py:2:7

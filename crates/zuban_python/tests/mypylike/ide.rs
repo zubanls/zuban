@@ -3,7 +3,7 @@ use std::path::Path;
 use clap::{Parser, Subcommand};
 use shlex::Shlex;
 use vfs::NormalizedPath;
-use zuban_python::{GotoGoal, InputPosition, Name, Project};
+use zuban_python::{GotoGoal, InputPosition, Name, Project, ReferencesGoal};
 
 use crate::{base_path_join, get_base};
 
@@ -27,6 +27,7 @@ pub enum Commands {
     Complete(CompleteArgs),
     Goto(GotoArgs),
     Infer(InferArgs),
+    References(ReferencesArgs),
     Rename(RenameArgs),
 }
 
@@ -56,6 +57,14 @@ pub struct InferArgs {
     pub doc_contains: Option<String>,
     #[arg(long)]
     pub doc_is: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct ReferencesArgs {
+    #[arg(long)]
+    check_global: bool,
+    #[arg(long)]
+    no_include_declarations: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -184,6 +193,37 @@ pub(crate) fn find_and_check_ide_tests(
                                 &infer_args.doc_is,
                             )
                         }),
+                    )
+                }
+                Commands::References(references) => {
+                    let goal = match references.check_global {
+                        false => ReferencesGoal::OnlyCurrentFile,
+                        true => ReferencesGoal::AllFilesIncludingDependencies,
+                    };
+                    (
+                        "references",
+                        document.references(
+                            position,
+                            goal,
+                            !references.no_include_declarations,
+                            |name| {
+                                let start = name.name_range().0;
+                                if name.file_path() == base_path {
+                                    format!(
+                                        "{}:{}",
+                                        start.line_one_based(),
+                                        start.code_points_column()
+                                    )
+                                } else {
+                                    format!(
+                                        "{}:{}:{}",
+                                        avoid_path_prefixes(name.relative_path(base_path)),
+                                        start.line_one_based(),
+                                        start.code_points_column(),
+                                    )
+                                }
+                            },
+                        ),
                     )
                 }
                 Commands::Rename(rename) => {

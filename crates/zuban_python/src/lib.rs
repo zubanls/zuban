@@ -459,12 +459,8 @@ impl<'a> Script<'a> {
 
     pub fn search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
     pub fn complete_search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
-    pub fn help(&self, _position: Position) {}
-    pub fn references(&self, _position: Position /*, scope='project'*/) {}
     pub fn signatures(&self, _position: Position) {}
     pub fn context(&self, _position: Position) {}
-    pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
-    pub fn rename(&self, _position: Position, _new_name: &str) {}
 
     pub fn extract_variable(
         &self,
