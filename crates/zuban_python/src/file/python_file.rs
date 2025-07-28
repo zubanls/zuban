@@ -663,7 +663,10 @@ impl<'db> PythonFile {
         if let Some(dunder) = self.maybe_dunder_all(db) {
             // Name not in __all__
             if !dunder.iter().any(|x| x.as_str(db) == name) {
-                debug!("Name {name} found in star imports, but it's not in __all__");
+                debug!(
+                    "Name {name} found in star imports of {}, but it's not in __all__",
+                    self.file_path(db)
+                );
                 return false;
             }
         } else if name.starts_with('_') {

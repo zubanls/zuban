@@ -1070,11 +1070,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             return None;
         }
         let other_file = self.star_import_file(star_import)?;
-        if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
-            return None;
-        }
 
         if let Some(name_ref) = other_file.lookup_symbol(name) {
+            if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
+                return None;
+            }
             if !is_reexport_issue(self.i_s.db, name_ref) {
                 let mut result = StarImportResult::Link(name_ref.as_link());
                 if is_class_star_import
@@ -1092,6 +1092,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             .with_new_file(other_file)
             .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen))
         {
+            if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
+                return None;
+            }
             Some(l)
         } else {
             debug!(
