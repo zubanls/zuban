@@ -58,7 +58,7 @@ __main__.py:2:references -> bar/__init__.py:1:0; __main__.py:2:5
 #? references
 str
 [out]
-__main__.py:2:references -> typeshed/stdlib/builtins.pyi:438:6; __main__.py:2:0
+__main__.py:2:references -> builtins.pyi:438:6; __main__.py:2:0
 
 [case builtin_usages_only_check_file]
 #? references --only-check-file

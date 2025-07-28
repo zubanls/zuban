@@ -131,14 +131,14 @@ ex
 af
 
 [out]
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
-__main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
-__main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
-__main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
-__main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:6:goto -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:8:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:10:goto -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:12:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:14:infer -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:16:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:18:infer -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:20:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
 
 [case goto_on_stub_package_only_python]
 # pkgs: typedpkg
@@ -163,14 +163,14 @@ ex
 af
 
 [out]
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
-__main__.py:8:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
-__main__.py:12:goto -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
-__main__.py:16:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:6:4:typedpkg.sample.ex
-__main__.py:20:infer -> mypy/test-data/packages/typedpkg/typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:6:goto -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:8:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:10:goto -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:12:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:14:infer -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:16:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:18:infer -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:20:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
 
 [case goto_on_stub_package_only_stub]
 # pkgs: typedpkg-stubs
@@ -196,13 +196,13 @@ af
 
 [out]
 __main__:3: error: Cannot find implementation or library stub for module named "typedpkg.pkg"
-__main__.py:6:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:6:goto -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:8:goto -> __main__.py:3:29:__main__.af
-__main__.py:10:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:10:goto -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:12:goto -> __main__.py:3:29:__main__.af
-__main__.py:14:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:14:infer -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:16:infer -> ()
-__main__.py:18:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:18:infer -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
 __main__.py:20:infer -> ()
 
 [case goto_on_stub_package_module_both]
@@ -219,10 +219,10 @@ sample
 sample
 
 [out]
-__main__.py:5:goto -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0:typedpkg.sample
-__main__.py:7:goto -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
-__main__.py:9:infer -> mypy/test-data/packages/typedpkg/typedpkg/sample.py:1:0:typedpkg.sample
-__main__.py:11:infer -> mypy/test-data/packages/typedpkg-stubs/typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
+__main__.py:5:goto -> typedpkg/sample.py:1:0:typedpkg.sample
+__main__.py:7:goto -> typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
+__main__.py:9:infer -> typedpkg/sample.py:1:0:typedpkg.sample
+__main__.py:11:infer -> typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
 
 [case simple_goto_file_that_has_stub]
 import m
@@ -561,30 +561,30 @@ import token
 
 #? goto --prefer-stubs
 token.ENDMARKER
-#? goto
+#? goto --no-positions
 token.ENDMARKER
 
 import os
 #? goto --prefer-stubs
 os.getenv
-#? goto
+#? goto --no-positions
 os.getenv
 
 import importlib
 #? goto --prefer-stubs
 importlib.import_module
-#? goto
+#? goto --no-positions
 importlib.import_module
 
 [out]
-__main__.py:2:goto -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
-__main__.py:4:goto -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
-__main__.py:9:goto -> typeshed/stdlib/token.pyi:81:0:token.ENDMARKER
-__main__.py:11:goto -> /usr/lib/python3.12/token.py:6:0:token.ENDMARKER
-__main__.py:15:goto -> typeshed/stdlib/os/__init__.pyi:989:4:os.getenv
-__main__.py:17:goto -> /usr/lib/python3.12/os.py:779:4:os.getenv
-__main__.py:21:goto -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
-__main__.py:23:goto -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
+__main__.py:2:goto -> builtins.pyi:438:6:builtins.str
+__main__.py:4:goto -> builtins.pyi:438:6:builtins.str
+__main__.py:9:goto -> token.pyi:81:0:token.ENDMARKER
+__main__.py:11:goto -> token.py:token.ENDMARKER
+__main__.py:15:goto -> os/__init__.pyi:989:4:os.getenv
+__main__.py:17:goto -> os.py:os.getenv
+__main__.py:21:goto -> importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:23:goto -> importlib/__init__.py:importlib.import_module
 
 [case infer_stdlib]
 #? infer --prefer-stubs
@@ -600,32 +600,32 @@ token.ENDMARKER
 token.ENDMARKER
 #? infer --prefer-stubs
 token.ISTERMINAL
-#? infer
+#? infer --no-positions
 token.ISTERMINAL
 
 import os
 #? infer --prefer-stubs
 os.getenv
-#? infer
+#? infer --no-positions
 os.getenv
 
 import importlib
 #? infer --prefer-stubs
 importlib.import_module
-#? infer
+#? infer --no-positions
 importlib.import_module
 
 [out]
-__main__.py:2:infer -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
-__main__.py:4:infer -> typeshed/stdlib/builtins.pyi:438:6:builtins.str
-__main__.py:9:infer -> typeshed/stdlib/builtins.pyi:231:6:builtins.int
-__main__.py:11:infer -> typeshed/stdlib/builtins.pyi:231:6:builtins.int
-__main__.py:13:infer -> typeshed/stdlib/token.pyi:158:4:token.ISTERMINAL
-__main__.py:15:infer -> /usr/lib/python3.12/token.py:135:4:token.ISTERMINAL
-__main__.py:19:infer -> typeshed/stdlib/os/__init__.pyi:989:4:os.getenv
-__main__.py:21:infer -> /usr/lib/python3.12/os.py:779:4:os.getenv
-__main__.py:25:infer -> typeshed/stdlib/importlib/__init__.pyi:9:4:importlib.import_module
-__main__.py:27:infer -> /usr/lib/python3.12/importlib/__init__.py:73:4:importlib.import_module
+__main__.py:2:infer -> builtins.pyi:438:6:builtins.str
+__main__.py:4:infer -> builtins.pyi:438:6:builtins.str
+__main__.py:9:infer -> builtins.pyi:231:6:builtins.int
+__main__.py:11:infer -> builtins.pyi:231:6:builtins.int
+__main__.py:13:infer -> token.pyi:158:4:token.ISTERMINAL
+__main__.py:15:infer -> token.py:token.ISTERMINAL
+__main__.py:19:infer -> os/__init__.pyi:989:4:os.getenv
+__main__.py:21:infer -> os.py:os.getenv
+__main__.py:25:infer -> importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:27:infer -> importlib/__init__.py:importlib.import_module
 
 [case goto_doc_contains_with_stubs]
 from m import foo

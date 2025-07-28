@@ -1,11 +1,9 @@
-use std::path::Path;
-
 use clap::{Parser, Subcommand};
 use shlex::Shlex;
 use vfs::NormalizedPath;
 use zuban_python::{GotoGoal, InputPosition, Name, Project, ReferencesGoal};
 
-use crate::{base_path_join, get_base};
+use crate::base_path_join;
 
 #[derive(Parser, Debug)]
 #[command()]
@@ -44,6 +42,8 @@ pub struct GotoArgs {
     #[arg(long)]
     pub follow_imports: bool,
     #[arg(long)]
+    pub no_positions: bool,
+    #[arg(long)]
     pub doc_contains: Option<String>,
     #[arg(long)]
     pub doc_is: Option<String>,
@@ -53,6 +53,8 @@ pub struct GotoArgs {
 pub struct InferArgs {
     #[arg(long)]
     pub prefer_stubs: bool,
+    #[arg(long)]
+    pub no_positions: bool,
     #[arg(long)]
     pub doc_contains: Option<String>,
     #[arg(long)]
@@ -115,43 +117,51 @@ pub(crate) fn find_and_check_ide_tests(
                     _ => panic!("The test should not ever pass multiple position informations"),
                 }
             };
-            let check_infer_or_goto =
-                |name: &Name, doc_contains: &Option<String>, doc_is: &Option<String>| {
-                    let start = name.name_range().0;
-                    if let Some(expected_doc) = doc_contains {
-                        let actual = name.documentation();
-                        if actual.contains(expected_doc) {
-                            format!("Doc for {} matched", name.qualified_name())
-                        } else {
-                            format!(
-                                "Doc for {} did not match: {:?} does not contain {:?}",
-                                name.qualified_name(),
-                                actual,
-                                expected_doc
-                            )
-                        }
-                    } else if let Some(expected_doc) = doc_is {
-                        let actual = name.documentation();
-                        if &*actual == expected_doc {
-                            format!("Doc for {} matched", name.qualified_name())
-                        } else {
-                            format!(
-                                "Doc for {} did not match: {:?} does not contain {:?}",
-                                name.qualified_name(),
-                                actual,
-                                expected_doc
-                            )
-                        }
+            let check_infer_or_goto = |name: &Name,
+                                       doc_contains: &Option<String>,
+                                       doc_is: &Option<String>,
+                                       no_positions: bool| {
+                let start = name.name_range().0;
+                if let Some(expected_doc) = doc_contains {
+                    let actual = name.documentation();
+                    if actual.contains(expected_doc) {
+                        format!("Doc for {} matched", name.qualified_name())
                     } else {
                         format!(
-                            "{}:{}:{}:{}",
-                            avoid_path_prefixes(name.relative_path(base_path)),
-                            start.line_one_based(),
-                            start.code_points_column(),
+                            "Doc for {} did not match: {:?} does not contain {:?}",
                             name.qualified_name(),
+                            actual,
+                            expected_doc
                         )
                     }
-                };
+                } else if let Some(expected_doc) = doc_is {
+                    let actual = name.documentation();
+                    if &*actual == expected_doc {
+                        format!("Doc for {} matched", name.qualified_name())
+                    } else {
+                        format!(
+                            "Doc for {} did not match: {:?} does not contain {:?}",
+                            name.qualified_name(),
+                            actual,
+                            expected_doc
+                        )
+                    }
+                } else if no_positions {
+                    format!(
+                        "{}:{}",
+                        name.path_relative_to_workspace(),
+                        name.qualified_name(),
+                    )
+                } else {
+                    format!(
+                        "{}:{}:{}:{}",
+                        name.path_relative_to_workspace(),
+                        start.line_one_based(),
+                        start.code_points_column(),
+                        name.qualified_name(),
+                    )
+                }
+            };
             let test_on_line_nr = line_nr + 2;
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
@@ -175,7 +185,12 @@ pub(crate) fn find_and_check_ide_tests(
                     (
                         "goto",
                         document.goto(position, goal, goto_args.follow_imports, |name| {
-                            check_infer_or_goto(&name, &goto_args.doc_contains, &goto_args.doc_is)
+                            check_infer_or_goto(
+                                &name,
+                                &goto_args.doc_contains,
+                                &goto_args.doc_is,
+                                goto_args.no_positions,
+                            )
                         }),
                     )
                 }
@@ -191,6 +206,7 @@ pub(crate) fn find_and_check_ide_tests(
                                 &vn.name,
                                 &infer_args.doc_contains,
                                 &infer_args.doc_is,
+                                infer_args.no_positions,
                             )
                         }),
                     )
@@ -217,7 +233,7 @@ pub(crate) fn find_and_check_ide_tests(
                                 } else {
                                     format!(
                                         "{}:{}:{}",
-                                        avoid_path_prefixes(name.relative_path(base_path)),
+                                        name.path_relative_to_workspace(),
                                         start.line_one_based(),
                                         start.code_points_column(),
                                     )
@@ -281,20 +297,4 @@ pub(crate) fn find_and_check_ide_tests(
             });
         }
     }
-}
-
-fn avoid_path_prefixes(path: &str) -> &str {
-    for prefix in [
-        &get_base(),
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap(),
-    ] {
-        if let Ok(p) = Path::new(path).strip_prefix(prefix) {
-            return p.to_str().unwrap();
-        }
-    }
-    path
 }

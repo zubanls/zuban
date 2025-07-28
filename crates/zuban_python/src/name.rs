@@ -91,13 +91,9 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
 
-    pub fn relative_path(&self, base: &NormalizedPath) -> &str {
-        let p = self.file_path();
-        if let Ok(stripped) = p.as_ref().strip_prefix(base.as_ref()) {
-            stripped.to_str().unwrap()
-        } else {
-            p
-        }
+    pub fn path_relative_to_workspace(&self) -> String {
+        let db = self.db();
+        self.file().file_entry(db).relative_path(&*db.vfs.handler)
     }
 
     pub fn qualified_name(&self) -> String {
