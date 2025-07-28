@@ -11,7 +11,7 @@ use lsp_types::{
     DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
     DocumentHighlight, DocumentHighlightKind, DocumentHighlightParams,
     FullDocumentDiagnosticReport, GotoDefinitionParams, GotoDefinitionResponse, Hover,
-    HoverContents, HoverParams, Location, MarkupContent, MarkupKind, OneOf,
+    HoverContents, HoverParams, Location, LocationLink, MarkupContent, MarkupKind, OneOf,
     OptionalVersionedTextDocumentIdentifier, Position, PrepareRenameResponse, ReferenceParams,
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
     ResourceOperationKind, TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams,
@@ -132,59 +132,96 @@ impl GlobalState<'_> {
         &mut self,
         params: GotoDeclarationParams,
     ) -> anyhow::Result<Option<GotoDeclarationResponse>> {
-        self.run_goto_like(params, |document, pos, on_result| {
-            document.goto(pos, GotoGoal::Indifferent, false, on_result)
-        })
+        self.run_goto_like(
+            params,
+            |document, pos, on_result| document.goto(pos, GotoGoal::Indifferent, false, on_result),
+            |document, pos, on_result| document.goto(pos, GotoGoal::Indifferent, false, on_result),
+        )
     }
 
     pub fn handle_goto_definition(
         &mut self,
         params: GotoDefinitionParams,
     ) -> anyhow::Result<Option<GotoDefinitionResponse>> {
-        self.run_goto_like(params, |document, pos, on_result| {
-            document.goto(pos, GotoGoal::PreferNonStubs, true, on_result)
-        })
+        self.run_goto_like(
+            params,
+            |document, pos, on_result| {
+                document.goto(pos, GotoGoal::PreferNonStubs, true, on_result)
+            },
+            |document, pos, on_result| {
+                document.goto(pos, GotoGoal::PreferNonStubs, true, on_result)
+            },
+        )
     }
 
     pub fn handle_goto_implementation(
         &mut self,
         params: GotoImplementationParams,
     ) -> anyhow::Result<Option<GotoImplementationResponse>> {
-        self.run_goto_like(params, |document, pos, on_result| {
-            document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
-        })
+        self.run_goto_like(
+            params,
+            |document, pos, on_result| {
+                document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
+            },
+            |document, pos, on_result| {
+                document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
+            },
+        )
     }
 
     pub fn handle_goto_type_definition(
         &mut self,
         params: GotoTypeDefinitionParams,
     ) -> anyhow::Result<Option<GotoTypeDefinitionResponse>> {
-        self.run_goto_like(params, |document, pos, on_result| {
-            document.goto(pos, GotoGoal::PreferStubs, true, on_result)
-        })
+        self.run_goto_like(
+            params,
+            |document, pos, on_result| document.goto(pos, GotoGoal::PreferStubs, true, on_result),
+            |document, pos, on_result| document.goto(pos, GotoGoal::PreferStubs, true, on_result),
+        )
     }
 
     fn run_goto_like(
         &mut self,
         params: GotoDefinitionParams,
-        run: impl FnOnce(
+        run_for_location: impl FnOnce(
             Document,
             InputPosition,
             &dyn Fn(Name) -> Location,
         ) -> anyhow::Result<Vec<Location>>,
+        // We don't have rank-2 polymorphism over types
+        run_for_location_link: impl FnOnce(
+            Document,
+            InputPosition,
+            &dyn Fn(Name) -> LocationLink,
+        ) -> anyhow::Result<Vec<LocationLink>>,
     ) -> anyhow::Result<Option<GotoDefinitionResponse>> {
         let encoding = self.client_capabilities.negotiated_encoding();
+        let has_location_link_support = self.client_capabilities.location_link();
         let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
-        let result = run(document, pos, &|name| {
-            Location::new(
-                Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
-                Self::to_range(encoding, name.name_range()),
-            )
-        })?;
-        if result.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(result.into()))
+        let response = if has_location_link_support {
+            let result = run_for_location(document, pos, &|name| {
+                Location::new(
+                    Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+                    Self::to_range(encoding, name.name_range()),
+                )
+            })?;
+            if result.is_empty() {
+                return Ok(None);
+            }
+            result.into()
+        } else {
+            let result = run_for_location_link(document, pos, &|name| LocationLink {
+                target_uri: Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+                target_range: Self::to_range(encoding, name.target_range()),
+                origin_selection_range: None,
+                target_selection_range: Self::to_range(encoding, name.name_range()),
+            })?;
+            if result.is_empty() {
+                return Ok(None);
+            }
+            result.into()
+        };
+        Ok(Some(response))
     }
 
     fn document_with_pos(

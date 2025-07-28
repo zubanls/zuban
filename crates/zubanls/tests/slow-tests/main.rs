@@ -1191,11 +1191,15 @@ fn check_goto_likes() {
     server.request_and_expect_json::<GotoDeclaration>(
         params.clone(),
         json!([{
-            "uri": &npy,
-            "range": {
+            "targetUri": &npy,
+            "targetSelectionRange": {
                 "start": {"line": 0, "character": 14},
                 "end": {"line": 0, "character": 15},
-            }
+            },
+            "targetRange": {
+                "start": {"line": 0, "character": 0},
+                "end": {"line": 0, "character": 15},
+            },
         }]),
     );
 
@@ -1203,22 +1207,30 @@ fn check_goto_likes() {
     server.request_and_expect_json::<GotoDefinition>(
         params.clone(),
         json!([{
-            "uri": &mpy,
-            "range": {
+            "targetUri": &mpy,
+            "targetSelectionRange": {
                 "start": {"line": 5, "character": 0},
                 "end": {"line": 5, "character": 1},
-            }
+            },
+            "targetRange": {
+                "start": {"line": 5, "character": 0},
+                "end": {"line": 5, "character": 11},
+            },
         }]),
     );
     // Goto Type Definition
     server.request_and_expect_json::<GotoTypeDefinition>(
         params.clone(),
         json!([{
-            "uri": &mpyi,
-            "range": {
+            "targetUri": &mpyi,
+            "targetSelectionRange": {
                 "start": {"line": 2, "character": 0},
                 "end": {"line": 2, "character": 1},
-            }
+            },
+            "targetRange": {
+                "start": {"line": 2, "character": 0},
+                "end": {"line": 2, "character": 8},
+            },
         }]),
     );
 
@@ -1226,11 +1238,15 @@ fn check_goto_likes() {
     server.request_and_expect_json::<GotoImplementation>(
         params.clone(),
         json!([{
-            "uri": &mpy,
-            "range": {
+            "targetUri": &mpy,
+            "targetSelectionRange": {
                 "start": {"line": 0, "character": 6},
                 "end": {"line": 0, "character": 11},
-            }
+            },
+            "targetRange": {
+                "start": {"line": 0, "character": 0},
+                "end": {"line": 5, "character": 0},
+            },
         }]),
     );
 
