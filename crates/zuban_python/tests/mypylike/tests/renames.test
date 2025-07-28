@@ -20,3 +20,27 @@ __main__.py:7:rename:  - (3, 4) -> (3, 5)
 __main__.py:7:rename:  - (4, 7) -> (4, 8)
 __main__.py:7:rename:  - (5, 8) -> (5, 9)
 __main__.py:7:rename:  - (7, 11) -> (7, 12)
+
+[case rename_module]
+#? rename foo2
+import foo
+#? rename foo3
+foo
+
+[file foo.py]
+
+[file foo.pyi]
+
+[out]
+__main__.py:2:rename: foo -> foo2
+__main__.py:2:rename: file:///mypylike/__main__.py:
+__main__.py:2:rename:  - (2, 7) -> (2, 10)
+__main__.py:2:rename:  - (4, 0) -> (4, 3)
+__main__.py:2:rename: Rename: file:///mypylike/foo.py -> file:///mypylike/foo2.py
+__main__.py:2:rename: Rename: file:///mypylike/foo.pyi -> file:///mypylike/foo2.pyi
+__main__.py:4:rename: foo -> foo3
+__main__.py:4:rename: file:///mypylike/__main__.py:
+__main__.py:4:rename:  - (2, 7) -> (2, 10)
+__main__.py:4:rename:  - (4, 0) -> (4, 3)
+__main__.py:4:rename: Rename: file:///mypylike/foo.py -> file:///mypylike/foo3.py
+__main__.py:4:rename: Rename: file:///mypylike/foo.pyi -> file:///mypylike/foo3.pyi
