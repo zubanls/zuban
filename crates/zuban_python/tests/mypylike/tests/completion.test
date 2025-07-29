@@ -44,7 +44,7 @@ attr
 __main__:3: error: Module has no attribute "attr"
 m.py:9: error: Name "attr" is not defined
 __main__.py:3:complete -> [attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
-m.py:9:complete -> [attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
+m.py:9:complete -> [AttributeError:Class, attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
 
 [case class_completion_kinds]
 from m import C
@@ -81,5 +81,31 @@ __main__:5: error: "C" has no attribute "attr"
 m.py:19: error: Name "attr" is not defined
 __main__.py:3:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
 __main__.py:5:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
-m.py:19:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
+m.py:19:complete -> [AttributeError:Class, attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
 m.py:21:complete -> [__init__:Constructor]
+
+[case enum_completion_kinds]
+from enum import Enum
+
+class En(Enum):
+    attr = 1
+    attr2 = ""
+    def attr_func(self): ...
+
+#? complete --show-kind
+En.attr
+
+def x(e: En, e2: type[En]):
+    #? complete --show-kind
+    e.attr
+    #? complete --show-kind
+    e2.attr
+
+#? complete --show-kind
+En
+
+[out]
+__main__.py:9:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
+__main__.py:13:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
+__main__.py:15:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
+__main__.py:18:complete -> [En:Enum, EncodingWarning:Class, Enum:Variable, EnvironmentError:Variable, enumerate:Class]

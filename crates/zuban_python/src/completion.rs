@@ -53,7 +53,7 @@ pub(crate) struct CompletionResolver<'db, C, T> {
     pub on_result: C,
     items: Vec<(CompletionSortPriority<'db>, T)>,
     added_names: HashSet<Cow<'db, str>>,
-    should_start_with: Option<&'db str>,
+    should_start_with_lowercase: Option<String>,
 }
 
 impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> {
@@ -72,7 +72,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             on_result,
             items: vec![],
             added_names: Default::default(),
-            should_start_with: None,
+            should_start_with_lowercase: None,
         };
         slf.fill_items();
         slf.items.sort_by_key(|item| item.0);
@@ -80,7 +80,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn fill_items(&mut self) {
-        self.should_start_with = Some(self.infos.node.1.as_code());
+        self.should_start_with_lowercase = Some(self.infos.node.1.as_code().to_lowercase());
         let file = self.infos.file;
         let db = self.infos.db;
         match &self.infos.node.0 {
@@ -488,8 +488,12 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     }
 
     fn maybe_add_cow(&mut self, symbol: Cow<'db, str>) -> bool {
-        if let Some(starts_with) = self.should_start_with {
-            if !symbol.starts_with(starts_with) {
+        if let Some(starts_with) = &self.should_start_with_lowercase {
+            if symbol
+                .get(..starts_with.len())
+                .map(|s| s.eq_ignore_ascii_case(starts_with))
+                != Some(true)
+            {
                 return false;
             }
         }

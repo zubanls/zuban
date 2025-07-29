@@ -13,13 +13,13 @@ int(str)
 def mymethod():
     #? --contains-subset ['any', 'str', 'int', 'Exception']
 
-    #? ["staticmethod", "str"]
+    #? ["StopAsyncIteration", "StopIteration", "staticmethod", "str"]
     st
 
 class MyClass:
     #? --contains-subset ['any', 'str', 'int', 'Exception', 'mymethod']
 
-    #? ["staticmethod", "str"]
+    #? ["StopAsyncIteration", "StopIteration", "staticmethod", "str"]
     st
 
 #? --contains-subset ['upper', 'lower', '__eq__']
