@@ -1,11 +1,14 @@
 use std::{borrow::Cow, collections::HashSet};
 
 pub use lsp_types::CompletionItemKind;
-use parsa_python_cst::{ClassDef, CompletionNode, FunctionDef, NodeIndex, RestNode, Scope};
+use parsa_python_cst::{
+    ClassDef, CompletionNode, FunctionDef, NameDef, NodeIndex, RestNode, Scope,
+    NAME_DEF_TO_NAME_DIFFERENCE,
+};
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
-    database::{Database, ParentScope},
+    database::{ClassKind, Database, ParentScope},
     debug,
     file::{is_reexport_issue, ClassNodeRef, File as _, FuncNodeRef, PythonFile},
     goto::{unpack_union_types, with_i_s_non_self, PositionalDocument},
@@ -96,8 +99,15 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         Scope::Module => self.add_global_module_completions(file),
                         Scope::Class(cls) => {
                             let storage = ClassNodeRef::new(file, cls.index()).class_storage();
-                            for (symbol, _node_index) in storage.class_symbol_table.iter() {
-                                self.maybe_add_tree_name(symbol)
+                            for (_, node_index) in storage.class_symbol_table.iter() {
+                                self.maybe_add_tree_name(
+                                    file,
+                                    NameDef::by_index(
+                                        &file.tree,
+                                        node_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                                    ),
+                                    true,
+                                )
                             }
                             self.add_star_imports_completions(
                                 file,
@@ -107,7 +117,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         }
                         Scope::Function(func) => {
                             func.on_name_def_in_scope(&mut |name_def| {
-                                self.maybe_add_tree_name(name_def.as_code())
+                                self.maybe_add_tree_name(file, name_def, false)
                             });
                             self.add_star_imports_completions(
                                 file,
@@ -117,7 +127,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         }
                         Scope::Lambda(lambda) => {
                             for param in lambda.params() {
-                                self.maybe_add_tree_name(param.name_def().as_code())
+                                self.maybe_add_tree_name(file, param.name_def(), false)
                             }
                         }
                     };
@@ -231,7 +241,11 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             if check_dunder_all && !file.is_name_exported_for_star_import(db, symbol) {
                 continue;
             }
-            self.maybe_add_tree_name(symbol)
+            self.maybe_add_tree_name(
+                file,
+                NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE),
+                false,
+            )
         }
         if !file.star_imports.is_empty() {
             if !already_visited.insert(file.file_index) {
@@ -487,18 +501,41 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         self.added_names.insert(symbol)
     }
 
-    fn maybe_add_tree_name(&mut self, symbol: &'db str) {
-        if !self.maybe_add(symbol) {
+    fn maybe_add_tree_name(
+        &mut self,
+        file: &'db PythonFile,
+        name_def: NameDef<'db>,
+        in_class: bool,
+    ) {
+        let name = name_def.as_code();
+        if !self.maybe_add(name) {
             return;
+        }
+        let mut kind = CompletionItemKind::VARIABLE;
+        if let Some(func) = name_def.maybe_name_of_func() {
+            if in_class {
+                kind = CompletionItemKind::METHOD
+            } else {
+                kind = CompletionItemKind::FUNCTION
+            }
+        } else if let Some(class) = name_def.maybe_name_of_class() {
+            kind = CompletionItemKind::CLASS;
+            if let Some(class_infos) =
+                ClassNodeRef::new(file, class.index()).maybe_cached_class_infos(self.infos.db)
+            {
+                if matches!(class_infos.class_kind, ClassKind::Enum) {
+                    kind = CompletionItemKind::ENUM
+                }
+            }
         }
         let result = (self.on_result)(&CompletionTreeName {
             db: self.infos.db,
-            file: self.infos.file,
-            name: symbol,
-            kind: CompletionItemKind::VARIABLE,
+            file,
+            name,
+            kind,
         });
         self.items
-            .push((CompletionSortPriority::new_symbol(symbol), result))
+            .push((CompletionSortPriority::new_symbol(name), result))
     }
 }
 

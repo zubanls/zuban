@@ -4258,7 +4258,7 @@ impl<'db> NameDef<'db> {
             .then(|| FunctionDef::new(n))
     }
 
-    fn maybe_name_of_class(&self) -> Option<ClassDef<'db>> {
+    pub fn maybe_name_of_class(&self) -> Option<ClassDef<'db>> {
         let n = self.node.parent().unwrap();
         n.is_type(Nonterminal(class_def)).then(|| ClassDef::new(n))
     }

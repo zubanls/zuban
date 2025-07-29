@@ -23,3 +23,25 @@ __main__.py:2:complete -> [function]
 __main__.py:4:complete -> []
 __main__.py:7:complete -> [functio, function]
 __main__.py:10:complete -> [lower, upper]
+
+[case module_completion_kinds]
+import m
+#? complete --show-kind
+m.attr
+
+[file m.py]
+class attr_class: ...
+def attr_func(): ...
+@str
+def attr_decorated(): ...
+
+attr_var = 1
+
+#? complete --show-kind
+attr
+
+[out]
+__main__:3: error: Module has no attribute "attr"
+m.py:9: error: Name "attr" is not defined
+__main__.py:3:complete -> [attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
+m.py:9:complete -> [attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]

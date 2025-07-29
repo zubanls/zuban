@@ -33,6 +33,8 @@ pub enum Commands {
 pub struct CompleteArgs {
     #[arg(long)]
     pub filter: Option<Vec<String>>,
+    #[arg(long)]
+    pub show_kind: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -172,8 +174,11 @@ pub(crate) fn find_and_check_ide_tests(
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
                     let mut result = document.complete(position, |name| {
-                        // TODO
-                        name.label().to_owned()
+                        if complete_args.show_kind {
+                            format!("{}:{:?}", name.label(), name.kind())
+                        } else {
+                            name.label().to_owned()
+                        }
                     });
                     if let Some(filter) = complete_args.filter {
                         if let Ok(r) = result {
