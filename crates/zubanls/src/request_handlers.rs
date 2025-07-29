@@ -7,15 +7,15 @@ use lsp_types::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
     },
-    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse, Diagnostic,
-    DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams,
-    DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlight,
-    DocumentHighlightKind, DocumentHighlightParams, FullDocumentDiagnosticReport,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location,
-    LocationLink, MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
-    Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
-    RenameFile, RenameParams, ResourceOp, ResourceOperationKind, TextDocumentEdit,
-    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri, WorkspaceEdit,
+    CompletionItem, CompletionParams, CompletionResponse, Diagnostic, DiagnosticSeverity,
+    DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams, DocumentDiagnosticReport,
+    DocumentDiagnosticReportResult, DocumentHighlight, DocumentHighlightKind,
+    DocumentHighlightParams, FullDocumentDiagnosticReport, GotoDefinitionParams,
+    GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, LocationLink,
+    MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier, Position,
+    PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameFile,
+    RenameParams, ResourceOp, ResourceOperationKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentPositionParams, TextEdit, Uri, WorkspaceEdit,
 };
 use zuban_python::{
     Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,
@@ -117,7 +117,7 @@ impl GlobalState<'_> {
         let mut completions = document.complete(pos, |completion| {
             let mut item = CompletionItem::default();
             item.label = completion.label().to_string();
-            item.kind = Some(CompletionItemKind::TEXT);
+            item.kind = Some(completion.kind());
             // TODO
             // item.documentation = Some(Documentation::String(completion.documentation().unwrap_or_else()));
             item

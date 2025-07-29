@@ -1,5 +1,6 @@
 use std::{borrow::Cow, collections::HashSet};
 
+pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{ClassDef, CompletionNode, FunctionDef, NodeIndex, RestNode, Scope};
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
@@ -433,7 +434,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 db: self.infos.db,
                 file: self.infos.file,
                 name: symbol,
-                kind: CompletionKind::Field,
+                kind: CompletionItemKind::FIELD,
             });
             self.items
                 .push((CompletionSortPriority::new_symbol(symbol), result))
@@ -447,7 +448,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                     db: self.infos.db,
                     file: self.infos.file,
                     name: symbol,
-                    kind: CompletionKind::Field,
+                    kind: CompletionItemKind::FIELD,
                 });
                 self.items
                     .push((CompletionSortPriority::new_symbol(symbol), result))
@@ -494,7 +495,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             db: self.infos.db,
             file: self.infos.file,
             name: symbol,
-            kind: CompletionKind::Variable,
+            kind: CompletionItemKind::VARIABLE,
         });
         self.items
             .push((CompletionSortPriority::new_symbol(symbol), result))
@@ -552,7 +553,7 @@ impl<'db> Iterator for ScopesIterator<'db> {
 
 pub trait Completion {
     fn label(&self) -> &str;
-    fn kind(&self) -> CompletionKind;
+    fn kind(&self) -> CompletionItemKind;
     fn file_path(&self) -> Option<&str>;
     fn deprecated(&self) -> bool {
         false
@@ -566,7 +567,7 @@ struct CompletionTreeName<'db> {
     db: &'db Database,
     file: &'db PythonFile,
     name: &'db str,
-    kind: CompletionKind,
+    kind: CompletionItemKind,
 }
 
 impl<'db> Completion for CompletionTreeName<'db> {
@@ -574,7 +575,7 @@ impl<'db> Completion for CompletionTreeName<'db> {
         self.name
     }
 
-    fn kind(&self) -> CompletionKind {
+    fn kind(&self) -> CompletionItemKind {
         self.kind
     }
 
@@ -595,8 +596,8 @@ impl Completion for CompletionDirEntry<'_, '_> {
         self.name
     }
 
-    fn kind(&self) -> CompletionKind {
-        CompletionKind::Module
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::MODULE
     }
 
     fn file_path(&self) -> Option<&str> {
@@ -621,8 +622,8 @@ impl Completion for KeywordCompletion {
         self.keyword
     }
 
-    fn kind(&self) -> CompletionKind {
-        CompletionKind::Keyword
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::KEYWORD
     }
 
     fn file_path(&self) -> Option<&str> {
@@ -641,8 +642,8 @@ impl Completion for EnumMemberCompletion<'_> {
         self.member.name(self.db)
     }
 
-    fn kind(&self) -> CompletionKind {
-        CompletionKind::EnumMember
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::ENUM_MEMBER
     }
 
     fn file_path(&self) -> Option<&str> {
@@ -661,8 +662,8 @@ impl Completion for NamedTupleMemberCompletion<'_> {
         self.param.name.as_ref().unwrap().as_str(self.db)
     }
 
-    fn kind(&self) -> CompletionKind {
-        CompletionKind::Field
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::FIELD
     }
 
     fn file_path(&self) -> Option<&str> {
@@ -687,34 +688,4 @@ impl<'db> CompletionSortPriority<'db> {
             Self::Default(symbol)
         }
     }
-}
-
-/// Copied from LSP
-#[derive(Copy, Clone)]
-pub enum CompletionKind {
-    Text = 1,
-    Method = 2,
-    Function = 3,
-    Constructor = 4,
-    Field = 5,
-    Variable = 6,
-    Class = 7,
-    Interface = 8,
-    Module = 9,
-    Property = 10,
-    Unit = 11,
-    Value = 12,
-    Enum = 13,
-    Keyword = 14,
-    Snippet = 15,
-    Color = 16,
-    File = 17,
-    Reference = 18,
-    Folder = 19,
-    EnumMember = 20,
-    Constant = 21,
-    Struct = 22,
-    Event = 23,
-    Operator = 24,
-    TypeParameter = 25,
 }

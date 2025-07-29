@@ -17,6 +17,7 @@ config.workspace = true
 lazy_static.workspace = true
 regex.workspace = true
 tracing.workspace = true
+lsp-types.workspace = true
 which = "*"
 
 [dev-dependencies]

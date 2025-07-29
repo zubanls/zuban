@@ -29,7 +29,7 @@ use std::{cell::OnceCell, path::Path};
 use ::utils::FastHashMap;
 use anyhow::bail;
 use completion::CompletionResolver;
-pub use completion::{Completion, CompletionKind};
+pub use completion::{Completion, CompletionItemKind};
 pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
 use name::Range;

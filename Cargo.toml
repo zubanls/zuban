@@ -32,6 +32,7 @@ crossbeam-channel = "*"
 dirs = "*"
 fnv = "*"
 lazy_static = "*"
+lsp-types = { version = "0.97.0", features = ["proposed"]}
 notify = "*"
 regex = "*"
 serde = { version = "*", features = ["derive"] }

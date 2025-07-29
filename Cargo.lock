@@ -1732,6 +1732,7 @@ dependencies = [
  "config",
  "lazy_static",
  "logging_config",
+ "lsp-types",
  "parsa_python_cst",
  "regex",
  "shlex",
