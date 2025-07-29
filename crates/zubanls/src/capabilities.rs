@@ -2,11 +2,12 @@
 
 //! Advertises the capabilities of the LSP Server.
 use lsp_types::{
-    DeclarationCapability, HoverProviderCapability, ImplementationProviderCapability, OneOf,
-    PositionEncodingKind, RenameOptions, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
-    WorkDoneProgressOptions, WorkspaceFileOperationsServerCapabilities,
-    WorkspaceFoldersServerCapabilities, WorkspaceServerCapabilities,
+    CompletionOptions, DeclarationCapability, HoverProviderCapability,
+    ImplementationProviderCapability, OneOf, PositionEncodingKind, RenameOptions,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
+    WorkspaceServerCapabilities,
 };
 
 pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> ServerCapabilities {
@@ -23,7 +24,18 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         )),
         notebook_document_sync: None,
         hover_provider: Some(HoverProviderCapability::Simple(true)),
-        completion_provider: None,     // TODO
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: None, // TODO
+            trigger_characters: Some(vec![
+                ".".to_owned(),
+                "@".to_owned(),
+                "(".to_owned(),
+                "[".to_owned(),
+            ]),
+            all_commit_characters: None,
+            completion_item: None,
+            work_done_progress_options: Default::default(),
+        }),
         signature_help_provider: None, // TODO
         declaration_provider: Some(DeclarationCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),

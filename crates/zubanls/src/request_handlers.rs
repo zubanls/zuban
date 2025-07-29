@@ -7,15 +7,15 @@ use lsp_types::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
     },
-    Diagnostic, DiagnosticSeverity, DocumentChangeOperation, DocumentChanges,
-    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
-    DocumentHighlight, DocumentHighlightKind, DocumentHighlightParams,
-    FullDocumentDiagnosticReport, GotoDefinitionParams, GotoDefinitionResponse, Hover,
-    HoverContents, HoverParams, Location, LocationLink, MarkupContent, MarkupKind, OneOf,
-    OptionalVersionedTextDocumentIdentifier, Position, PrepareRenameResponse, ReferenceParams,
-    RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
-    ResourceOperationKind, TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams,
-    TextEdit, Uri, WorkspaceEdit,
+    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse, Diagnostic,
+    DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlight,
+    DocumentHighlightKind, DocumentHighlightParams, FullDocumentDiagnosticReport,
+    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location,
+    LocationLink, MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
+    Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
+    RenameFile, RenameParams, ResourceOp, ResourceOperationKind, TextDocumentEdit,
+    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri, WorkspaceEdit,
 };
 use zuban_python::{
     Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,
@@ -107,6 +107,30 @@ impl GlobalState<'_> {
             });
         };
         Ok(document)
+    }
+
+    pub fn handle_completion(
+        &mut self,
+        params: CompletionParams,
+    ) -> anyhow::Result<Option<CompletionResponse>> {
+        let (document, pos) = self.document_with_pos(params.text_document_position)?;
+        let mut completions = document.complete(pos, |completion| {
+            let mut item = CompletionItem::default();
+            item.label = completion.label().to_string();
+            item.kind = Some(CompletionItemKind::TEXT);
+            // TODO
+            // item.documentation = Some(Documentation::String(completion.documentation().unwrap_or_else()));
+            item
+        })?;
+        if completions.is_empty() {
+            return Ok(None);
+        }
+        // Completions are already sorted. Make sure the client does not reorder them.
+        for (i, c) in completions.iter_mut().enumerate() {
+            c.sort_text = Some(format!("{i:05x}"));
+        }
+
+        Ok(Some(CompletionResponse::Array(completions)))
     }
 
     pub fn handle_hover(&mut self, params: HoverParams) -> anyhow::Result<Option<Hover>> {

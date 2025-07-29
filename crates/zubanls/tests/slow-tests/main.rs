@@ -12,15 +12,15 @@ use std::str::FromStr;
 use lsp_server::Response;
 use lsp_types::{
     request::{
-        DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration, GotoDefinition,
-        GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References,
-        Rename,
+        Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration,
+        GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest,
+        References, Rename,
     },
-    DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, DocumentHighlightKind, DocumentHighlightParams,
-    GotoDefinitionParams, HoverParams, NumberOrString, PartialResultParams, Position,
-    PositionEncodingKind, ReferenceContext, ReferenceParams, RenameParams, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri, WorkDoneProgressParams,
+    CompletionParams, DiagnosticServerCapabilities, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
+    DocumentHighlightParams, GotoDefinitionParams, HoverParams, NumberOrString,
+    PartialResultParams, Position, PositionEncodingKind, ReferenceContext, ReferenceParams,
+    RenameParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
 };
 
 mod connection;
@@ -1606,4 +1606,36 @@ fn check_goto_likes() {
             }),
         );
     }
+}
+
+#[test]
+#[serial]
+fn check_completions() {
+    let server = Project::with_fixture(
+        r#"
+        [file m.py]
+        class MyClass
+            """
+            doc 🫶 love 
+            """
+
+        def my_func(): ...
+        "#,
+    )
+    .into_server();
+
+    // Open an in memory file that doesn't otherwise exist
+    let path = "n.py";
+    server.open_in_memory_file(path, "import m\nm.");
+
+    let pos = TextDocumentPositionParams::new(server.doc_id("n.py"), Position::new(1, 2));
+    server.request_and_expect_json::<Completion>(
+        CompletionParams {
+            text_document_position: pos,
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+            context: None,
+        },
+        json!(None::<()>),
+    );
 }
