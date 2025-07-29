@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashSet};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CompletionNode, FunctionDef, NameDef, NodeIndex, RestNode, Scope,
+    ClassDef, CompletionNode, FunctionDef, NameDef, NameImportParent, NodeIndex, RestNode, Scope,
     NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
@@ -514,15 +514,14 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             false => CompletionItemKind::VARIABLE,
             true => CompletionItemKind::FIELD,
         };
+        let db = self.infos.db;
         if let Some(func) = name_def.maybe_name_of_func() {
             kind = if in_class {
                 if matches!(name, "__init__" | "__new__") {
                     CompletionItemKind::CONSTRUCTOR
                 } else {
-                    let func = Function::new_with_unknown_parent(
-                        self.infos.db,
-                        NodeRef::new(file, func.index()),
-                    );
+                    let func =
+                        Function::new_with_unknown_parent(db, NodeRef::new(file, func.index()));
                     self.infos.with_i_s(|i_s| {
                         func.ensure_cached_func(i_s);
                         match func.kind(i_s) {
@@ -540,11 +539,25 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         } else if let Some(class) = name_def.maybe_name_of_class() {
             kind = CompletionItemKind::CLASS;
             if let Some(class_infos) =
-                ClassNodeRef::new(file, class.index()).maybe_cached_class_infos(self.infos.db)
+                ClassNodeRef::new(file, class.index()).maybe_cached_class_infos(db)
             {
                 if matches!(class_infos.class_kind, ClassKind::Enum) {
                     kind = CompletionItemKind::ENUM
                 }
+            }
+        } else {
+            match name_def.maybe_import() {
+                Some(NameImportParent::ImportFromAsName(imp)) => {}
+                Some(NameImportParent::DottedAsName(_)) => {
+                    if let Some(inf) = self.infos.infer_name(name_def.name()) {
+                        if inf.maybe_file(db).is_some() {
+                            kind = CompletionItemKind::MODULE
+                        } else if inf.maybe_namespace(db).is_some() {
+                            kind = CompletionItemKind::FOLDER
+                        }
+                    }
+                }
+                None => (),
             }
         }
         let result = (self.on_result)(&CompletionTreeName {
@@ -653,7 +666,11 @@ impl Completion for CompletionDirEntry<'_, '_> {
     }
 
     fn kind(&self) -> CompletionItemKind {
-        CompletionItemKind::MODULE
+        match self.entry {
+            DirectoryEntry::File(_) => CompletionItemKind::MODULE,
+            DirectoryEntry::MissingEntry(_) => unreachable!(),
+            DirectoryEntry::Directory(_) => CompletionItemKind::FOLDER,
+        }
     }
 
     fn file_path(&self) -> Option<&str> {

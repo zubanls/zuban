@@ -98,7 +98,7 @@ impl<'db, T> PositionalDocument<'db, T> {
         with_i_s_non_self(self.db, self.file, self.scope, callback)
     }
 
-    fn infer_name(&self, name: CSTName) -> Option<Inferred> {
+    pub fn infer_name(&self, name: CSTName) -> Option<Inferred> {
         match name.parent() {
             NameParent::NameDef(name_def) => self.maybe_inferred_node_index(name_def.index()),
             NameParent::Atom(atom) => Some(self.infer_atom(atom)),

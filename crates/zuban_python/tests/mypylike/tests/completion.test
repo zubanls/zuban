@@ -109,3 +109,25 @@ __main__.py:9:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
 __main__.py:13:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
 __main__.py:15:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
 __main__.py:18:complete -> [En:Enum, EncodingWarning:Class, Enum:Variable, EnvironmentError:Variable, enumerate:Class]
+
+[case import_completion_kinds]
+#? complete --show-kind
+import some_module
+from some_module import some_module_attr
+import some_module_namespace
+
+#? complete --show-kind
+some_module
+
+#? complete --show-kind
+some_module_namespace.module2
+
+[file some_module.py]
+some_module_attr = 1
+
+[file some_module_namespace/module2.py]
+
+[out]
+__main__.py:2:complete -> [some_module:Module, some_module_namespace:Folder]
+__main__.py:7:complete -> [some_module:Module, some_module_attr:Variable, some_module_namespace:Folder]
+__main__.py:10:complete -> [module2:Module]
