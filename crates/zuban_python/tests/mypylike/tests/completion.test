@@ -45,3 +45,41 @@ __main__:3: error: Module has no attribute "attr"
 m.py:9: error: Name "attr" is not defined
 __main__.py:3:complete -> [attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
 m.py:9:complete -> [attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
+
+[case class_completion_kinds]
+from m import C
+#? complete --show-kind
+C.attr
+#? complete --show-kind
+C().attr
+
+[file m.py]
+class C:
+    def __init__(self): ...
+    def attr_func(self): ...
+    @str
+    def attr_decorated(self): ...
+    @classmethod
+    def attr_classmethod(cls): ...
+    @staticmethod
+    def attr_staticmethod(): ...
+    @property
+    def attr_property(self): ...
+    @property
+    def attr_property_writable(self): ...
+    @attr_property_writable.setter
+    def attr_property_writable(self, value): ...
+
+    attr_var = 1
+    #? complete --show-kind
+    attr
+    #? complete --show-kind
+    __init__
+[out]
+__main__:3: error: "Type[C]" has no attribute "attr"
+__main__:5: error: "C" has no attribute "attr"
+m.py:19: error: Name "attr" is not defined
+__main__.py:3:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
+__main__.py:5:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
+m.py:19:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
+m.py:21:complete -> [__init__:Constructor]

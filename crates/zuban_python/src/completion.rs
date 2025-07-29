@@ -17,8 +17,8 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     recoverable_error,
-    type_::{CallableParam, Enum, EnumMemberDefinition, Namespace, Type},
-    type_helpers::{is_private, Class, TypeOrClass},
+    type_::{CallableParam, Enum, EnumMemberDefinition, FunctionKind, Namespace, Type},
+    type_helpers::{is_private, Class, Function, TypeOrClass},
     InputPosition,
 };
 
@@ -440,18 +440,13 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         should_ignore: impl Fn(&str) -> bool,
     ) {
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
-        for (symbol, _node_index) in storage.class_symbol_table.iter() {
-            if !self.maybe_add(symbol) || is_private(symbol) || should_ignore(symbol) {
+        for (symbol, node_index) in storage.class_symbol_table.iter() {
+            if is_private(symbol) || should_ignore(symbol) {
                 continue;
             }
-            let result = (self.on_result)(&CompletionTreeName {
-                db: self.infos.db,
-                file: self.infos.file,
-                name: symbol,
-                kind: CompletionItemKind::FIELD,
-            });
-            self.items
-                .push((CompletionSortPriority::new_symbol(symbol), result))
+            let file = c.node_ref.to_db_lifetime(self.infos.db).file;
+            let name_def = NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE);
+            self.maybe_add_tree_name(file, name_def, true)
         }
         if is_instance {
             for (symbol, _node_index) in storage.self_symbol_table.iter() {
@@ -511,12 +506,32 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         if !self.maybe_add(name) {
             return;
         }
-        let mut kind = CompletionItemKind::VARIABLE;
+        let mut kind = match in_class {
+            false => CompletionItemKind::VARIABLE,
+            true => CompletionItemKind::FIELD,
+        };
         if let Some(func) = name_def.maybe_name_of_func() {
-            if in_class {
-                kind = CompletionItemKind::METHOD
+            kind = if in_class {
+                if matches!(name, "__init__" | "__new__") {
+                    CompletionItemKind::CONSTRUCTOR
+                } else {
+                    let func = Function::new_with_unknown_parent(
+                        self.infos.db,
+                        NodeRef::new(file, func.index()),
+                    );
+                    self.infos.with_i_s(|i_s| {
+                        func.ensure_cached_func(i_s);
+                        match func.kind(i_s) {
+                            FunctionKind::Function { .. } => CompletionItemKind::METHOD,
+                            FunctionKind::Property { .. } => CompletionItemKind::PROPERTY,
+                            FunctionKind::Classmethod { .. } | FunctionKind::Staticmethod => {
+                                CompletionItemKind::FUNCTION
+                            }
+                        }
+                    })
+                }
             } else {
-                kind = CompletionItemKind::FUNCTION
+                CompletionItemKind::FUNCTION
             }
         } else if let Some(class) = name_def.maybe_name_of_class() {
             kind = CompletionItemKind::CLASS;
