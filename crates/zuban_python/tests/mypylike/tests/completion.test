@@ -133,13 +133,15 @@ __main__.py:7:complete -> [some_module:Module, some_module_attr:Variable, some_m
 __main__.py:10:complete -> [module2:Module]
 
 [case import_completion_kinds_following]
+import m
 #? complete --show-kind
 from m import module_
-
 from m import module_nested_class
 
 #? complete --show-kind
 module_
+#? complete --show-kind
+m.module_
 
 [file m/__init__.py]
 from m.nested import module_nested_class
@@ -155,5 +157,6 @@ def module_func(): ...
 class module_nested_class: ...
 
 [out]
-__main__.py:2:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]
+__main__.py:3:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]
 __main__.py:7:complete -> [module_:Module, module_nested_class:Class]
+__main__.py:9:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]

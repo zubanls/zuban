@@ -1614,7 +1614,7 @@ fn check_completions() {
     let server = Project::with_fixture(
         r#"
         [file m.py]
-        class MyClass
+        class MyClass:
             """
             doc 🫶 love 
             """
@@ -1638,7 +1638,7 @@ fn check_completions() {
         },
         json!([
           {
-            "kind": CompletionItemKind::VARIABLE,
+            "kind": CompletionItemKind::CLASS,
             "label": "MyClass",
             "sortText": "00000"
           },
