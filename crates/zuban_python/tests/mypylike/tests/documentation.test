@@ -26,3 +26,26 @@ __main__.py:12:documentation -> "a doc"
 __main__.py:15:documentation -> "(variable) x: int"
 __main__.py:17:documentation -> "(variable) x: int"
 __main__.py:19:documentation -> No docs found
+
+[case docs_class]
+#? --codepoint-column 6 documentation
+class WithGeneric[T]:
+    """
+    with docs
+    """
+#? --codepoint-column 6 documentation
+class WithoutGeneric:
+    """
+    without docs
+    """
+
+#? documentation
+WithGeneric
+#? documentation
+WithoutGeneric
+
+[out]
+__main__.py:2:documentation -> "(class) WithGeneric\n---\nwith docs"
+__main__.py:7:documentation -> "(class) WithoutGeneric\n---\nwithout docs"
+__main__.py:13:documentation -> "(class) WithGeneric\n---\nwith docs"
+__main__.py:15:documentation -> "(class) WithoutGeneric\n---\nwithout docs"

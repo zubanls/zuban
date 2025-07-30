@@ -330,7 +330,7 @@ impl<'project> Document<'project> {
             GotoGoal::Indifferent,
             |n: ValueName| {
                 if !only_docstrings {
-                    types.push(n.type_description());
+                    types.push(n.type_description().into_string());
                 }
                 n.name.documentation().to_string()
             },
@@ -363,7 +363,16 @@ impl<'project> Document<'project> {
             }
             if let Some(name) = on_name {
                 match declaration_kinds.as_slice() {
-                    ["class"] => (),
+                    ["class"] => {
+                        // Return the inner part in Type[A], because that makes more sense and
+                        // looks nicer
+                        for ty in &mut types {
+                            if ty.starts_with("Type[") && ty.ends_with("]") {
+                                ty.drain(..5);
+                                ty.drain(ty.len() - 1..);
+                            }
+                        }
+                    }
                     ["function"] => (),
                     ["type"] => {
                         out += name.as_code();
