@@ -161,8 +161,11 @@ pub fn run_server_with_custom_connection(
                             typ: lsp_types::MessageType::ERROR,
                             message: format!(
                             "ZubanLS paniced, please open an issue on GitHub with the details:\n\
-                     {panic_info}\n\n{backtrace}"
-                        ),
+                                Version:{}\n\
+                                {panic_info}\n\n\
+                                {backtrace}",
+                                env!("CARGO_PKG_VERSION")
+                            ),
                         })
                         .unwrap(),
                     },
@@ -446,7 +449,10 @@ impl<'sender> GlobalState<'sender> {
                 self.respond(lsp_server::Response::new_err(
                     request_id,
                     lsp_server::ErrorCode::InternalError as i32,
-                    "Server paniced, will now restart".to_string(),
+                    format!(
+                        "Server paniced, will now restart (version {})",
+                        env!("CARGO_PKG_VERSION")
+                    ),
                 ));
             }
             self.recover_from_panic();

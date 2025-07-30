@@ -54,3 +54,6 @@ pre-release-hook = [
     # It seems like this is being run for every Cargo.toml
     "../../deploy/pypi/zuban/pyproject.toml",
 ]
+
+[profile.release]
+debug = "line-tables-only"
