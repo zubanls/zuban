@@ -25,6 +25,7 @@ pub enum Commands {
     Complete(CompleteArgs),
     Goto(GotoArgs),
     Infer(InferArgs),
+    Documentation(DocumentationArgs),
     References(ReferencesArgs),
     Rename(RenameArgs),
 }
@@ -61,6 +62,12 @@ pub struct CommonGotoInferArgs {
 pub struct InferArgs {
     #[command(flatten)]
     pub common_args: CommonGotoInferArgs,
+}
+
+#[derive(Parser, Debug)]
+pub struct DocumentationArgs {
+    #[arg(long)]
+    only_docstrings: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -206,6 +213,17 @@ pub(crate) fn find_and_check_ide_tests(
                         }),
                     )
                 }
+                Commands::Documentation(d) => (
+                    "documentation",
+                    document
+                        .documentation(position, d.only_docstrings)
+                        .map(|result| {
+                            vec![match result {
+                                Some(result) => format!("{:?}", result.documentation),
+                                None => "No docs found".to_string(),
+                            }]
+                        }),
+                ),
                 Commands::References(references) => {
                     let goal = match references.only_check_file {
                         true => ReferencesGoal::OnlyCurrentFile,

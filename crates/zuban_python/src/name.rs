@@ -246,7 +246,13 @@ impl<'db, 'x> Name<'db, 'x> {
         match self {
             Name::TreeName(tree_name) => match tree_name.cst_name.parent() {
                 NameParent::NameDef(name_def) => match name_def.expect_defining_stmt() {
-                    DefiningStmt::FunctionDef(_) => "function",
+                    DefiningStmt::FunctionDef(func) => {
+                        if func.name_def().index() == name_def.index() {
+                            "function"
+                        } else {
+                            "param"
+                        }
+                    }
                     DefiningStmt::ClassDef(_) => "class",
                     DefiningStmt::ImportName(_) | DefiningStmt::ImportFromAsName(_) => "import",
                     DefiningStmt::Lambda(_) => "param",

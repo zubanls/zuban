@@ -1,0 +1,28 @@
+[case docs_simple]
+class A:
+    """ a doc """
+class B:
+    """ b doc """
+
+def f(x: A | B, a: A):
+    #? documentation
+    x
+    #? documentation
+    a
+    #? documentation --only-docstrings
+    a
+
+#? --codepoint-column 1 documentation
+x = 1
+#? documentation
+x
+#? documentation
+1
+
+[out]
+__main__.py:8:documentation -> "(param) x: A | B\n---\na doc\n\nb doc"
+__main__.py:10:documentation -> "(param) a: A\n---\na doc"
+__main__.py:12:documentation -> "a doc"
+__main__.py:15:documentation -> "(variable) x: int"
+__main__.py:17:documentation -> "(variable) x: int"
+__main__.py:19:documentation -> No docs found
