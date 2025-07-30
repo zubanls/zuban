@@ -112,3 +112,64 @@ __main__.py:3:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\n
 __main__.py:7:documentation -> "(function) def [T1: Any] untyped(x: T1) -> T1\n---\nuntyped doc"
 __main__.py:12:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
 __main__.py:14:documentation -> "(function) def [T1: Any] untyped(x: T1) -> T1\n---\nuntyped doc"
+
+[case docs_property]
+class X:
+    #? --codepoint-column 9 documentation
+    def func[T](self, x: list[T]) -> T:
+        " func doc "
+        return x[0]
+
+    @property
+    #? --codepoint-column 9 documentation
+    def prop(self) -> int:
+        " property doc "
+        return 1
+
+#? documentation
+X.func
+#? documentation
+X().func
+#? documentation
+X.prop
+#? documentation
+X().prop
+
+[out]
+__main__.py:3:documentation -> "(function) def [T] func(self, x: list[T]) -> T\n---\nfunc doc"
+__main__.py:9:documentation -> "(property) def prop(self) -> int\n---\nproperty doc"
+__main__.py:14:documentation -> "(function) def [T] func(self, x: list[T]) -> T\n---\nfunc doc"
+__main__.py:16:documentation -> "(function) def [T] func(x: list[T]) -> T\n---\nfunc doc"
+__main__.py:18:documentation -> "(function) prop: property"
+__main__.py:20:documentation -> "(property) prop: int"
+
+[case docs_classmethod_staticmethod]
+class X:
+    @classmethod
+    #? --codepoint-column 9 documentation
+    def classm(cls) -> int:
+        " classm doc "
+        return 1
+
+    @staticmethod
+    #? --codepoint-column 9 documentation
+    def staticm(x: str) -> int:
+        " staticm doc "
+        return 1
+
+#? documentation
+X.classm
+#? documentation
+X().classm
+#? documentation
+X.staticm
+#? documentation
+X().staticm
+
+[out]
+__main__.py:4:documentation -> "(function) def classm(cls, cls) -> int\n---\nclassm doc"
+__main__.py:10:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
+__main__.py:15:documentation -> "(function) def classm(cls) -> int\n---\nclassm doc"
+__main__.py:17:documentation -> "(function) def classm(cls) -> int\n---\nclassm doc"
+__main__.py:19:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
+__main__.py:21:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"

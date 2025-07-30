@@ -9,6 +9,7 @@ testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
 docs_alias
+docs_property
 
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
