@@ -50,7 +50,6 @@ bindings = "bin"
 manifest-path = "../../../crates/zuban/Cargo.toml"
 module-name = "zuban"
 python-source = "."
-strip = true
 locked = true
 exclude = [
 ]
