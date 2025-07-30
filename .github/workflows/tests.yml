@@ -8,7 +8,7 @@ on:
         type: boolean
       debug_ssh_session:
         required: false
-        type: true
+        type: boolean
 
 defaults:
   run:
@@ -28,17 +28,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
-        if: ${{ inputs.debug_ssh_session }}
-        with:
-          limit-access-to-actor: true
-          wait-timeout-minutes: 5
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: false
       - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ inputs.debug_ssh_session }}
+        with:
+          limit-access-to-actor: true
       - name: "Run tests"
         run: |
           ./scripts/ci-test.sh
