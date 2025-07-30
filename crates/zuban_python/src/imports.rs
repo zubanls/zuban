@@ -344,19 +344,28 @@ fn load_init_file(
     from_file: FileIndex,
 ) -> Option<FileIndex> {
     let entries = Directory::entries(&*db.vfs.handler, content);
+    let mut found_py = None;
     for child in &entries.iter() {
         if let DirectoryEntry::File(entry) = child {
-            if match_c(db, &entry.name, INIT_PY, false) || match_c(db, &entry.name, INIT_PYI, false)
-            {
+            if match_c(db, &entry.name, INIT_PYI, false) {
                 let found_file_index = db.load_file_from_workspace(entry, false);
                 entry.add_invalidation(from_file);
                 return found_file_index;
             }
+            if match_c(db, &entry.name, INIT_PY, false) {
+                found_py = Some(entry.clone());
+            }
         }
     }
-    entries.add_missing_entry(INIT_PY, from_file);
     entries.add_missing_entry(INIT_PYI, from_file);
-    None
+    if let Some(found_py) = found_py {
+        let found_file_index = db.load_file_from_workspace(&found_py, false);
+        found_py.add_invalidation(from_file);
+        return found_file_index;
+    } else {
+        entries.add_missing_entry(INIT_PY, from_file);
+        None
+    }
 }
 
 pub enum ImportAncestor {
