@@ -330,7 +330,11 @@ impl<'project> Document<'project> {
             GotoGoal::Indifferent,
             |n: ValueName| {
                 if !only_docstrings {
-                    types.push(n.type_description().into_string());
+                    types.push(
+                        n.maybe_pretty_function_type()
+                            .unwrap_or_else(|| n.type_description())
+                            .into_string(),
+                    );
                 }
                 n.name.documentation().to_string()
             },
