@@ -1640,47 +1640,164 @@ fn check_completions() {
           {
             "kind": CompletionItemKind::CLASS,
             "label": "MyClass",
-            "sortText": "00000"
+            "sortText": "00000",
+            "textEdit": {
+              "newText": "MyClass",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::FUNCTION,
             "label": "my_func",
-            "sortText": "00001"
+            "sortText": "00001",
+            "textEdit": {
+              "newText": "my_func",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::PROPERTY,
             "label": "__dict__",
-            "sortText": "00002"
+            "sortText": "00002",
+            "textEdit": {
+              "newText": "__dict__",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__doc__",
-            "sortText": "00003"
+            "sortText": "00003",
+            "textEdit": {
+              "newText": "__doc__",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__file__",
-            "sortText": "00004"
+            "sortText": "00004",
+            "textEdit": {
+              "newText": "__file__",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__loader__",
-            "sortText": "00005"
+            "sortText": "00005",
+            "textEdit": {
+              "newText": "__loader__",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__name__",
-            "sortText": "00006"
+            "sortText": "00006",
+            "textEdit": {
+              "newText": "__name__",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__package__",
-            "sortText": "00007"
+            "sortText": "00007",
+            "textEdit": {
+              "newText": "__package__",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           },
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__spec__",
-            "sortText": "00008"
+            "sortText": "00008",
+            "textEdit": {
+              "newText": "__spec__",
+              "range": {
+                "start": {
+                  "line": 1,
+                  "character": 2,
+                },
+                "end": {
+                  "line": 1,
+                  "character": 4,
+                },
+              }
+            },
           }
         ]),
     );

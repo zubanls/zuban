@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashSet};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CompletionNode, FunctionDef, NameDef, NodeIndex, RestNode, Scope,
+    ClassDef, CodeIndex, CompletionNode, FunctionDef, NameDef, NodeIndex, RestNode, Scope,
     NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
@@ -15,6 +15,7 @@ use crate::{
     imports::{global_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
+    name::Range,
     node_ref::NodeRef,
     recoverable_error,
     type_::{CallableParam, Enum, EnumMemberDefinition, FunctionKind, Namespace, Type},
@@ -22,7 +23,11 @@ use crate::{
     InputPosition,
 };
 
-type CompletionInfo<'db> = (CompletionNode<'db>, RestNode<'db>);
+struct CompletionInfo<'db> {
+    node: CompletionNode<'db>,
+    rest: RestNode<'db>,
+    cursor_position: CodeIndex,
+}
 
 impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
     pub fn for_completion(
@@ -30,8 +35,8 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
         file: &'db PythonFile,
         pos: InputPosition,
     ) -> anyhow::Result<Self> {
-        let position = file.line_column_to_byte(pos)?;
-        let (scope, node, rest) = file.tree.completion_node(position);
+        let cursor_position = file.line_column_to_byte(pos)?;
+        let (scope, node, rest) = file.tree.completion_node(cursor_position);
         let result = file.ensure_calculated_diagnostics(db);
         debug!(
             "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
@@ -43,20 +48,25 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
             db,
             file,
             scope,
-            node: (node, rest),
+            node: CompletionInfo {
+                node,
+                rest,
+                cursor_position,
+            },
         })
     }
 }
 
 pub(crate) struct CompletionResolver<'db, C, T> {
-    pub infos: PositionalDocument<'db, CompletionInfo<'db>>,
+    infos: PositionalDocument<'db, CompletionInfo<'db>>,
     pub on_result: C,
     items: Vec<(CompletionSortPriority<'db>, T)>,
     added_names: HashSet<Cow<'db, str>>,
     should_start_with_lowercase: Option<String>,
+    replace_range: Range<'db>,
 }
 
-impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> {
+impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db, C, T> {
     pub fn complete(
         db: &'db Database,
         file: &'db PythonFile,
@@ -68,15 +78,21 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             "completions for {} position {position:?}",
             file.file_path(db)
         ));
+        let infos = PositionalDocument::for_completion(db, file, position)?;
+        let replace_range = (
+            file.byte_to_position_infos(db, infos.node.rest.start()),
+            file.byte_to_position_infos(db, infos.node.cursor_position),
+        );
         let mut slf = Self {
-            infos: PositionalDocument::for_completion(db, file, position)?,
+            infos,
             on_result,
             items: vec![],
             added_names: Default::default(),
             should_start_with_lowercase: None,
+            replace_range,
         };
         if filter_with_name_under_cursor {
-            slf.should_start_with_lowercase = Some(slf.infos.node.1.as_code().to_lowercase());
+            slf.should_start_with_lowercase = Some(slf.infos.node.rest.as_code().to_lowercase());
         }
         slf.fill_items();
         slf.items.sort_by_key(|item| item.0);
@@ -86,7 +102,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
     fn fill_items(&mut self) {
         let file = self.infos.file;
         let db = self.infos.db;
-        match &self.infos.node.0 {
+        match &self.infos.node.node {
             CompletionNode::Attribute { base } => {
                 let inf = self.infos.infer_primary_or_atom(*base);
                 self.add_attribute_completions(inf)
@@ -177,7 +193,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             CompletionNode::AsNewName => (),
             CompletionNode::NecessaryKeyword(keyword) => {
                 let keyword = *keyword;
-                let result = (self.on_result)(&KeywordCompletion { keyword });
+                let result = (self.on_result)(self.replace_range, &KeywordCompletion { keyword });
                 self.items
                     .push((CompletionSortPriority::Default(keyword), result))
             }
@@ -322,11 +338,14 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             if !self.maybe_add(name) {
                 continue;
             }
-            let result = (self.on_result)(&CompletionDirEntry {
-                db: self.infos.db,
-                name,
-                entry,
-            });
+            let result = (self.on_result)(
+                self.replace_range,
+                &CompletionDirEntry {
+                    db: self.infos.db,
+                    name,
+                    entry,
+                },
+            );
             self.items
                 .push((CompletionSortPriority::new_symbol(name), result))
         }
@@ -418,7 +437,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                         if !self.maybe_add_cow(Cow::Owned(comp.label().into())) {
                             continue;
                         }
-                        let result = (self.on_result)(&comp);
+                        let result = (self.on_result)(self.replace_range, &comp);
                         // TODO fix this name for sorting
                         self.items
                             .push((CompletionSortPriority::Default(""), result))
@@ -459,12 +478,15 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
                 if !self.maybe_add(symbol) || is_private(symbol) || should_ignore(symbol) {
                     continue;
                 }
-                let result = (self.on_result)(&CompletionTreeName {
-                    db: self.infos.db,
-                    file: self.infos.file,
-                    name: symbol,
-                    kind: CompletionItemKind::FIELD,
-                });
+                let result = (self.on_result)(
+                    self.replace_range,
+                    &CompletionTreeName {
+                        db: self.infos.db,
+                        file: self.infos.file,
+                        name: symbol,
+                        kind: CompletionItemKind::FIELD,
+                    },
+                );
                 self.items
                     .push((CompletionSortPriority::new_symbol(symbol), result))
             }
@@ -476,11 +498,14 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             if !self.maybe_add_cow(Cow::Owned(member.name(self.infos.db).into())) {
                 continue;
             }
-            let result = (self.on_result)(&EnumMemberCompletion {
-                db: self.infos.db,
-                enum_: &enum_,
-                member,
-            });
+            let result = (self.on_result)(
+                self.replace_range,
+                &EnumMemberCompletion {
+                    db: self.infos.db,
+                    enum_: &enum_,
+                    member,
+                },
+            );
             self.items
                 .push((CompletionSortPriority::EnumMember, result))
         }
@@ -519,12 +544,15 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         }
         let kind =
             find_kind_and_try_to_follow_imports(self.infos.db, file, scope, name_def, in_class);
-        let result = (self.on_result)(&CompletionTreeName {
-            db: self.infos.db,
-            file,
-            name,
-            kind,
-        });
+        let result = (self.on_result)(
+            self.replace_range,
+            &CompletionTreeName {
+                db: self.infos.db,
+                file,
+                name,
+                kind,
+            },
+        );
         self.items
             .push((CompletionSortPriority::new_symbol(name), result))
     }
@@ -667,6 +695,9 @@ impl<'db> Iterator for ScopesIterator<'db> {
 
 pub trait Completion {
     fn label(&self) -> &str;
+    fn insert_text(&self) -> String {
+        self.label().to_string()
+    }
     fn kind(&self) -> CompletionItemKind;
     fn file_path(&self) -> Option<&str>;
     fn deprecated(&self) -> bool {

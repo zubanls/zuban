@@ -308,7 +308,7 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         filter_with_name_under_cursor: bool,
-        on_completion: impl Fn(&dyn Completion) -> T,
+        on_completion: impl Fn(Range, &dyn Completion) -> T,
     ) -> anyhow::Result<Vec<T>> {
         CompletionResolver::complete(
             &self.project.db,

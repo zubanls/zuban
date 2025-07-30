@@ -304,6 +304,10 @@ impl<'db> RestNode<'db> {
         }
     }
 
+    pub fn start(&self) -> CodeIndex {
+        self.node.start()
+    }
+
     pub fn is_string(&self) -> bool {
         let code = self.node.as_code();
         for c in code.chars().take(3) {
