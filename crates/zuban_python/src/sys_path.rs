@@ -133,7 +133,13 @@ fn lib_path(settings: &Settings) -> Option<String> {
     };
     let with_which = |executable_name| {
         let path_of_exe = match which::which(executable_name) {
-            Ok(path_of_exe) => path_of_exe,
+            Ok(path_of_exe) => match path_of_exe.canonicalize() {
+                Ok(p) => p,
+                Err(err) => {
+                    tracing::warn!("Wanted to canonicalize {path_of_exe:?} but got error: {err:?}");
+                    path_of_exe
+                }
+            },
             Err(err) => {
                 tracing::warn!(
                     "Got error while trying to run which on {executable_name:?}: {err:?}"
