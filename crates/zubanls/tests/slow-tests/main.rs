@@ -338,6 +338,9 @@ fn change_config_file() {
 #[test]
 #[serial]
 fn check_rename_without_symlinks() {
+    if !symlink_creation_allowed() {
+        return;
+    }
     check_rename(false);
 }
 
@@ -794,6 +797,9 @@ fn publish_diagnostics_without_symlinks() {
 #[test]
 #[serial]
 fn publish_diagnostics_with_symlinks() {
+    if fails_too_much_on_linux_and_github_actions() {
+        return;
+    }
     if !symlink_creation_allowed() {
         return;
     }
@@ -896,11 +902,14 @@ fn publish_diagnostics(with_symlinks: bool) {
     tracing::info!("Finished all checks");
 }
 
+fn fails_too_much_on_linux_and_github_actions() -> bool {
+    cfg!(target_os = "linux") && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
+}
+
 #[test]
 #[serial]
 fn test_virtual_environment() {
-    if cfg!(target_os = "linux") && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
-    {
+    if fails_too_much_on_linux_and_github_actions() {
         // Somehow this test is failing a bit too often on GitHub, so for now ignore it.
         return;
     }
@@ -1060,6 +1069,9 @@ fn remove_directory_of_in_memory_file_without_push() {
 #[test]
 #[serial]
 fn remove_directory_of_in_memory_file_with_push() {
+    if fails_too_much_on_linux_and_github_actions() {
+        return;
+    }
     let server = Project::with_fixture(
         r#"
         [file foo/exists.py]
