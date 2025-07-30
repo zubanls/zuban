@@ -379,7 +379,7 @@ enum TestKind {
 }
 
 fn find_test_kind(line: &str) -> Option<(TestKind, &str)> {
-    let trimmed = line.trim_start();
+    let trimmed = line.trim_start().trim_end_matches('\r');
     Some(if let Some(stripped) = trimmed.strip_prefix("#?") {
         (
             if trimmed.ends_with(']') {
