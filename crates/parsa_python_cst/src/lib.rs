@@ -2242,6 +2242,10 @@ impl<'db> FunctionDef<'db> {
         }
     }
 
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
+
     pub fn maybe_decorated(&self) -> Option<Decorated<'db>> {
         match self.parent() {
             FunctionParent::Decorated(dec) | FunctionParent::DecoratedAsync(dec) => Some(dec),

@@ -108,7 +108,7 @@ En
 __main__.py:9:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
 __main__.py:13:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
 __main__.py:15:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
-__main__.py:18:complete -> [En:Enum, EncodingWarning:Class, Enum:Variable, EnvironmentError:Variable, enumerate:Class]
+__main__.py:18:complete -> [En:Enum, EncodingWarning:Class, Enum:Enum, EnvironmentError:Variable, enumerate:Class]
 
 [case import_completion_kinds]
 #? complete --show-kind
@@ -131,3 +131,29 @@ some_module_attr = 1
 __main__.py:2:complete -> [some_module:Module, some_module_namespace:Folder]
 __main__.py:7:complete -> [some_module:Module, some_module_attr:Variable, some_module_namespace:Folder]
 __main__.py:10:complete -> [module2:Module]
+
+[case import_completion_kinds_following]
+#? complete --show-kind
+from m import module_
+
+from m import module_nested_class
+
+#? complete --show-kind
+module_
+
+[file m/__init__.py]
+from m.nested import module_nested_class
+module_attr = 1
+
+class module_class: ...
+
+def module_func(): ...
+
+[file m/module_.py]
+
+[file m/nested.py]
+class module_nested_class: ...
+
+[out]
+__main__.py:2:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]
+__main__.py:7:complete -> [module_:Module, module_nested_class:Class]

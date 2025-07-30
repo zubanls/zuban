@@ -458,13 +458,6 @@ impl<'db: 'slf, 'slf> Inferred {
             None
         }
     }
-    pub fn maybe_namespace(&self, db: &'db Database) -> Option<Rc<Namespace>> {
-        let t = self.maybe_complex_point(db)?.maybe_instance()?;
-        match t {
-            Type::Namespace(ns) => Some(ns.clone()),
-            _ => None,
-        }
-    }
 
     pub fn maybe_literal(
         &'slf self,
