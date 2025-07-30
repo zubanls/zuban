@@ -579,7 +579,22 @@ mod tests {
     fn test_environment() {
         logging_config::setup_logging_for_tests();
         // We intentionally also test that dirs with dashes are also checked.
-        let test_dir = test_utils::write_files_from_fixture(
+        let fixture = if cfg!(target_os = "windows") {
+            r#"
+            [file venv/Scripts/python.exe]
+
+            [file venv/site-packages/foo.py]
+
+            [file venv/site-packages/bar.py]
+            1()
+
+            [file m.py]
+            import foo
+
+            [file test-dir/n.py]
+            import foo
+            "#
+        } else {
             r#"
             [file venv/bin/python]
 
@@ -597,9 +612,9 @@ mod tests {
 
             [file test-dir/n.py]
             import foo
-            "#,
-            false,
-        );
+            "#
+        };
+        let test_dir = test_utils::write_files_from_fixture(fixture, false);
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
 
         let err = "error: Cannot find implementation or library stub for module named \"foo\"";
@@ -838,23 +853,43 @@ mod tests {
         logging_config::setup_logging_for_tests();
         // We intentionally also test that dirs with dashes are also checked.
         let test_dir = test_utils::write_files_from_fixture(
-            r#"
-            [file venv/bin/python]
+            if cfg!(windows) {
+                r#"
+                [file venv/bin/python]
 
-            [file venv/lib/python3.12/site-packages/foo.py]
+                [file venv/Lib/site-packages/foo.py]
 
-            [file venv/src/baz/baz/__init__.py]
-            # Installing with pip install -e works similar to this
-            my_baz = 1
+                [file venv/src/baz/baz/__init__.py]
+                # Installing with pip install -e works similar to this
+                my_baz = 1
 
-            [file venv/src/baz/baz/py.typed]
+                [file venv/src/baz/baz/py.typed]
 
-            [file m.py]
-            import foo
-            from baz import my_baz
-            reveal_type(my_baz)
+                [file m.py]
+                import foo
+                from baz import my_baz
+                reveal_type(my_baz)
 
-            "#,
+                "#
+            } else {
+                r#"
+                [file venv/bin/python]
+
+                [file venv/lib/python3.12/site-packages/foo.py]
+
+                [file venv/src/baz/baz/__init__.py]
+                # Installing with pip install -e works similar to this
+                my_baz = 1
+
+                [file venv/src/baz/baz/py.typed]
+
+                [file m.py]
+                import foo
+                from baz import my_baz
+                reveal_type(my_baz)
+
+                "#
+            },
             false,
         );
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());

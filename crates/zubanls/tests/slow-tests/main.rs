@@ -906,20 +906,33 @@ fn test_virtual_environment() {
     }
 
     let run = |expected_first: &[String], expected_second: Option<&[String]>| {
-        let server = Project::with_fixture(
+        let server = Project::with_fixture(if cfg!(windows) {
             r#"
-        [file venv/bin/python]
+                [file venv/Scripts/python.exe]
 
-        [file venv/lib/python3.12/site-packages/foo/__init__.py]
-        foo = 1
+                [file venv/Lib/site-packages/foo/__init__.py]
+                foo = 1
 
-        [file venv/lib/python3.12/site-packages/foo/py.typed]
+                [file venv/Lib/site-packages/foo/py.typed]
 
-        [file venv/lib/python3.12/site-packages/bar.py]
-        bar = ''
-        1()
-        "#,
-        )
+                [file venv/Lib/site-packages/bar.py]
+                bar = ''
+                1()
+                "#
+        } else {
+            r#"
+                [file venv/bin/python]
+
+                [file venv/lib/python3.12/site-packages/foo/__init__.py]
+                foo = 1
+
+                [file venv/lib/python3.12/site-packages/foo/py.typed]
+
+                [file venv/lib/python3.12/site-packages/bar.py]
+                bar = ''
+                1()
+                "#
+        })
         .with_push_diagnostics()
         .into_server();
 
@@ -936,8 +949,16 @@ fn test_virtual_environment() {
 
         if let Some(expected_second) = expected_second {
             tracing::info!("Remove it by renaming it");
-            let old_path = "venv/lib/python3.12/site-packages/foo";
-            let new_path = "venv/lib/python3.12/site-packages/foo_new";
+            let old_path = if cfg!(windows) {
+                "venv/Lib/site-packages/foo"
+            } else {
+                "venv/lib/python3.12/site-packages/foo"
+            };
+            let new_path = if cfg!(windows) {
+                "venv/Lib/site-packages/foo_new"
+            } else {
+                "venv/lib/python3.12/site-packages/foo_new"
+            };
             server.rename_file_and_wait(old_path, new_path);
             assert_eq!(
                 server.expect_publish_diagnostics_for_file(PATH),
@@ -980,9 +1001,11 @@ fn test_virtual_environment() {
         } else {
             // There is no watch on the venv dir if the environment variable is not set. Therefore
             // we cannot wait for an event. So we simply remove it.
-            server
-                .tmp_dir
-                .remove_file("venv/lib/python3.12/site-packages/foo/__init__.py")
+            server.tmp_dir.remove_file(if cfg!(windows) {
+                "venv/Lib/site-packages/foo/__init__.py"
+            } else {
+                "venv/lib/python3.12/site-packages/foo/__init__.py"
+            })
         }
     };
 

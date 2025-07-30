@@ -49,31 +49,40 @@ pub(crate) fn create_sys_path(
 }
 
 fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -> PathBuf {
-    let lib = environment.as_ref().join("lib");
+    if cfg!(windows) {
+        let direct_site_packages = environment.as_ref().join("site-packages");
+        if direct_site_packages.exists() {
+            return direct_site_packages;
+        }
+        // This is the more typical case, see also comments in finding typeshed path for Windows.
+        environment.as_ref().join("Lib").join("site-packages")
+    } else {
+        let lib = environment.as_ref().join("lib");
 
-    let expected_path = lib
-        .join(format!("python{}.{}", version.major, version.minor))
-        .join("site-packages");
+        let expected_path = lib
+            .join(format!("python{}.{}", version.major, version.minor))
+            .join("site-packages");
 
-    if expected_path.exists() {
-        return expected_path;
-    }
-    // Since the path we wanted doesn't exist, we fall back to trying to find a folder in the lib,
-    // because we are probably not always using the correct PythonVersion.
-    match lib.read_dir() {
-        Ok(dir) => {
-            for path_in_dir in dir.flatten() {
-                let n = path_in_dir.file_name();
-                if n.as_encoded_bytes().starts_with(b"python") {
-                    return lib.join(n).join("site-packages");
+        if expected_path.exists() {
+            return expected_path;
+        }
+        // Since the path we wanted doesn't exist, we fall back to trying to find a folder in the lib,
+        // because we are probably not always using the correct PythonVersion.
+        match lib.read_dir() {
+            Ok(dir) => {
+                for path_in_dir in dir.flatten() {
+                    let n = path_in_dir.file_name();
+                    if n.as_encoded_bytes().starts_with(b"python") {
+                        return lib.join(n).join("site-packages");
+                    }
                 }
             }
+            Err(err) => {
+                tracing::error!("Expected {lib:?} to be a directory: {err}");
+            }
         }
-        Err(err) => {
-            tracing::error!("Expected {lib:?} to be a directory: {err}");
-        }
+        expected_path
     }
-    expected_path
 }
 
 fn add_editable_src_packages(
@@ -210,32 +219,53 @@ pub(crate) fn typeshed_path_from_executable() -> Rc<NormalizedPath> {
         executable = canonicalized;
     }
     const NEEDS_PARENTS: &str = "The executable is expected to be relative to the typeshed path";
-    let lib_folder = executable
+    let env_folder = executable
         .parent()
         .expect(NEEDS_PARENTS)
         .parent()
-        .expect(NEEDS_PARENTS)
-        .join("lib");
-    // The lib folder typically contains a Python specific folder called "python3.8" or
-    // python3.13", corresponding to the Python version. Here we try to find the package.
-    for folder in lib_folder.read_dir().unwrap_or_else(|err| {
-        panic!(
-            "The Python environment lib folder {lib_folder:?} should be readable ({err}).
-                You might want to set ZUBAN_TYPESHED."
-        )
-    }) {
-        let folder = folder.unwrap_or_else(|err| {
-            panic!("The lib folder {lib_folder:?} should be readable ({err})")
-        });
-        let p = folder.path();
-        let typeshed_path = p.join("site-packages").join("zuban").join("typeshed");
-        if typeshed_path.exists() {
-            return LocalFS::without_watcher().normalized_path_from_current_dir(
+        .expect(NEEDS_PARENTS);
+
+    let maybe_has_zuban = |lib_path: &Path| {
+        let typeshed_path = lib_path
+            .join("site-packages")
+            .join("zuban")
+            .join("typeshed");
+        typeshed_path.exists().then(|| {
+            LocalFS::without_watcher().normalized_path_from_current_dir(
                 typeshed_path
                     .to_str()
                     .expect("Expected the typeshed path to be UTF-8"),
-            );
+            )
+        })
+    };
+    if cfg!(windows) {
+        // Windows has two different formats. The first one is the "normal" one that is typically
+        // encountered in venvs and system packages. The second one is encountered for example in
+        // when installing the Windows app (and maybe with pip install --user?)
+        if let Some(p) = maybe_has_zuban(&env_folder.join("Lib")) {
+            return p;
+        }
+        if let Some(p) = maybe_has_zuban(&env_folder) {
+            return p;
+        }
+    } else {
+        let lib_folder = env_folder.join("lib");
+        // The lib folder typically contains a Python specific folder called "python3.8" or
+        // python3.13", corresponding to the Python version. Here we try to find the package.
+        for folder in lib_folder.read_dir().unwrap_or_else(|err| {
+            panic!(
+                "The Python environment lib folder {lib_folder:?} should be readable ({err}).
+                    You might want to set ZUBAN_TYPESHED."
+            )
+        }) {
+            let folder = folder.unwrap_or_else(|err| {
+                panic!("The lib folder {lib_folder:?} should be readable ({err})")
+            });
+            let p = folder.path();
+            if let Some(found) = maybe_has_zuban(&p) {
+                return found;
+            }
         }
     }
-    panic!("Did not find a typeshed folder in {lib_folder:?}")
+    panic!("Did not find a typeshed folder in {env_folder:?}")
 }
