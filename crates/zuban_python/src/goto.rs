@@ -220,7 +220,7 @@ pub enum GotoGoal {
 }
 
 pub(crate) struct GotoResolver<'db, C> {
-    infos: PositionalDocument<'db, GotoNode<'db>>,
+    pub infos: PositionalDocument<'db, GotoNode<'db>>,
     goal: GotoGoal,
     on_result: C,
 }

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use parsa_python_cst::{ClassDef, FunctionDef, Name as CSTName, Scope};
+use parsa_python_cst::{ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, Scope};
 use vfs::NormalizedPath;
 
 use crate::{
@@ -239,6 +239,28 @@ impl<'db, 'x> Name<'db, 'x> {
                 Some(Self::ModuleName(ModuleName { db: n.db, file }))
             }
             Name::NodeName(_) => None,
+        }
+    }
+
+    pub fn origin_kind(&self) -> &'static str {
+        match self {
+            Name::TreeName(tree_name) => match tree_name.cst_name.parent() {
+                NameParent::NameDef(name_def) => match name_def.expect_defining_stmt() {
+                    DefiningStmt::FunctionDef(_) => "function",
+                    DefiningStmt::ClassDef(_) => "class",
+                    DefiningStmt::ImportName(_) | DefiningStmt::ImportFromAsName(_) => "import",
+                    DefiningStmt::Lambda(_) => "param",
+                    DefiningStmt::TypeAlias(_) => "type",
+                    _ => "variable",
+                },
+                NameParent::Kwarg(_) => "param",
+                NameParent::ImportFromAsName(_) | NameParent::DottedImportName(_) => "pattern",
+                NameParent::KeywordPattern(_) | NameParent::DottedPatternName(_) => "pattern",
+                NameParent::FStringConversion(_) => "fstring-conversion",
+                _ => "reference",
+            },
+            Name::ModuleName(_) => "module",
+            Name::NodeName(_) => "object",
         }
     }
 

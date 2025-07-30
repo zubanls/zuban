@@ -322,20 +322,65 @@ impl<'project> Document<'project> {
     pub fn documentation(
         &self,
         position: InputPosition,
+        only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult>> {
+        let mut types = vec![];
         let mut resolver = GotoResolver::new(
             self.positional_document(position)?,
             GotoGoal::Indifferent,
-            |n: ValueName| n.name.documentation().to_string(),
+            |n: ValueName| {
+                if !only_docstrings {
+                    types.push(n.type_description());
+                }
+                n.name.documentation().to_string()
+            },
         );
-        let results = resolver.infer_definition();
+        let mut results = resolver.infer_definition();
         if results.is_empty() {
             return Ok(None);
         }
-        let documentation = results.join("\n\n");
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return Ok(None);
+        };
+
+        let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
+            n.origin_kind()
+        });
+        let on_name = resolver.infos.node.on_name();
+        let declaration_kinds = resolver.goto(true);
+        results.retain(|doc| !doc.is_empty());
+
+        let docs = results.join("\n\n");
+        let documentation = if only_docstrings {
+            docs
+        } else {
+            let mut out = String::default();
+            if !declaration_kinds.is_empty() {
+                out.push('(');
+                out += &declaration_kinds.join(", ");
+                out += ") ";
+            }
+            if let Some(name) = on_name {
+                match declaration_kinds.as_slice() {
+                    ["class"] => (),
+                    ["function"] => (),
+                    ["type"] => {
+                        out += name.as_code();
+                        out += " = ";
+                    }
+                    _ => {
+                        out += name.as_code();
+                        out += ": ";
+                    }
+                }
+            }
+            out += &types.join(" | ");
+            if !results.is_empty() {
+                out += "\n---\n";
+                out += &docs;
+            }
+            out
         };
         Ok(Some(DocumentationResult {
             documentation,

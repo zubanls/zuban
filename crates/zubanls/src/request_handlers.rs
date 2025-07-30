@@ -142,12 +142,12 @@ impl GlobalState<'_> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
 
-        let Some(documentation_result) = document.documentation(pos)? else {
+        let Some(documentation_result) = document.documentation(pos, false)? else {
             return Ok(None);
         };
         Ok(Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
-                kind: MarkupKind::PlainText,
+                kind: MarkupKind::Markdown,
                 value: documentation_result.documentation,
             }),
             range: Some(Self::to_range(
