@@ -148,7 +148,8 @@ fn lib_path(settings: &Settings) -> Option<String> {
             }
         };
         // Python itself uses an algorithm where they check all parents for the lib folder.
-        for parent in path_of_exe.ancestors() {
+        // Skip the first entry, because that's the executable itself.
+        for parent in path_of_exe.ancestors().skip(1) {
             if cfg!(windows) {
                 if let result @ Some(_) = check_path_buf(parent.join("Lib")) {
                     return result;
