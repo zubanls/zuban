@@ -6,6 +6,9 @@ on:
       all_tests:
         required: true
         type: boolean
+      debug_ssh_session:
+        required: false
+        type: true
 
 defaults:
   run:
@@ -25,6 +28,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
+        if: ${{ inputs.debug_ssh_session }}
+        with:
+          limit-access-to-actor: true
+          wait-timeout-minutes: 5
       - uses: actions/checkout@v4
         with:
           submodules: recursive
