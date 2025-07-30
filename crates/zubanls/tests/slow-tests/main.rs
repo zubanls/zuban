@@ -16,7 +16,7 @@ use lsp_types::{
         GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest,
         References, Rename,
     },
-    CompletionParams, DiagnosticServerCapabilities, DocumentDiagnosticParams,
+    CompletionItemKind, CompletionParams, DiagnosticServerCapabilities, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
     DocumentHighlightParams, GotoDefinitionParams, HoverParams, NumberOrString,
     PartialResultParams, Position, PositionEncodingKind, ReferenceContext, ReferenceParams,
@@ -1626,9 +1626,9 @@ fn check_completions() {
 
     // Open an in memory file that doesn't otherwise exist
     let path = "n.py";
-    server.open_in_memory_file(path, "import m\nm.");
+    server.open_in_memory_file(path, "import m\nm.my");
 
-    let pos = TextDocumentPositionParams::new(server.doc_id("n.py"), Position::new(1, 2));
+    let pos = TextDocumentPositionParams::new(server.doc_id("n.py"), Position::new(1, 4));
     server.request_and_expect_json::<Completion>(
         CompletionParams {
             text_document_position: pos,
@@ -1636,6 +1636,52 @@ fn check_completions() {
             partial_result_params: Default::default(),
             context: None,
         },
-        json!(None::<()>),
+        json!([
+          {
+            "kind": CompletionItemKind::VARIABLE,
+            "label": "MyClass",
+            "sortText": "00000"
+          },
+          {
+            "kind": CompletionItemKind::FUNCTION,
+            "label": "my_func",
+            "sortText": "00001"
+          },
+          {
+            "kind": CompletionItemKind::PROPERTY,
+            "label": "__dict__",
+            "sortText": "00002"
+          },
+          {
+            "kind": CompletionItemKind::FIELD,
+            "label": "__doc__",
+            "sortText": "00003"
+          },
+          {
+            "kind": CompletionItemKind::FIELD,
+            "label": "__file__",
+            "sortText": "00004"
+          },
+          {
+            "kind": CompletionItemKind::FIELD,
+            "label": "__loader__",
+            "sortText": "00005"
+          },
+          {
+            "kind": CompletionItemKind::FIELD,
+            "label": "__name__",
+            "sortText": "00006"
+          },
+          {
+            "kind": CompletionItemKind::FIELD,
+            "label": "__package__",
+            "sortText": "00007"
+          },
+          {
+            "kind": CompletionItemKind::FIELD,
+            "label": "__spec__",
+            "sortText": "00008"
+          }
+        ]),
     );
 }

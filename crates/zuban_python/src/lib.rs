@@ -307,12 +307,14 @@ impl<'project> Document<'project> {
     pub fn complete<T>(
         &self,
         position: InputPosition,
+        filter_with_name_under_cursor: bool,
         on_completion: impl Fn(&dyn Completion) -> T,
     ) -> anyhow::Result<Vec<T>> {
         CompletionResolver::complete(
             &self.project.db,
             self.project.db.loaded_python_file(self.file_index),
             position,
+            filter_with_name_under_cursor,
             on_completion,
         )
     }

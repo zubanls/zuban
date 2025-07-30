@@ -61,6 +61,7 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
         db: &'db Database,
         file: &'db PythonFile,
         position: InputPosition,
+        filter_with_name_under_cursor: bool,
         on_result: C,
     ) -> anyhow::Result<Vec<T>> {
         let _panic_context = utils::panic_context::enter(format!(
@@ -74,13 +75,15 @@ impl<'db, C: for<'a> Fn(&dyn Completion) -> T, T> CompletionResolver<'db, C, T> 
             added_names: Default::default(),
             should_start_with_lowercase: None,
         };
+        if filter_with_name_under_cursor {
+            slf.should_start_with_lowercase = Some(slf.infos.node.1.as_code().to_lowercase());
+        }
         slf.fill_items();
         slf.items.sort_by_key(|item| item.0);
         Ok(slf.items.into_iter().map(|(_, item)| item).collect())
     }
 
     fn fill_items(&mut self) {
-        self.should_start_with_lowercase = Some(self.infos.node.1.as_code().to_lowercase());
         let file = self.infos.file;
         let db = self.infos.db;
         match &self.infos.node.0 {

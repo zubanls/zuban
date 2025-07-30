@@ -28,9 +28,8 @@ use crate::{
         execute_tuple_class, execute_type_of_type, merge_class_type_vars, AnyCause,
         CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
-        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, Namespace,
-        NeverCause, PropertySetter, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes,
+        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
+        PropertySetter, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,

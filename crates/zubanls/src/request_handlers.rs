@@ -114,7 +114,7 @@ impl GlobalState<'_> {
         params: CompletionParams,
     ) -> anyhow::Result<Option<CompletionResponse>> {
         let (document, pos) = self.document_with_pos(params.text_document_position)?;
-        let mut completions = document.complete(pos, |completion| {
+        let mut completions = document.complete(pos, false, |completion| {
             let mut item = CompletionItem::default();
             item.label = completion.label().to_string();
             item.kind = Some(completion.kind());

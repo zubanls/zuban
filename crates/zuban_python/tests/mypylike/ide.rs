@@ -173,7 +173,7 @@ pub(crate) fn find_and_check_ide_tests(
             let test_on_line_nr = line_nr + 2;
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
-                    let mut result = document.complete(position, |name| {
+                    let mut result = document.complete(position, true, |name| {
                         if complete_args.show_kind {
                             format!("{}:{:?}", name.label(), name.kind())
                         } else {
