@@ -424,3 +424,13 @@ def f(): ...
 [case avoid_crash_when_using_issubclass_and_walrus_in_decorator]
 @foo(2 if issubclass(c:=1, dict) else 1)  # E: Name "foo" is not defined
 def f(): ...
+
+[case avoid_crash_on_never_return_in_decorator]
+from typing import Callable, Never
+
+def dec() -> Callable[[Callable], Never]: ...
+
+@dec()
+def foo(): ...
+
+[out]

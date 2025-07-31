@@ -552,6 +552,13 @@ impl FlowAnalysis {
         })
     }
 
+    #[inline]
+    fn maybe_tos_frame(&self) -> Option<RefMut<Frame>> {
+        // tos = top of the stack
+        let frames = self.frames.borrow_mut();
+        (!frames.is_empty()).then(|| RefMut::map(frames, |frames| frames.last_mut().unwrap()))
+    }
+
     pub fn enable_reported_unreachable_in_top_frame(&self) {
         self.tos_frame().reported_unreachable = true;
     }
@@ -902,7 +909,9 @@ impl FlowAnalysis {
     }
 
     pub fn mark_current_frame_unreachable(&self) {
-        self.tos_frame().unreachable = true
+        if let Some(mut tos) = self.maybe_tos_frame() {
+            tos.unreachable = true
+        }
     }
 
     pub fn add_partial(&self, defined_at: PointLink) {
