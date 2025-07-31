@@ -251,7 +251,7 @@ impl TestFile<'_> {
                         names.remove(0);
                         c
                     } else {
-                        lines[line_nr + 1].len()
+                        lines[line_nr + 1].trim_end_matches('\r').len()
                     }
                 };
                 let mut contains_subset = false;

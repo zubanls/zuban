@@ -117,14 +117,14 @@ pub(crate) fn find_and_check_ide_tests(
                     cli.nth_utf8_byte,
                 ) {
                     // The position on which we complete is the end of the next line
-                    (None, None, None, None) => InputPosition::CodePoints {
+                    (None, None, None, None) => InputPosition::Utf8Bytes {
                         line,
                         column: iterator
                             .peek()
                             .expect("Expect a line after #?")
                             .1
-                            .chars()
-                            .count(),
+                            .trim_end_matches('\r')
+                            .len(),
                     },
                     (Some(column), None, None, None) => InputPosition::CodePoints { line, column },
                     (None, Some(column), None, None) => InputPosition::Utf8Bytes { line, column },
@@ -164,13 +164,13 @@ pub(crate) fn find_and_check_ide_tests(
                 } else if common_args.no_positions {
                     format!(
                         "{}:{}",
-                        name.path_relative_to_workspace(),
+                        clean_path(name.path_relative_to_workspace()),
                         name.qualified_name(),
                     )
                 } else {
                     format!(
                         "{}:{}:{}:{}",
-                        name.path_relative_to_workspace(),
+                        clean_path(name.path_relative_to_workspace()),
                         start.line_one_based(),
                         start.code_points_column(),
                         name.qualified_name(),
@@ -246,7 +246,7 @@ pub(crate) fn find_and_check_ide_tests(
                                 } else {
                                     format!(
                                         "{}:{}:{}",
-                                        name.path_relative_to_workspace(),
+                                        clean_path(name.path_relative_to_workspace()),
                                         start.line_one_based(),
                                         start.code_points_column(),
                                     )
@@ -267,7 +267,11 @@ pub(crate) fn find_and_check_ide_tests(
                                     .changes
                                     .iter()
                                     .map(|c| {
-                                        std::iter::once(format!("{}:", c.path.as_uri())).chain(
+                                        std::iter::once(format!(
+                                            "{}:",
+                                            cleanup_rename_uri(c.path.as_uri())
+                                        ))
+                                        .chain(
                                             c.ranges.iter().map(|(start, end)| {
                                                 format!(
                                                     " - ({}, {}) -> ({}, {})",
@@ -281,7 +285,11 @@ pub(crate) fn find_and_check_ide_tests(
                                     })
                                     .flatten()
                                     .chain(result.renames().map(|r| {
-                                        format!("Rename: {} -> {}", r.from_uri(), r.to_uri())
+                                        format!(
+                                            "Rename: {} -> {}",
+                                            cleanup_rename_uri(r.from_uri()),
+                                            cleanup_rename_uri(r.to_uri())
+                                        )
                                     })),
                             );
                             output.extend(
@@ -310,4 +318,16 @@ pub(crate) fn find_and_check_ide_tests(
             });
         }
     }
+}
+
+fn clean_path(p: String) -> String {
+    if cfg!(windows) {
+        p.replace('\\', "/")
+    } else {
+        p
+    }
+}
+
+fn cleanup_rename_uri(u: String) -> String {
+    u.replace("C://mypylike", "mypylike")
 }
