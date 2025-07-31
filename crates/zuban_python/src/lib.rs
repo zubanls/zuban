@@ -255,7 +255,6 @@ impl<'project> Document<'project> {
         if name.as_code() == new_name {
             // The rename doesn't change anything, because the names stay the same
             return Ok(RenameChanges {
-                db,
                 changes: vec![],
                 file_renames: vec![],
                 old_name: name.as_code(),
@@ -296,7 +295,6 @@ impl<'project> Document<'project> {
             })
             .collect();
         Ok(RenameChanges {
-            db,
             changes,
             file_renames,
             old_name: name.as_code(),
@@ -438,7 +436,6 @@ pub struct SingleFileRenameChanges<'db> {
 
 #[derive(Debug)]
 pub struct RenameChanges<'db, 'a> {
-    db: &'db Database,
     pub changes: Vec<SingleFileRenameChanges<'db>>,
     file_renames: Vec<&'db PathWithScheme>,
     pub old_name: &'db str,
@@ -447,7 +444,6 @@ pub struct RenameChanges<'db, 'a> {
 
 #[derive(Debug)]
 pub struct FileRename<'db, 'a> {
-    db: &'db Database,
     from: &'db PathWithScheme,
     new_name: &'a str,
 }
@@ -471,11 +467,11 @@ impl<'db> FileRename<'db, '_> {
         if old_name == "__init__" {
             if let Some(par_parent) = parent.parent() {
                 parent = par_parent;
-                maybe_init = format!("{old_name}{}", self.db.vfs.handler.separator())
+                maybe_init = format!("{old_name}/")
             }
         }
         uri.truncate(parent.as_os_str().len());
-        uri.push(self.db.vfs.handler.separator());
+        uri.push('/');
         uri += self.new_name;
         uri += &maybe_init;
         uri.push('.');
@@ -491,7 +487,6 @@ impl<'db> RenameChanges<'db, '_> {
 
     pub fn renames(&self) -> impl Iterator<Item = FileRename> {
         self.file_renames.iter().map(|from| FileRename {
-            db: self.db,
             from,
             new_name: self.new_name,
         })
