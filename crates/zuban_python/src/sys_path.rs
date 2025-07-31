@@ -229,7 +229,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
     };
     if cfg!(windows) {
         // Typically paths like: C:\Users\<you>\AppData\Local\Programs\Python\Python312\Lib\
-        with_which("python3.exe")
+        with_which("python3.exe").or_else(|| with_which("python.exe"))
     } else if cfg!(any(target_os = "macos", target_os = "ios")) {
         with_which("python3")
         // Mac depends on whether it's from python.org or Homebrew or other sources, e.g.:
