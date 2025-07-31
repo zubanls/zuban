@@ -385,11 +385,17 @@ impl<'db> Inference<'db, '_, '_> {
                 DictElement::KeyValue(key_value) => {
                     key_t = key_t.gather_types(
                         i_s,
-                        &self.infer_expression(key_value.key()).as_cow_type(i_s),
+                        &self
+                            .infer_expression(key_value.key())
+                            .as_cow_type(i_s)
+                            .avoid_implicit_literal_cow(i_s.db),
                     );
                     value_t = value_t.gather_types(
                         i_s,
-                        &self.infer_expression(key_value.value()).as_cow_type(i_s),
+                        &self
+                            .infer_expression(key_value.value())
+                            .as_cow_type(i_s)
+                            .avoid_implicit_literal_cow(i_s.db),
                     );
                 }
                 DictElement::Star(starred) => {
@@ -409,8 +415,6 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        let key_t = key_t.avoid_implicit_literal(self.i_s.db);
-        let value_t = value_t.avoid_implicit_literal(self.i_s.db);
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),
