@@ -137,6 +137,39 @@ fn lib_path(settings: &Settings) -> Option<String> {
                 Ok(p) => p,
                 Err(err) => {
                     tracing::warn!("Wanted to canonicalize {path_of_exe:?} but got error: {err:?}");
+                    /*
+                    fn iter_dir_paths_that_start_with<'a>(dir: &'a Path, starts_with: &'a str) -> impl Iterator<Item=PathBuf> + 'a {
+                        dbg!(dir.read_dir());
+                        dir.read_dir().ok().map(|iterator| {
+                            iterator.filter_map(move |e| {
+                                dbg!(&e);
+                                match e {
+                                    Ok(entry) if entry.file_name().to_str()?.starts_with(starts_with) => {
+                                        Some(entry.path().to_path_buf())
+                                    }
+                                    _ => None
+                                }
+                            })
+                        }).into_iter().flatten()
+                    }
+                    // We currently check for these weird Python Apps on Windows, because it seems to be
+                    // very hard to resolve the reparse points. Note that this feels extremely buggy and
+                    // incomplete and should likely be replaced with a better solution.
+                    // If you want to check the file details, use `fsutil reparsepoint`
+                    for p in iter_dir_paths_that_start_with(&Path::new(r"C:\\Program Files\WindowsApps"), "PythonSoftwareFoundation.Python") {
+                        tracing::debug!("Checking potential path {p:?}");
+                        match p.join("Lib").into_os_string().into_string() {
+                            Ok(s) => {
+                                if let result @ Some(_) = check(s) {
+                                    return result
+                                }
+                            }
+                            Err(err) => {
+                                tracing::error!("Python seems to be installed in a non-utf8 path: {err:?}");
+                            }
+                        }
+                    }
+                    */
                     path_of_exe
                 }
             },
