@@ -409,3 +409,18 @@ from .inner import *
 
 [file m/inner.py]
 APP = bool()
+
+[case avoid_crash_when_using_issubclass_in_decorator_comprehension]
+from typing import Any
+
+C: set[type[Any]] = {
+    list,
+    set,
+}
+
+@foo(c if issubclass(c, dict) else c for c in C)  # E: Name "foo" is not defined
+def f(): ...
+
+[case avoid_crash_when_using_issubclass_and_walrus_in_decorator]
+@foo(2 if issubclass(c:=1, dict) else 1)  # E: Name "foo" is not defined
+def f(): ...

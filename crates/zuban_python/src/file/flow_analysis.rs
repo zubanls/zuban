@@ -3870,6 +3870,10 @@ impl Inference<'_, '_, '_> {
             &|_| (), // OnLookupError is irrelevant for us here.
         )
     }
+
+    pub fn has_frames(&self) -> bool {
+        !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
+    }
 }
 
 pub(crate) enum RedefinitionResult {
