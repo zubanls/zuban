@@ -288,6 +288,17 @@ pub(crate) fn typeshed_path_from_executable() -> Rc<NormalizedPath> {
         if let Some(p) = maybe_has_zuban(&env_folder) {
             return p;
         }
+        // TODO uv simply copies the executable to ~/.local/bin/ and we do not know the actual venv
+        // path anymore. I'm not sure what to do here other than hardcoding it.
+        if let Some(user_home) =
+            std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))
+        {
+            if let Some(p) =
+                maybe_has_zuban(&Path::new(&user_home).join("AppData/Roaming/uv/tools/zuban/Lib/"))
+            {
+                return p;
+            }
+        }
     } else {
         let lib_folder = env_folder.join("lib");
         // The lib folder typically contains a Python specific folder called "python3.8" or
