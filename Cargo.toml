@@ -56,4 +56,6 @@ pre-release-hook = [
 ]
 
 [profile.release]
-debug = "line-tables-only"
+# Had debug = "line-tables-only" here, which is probably enough, but struggled
+# with test unwinding which has works on debug = <any number>. Use this for now
+debug = 1
