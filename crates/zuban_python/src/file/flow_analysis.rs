@@ -753,7 +753,10 @@ impl FlowAnalysis {
     }
 
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
-        let mut tos_frame = self.tos_frame();
+        let Some(mut tos_frame) = self.maybe_tos_frame() else {
+            recoverable_error!("Trying to overwrite entries, but there are no frames");
+            return;
+        };
 
         for entry in &new_entries {
             invalidate_child_entries(&mut tos_frame.entries, db, &entry.key);
