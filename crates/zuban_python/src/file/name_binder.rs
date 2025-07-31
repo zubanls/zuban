@@ -599,23 +599,39 @@ impl<'db> NameBinder<'db> {
                         last_was_an_error = true;
                         self.add_issue(error.index(), IssueKind::InvalidSyntax);
                     }
+                    self.index_non_block_node(&error, false);
                     continue;
+                }
+                StmtLikeContent::BrokenScope(broken) => {
+                    self.add_issue(broken.index(), IssueKind::InvalidSyntax);
+                    self.index_stmts(broken.iter_stmt_likes(), false)
                 }
                 StmtLikeContent::Newline | StmtLikeContent::PassStmt(_) => (),
             };
             last_was_an_error = false;
         }
-        for stmt_like in stmts.by_ref() {
-            match stmt_like.node {
-                StmtLikeContent::YieldExpr(y) => self.index_return_or_yield(y.index()),
-                StmtLikeContent::Error(error) if error.is_dedent() => {
+        if let Some(stmt_like) = stmts.clone().next() {
+            if let StmtLikeContent::Error(error) = stmt_like.node {
+                if error.is_dedent() {
                     // If we encounter an invalid dedent in the statement list, we don't want to
                     // abort after a return or break. We have broken code that needs to be fixed
                     // first. Otherwise names will not be accessible from other modules.
                     return self.index_stmts(stmts, ordered);
                 }
-                _ => (),
             }
+            let mut latest = self.latest_return_or_yield;
+            // Index the other statements even though they aren't actually reachable. We want to
+            // keep the information of the latest yields, because they indicate that something is a
+            // generator even though it might not be reachable. This creates a new symbol table
+            // that is discarded later. This is not necessary for normal type checking, but
+            // useful for the language server, because people might want to use goto/completions in
+            // unreachable parts like `if sys.platform == "win32" when on Linux.
+            self.with_nested(self.kind, self.scope_node, |binder| {
+                binder.latest_return_or_yield = latest;
+                binder.index_stmts(stmts, ordered);
+                latest = binder.latest_return_or_yield;
+            });
+            self.latest_return_or_yield = latest
         }
     }
 
@@ -1013,8 +1029,8 @@ impl<'db> NameBinder<'db> {
                             continue;
                         }
                     }
-                    match name.parent() {
-                        NameParent::Atom => {
+                    match name.simple_parent() {
+                        SimpleNameParent::Atom => {
                             if let IndexingCause::Annotation {
                                 definition_name_index,
                             } = cause
@@ -1037,7 +1053,7 @@ impl<'db> NameBinder<'db> {
                                 self.maybe_add_reference(name, ordered);
                             }
                         }
-                        NameParent::NameDef(name_def) => {
+                        SimpleNameParent::NameDef(name_def) => {
                             match name_def.parent() {
                                 NameDefParent::Other => {
                                     // The types are inferred later.
@@ -1133,6 +1149,20 @@ impl<'db> NameBinder<'db> {
                                                 ),
                                             );
                                         }
+                                    } else {
+                                        self.add_point_definition(
+                                            name.name_def().unwrap(),
+                                            Specific::NonlocalVariable,
+                                            IndexingCause::Other,
+                                        );
+                                        self.db_infos.points.set(
+                                            name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+                                            // TODO shouldn't we add an error here?
+                                            Point::new_specific(
+                                                Specific::AnyDueToError,
+                                                Locality::NameBinder,
+                                            ),
+                                        );
                                     }
                                 }
                                 NameDefParent::Primary => (),
@@ -1206,7 +1236,7 @@ impl<'db> NameBinder<'db> {
                     self.index_non_block_node_full(&if_, ordered, cause);
                     self.index_non_block_node_full(&else_, ordered, cause);
                 }
-                InterestingNode::DottedName(dotted_name) => {
+                InterestingNode::DottedPatternName(dotted_name) => {
                     self.maybe_add_reference(dotted_name.first_name(), ordered);
                 }
                 InterestingNode::Walrus(walrus) => {
@@ -1862,8 +1892,8 @@ fn python_version_matches_tuple(
         return Truthiness::Unknown;
     }
     let mut total_order = Ordering::Equal;
-    for (current, tup_entry) in [settings.python_version.major, settings.python_version.minor]
-        [from..]
+    let python_version = settings.python_version_or_default();
+    for (current, tup_entry) in [python_version.major, python_version.minor][from..]
         .iter()
         .zip(tup.iter())
     {
@@ -1928,7 +1958,7 @@ fn python_version_matches_slice(
                         if let Some(result) = wanted.parse_as_usize().and_then(|x| {
                             check_operand_against_total_order(
                                 comp,
-                                settings.python_version.major.cmp(&x),
+                                settings.python_version_or_default().major.cmp(&x),
                             )
                         }) {
                             return result.into();

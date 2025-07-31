@@ -62,7 +62,7 @@ impl<'db> Inference<'db, '_, '_> {
             };
             let t = t.avoid_implicit_literal(self.i_s.db);
             if let Some(r) = result.take() {
-                result = Some(r.common_base_type(self.i_s, &t));
+                result = Some(r.gather_types(self.i_s, &t))
             } else {
                 result = Some(t)
             }
@@ -383,20 +383,26 @@ impl<'db> Inference<'db, '_, '_> {
         for (i, child) in dict_elements.enumerate() {
             match child {
                 DictElement::KeyValue(key_value) => {
-                    key_t = key_t.common_base_type(
+                    key_t = key_t.gather_types(
                         i_s,
-                        &self.infer_expression(key_value.key()).as_cow_type(i_s),
+                        &self
+                            .infer_expression(key_value.key())
+                            .as_cow_type(i_s)
+                            .avoid_implicit_literal_cow(i_s.db),
                     );
-                    value_t = value_t.common_base_type(
+                    value_t = value_t.gather_types(
                         i_s,
-                        &self.infer_expression(key_value.value()).as_cow_type(i_s),
+                        &self
+                            .infer_expression(key_value.value())
+                            .as_cow_type(i_s)
+                            .avoid_implicit_literal_cow(i_s.db),
                     );
                 }
                 DictElement::Star(starred) => {
                     let mapping = self.infer_expression_part(starred.expression_part());
                     if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_cow_type(i_s)) {
-                        key_t = key_t.common_base_type(i_s, &key);
-                        value_t = value_t.common_base_type(i_s, &value);
+                        key_t = key_t.gather_types(i_s, &key);
+                        value_t = value_t.gather_types(i_s, &value);
                     } else {
                         self.add_unpacked_dict_member_issue(i, starred, mapping, &key_t, &value_t);
                         if key_t.is_never() {
@@ -409,8 +415,6 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        let key_t = key_t.avoid_implicit_literal(self.i_s.db);
-        let value_t = value_t.avoid_implicit_literal(self.i_s.db);
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),

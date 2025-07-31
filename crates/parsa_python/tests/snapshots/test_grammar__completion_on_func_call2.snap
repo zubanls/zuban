@@ -1,0 +1,51 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 43
+expression: tree_to_string(tree)
+snapshot_kind: text
+---
+file: 0-18
+ Error(stmt): 0-17
+  Error(simple_stmts): 0-17
+   Error(simple_stmt): 0-17
+    Error(star_expressions): 0-17
+     Error(expression): 0-17
+      Error(ternary): 0-17
+       Error(disjunction): 0-17
+        Error(conjunction): 0-17
+         Error(inversion): 0-17
+          Error(comparison): 0-17
+           Error(bitwise_or): 0-17
+            Error(bitwise_xor): 0-17
+             Error(bitwise_and): 0-17
+              Error(shift_expr): 0-17
+               Error(sum): 0-17
+                Error(term): 0-17
+                 Error(factor): 0-17
+                  Error(power): 0-17
+                   Error(await_primary): 0-17
+                    Error(primary): 0-17
+                     primary: 0-16
+                      atom: 0-1
+                       Name: 0-1 "f"
+                      Keyword: 1-2 "("
+                      comprehension: 2-15
+                       named_expression: 2-3
+                        expression: 2-3
+                         atom: 2-3
+                          Number: 2-3 "1"
+                       for_if_clauses: 4-15
+                        sync_for_if_clause: 4-15
+                         Keyword: 4-7 "for"
+                         star_targets: 8-9
+                          name_def: 8-9
+                           Name: 8-9 "a"
+                         Keyword: 10-12 "in"
+                         atom: 13-15
+                          Keyword: 13-14 "["
+                          Keyword: 14-15 "]"
+                      Keyword: 15-16 ")"
+                     Keyword: 16-17 "."
+ stmt: 17-18
+  Newline: 17-18 "\n"
+ Endmarker: 18-18 ""

@@ -2,8 +2,8 @@ use std::fmt;
 
 use parsa_python_cst::{
     Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
-    Int, Name, NameDef, NameImportParent, NamedExpression, NodeIndex, Primary, PrimaryTarget,
-    Slices, StarExpression, StarStarExpression, StarredExpression, StringLiteral,
+    Int, Name, NameDef, NameDefParent, NameImportParent, NamedExpression, NodeIndex, Primary,
+    PrimaryTarget, Slices, StarExpression, StarStarExpression, StarredExpression, StringLiteral,
     NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::FileIndex;
@@ -15,11 +15,11 @@ use crate::{
     diagnostics::{Diagnostic, Issue, IssueKind},
     file::{
         ClassInitializer, ClassNodeRef, File, OtherDefinitionIterator, PythonFile,
-        CLASS_TO_CLASS_INFO_DIFFERENCE,
+        CLASS_TO_CLASS_INFO_DIFFERENCE, GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
     },
     inference_state::InferenceState,
     inferred::Inferred,
-    python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
+    python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::Type,
     type_helpers::Function,
 };
@@ -73,6 +73,20 @@ impl<'file> NodeRef<'file> {
         let n = Self::new(self.file, self.node_index + NAME_DEF_TO_NAME_DIFFERENCE);
         debug_assert!(n.maybe_name().is_some(), "Why is this not a name: {self:?}");
         n
+    }
+
+    pub fn global_or_nonlocal_ref(&self) -> Self {
+        debug_assert!(self.maybe_name_def().is_some());
+        debug_assert!(matches!(
+            self.expect_name_def().parent(),
+            NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt
+        ));
+        let node_index =
+            self.node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE + NAME_DEF_TO_NAME_DIFFERENCE;
+        Self {
+            file: self.file,
+            node_index,
+        }
     }
 
     pub fn point(&self) -> Point {
@@ -231,11 +245,12 @@ impl<'file> NodeRef<'file> {
         self.file.file_index
     }
 
+    pub fn maybe_inferred(&self, i_s: &InferenceState) -> Option<Inferred> {
+        self.file.inference(i_s).check_point_cache(self.node_index)
+    }
+
     pub fn expect_inferred(&self, i_s: &InferenceState) -> Inferred {
-        self.file
-            .inference(i_s)
-            .check_point_cache(self.node_index)
-            .unwrap()
+        self.maybe_inferred(i_s).unwrap()
     }
 
     pub fn expect_complex_type(&self) -> &Type {
@@ -374,13 +389,21 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_name_of_function(&self) -> Option<FunctionDef<'file>> {
-        self.node_index
-            .checked_sub(NAME_TO_FUNCTION_DIFF)
-            .and_then(|node_index| NodeRef::new(self.file, node_index).maybe_function())
+        let n = self.node_index.checked_sub(NAME_TO_FUNCTION_DIFF)?;
+        NodeRef::new(self.file, n).maybe_function()
+    }
+
+    pub fn maybe_name_of_class(&self) -> Option<ClassDef<'file>> {
+        let n = self.node_index.checked_sub(NAME_TO_CLASS_DIFF)?;
+        NodeRef::new(self.file, n).maybe_class()
     }
 
     pub fn node_start_position(self) -> CodeIndex {
         self.file.tree.node_start_position(self.node_index)
+    }
+
+    pub fn node_end_position(self) -> CodeIndex {
+        self.file.tree.node_end_position(self.node_index)
     }
 
     pub fn line_one_based(&self, db: &Database) -> usize {
@@ -395,7 +418,7 @@ impl<'file> NodeRef<'file> {
         (p.kind() == PointKind::Redirect).then(|| p.as_redirected_node_ref(db))
     }
 
-    pub(crate) fn is_name_defined_in_module(
+    pub fn is_name_defined_in_module(
         &self,
         db: &Database,
         module_name: &str,

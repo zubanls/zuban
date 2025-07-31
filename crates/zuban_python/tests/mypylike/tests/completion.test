@@ -1,0 +1,162 @@
+[case basic_completion]
+#? complete
+from m import functio
+#? complete
+from m import unknown
+
+#? complete
+func
+
+#? complete --filter upper --filter lower
+str.
+
+[file m.py]
+
+def function(): ...
+
+[out]
+__main__:2: error: Module "m" has no attribute "functio"
+__main__:4: error: Module "m" has no attribute "unknown"
+__main__:7: error: Name "func" is not defined
+__main__:10: error: invalid syntax
+__main__.py:2:complete -> [function]
+__main__.py:4:complete -> []
+__main__.py:7:complete -> [functio, function]
+__main__.py:10:complete -> [lower, upper]
+
+[case module_completion_kinds]
+import m
+#? complete --show-kind
+m.attr
+
+[file m.py]
+class attr_class: ...
+def attr_func(): ...
+@str
+def attr_decorated(): ...
+
+attr_var = 1
+
+#? complete --show-kind
+attr
+
+[out]
+__main__:3: error: Module has no attribute "attr"
+m.py:9: error: Name "attr" is not defined
+__main__.py:3:complete -> [attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
+m.py:9:complete -> [AttributeError:Class, attr_class:Class, attr_decorated:Function, attr_func:Function, attr_var:Variable]
+
+[case class_completion_kinds]
+from m import C
+#? complete --show-kind
+C.attr
+#? complete --show-kind
+C().attr
+
+[file m.py]
+class C:
+    def __init__(self): ...
+    def attr_func(self): ...
+    @str
+    def attr_decorated(self): ...
+    @classmethod
+    def attr_classmethod(cls): ...
+    @staticmethod
+    def attr_staticmethod(): ...
+    @property
+    def attr_property(self): ...
+    @property
+    def attr_property_writable(self): ...
+    @attr_property_writable.setter
+    def attr_property_writable(self, value): ...
+
+    attr_var = 1
+    #? complete --show-kind
+    attr
+    #? complete --show-kind
+    __init__
+[out]
+__main__:3: error: "Type[C]" has no attribute "attr"
+__main__:5: error: "C" has no attribute "attr"
+m.py:19: error: Name "attr" is not defined
+__main__.py:3:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
+__main__.py:5:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
+m.py:19:complete -> [AttributeError:Class, attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
+m.py:21:complete -> [__init__:Constructor]
+
+[case enum_completion_kinds]
+from enum import Enum
+
+class En(Enum):
+    attr = 1
+    attr2 = ""
+    def attr_func(self): ...
+
+#? complete --show-kind
+En.attr
+
+def x(e: En, e2: type[En]):
+    #? complete --show-kind
+    e.attr
+    #? complete --show-kind
+    e2.attr
+
+#? complete --show-kind
+En
+
+[out]
+__main__.py:9:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
+__main__.py:13:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
+__main__.py:15:complete -> [attr:EnumMember, attr2:EnumMember, attr_func:Method]
+__main__.py:18:complete -> [En:Enum, EncodingWarning:Class, Enum:Enum, EnvironmentError:Variable, enumerate:Class]
+
+[case import_completion_kinds]
+#? complete --show-kind
+import some_module
+from some_module import some_module_attr
+import some_module_namespace
+
+#? complete --show-kind
+some_module
+
+#? complete --show-kind
+some_module_namespace.module2
+
+[file some_module.py]
+some_module_attr = 1
+
+[file some_module_namespace/module2.py]
+
+[out]
+__main__.py:2:complete -> [some_module:Module, some_module_namespace:Folder]
+__main__.py:7:complete -> [some_module:Module, some_module_attr:Variable, some_module_namespace:Folder]
+__main__.py:10:complete -> [module2:Module]
+
+[case import_completion_kinds_following]
+import m
+#? complete --show-kind
+from m import module_
+from m import module_nested_class
+
+#? complete --show-kind
+module_
+#? complete --show-kind
+m.module_
+
+[file m/__init__.py]
+from m.nested import module_nested_class
+module_attr = 1
+
+class module_class: ...
+
+def module_func(): ...
+
+[file m/module_.py]
+
+[file m/nested.py]
+class module_nested_class: ...
+
+[out]
+__main__.py:3:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]
+__main__.py:7:complete -> [module_:Module, module_nested_class:Class]
+__main__.py:9:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]

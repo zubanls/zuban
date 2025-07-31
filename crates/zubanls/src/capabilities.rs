@@ -2,8 +2,10 @@
 
 //! Advertises the capabilities of the LSP Server.
 use lsp_types::{
-    OneOf, PositionEncodingKind, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, WorkDoneProgressOptions,
+    CompletionOptions, DeclarationCapability, HoverProviderCapability,
+    ImplementationProviderCapability, OneOf, PositionEncodingKind, RenameOptions,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
     WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
     WorkspaceServerCapabilities,
 };
@@ -20,6 +22,44 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 save: None, // Currently not needed
             },
         )),
+        notebook_document_sync: None,
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: None, // TODO
+            trigger_characters: Some(vec![
+                ".".to_owned(),
+                "@".to_owned(),
+                "(".to_owned(),
+                "[".to_owned(),
+            ]),
+            all_commit_characters: None,
+            completion_item: None,
+            work_done_progress_options: Default::default(),
+        }),
+        signature_help_provider: None, // TODO
+        declaration_provider: Some(DeclarationCapability::Simple(true)),
+        definition_provider: Some(OneOf::Left(true)),
+        type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
+        implementation_provider: Some(ImplementationProviderCapability::Simple(true)),
+        references_provider: Some(OneOf::Left(true)),
+        document_highlight_provider: Some(OneOf::Left(true)),
+        document_symbol_provider: None,             // TODO
+        workspace_symbol_provider: None,            // TODO
+        code_action_provider: None,                 // TODO
+        code_lens_provider: None,                   // TODO
+        document_formatting_provider: None,         // TODO
+        document_range_formatting_provider: None,   // TODO
+        document_on_type_formatting_provider: None, // TODO?
+        selection_range_provider: None,             // TODO
+        folding_range_provider: None,               // TODO
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: Default::default(),
+        })),
+        linked_editing_range_provider: None,
+        document_link_provider: None,
+        color_provider: None,
+        execute_command_provider: None,
         workspace: Some(WorkspaceServerCapabilities {
             workspace_folders: Some(WorkspaceFoldersServerCapabilities {
                 supported: Some(true),
@@ -35,6 +75,12 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 will_delete: None,
             }),
         }),
+        call_hierarchy_provider: None,  // TODO
+        semantic_tokens_provider: None, // TODO
+        moniker_provider: None,
+        inlay_hint_provider: None, // TODO
+        inline_value_provider: None,
+        experimental: None,
         diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
             lsp_types::DiagnosticOptions {
                 identifier: None,
@@ -46,7 +92,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 },
             },
         )),
-        ..Default::default()
+        inline_completion_provider: None,
     }
 }
 
@@ -176,18 +222,6 @@ impl ClientCapabilities {
 
     pub(crate) fn work_done_progress(&self) -> bool {
         (|| self.caps.window.as_ref()?.work_done_progress)().unwrap_or_default()
-    }
-
-    pub(crate) fn will_rename(&self) -> bool {
-        (|| {
-            self.caps
-                .workspace
-                .as_ref()?
-                .file_operations
-                .as_ref()?
-                .will_rename
-        })()
-        .unwrap_or_default()
     }
 
     pub(crate) fn change_annotation_support(&self) -> bool {

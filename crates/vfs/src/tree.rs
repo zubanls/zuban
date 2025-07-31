@@ -76,6 +76,13 @@ impl Parent {
             Self::Workspace(workspace) => workspace.upgrade().unwrap().root_path.clone(),
         }
     }
+
+    pub fn with_entries<T>(&self, vfs: &dyn VfsHandler, callback: impl FnOnce(&Entries) -> T) -> T {
+        match self {
+            Self::Directory(dir) => callback(Directory::entries(vfs, &dir.upgrade().unwrap())),
+            Self::Workspace(workspace) => callback(&workspace.upgrade().unwrap().entries),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -141,7 +148,7 @@ pub enum DirectoryEntry {
 }
 
 impl DirectoryEntry {
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             DirectoryEntry::File(file) => &file.name,
             DirectoryEntry::Directory(dir) => &dir.name,

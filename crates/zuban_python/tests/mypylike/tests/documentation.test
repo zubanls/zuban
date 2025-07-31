@@ -1,0 +1,175 @@
+[case docs_simple]
+class A:
+    """ a doc """
+class B:
+    """ b doc """
+
+def f(x: A | B, a: A):
+    #? documentation
+    x
+    #? documentation
+    a
+    #? documentation --only-docstrings
+    a
+
+#? --codepoint-column 1 documentation
+x = 1
+#? documentation
+x
+#? documentation
+1
+
+[out]
+__main__.py:8:documentation -> "(param) x: A | B\n---\na doc\n\nb doc"
+__main__.py:10:documentation -> "(param) a: A\n---\na doc"
+__main__.py:12:documentation -> "a doc"
+__main__.py:15:documentation -> "(variable) x: int"
+__main__.py:17:documentation -> "(variable) x: int"
+__main__.py:19:documentation -> No docs found
+
+[case docs_class]
+#? --codepoint-column 6 documentation
+class WithGeneric[T]:
+    """
+    with docs
+    """
+#? --codepoint-column 6 documentation
+class WithoutGeneric:
+    """
+    without docs
+    """
+
+#? documentation
+WithGeneric
+#? documentation
+WithoutGeneric
+
+[out]
+__main__.py:2:documentation -> "(class) WithGeneric\n---\nwith docs"
+__main__.py:7:documentation -> "(class) WithoutGeneric\n---\nwithout docs"
+__main__.py:13:documentation -> "(class) WithGeneric\n---\nwith docs"
+__main__.py:15:documentation -> "(class) WithoutGeneric\n---\nwithout docs"
+
+[case docs_alias]
+
+#? --codepoint-column 7 documentation
+type Alias = int
+#? --codepoint-column 15 documentation
+def foo() -> Alias: ...
+
+#? --codepoint-column 7 documentation
+OtherAlias = str
+
+#? --codepoint-column 15 documentation
+def bar() -> OtherAlias: ...
+
+[out]
+__main__.py:3:documentation -> "(type) Alias = int"
+__main__.py:5:documentation -> "(type) Alias = int"
+__main__.py:8:documentation -> "(variable) OtherAlias: Type[str]"
+__main__.py:11:documentation -> "(variable) OtherAlias: Type[str]"
+
+[case docs_function_mypy_compatible]
+# flags: --mypy-compatible
+#? --codepoint-column 6 documentation
+def typed[T](x: list[T]) -> T:
+    " typed doc "
+    return x[0]
+#? --codepoint-column 4 documentation
+def untyped(x):
+    " untyped doc "
+    return x
+
+#? documentation
+typed
+#? documentation
+untyped
+
+[out]
+__main__.py:3:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
+__main__.py:7:documentation -> "(function) def untyped(x: Any) -> Any\n---\nuntyped doc"
+__main__.py:12:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
+__main__.py:14:documentation -> "(function) def untyped(x: Any) -> Any\n---\nuntyped doc"
+
+[case docs_function_no_mypy_compatible]
+# flags: --no-mypy-compatible
+#? --codepoint-column 6 documentation
+def typed[T](x: list[T]) -> T:
+    " typed doc "
+    return x[0]
+#? --codepoint-column 4 documentation
+def untyped(x):
+    " untyped doc "
+    return x
+
+#? documentation
+typed
+#? documentation
+untyped
+
+[out]
+__main__.py:3:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
+__main__.py:7:documentation -> "(function) def [T1: Any] untyped(x: T1) -> T1\n---\nuntyped doc"
+__main__.py:12:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
+__main__.py:14:documentation -> "(function) def [T1: Any] untyped(x: T1) -> T1\n---\nuntyped doc"
+
+[case docs_property]
+class X:
+    #? --codepoint-column 9 documentation
+    def func[T](self, x: list[T]) -> T:
+        " func doc "
+        return x[0]
+
+    @property
+    #? --codepoint-column 9 documentation
+    def prop(self) -> int:
+        " property doc "
+        return 1
+
+#? documentation
+X.func
+#? documentation
+X().func
+#? documentation
+X.prop
+#? documentation
+X().prop
+
+[out]
+__main__.py:3:documentation -> "(function) def [T] func(self, x: list[T]) -> T\n---\nfunc doc"
+__main__.py:9:documentation -> "(property) def prop(self) -> int\n---\nproperty doc"
+__main__.py:14:documentation -> "(function) def [T] func(self, x: list[T]) -> T\n---\nfunc doc"
+__main__.py:16:documentation -> "(function) def [T] func(x: list[T]) -> T\n---\nfunc doc"
+__main__.py:18:documentation -> "(function) prop: property"
+__main__.py:20:documentation -> "(property) prop: int"
+
+[case docs_classmethod_staticmethod]
+class X:
+    @classmethod
+    #? --codepoint-column 9 documentation
+    def classm(cls) -> int:
+        " classm doc "
+        return 1
+
+    @staticmethod
+    #? --codepoint-column 9 documentation
+    def staticm(x: str) -> int:
+        " staticm doc "
+        return 1
+
+#? documentation
+X.classm
+#? documentation
+X().classm
+#? documentation
+X.staticm
+#? documentation
+X().staticm
+
+[out]
+__main__.py:4:documentation -> "(function) def classm(cls, cls) -> int\n---\nclassm doc"
+__main__.py:10:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
+__main__.py:15:documentation -> "(function) def classm(cls) -> int\n---\nclassm doc"
+__main__.py:17:documentation -> "(function) def classm(cls) -> int\n---\nclassm doc"
+__main__.py:19:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
+__main__.py:21:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"

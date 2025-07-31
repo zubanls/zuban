@@ -4,7 +4,7 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.0.17"
+version = "0.0.18"
 edition = "2021"
 rust-version = "1.83"
 homepage = "https://zubanls.com"
@@ -32,6 +32,7 @@ crossbeam-channel = "*"
 dirs = "*"
 fnv = "*"
 lazy_static = "*"
+lsp-types = { version = "0.97.0", features = ["proposed"]}
 notify = "*"
 regex = "*"
 serde = { version = "*", features = ["derive"] }
@@ -53,3 +54,6 @@ pre-release-hook = [
     # It seems like this is being run for every Cargo.toml
     "../../deploy/pypi/zuban/pyproject.toml",
 ]
+
+[profile.release]
+debug = "line-tables-only"

@@ -1,3 +1,5 @@
+mod ide;
+
 use std::{
     collections::HashMap,
     env,
@@ -11,10 +13,12 @@ use std::{
 use clap::Parser;
 
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
 use test_utils::{calculate_steps, Step};
+use utils::FastHashSet;
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
-use zuban_python::Project;
+use zuban_python::{Mode, Project};
 
 const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     // --allow-redefinition tests
@@ -94,6 +98,15 @@ struct CliArgs {
     /// Filter files or test names like "check-classes" or "testFooBar"
     #[arg(num_args = 0..)]
     filters: Vec<String>,
+
+    #[arg(long)]
+    start_at: Option<String>,
+
+    /// Runs only the tests for typechecking and not language server
+    #[arg(long)]
+    only_typecheck: bool,
+    #[arg(long)]
+    only_language_server: bool,
 
     #[arg(short = 'x')]
     stop_after_first_error: bool,
@@ -178,18 +191,17 @@ impl TestCase<'_, '_> {
             project_options = Some(new);
         }
 
-        if matches!(self.file_name, "pep561" | "imports") {
-            let first_line = self.code.split('\n').next().unwrap();
-            if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
-                let current_dir = local_fs.current_dir();
-                let folder = local_fs.join(&current_dir, MYPY_TEST_DATA_PACKAGES_FOLDER);
-                settings.prepended_site_packages.extend(
-                    suffix
-                        .split([';', ','])
-                        .map(|s| local_fs.normalize_rc_path(local_fs.join(&folder, s.trim()))),
-                );
-            };
-        }
+        // Appears mostly in pep561.test
+        let first_line = self.code.split('\n').next().unwrap();
+        if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
+            let current_dir = local_fs.current_dir();
+            let folder = local_fs.join(&current_dir, MYPY_TEST_DATA_PACKAGES_FOLDER);
+            settings.prepended_site_packages.extend(
+                suffix
+                    .split([';', ','])
+                    .map(|s| local_fs.normalize_rc_path(local_fs.join(&folder, s.trim()))),
+            );
+        };
 
         if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
             diagnostic_config.show_error_codes = true;
@@ -273,15 +285,19 @@ impl TestCase<'_, '_> {
             &mut config.follow_untyped_imports,
             "--follow-untyped-imports",
         );
+        set_bool_flag(&mut config.use_joins, "--use-joins");
         set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
         set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
         set_reverse_bool_flag(&mut config.local_partial_types, "--no-local-partial-types");
         set_reverse_bool_flag(&mut config.disallow_any_generics, "--allow-any-generics");
         set_reverse_bool_flag(&mut config.allow_redefinition, "--disallow-redefinition");
+        set_reverse_bool_flag(&mut config.check_untyped_defs, "--no-check-untyped-defs");
+        set_reverse_bool_flag(&mut config.warn_unreachable, "--no-warn-unreachable");
         set_reverse_bool_flag(
             &mut config.allow_untyped_globals,
             "--disallow-untyped-globals",
         );
+        set_reverse_bool_flag(&mut config.use_joins, "--no-use-joins");
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
@@ -289,7 +305,7 @@ impl TestCase<'_, '_> {
         settings.mypy_compatible = mypy_compatible;
 
         if let Some(version) = arg_after("--python-version") {
-            settings.python_version = version.parse().unwrap();
+            settings.python_version = Some(version.parse().unwrap());
         } else {
             // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
             // different argument types.
@@ -371,6 +387,26 @@ impl TestCase<'_, '_> {
                 step,
                 self.from_mypy_test_suite,
             );
+            let mut ide_test_results: Vec<String> = vec![];
+            if !self.from_mypy_test_suite {
+                BASE_PATH.with(|base_path| {
+                    let mut previously_checked = FastHashSet::default();
+                    for step in steps.steps.iter().take(i + 1).rev() {
+                        for (path, code) in &step.files {
+                            if !previously_checked.insert(path) {
+                                continue;
+                            }
+                            find_and_check_ide_tests(
+                                project,
+                                base_path,
+                                path,
+                                code,
+                                &mut ide_test_results,
+                            );
+                        }
+                    }
+                });
+            }
 
             for path in &step.deletions {
                 project
@@ -449,30 +485,53 @@ impl TestCase<'_, '_> {
             let mut actual_lines = actual
                 .trim()
                 .split('\n')
-                .map(|s| s.to_lowercase())
+                .map(|s| {
+                    if self.from_mypy_test_suite {
+                        s.to_lowercase()
+                    } else {
+                        s.to_string()
+                    }
+                })
                 .filter_map(temporarily_skip)
                 .collect::<Vec<_>>();
             if actual_lines == [""] {
                 actual_lines.pop();
             }
+            // Add ide_test_results
+            for r in &ide_test_results {
+                if !actual.is_empty() && !actual.ends_with('\n') {
+                    actual.push('\n');
+                }
+                actual.push_str(r);
+                actual.push('\n');
+            }
+            actual_lines.extend(ide_test_results);
+
             actual_lines.sort();
 
-            // For now we want to compare lower cases, because mypy mixes up list[] and List[]
-            let mut wanted_lower: Vec<_> = wanted
+            let mut wanted_cleaned_up: Vec<_> = wanted
                 .iter()
-                .map(|s| s.to_lowercase())
+                .map(|s| {
+                    if self.from_mypy_test_suite {
+                        // For now we want to compare lower cases, because mypy mixes up list[] and
+                        // List[]
+                        s.to_lowercase()
+                    } else {
+                        s.to_string()
+                    }
+                })
                 .filter_map(temporarily_skip)
                 .collect();
-            wanted_lower.sort();
+            wanted_cleaned_up.sort();
 
-            // To check output only sort by filenames, which should be enough.
-            wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
+            if wanted_cleaned_up != actual_lines {
+                // To check output only sort by filenames, which should be enough.
+                wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
 
-            if wanted_lower != actual_lines {
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
                 result = Err(format!(
                     "\nMismatch:\n\
-                     Wanted lines: {wanted_lower:?}\n\n\
+                     Wanted lines: {wanted_cleaned_up:?}\n\n\
                      Actual lines: {actual_lines:?}\n\n\
                      Wanted:\n\
                      {wanted}\n\
@@ -790,12 +849,10 @@ impl Replacer for TypeStuffReplacer {
     }
 }
 
-fn calculate_filters(args: Vec<String>) -> Vec<String> {
+fn calculate_filters(args: &[String]) -> Vec<&str> {
     let mut filters = vec![];
-    for s in args.into_iter().skip(1) {
-        if s != "mypy" {
-            filters.push(s)
-        }
+    for s in args.iter() {
+        filters.push(s.as_str())
     }
     filters
 }
@@ -804,29 +861,32 @@ struct ProjectsCache {
     base_project: Option<Project>,
     base_version: PythonVersion,
     map: HashMap<(Settings, TypeCheckerFlags), Project>,
+    mode: Mode,
 }
 
 fn set_mypy_path(options: &mut ProjectOptions) {
+    options.settings.add_global_packages_default = false;
     BASE_PATH.with(|base_path| {
         options.settings.mypy_path.push(base_path.clone());
     })
 }
 
-fn base_path_join(local_fs: &SimpleLocalFS, other: &str) -> PathWithScheme {
+fn base_path_join(local_fs: &dyn VfsHandler, other: &str) -> PathWithScheme {
     PathWithScheme::with_file_scheme(
         BASE_PATH.with(|base_path| local_fs.normalize_rc_path(local_fs.join(base_path, other))),
     )
 }
 
 impl ProjectsCache {
-    fn new(reuse_db: bool) -> Self {
+    fn new(reuse_db: bool, mode: Mode) -> Self {
         let mut po = ProjectOptions::mypy_default();
-        let base_version = po.settings.python_version;
+        let base_version = po.settings.python_version_or_default();
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
-            base_project: reuse_db.then(|| Project::without_watcher(po)),
+            base_project: reuse_db.then(|| Project::without_watcher(po, mode)),
             base_version,
+            mode,
             map: Default::default(),
         }
     }
@@ -838,10 +898,10 @@ impl ProjectsCache {
             let mut options = ProjectOptions::new(key.0.clone(), key.1.clone());
             set_mypy_path(&mut options);
             // We can only reuse the project if the python version matches.
-            let project = if key.0.python_version == self.base_version {
+            let project = if key.0.python_version_or_default() == self.base_version {
                 self.try_to_reuse_project_parts(options)
             } else {
-                Project::without_watcher(options)
+                Project::without_watcher(options, self.mode)
             };
             self.map.insert(key.clone(), project);
         }
@@ -853,7 +913,7 @@ impl ProjectsCache {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
             options.settings.typeshed_path = Some(test_utils::typeshed_path());
-            Project::without_watcher(options)
+            Project::without_watcher(options, self.mode)
         }
     }
 }
@@ -878,33 +938,66 @@ fn main() -> ExitCode {
     // Avoid the --, because that's the only way how we can accept flags like --foo like
     // cargo test mypy -- -- --foo. Otherwise libtest? complains, if we just use -- once.
     let cli_args = CliArgs::parse_from(env::args().filter(|arg| arg != "--"));
-    let filters = calculate_filters(cli_args.filters);
+    let filters = calculate_filters(&cli_args.filters);
 
     let skipped = skipped();
 
     let files = find_mypy_style_files();
+
+    let mut error_count = 0;
+    if !cli_args.only_language_server {
+        error_count += run(
+            &cli_args,
+            Mode::TypeCheckingOnly,
+            &files,
+            &skipped,
+            &filters,
+        );
+    }
+    if !cli_args.only_typecheck && error_count == 0 {
+        error_count += run(&cli_args, Mode::LanguageServer, &files, &skipped, &filters)
+    }
+
+    ExitCode::from((error_count > 0) as u8)
+}
+
+fn run(
+    cli_args: &CliArgs,
+    mode: Mode,
+    files: &[(bool, PathBuf)],
+    skipped: &[Skipped],
+    filters: &[&str],
+) -> usize {
     let start = Instant::now();
-    let mut projects = ProjectsCache::new(!cli_args.no_reuse_db);
+    let mut projects = ProjectsCache::new(!cli_args.no_reuse_db, mode);
     let mut full_count = 0;
     let mut passed_count = 0;
     let mut error_count = 0;
     let file_count = files.len();
     let mut error_summary = String::new();
+    let mut allowed_to_run_when_start_at = false;
     for (from_mypy_test_suite, file) in files {
         let code = read_to_string(&file).unwrap();
         let code = REPLACE_COMMENTS.replace_all(&code, "");
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
-        for case in mypy_style_cases(file_name, &code, from_mypy_test_suite) {
+        for case in mypy_style_cases(file_name, &code, *from_mypy_test_suite) {
             if !filters.is_empty()
-                && !filters.contains(&case.name)
-                && !filters.iter().any(|s| s == file_name)
+                && !filters.contains(&&*case.name)
+                && !filters.iter().any(|s| *s == file_name)
             {
                 continue;
             }
+            if let Some(name) = &cli_args.start_at {
+                if case.name == *name || file_name == name {
+                    allowed_to_run_when_start_at = true;
+                } else if !allowed_to_run_when_start_at {
+                    continue;
+                }
+            }
             if skipped
                 .iter()
-                .any(|s| s.is_skip(case.file_name, &case.name) && !filters.contains(&case.name))
+                .any(|s| s.is_skip(case.file_name, &case.name) && !filters.contains(&&*case.name))
             {
                 //println!("Skipped: {}", case.name);
                 full_count += 1;
@@ -944,10 +1037,14 @@ fn main() -> ExitCode {
     };
     println!(
         "Passed {passed_count} of {full_count} ({error_count} error{error_s}) \
-         mypy-like tests in {file_count} files; finished in {:.2}s",
+         mypy-like tests in {file_count} files; finished in {:.2}s (mode={})",
         start.elapsed().as_secs_f32(),
+        match mode {
+            Mode::TypeCheckingOnly => "type-checking",
+            Mode::LanguageServer => "language-server",
+        }
     );
-    ExitCode::from((error_count > 0) as u8)
+    error_count
 }
 
 fn mypy_style_cases<'a, 'b>(

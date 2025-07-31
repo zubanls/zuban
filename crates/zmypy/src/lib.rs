@@ -6,7 +6,7 @@ pub use zuban_python::Diagnostics;
 
 use config::{find_cli_config, ExcludeRegex, ProjectOptions, PythonVersion};
 use vfs::{AbsPath, NormalizedPath, SimpleLocalFS, VfsHandler};
-use zuban_python::Project;
+use zuban_python::{Mode, Project};
 
 use clap::Parser;
 
@@ -295,7 +295,7 @@ fn project_from_cli(
     );
 
     (
-        Project::new(Box::new(local_fs), options),
+        Project::new(Box::new(local_fs), options, Mode::LanguageServer),
         found.diagnostic_config,
     )
 }
@@ -376,7 +376,7 @@ fn apply_flags(
         project_options.settings.platform = cli.platform;
     }
     if let Some(python_version) = cli.python_version {
-        project_options.settings.python_version = python_version;
+        project_options.settings.python_version = Some(python_version);
     }
     if let Some(p) = cli.python_executable {
         project_options

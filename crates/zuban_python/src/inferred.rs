@@ -19,8 +19,8 @@ use crate::{
     inference_state::InferenceState,
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-        maybe_class_usage, replace_class_type_vars, ErrorStrs, Generics, IteratorContent,
-        LookupKind, Matcher, OnLookupError, OnTypeError, ResultContext,
+        maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars, ErrorStrs,
+        Generics, IteratorContent, LookupKind, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -33,7 +33,7 @@ use crate::{
     },
     type_helpers::{
         execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
-        execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction, Class,
+        execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction, Callable, Class,
         FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass,
     },
 };
@@ -396,19 +396,6 @@ impl<'db: 'slf, 'slf> Inferred {
         Some(specific)
     }
 
-    pub fn resolve_untyped_function_return(self, _i_s: &InferenceState) -> Self {
-        unimplemented!();
-        /*
-        if let InferredState::Saved(definition) = self.state {
-            let definition = NodeRef::from_link(i_s.db, definition);
-            let point = definition.point();
-            if point.type_() == PointType::Specific && point.specific() == Specific::Closure {
-            }
-        }
-        self.resolve_class_type_vars(i_s, class, attribute_class)
-        */
-    }
-
     pub fn resolve_class_type_vars(
         self,
         i_s: &InferenceState,
@@ -419,21 +406,26 @@ impl<'db: 'slf, 'slf> Inferred {
             let definition = NodeRef::from_link(i_s.db, link);
             if let Some(specific) = definition.point().maybe_specific() {
                 match specific {
-                    Specific::Param | Specific::MaybeSelfParam => {
-                        unimplemented!("might not even happen - remove")
-                        //return i_s.infer_param(&definition);
-                    }
                     Specific::AnnotationOrTypeCommentWithTypeVars
                     | Specific::AnnotationOrTypeCommentFinal => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
                         if attribute_class.needs_generic_remapping_for_attributes(i_s, &t) {
-                            let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
-                                Some(class.as_type(i_s.db))
-                            });
-                            return Inferred::from_type(d.into_owned());
+                            if let Some(d) =
+                                maybe_replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                                    Some(class.as_type(i_s.db))
+                                })
+                            {
+                                return Inferred::from_type(d);
+                            }
                         }
                     }
                     _ => (),
+                }
+            } else if let Some(t) = definition.maybe_type() {
+                if let Some(d) = maybe_replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                    Some(class.as_type(i_s.db))
+                }) {
+                    return Inferred::from_type(d);
                 }
             }
         }
@@ -643,7 +635,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     if std::cfg!(debug_assertions) {
                         let node_ref = NodeRef::new(file, index);
                         panic!(
-                            "Why overwrite? New: {self:?} Previous: {node_ref:?} line {}",
+                            "Why overwrite? New: {:?} Previous: {node_ref:?} line {}",
+                            self.debug_info(i_s.db),
                             node_ref.line_one_based(i_s.db)
                         );
                     }
@@ -887,7 +880,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 let as_instance = || instance.clone();
                                 let mut matcher = Matcher::new_function_matcher(
-                                    func,
+                                    &func,
                                     func.type_vars(i_s.db),
                                     &as_instance,
                                 );
@@ -2518,7 +2511,8 @@ fn proper_classmethod_callable(
 
             callable.params = CallableParams::Simple(Rc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
-                let mut matcher = Matcher::new_callable_matcher(original_callable);
+                let c = Callable::new(original_callable, None);
+                let mut matcher = Matcher::new_callable_matcher(&c);
                 let t = replace_class_type_vars(i_s.db, t, func_class, &|| Some(as_type()));
                 if !t
                     .is_super_type_of(i_s, &mut matcher, &as_type_type())

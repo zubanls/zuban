@@ -30,11 +30,11 @@ def test(a, b):
     # type: str
     e = a                 # type: str           # Should ignore long whitespace
 
-    #? BB()
+    ##? BB()
     a
     #? str()
     c
-    #? BB()
+    ##? BB()
     d
     #? str()
     e
@@ -53,34 +53,34 @@ def test(a):
     ##? AA.BB()
     a
 
-a,b = 1, 2 # type: str, float
-##? str()
-a
-##? float()
-b
+a2,b2 = 1, 2 # type: str, float
+#? str()
+a2
+#? float()
+b2
 
 class Employee:
     pass
 
 from typing import List, Tuple
-x = []   # type: List[Employee]
+x1 = []   # type: List[Employee]
 #? Employee()
-x[1]
-x, y, z = [], [], []  # type: List[int], List[int], List[str]
-##? int()
-y[2]
-x, y, z = [], [], []  # type: (List[float], List[float], List[BB])
-for zi in z:
-    ##? BB()
+x1[1]
+x2, y2, z2 = [], [], []  # type: List[int], List[int], List[str]
+#? int()
+y2[2]
+x3, y3, z3 = [], [], []  # type: (List[float], List[float], List[BB])
+for zi in z3:
+    #? BB()
     zi
 
-x = [
+x4 = [
    1,
    2,
 ]  # type: List[str]
 
 #? str()
-x[1]
+x4[1]
 
 
 for bar in foo():  # type: str
@@ -96,9 +96,9 @@ for bar, baz in foo():  # type: int, float
 for bar, baz in foo():
     # type: str, str
     """ type hinting on next line should not work """
-    ##?
+    #?
     bar
-    ##?
+    #?
     baz
 
 with foo():  # type: int
@@ -111,7 +111,7 @@ with foo() as f:  # type: str
 with foo() as f:
     # type: str
     """ type hinting on next line should not work """
-    ##?
+    #?
     f
 
 aaa = some_extremely_long_function_name_that_doesnt_leave_room_for_hints() \
@@ -146,12 +146,12 @@ class Dog:
 buddy = Dog(UNKNOWN_NAME1, UNKNOWN_NAME2, UNKNOWN_NAME3)
 friend = buddy.friend_for_name('buster')
 # type of friend is determined by function return type
-#! 9 ['def bark']
+##! 9 ['def bark']
 friend.bark()
 
 friend = buddy.friends[0][1]
 # type of friend is determined by function parameter type
-#! 9 ['def bark']
+##! 9 ['def bark']
 friend.bark()
 
 # type is determined by function parameter type following nested generics
@@ -167,10 +167,10 @@ def annot():
 annot()
 
 # Mypy variable type annotation.
-x = UNKNOWN_NAME2  # type: str
+x5 = UNKNOWN_NAME2  # type: str
 
 #? str()
-x
+x5
 
 class Cat(object):
     def __init__(self, age, friends, name):
@@ -185,17 +185,17 @@ cat.name
 
 
 # Check potential errors
-def x(a, b):
+def x6(a, b):
     # type: ([) -> a
-    ##?
+    #?
     a
-def x(a, b):
+def x7(a, b):
     # type: (1) -> a
-    ##?
+    #?
     a
-def x(a, b, c):
+def x8(a, b, c):
     # type: (str) -> a
-    ##?
+    #?
     b
-    ##?
+    #?
     c

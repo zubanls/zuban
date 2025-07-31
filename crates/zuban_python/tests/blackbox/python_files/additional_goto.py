@@ -1,0 +1,393 @@
+def normal_imports():
+    import import_tree
+    #! ['import import_tree']
+    import_tree
+    #! --follow-imports ['module import_tree']
+    import_tree
+
+    from import_tree import mod1
+    #! ['from import_tree import mod1']
+    mod1
+    #! --follow-imports ["module import_tree.mod1"]
+    mod1
+
+    #! 5 ["from import_tree import mod1"]
+    mod1.a = 3
+    #! 9 ["a = 1"]
+    mod1.a = 3
+    #! 10 ["a = 1"]
+    mod1.a = 3
+
+    #! 10 ["import import_tree"]
+    import_tree.mod1.a = 3
+    #! 18 ["module import_tree.mod1"]
+    import_tree.mod1.a = 3
+    #! 22 ["a = 1"]
+    import_tree.mod1.a = 3
+
+    from import_tree.mod1 import a
+    #! ['from import_tree.mod1 import a']
+    a
+    #! --follow-imports ["a = 1"]
+    a
+
+def nested_import_name():
+    import import_tree.pkg
+    #! ['import import_tree.pkg']
+    import_tree
+    #! --follow-imports ['module import_tree']
+    import_tree
+
+def alias_as_import_name():
+    import import_tree as imp1
+    #! ['import import_tree as imp1']
+    imp1
+    #! --follow-imports ['module import_tree']
+    imp1
+
+    import import_tree.mod2 as imp2
+    #! ['import import_tree.mod2 as imp2']
+    imp2
+    #! --follow-imports ['module import_tree.mod2']
+    imp2
+
+    # a is not a module, but a statement
+    import import_tree.mod2.a as imp2
+    #! ['import import_tree.mod2 as imp2']
+    imp2
+    #! --follow-imports ['module import_tree.mod2']
+    imp2
+
+def alias_as_import_from():
+    from import_tree import mod1 as m1
+    #! ['from import_tree import mod1 as m1']
+    m1
+    #! --follow-imports ["module import_tree.mod1"]
+    m1
+
+    from import_tree.mod1 import a as a1
+    #! ['from import_tree.mod1 import a as a1']
+    a1
+    #! --follow-imports ["a = 1"]
+    a1
+
+def import_from_multi1():
+    from import_tree.mod1 import \
+        a as a1,foobarbaz,undefined
+    #! ['from import_tree.mod1 import \']
+    a1
+    #! --follow-imports ["a = 1"]
+    a1
+
+    #! ['from import_tree.mod1 import \']
+    foobarbaz
+    #! --follow-imports ["foobarbaz = 3.0"]
+    foobarbaz
+    #? float()
+    foobarbaz
+
+    #! ['from import_tree.mod1 import \']
+    undefined
+    #! ['from import_tree.mod1 import \']
+    undefined
+    #?
+    undefined
+
+def import_from_multi2():
+    from import_tree.mod1 import (
+        a as a1,
+        foobarbaz,
+        undefined
+    )
+    #! ['from import_tree.mod1 import (']
+    a1
+    #! --follow-imports ["a = 1"]
+    a1
+
+    #! ['from import_tree.mod1 import (']
+    foobarbaz
+    #! --follow-imports ["foobarbaz = 3.0"]
+    foobarbaz
+    #? float()
+    foobarbaz
+
+    #! ['from import_tree.mod1 import (']
+    undefined
+    #! ['from import_tree.mod1 import (']
+    undefined
+    #?
+    undefined
+
+def on_import_no_follow():
+    #! 22 ['module import_tree.mod1']
+    from import_tree.mod1 import (
+        #! 14 ["a = 1"]
+        a as a1,
+        #! 9 ["a = 1"]
+        a as a2,
+        #! 9 ["a = 1"]
+        a,
+        #! 14 ["foobarbaz = 3.0"]
+        foobarbaz,
+        #! 14 []
+        undefined
+    )
+    #! ['a = 1']
+    from import_tree.mod1 import a
+    #! ['module import_tree.mod1']
+    from import_tree import mod1
+    #! ['module import_tree']
+    import import_tree
+    #! 14 ['module import_tree']
+    import import_tree.mod1
+    #! ['module import_tree.mod1']
+    import import_tree.mod1
+    #! []
+    import import_tree.mod1.a
+
+    #! 14 ['module import_tree']
+    import import_tree.mod1 as m1
+    #! 26 ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+    #! ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+
+def on_import_follow():
+    #! 22 --follow-imports ['module import_tree.mod1']
+    from import_tree.mod1 import (
+        #! 14 --follow-imports ["a = 1"]
+        a as a1,
+        #! 9 --follow-imports ["a = 1"]
+        a as a2,
+        #! 9 --follow-imports ["a = 1"]
+        a,
+        #! 14 --follow-imports ["foobarbaz = 3.0"]
+        foobarbaz,
+        #! 14 --follow-imports []
+        undefined
+    )
+    #! ['a = 1']
+    from import_tree.mod1 import a
+    #! --follow-imports ['module import_tree.mod1']
+    from import_tree import mod1
+    #! --follow-imports ['module import_tree']
+    import import_tree
+    #! 14 --follow-imports ['module import_tree']
+    import import_tree.mod1
+    #! --follow-imports ['module import_tree.mod1']
+    import import_tree.mod1
+    #! --follow-imports []
+    import import_tree.mod1.a
+
+    #! 14 --follow-imports ['module import_tree']
+    import import_tree.mod1 as m1
+    #! 26 --follow-imports ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+    #! ['module import_tree.mod1']
+    import import_tree.mod1 as m2
+
+def on_import_infer():
+    #? 22 import_tree.mod1
+    from import_tree.mod1 import (
+        #? 14 int()
+        a as a1,
+        #? 9 int()
+        a as a2,
+        #? 9 int()
+        a,
+        #? 14 float()
+        foobarbaz,
+        #? 14
+        undefined
+    )
+    #? int()
+    from import_tree.mod1 import a
+    #? import_tree.mod1
+    from import_tree import mod1
+    #? import_tree
+    import import_tree
+    #? 14 import_tree
+    import import_tree.mod1
+    #? import_tree.mod1
+    import import_tree.mod1
+    #? 
+    import import_tree.mod1.a
+
+    #? 14 import_tree
+    import import_tree.mod1 as m1
+    #? 26 import_tree.mod1
+    import import_tree.mod1 as m2
+    #? import_tree.mod1
+    import import_tree.mod1 as m2
+
+def on_star_import_follow():
+    # pkg has a star import of math
+    from import_tree.pkg import *
+    #? float()
+    pi
+    #! ["pi: Final[float]"]
+    pi
+    #! --follow-imports ["pi: Final[float]"]
+    pi
+
+def on_star_import_attr_follow1():
+    from import_tree import pkg
+    #? float()
+    pkg.pi
+    #! ["pi: Final[float]"]
+    pkg.pi
+    #! --follow-imports ["pi: Final[float]"]
+    pkg.pi
+
+def on_star_import_attr_follow2():
+    import import_tree
+    #? float()
+    import_tree.pkg.pi
+    #! ["pi: Final[float]"]
+    import_tree.pkg.pi
+    #! --follow-imports ["pi: Final[float]"]
+    import_tree.pkg.pi
+
+def on_star_import_attr_follow3():
+    import import_tree
+    #! 8 --follow-imports ["module import_tree"]
+    import_tree.pkg.pi
+    #! 18 --follow-imports ["module import_tree.pkg"]
+    import_tree.pkg.pi
+
+    #! 8 ["import import_tree"]
+    import_tree.pkg.pi
+    #! 18 ["module import_tree.pkg"]
+    import_tree.pkg.pi
+
+def on_star_import_attr_follow4():
+    import import_tree.pkg
+    #! 8 --follow-imports ["module import_tree"]
+    import_tree.pkg.pi
+    #! 18 --follow-imports ["module import_tree.pkg"]
+    import_tree.pkg.pi
+
+    #! 8 ["import import_tree.pkg"]
+    import_tree.pkg.pi
+    #! 18 ["module import_tree.pkg"]
+    import_tree.pkg.pi
+
+def on_star_import_nested_stars():
+    from import_tree.pkg import *
+    #! ["pi: Final[float]"]
+    pi
+    #! --follow-imports ["pi: Final[float]"]
+    pi
+    #? float()
+    pi
+
+    #! ["a = list"]
+    a
+    #! --follow-imports ["a = list"]
+    a
+    #? list
+    a
+
+def nested_import_goto_no_follow():
+    #! ["from import_tree.random import a as c"]
+    from import_tree.mod1 import c
+    #! ["from import_tree.mod1 import c"]
+    c
+
+def nested_import_goto_follow():
+    #! --follow-imports ["a = set"]
+    from import_tree.mod1 import c
+    #! --follow-imports ["a = set"]
+    c
+
+def target_completions():
+    x = 1
+    #! 5 ['x = 1']
+    x = 2
+
+    from import_tree.mod1 import a
+    #! 5 ["from import_tree.mod1 import a"]
+    a = 2
+    #! 5 --follow-imports ['a = 1']
+    a = 3
+
+    w = 1
+    #! 10 ['w = 1']
+    with w: ...
+    #! 20 ['w = 1']
+    with open() as w: ...
+    try:
+        ...
+    #! 12 ['w = 1']
+    except w: ...
+
+
+global_x1 = 1
+def global_goto1():
+    #! ['global global_x1']
+    global_x1
+    #! ['global_x1 = 1']
+    global global_x1
+    #! 10 ['global global_x1']
+    global_x1 = 3
+
+global_x2 = 1
+def global_goto2():
+    #! --follow-imports ['global_x2 = 1']
+    global_x2
+    #! --follow-imports ['global_x2 = 1']
+    global global_x2
+    #! 10 --follow-imports ['global_x2 = 1']
+    global_x2 = 3
+
+def global_goto3():
+    #! ['global global_y']
+    global_y
+    #! ['global global_y']
+    global global_y
+    #! 10 ['global global_y']
+    global_y = 3
+
+def global_goto4():
+    #! --follow-imports ['global global_y']
+    global_y
+    #! --follow-imports ['global global_y']
+    global global_y
+    #! 10 --follow-imports ['global global_y']
+    global_y = 3
+
+
+def for_nonlocal_tests():
+    nonlocal_x1 = 1
+    def nonlocal_goto1():
+        #! ['nonlocal nonlocal_x1']
+        nonlocal_x1
+        #! ['nonlocal_x1 = 1']
+        nonlocal nonlocal_x1
+        #! 10 ['nonlocal nonlocal_x1']
+        nonlocal_x1 = 3
+
+    nonlocal_x2 = 1
+    def nonlocal_goto2():
+        #! --follow-imports ['nonlocal_x2 = 1']
+        nonlocal_x2
+        #! --follow-imports ['nonlocal_x2 = 1']
+        nonlocal nonlocal_x2
+        #! 10 --follow-imports ['nonlocal_x2 = 1']
+        nonlocal_x2 = 3
+
+    def nonlocal_goto3():
+        #! ['nonlocal nonlocal_y']
+        nonlocal_y
+        #! ['nonlocal nonlocal_y']
+        nonlocal nonlocal_y
+        #! 10 ['nonlocal nonlocal_y']
+        nonlocal_y = 3
+
+    def nonlocal_goto4():
+        #! --follow-imports ['nonlocal nonlocal_y']
+        nonlocal_y
+        #! --follow-imports ['nonlocal nonlocal_y']
+        nonlocal nonlocal_y
+        #! 10 --follow-imports ['nonlocal nonlocal_y']
+        nonlocal_y = 3

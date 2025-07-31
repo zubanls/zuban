@@ -64,18 +64,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
                 return None;
             }
         };
-        if let Some(name) = py_string.in_simple_assignment() {
-            if name.as_code() != py_string.content() {
-                name_node.add_issue(
-                    i_s,
-                    IssueKind::VarNameMismatch {
-                        class_name: "TypeVar".into(),
-                        string_name: Box::from(py_string.content()),
-                        variable_name: Box::from(name.as_code()),
-                    },
-                );
-            }
-        } else {
+        let Some(name_def) = py_string.in_simple_assignment() else {
             first_arg.add_issue(
                 i_s,
                 IssueKind::InvalidAssignmentForm {
@@ -83,6 +72,16 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
                 },
             );
             return None;
+        };
+        if name_def.as_code() != py_string.content() {
+            name_node.add_issue(
+                i_s,
+                IssueKind::VarNameMismatch {
+                    class_name: "TypeVar".into(),
+                    string_name: Box::from(py_string.content()),
+                    variable_name: Box::from(name_def.as_code()),
+                },
+            );
         }
 
         let mut constraints = vec![];
@@ -173,10 +172,16 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
             TypeVarKindInfos::Unrestricted
         };
         Some(TypeVarLike::TypeVar(Rc::new(TypeVar::new(
-            TypeVarLikeName::InString(PointLink {
-                file: name_node.file_index(),
-                node_index: py_string.index(),
-            }),
+            TypeVarLikeName::InString {
+                name_node: PointLink {
+                    file: name_node.file_index(),
+                    node_index: name_def.name_index(),
+                },
+                string_node: PointLink {
+                    file: name_node.file_index(),
+                    node_index: py_string.index(),
+                },
+            },
             i_s.as_parent_scope(),
             kind,
             default,
@@ -225,18 +230,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                 return None;
             }
         };
-        if let Some(name) = py_string.in_simple_assignment() {
-            if name.as_code() != py_string.content() {
-                name_node.add_issue(
-                    i_s,
-                    IssueKind::VarNameMismatch {
-                        class_name: "TypeVarTuple".into(),
-                        string_name: Box::from(py_string.content()),
-                        variable_name: Box::from(name.as_code()),
-                    },
-                );
-            }
-        } else {
+        let Some(name_def) = py_string.in_simple_assignment() else {
             first_arg.add_issue(
                 i_s,
                 IssueKind::InvalidAssignmentForm {
@@ -244,6 +238,16 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                 },
             );
             return None;
+        };
+        if name_def.as_code() != py_string.content() {
+            name_node.add_issue(
+                i_s,
+                IssueKind::VarNameMismatch {
+                    class_name: "TypeVarTuple".into(),
+                    string_name: Box::from(py_string.content()),
+                    variable_name: Box::from(name_def.as_code()),
+                },
+            );
         }
 
         let mut default = None;
@@ -291,10 +295,16 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
             }
         }
         Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
-            TypeVarLikeName::InString(PointLink {
-                file: name_node.file_index(),
-                node_index: py_string.index(),
-            }),
+            TypeVarLikeName::InString {
+                name_node: PointLink {
+                    file: name_node.file_index(),
+                    node_index: name_def.name_index(),
+                },
+                string_node: PointLink {
+                    file: name_node.file_index(),
+                    node_index: py_string.index(),
+                },
+            },
             i_s.as_parent_scope(),
             default,
         ))))
@@ -333,18 +343,7 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                 return None;
             }
         };
-        if let Some(name) = py_string.in_simple_assignment() {
-            if name.as_code() != py_string.content() {
-                name_node.add_issue(
-                    i_s,
-                    IssueKind::VarNameMismatch {
-                        class_name: "ParamSpec".into(),
-                        string_name: Box::from(py_string.content()),
-                        variable_name: Box::from(name.as_code()),
-                    },
-                );
-            }
-        } else {
+        let Some(name_def) = py_string.in_simple_assignment() else {
             first_arg.add_issue(
                 i_s,
                 IssueKind::InvalidAssignmentForm {
@@ -352,6 +351,16 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                 },
             );
             return None;
+        };
+        if name_def.as_code() != py_string.content() {
+            name_node.add_issue(
+                i_s,
+                IssueKind::VarNameMismatch {
+                    class_name: "ParamSpec".into(),
+                    string_name: Box::from(py_string.content()),
+                    variable_name: Box::from(name_def.as_code()),
+                },
+            );
         }
 
         let mut default = None;
@@ -387,10 +396,16 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
             }
         }
         Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec::new(
-            TypeVarLikeName::InString(PointLink {
-                file: name_node.file_index(),
-                node_index: py_string.index(),
-            }),
+            TypeVarLikeName::InString {
+                name_node: PointLink {
+                    file: name_node.file_index(),
+                    node_index: name_def.name_index(),
+                },
+                string_node: PointLink {
+                    file: name_node.file_index(),
+                    node_index: py_string.index(),
+                },
+            },
             i_s.as_parent_scope(),
             default,
         ))))

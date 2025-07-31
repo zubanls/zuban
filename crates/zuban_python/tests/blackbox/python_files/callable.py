@@ -15,7 +15,7 @@ return_callable1(7)("")[1]
 
 def return_callable2() -> Callable[[U], Tuple[T, U]]: ...
 
-##?
+#?
 return_callable2(7)("")[0]
 #? str()
 return_callable2(7)("")[1]
@@ -41,7 +41,7 @@ ret[1]
 ret[2]
 
 ret = Foo(1.0).return_callable4(7)("")
-##?
+#? int()
 ret[0]
 #? str()
 ret[1]
@@ -66,7 +66,7 @@ ret[0]
 ret[1]
 #? float()
 ret[2]
-#? list
+#?
 ret[3]
 
 ret = callables[1](set)
@@ -76,7 +76,7 @@ ret[0]
 ret[1]
 #? float()
 ret[2]
-#? set
+#?
 ret[3]
 
 callables = Foo(1.0).return_callable7(7)("")

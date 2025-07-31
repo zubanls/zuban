@@ -278,7 +278,12 @@ impl BoundKind {
     pub(super) fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => {
-                Some(Self::TypeVar(t1.common_base_type(i_s, t2)))
+                Some(Self::TypeVar(if i_s.flags().use_joins {
+                    t1.common_base_type(i_s, t2)
+                } else {
+                    t1.avoid_implicit_literal_cow(i_s.db)
+                        .simplified_union(i_s, &t2.avoid_implicit_literal_cow(i_s.db))
+                }))
             }
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
                 Some(Self::TypeVarTuple(tup1.simplified_union(i_s, tup2)))

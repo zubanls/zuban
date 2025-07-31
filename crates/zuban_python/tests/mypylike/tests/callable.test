@@ -1,8 +1,21 @@
-[case callable_cannot_infer_type_var]
+[case callable_cannot_infer_type_var_mypy_compatible]
+# flags: --mypy-compatible
 from typing import TypeVar, Callable
 T1 = TypeVar("T1")
 x: Callable[[T1, T1], T1]
 reveal_type(x(1, "")) # N: Revealed type is "object"
+
+T2 = TypeVar("T2", int, str)
+y: Callable[[T2, T2], T2]
+
+y(1, "") # E: Argument 2 has incompatible type "str"; expected "int"
+
+[case callable_cannot_infer_type_var_no_mypy_compatible]
+# flags: --no-mypy-compatible
+from typing import TypeVar, Callable
+T1 = TypeVar("T1")
+x: Callable[[T1, T1], T1]
+reveal_type(x(1, "")) # N: Revealed type is "int | str"
 
 T2 = TypeVar("T2", int, str)
 y: Callable[[T2, T2], T2]
@@ -269,11 +282,12 @@ a: Callable[[NamedArg(int, "foo"), Arg(int, "bar")], int]  # E: Required positio
 # This is a bit special and probably debatable behavior. In theory the code
 # below should probably not return an error. However Mypy currently gives an
 # error here, because it feels wrong to expect different types for args/kwargs.
-def x(*args: int, **kwargs: object): ...
-def y(*args: object, **kwargs: int): ...
-def z(*args: int, **kwargs: int): ...
+from typing import Any
+def x(*args: int, **kwargs: object) -> Any: ...
+def y(*args: object, **kwargs: int) -> Any: ...
+def z(*args: int, **kwargs: int) -> Any: ...
 
-def foo(x: int): ...
+def foo(x: int) -> Any: ...
 
 foo = x # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), KwArg(object)], Any]", variable has type "Callable[[int], Any]")
 foo = y # E: Incompatible types in assignment (expression has type "Callable[[VarArg(object), KwArg(int)], Any]", variable has type "Callable[[int], Any]")
@@ -377,15 +391,15 @@ if bool():
     foo1 = bar4  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'z'), KwArg(int)], None]", variable has type "Callable[[str], None]")
 
 [case func_subtyping_kw_against_normal_params]
-def x(x: int, y: int, z: int): ...
-def y(y: int, x: int, z: int): ...
-def z(y: str, x: int, z: int): ...
+def x(x: int, y: int, z: int) -> str: ...
+def y(y: int, x: int, z: int) -> str: ...
+def z(y: str, x: int, z: int) -> str: ...
 
-def foo(*, x: int, y: int, z: int): ...
+def foo(*, x: int, y: int, z: int) -> str: ...
 
 foo = x
 foo = y
-foo = z  # E: Incompatible types in assignment (expression has type "Callable[[str, int, int], Any]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(int, 'y'), NamedArg(int, 'z')], Any]")
+foo = z  # E: Incompatible types in assignment (expression has type "Callable[[str, int, int], str]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(int, 'y'), NamedArg(int, 'z')], str]")
 
 [case callable_never_return]
 # flags: --warn-unreachable

@@ -24,7 +24,7 @@ class Y(Generic[T]):
                             # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 
 reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
-Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]"
+Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 Y(1).self_t
@@ -41,7 +41,7 @@ class Y(Generic[T]):
     X = NewType("X", list[T])
 
 reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
-Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]"
+Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 
@@ -61,7 +61,7 @@ class Y(Generic[T]):
 
 Y(1).self_t
 reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
-Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]"
+Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 
@@ -74,7 +74,7 @@ def y(a: T) -> T:
     X = NewType("X", list[T])
 
     reveal_type(X)  # N: Revealed type is "Type[__main__.X]"
-    reveal_type(X(1)) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]" \
+    reveal_type(X(1)) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]" \
                       # N: Revealed type is "__main__.X"
     reveal_type(X([a]))  # N: Revealed type is "__main__.X"
     return a

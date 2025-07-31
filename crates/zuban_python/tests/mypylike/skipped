@@ -6,9 +6,11 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
+goto_doc_contains_stdlib_compiled
 
-# Pre-release crashes
-dataclass_post_init_should_not_crash2
+docs_alias
+docs_property
+
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef
@@ -94,6 +96,7 @@ testRecursiveAliasWithRecursiveInstanceInference
 testUnionInference
 # type var with unions and fallback in case solving is not possible
 testTypeVarTupleInvariant
+unite_type_vars_mypy_issue_5874_no_join
 # Invalid ParamSpec definitions
 testParamSpecLocations
 testUnboundParamSpec
@@ -400,6 +403,8 @@ testReplaceIsDataclass
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
+# dataclass InitVar should be ok
+dataclass_post_init_should_not_crash2
 
 # multiline annotations
 testMultilineQuotedAnnotation

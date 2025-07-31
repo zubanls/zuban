@@ -486,7 +486,9 @@ impl Iterator for PythonTokenizer<'_> {
         if let Some(match_) = OPERATOR.find(c) {
             let character = c.as_bytes()[0];
             if character == b';' {
-                self.encountered_break_token();
+                if let tok @ Some(_) = self.encountered_break_token() {
+                    return tok;
+                }
             }
             self.index += match_.end();
 
@@ -549,7 +551,9 @@ impl Iterator for PythonTokenizer<'_> {
         let name_length = self.find_name_length(c);
         if name_length > 0 {
             if ALWAYS_BREAK_NAMES.contains(&c[..name_length]) {
-                self.encountered_break_token();
+                if let tok @ Some(_) = self.encountered_break_token() {
+                    return tok;
+                }
             }
             self.index += name_length;
             return self.new_tok(start, true, TerminalType::Name);
@@ -692,6 +696,15 @@ mod tests {
         weird_indent4 " 1 \\\ndef" => [
             (1, 0, Indent), (1, 1, Number), (5, 3, Name), (8, 0, Dedent)];
 
+        invalid_open_bracket_with_dedent "class C:\n   asdf(\nclass D: ..." => [
+            (0, 5, Name), (6, 1, Name), (7, 1, Operator), (8, 1, Newline), (12, 0, Indent),
+            (12, 4, Name), (16, 1, Operator), (18, 0, Dedent), (18, 5, Name), (24, 1, Name),
+            (25, 1, Operator), (27, 3, Operator),
+        ];
+        invalid_open_bracket_with_semicolon "class C:\n   asdf(\n; bar" => [
+            (0, 5, Name), (6, 1, Name), (7, 1, Operator), (8, 1, Newline), (12, 0, Indent),
+            (12, 4, Name), (16, 1, Operator), (18, 0, Dedent), (18, 1, Operator), (20, 3, Name),
+        ];
 
         formfeed1 "  \x0C  " => [];
         formfeed2 "\x0C'''" => [(1, 0, Indent), (1, 3, ErrorToken), (4, 0, Dedent)];

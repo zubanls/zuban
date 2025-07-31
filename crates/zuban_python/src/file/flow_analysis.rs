@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     cell::{Cell, RefCell, RefMut},
+    collections::VecDeque,
     rc::Rc,
 };
 
@@ -359,13 +360,14 @@ struct LoopDetails {
     loop_frame_index: usize,
 }
 
-#[derive(Debug)]
-pub(crate) enum DelayedDiagnostic {
+#[derive(Debug, Clone, Copy)]
+pub enum DelayedDiagnostic {
     Func(DelayedFunc),
+    Class(PointLink),
     ClassTypeParams { class_link: PointLink },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub(crate) struct DelayedFunc {
     pub func: PointLink,
     pub class: Option<PointLink>,
@@ -383,7 +385,7 @@ pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     try_frames: RefCell<Vec<Entries>>,
     loop_details: RefCell<Option<LoopDetails>>,
-    delayed_diagnostics: RefCell<Vec<DelayedDiagnostic>>,
+    delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
     accumulating_types: Cell<usize>, // Can accumulate nested and thereore use this counter like a stack
@@ -399,21 +401,23 @@ impl FlowAnalysis {
         result
     }
 
-    pub fn with_new_empty_and_process_delayed_diagnostics(
+    pub fn with_new_empty_for_file<T>(
         &self,
         db: &Database,
-        callable: impl FnOnce(),
-    ) {
+        file: &PythonFile,
+        callable: impl FnOnce() -> T,
+    ) -> T {
         self.with_new_empty(db, || {
-            callable();
-            self.process_delayed_diagnostics(db, |func| {
-                let result = func
-                    .node_ref
-                    .file
-                    .inference(&InferenceState::new(db, func.node_ref.file))
-                    .ensure_func_diagnostics(func);
-                debug_assert!(result.is_ok());
-            });
+            debug_assert!(self.delayed_diagnostics.borrow().is_empty());
+            *self.delayed_diagnostics.borrow_mut() = file.delayed_diagnostics.take();
+            let result = callable();
+            let delayed = self.delayed_diagnostics.take();
+            if db.project.flags.local_partial_types {
+                *file.delayed_diagnostics.borrow_mut() = delayed;
+            } else {
+                self.process_delayed_diagnostics(db, delayed)
+            }
+            result
         })
     }
     pub fn with_new_empty_and_delay_further<T>(
@@ -423,7 +427,7 @@ impl FlowAnalysis {
     ) -> T {
         let (result, delayed) = self.with_new_empty(db, || {
             let result = callable();
-            let delayed: Vec<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
+            let delayed: VecDeque<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
             (result, delayed)
         });
         self.delayed_diagnostics.borrow_mut().extend(delayed);
@@ -536,21 +540,6 @@ impl FlowAnalysis {
         }
     }
 
-    pub fn in_conditional(&self) -> bool {
-        let frames = self.frames.borrow();
-        let Some(last) = frames.last() else {
-            //recoverable_error!("in_conditional should not have empty frames");
-            // TODO This should probably not happen, because we are not sure if we are in a
-            // conditional
-            return false;
-        };
-        matches!(last.kind, FrameKind::Conditional)
-    }
-
-    pub fn in_loop(&self) -> bool {
-        self.loop_details.borrow().is_some()
-    }
-
     pub fn is_unreachable(&self) -> bool {
         self.frames.borrow().last().unwrap().unreachable
     }
@@ -561,6 +550,13 @@ impl FlowAnalysis {
         RefMut::map(self.frames.borrow_mut(), |frames| {
             frames.last_mut().unwrap()
         })
+    }
+
+    #[inline]
+    fn maybe_tos_frame(&self) -> Option<RefMut<Frame>> {
+        // tos = top of the stack
+        let frames = self.frames.borrow_mut();
+        (!frames.is_empty()).then(|| RefMut::map(frames, |frames| frames.last_mut().unwrap()))
     }
 
     pub fn enable_reported_unreachable_in_top_frame(&self) {
@@ -757,7 +753,10 @@ impl FlowAnalysis {
     }
 
     fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
-        let mut tos_frame = self.tos_frame();
+        let Some(mut tos_frame) = self.maybe_tos_frame() else {
+            recoverable_error!("Trying to overwrite entries, but there are no frames");
+            return;
+        };
 
         for entry in &new_entries {
             invalidate_child_entries(&mut tos_frame.entries, db, &entry.key);
@@ -782,9 +781,18 @@ impl FlowAnalysis {
         self.tos_frame().unreachable |= new_frame.unreachable;
     }
 
-    pub fn with_new_func_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
-        self.with_frame(Frame::new_base_scope(), callable)
-            .unreachable
+    pub fn with_new_func_frame_and_return_unreachable(
+        &self,
+        db: &Database,
+        callable: impl FnOnce(),
+    ) -> bool {
+        let old_partials = self.partials_in_module.take();
+        let result = self
+            .with_frame(Frame::new_base_scope(), callable)
+            .unreachable;
+        let new_partials = self.partials_in_module.replace(old_partials);
+        process_unfinished_partials(db, new_partials);
+        result
     }
 
     pub fn with_frame_that_exports_widened_entries<T>(
@@ -904,39 +912,48 @@ impl FlowAnalysis {
     }
 
     pub fn mark_current_frame_unreachable(&self) {
-        self.tos_frame().unreachable = true
+        if let Some(mut tos) = self.maybe_tos_frame() {
+            tos.unreachable = true
+        }
     }
 
     pub fn add_partial(&self, defined_at: PointLink) {
         self.partials_in_module.borrow_mut().push(defined_at)
     }
 
-    pub fn check_for_unfinished_partials(&self, db: &Database) {
-        process_unfinished_partials(db, self.partials_in_module.take());
-    }
-
     pub fn add_delayed_func(&self, func: PointLink, class: Option<PointLink>) {
         self.delayed_diagnostics
             .borrow_mut()
-            .push(DelayedDiagnostic::Func(DelayedFunc {
+            .push_back(DelayedDiagnostic::Func(DelayedFunc {
                 func,
                 class,
                 in_type_checking_only_block: self.in_type_checking_only_block.get(),
             }))
     }
 
+    pub fn add_delayed_class_diagnostics(&self, class: PointLink) {
+        self.delayed_diagnostics
+            .borrow_mut()
+            .push_back(DelayedDiagnostic::Class(class))
+    }
+
     pub fn add_delayed_type_params_variance_inference(&self, class: ClassNodeRef) {
         self.delayed_diagnostics
             .borrow_mut()
-            .push(DelayedDiagnostic::ClassTypeParams {
+            .push_back(DelayedDiagnostic::ClassTypeParams {
                 class_link: class.as_link(),
             })
     }
 
-    pub fn process_delayed_diagnostics(&self, db: &Database, callback: impl Fn(Function)) {
+    pub(super) fn process_delayed_diagnostics(
+        &self,
+        db: &Database,
+        delayed: VecDeque<DelayedDiagnostic>,
+    ) {
+        let old = self.delayed_diagnostics.replace(delayed);
         while let Some(delayed) = {
             let mut borrowed = self.delayed_diagnostics.borrow_mut();
-            let result = borrowed.pop();
+            let result = borrowed.pop_front();
             drop(borrowed);
             result
         } {
@@ -948,18 +965,39 @@ impl FlowAnalysis {
                             .class
                             .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
                     );
+                    let run = || {
+                        let i_s = if let Some(cls) = &func.class {
+                            InferenceState::from_class(db, cls)
+                        } else {
+                            InferenceState::new(db, func.node_ref.file)
+                        };
+                        let result = func
+                            .node_ref
+                            .file
+                            .inference(&i_s)
+                            .ensure_func_diagnostics(func);
+                        debug_assert!(result.is_ok());
+                    };
                     if delayed_func.in_type_checking_only_block {
-                        self.with_in_type_checking_only_block(|| callback(func))
+                        self.with_in_type_checking_only_block(|| run())
                     } else {
-                        callback(func)
+                        run()
                     }
+                }
+                DelayedDiagnostic::Class(c) => {
+                    let node_ref = ClassNodeRef::from_link(db, c);
+                    node_ref
+                        .file
+                        .inference(&InferenceState::new(db, node_ref.file))
+                        .ensure_class_diagnostics(node_ref);
                 }
                 DelayedDiagnostic::ClassTypeParams { class_link } => {
                     ClassNodeRef::from_link(db, class_link).infer_variance_of_type_params(db, true);
                 }
             }
         }
-        debug_assert!(self.delayed_diagnostics.borrow().is_empty())
+        debug_assert!(self.delayed_diagnostics.borrow().is_empty());
+        *self.delayed_diagnostics.borrow_mut() = old;
     }
 
     pub fn start_accumulating_types(&self) {
@@ -1486,9 +1524,17 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.in_type_checking_only_block.get())
     }
 
-    #[expect(dead_code)]
-    pub fn in_loop(&self) -> bool {
-        FLOW_ANALYSIS.with(|fa| fa.in_loop())
+    pub fn in_conditional(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| {
+            let frames = fa.frames.borrow();
+            let Some(last) = frames.last() else {
+                //recoverable_error!("in_conditional should not have empty frames");
+                // TODO This should probably not happen, because we are not sure if we are in a
+                // conditional
+                return false;
+            };
+            matches!(last.kind, FrameKind::Conditional)
+        })
     }
 
     pub fn mark_current_frame_unreachable(&self) {
@@ -1751,6 +1797,10 @@ impl Inference<'_, '_, '_> {
         }
         let p = name_def_node_ref.point();
         if p.calculating() {
+            debug!(
+                "The symbol {} is already calculating",
+                name_def_node_ref.as_code()
+            );
             return Err(());
         }
         if !p.calculated() {
@@ -1795,7 +1845,15 @@ impl Inference<'_, '_, '_> {
     ) -> Result<(), ()> {
         let mut function = function; // lifetime issues?!
         if let Some(class) = function.class.as_mut() {
-            class.ensure_calculated_diagnostics_for_class(self.i_s.db)?;
+            let result = class.ensure_calculated_diagnostics_for_class(self.i_s.db);
+            if result.is_err() {
+                debug!(
+                    "The class {:?} could not be calculated for func {:?} diagnostics",
+                    class.name(),
+                    function.name()
+                );
+            }
+            result?
         }
 
         fa.with_new_empty_and_delay_further(self.i_s.db, || self.ensure_func_diagnostics(function))
@@ -2602,12 +2660,12 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::WildcardPattern(_) => (),
             PatternKind::DottedName(dotted_name) => {
-                self.infer_dotted_name(dotted_name);
+                self.infer_pattern_dotted_name(dotted_name);
                 // TODO use this
             }
             PatternKind::ClassPattern(class_pattern) => {
                 let (dotted, params) = class_pattern.unpack();
-                self.infer_dotted_name(dotted);
+                self.infer_pattern_dotted_name(dotted);
                 for param in params {
                     match param {
                         ParamPattern::Positional(pat) => {
@@ -3823,6 +3881,10 @@ impl Inference<'_, '_, '_> {
             &|_| (),
             &|_| (), // OnLookupError is irrelevant for us here.
         )
+    }
+
+    pub fn has_frames(&self) -> bool {
+        !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
     }
 }
 

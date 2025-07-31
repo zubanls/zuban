@@ -1,0 +1,694 @@
+[case basic_goto]
+#? goto
+from m import f
+
+a = 1
+
+#? goto 
+a
+
+#? goto
+f
+#? goto --follow-imports
+f
+
+#? infer
+f
+
+[file m.py]
+
+def f(): ...
+
+[out]
+__main__.py:2:goto -> m.py:2:4:m.f
+__main__.py:7:goto -> __main__.py:4:0:__main__.a
+__main__.py:10:goto -> __main__.py:2:14:__main__.f
+__main__.py:12:goto -> m.py:2:4:m.f
+__main__.py:15:infer -> m.py:2:4:m.f
+
+
+[case goto_with_bytes]
+import dataclasses
+#? --nth-utf8-byte 47 goto
+
+dataclasses
+
+# out of scope
+#? --nth-utf8-byte 1000000000 goto
+dataclasses
+[out]
+__main__.py:3:goto -> __main__.py:1:7:__main__.dataclasses
+__main__.py:8:goto -> ()
+
+[case invalid_nth_byte]
+ä = 1
+#? --nth-utf8-byte 1 goto
+
+[out]
+__main__.py:3:goto -> error: 1 is not a valid char boundary
+
+[case goto_with_utf8_bytes]
+ä𐍈ä = 1
+a = 2
+#? --utf8-bytes-column 8 goto
+ä𐍈ä+a
+
+#? --utf8-bytes-column 9 goto
+ä𐍈ä+a
+
+#? --utf8-bytes-column 1 goto
+ä𐍈ä
+
+# out of scope
+#? --utf8-bytes-column 200 goto
+a
+str
+
+[out]
+__main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
+__main__.py:7:goto -> __main__.py:2:0:__main__.a
+__main__.py:10:goto -> error: Column 1 is not a valid char boundary on line "ä𐍈ä"
+__main__.py:14:goto -> __main__.py:2:0:__main__.a
+
+[case goto_with_utf16_code_units]
+ä𐍈ä = 1
+a = 2
+#? --utf16-code-units-column 4 goto
+ä𐍈ä+a
+
+#? --utf16-code-units-column 5 goto
+ä𐍈ä+a
+
+# out of scope
+#? --utf16-code-units-column 6 goto
+a
+str
+
+[out]
+__main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
+__main__.py:7:goto -> __main__.py:2:0:__main__.a
+__main__.py:11:goto -> __main__.py:2:0:__main__.a
+
+[case goto_with_codepoint_column]
+ä𐍈ä = 1
+a = 2
+#? --codepoint-column 3 goto
+ä𐍈ä+a
+
+#? --codepoint-column 4 goto
+ä𐍈ä+a
+
+# out of scope
+#? --codepoint-column 200 goto
+a
+str
+
+[out]
+__main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
+__main__.py:7:goto -> __main__.py:2:0:__main__.a
+__main__.py:11:goto -> __main__.py:2:0:__main__.a
+
+[case goto_on_stub_package_both]
+# pkgs: typedpkg, typedpkg-stubs
+from typedpkg.sample import ex
+from typedpkg.pkg.aaa import af
+
+#? goto --follow-imports
+ex
+#? goto --follow-imports
+af
+#? goto --follow-imports --prefer-stubs
+ex
+#? goto --follow-imports --prefer-stubs
+af
+#? infer
+ex
+#? infer
+af
+#? infer --prefer-stubs
+ex
+#? infer --prefer-stubs
+af
+
+[out]
+__main__.py:6:goto -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:8:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:10:goto -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:12:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:14:infer -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:16:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:18:infer -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:20:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+
+[case goto_on_stub_package_only_python]
+# pkgs: typedpkg
+from typedpkg.sample import ex
+from typedpkg.pkg.aaa import af
+
+#? goto --follow-imports
+ex
+#? goto --follow-imports
+af
+#? goto --follow-imports --prefer-stubs
+ex
+#? goto --follow-imports --prefer-stubs
+af
+#? infer
+ex
+#? infer
+af
+#? infer --prefer-stubs
+ex
+#? infer --prefer-stubs
+af
+
+[out]
+__main__.py:6:goto -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:8:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:10:goto -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:12:goto -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:14:infer -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:16:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+__main__.py:18:infer -> typedpkg/sample.py:6:4:typedpkg.sample.ex
+__main__.py:20:infer -> typedpkg/pkg/aaa.py:1:4:typedpkg.pkg.aaa.af
+
+[case goto_on_stub_package_only_stub]
+# pkgs: typedpkg-stubs
+from typedpkg.sample import ex
+from typedpkg.pkg.aaa import af
+
+#? goto --follow-imports
+ex
+#? goto --follow-imports
+af
+#? goto --follow-imports --prefer-stubs
+ex
+#? goto --follow-imports --prefer-stubs
+af
+#? infer
+ex
+#? infer
+af
+#? infer --prefer-stubs
+ex
+#? infer --prefer-stubs
+af
+
+[out]
+__main__:3: error: Cannot find implementation or library stub for module named "typedpkg.pkg"
+__main__.py:6:goto -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:8:goto -> __main__.py:3:29:__main__.af
+__main__.py:10:goto -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:12:goto -> __main__.py:3:29:__main__.af
+__main__.py:14:infer -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:16:infer -> ()
+__main__.py:18:infer -> typedpkg-stubs/sample.pyi:2:4:typedpkg.sample.ex
+__main__.py:20:infer -> ()
+
+[case goto_on_stub_package_module_both]
+# pkgs: typedpkg, typedpkg-stubs
+from typedpkg import sample
+
+#? goto --follow-imports
+sample
+#? goto --follow-imports --prefer-stubs
+sample
+#? infer
+sample
+#? infer --prefer-stubs
+sample
+
+[out]
+__main__.py:5:goto -> typedpkg/sample.py:1:0:typedpkg.sample
+__main__.py:7:goto -> typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
+__main__.py:9:infer -> typedpkg/sample.py:1:0:typedpkg.sample
+__main__.py:11:infer -> typedpkg-stubs/sample.pyi:1:0:typedpkg.sample
+
+[case simple_goto_file_that_has_stub]
+import m
+#? goto
+m.C
+#? goto --prefer-stubs
+m.C
+#? goto
+m.C.f
+#? goto --prefer-stubs
+m.C.f
+
+x = m.C()
+#? --codepoint-column 3 goto
+x.f(1)
+#? --codepoint-column 3 goto --prefer-stubs
+x.f(1)
+
+[file m.py]
+
+class C:
+    def f(self, x: str): ...
+[file m.pyi]
+class C:
+    def f(self, x: int, /): ...
+
+[out]
+__main__.py:3:goto -> m.py:2:6:m.C
+__main__.py:5:goto -> m.pyi:1:6:m.C
+__main__.py:7:goto -> m.py:3:8:m.C.f
+__main__.py:9:goto -> m.pyi:2:8:m.C.f
+__main__.py:13:goto -> m.py:3:8:m.C.f
+__main__.py:15:goto -> m.pyi:2:8:m.C.f
+
+[case simple_infer_file_that_has_stub]
+import m
+#? infer
+m.C
+#? infer --prefer-stubs
+m.C
+#? infer
+m.C.f
+#? infer --prefer-stubs
+m.C.f
+
+x = m.C()
+#? --codepoint-column 3 infer
+x.f(1)
+#? --codepoint-column 3 infer --prefer-stubs
+x.f(1)
+
+[file m.py]
+
+class C:
+    def f(self, x: str): ...
+[file m.pyi]
+class C:
+    def f(self, x: int, /): ...
+
+[out]
+__main__.py:3:infer -> m.py:2:6:m.C
+__main__.py:5:infer -> m.pyi:1:6:m.C
+__main__.py:7:infer -> m.py:3:8:m.C.f
+__main__.py:9:infer -> m.pyi:2:8:m.C.f
+__main__.py:13:infer -> m.py:3:8:m.C.f
+__main__.py:15:infer -> m.pyi:2:8:m.C.f
+
+[case lambda_qualified_name]
+def f():
+    #? goto
+    x = lambda y: y
+    #? goto
+    x
+
+[out]
+__main__.py:3:goto -> __main__.py:3:15:__main__.y@3
+__main__.py:5:goto -> __main__.py:3:4:__main__.x@3
+
+[case goto_stub_directly_on_identifier_to_stubs]
+
+[file m.py]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file m.pyi]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x: int
+
+[out]
+m.pyi:2:goto -> m.pyi:2:6:m.C
+m.pyi:4:goto -> m.pyi:4:8:m.C.f
+m.pyi:7:goto -> m.pyi:7:0:m.x
+m.py:2:goto -> m.pyi:2:6:m.C
+m.py:4:goto -> m.pyi:4:8:m.C.f
+m.py:7:goto -> m.pyi:7:0:m.x
+
+[case goto_stub_directly_on_identifier_to_non_stubs]
+
+[file m.py]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x = 1
+
+[file m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+m.pyi:2:goto -> m.py:2:6:m.C
+m.pyi:4:goto -> m.py:4:8:m.C.f
+m.pyi:7:goto -> m.py:7:0:m.x
+m.py:2:goto -> m.py:2:6:m.C
+m.py:4:goto -> m.py:4:8:m.C.f
+m.py:7:goto -> m.py:7:0:m.x
+
+
+[case goto_primary_target_function_execution]
+from typing import Self
+class X:
+    z = 1
+    def f(self) -> Self:
+        return self
+
+def x(x: X):
+    #? --codepoint-column 7 goto
+    x.f().z = 4
+    #? --codepoint-column 8 goto
+    x.f().z = 4
+    #? --codepoint-column 9 goto
+    x.f().z = 3
+    #? --codepoint-column 10 goto
+    x.f().z = 4
+
+[out]
+__main__.py:9:goto -> __main__.py:4:8:__main__.X.f
+__main__.py:11:goto -> __main__.py:2:6:__main__.X
+__main__.py:13:goto -> __main__.py:2:6:__main__.X
+__main__.py:15:goto -> __main__.py:3:4:__main__.X.z
+
+[case goto_stubs_package]
+
+[file m/__init__.py]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file m/foo.py]
+#? --codepoint-column 1 goto --prefer-stubs
+y = 1
+
+[file m-stubs/__init__.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[file m-stubs/foo.pyi]
+#? --codepoint-column 1 goto
+y = 1
+
+[out]
+m-stubs/__init__.pyi:2:goto -> m/__init__.py:2:6:m.C
+m-stubs/__init__.pyi:4:goto -> m/__init__.py:4:8:m.C.f
+m-stubs/__init__.pyi:7:goto -> m/__init__.py:7:0:m.x
+m/__init__.py:2:goto -> m-stubs/__init__.pyi:2:6:m.C
+m/__init__.py:4:goto -> m-stubs/__init__.pyi:4:8:m.C.f
+m/__init__.py:7:goto -> m-stubs/__init__.pyi:7:0:m.x
+m/foo.py:2:goto -> m-stubs/foo.pyi:2:0:m.foo.y
+m-stubs/foo.pyi:2:goto -> m/foo.py:2:0:m.foo.y
+
+[case goto_in_namespace_normal_to_stub_and_vice_versa]
+[file pkg/m.py]
+
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file pkg/m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+pkg/m.py:3:goto -> pkg/m.pyi:2:6:pkg.m.C
+pkg/m.py:5:goto -> pkg/m.pyi:4:8:pkg.m.C.f
+pkg/m.py:8:goto -> pkg/m.pyi:7:0:pkg.m.x
+pkg/m.pyi:2:goto -> pkg/m.py:3:6:pkg.m.C
+pkg/m.pyi:4:goto -> pkg/m.py:5:8:pkg.m.C.f
+pkg/m.pyi:7:goto -> pkg/m.py:8:0:pkg.m.x
+
+[case goto_in_package_normal_to_stub_and_vice_versa]
+[file pkg/__init__.py]
+[file pkg/m.py]
+
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file pkg/m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+pkg/m.py:3:goto -> pkg/m.pyi:2:6:pkg.m.C
+pkg/m.py:5:goto -> pkg/m.pyi:4:8:pkg.m.C.f
+pkg/m.py:8:goto -> pkg/m.pyi:7:0:pkg.m.x
+pkg/m.pyi:2:goto -> pkg/m.py:3:6:pkg.m.C
+pkg/m.pyi:4:goto -> pkg/m.py:5:8:pkg.m.C.f
+pkg/m.pyi:7:goto -> pkg/m.py:8:0:pkg.m.x
+
+[case goto_in_nested_package_normal_to_stub_and_vice_versa]
+[file pkg/nested/__init__.py]
+[file pkg/nested/m.py]
+
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+#? --codepoint-column 1 goto --prefer-stubs
+x = 1
+
+[file pkg/nested/m.pyi]
+#? --codepoint-column 7 goto
+class C:
+    #? --codepoint-column 9 goto
+    def f(self): ...
+
+#? --codepoint-column 1 goto
+x: int
+
+[out]
+pkg/nested/m.py:3:goto -> pkg/nested/m.pyi:2:6:pkg.nested.m.C
+pkg/nested/m.py:5:goto -> pkg/nested/m.pyi:4:8:pkg.nested.m.C.f
+pkg/nested/m.py:8:goto -> pkg/nested/m.pyi:7:0:pkg.nested.m.x
+pkg/nested/m.pyi:2:goto -> pkg/nested/m.py:3:6:pkg.nested.m.C
+pkg/nested/m.pyi:4:goto -> pkg/nested/m.py:5:8:pkg.nested.m.C.f
+pkg/nested/m.pyi:7:goto -> pkg/nested/m.py:8:0:pkg.nested.m.x
+
+[case goto_class_to_def]
+[file m.py]
+#? --codepoint-column 7 goto --prefer-stubs
+class C:
+    #? --codepoint-column 9 goto --prefer-stubs
+    def f(self): ...
+
+[file m.pyi]
+#? --codepoint-column 5 goto
+def C():
+    #? --codepoint-column 9 goto
+    def f(): ...
+
+[out]
+m.pyi:2:goto -> m.py:2:6:m.C
+m.pyi:4:goto -> m.pyi:4:8:m.f@4
+m.py:2:goto -> m.pyi:2:4:m.C
+m.py:4:goto -> m.py:4:8:m.C.f
+
+[case goto_multi_steps]
+import m
+#? goto --follow-imports
+m.C
+
+[file m.py]
+#? --codepoint-column 6 goto
+class C: ...
+[file m.py.2]
+[file m.py.3]
+#? goto
+import x
+C = x.a
+
+[file x.py]
+a = 1
+
+[out]
+m.py:2:goto -> m.py:2:6:m.C
+__main__.py:3:goto -> m.py:2:6:m.C
+==
+__main__:3: error: Module has no attribute "C"
+__main__.py:3:goto -> ()
+==
+__main__.py:3:goto -> m.py:3:0:m.C
+m.py:2:goto -> x.py:1:0:x
+
+[case goto_stdlib]
+#? goto --prefer-stubs
+str
+#? goto
+str
+
+import token
+
+#? goto --prefer-stubs
+token.ENDMARKER
+#? goto --no-positions
+token.ENDMARKER
+
+import os
+#? goto --prefer-stubs
+os.getenv
+#? goto --no-positions
+os.getenv
+
+import importlib
+#? goto --prefer-stubs
+importlib.import_module
+#? goto --no-positions
+importlib.import_module
+
+[out]
+__main__.py:2:goto -> builtins.pyi:438:6:builtins.str
+__main__.py:4:goto -> builtins.pyi:438:6:builtins.str
+__main__.py:9:goto -> token.pyi:81:0:token.ENDMARKER
+__main__.py:11:goto -> token.py:token.ENDMARKER
+__main__.py:15:goto -> os/__init__.pyi:989:4:os.getenv
+__main__.py:17:goto -> os.py:os.getenv
+__main__.py:21:goto -> importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:23:goto -> importlib/__init__.py:importlib.import_module
+
+[case infer_stdlib]
+#? infer --prefer-stubs
+str
+#? infer
+str
+
+import token
+
+#? infer --prefer-stubs
+token.ENDMARKER
+#? infer
+token.ENDMARKER
+#? infer --prefer-stubs
+token.ISTERMINAL
+#? infer --no-positions
+token.ISTERMINAL
+
+import os
+#? infer --prefer-stubs
+os.getenv
+#? infer --no-positions
+os.getenv
+
+import importlib
+#? infer --prefer-stubs
+importlib.import_module
+#? infer --no-positions
+importlib.import_module
+
+[out]
+__main__.py:2:infer -> builtins.pyi:438:6:builtins.str
+__main__.py:4:infer -> builtins.pyi:438:6:builtins.str
+__main__.py:9:infer -> builtins.pyi:231:6:builtins.int
+__main__.py:11:infer -> builtins.pyi:231:6:builtins.int
+__main__.py:13:infer -> token.pyi:158:4:token.ISTERMINAL
+__main__.py:15:infer -> token.py:token.ISTERMINAL
+__main__.py:19:infer -> os/__init__.pyi:989:4:os.getenv
+__main__.py:21:infer -> os.py:os.getenv
+__main__.py:25:infer -> importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:27:infer -> importlib/__init__.py:importlib.import_module
+
+[case goto_doc_contains_with_stubs]
+from m import foo
+#? goto --prefer-stubs --doc-is "hello"
+foo
+from m import foo
+#? goto --doc-is "hello"
+
+#? goto --prefer-stubs --follow-imports --doc-is "hello"
+foo
+from m import foo
+#? goto --follow-imports --doc-is "hello"
+
+#? infer --prefer-stubs --doc-is "hello"
+foo
+from m import foo
+#? infer --doc-is "hello"
+foo
+
+[file m.py]
+def foo():
+    """
+    hello
+    """
+
+[file m.pyi]
+def foo(): ...
+[out]
+__main__.py:3:goto -> Doc for __main__.foo did not match: "" does not contain "hello"
+__main__.py:6:goto -> Doc for __main__.foo did not match: "" does not contain "hello"
+__main__.py:8:goto -> Doc for m.foo matched
+__main__.py:11:goto -> Doc for m.foo matched
+__main__.py:13:infer -> Doc for m.foo matched
+__main__.py:16:infer -> Doc for m.foo matched
+
+[case goto_doc_contains_stdlib_compiled]
+#? goto --prefer-stubs --doc-contains "foobar"
+str
+#? goto --doc-contains "foobar"
+str
+
+#? infer --prefer-stubs --doc-contains "foobar"
+str
+#? infer --doc-contains "foobar"
+str
+
+[case goto_doc_contains_stdlib_module_non_compiled]
+def separate_goto():
+    #? goto --prefer-stubs --doc-is "Token constants."
+    import token
+
+def a2():
+    #? goto --doc-is "Token constants."
+    import token
+def a3():
+    #? infer --prefer-stubs --doc-is "Token constants."
+    import token
+def a4():
+    #? infer --doc-is "Token constants."
+    import token
+
+[out]
+__main__.py:3:goto -> Doc for token matched
+__main__.py:7:goto -> Doc for token matched
+__main__.py:10:infer -> Doc for token matched
+__main__.py:13:infer -> Doc for token matched

@@ -11,15 +11,15 @@ pub(crate) use generic::Generic;
 pub(crate) use generics::Generics;
 pub(crate) use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
-    calculate_callable_dunder_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_dunder_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    CalculatedTypeArgs, CheckedTypeRecursion, FunctionOrCallable, Matcher, MatcherFormatResult,
-    ReplaceSelfInMatcher,
+    calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
+    calc_func_type_vars, calc_untyped_func_type_vars, CalculatedTypeArgs, CheckedTypeRecursion,
+    Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
 };
 pub(crate) use result_context::{CouldBeALiteral, ResultContext};
 pub(crate) use utils::{
     calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-    maybe_class_usage, replace_class_type_vars, replace_class_type_vars_in_callable,
+    maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,
+    replace_class_type_vars_in_callable,
 };
 
 use crate::{
@@ -31,6 +31,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
+    type_helpers::FuncLike,
     utils::debug_indent,
 };
 
@@ -127,7 +128,7 @@ pub fn avoid_protocol_mismatch(
 }
 
 type OnOverloadMismatch<'a> = Option<&'a dyn Fn()>;
-type GenerateDiagnosticString<'a> = &'a dyn Fn(&FunctionOrCallable, &Database) -> Option<String>;
+type GenerateDiagnosticString<'a> = &'a dyn Fn(&dyn FuncLike, &Database) -> Option<String>;
 
 #[derive(Clone, Copy)]
 pub(crate) struct OnTypeError<'a> {
@@ -141,7 +142,7 @@ impl<'a> OnTypeError<'a> {
         Self {
             callback,
             on_overload_mismatch: None,
-            generate_diagnostic_string: &func_or_callable_diagnostic_string,
+            generate_diagnostic_string: &func_like_diagnostic_string,
         }
     }
 
@@ -152,7 +153,7 @@ impl<'a> OnTypeError<'a> {
         Self {
             callback,
             on_overload_mismatch,
-            generate_diagnostic_string: &func_or_callable_diagnostic_string,
+            generate_diagnostic_string: &func_like_diagnostic_string,
         }
     }
 
@@ -173,7 +174,7 @@ impl<'a> OnTypeError<'a> {
 
 // For whatever reason we cannot just pass FunctionOrCallable::diagnostic_string, even though it
 // results in the exactly same behavior. Probably a Rust bug.
-fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> Option<String> {
+fn func_like_diagnostic_string(f: &dyn FuncLike, db: &Database) -> Option<String> {
     f.diagnostic_string(db)
 }
 

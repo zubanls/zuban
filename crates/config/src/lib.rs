@@ -36,10 +36,12 @@ pub struct ProjectOptions {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Settings {
     pub platform: Option<String>,
-    pub python_version: PythonVersion,
+    pub python_version: Option<PythonVersion>,
     pub environment: Option<Rc<NormalizedPath>>,
     pub mypy_path: Vec<Rc<NormalizedPath>>,
     pub prepended_site_packages: Vec<Rc<NormalizedPath>>,
+    /// Global packages are added by default (if we are not in a venv)
+    pub add_global_packages_default: bool,
     pub mypy_compatible: bool,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
@@ -47,15 +49,17 @@ pub struct Settings {
 }
 
 impl Default for Settings {
+    // PythonVersion::new(3, 13)
     fn default() -> Self {
         Self {
             platform: None,
-            python_version: PythonVersion::new(3, 13),
+            python_version: None,
             environment: None,
             typeshed_path: std::env::var("ZUBAN_TYPESHED")
                 .ok()
                 .map(|p| LocalFS::without_watcher().normalized_path_from_current_dir(&p)),
             mypy_path: vec![],
+            add_global_packages_default: true,
             mypy_compatible: false,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
@@ -66,6 +70,11 @@ impl Default for Settings {
 impl Settings {
     pub fn computed_platform(&self) -> &str {
         self.platform.as_deref().unwrap_or("posix")
+    }
+
+    pub fn python_version_or_default(&self) -> PythonVersion {
+        self.python_version
+            .unwrap_or_else(|| PythonVersion::new(3, 13))
     }
 
     pub fn apply_python_executable(
@@ -113,6 +122,12 @@ impl Settings {
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
         Ok(())
+    }
+
+    #[inline]
+    pub fn infer_untyped_returns(&self) -> bool {
+        // For now this is an alias
+        !self.mypy_compatible
     }
 }
 
@@ -331,6 +346,9 @@ pub struct TypeCheckerFlags {
 
     pub extra_checks: bool,
     pub case_sensitive: bool,
+
+    // Non-mypy settings
+    pub use_joins: bool,
 }
 
 impl Default for TypeCheckerFlags {
@@ -339,7 +357,7 @@ impl Default for TypeCheckerFlags {
             strict_optional: true,
             strict_equality: false,
             implicit_optional: false,
-            check_untyped_defs: false,
+            check_untyped_defs: true,
             ignore_missing_imports: false,
             follow_untyped_imports: false,
             disallow_untyped_defs: false,
@@ -355,7 +373,7 @@ impl Default for TypeCheckerFlags {
             allow_untyped_globals: true,
             allow_empty_bodies: false,
             allow_redefinition: true,
-            warn_unreachable: false,
+            warn_unreachable: true,
             warn_redundant_casts: false,
             warn_return_any: false,
             warn_no_return: true,
@@ -370,6 +388,7 @@ impl Default for TypeCheckerFlags {
             disabled_error_codes: vec![],
             extra_checks: false,
             case_sensitive: true,
+            use_joins: false,
         }
     }
 }
@@ -401,9 +420,12 @@ impl TypeCheckerFlags {
 
     pub fn mypy_default() -> Self {
         Self {
+            check_untyped_defs: false,
             allow_redefinition: false,
             local_partial_types: false,
             allow_untyped_globals: false,
+            use_joins: true,
+            warn_unreachable: false,
             ..Default::default()
         }
     }
@@ -882,11 +904,11 @@ fn apply_from_base_config(
             settings.apply_python_executable(vfs, current_dir, config_file_path, value.as_str()?)?
         }
         "python_version" => {
-            settings.python_version = if let IniOrTomlValue::Toml(Value::Float(f)) = &value {
+            settings.python_version = Some(if let IniOrTomlValue::Toml(Value::Float(f)) = &value {
                 f.display_repr().parse()?
             } else {
                 value.as_str()?.parse()?
-            }
+            })
         }
         "platform" => settings.platform = Some(value.as_str()?.to_string()),
         _ => return apply_from_config_part(flags, key, value),
@@ -1038,7 +1060,7 @@ mod tests {
     fn test_python_version_valid_mypy_ini() {
         let code = "[mypy]\npython_version = 3.1";
         let opts = project_options_valid(code, true);
-        let version = &opts.settings.python_version;
+        let version = &opts.settings.python_version.unwrap();
         assert_eq!(version.major, 3);
         assert_eq!(version.minor, 1);
     }
@@ -1057,7 +1079,7 @@ mod tests {
     fn test_python_version_valid_pyproject_toml() {
         let code = "[tool.mypy]\npython_version = '3.1'";
         let opts = project_options_valid(code, false);
-        let version = &opts.settings.python_version;
+        let version = &opts.settings.python_version.unwrap();
         assert_eq!(version.major, 3);
         assert_eq!(version.minor, 1);
     }
@@ -1067,7 +1089,7 @@ mod tests {
         let check = |major, minor| {
             let code = format!("[tool.mypy]\npython_version = {major}.{minor}");
             let opts = project_options_valid(&code, false);
-            let version = &opts.settings.python_version;
+            let version = &opts.settings.python_version.unwrap();
             assert_eq!(version.major, major);
             assert_eq!(version.minor, minor);
         };

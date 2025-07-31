@@ -9,8 +9,21 @@ use crate::{
     type_::{
         CallableContent, GenericItem, ReplaceSelf, ReplaceTypeVarLikes, Type, TypeVarLikeUsage,
     },
-    type_helpers::Class,
+    type_helpers::{Callable, Class},
 };
+
+pub fn maybe_replace_class_type_vars<'x>(
+    db: &Database,
+    t: &'x Type,
+    attribute_class: &Class,
+    self_instance: ReplaceSelf,
+) -> Option<Type> {
+    t.replace_type_var_likes_and_self(
+        db,
+        &mut |usage| maybe_class_usage(db, attribute_class, &usage),
+        self_instance,
+    )
+}
 
 pub fn replace_class_type_vars<'x>(
     db: &Database,
@@ -18,13 +31,9 @@ pub fn replace_class_type_vars<'x>(
     attribute_class: &Class,
     self_instance: ReplaceSelf,
 ) -> Cow<'x, Type> {
-    t.replace_type_var_likes_and_self(
-        db,
-        &mut |usage| maybe_class_usage(db, attribute_class, &usage),
-        self_instance,
-    )
-    .map(Cow::Owned)
-    .unwrap_or_else(|| Cow::Borrowed(t))
+    maybe_replace_class_type_vars(db, t, attribute_class, self_instance)
+        .map(Cow::Owned)
+        .unwrap_or_else(|| Cow::Borrowed(t))
 }
 
 pub fn replace_class_type_vars_in_callable(
@@ -60,7 +69,8 @@ pub fn create_signature_without_self_for_callable(
     func_class: &Class,
     first_type: &Type,
 ) -> Option<CallableContent> {
-    let mut matcher = Matcher::new_callable_matcher(callable);
+    let c = Callable::new(callable, None);
+    let mut matcher = Matcher::new_callable_matcher(&c);
     if !match_self_type(i_s, &mut matcher, instance, func_class, first_type) {
         debug!(
             "Couldn't create signature without self for callable {} with instance {}",
@@ -97,7 +107,8 @@ pub fn calculate_property_return(
     callable: &CallableContent,
 ) -> Option<Type> {
     let first_type = callable.first_positional_type().unwrap();
-    let mut matcher = Matcher::new_callable_matcher(callable);
+    let c = Callable::new(callable, None); // TODO is this correct?
+    let mut matcher = Matcher::new_callable_matcher(&c);
     if callable.kind.had_first_self_or_class_annotation()
         && !match_self_type(i_s, &mut matcher, instance, func_class, &first_type)
     {

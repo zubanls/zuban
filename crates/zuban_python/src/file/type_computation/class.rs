@@ -161,12 +161,31 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         if point.calculated() {
             return TypeVarLikes::load_saved_type_vars(i_s.db, node_ref);
         }
-        let type_var_likes = if let Some(type_params) = self.node().type_params() {
+        let node = self.node();
+        let type_var_likes = if let Some(type_params) = node.type_params() {
             self.file
                 .name_resolution_for_types(i_s)
                 .compute_type_params_definition(i_s.as_parent_scope(), type_params, false)
         } else {
-            TypeVarFinder::find_class_type_vars(i_s, self)
+            let mut found = TypeVarFinder::find_class_type_vars(i_s, self);
+            if found.is_empty() && i_s.db.project.settings.infer_untyped_returns() {
+                let storage = self.class_storage();
+                if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__") {
+                    if let Some(func) = NodeRef::new(self.file, name_index)
+                        .expect_name()
+                        .name_def()
+                        .unwrap()
+                        .maybe_name_of_func()
+                    {
+                        // Only generate type vars for classes that are not typed at all and have
+                        // initialization params.
+                        if !func.is_typed() && func.params().iter().skip(1).next().is_some() {
+                            found = TypeVarLikes::new_untyped_params(func, true)
+                        }
+                    }
+                }
+            }
+            found
         };
 
         if type_var_likes.is_empty() {
@@ -219,13 +238,13 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub fn infer_variance_of_type_params(self, db: &Database, check_narrowed: bool) {
-        // To avoid recursions, we add calculating to the block node.
-        let class_block_ref = NodeRef::new(self.file, self.node().block().index());
-        let old_point = class_block_ref.point();
-        if old_point.calculating() {
+        // To avoid recursions, we add calculating to the : node on class.
+        let colon_ref = NodeRef::new(self.file, self.node().block().index() - 1);
+        let point = colon_ref.point();
+        if point.calculating() || point.calculated() {
             return;
         }
-        class_block_ref.set_point(Point::new_calculating());
+        colon_ref.set_point(Point::new_calculating());
 
         let type_var_likes = self.use_cached_type_vars(db);
         let class = Class::with_self_generics(db, self);
@@ -255,7 +274,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 variance
             });
         }
-        class_block_ref.set_point(old_point);
+        colon_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
     }
 }
 
@@ -548,7 +567,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == db.python_state.enum_meta_link() {
-                if !self.use_cached_type_vars(db).is_empty() {
+                if !self.use_cached_type_vars(db).is_empty_or_untyped() {
                     self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
                 }
                 class_infos.class_kind = ClassKind::Enum;
@@ -587,13 +606,38 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             was_typed_dict = Some(td);
         }
 
+        if type_vars.is_empty() && db.project.settings.infer_untyped_returns() {
+            // TODO this is a weird place to put it, we also override type vars here and it's
+            // especially questionable that we inherit from the first type vars and not from the
+            // same class that has the __init__/__new__ that the rest of our logic uses. However
+            // it's kind of hard to unite these pieces, because of different layers of
+            // abstractions.
+            for base in class_infos.mro.iter_mut() {
+                if base.is_direct_base {
+                    if let Type::Class(c) = &mut base.type_ {
+                        let base_class = c.class(db);
+                        let base_type_vars = base_class.type_vars(i_s);
+                        if base_type_vars.has_from_untyped_params() {
+                            self.type_vars_node_ref().insert_complex(
+                                ComplexPoint::TypeVarLikes(base_type_vars.clone()),
+                                Locality::Todo,
+                            );
+                            c.generics = ClassGenerics::List(
+                                base_type_vars.as_self_generic_list(self.as_link()),
+                            );
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
 
         if let Some(dataclass) = was_dataclass {
             dataclass_init_func(&dataclass, db);
         }
-
         // Now that the class has been saved, we can use it like an actual class. We have to do
         // some member initialization things with TypedDicts, Enums, etc.
         let class = Class::with_undefined_generics(self.node_ref);
@@ -1878,6 +1922,8 @@ fn maybe_dataclass_transform_func(
     func: FuncNodeRef,
 ) -> Option<DataclassTransformObj> {
     let decorated = func.node().maybe_decorated()?;
+    Function::new_with_unknown_parent(db, *func)
+        .ensure_cached_func(&InferenceState::new(db, func.file));
     if let Some(ComplexPoint::FunctionOverload(overload)) = func.maybe_complex() {
         overload.dataclass_transform.clone()
     } else {

@@ -1,6 +1,8 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 43
 expression: tree_to_string(tree)
+snapshot_kind: text
 ---
 file: 0-74
  stmt: 1-12
@@ -20,8 +22,8 @@ file: 0-74
      Keyword: 12-18 "import"
      dotted_as_names: 19-33
       dotted_as_name: 19-33
-       dotted_name: 19-26
-        dotted_name: 19-22
+       dotted_import_name: 19-26
+        dotted_import_name: 19-22
          Name: 19-22 "foo"
         Keyword: 22-23 "."
         Name: 23-26 "bar"
@@ -57,11 +59,10 @@ file: 0-74
        name_def: 62-65
         Name: 62-65 "foo"
        Keyword: 65-66 "."
-       dotted_name: 66-73
-        dotted_name: 66-69
+       dotted_import_name: 66-73
+        dotted_import_name: 66-69
          Name: 66-69 "bar"
         Keyword: 69-70 "."
         Name: 70-73 "baz"
    Newline: 73-74 "\n"
  Endmarker: 74-74 ""
-

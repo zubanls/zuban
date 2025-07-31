@@ -19,13 +19,14 @@ use super::{
 use crate::{
     arguments::{ArgKind, Args, SimpleArgs},
     database::{Database, Locality, Point, PointLink, Specific},
+    debug,
     diagnostics::{Issue, IssueKind},
     file::{ClassNodeRef, PythonFile},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, maybe_class_usage, replace_class_type_vars,
-        Generics, LookupKind, OnTypeError, ResultContext,
+        calc_callable_type_vars, maybe_class_usage, replace_class_type_vars, Generics, LookupKind,
+        OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -35,6 +36,7 @@ use crate::{
         Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
         OverloadResult, OverloadedFunction, TypeOrClass,
     },
+    utils::debug_indent,
 };
 
 type FieldSpecifiers = Rc<[PointLink]>;
@@ -878,7 +880,7 @@ pub(crate) fn dataclass_initialize<'db>(
                     .collect(),
             );
         } else {
-            calculate_callable_type_vars_and_return(
+            calc_callable_type_vars(
                 i_s,
                 Callable::new(__init__, Some(class)),
                 args.iter(i_s.mode),
@@ -919,12 +921,28 @@ pub(crate) fn dataclass_initialize<'db>(
 }
 
 pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a CallableContent {
+    ensure_calculated(self_, db);
+    &self_.inits.get().unwrap().__init__
+}
+
+fn ensure_calculated(self_: &Rc<Dataclass>, db: &Database) {
     if self_.inits.get().is_none() {
+        debug!("Calculate dataclass {}", self_.class(db).name());
+        let indent = debug_indent();
         // Cannot use get_or_init, because this might recurse for some reasons (check for
         // example the test testDeferredDataclassInitSignatureSubclass)
         self_.inits.set(calculate_init_of_dataclass(db, self_)).ok();
+        drop(indent);
+        debug!("Finished calculating dataclass {}", self_.class(db).name());
     }
-    &self_.inits.get().unwrap().__init__
+}
+
+pub fn dataclass_post_init_func<'a>(
+    self_: &'a Rc<Dataclass>,
+    db: &Database,
+) -> &'a CallableContent {
+    ensure_calculated(self_, db);
+    &self_.inits.get().unwrap().__post_init__
 }
 
 pub(crate) fn lookup_on_dataclass_type<'a>(

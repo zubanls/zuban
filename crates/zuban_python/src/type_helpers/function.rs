@@ -3,6 +3,7 @@ use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 use parsa_python_cst::{
     Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamIterator,
     ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
+    YieldExprContent,
 };
 
 use crate::{
@@ -19,11 +20,11 @@ use crate::{
         FLOW_ANALYSIS,
     },
     format_data::FormatData,
-    inference_state::InferenceState,
+    inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{
-        calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArgs, ErrorStrs,
-        OnTypeError, ReplaceSelfInMatcher, ResultContext,
+        calc_func_type_vars, calc_untyped_func_type_vars, maybe_class_usage, CalculatedTypeArgs,
+        ErrorStrs, OnTypeError, ReplaceSelfInMatcher, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -41,7 +42,10 @@ use crate::{
         TypeVarLike, TypeVarLikes, WrongPositionalCount,
     },
     type_helpers::Class,
+    utils::debug_indent,
 };
+
+use super::callable::FuncLike;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Function<'a, 'class> {
@@ -126,7 +130,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut stmts = self.node().body().iter_stmt_likes();
         let mut stmt_like = stmts.next().unwrap();
         // Skip the first docstring
-        if stmt_like.node.is_string() {
+        if stmt_like.node.maybe_string().is_some() {
             let Some(s) = stmts.next() else {
                 return true; // It was simply a docstring
             };
@@ -187,39 +191,98 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         InferrableParamIterator::new(db, params, args)
     }
 
-    fn execute_without_annotation(
+    fn return_without_annotation(
         &self,
         i_s: &InferenceState<'db, '_>,
-        _args: &dyn Args<'db>,
+        return_inf: Inferred,
+        calculated: CalculatedTypeArgs,
+        replace_self_type: Option<ReplaceSelfInMatcher>,
     ) -> Inferred {
-        // TODO enable
-        if i_s.db.project.settings.mypy_compatible || true {
-            return Inferred::new_any(AnyCause::Unannotated);
+        let ret_t = return_inf.as_cow_type(i_s);
+        if ret_t.has_type_vars() || ret_t.has_self_type(i_s.db) {
+            calculated.into_return_type(i_s, ret_t.as_ref(), self.class.as_ref(), &|| {
+                replace_self_type.map(|replace_self| replace_self())
+            })
+        } else {
+            // If there are no type vars we can just pass the result on.
+            return_inf
         }
-        if self.is_generator() {
-            // TODO
+    }
+
+    fn ensure_cached_untyped_return(&self, i_s: &InferenceState) -> Inferred {
+        let had_error = &Cell::new(false);
+        let inner_i_s = &i_s
+            .with_func_context(self)
+            .with_mode(Mode::AvoidErrors { had_error });
+        let reference = self.unannotated_return_reference();
+        let p = reference.point();
+        if p.calculated() {
+            return reference.maybe_inferred(inner_i_s).unwrap();
         }
-        let inner_i_s = i_s.with_func_context(self);
+        if p.calculating() {
+            return Inferred::new_any_from_error();
+        }
+        reference.set_point(Point::new_calculating());
+        debug!("Checking cached untyped return for func {}", self.name());
+        let _indent = debug_indent();
+        self.node_ref
+            .file
+            .inference(&InferenceState::new(i_s.db, self.node_ref.file))
+            .ensure_calculated_function_body(*self);
+
+        let inference = self.node_ref.file.inference(inner_i_s);
+        let mut generator: Option<Inferred> = None;
+        let mut result: Option<Inferred> = None;
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
-                ReturnOrYield::Return(ret) =>
-                // TODO multiple returns, this is an early exit
-                {
-                    if let Some(star_expressions) = ret.star_expressions() {
-                        return self
-                            .node_ref
-                            .file
-                            .inference(&inner_i_s)
+                ReturnOrYield::Return(ret) => {
+                    let inf = if let Some(star_expressions) = ret.star_expressions() {
+                        inference
                             .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
-                            .resolve_untyped_function_return(&inner_i_s);
                     } else {
-                        // TODO
-                    }
+                        Inferred::new_none()
+                    };
+                    result = Some(if let Some(r) = result {
+                        inf.simplified_union(inner_i_s, r)
+                    } else {
+                        inf
+                    });
                 }
-                ReturnOrYield::Yield(_yield_expr) => unreachable!(),
+                ReturnOrYield::Yield(yield_expr) => {
+                    let inf = match yield_expr.unpack() {
+                        YieldExprContent::StarExpressions(s) => {
+                            inference.infer_star_expressions(s, &mut ResultContext::Unknown)
+                        }
+                        YieldExprContent::YieldFrom(yield_from) => {
+                            inference.infer_yield_from_expr(yield_from)
+                        }
+                        YieldExprContent::None => Inferred::new_none(),
+                    };
+                    generator = Some(if let Some(g) = generator {
+                        inf.simplified_union(inner_i_s, g)
+                    } else {
+                        inf
+                    });
+                }
             }
         }
-        Inferred::new_none()
+        if let Some(generator) = generator {
+            let t = generator.as_type(i_s);
+            result = Some(Inferred::from_type(if self.is_async() {
+                new_class!(i_s.db.python_state.async_generator_link(), t, Type::None,)
+            } else {
+                let ret_t = if let Some(result) = result {
+                    result
+                        .as_type(i_s)
+                        .simplified_union(i_s, &Type::Any(AnyCause::Todo))
+                } else {
+                    Type::Any(AnyCause::Todo)
+                };
+                new_class!(i_s.db.python_state.generator_link(), t, Type::None, ret_t)
+            }));
+        }
+        let result = result.unwrap_or_else(|| Inferred::new_none());
+        result.save_redirect(i_s, reference.file, reference.node_index)
     }
 
     pub fn parent_class(&self, db: &'db Database) -> Option<Class<'class>> {
@@ -376,7 +439,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 first_param: FirstParamProperties::None,
                 return_type: match type_guard.as_ref() {
                     Some(_) => Cow::Owned(i_s.db.python_state.bool_type()),
-                    None => self.return_type(i_s),
+                    None => self.node_ref.return_type(i_s),
                 },
             };
             let mut callable = self.as_callable_with_options(i_s, options);
@@ -402,10 +465,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Locality::Todo,
             ));
             if self.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable) {
-                if FLOW_ANALYSIS.with(|fa| fa.in_conditional()) {
+                let inference = name_def.file.inference(i_s);
+                if inference.in_conditional() {
                     self.check_conditional_function_definition(i_s)
                 } else {
-                    let inference = name_def.file.inference(i_s);
                     if let Some(_) = first_defined_name_of_multi_def(
                         self.node_ref.file,
                         name_def.name_ref_of_name_def().node_index,
@@ -422,8 +485,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn check_conditional_function_definition(&self, i_s: &InferenceState) {
-        let Some(first) =
-            first_defined_name_of_multi_def(self.node_ref.file, self.node().name().index())
+        let node = self.node();
+        let Some(first) = first_defined_name_of_multi_def(self.node_ref.file, node.name().index())
         else {
             return;
         };
@@ -444,7 +507,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // This checks whether there is an error or not
             || {
                 let mut had_error = false;
-                if self.node().maybe_decorated().is_none()
+                if node.maybe_decorated().is_none()
                     && NodeRef::new(self.node_ref.file, first)
                         .maybe_name_of_function()
                         .is_some_and(|func| func.maybe_decorated().is_none())
@@ -499,10 +562,33 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         {
             return FirstParamKind::ClassOfSelf;
         }
-        match self.kind(i_s) {
-            FunctionKind::Function { .. } | FunctionKind::Property { .. } => FirstParamKind::Self_,
-            FunctionKind::Classmethod { .. } => FirstParamKind::ClassOfSelf,
-            FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
+        if self.node_ref.point().calculated() {
+            match self.kind(i_s) {
+                FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
+                    FirstParamKind::Self_
+                }
+                FunctionKind::Classmethod { .. } => FirstParamKind::ClassOfSelf,
+                FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
+            }
+        } else {
+            // When inferring params while inferring the return type, the function might not yet
+            // be defined. In that case simply check for static/classmethods
+            if self.class.is_some() {
+                if let Some(decorated) = self.node().maybe_decorated() {
+                    for decorator in decorated.decorators().iter() {
+                        let inf = self.file.inference(i_s).infer_decorator(decorator);
+                        if let Some(saved_link) = inf.maybe_saved_link() {
+                            if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
+                                return FirstParamKind::ClassOfSelf;
+                            }
+                            if saved_link == i_s.db.python_state.staticmethod_node_ref().as_link() {
+                                return FirstParamKind::InStaticmethod;
+                            }
+                        }
+                    }
+                }
+            }
+            FirstParamKind::Self_
         }
     }
 
@@ -555,7 +641,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     // definition.
                     for n in OtherDefinitionIterator::new(&file.points, current_index) {
                         let n_def = n - NAME_TO_FUNCTION_DIFF;
-                        if !is_ov_unreachable(file.points.get(n_def)) {
+                        let new_p = file.points.get(n_def);
+                        if new_p.calculated() && !is_ov_unreachable(new_p) {
                             pre_unreachable = n_def;
                         }
                     }
@@ -635,11 +722,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             )
         };
 
-        let mut inferred = Inferred::from_type(
-            base_t
-                .map(|c| Type::Callable(Rc::new(c)))
-                .unwrap_or_else(|| self.as_type(i_s, FirstParamProperties::None)),
-        );
         let had_first_annotation = self.class.is_none()
             || self
                 .node()
@@ -655,6 +737,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_final = false;
         let mut is_override = false;
         let mut dataclass_transform = None;
+        let mut inferred_decs = vec![];
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
@@ -739,7 +822,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             );
                         }
                     }
-                    inferred = dec_inf.execute(i_s, &KnownArgs::new(&inferred, nr()));
+                    inferred_decs.push((decorator.index(), dec_inf));
                 }
                 InferredDecorator::Overload => is_overload = true,
                 InferredDecorator::Abstractmethod => is_abstract = true,
@@ -759,6 +842,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     dataclass_transform = Some(transform);
                 }
             }
+        }
+        let mut inferred = Inferred::from_type(
+            base_t
+                .map(|c| Type::Callable(Rc::new(c)))
+                .unwrap_or_else(|| {
+                    if is_overload {
+                        self.as_type_without_inferring_return_type(i_s)
+                    } else {
+                        self.as_type(i_s, FirstParamProperties::None)
+                    }
+                }),
+        );
+        for (decorator_index, inferred_dec) in inferred_decs {
+            let nr = NodeRef::new(self.node_ref.file, decorator_index);
+            inferred = inferred_dec.execute(i_s, &KnownArgs::new(&inferred, nr));
         }
         if is_abstract && is_final {
             self.add_issue_onto_start_including_decorator(
@@ -1004,7 +1102,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     FunctionDetails {
                         inferred: Inferred::from_type(
-                            next_func.as_type(i_s, FirstParamProperties::None),
+                            next_func.as_type_without_inferring_return_type(i_s),
                         ),
                         kind: FunctionKind::Function {
                             had_first_self_or_class_annotation: self
@@ -1213,9 +1311,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             i_s,
             AsCallableOptions {
                 first_param,
-                return_type: self.return_type(i_s),
+                return_type: self.inferred_return_type(i_s),
             },
         )
+    }
+
+    pub fn as_type_without_inferring_return_type(&self, i_s: &InferenceState) -> Type {
+        Type::Callable(Rc::new(self.as_callable_with_options(
+            i_s,
+            AsCallableOptions {
+                first_param: FirstParamProperties::None,
+                return_type: self.return_type(i_s),
+            },
+        )))
     }
 
     pub fn as_callable_with_options(
@@ -1230,7 +1338,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 false
             }
             FirstParamProperties::None => {
-                self.return_type(i_s).has_self_type(i_s.db)
+                options.return_type.has_self_type(i_s.db)
                     || params_have_self_type_after_self(i_s.db, self.iter_params())
             }
         };
@@ -1256,9 +1364,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .unwrap_or_else(|| t.clone())
         };
         let return_type = as_type(&options.return_type);
-        let mut callable =
-            self.internal_as_type(i_s, params, needs_self_type, as_type, return_type);
-        callable.type_vars = self.type_vars(i_s.db).clone();
+        let type_vars = self.type_vars(i_s.db).clone();
+        let mut callable = self.internal_as_type(
+            i_s,
+            &type_vars,
+            params,
+            needs_self_type,
+            as_type,
+            return_type,
+        );
+        callable.type_vars = type_vars;
         if matches!(options.first_param, FirstParamProperties::Skip { .. }) {
             // Now the first param was removed, so everything is considered as having an
             // annotation (even if it's an implicit Any).
@@ -1276,6 +1391,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn internal_as_type(
         &self,
         i_s: &InferenceState,
+        type_vars: &TypeVarLikes,
         params: impl Iterator<Item = FunctionParam<'a>>,
         needs_self_type: bool,
         mut as_type: impl FnMut(&Type) -> Type,
@@ -1313,7 +1429,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         let mut new_params = vec![];
         let file_index = self.node_ref.file_index();
-        for p in params {
+        for (i, p) in params.enumerate() {
             if p.param.kind() == ParamKind::Star {
                 if let Some(ts) = p
                     .annotation(i_s.db)
@@ -1357,9 +1473,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 FunctionKind::Classmethod { .. } => {
                                     Type::Any(AnyCause::Unannotated)
                                 }
-                                FunctionKind::Staticmethod => Type::Any(AnyCause::Unannotated),
+                                FunctionKind::Staticmethod => {
+                                    if let Some(usage) =
+                                        type_vars.find_untyped_param_type_var(self.as_link(), i)
+                                    {
+                                        Type::TypeVar(usage)
+                                    } else {
+                                        Type::Any(AnyCause::Unannotated)
+                                    }
+                                }
                             }
                         }
+                    } else if let Some(usage) =
+                        type_vars.find_untyped_param_type_var(self.as_link(), i)
+                    {
+                        Type::TypeVar(usage)
                     } else {
                         Type::Any(AnyCause::Unannotated)
                     }
@@ -1464,6 +1592,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .map(|param| FunctionParam { file, param })
     }
 
+    pub fn iter_untyped_params(
+        &self,
+        in_definition: PointLink,
+        type_var_likes: &'a TypeVarLikes,
+    ) -> impl Iterator<Item = UntypedFunctionParam<'a>> {
+        self.iter_params()
+            .enumerate()
+            .map(move |(nth, param)| UntypedFunctionParam {
+                param,
+                in_definition,
+                type_var_likes,
+                nth,
+            })
+    }
+
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<Type>> {
         self.iter_params().next().and_then(|p| {
             let t = p.annotation(i_s.db);
@@ -1500,18 +1643,37 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
-        let calculated_type_vars = calculate_function_type_vars_and_return(
-            i_s,
-            *self,
-            args.iter(i_s.mode),
-            |issue| args.add_issue(i_s, issue),
-            skip_first_argument,
-            self.type_vars(i_s.db),
-            self.node_ref.as_link(),
-            replace_self_type,
-            result_context,
-            Some(on_type_error),
-        );
+        let calculated_type_vars =
+            if self.node().is_typed() || !i_s.db.project.settings.infer_untyped_returns() {
+                calc_func_type_vars(
+                    i_s,
+                    *self,
+                    args.iter(i_s.mode),
+                    |issue| args.add_issue(i_s, issue),
+                    skip_first_argument,
+                    self.type_vars(i_s.db),
+                    self.node_ref.as_link(),
+                    replace_self_type,
+                    result_context,
+                    Some(on_type_error),
+                )
+            } else {
+                let type_vars = self.type_vars(i_s.db);
+                let result = calc_untyped_func_type_vars(
+                    i_s,
+                    self,
+                    args.iter(i_s.mode),
+                    |_| (),
+                    skip_first_argument,
+                    type_vars,
+                    self.as_link(),
+                    replace_self_type,
+                    result_context,
+                    on_type_error,
+                );
+                result
+            };
+
         let result = if let Some(return_annotation) = return_annotation {
             self.apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
                 i_s,
@@ -1534,7 +1696,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            self.execute_without_annotation(i_s, args)
+            if !i_s.db.project.settings.infer_untyped_returns() {
+                // The mypy-compatible case
+                return Inferred::new_any(AnyCause::Unannotated);
+            } else {
+                self.return_without_annotation(
+                    i_s,
+                    self.ensure_cached_untyped_return(i_s),
+                    calculated_type_vars,
+                    replace_self_type,
+                )
+            }
         };
         if self.is_async() && !self.is_generator() {
             return Inferred::from_type(new_class!(
@@ -1614,11 +1786,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn expected_return_type_for_return_stmt(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-    ) -> Cow<'a, Type> {
-        let mut t = self.return_type(i_s);
+    pub fn expected_return_type_for_return_stmt(&self, i_s: &InferenceState<'db, '_>) -> Cow<Type> {
+        let mut t = self.node_ref.return_type(i_s);
         if self.is_generator() {
             t = Cow::Owned(
                 GeneratorType::from_type(i_s.db, t)
@@ -1785,6 +1954,69 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             let p = self.file.points.get(param_annot.index());
             p.maybe_specific() != Some(Specific::AnnotationOrTypeCommentWithoutTypeVars)
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct UntypedFunctionParam<'x> {
+    param: FunctionParam<'x>,
+    type_var_likes: &'x TypeVarLikes,
+    in_definition: PointLink,
+    nth: usize,
+}
+
+impl<'x> Param<'x> for UntypedFunctionParam<'x> {
+    fn has_default(&self) -> bool {
+        self.param.has_default()
+    }
+
+    fn name(&self, db: &'x Database) -> Option<&str> {
+        self.param.name(db)
+    }
+
+    fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x> {
+        let mut pt = self.param.specific(db);
+        let Some(usage) = self
+            .type_var_likes
+            .find_untyped_param_type_var(self.in_definition, self.nth)
+        else {
+            debug!(
+                "Did not find type var for untyped param {:?}[{}]",
+                self.type_var_likes, self.nth
+            );
+            // TODO Currently with multi-inheritance this can happen if the wrong __init__/__new__
+            // is chosen.
+            return pt;
+        };
+        match &mut pt {
+            WrappedParamType::PositionalOnly(t)
+            | WrappedParamType::PositionalOrKeyword(t)
+            | WrappedParamType::KeywordOnly(t)
+            | WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
+            | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
+                *t = Some(Cow::Owned(Type::TypeVar(usage)));
+            }
+            _ => {
+                recoverable_error!("Did not handle untyped param {pt:?}");
+            }
+        };
+        pt
+    }
+
+    fn kind(&self, db: &Database) -> ParamKind {
+        self.param.kind(db)
+    }
+
+    fn into_callable_param(self) -> CallableParam {
+        unreachable!("It feels like this might not be necessary")
+    }
+
+    fn has_self_type(&self, _: &Database) -> bool {
+        false
+    }
+
+    fn might_have_type_vars(&self) -> bool {
+        true
     }
 }
 
@@ -1997,5 +2229,52 @@ impl GeneratorType {
             }),
             _ => None,
         }
+    }
+}
+
+impl FuncLike for Function<'_, '_> {
+    fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
+        if !i_s.db.project.settings.infer_untyped_returns() || self.return_annotation().is_some() {
+            FuncNodeRef::return_type(self, i_s)
+        } else {
+            Cow::Owned(self.ensure_cached_untyped_return(i_s).as_type(i_s))
+        }
+    }
+
+    fn diagnostic_string(&self, _: &Database) -> Option<String> {
+        Some(self.diagnostic_string())
+    }
+
+    fn defined_at(&self) -> PointLink {
+        self.node_ref.as_link()
+    }
+
+    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes {
+        FuncNodeRef::type_vars(self, db)
+    }
+
+    fn class(&self) -> Option<Class> {
+        self.class
+    }
+
+    fn first_self_or_class_annotation<'a>(
+        &'a self,
+        i_s: &'a InferenceState,
+    ) -> Option<Cow<'a, Type>> {
+        self.first_param_annotation_type(i_s)
+    }
+
+    fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
+        self.iter_params().any(|p| {
+            p.name(db) == Some(name)
+                && matches!(
+                    p.kind(db),
+                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                )
+        })
+    }
+
+    fn is_callable(&self) -> bool {
+        false
     }
 }

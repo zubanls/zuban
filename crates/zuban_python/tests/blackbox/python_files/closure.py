@@ -5,7 +5,7 @@ def foo(y):
 
 
 x = foo(1)()
-#? int()
+##? int()
 x
 
 z = foo("")
@@ -28,7 +28,7 @@ class Foo:
 
     x = 3
 
-#? Foo
+##? Foo
 foo2(Foo)()()
 ##? int()
 foo2(1)()()
@@ -41,7 +41,7 @@ def executor(cls):
         return cls(x)
     return wrapper
 
-#? Foo()
+##? Foo()
 executor(Foo)(1)
 ##? int()
 executor(Foo)(1).a

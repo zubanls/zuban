@@ -36,9 +36,9 @@ pub(crate) use self::{
         ParamTypeDetails, StarParamType, StarStarParamType, TypeGuardInfo, WrongPositionalCount,
     },
     dataclass::{
-        dataclass_init_func, dataclass_initialize, dataclasses_replace, lookup_dataclass_symbol,
-        lookup_on_dataclass, lookup_on_dataclass_type, Dataclass, DataclassOptions,
-        DataclassTransformObj,
+        dataclass_init_func, dataclass_initialize, dataclass_post_init_func, dataclasses_replace,
+        lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
+        DataclassOptions, DataclassTransformObj,
     },
     enum_::{
         lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance, Enum,
@@ -382,6 +382,10 @@ pub(crate) struct GenericClass {
 impl GenericClass {
     pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         Class::from_generic_class_components(db, self.link, &self.generics)
+    }
+
+    pub fn node_ref<'db>(&self, db: &'db Database) -> ClassNodeRef<'db> {
+        ClassNodeRef::from_link(db, self.link)
     }
 }
 
@@ -1114,8 +1118,11 @@ impl Type {
                 debug!("TODO Self could contain Any?");
                 false
             }
-            Self::TypeVar(_)
-            | Self::None
+            Self::TypeVar(tv) => match &tv.type_var.kind(i_s.db) {
+                TypeVarKind::Bound(bound) => bound.has_any_internal(i_s, already_checked),
+                TypeVarKind::Unrestricted | TypeVarKind::Constraints(_) => false,
+            },
+            Self::None
             | Self::Never(_)
             | Self::Literal { .. }
             | Self::ParamSpecArgs(_)
@@ -1243,6 +1250,14 @@ impl Type {
 
     pub fn avoid_implicit_literal(self, db: &Database) -> Self {
         self.maybe_avoid_implicit_literal(db).unwrap_or(self)
+    }
+
+    pub fn avoid_implicit_literal_cow(&self, db: &Database) -> Cow<Self> {
+        if let Some(t) = self.maybe_avoid_implicit_literal(db) {
+            Cow::Owned(t)
+        } else {
+            Cow::Borrowed(self)
+        }
     }
 
     pub fn is_literal_or_literal_in_tuple(&self) -> bool {
@@ -1689,13 +1704,18 @@ impl FunctionKind {
 
 #[derive(Debug, Clone, Eq, Hash)]
 pub(crate) struct NewType {
+    pub name_node: PointLink,
     pub name_string: PointLink,
     pub type_: Type,
 }
 
 impl NewType {
-    pub fn new(name_string: PointLink, type_: Type) -> Self {
-        Self { name_string, type_ }
+    pub fn new(name_node: PointLink, name_string: PointLink, type_: Type) -> Self {
+        Self {
+            name_node,
+            name_string,
+            type_,
+        }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

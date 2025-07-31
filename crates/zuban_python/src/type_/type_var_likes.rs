@@ -1,11 +1,12 @@
 use std::{
+    borrow::Cow,
     cell::{Cell, OnceCell},
     hash::{Hash, Hasher},
     ops::AddAssign,
     rc::Rc,
 };
 
-use parsa_python_cst::NodeIndex;
+use parsa_python_cst::{FunctionDef, NodeIndex};
 
 use super::{
     AnyCause, CallableContent, CallableParams, FormatStyle, GenericItem, GenericsList, NeverCause,
@@ -368,6 +369,17 @@ impl TypeVarLikes {
         Self(Rc::from(vec))
     }
 
+    pub fn new_untyped_params(func: FunctionDef, skip_first: bool) -> Self {
+        Self::new(
+            func.params()
+                .iter()
+                .enumerate()
+                .skip(skip_first as usize)
+                .map(|(i, _)| TypeVarLike::TypeVar(Rc::new(TypeVar::for_untyped_param(i))))
+                .collect(),
+        )
+    }
+
     pub fn as_vec(&self) -> Vec<TypeVarLike> {
         Vec::from(self.0.as_ref())
     }
@@ -378,6 +390,10 @@ impl TypeVarLikes {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn is_empty_or_untyped(&self) -> bool {
+        self.0.is_empty() || self.has_from_untyped_params()
     }
 
     pub fn contains_non_default(&self) -> bool {
@@ -448,6 +464,30 @@ impl TypeVarLikes {
         self.0.iter()
     }
 
+    pub fn find_untyped_param_type_var(
+        &self,
+        in_definition: PointLink,
+        param_index: usize,
+    ) -> Option<TypeVarUsage> {
+        for (index, x) in self.iter().enumerate() {
+            if let TypeVarLike::TypeVar(tv) = x {
+                if let TypeVarName::UntypedParam { nth } = &tv.name {
+                    if *nth == param_index {
+                        return Some(TypeVarUsage::new(tv.clone(), in_definition, index.into()));
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn has_from_untyped_params(&self) -> bool {
+        self.0.last().is_some_and(|tvl| match tvl {
+            TypeVarLike::TypeVar(tv) => matches!(&tv.name, TypeVarName::UntypedParam { .. }),
+            _ => false,
+        })
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         debug_assert!(!self.is_empty());
         format!(
@@ -497,11 +537,11 @@ pub(crate) enum TypeVarLike {
 }
 
 impl TypeVarLike {
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
         match self {
             Self::TypeVar(t) => t.name(db),
-            Self::TypeVarTuple(t) => t.name(db),
-            Self::ParamSpec(s) => s.name(db),
+            Self::TypeVarTuple(t) => Cow::Borrowed(t.name(db)),
+            Self::ParamSpec(s) => Cow::Borrowed(s.name(db)),
         }
     }
 
@@ -724,26 +764,36 @@ impl Hash for TypeVarLike {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarLikeName {
-    InString(PointLink),
+    InString {
+        name_node: PointLink,
+        string_node: PointLink,
+    },
     SyntaxNode(PointLink),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TypeVarName {
     Name(TypeVarLikeName),
+    UntypedParam { nth: usize },
     Self_,
 }
 
 impl TypeVarLikeName {
     fn file<'db>(self, db: &'db Database) -> &'db PythonFile {
         match self {
-            Self::InString(link) | Self::SyntaxNode(link) => db.loaded_python_file(link.file),
+            Self::InString {
+                string_node: link, ..
+            }
+            | Self::SyntaxNode(link) => db.loaded_python_file(link.file),
         }
     }
 
     fn as_str<'db>(self, db: &'db Database) -> &'db str {
         match self {
-            Self::InString(link) => NodeRef::from_link(db, link).maybe_str().unwrap().content(),
+            Self::InString { string_node, .. } => NodeRef::from_link(db, string_node)
+                .maybe_str()
+                .unwrap()
+                .content(),
             Self::SyntaxNode(link) => NodeRef::from_link(db, link).as_code(),
         }
     }
@@ -882,6 +932,18 @@ impl TypeVar {
         }
     }
 
+    pub fn for_untyped_param(nth: usize) -> Self {
+        Self {
+            name: TypeVarName::UntypedParam { nth },
+            scope: ParentScope::Module,
+            kind: TypeVarKindInfos::Bound(TypeLikeInTypeVar::new_known(Type::Any(
+                AnyCause::Unannotated,
+            ))),
+            default: None,
+            variance: TypeVarVariance::Known(Variance::Invariant),
+        }
+    }
+
     pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
         match self.variance {
             TypeVarVariance::Known(variance) => variance,
@@ -911,10 +973,11 @@ impl TypeVar {
         }
     }
 
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
         match &self.name {
-            TypeVarName::Name(n) => n.as_str(db),
-            TypeVarName::Self_ => "Self",
+            TypeVarName::Name(n) => Cow::Borrowed(n.as_str(db)),
+            TypeVarName::Self_ => Cow::Borrowed("Self"),
+            TypeVarName::UntypedParam { nth } => Cow::Owned(format!("T{}", nth + 1)),
         }
     }
 
@@ -1021,12 +1084,12 @@ impl TypeVar {
                 format!("{}.{}", n.file(db).qualified_name(db), self.name(db)).into()
             }
 
-            TypeVarName::Self_ => self.name(db).into(),
+            TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => self.name(db).into(),
         }
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
-        let mut s = self.name(format_data.db).to_owned();
+        let mut s = self.name(format_data.db).into_owned();
         match self.kind(format_data.db) {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
@@ -1138,7 +1201,7 @@ impl Eq for TypeVarTuple {}
 
 #[derive(Debug, Clone)]
 pub(crate) struct ParamSpec {
-    name: TypeVarLikeName,
+    pub name: TypeVarLikeName,
     scope: ParentScope,
     default: Option<TypeLikeInTypeVar<CallableParams>>,
 }
@@ -1365,13 +1428,16 @@ impl TypeVarLikeUsage {
         let name = match self {
             Self::TypeVar(t) => match t.type_var.name {
                 TypeVarName::Name(name) => name,
-                TypeVarName::Self_ => return None,
+                TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => return None,
             },
             Self::TypeVarTuple(t) => t.type_var_tuple.name,
             Self::ParamSpec(p) => p.param_spec.name,
         };
         match name {
-            TypeVarLikeName::InString(link) | TypeVarLikeName::SyntaxNode(link) => Some(link),
+            TypeVarLikeName::InString {
+                string_node: link, ..
+            }
+            | TypeVarLikeName::SyntaxNode(link) => Some(link),
         }
     }
 
@@ -1493,7 +1559,7 @@ impl TypeVarLikeUsage {
     pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> String {
         match self {
             Self::TypeVar(usage) => {
-                let mut s = usage.type_var.name(db).to_owned();
+                let mut s = usage.type_var.name(db).into_owned();
                 if let Some(default) = usage.type_var.default(db) {
                     s += " = ";
                     s += &default.format_short(db);

@@ -458,6 +458,7 @@ pub(crate) enum Specific {
     FirstNameOfNameDef, // Cycles for the same name definition in e.g. different branches
     NameOfNameDef,      // Cycles for the same name definition in e.g. different branches
     Parent,             // Has a link to the parent scope
+    FunctionEndIsUnreachable,
     OverloadUnreachable,
     AnyDueToError,
     InvalidTypeDefinition,
@@ -922,20 +923,28 @@ impl fmt::Debug for Database {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Mode {
+    TypeCheckingOnly,
+    LanguageServer,
+}
+
 pub(crate) struct Database {
     pub vfs: Vfs<PythonFile>,
     pub python_state: PythonState,
     pub project: PythonProject,
+    pub mode: Mode,
 }
 
 impl Database {
-    pub fn new(vfs_handler: Box<dyn VfsHandler>, options: ProjectOptions) -> Self {
-        Self::new_internal(vfs_handler, options, None)
+    pub fn new(vfs_handler: Box<dyn VfsHandler>, options: ProjectOptions, mode: Mode) -> Self {
+        Self::new_internal(vfs_handler, options, mode, None)
     }
 
     pub fn new_internal(
         vfs_handler: Box<dyn VfsHandler>,
         options: ProjectOptions,
+        mode: Mode,
         recovery: Option<vfs::VfsPanicRecovery<Tree>>,
     ) -> Self {
         let project = PythonProject {
@@ -994,6 +1003,7 @@ impl Database {
             vfs,
             python_state: PythonState::reserve(),
             project,
+            mode,
         };
 
         this.generate_python_state();
@@ -1003,9 +1013,10 @@ impl Database {
     pub fn from_recovery(
         vfs_handler: Box<dyn VfsHandler>,
         options: ProjectOptions,
+        mode: Mode,
         recovery: vfs::VfsPanicRecovery<Tree>,
     ) -> Self {
-        Database::new_internal(vfs_handler, options, Some(recovery))
+        Database::new_internal(vfs_handler, options, mode, Some(recovery))
     }
 
     pub fn try_to_reuse_project_resources_for_tests(&mut self, options: ProjectOptions) -> Self {
@@ -1028,6 +1039,7 @@ impl Database {
         let mut new_db = Self {
             vfs,
             python_state: self.python_state.clone(),
+            mode: self.mode,
             project,
         };
 
@@ -1104,7 +1116,7 @@ impl Database {
         new_db
     }
 
-    pub fn file_path(&self, index: FileIndex) -> &str {
+    pub fn file_path(&self, index: FileIndex) -> &NormalizedPath {
         self.vfs.file_path(index).path()
     }
 
@@ -1355,13 +1367,22 @@ impl ParentScope {
                 format!("{}.{}", parent_class.qualified_name(db), name)
             }
             ParentScope::Function(_) => {
-                let line = file
-                    .byte_to_position_infos(db, defined_at.node_start_position())
-                    .line_one_based();
-                // Add the position like `foo.Bar@7`
-                format!("{}.{name}@{line}", file.qualified_name(db))
+                Self::qualified_name_for_unreachable_scope(db, defined_at, name)
             }
         }
+    }
+
+    pub fn qualified_name_for_unreachable_scope(
+        db: &Database,
+        defined_at: NodeRef,
+        name: &str,
+    ) -> String {
+        let line = defined_at
+            .file
+            .byte_to_position_infos(db, defined_at.node_start_position())
+            .line_one_based();
+        // Add the position like `foo.Bar@7`
+        format!("{}.{name}@{line}", defined_at.file.qualified_name(db))
     }
 }
 

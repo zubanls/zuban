@@ -153,7 +153,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
 name = "config"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "anyhow",
  "regex",
@@ -358,10 +358,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
+name = "env_home"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
+
+[[package]]
+name = "errno"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
+dependencies = [
+ "libc",
+ "windows-sys 0.59.0",
+]
 
 [[package]]
 name = "fiat-crypto"
@@ -635,7 +651,7 @@ dependencies = [
 
 [[package]]
 name = "licensing"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "anyhow",
  "clap",
@@ -650,6 +666,12 @@ name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.9.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
 
 [[package]]
 name = "lock_api"
@@ -669,7 +691,7 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "logging_config"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "anyhow",
  "tracing",
@@ -826,7 +848,7 @@ dependencies = [
 
 [[package]]
 name = "parsa"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "lazy_static",
  "regex",
@@ -835,21 +857,22 @@ dependencies = [
 
 [[package]]
 name = "parsa_python"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "insta",
  "lazy_static",
  "parsa",
  "regex",
- "test_utils",
+ "utils",
 ]
 
 [[package]]
 name = "parsa_python_cst"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "parsa_python",
  "tracing",
+ "utils",
 ]
 
 [[package]]
@@ -882,7 +905,7 @@ checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
 [[package]]
 name = "primer"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "clap",
  "logging_config",
@@ -986,6 +1009,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustix"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11181fbabf243db407ef8df94a6ce0b2f9a733bd8be4ad02b4eda9602296cac8"
+dependencies = [
+ "bitflags 2.6.0",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1017,7 +1053,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scripts"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "parsa_python",
  "zuban_python",
@@ -1133,6 +1169,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "shlex"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
 name = "signature"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1197,11 +1239,12 @@ dependencies = [
 
 [[package]]
 name = "test_utils"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "lazy_static",
  "regex",
  "tracing",
+ "utils",
  "vfs",
 ]
 
@@ -1396,7 +1439,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "dirs",
  "fnv",
@@ -1416,7 +1459,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vfs"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -1442,6 +1485,17 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+
+[[package]]
+name = "which"
+version = "8.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3fabb953106c3c8eea8306e4393700d7657561cb43122571b172bbfb7c7ba1d"
+dependencies = [
+ "env_home",
+ "rustix",
+ "winsafe",
+]
 
 [[package]]
 name = "winapi"
@@ -1632,6 +1686,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "winsafe"
+version = "0.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
+
+[[package]]
 name = "zeroize"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1639,7 +1699,7 @@ checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 
 [[package]]
 name = "zmypy"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "clap",
  "config",
@@ -1653,7 +1713,7 @@ dependencies = [
 
 [[package]]
 name = "zuban"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "anyhow",
  "clap",
@@ -1665,24 +1725,27 @@ dependencies = [
 
 [[package]]
 name = "zuban_python"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "anyhow",
  "clap",
  "config",
  "lazy_static",
  "logging_config",
+ "lsp-types",
  "parsa_python_cst",
  "regex",
+ "shlex",
  "test_utils",
  "tracing",
  "utils",
  "vfs",
+ "which",
 ]
 
 [[package]]
 name = "zubanls"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "anyhow",
  "clap",

@@ -14,7 +14,7 @@ def function_parameters(a: A, b, c: str, d: int, e: str, f: str, g: int=4):
     """
     #? A()
     a
-    ##?
+    #?
     b
     #? str()
     c
@@ -31,7 +31,7 @@ def function_parameters(a: A, b, c: str, d: int, e: str, f: str, g: int=4):
 def return_unspecified():
     pass
 
-##?
+#? types.NoneType()
 return_unspecified()
 
 
@@ -42,7 +42,7 @@ def return_none() -> None:
     """
     pass
 
-#? None
+#? types.NoneType()
 return_none()
 
 
@@ -81,7 +81,7 @@ return_annotation_and_docstring_different()
 
 
 def annotation_forward_reference(b: "B") -> "B":
-    ##? B()
+    #? B()
     b
 
 #? ["test_element"]
@@ -91,14 +91,14 @@ class B:
     test_element = 1
     pass
 
-##? B()
+#? B()
 annotation_forward_reference(1)
 
 
 class SelfReference:
     test_element = 1
     def test_method(self, x: "SelfReference") -> "SelfReference":
-        ##? SelfReference()
+        #? SelfReference()
         x
         #? ["test_element", "test_method"]
         self.t
@@ -107,7 +107,7 @@ class SelfReference:
         #? ["test_element", "test_method"]
         self.test_method(1).t
 
-##? SelfReference()
+#? SelfReference()
 SelfReference().test_method()
 
 def function_with_non_pep_0484_annotation(
@@ -122,27 +122,29 @@ def function_with_non_pep_0484_annotation(
     x
     # infers int from function call
     # jedi-diff: #? int()
-    ##?
+    #?
     xx
     # infers int from function call
     # jedi-diff: #? int()
-    ##?
+    #?
     yy
     # infers str from function call
     # jedi-diff: #? int()
-    ##?
+    #?
     y
     #? float()
     zz
-##?
+#?
 function_with_non_pep_0484_annotation(1, 2, 3, "force string")
 
 def function_forward_reference_dynamic(
         x: return_str_type(),
         y: "return_str_type()") -> None:
-    #? str()
+    # jedi-diff: #? str()
+    #? 
     x
-    #? str()
+    # jedi-diff: #? str()
+    #? 
     y
 
 def return_str_type():
@@ -158,7 +160,8 @@ def function_with_assined_class_in_reference(x: X, y: "Y"):
 Y = int
 
 def just_because_we_can(x: "flo" + "at"):
-    ##? float()
+    # jedi-diff: #? float()
+    #?
     x
 
 
@@ -179,7 +182,7 @@ def argskwargs(*args: int, **kwargs: float):
     args
     #? int()
     args[0]
-    ##? str()
+    #? str()
     next(iter(kwargs.keys()))
     #? float()
     kwargs['']
@@ -189,16 +192,16 @@ class NotCalledClass:
     def __init__(self, x):
         self.x: int = x
         self.y: int = ''
-        ##? int()
+        #? int()
         self.x
-        ##? int()
+        #? int()
         self.y
-        ##? int()
+        #? int()
         self.y
         self.z: int
         self.z = ''
-        ##? str() int()
+        #? int()
         self.z
         self.w: float
-        ##? float()
+        #? float()
         self.w

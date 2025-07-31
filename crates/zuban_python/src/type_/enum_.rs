@@ -42,6 +42,12 @@ impl EnumMember {
         self.member_definition().name(db)
     }
 
+    pub fn name_node<'db>(&self, db: &'db Database) -> Option<NodeRef<'db>> {
+        let n = NodeRef::from_link(db, self.member_definition().value?);
+        // On classes the enum members are defined on names
+        n.maybe_name().map(|_| n)
+    }
+
     pub fn value(&self) -> Option<PointLink> {
         self.member_definition().value
     }
@@ -225,6 +231,10 @@ impl Enum {
             }
         }
         EnumKind::Normal
+    }
+
+    pub fn from_functional_definition(&self, db: &Database) -> bool {
+        self.class.file == db.python_state.enum_file().file_index()
     }
 }
 

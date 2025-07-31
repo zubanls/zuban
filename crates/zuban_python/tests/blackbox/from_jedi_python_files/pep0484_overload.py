@@ -73,7 +73,7 @@ overload_f1(list_alias)
 #? str()
 overload_f1(list_str)
 # jedi-diff: #? str() dict()
-#?
+#? str()
 overload_f1(list_int)
 
 # -------------------------
@@ -88,5 +88,6 @@ def broken_f1(value: 1) -> str: ...
 def broken_f1(value: Tuple[T]) -> Tuple[T]: ...
 
 tup: Tuple[float]
-#? float()
+# jedi-diff: #? float()
+#? str()
 broken_f1(broken_f1(tup))[0]

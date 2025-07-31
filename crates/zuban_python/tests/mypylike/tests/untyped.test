@@ -1,0 +1,550 @@
+[case mypy_no_compatible_untyped_func_exec]
+# flags: --no-mypy-compatible
+def f(x):
+    return (x, "")
+
+reveal_type(f(1))  # N: Revealed type is "tuple[int, Literal['']?]"
+
+[case infer_untyped_result_but_typed_param]
+# flags: --no-mypy-compatible
+def f(x: int):
+    return x
+
+reveal_type(f(1))  # N: Revealed type is "int"
+reveal_type(f(""))  # E: Argument 1 to "f" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
+
+[case infer_untyped_result_but_typed_param_with_type_var]
+# flags: --no-mypy-compatible
+def f[S, T](x: T, y: S):
+    return x
+
+reveal_type(f(1, b''))  # N: Revealed type is "int"
+reveal_type(f("", b''))  # N: Revealed type is "str"
+
+[case infer_untyped_result_result_context]
+# flags: --no-mypy-compatible
+def f(x):
+    return [x]
+
+reveal_type(f(1))  # N: Revealed type is "list[int]"
+
+x: list[object] = f(1)
+
+[case type_var_formatting]
+# flags: --no-mypy-compatible
+
+def f(x, y, z):
+    return x, z
+
+def wrap[T](x: T) -> list[T]:
+    return [x]
+
+reveal_type(f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrap(f))  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+
+[case infer_untyped_callables]
+# flags: --no-mypy-compatible
+
+from typing import Callable
+
+def ret_same(x): return x
+def ret_other(x): return 1
+
+reveal_type(ret_same)  # N: Revealed type is "def [T1 <: Any] (x: T1) -> T1"
+reveal_type(ret_other)  # N: Revealed type is "def [T1 <: Any] (x: T1) -> Literal[1]?"
+
+reveal_type(ret_same(1))  # N: Revealed type is "int"
+reveal_type(ret_same(""))  # N: Revealed type is "str"
+x: str = ret_same(1)  # E: Argument 1 to "ret_same" has incompatible type "int"; expected "str"
+y: int = ret_other(1)
+z: int = ret_other("")
+
+def f[S, T](x: Callable[[T], S]) -> tuple[T, S]: ...
+
+reveal_type(f(ret_same))  # N: Revealed type is "tuple[Never, Never]"
+reveal_type(f(ret_other))  # N: Revealed type is "tuple[Never, int]"
+
+[case untyped_callables_with_errors]
+# flags: --no-mypy-compatible --check-untyped-defs
+
+def f(x):
+    1()  # E: "int" not callable
+    return x
+reveal_type(f(""))  # N: Revealed type is "str"
+
+[case untyped_callables_without_errors]
+# flags: --no-mypy-compatible --no-check-untyped-defs
+
+def f(x):
+    1()
+    return x
+reveal_type(f(""))  # N: Revealed type is "str"
+
+[case untyped_class]
+# flags: --no-mypy-compatible
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def f(self, x):
+        return (x, self.x, self)
+
+c = C("")
+reveal_type(c.x)  # N: Revealed type is "str"
+reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str, __main__.C]"
+
+[case untyped_method_typed_class]
+# flags: --no-mypy-compatible
+
+class C[T]:
+    def __init__(self, x: T):
+        self.x = x
+
+    def f(self, x):
+        return (x, self.x, self)
+
+c = C("")
+reveal_type(c.x)  # N: Revealed type is "str"
+reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str, __main__.C[str]]"
+
+[case untyped_method_in_class_with_self_type1]
+# flags: --no-mypy-compatible
+
+class C:
+    def f(self):
+        return self
+
+c = C()
+reveal_type(c.f)  # N: Revealed type is "def () -> __main__.C"
+reveal_type(c.f())  # N: Revealed type is "__main__.C"
+
+class D(C): ...
+
+d = D()
+reveal_type(d.f)  # N: Revealed type is "def () -> __main__.D"
+reveal_type(d.f())  # N: Revealed type is "__main__.D"
+
+[case untyped_method_in_class_with_self_type2]
+# flags: --no-mypy-compatible
+from typing import Self
+
+class C:
+    def f(self, y: Self):
+        return (self, y)
+
+c = C()
+reveal_type(c.f)  # N: Revealed type is "def (y: __main__.C) -> tuple[__main__.C, __main__.C]"
+reveal_type(c.f(c))  # N: Revealed type is "tuple[__main__.C, __main__.C]"
+
+class D(C): ...
+
+d = D()
+reveal_type(d.f)  # N: Revealed type is "def (y: __main__.D) -> tuple[__main__.D, __main__.D]"
+reveal_type(d.f(d))  # N: Revealed type is "tuple[__main__.D, __main__.D]"
+
+[case untyped_new_type_self_return]
+# flags: --no-mypy-compatible
+from typing import NewType
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def f(self, x):
+        return (self, x)
+
+NT = NewType("NT", C)
+
+NT(C(1))
+
+def g(x: NT):
+    reveal_type(x.x)  # N: Revealed type is "Any"
+    reveal_type(x.f(1))  # N: Revealed type is "tuple[__main__.NT, int]"
+
+[case avoid_crash_in_untyped_func]
+# flags: --no-mypy-compatible
+
+class Dog:
+    def __init__(self, friends):
+        self.friends = friends
+
+    def first_friend(self):
+        for friend in self.friends:
+            return friend
+
+buddy = Dog(UNKNOWN_NAME)  # E: Name "UNKNOWN_NAME" is not defined
+reveal_type(buddy.first_friend())  # N: Revealed type is "Any"
+
+reveal_type(Dog([1]).first_friend())  # N: Revealed type is "Any"
+
+[case untyped_staticmethod]
+# flags: --no-mypy-compatible
+
+class C:
+    @staticmethod
+    def f(x, y, z):
+        return x, z
+
+def wrap[T](x: T) -> list[T]:
+    return [x]
+
+wrapped1 = wrap(C.f)
+reveal_type(C.f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped1)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(C.f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped1[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
+wrapped2 = wrap(C().f)
+reveal_type(C().f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped2)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(C().f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped2[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
+class D(C): ...
+
+wrapped3 = wrap(D.f)
+reveal_type(D.f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped3)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(D.f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped3[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
+wrapped4 = wrap(D().f)
+reveal_type(D().f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]"
+reveal_type(wrapped4)  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
+reveal_type(D().f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+reveal_type(wrapped4[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
+
+[case untyped_classmethod]
+# flags: --no-mypy-compatible
+
+class C:
+    @classmethod
+    def f(cls, y, z):
+        reveal_type(cls)  # N: Revealed type is "Type[Self]"
+        reveal_type(y)    # N: Revealed type is "T2"
+        return cls, z
+
+def wrap[T](x: T) -> list[T]:
+    return [x]
+
+wrapped1 = wrap(C.f)
+reveal_type(C.f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]"
+reveal_type(wrapped1)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]]"
+reveal_type(C.f(1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+reveal_type(wrapped1[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+
+wrapped2 = wrap(C().f)
+reveal_type(C().f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]"
+reveal_type(wrapped2)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.C], T3]]"
+reveal_type(C().f(1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+reveal_type(wrapped2[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.C], str]"
+
+class D(C): ...
+
+wrapped3 = wrap(D.f)
+reveal_type(D.f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]"
+reveal_type(wrapped3)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]]"
+reveal_type(D.f(1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
+reveal_type(wrapped3[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
+
+wrapped4 = wrap(D().f)
+reveal_type(D().f)  # N: Revealed type is "def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]"
+reveal_type(wrapped4)  # N: Revealed type is "list[def [T2 <: Any, T3 <: Any] (y: T2, z: T3) -> tuple[Type[__main__.D], T3]]"
+reveal_type(D().f(1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
+reveal_type(wrapped4[0](1, ""))  # N: Revealed type is "tuple[Type[__main__.D], str]"
+
+[case untyped_property]
+# flags: --no-mypy-compatible
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    @property
+    def f(self):
+        return 1
+
+    @property
+    def g(self):
+        return (self.x, self)
+
+    @property
+    def h(self):
+        return (self.x, self)
+
+    @h.setter
+    def h(self, value):
+        reveal_type(value)  # N: Revealed type is "T2"
+        self.x = value
+
+c = C("")
+reveal_type(C.f)  # N: Revealed type is "property"
+C.f()  # E: "property" not callable
+reveal_type(c.f)  # N: Revealed type is "Literal[1]?"
+reveal_type(c.g)  # N: Revealed type is "tuple[str, __main__.C]"
+reveal_type(c.h)  # N: Revealed type is "tuple[str, __main__.C]"
+
+c.f = ""  # E: Property "f" defined in "C" is read-only
+c.g = ""  # E: Property "g" defined in "C" is read-only
+c.g = 1  # E: Property "g" defined in "C" is read-only
+c.h = ""
+c.h = 1
+
+class D(C): ...
+
+d = D(b"")
+
+reveal_type(D.f)  # N: Revealed type is "property"
+D.f()  # E: "property" not callable
+reveal_type(d.f)  # N: Revealed type is "Literal[1]?"
+reveal_type(d.g)  # N: Revealed type is "tuple[bytes, __main__.D]"
+reveal_type(d.h)  # N: Revealed type is "tuple[bytes, __main__.D]"
+
+d.f = ""  # E: Property "f" defined in "C" is read-only
+d.g = ""  # E: Property "g" defined in "C" is read-only
+d.g = 1  # E: Property "g" defined in "C" is read-only
+d.h = ""
+d.h = 1
+
+[case untyped_multi_inheritance1]
+# flags: --no-mypy-compatible
+class A:
+    def __init__(self, x):
+        self.x = x
+
+class B: ...
+
+class C(A, B): ...
+class D(B, A): ...
+
+reveal_type(C(1).x)  # N: Revealed type is "int"
+reveal_type(D(1).x)  # N: Revealed type is "int"
+
+[case untyped_multi_inheritance2]
+# flags: --no-mypy-compatible
+class A:
+    def __init__(self, x):
+        self.x = x
+
+class B:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+class C(A, B): ...
+class D(B, A): ...
+
+reveal_type(C(1).x)  # N: Revealed type is "int"
+D(1)  # E: Missing positional argument "y" in call to "D"
+reveal_type(D('', 1).x)  # N: Revealed type is "str"
+
+[case untyped_dataclass_method]
+# flags: --no-mypy-compatible
+from dataclasses import dataclass
+
+@dataclass
+class C[T]:
+    x: T
+
+    def foo(self, x):
+        return (x, self.x)
+
+class D(C[int]): ...
+class E[T](C[T]): ...
+
+reveal_type(C(1).foo(""))  # N: Revealed type is "tuple[str, int]"
+
+d = D("")  # E: Argument 1 to "D" has incompatible type "str"; expected "int"
+reveal_type(d.foo(b''))  # N: Revealed type is "tuple[bytes, int]"
+
+# TODO this is wrong
+reveal_type(E(1).foo(""))  # N: Revealed type is "tuple[Never, int]"
+
+[case untyped_enum_method]
+# flags: --no-mypy-compatible
+from enum import Enum
+
+class C(Enum):
+    X = 1
+    Y = 2
+
+    def foo(self, x):
+        return (x, self.X)
+
+class D(C): ...  # E: Cannot extend enum with existing members: "C"
+
+reveal_type(C(1).foo(""))  # N: Revealed type is "tuple[str, Literal[__main__.C.X]?]"
+
+[case untyped_namedtuple_method]
+# flags: --no-mypy-compatible
+from typing import NamedTuple
+
+class C(NamedTuple):
+    x: int
+    y: str
+
+    def foo(self, x):
+        return (self.x, self[1], x)
+
+class D(C): ...
+
+reveal_type(C(1, "").foo(b""))  # N: Revealed type is "tuple[int, str, bytes]"
+reveal_type(D(1, "").foo(b""))  # N: Revealed type is "tuple[int, str, bytes]"
+
+[case untyped_new_type_as_self]
+# flags: --no-mypy-compatible
+
+from typing import NewType
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def foo(self, x):
+        return (self, self.x, x)
+
+N = NewType("N", C)
+
+def f(n: N):
+    reveal_type(n.foo(b""))  # N: Revealed type is "tuple[__main__.N, Any, bytes]"
+    reveal_type(n.foo(b""))  # N: Revealed type is "tuple[__main__.N, Any, bytes]"
+
+[case untyped_multi_return]
+# flags: --no-mypy-compatible
+def f(x):
+    if x:
+        return x
+    else:
+        return int()
+
+reveal_type(f(1))  # N: Revealed type is "int"
+reveal_type(f(""))  # N: Revealed type is "str | int"
+
+[case untyped_generator]
+# flags: --no-mypy-compatible
+
+def f(x):
+    yield x
+
+def g(x):
+    yield from [x]
+
+def h():
+    yield int()
+    yield
+
+def i():
+    yield
+
+def j(x):
+    yield x
+    yield str()
+    return b''
+
+reveal_type(f(1))  # N: Revealed type is "typing.Generator[int, None, Any]"
+reveal_type(next(f("")))  # N: Revealed type is "str"
+
+reveal_type(g(1))  # N: Revealed type is "typing.Generator[int, None, Any]"
+reveal_type(next(g("")))  # N: Revealed type is "str"
+
+reveal_type(h())  # N: Revealed type is "typing.Generator[int | None, None, Any]"
+reveal_type(next(h()))  # N: Revealed type is "int | None"
+
+reveal_type(i())  # N: Revealed type is "typing.Generator[None, None, Any]"
+reveal_type(next(i()))  # N: Revealed type is "None"
+
+reveal_type(j(1))  # N: Revealed type is "typing.Generator[int | str, None, Literal[b'']? | Any]"
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def foo(self, x):
+        yield (self.x, x)
+
+reveal_type(C(1).foo(b""))  # N: Revealed type is "typing.Generator[tuple[int, bytes], None, Any]"
+
+[case untyped_async_generator]
+# flags: --no-mypy-compatible
+
+async def f(x):
+    yield x
+
+async def g(x):
+    yield x
+    yield 1
+
+async def check():
+    reveal_type(f(1))  # N: Revealed type is "typing.AsyncGenerator[int, None]"
+    async for x in f(1):
+        reveal_type(x)  # N: Revealed type is "int"
+
+    async for y in f(""):
+        reveal_type(y)  # N: Revealed type is "str"
+
+    async for z in g(""):
+        reveal_type(z)  # N: Revealed type is "str | Literal[1]?"
+
+[case untyped_async]
+# flags: --no-mypy-compatible
+
+async def f(x):
+    return x
+
+async def g(x):
+    return [await f(x)]
+
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    async def foo(self, x):
+        return (self, self.x, x)
+
+class D(C): ...
+
+async def check():
+    c = C(1)
+    reveal_type(await c.foo(""))  # N: Revealed type is "tuple[__main__.C, int, str]"
+    d = D(1)
+    reveal_type(await d.foo(""))  # N: Revealed type is "tuple[__main__.D, int, str]"
+
+    reveal_type(await f(1))  # N: Revealed type is "int"
+    reveal_type(await f(""))  # N: Revealed type is "str"
+
+    reveal_type(g(1))  # N: Revealed type is "typing.Coroutine[Any, Any, list[int]]"
+    reveal_type(await g(1))  # N: Revealed type is "list[int]"
+    reveal_type(await g(""))  # N: Revealed type is "list[str]"
+
+[case untyped_recursion1]
+# flags: --no-mypy-compatible
+def f(x):
+    return f(x)
+
+reveal_type(f(1))  # N: Revealed type is "Any"
+
+[case untyped_recursion2]
+# flags: --no-mypy-compatible
+def f(x):
+    if x:
+        return f(x)
+    else:
+        return x
+
+reveal_type(f(1))  # N: Revealed type is "Any | int"
+reveal_type(f(""))  # N: Revealed type is "Any | str"
+
+[case untyped_recursion3]
+# flags: --no-mypy-compatible
+def f(x):
+    if x:
+        return x
+    else:
+        return g(x)
+
+def g(x):
+    return f(x)
+
+reveal_type(f(1))  # N: Revealed type is "int | Any"
+reveal_type(f(""))  # N: Revealed type is "str | Any"

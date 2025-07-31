@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     cell::{OnceCell, RefCell},
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     fmt,
     rc::Rc,
 };
@@ -9,13 +9,15 @@ use std::{
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue};
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, Parent, PathWithScheme};
 
 use super::{
-    file_state::{File, Leaf},
+    file_state::File,
+    flow_analysis::DelayedDiagnostic,
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
-    name_resolution::NameResolution,
+    name_resolution::{ModuleAccessDetail, NameResolution},
+    FLOW_ANALYSIS,
 };
 use crate::{
     database::{
@@ -27,11 +29,10 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     lines::{NewlineIndices, PositionInfos},
-    name::{Names, TreeName},
     node_ref::NodeRef,
     type_::{DbString, LookupResult, Type},
     utils::SymbolTable,
-    TypeCheckerFlags,
+    InputPosition, TypeCheckerFlags,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -96,40 +97,12 @@ pub(crate) struct PythonFile {
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
     flags: Option<TypeCheckerFlags>,
+    pub(super) delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
 
     newline_indices: NewlineIndices,
 }
 
 impl File for PythonFile {
-    fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
-        unimplemented!()
-    }
-
-    fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db> {
-        match NameOrKeywordLookup::from_position(&self.tree, position) {
-            NameOrKeywordLookup::Name(name) => Leaf::Name(Box::new(TreeName::new(db, self, name))),
-            NameOrKeywordLookup::Keyword(keyword) => Leaf::Keyword(keyword),
-            NameOrKeywordLookup::None => Leaf::None,
-        }
-    }
-
-    fn infer_operator_leaf(&self, _db: &Database, _leaf: Keyword) -> Inferred {
-        /*
-        if ["(", "[", "{", ")", "]", "}"]
-            .iter()
-            .any(|&x| x == leaf.as_str())
-        {
-            if let Some(primary) = leaf.maybe_primary_parent() {
-                let i_s = InferenceState::new(db);
-                return self
-                    .inference(&i_s)
-                    .infer_primary(primary, &mut ResultContext::Unknown);
-            }
-        }
-        */
-        unimplemented!()
-    }
-
     fn file_index(&self) -> FileIndex {
         self.file_index
     }
@@ -138,9 +111,9 @@ impl File for PythonFile {
         self.tree.code()
     }
 
-    fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
+    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<CodeIndex> {
         self.newline_indices
-            .line_column_to_byte(self.tree.code(), line, column)
+            .line_column_to_byte(self.tree.code(), input)
     }
 
     fn byte_to_position_infos<'db>(
@@ -343,6 +316,7 @@ impl<'db> PythonFile {
             stub_cache: is_stub.then(StubCache::default),
             ignore_type_errors,
             flags,
+            delayed_diagnostics: Default::default(),
         }
     }
 
@@ -386,10 +360,12 @@ impl<'db> PythonFile {
         let inference = self.inference(i_s);
         if let Some((pr, redirect_to)) = inference.resolve_module_access(name, &add_issue) {
             let inf = inference.infer_module_point_resolution(pr, add_issue);
-            if let Some(name) = redirect_to {
-                LookupResult::GotoName { inf, name }
-            } else {
-                LookupResult::UnknownName(inf)
+            match redirect_to {
+                Some(ModuleAccessDetail::OnName(name)) => LookupResult::GotoName { inf, name },
+                Some(ModuleAccessDetail::OnFile(file_index)) => {
+                    LookupResult::FileReference(file_index)
+                }
+                None => LookupResult::UnknownName(inf),
             }
         } else {
             LookupResult::None
@@ -418,6 +394,7 @@ impl<'db> PythonFile {
                     false,
                 )),
                 name,
+                true,
                 true,
             )
             .or_else(|| {
@@ -463,7 +440,7 @@ impl<'db> PythonFile {
         };
         match import {
             NameImportParent::ImportFromAsName(imp) => {
-                let import_from = imp.import_from();
+                let import_from = imp.import_from()?;
                 // from . import x simply imports the module that exists in the same
                 // directory anyway and should not be considered a reexport.
                 submodule_reexport(
@@ -475,7 +452,7 @@ impl<'db> PythonFile {
                 if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
                     // Only import `foo.bar as bar` can be a submodule.
                     // `import foo.bar` just exports the name foo.
-                    if let DottedNameContent::DottedName(super_, _) = dotted.unpack() {
+                    if let DottedImportNameContent::DottedName(super_, _) = dotted.unpack() {
                         submodule_reexport(
                             self.name_resolution_for_types(i_s)
                                 .cache_import_dotted_name(super_, None),
@@ -492,7 +469,12 @@ impl<'db> PythonFile {
 
     pub fn ensure_calculated_diagnostics(&self, db: &Database) -> Result<(), ()> {
         self.inference(&InferenceState::new(db, self))
-            .calculate_diagnostics()
+            .calculate_module_diagnostics()
+    }
+
+    pub fn ensure_module_symbols_flow_analysis(&self, db: &Database) -> Result<(), ()> {
+        self.inference(&InferenceState::new(db, self))
+            .ensure_module_symbols_flow_analysis()
     }
 
     pub(super) fn ensure_annotation_file(
@@ -578,7 +560,20 @@ impl<'db> PythonFile {
     pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {
-            let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), false);
+            let file_entry = self.file_entry(db);
+            let (name, parent_dir) = name_and_parent_dir(file_entry, false);
+            if let Some(py_name) = file_entry.name.strip_suffix("i") {
+                if let Some(file_entry) =
+                    file_entry.parent.with_entries(&*db.vfs.handler, |entries| {
+                        match &*entries.search(py_name)? {
+                            DirectoryEntry::File(f) => Some(f.clone()),
+                            _ => None,
+                        }
+                    })
+                {
+                    return db.load_file_from_workspace(&file_entry, false);
+                }
+            }
             match ImportResult::import_non_stub_for_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => {
                     assert_ne!(file_index, self.file_index);
@@ -589,6 +584,36 @@ impl<'db> PythonFile {
             }
         });
         Some(db.loaded_python_file(file_index?))
+    }
+
+    pub fn stub_file_of_normal_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
+        if self.is_stub() {
+            return None;
+        }
+        let file_entry = self.file_entry(db);
+        let (name, parent_dir) = name_and_parent_dir(file_entry, false);
+        let py_name = format!("{}.pyi", file_entry.name.strip_suffix(".py")?);
+        let file_index = if let Some(file_entry) =
+            file_entry.parent.with_entries(&*db.vfs.handler, |entries| {
+                match &*entries.search(&py_name)? {
+                    DirectoryEntry::File(f) => Some(f.clone()),
+                    _ => None,
+                }
+            }) {
+            db.load_file_from_workspace(&file_entry, false)?
+        } else {
+            match ImportResult::import_stub_for_non_stub_package(db, self, parent_dir, name)? {
+                ImportResult::File(file_index) => file_index,
+                ImportResult::Namespace(_) => return None,
+                ImportResult::PyTypedMissing => unreachable!(),
+            }
+        };
+        let loaded = db.loaded_python_file(file_index);
+        if !loaded.is_stub() {
+            return None;
+        }
+        assert_ne!(file_index, self.file_index);
+        Some(loaded)
     }
 
     pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
@@ -632,6 +657,22 @@ impl<'db> PythonFile {
                     })
             })
             .as_deref()
+    }
+
+    pub fn is_name_exported_for_star_import(&self, db: &Database, name: &str) -> bool {
+        if let Some(dunder) = self.maybe_dunder_all(db) {
+            // Name not in __all__
+            if !dunder.iter().any(|x| x.as_str(db) == name) {
+                debug!(
+                    "Name {name} found in star imports of {}, but it's not in __all__",
+                    self.file_path(db)
+                );
+                return false;
+            }
+        } else if name.starts_with('_') {
+            return false;
+        }
+        true
     }
 
     fn gather_dunder_all_modifications(
@@ -711,6 +752,10 @@ impl<'db> PythonFile {
 
     pub fn file_entry(&self, db: &'db Database) -> &'db Rc<FileEntry> {
         db.vfs.file_entry(self.file_index)
+    }
+
+    pub fn file_path_with_scheme(&self, db: &'db Database) -> &'db PathWithScheme {
+        db.vfs.file_path(self.file_index)
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
@@ -800,13 +845,21 @@ impl<'db> PythonFile {
             None => self,
         }
     }
+
+    pub fn process_delayed_diagnostics(&self, db: &Database) {
+        let delayed = self.delayed_diagnostics.take();
+        if !delayed.is_empty() {
+            FLOW_ANALYSIS.with(|fa| fa.process_delayed_diagnostics(db, delayed));
+        }
+    }
 }
 
 pub fn dotted_path_from_dir(dir: &Directory) -> String {
     if let Ok(parent_dir) = dir.parent.maybe_dir() {
         dotted_path_from_dir(&parent_dir) + "." + &dir.name
     } else {
-        dir.name.to_string()
+        let n = &dir.name;
+        n.strip_suffix(STUBS_SUFFIX).unwrap_or(n).to_string()
     }
 }
 

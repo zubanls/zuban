@@ -56,14 +56,14 @@ def list_optional_t_to_list_t(the_list: List[Optional[T]]) -> List[T]:
 
 
 for xa in list_optional_t_to_list_t(list_of_optional_floats):
-    ##? float()
+    #? float()
     xa
 
 # Under covariance rules this is strictly incorrect (because List is mutable,
 # the function would be allowed to put `None`s into our List[float], which would
 # be bad), however we don't expect jedi to enforce that.
 for xa1 in list_optional_t_to_list_t(list_of_floats):
-    ##? float()
+    #? float()
     xa1
 
 
@@ -72,12 +72,12 @@ def optional_t_to_list_t(x: Optional[T]) -> List[T]:
 
 
 for xb in optional_t_to_list_t(optional_float):
-    ##? float()
+    #? float()
     xb
 
 
 for xb2 in optional_t_to_list_t(just_float):
-    ##? float()
+    #? float()
     xb2
 
 
@@ -87,11 +87,11 @@ def optional_list_t_to_list_t(x: Optional[List[T]]) -> List[T]:
 
 optional_list_float: Optional[List[float]] = None
 for xc in optional_list_t_to_list_t(optional_list_float):
-    ##? float()
+    #? float()
     xc
 
 for xc2 in optional_list_t_to_list_t(list_of_floats):
-    ##? float()
+    #? float()
     xc2
 
 
@@ -125,7 +125,7 @@ for c1 in list_t_to_list_tuple_t(list_of_ints):
 
 
 for c2, in list_t_to_list_tuple_t(list_of_ints):
-    ##? int()
+    #? int()
     c2
 
 
@@ -137,7 +137,7 @@ def list_tuple_t_to_tuple_list_t(the_list: List[Tuple[T]]) -> Tuple[List[T], ...
 list_of_int_tuples: List[Tuple[int]] = [(x,) for x in list_of_ints]
 
 for c in list_tuple_t_to_tuple_list_t(list_of_int_tuples):
-    ##? int()
+    #? int()
     c[0]
 
 
@@ -148,7 +148,7 @@ def list_tuple_t_elipsis_to_tuple_list_t(the_list: List[Tuple[T, ...]]) -> Tuple
 list_of_int_tuple_elipsis: List[Tuple[int, ...]] = [tuple(list_of_ints)]
 
 for d in list_tuple_t_elipsis_to_tuple_list_t(list_of_int_tuple_elipsis):
-    ##? int()
+    #? int()
     d[0]
 
 
@@ -168,7 +168,7 @@ def list_func_t_to_list_func_type_t(the_list: List[Callable[[T], T]]) -> List[Ca
 
 
 for e in list_func_t_to_list_func_type_t(list_of_funcs):
-    ##? int()
+    #? int()
     e(int)
 
 
@@ -183,7 +183,7 @@ def list_func_t_passthrough(the_list: List[Callable[..., T]]) -> List[Callable[.
 
 
 for f in list_func_t_passthrough(list_of_funcs_2):
-    ##? int()
+    #? int()
     f(None, x="x")
 
 
@@ -215,7 +215,7 @@ some_str: str = NotImplemented
 first(some_str)
 
 annotated: List[ Callable[[Sequence[float]], int] ] = [len]
-##? int()
+#? int()
 first(annotated)()
 
 # Test that the right type is chosen when a partially realised mapping is expected
@@ -293,12 +293,12 @@ for x7 in unwrap_custom(list_custom_instances):
 
 
 for xc in unwrap_custom([CustomGeneric(s) for s in 'abc']):
-    ##? str()
+    #? str()
     xc
 
 
 for xg in unwrap_custom(CustomGeneric(s) for s in 'abc'):
-    ##? str()
+    #? str()
     xg
 
 
@@ -382,7 +382,8 @@ values(custom_partial2_instance)[0]
 
 custom_partial2_unbound_instance: CustomPartialGeneric2 = NotImplemented
 
-#? []
+# jedi-diff: #? []
+#? --contains-subset ['help', 'dir']
 first(custom_partial2_unbound_instance)
 
 #? str()

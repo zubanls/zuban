@@ -1,0 +1,88 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 43
+expression: tree_to_string(tree)
+snapshot_kind: text
+---
+file: 0-65
+ stmt: 1-52
+  function_def: 1-52
+   Keyword: 1-4 "def"
+   name_def: 5-6
+    Name: 5-6 "f"
+   function_def_parameters: 6-8
+    Keyword: 6-7 "("
+    Keyword: 7-8 ")"
+   Keyword: 8-9 ":"
+   block: 9-52
+    Newline: 9-10 "\n"
+    Indent: 14-14 ""
+    stmt: 14-23
+     simple_stmts: 14-23
+      simple_stmt: 14-22
+       assignment: 14-22
+        star_targets: 14-18
+         name_def: 14-18
+          Name: 14-18 "asdf"
+        Keyword: 19-20 "="
+        star_expressions: 21-22
+         expression: 21-22
+          atom: 21-22
+           Number: 21-22 "3"
+      Newline: 22-23 "\n"
+    stmt: 28-37
+     broken_scope: 28-37
+      Indent: 28-28 ""
+      stmt: 28-33
+       simple_stmts: 28-33
+        simple_stmt: 28-32
+         star_expressions: 28-32
+          expression: 28-32
+           atom: 28-32
+            Name: 28-32 "asdf"
+        Newline: 32-33 "\n"
+      Dedent: 37-37 ""
+    Error(stmt): 37-51
+     Error(simple_stmts): 37-51
+      Error(simple_stmt): 37-51
+       Error(star_expressions): 37-51
+        Error(expression): 37-51
+         Error(ternary): 37-51
+          Error(disjunction): 37-51
+           Error(conjunction): 37-51
+            Error(inversion): 37-51
+             Error(comparison): 37-51
+              Error(bitwise_or): 37-51
+               Error(bitwise_xor): 37-51
+                Error(bitwise_and): 37-51
+                 Error(shift_expr): 37-51
+                  Error(sum): 37-51
+                   Error(term): 37-51
+                    Error(factor): 37-51
+                     Error(power): 37-51
+                      Error(await_primary): 37-51
+                       Error(primary): 37-51
+                        atom: 37-41
+                         Name: 37-41 "asdf"
+                        Keyword: 41-42 "("
+                        Error(comprehension): 47-51
+                         named_expression: 47-51
+                          expression: 47-51
+                           atom: 47-51
+                            Name: 47-51 "asdf"
+    Dedent: 52-52 ""
+ stmt: 52-65
+  class_def: 52-65
+   Keyword: 52-57 "class"
+   name_def: 58-59
+    Name: 58-59 "X"
+   Keyword: 59-60 ":"
+   block: 61-65
+    simple_stmts: 61-65
+     simple_stmt: 61-64
+      star_expressions: 61-64
+       expression: 61-64
+        atom: 61-64
+         Keyword: 61-64 "..."
+     Newline: 64-65 "\n"
+ Endmarker: 65-65 ""

@@ -10,6 +10,7 @@ use parsa_python_cst::*;
 
 use super::{
     first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, ClassNodeRef, FuncNodeRef,
+    OtherDefinitionIterator,
 };
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
@@ -32,17 +33,18 @@ use crate::{
     params::{matches_params, Param, WrappedParamType, WrappedStar},
     recoverable_error,
     type_::{
-        format_callable_params, merge_class_type_vars, AnyCause, CallableContent, CallableParams,
-        ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericItem, GenericsList,
-        IterCause, Literal, LiteralKind, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes,
-        Type, TypeVarKind, TypeVarLike, TypeVarVariance, Variance,
+        dataclass_post_init_func, format_callable_params, merge_class_type_vars, AnyCause,
+        CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind, FunctionOverload,
+        GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult, NeverCause,
+        ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarVariance, Variance,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind,
+        cache_class_name, is_private, Callable, Class, ClassLookupOptions, FirstParamKind,
         FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
         TypeOrClass,
     },
     utils::debug_indent,
+    Mode,
 };
 
 const IGNORED_INHERITANCE_NAMES: [&str; 5] = [
@@ -136,18 +138,24 @@ lazy_static::lazy_static! {
 }
 
 impl Inference<'_, '_, '_> {
-    pub fn calculate_diagnostics(&self) -> Result<(), ()> {
+    pub fn calculate_module_diagnostics(&self) -> Result<(), ()> {
+        let result = self.ensure_module_symbols_flow_analysis();
+        self.file.process_delayed_diagnostics(self.i_s.db);
+        result
+    }
+
+    pub fn ensure_module_symbols_flow_analysis(&self) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
-            let file_path = self.file.file_path(self.i_s.db);
-            let _panic_context = utils::panic_context::enter(file_path.to_string());
-            debug!(
-                "Diagnostics for module {file_path} ({})",
-                self.file.file_index(),
-            );
-            debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
             FLOW_ANALYSIS.with(|fa| {
-                let _indent = debug_indent();
-                fa.with_new_empty_and_process_delayed_diagnostics(self.i_s.db, || {
+                fa.with_new_empty_for_file(self.i_s.db, self.file, || {
+                    let file_path = self.file.file_path(self.i_s.db);
+                    let _panic_context = utils::panic_context::enter(file_path.to_string());
+                    debug!(
+                        "Diagnostics for module {file_path} ({})",
+                        self.file.file_index(),
+                    );
+                    debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
+                    let _indent = debug_indent();
                     fa.with_frame_that_exports_widened_entries(self.i_s, || {
                         self.calc_stmts_diagnostics(
                             self.file.tree.root().iter_stmt_likes(),
@@ -155,9 +163,6 @@ impl Inference<'_, '_, '_> {
                             None,
                         );
                     });
-                    if self.flags().local_partial_types {
-                        fa.check_for_unfinished_partials(self.i_s.db);
-                    }
                 })
             });
             // TODO this unsafe feels very wrong, because a bit lower we might modify the complex
@@ -368,108 +373,125 @@ impl Inference<'_, '_, '_> {
                         break;
                     }
                     */
-                    break;
+                    if self.i_s.db.mode == Mode::LanguageServer {
+                        self.i_s.avoid_errors_within(|avoid_errors_i_s| {
+                            self.file
+                                .inference(avoid_errors_i_s)
+                                .handle_stmt_like(stmt_like, class, func);
+                        });
+                        continue;
+                    }
+                    return;
                 }
             }
+            self.handle_stmt_like(stmt_like, class, func)
+        }
+    }
 
-            match stmt_like.node {
-                StmtLikeContent::Assignment(assignment) => self.check_assignment(assignment, class),
-                StmtLikeContent::StarExpressions(star_exprs) => {
-                    self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
-                }
-                StmtLikeContent::ReturnStmt(return_stmt) => {
-                    self.calc_return_stmt_diagnostics(func, return_stmt);
-                    self.mark_current_frame_unreachable()
-                }
-                StmtLikeContent::YieldExpr(yield_expr) => {
-                    self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
-                }
-                StmtLikeContent::RaiseStmt(raise_stmt) => {
-                    if let Some((expr, from_expr)) = raise_stmt.unpack() {
-                        self.check_valid_raise_type(expr, false);
-                        if let Some(from_expr) = from_expr {
-                            self.check_valid_raise_type(from_expr, true)
-                        }
-                    }
-                    self.mark_current_frame_unreachable()
-                }
-                StmtLikeContent::ImportFrom(import_from) => {
-                    self.check_import_from(import_from, class, func)
-                }
-                StmtLikeContent::ImportName(import_name) => {
-                    self.cache_import_name(import_name);
-                }
-                StmtLikeContent::PassStmt(_) => {}
-                StmtLikeContent::GlobalStmt(global) => {
-                    if self.i_s.in_module_context() {
-                        // TODO actually use a future assignment to it to determine the type.
-                        for name_def in global.iter_name_defs() {
-                            self.set_point(
-                                name_def.index(),
-                                Point::new_specific(Specific::AnyDueToError, Locality::File),
-                            );
-                        }
-                        self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel)
+    fn handle_stmt_like(
+        &self,
+        stmt_like: StmtLikeIteratorItem,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        match stmt_like.node {
+            StmtLikeContent::Assignment(assignment) => self.check_assignment(assignment, class),
+            StmtLikeContent::StarExpressions(star_exprs) => {
+                self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
+            }
+            StmtLikeContent::ReturnStmt(return_stmt) => {
+                self.calc_return_stmt_diagnostics(func, return_stmt);
+                self.mark_current_frame_unreachable()
+            }
+            StmtLikeContent::YieldExpr(yield_expr) => {
+                self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
+            }
+            StmtLikeContent::RaiseStmt(raise_stmt) => {
+                if let Some((expr, from_expr)) = raise_stmt.unpack() {
+                    self.check_valid_raise_type(expr, false);
+                    if let Some(from_expr) = from_expr {
+                        self.check_valid_raise_type(from_expr, true)
                     }
                 }
-                StmtLikeContent::NonlocalStmt(_) => {}
-                StmtLikeContent::AssertStmt(assert_stmt) => {
-                    self.flow_analysis_for_assert(assert_stmt);
+                self.mark_current_frame_unreachable()
+            }
+            StmtLikeContent::ImportFrom(import_from) => {
+                self.check_import_from(import_from, class, func)
+            }
+            StmtLikeContent::ImportName(import_name) => {
+                self.cache_import_name(import_name);
+            }
+            StmtLikeContent::PassStmt(_) => {}
+            StmtLikeContent::GlobalStmt(global) => {
+                if self.i_s.in_module_context() {
+                    // TODO actually use a future assignment to it to determine the type.
+                    for name_def in global.iter_name_defs() {
+                        self.set_point(
+                            name_def.index(),
+                            Point::new_specific(Specific::AnyDueToError, Locality::File),
+                        );
+                    }
+                    self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel)
                 }
-                StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
-                StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
-                StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
-                StmtLikeContent::TypeAlias(type_alias) => {
-                    self.ensure_compute_type_alias_from_syntax(type_alias);
-                    self.assign_type_alias_name(type_alias);
-                }
-                StmtLikeContent::FunctionDef(f) => {
+            }
+            StmtLikeContent::NonlocalStmt(_) => {}
+            StmtLikeContent::AssertStmt(assert_stmt) => {
+                self.flow_analysis_for_assert(assert_stmt);
+            }
+            StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
+            StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
+            StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
+            StmtLikeContent::TypeAlias(type_alias) => {
+                self.ensure_compute_type_alias_from_syntax(type_alias);
+                self.assign_type_alias_name(type_alias);
+            }
+            StmtLikeContent::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+            StmtLikeContent::ClassDef(class) => self.calc_class_diagnostics(class),
+            StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
+                Decoratee::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+                Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
+                Decoratee::AsyncFunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+            },
+            StmtLikeContent::IfStmt(if_stmt) => {
+                self.flow_analysis_for_if_stmt(if_stmt, class, func)
+            }
+            StmtLikeContent::ForStmt(for_stmt) => {
+                self.flow_analysis_for_for_stmt(for_stmt, class, func, false)
+            }
+            StmtLikeContent::TryStmt(try_stmt) => {
+                self.flow_analysis_for_try_stmt(try_stmt, class, func)
+            }
+            StmtLikeContent::WhileStmt(while_stmt) => {
+                self.flow_analysis_for_while_stmt(while_stmt, class, func)
+            }
+            StmtLikeContent::WithStmt(with_stmt) => {
+                self.calc_with_stmt(with_stmt, class, func, false)
+            }
+            StmtLikeContent::MatchStmt(match_stmt) => {
+                self.flow_analysis_for_match_stmt(match_stmt, class, func)
+            }
+            StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                AsyncStmtContent::FunctionDef(f) => {
                     self.maybe_delay_func_diagnostics(f, class, func)
                 }
-                StmtLikeContent::ClassDef(class) => self.calc_class_diagnostics(class),
-                StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
-                    Decoratee::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
-                    Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
-                    Decoratee::AsyncFunctionDef(f) => {
-                        self.maybe_delay_func_diagnostics(f, class, func)
-                    }
-                },
-                StmtLikeContent::IfStmt(if_stmt) => {
-                    self.flow_analysis_for_if_stmt(if_stmt, class, func)
+                AsyncStmtContent::ForStmt(for_stmt) => {
+                    self.flow_analysis_for_for_stmt(for_stmt, class, func, true)
                 }
-                StmtLikeContent::ForStmt(for_stmt) => {
-                    self.flow_analysis_for_for_stmt(for_stmt, class, func, false)
+                AsyncStmtContent::WithStmt(with_stmt) => {
+                    self.calc_with_stmt(with_stmt, class, func, true)
                 }
-                StmtLikeContent::TryStmt(try_stmt) => {
-                    self.flow_analysis_for_try_stmt(try_stmt, class, func)
-                }
-                StmtLikeContent::WhileStmt(while_stmt) => {
-                    self.flow_analysis_for_while_stmt(while_stmt, class, func)
-                }
-                StmtLikeContent::WithStmt(with_stmt) => {
-                    self.calc_with_stmt(with_stmt, class, func, false)
-                }
-                StmtLikeContent::MatchStmt(match_stmt) => {
-                    self.flow_analysis_for_match_stmt(match_stmt, class, func)
-                }
-                StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
-                    AsyncStmtContent::FunctionDef(f) => {
-                        self.maybe_delay_func_diagnostics(f, class, func)
-                    }
-                    AsyncStmtContent::ForStmt(for_stmt) => {
-                        self.flow_analysis_for_for_stmt(for_stmt, class, func, true)
-                    }
-                    AsyncStmtContent::WithStmt(with_stmt) => {
-                        self.calc_with_stmt(with_stmt, class, func, true)
-                    }
-                },
-                StmtLikeContent::Error(_) | StmtLikeContent::Newline => {}
-            };
-            self.set_point(
-                stmt_like.parent_index,
-                Point::new_specific(Specific::Analyzed, Locality::Todo),
-            );
-        }
+            },
+            StmtLikeContent::BrokenScope(broken) => {
+                // For now process these as part of the current scope, since this is part of
+                // the parser's error recovery
+                self.calc_stmts_diagnostics(broken.iter_stmt_likes(), class, func)
+            }
+            StmtLikeContent::Error(_) | StmtLikeContent::Newline => {}
+        };
+        self.set_point(
+            stmt_like.parent_index,
+            Point::new_specific(Specific::Analyzed, Locality::Todo),
+        );
     }
 
     fn stmt_is_allowed_when_unreachable(&self, s: StmtLikeContent) -> bool {
@@ -732,7 +754,8 @@ impl Inference<'_, '_, '_> {
 
     fn assign_any_to_untyped_target(&self, target: Target) {
         match target {
-            Target::Name(n) | Target::NameExpression(_, n) => {
+            Target::NameExpression(_, n) => {
+                // Assign any to potential self assignments
                 Inferred::new_any_from_error().save_redirect(self.i_s, self.file, n.index());
             }
             Target::Tuple(targets) => {
@@ -741,7 +764,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
             Target::Starred(s) => self.assign_any_to_untyped_target(s.as_target()),
-            Target::IndexExpression(_) => (),
+            Target::Name(_) | Target::IndexExpression(_) => (),
         }
     }
 
@@ -810,7 +833,8 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_class_frame(self.i_s, || {
                     self.calc_block_diagnostics(block, Some(c), None);
-                })
+                });
+                fa.add_delayed_class_diagnostics(c.as_link())
             })
         })
     }
@@ -887,6 +911,45 @@ impl Inference<'_, '_, '_> {
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
         }
+        if let MetaclassState::Some(link) = class_infos.metaclass {
+            if link == db.python_state.enum_meta_link() {
+                if let Some(t) = class_infos.undefined_generics_type.get() {
+                    if let Type::Enum(enum_) = t.as_ref() {
+                        // Precalculate the enum values here.
+                        // We need to calculate here, because otherwise the normal class
+                        // calculation will do it for us, which will infer different values.
+                        for member in enum_.members.iter() {
+                            if member.value.is_some() {
+                                member.infer_value(self.i_s, &enum_);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let i_s = self.i_s.with_class_context(&c);
+        let result = self
+            .file
+            .inference(&i_s)
+            .calculate_class_block_diagnostics(c, block);
+        if !result.is_ok() {
+            recoverable_error!(
+                "Calculating the class block failed for: {} line #{} in {}",
+                class.name().as_code(),
+                class_node_ref.line_one_based(i_s.db),
+                self.file_path()
+            );
+            return;
+        }
+    }
+
+    pub fn ensure_class_diagnostics(&self, class_node_ref: ClassNodeRef) {
+        let class = class_node_ref.maybe_class().unwrap();
+        let db = self.i_s.db;
+        let (type_params, arguments, _) = class.unpack();
+        let c = Class::with_self_generics(db, class_node_ref);
+        let class_infos = class_node_ref.use_cached_class_infos(db);
         if let Some(t) = class_infos.undefined_generics_type.get() {
             if let Type::Dataclass(d) = t.as_ref() {
                 if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
@@ -950,33 +1013,7 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
-                if let Some(t) = class_infos.undefined_generics_type.get() {
-                    if let Type::Enum(enum_) = t.as_ref() {
-                        // Precalculate the enum values here.
-                        // We need to calculate here, because otherwise the normal class
-                        // calculation will do it for us, which will infer different values.
-                        for member in enum_.members.iter() {
-                            if member.value.is_some() {
-                                member.infer_value(self.i_s, &enum_);
-                            }
-                        }
-                    }
-                }
             }
-        }
-
-        let i_s = self.i_s.with_class_context(&c);
-        let inference = self.file.inference(&i_s);
-
-        let result = inference.calculate_class_block_diagnostics(c, block);
-        if !result.is_ok() {
-            recoverable_error!(
-                "Calculating the class block failed for: {} line #{} in {}",
-                class.name().as_code(),
-                class_node_ref.line_one_based(i_s.db),
-                self.file_path()
-            );
-            return;
         }
 
         check_multiple_inheritance(
@@ -990,8 +1027,12 @@ impl Inference<'_, '_, '_> {
             },
             |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue),
         );
+
+        let i_s = self.i_s.with_class_context(&c);
         for (name, index) in c.class_storage.class_symbol_table.iter() {
-            inference.check_function_override(c, *index, name)
+            self.file
+                .inference(&i_s)
+                .check_function_override(c, *index, name)
         }
         if let Some(node_index) = c
             .class_storage
@@ -1070,7 +1111,7 @@ impl Inference<'_, '_, '_> {
                     name,
                     LookupKind::OnlyType,
                 );
-                let __post_init__ = dataclass.expect_calculated_post_init();
+                let __post_init__ = dataclass_post_init_func(&dataclass, i_s.db);
                 let original_details = LookupDetails {
                     class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
                     lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(
@@ -1118,11 +1159,11 @@ impl Inference<'_, '_, '_> {
             return;
         }
 
+        let func_node_ref = FuncNodeRef::new(self.file, func_def.index());
+        Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func(i_s);
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
-        if let Some(ComplexPoint::FunctionOverload(overload)) =
-            NodeRef::new(self.file, func_def.index()).maybe_complex()
-        {
+        if let Some(ComplexPoint::FunctionOverload(overload)) = func_node_ref.maybe_complex() {
             has_override_decorator = overload.is_override;
         } else if let Some(decorated) = func_def.maybe_decorated() {
             let decorators = decorated.decorators();
@@ -1145,37 +1186,59 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         in_func: Option<&Function>,
     ) {
-        let function = Function::new(NodeRef::new(self.file, f.index()), class);
-        function.cache_func(self.i_s);
-        if let Some(Type::Callable(c)) = function.node_ref.maybe_type() {
-            if c.no_type_check {
-                return;
+        let func = Function::new(NodeRef::new(self.file, f.index()), class);
+        // In general we need a few work arounds here, because we try to not infer the full
+        // function types here. Otherwise we would have to infer decorators, function returns and
+        // other things here already that could easily be done later.
+        {
+            // We need to make sure that the first name always has a definition inserted so flow
+            // analysis works normal.
+            let n = f.name_def();
+            if first_defined_name(self.file, n.name_index()) == n.name_index() {
+                self.add_initial_name_definition(n);
+            }
+
+            if self.in_conditional() {
+                // Conditionals functions need narrowing and we therefore initialize them here.
+                let current_index = f.name().index();
+                // Also cache all the functions before this definition to make sure that overloads are
+                // loaded correctly
+                for n in OtherDefinitionIterator::new(&self.file.points, current_index) {
+                    if n < current_index {
+                        let name_def = NodeRef::new(self.file, n)
+                            .name_def_ref_of_name()
+                            .expect_name_def();
+                        if let Some(f) = name_def.maybe_name_of_func() {
+                            Function::new(NodeRef::new(self.file, f.index()), class)
+                                .cache_func(self.i_s);
+                        }
+                    }
+                }
+                func.cache_func(self.i_s);
             }
         }
-
         FLOW_ANALYSIS.with(|fa| {
             if in_func.is_some() {
-                fa.with_reused_narrowings_for_nested_function(
-                    self.i_s.db,
-                    function.node_ref,
-                    || {
-                        let _ = self.ensure_func_diagnostics(function);
-                    },
-                )
+                fa.with_reused_narrowings_for_nested_function(self.i_s.db, func.node_ref, || {
+                    let _ = self.ensure_func_diagnostics(func);
+                })
             } else {
-                fa.add_delayed_func(
-                    function.node_ref.as_link(),
-                    class.map(|c| c.node_ref.as_link()),
-                )
+                fa.add_delayed_func(func.as_link(), class.map(|c| c.node_ref.as_link()))
             }
         })
     }
 
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
+        function.cache_func(self.i_s);
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
+        if let Some(Type::Callable(c)) = function.node_ref.maybe_type() {
+            if c.no_type_check {
+                return Ok(());
+            }
+        }
+
         diagnostics_for_scope(from, || {
-            let func_node = function.node();
             debug!(
                 "Diagnostics for function {} ({}({}:{}):#{})",
                 function.name(),
@@ -1185,110 +1248,49 @@ impl Inference<'_, '_, '_> {
                 function.node_ref.line_one_based(self.i_s.db)
             );
             let _indent = debug_indent();
-            self.calc_func_diagnostics(function, func_node);
+            self.calc_func_diagnostics(function);
         })
     }
 
-    fn calc_func_diagnostics(&self, function: Function, func_node: FunctionDef) {
-        let i_s = self.i_s;
+    pub(crate) fn ensure_calculated_function_body(&self, function: Function) {
+        let func_node = function.node();
+        let (name_def, _, params, _, body) = func_node.unpack();
+        let body_ref = NodeRef::new(self.file, body.index());
+        if body_ref.point().calculated() {
+            return;
+        }
         FLOW_ANALYSIS.with(|fa| {
-            let mut is_overload_member = false;
-            let unreachable = fa.with_new_func_frame_and_return_unreachable(|| {
+            let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
                 if func_node.is_empty_generator_function() {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
-                is_overload_member = self
-                    .calc_function_diagnostics_internal_and_return_is_overload(function, func_node)
+                let flags = self.flags();
+                self.file
+                    .inference(&self.i_s.with_func_context(&function))
+                    .function_diagnostics_with_correct_i_s(function, flags, name_def, params, body);
             });
-            let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
-            if is_protocol && function.is_final() && !is_overload_member {
-                function.add_issue_onto_start_including_decorator(
-                    i_s,
-                    IssueKind::ProtocolMemberCannotBeFinal,
-                )
-            }
-            if !unreachable
-                && !is_overload_member
-                && !self.file.is_stub()
-                && function.return_annotation().is_some()
-                && !(self.flags().allow_empty_bodies && function.has_trivial_body(i_s))
-                && !function.is_abstract()
-                && !self.in_type_checking_only_block()
-            {
-                let ret_type = function.expected_return_type_for_return_stmt(i_s);
-                let has_trivial_body = function.has_trivial_body(i_s);
-                let maybe_add_async = || {
-                    if has_trivial_body
-                        && function
-                            .class
-                            .and_then(|c| c.maybe_metaclass(i_s.db))
-                            .is_some_and(|metaclass| {
-                                metaclass == i_s.db.python_state.abc_meta_link()
-                            })
-                    {
-                        self.add_issue(
-                            func_node.name().index(),
-                            IssueKind::Note(
-                                "If the method is meant to be abstract, use @abc.abstractmethod"
-                                    .into(),
-                            ),
-                        );
-                    }
-                };
-                if matches!(ret_type.as_ref(), Type::Never(_)) {
-                    self.add_issue(
-                        func_node.name().index(),
-                        IssueKind::ImplicitReturnInFunctionWithNeverReturn,
-                    );
-                    maybe_add_async()
-                } else {
-                    let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
-                    if self.flags().warn_no_return {
-                        if (!is_valid
-                            || !has_trivial_body
-                                && !matches!(ret_type.as_ref(), Type::None | Type::Any(_)))
-                            && !is_protocol
-                        {
-                            self.add_issue(
-                                func_node.name().index(),
-                                IssueKind::MissingReturnStatement {
-                                    code: if has_trivial_body {
-                                        "empty-body"
-                                    } else {
-                                        "return"
-                                    },
-                                },
-                            );
-                            maybe_add_async()
-                        }
-                    } else if !is_valid {
-                        self.add_issue(
-                            func_node.name().index(),
-                            IssueKind::IncompatibleImplicitReturn {
-                                expected: ret_type.format_short(i_s.db),
-                            },
-                        );
-                        maybe_add_async()
-                    }
-                }
-            }
-        })
+            let specific = if unreachable {
+                Specific::FunctionEndIsUnreachable
+            } else {
+                Specific::Analyzed
+            };
+            body_ref.set_point(Point::new_specific(specific, Locality::Todo));
+        });
     }
 
-    fn calc_function_diagnostics_internal_and_return_is_overload(
-        &self,
-        function: Function,
-        func_node: FunctionDef,
-    ) -> bool {
+    fn calc_func_diagnostics(&self, function: Function) {
+        self.ensure_calculated_function_body(function);
+
         let i_s = self.i_s;
+
+        let (name_def, type_params, params, return_annotation, body) = function.node().unpack();
+
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
             is_overload_member = true;
             if let Some(implementation) = &o.implementation {
                 let maybe_remap = |class: Class, c: &mut Cow<CallableContent>| {
-                    if c.has_self_type(self.i_s.db)
-                        || !class.use_cached_type_vars(self.i_s.db).is_empty()
-                    {
+                    if c.has_self_type(i_s.db) || !class.use_cached_type_vars(i_s.db).is_empty() {
                         let mut cls = class;
                         cls.generics = Generics::NotDefinedYet {
                             class_ref: class.node_ref,
@@ -1360,10 +1362,6 @@ impl Inference<'_, '_, '_> {
             is_overload_member = !function.is_overload_implementation();
         }
 
-        let func_kind = function.kind(i_s);
-
-        let (name, type_params, params, return_annotation, block) = func_node.unpack();
-
         if let Some(type_params) = type_params {
             self.check_type_params_redefinitions(function.parent_scope(), type_params);
         }
@@ -1402,10 +1400,82 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        let flags = self.flags();
+
+        let is_protocol = function.class.is_some_and(|cls| cls.is_protocol(i_s.db));
+        if is_protocol && function.is_final() && !is_overload_member {
+            function.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::ProtocolMemberCannotBeFinal,
+            )
+        }
+
+        if NodeRef::new(self.file, body.index()).point().specific()
+            != Specific::FunctionEndIsUnreachable
+            && !is_overload_member
+            && !self.file.is_stub()
+            && function.return_annotation().is_some()
+            && !(self.flags().allow_empty_bodies && function.has_trivial_body(i_s))
+            && !function.is_abstract()
+            && !self.in_type_checking_only_block()
+        {
+            let ret_type = function.expected_return_type_for_return_stmt(i_s);
+            let has_trivial_body = function.has_trivial_body(i_s);
+            let maybe_add_async = || {
+                if has_trivial_body
+                    && function
+                        .class
+                        .and_then(|c| c.maybe_metaclass(i_s.db))
+                        .is_some_and(|metaclass| metaclass == i_s.db.python_state.abc_meta_link())
+                {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::Note(
+                            "If the method is meant to be abstract, use @abc.abstractmethod".into(),
+                        ),
+                    );
+                }
+            };
+            if matches!(ret_type.as_ref(), Type::Never(_)) {
+                self.add_issue(
+                    name_def.index(),
+                    IssueKind::ImplicitReturnInFunctionWithNeverReturn,
+                );
+                maybe_add_async()
+            } else {
+                let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
+                if self.flags().warn_no_return {
+                    if (!is_valid
+                        || !has_trivial_body
+                            && !matches!(ret_type.as_ref(), Type::None | Type::Any(_)))
+                        && !is_protocol
+                    {
+                        self.add_issue(
+                            name_def.index(),
+                            IssueKind::MissingReturnStatement {
+                                code: if has_trivial_body {
+                                    "empty-body"
+                                } else {
+                                    "return"
+                                },
+                            },
+                        );
+                        maybe_add_async()
+                    }
+                } else if !is_valid {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueKind::IncompatibleImplicitReturn {
+                            expected: ret_type.format_short(i_s.db),
+                        },
+                    );
+                    maybe_add_async()
+                }
+            }
+        }
+
         let mut params_iterator = params.iter().peekable();
         if let Some(class) = function.class {
-            if func_kind != FunctionKind::Staticmethod || function.is_dunder_new() {
+            if function.kind(i_s) != FunctionKind::Staticmethod || function.is_dunder_new() {
                 let mut was_star = false;
                 let first_param = params_iterator
                     .peek()
@@ -1430,13 +1500,13 @@ impl Inference<'_, '_, '_> {
                         let mut new = None;
                         match original.as_ref() {
                             Type::TypeVar(tv) => {
-                                if let TypeVarKind::Bound(b) = tv.type_var.kind(self.i_s.db) {
+                                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
                                     new = Some(b.clone());
                                 }
                             }
                             Type::Type(t) => {
                                 if let Type::TypeVar(tv) = t.as_ref() {
-                                    if let TypeVarKind::Bound(b) = tv.type_var.kind(self.i_s.db) {
+                                    if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
                                         new = Some(Type::Type(Rc::new(b.clone())));
                                     }
                                 }
@@ -1488,13 +1558,14 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        check_for_missing_annotations(i_s, flags, function, name, return_annotation);
+        let flags = self.flags();
+        check_for_missing_annotations(i_s, flags, function, name_def, return_annotation);
 
         for param in params_iterator {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
                 if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Covariant))
-                    && !["__init__", "__new__", "__post_init__"].contains(&name.as_code())
+                    && !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code())
                 {
                     NodeRef::new(self.file, annotation.index())
                         .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
@@ -1527,7 +1598,6 @@ impl Inference<'_, '_, '_> {
                     }
                 }
             }
-            self.add_initial_name_definition(param.name_def());
         }
 
         if let Some(return_annotation) = return_annotation {
@@ -1554,27 +1624,37 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-
-        let function_i_s = &i_s.with_func_context(&function);
-        self.file
-            .inference(function_i_s)
-            .function_diagnostics_with_class_i_s(function, func_kind, flags, name, params, block);
-        is_overload_member
+        if flags.disallow_any_unimported {
+            /*
+            for param in params
+                .iter()
+                .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
+            {
+                if let Some(annotation) = param.annotation() {
+                    let _t = self.use_cached_param_annotation_type(annotation);
+                    // TODO implement --disallow-any-unimported
+                }
+            }
+            */
+        }
     }
 
     // This is mostly a helper function to avoid using the wrong InferenceState accidentally.
     #[inline]
-    fn function_diagnostics_with_class_i_s(
+    fn function_diagnostics_with_correct_i_s(
         &self,
         function: Function,
-        func_kind: FunctionKind,
         flags: &TypeCheckerFlags,
         name: NameDef,
         params: FunctionDefParameters,
         block: Block,
     ) {
+        for param in params.iter() {
+            self.add_initial_name_definition(param.name_def());
+        }
         let i_s = self.i_s;
-        if function.is_typed() || flags.check_untyped_defs {
+        let is_typed = function.is_typed();
+        if is_typed || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
             if function.type_vars(i_s.db).has_constraints(i_s.db)
                 || function
@@ -1587,57 +1667,51 @@ impl Inference<'_, '_, '_> {
             } else {
                 self.calc_block_diagnostics(block, None, Some(&function))
             }
-        } else {
-            self.calc_untyped_block_diagnostics(block, false)
-        }
-
-        if function.is_dunder_new() {
-            let mut class = function.class.unwrap();
-            // Here we do not want self generics, we actually want Any generics.
-            class.generics = Generics::NotDefinedYet {
-                class_ref: class.node_ref,
-            };
-            if let Some(callable) = infer_class_method(
-                i_s,
-                class,
-                class,
-                &function.as_callable(i_s, FirstParamProperties::None),
-                None,
-            ) {
-                match &callable.return_type {
-                    Type::Class(_) => {
-                        let t = &callable.return_type;
-                        if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
-                            function.expect_return_annotation_node_ref().add_issue(
-                                i_s,
-                                IssueKind::NewIncompatibleReturnType {
-                                    returns: t.format_short(i_s.db),
-                                    must_return: class.format_short(i_s.db),
-                                },
-                            )
-                        }
-                    }
-                    Type::Type(_) => (),
-                    Type::Any(_) => (),
-                    Type::Enum(e) if e.class == class.node_ref.as_link() => (),
-                    t => function.expect_return_annotation_node_ref().add_issue(
-                        i_s,
-                        IssueKind::NewMustReturnAnInstance {
-                            got: t.format_short(i_s.db),
-                        },
-                    ),
-                }
+            if !is_typed {
+                return;
             }
+        } else {
+            self.calc_untyped_block_diagnostics(block, false);
+            return;
         }
 
-        if flags.disallow_any_unimported {
-            for param in params
-                .iter()
-                .skip((function.class.is_some() && func_kind != FunctionKind::Staticmethod).into())
-            {
-                if let Some(annotation) = param.annotation() {
-                    let _t = self.use_cached_param_annotation_type(annotation);
-                    // TODO implement --disallow-any-unimported
+        if let Some(return_annotation) = function.return_annotation() {
+            if function.is_dunder_new() {
+                let mut class = function.class.unwrap();
+                // Here we do not want self generics, we actually want Any generics.
+                class.generics = Generics::NotDefinedYet {
+                    class_ref: class.node_ref,
+                };
+                if let Some(callable) = infer_class_method(
+                    i_s,
+                    class,
+                    class,
+                    &function.as_callable(i_s, FirstParamProperties::None),
+                    None,
+                ) {
+                    match &callable.return_type {
+                        Type::Class(_) => {
+                            let t = &callable.return_type;
+                            if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
+                                self.add_issue(
+                                    return_annotation.index(),
+                                    IssueKind::NewIncompatibleReturnType {
+                                        returns: t.format_short(i_s.db),
+                                        must_return: class.format_short(i_s.db),
+                                    },
+                                )
+                            }
+                        }
+                        Type::Type(_) => (),
+                        Type::Any(_) => (),
+                        Type::Enum(e) if e.class == class.node_ref.as_link() => (),
+                        t => self.add_issue(
+                            return_annotation.index(),
+                            IssueKind::NewMustReturnAnInstance {
+                                got: t.format_short(i_s.db),
+                            },
+                        ),
+                    }
                 }
             }
         }
@@ -2227,7 +2301,8 @@ fn create_matcher_with_independent_type_vars<T>(
     c2: &CallableContent,
     callback: impl FnOnce(Matcher, &CallableContent, &CallableContent) -> T,
 ) -> T {
-    let matcher = Matcher::new_reverse_callable_matcher(c1, replace_self);
+    let c = Callable::new(c1, None);
+    let matcher = Matcher::new_reverse_callable_matcher(&c, replace_self);
     if c1.defined_at == c2.defined_at {
         let c2 = c2.change_temporary_matcher_index(db, 1);
         callback(matcher, c1, &c2)

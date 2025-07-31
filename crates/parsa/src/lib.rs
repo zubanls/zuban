@@ -170,7 +170,8 @@ macro_rules! __create_node {
             }
 
             pub fn as_code(&self) -> &'a str {
-                self.code_slice(self.internal_node.start_index, self.internal_node.length)
+                let start = self.internal_node.start_index;
+                self.code_slice(start, start + self.internal_node.length)
             }
 
             pub fn prefix(&self) -> &'a str {
@@ -190,7 +191,7 @@ macro_rules! __create_node {
                         let start = self.internal_node.start_index + self.internal_node.length;
                         return self.code_slice(
                             start,
-                            node.start_index - start,
+                            node.start_index,
                         );
                     }
                 }
@@ -231,12 +232,12 @@ macro_rules! __create_node {
                 self.internal_node.type_.is_leaf()
             }
 
-            fn code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &'a str {
+            fn code_slice(&self, start: $crate::CodeIndex, end: $crate::CodeLength) -> &'a str {
                 use std::str;
                 // Can be unsafe, because the input of the parse function is a
                 // String that is copied to the internal tree.
                 unsafe {str::from_utf8_unchecked(&self.internal_tree.code.as_bytes()[
-                    index as usize..index as usize + length as usize
+                    start as usize..end as usize
                 ])}
             }
 
@@ -789,10 +790,10 @@ macro_rules! create_grammar {
                 self.internal_tree.nodes.len()
             }
 
-            pub fn nodes(&self) -> Vec<$Node> {
+            pub fn nodes(&self) -> impl Iterator<Item=$Node> {
                 self.internal_tree.nodes.iter().enumerate().map(
                     |(index, internal_node)| self.node(index as $crate::NodeIndex, internal_node)
-                ).collect()
+                )
             }
 
             pub fn node_by_index(&self, index: $crate::NodeIndex) -> $Node {
@@ -808,7 +809,11 @@ macro_rules! create_grammar {
                 );
                 for (i, node) in self.internal_tree.nodes[..index].iter().enumerate().rev() {
                     if node.type_.is_leaf() {
-                        return self.node(i as $crate::NodeIndex, node)
+                        let node = self.node(i as $crate::NodeIndex, node);
+                        if node.end() < position {
+                            return node.next_leaf().unwrap()
+                        }
+                        return node
                     }
                 }
                 unreachable!();
@@ -817,7 +822,7 @@ macro_rules! create_grammar {
 
         impl std::fmt::Debug for $Tree {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.debug_struct("Tree").field("nodes", &self.nodes()).finish()
+                f.debug_struct("Tree").field("nodes", &self.nodes().collect::<Vec<_>>()).finish()
             }
         }
 

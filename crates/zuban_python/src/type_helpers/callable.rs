@@ -1,13 +1,17 @@
+use std::borrow::Cow;
+
 use super::Class;
 use crate::{
     arguments::Args,
-    database::Database,
+    database::{Database, PointLink},
     diagnostics::IssueKind,
     file::FLOW_ANALYSIS,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext},
-    type_::{CallableContent, NeverCause, ReplaceSelf, Type},
+    matching::{calc_callable_type_vars, OnTypeError, ResultContext},
+    type_::{
+        CallableContent, CallableParams, NeverCause, ParamType, ReplaceSelf, Type, TypeVarLikes,
+    },
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -22,16 +26,6 @@ impl<'a> Callable<'a> {
             content,
             defined_in,
         }
-    }
-
-    pub fn diagnostic_string(&self, db: &Database) -> Option<String> {
-        self.content.name.as_ref().map(|n| {
-            let name = n.as_str(db);
-            match self.content.class_name {
-                Some(c) => format!("\"{}\" of \"{}\"", name, c.as_str(db)),
-                None => format!("\"{name}\""),
-            }
-        })
     }
 
     pub(crate) fn execute<'db>(
@@ -90,7 +84,7 @@ impl<'a> Callable<'a> {
         result_context: &mut ResultContext,
         as_self_type: Option<ReplaceSelf>,
     ) -> Inferred {
-        let calculated_type_vars = calculate_callable_type_vars_and_return(
+        let calculated_type_vars = calc_callable_type_vars(
             i_s,
             *self,
             args.iter(i_s.mode),
@@ -106,5 +100,73 @@ impl<'a> Callable<'a> {
             self.defined_in.as_ref(),
             as_self_type.unwrap_or(&|| self.defined_in.map(|c| c.as_type(i_s.db))),
         )
+    }
+}
+
+pub(crate) trait FuncLike: std::fmt::Debug {
+    fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type>;
+    fn diagnostic_string(&self, db: &Database) -> Option<String>;
+    fn defined_at(&self) -> PointLink;
+    fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes;
+    fn class(&self) -> Option<Class>;
+    fn first_self_or_class_annotation<'a>(
+        &'a self,
+        i_s: &'a InferenceState,
+    ) -> Option<Cow<'a, Type>>;
+    fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool;
+    fn is_callable(&self) -> bool;
+}
+
+impl FuncLike for Callable<'_> {
+    fn inferred_return_type<'a>(&'a self, _: &InferenceState) -> Cow<'a, Type> {
+        Cow::Borrowed(&self.content.return_type)
+    }
+
+    fn diagnostic_string(&self, db: &Database) -> Option<String> {
+        self.content.name.as_ref().map(|n| {
+            let name = n.as_str(db);
+            match self.content.class_name {
+                Some(c) => format!("\"{}\" of \"{}\"", name, c.as_str(db)),
+                None => format!("\"{name}\""),
+            }
+        })
+    }
+
+    fn defined_at(&self) -> PointLink {
+        self.content.defined_at
+    }
+
+    fn type_vars<'a>(&'a self, _: &'a Database) -> &'a TypeVarLikes {
+        &self.content.type_vars
+    }
+
+    fn class(&self) -> Option<Class> {
+        self.defined_in
+    }
+
+    fn first_self_or_class_annotation(&self, _: &InferenceState) -> Option<Cow<Type>> {
+        self.content
+            .kind
+            .had_first_self_or_class_annotation()
+            .then(|| Cow::Owned(self.content.first_positional_type().unwrap()))
+    }
+
+    fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
+        match &self.content.params {
+            CallableParams::Simple(params) => params.iter().any(|p| {
+                p.name.as_ref().is_some_and(|n| {
+                    n.as_str(db) == name
+                        && matches!(
+                            p.type_,
+                            ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
+                        )
+                })
+            }),
+            _ => false,
+        }
+    }
+
+    fn is_callable(&self) -> bool {
+        true
     }
 }

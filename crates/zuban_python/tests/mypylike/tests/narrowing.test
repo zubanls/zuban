@@ -24,9 +24,9 @@ from typing import Any, Union, Tuple
 
 x: Union[Tuple[int, int], Tuple[int, int, int]]
 if 2 == len(x):
-    reveal_type(x) # N: Revealed type is "Tuple[int, int]"
+    reveal_type(x) # N: Revealed type is "tuple[int, int]"
 else:
-    reveal_type(x) # N: Revealed type is "Tuple[int, int, int]"
+    reveal_type(x) # N: Revealed type is "tuple[int, int, int]"
 
 [case narrow_unreachable_len1]
 # flags: --warn-unreachable --mypy-compatible
@@ -55,13 +55,13 @@ if str():
     if len(x) <= 1:
         reveal_type(x)  # N: Revealed type is "tuple[()] | tuple[int]"
     else:
-        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[tuple[int, ...]]]"
+        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[Tuple[int, ...]]]"
 
 if str():
     if 1 >= len(x):
         reveal_type(x)  # N: Revealed type is "tuple[()] | tuple[int]"
     else:
-        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[tuple[int, ...]]]"
+        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[Tuple[int, ...]]]"
 
 
 [case narrow_unreachable_len2]
@@ -86,7 +86,7 @@ if str():
     if 2 > len(x):
         reveal_type(x)  # N: Revealed type is "tuple[()] | tuple[int]"
     else:
-        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[tuple[int, ...]]]"
+        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[Tuple[int, ...]]]"
 
 if str():
     if 0 < len(x):
@@ -109,9 +109,9 @@ Point3D = NamedTuple("Point3D", [('x', int), ('y', int), ('z', int)])
 
 x: Union[Point2D, Point3D]
 if len(x) == 2:
-    reveal_type(x)  # N: Revealed type is "Tuple[int, int, fallback=__main__.Point2D]"
+    reveal_type(x)  # N: Revealed type is "tuple[int, int, fallback=__main__.Point2D]"
 else:
-    reveal_type(x)  # N: Revealed type is "Tuple[int, int, int, fallback=__main__.Point3D]"
+    reveal_type(x)  # N: Revealed type is "tuple[int, int, int, fallback=__main__.Point3D]"
 
 [case narrowing_named_tuple_calls2]
 # Like testNarrowingLenUnionOfNamedTuples, but with direct calls instead of classes
@@ -123,9 +123,9 @@ Point3D = namedtuple("Point3D", ['x', 'y', 'z'])
 
 x: Union[Point2D, Point3D]
 if len(x) == 2:
-    reveal_type(x)  # N: Revealed type is "Tuple[Any, Any, fallback=__main__.Point2D]"
+    reveal_type(x)  # N: Revealed type is "tuple[Any, Any, fallback=__main__.Point2D]"
 else:
-    reveal_type(x)  # N: Revealed type is "Tuple[Any, Any, Any, fallback=__main__.Point3D]"
+    reveal_type(x)  # N: Revealed type is "tuple[Any, Any, Any, fallback=__main__.Point3D]"
 
 [case narrowing_type_of_other_side]
 from typing import Any
@@ -1346,9 +1346,10 @@ if sys.version_info[:2] > (2, 200):
     undefined # E: Name "undefined" is not defined
 
 [case not_narrowing]
+# flags: --warn-unreachable
 reveal_type(not str())  # N: Revealed type is "bool"
 reveal_type(1 and not str())  # N: Revealed type is "bool"
-reveal_type(1 or not str())  # N: Revealed type is "Literal[1]?"
+reveal_type(1 or not str())  # E: Right operand of "or" is never evaluated # N: Revealed type is "Literal[1]?"
 reveal_type(not 1 or not str())  # N: Revealed type is "bool"
 x = 1
 reveal_type(x and not str())  # N: Revealed type is "Literal[0] | bool"

@@ -5,8 +5,7 @@ use parsa_python_cst::*;
 use super::{
     diagnostics::{await_aiter_and_next, check_override},
     flow_analysis::has_custom_special_method,
-    name_binder::GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
-    name_resolution::NameResolution,
+    name_resolution::{ModuleAccessDetail, NameResolution},
     on_argument_type_error, process_unfinished_partials,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
@@ -14,7 +13,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
-    database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific},
+    database::{ComplexPoint, Database, Locality, Mode, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
@@ -152,7 +151,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         &self,
         name_def: NameDef,
         pr: PointResolution,
-        redirect_to_link: Option<PointLink>,
+        redirect_to: Option<ModuleAccessDetail>,
     ) {
         let inf = self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
         self.assign_to_name_def(
@@ -160,9 +159,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             NodeRef::new(self.file, name_def.index()),
             &inf,
             AssignKind::Import,
-            |_, inf| match redirect_to_link {
-                Some(link) if inf.is_saved() => {
-                    self.set_point(name_def.index(), link.into_redirect_point(Locality::Todo));
+            |_, inf| match redirect_to {
+                Some(to) if inf.is_saved() => {
+                    self.set_point(name_def.index(), to.into_point(Locality::Todo));
                 }
                 _ => {
                     inf.clone()
@@ -705,31 +704,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // The name binder already added an issue here.
                     return Inferred::new_any_from_error();
                 }
-                let expr_result = self.infer_expression(yield_from.expression());
-                let added_iter_issue = Cell::new(false);
-                let iter_result = expr_result.type_lookup_and_execute(
-                    i_s,
-                    from.file,
-                    "__iter__",
-                    &NoArgs::new(from),
-                    &|_| {
-                        if !added_iter_issue.get() {
-                            added_iter_issue.set(true);
-                            from.add_issue(
-                                i_s,
-                                IssueKind::YieldFromCannotBeApplied {
-                                    to: expr_result.format_short(i_s),
-                                },
-                            )
-                        }
-                    },
-                );
-                let yields = iter_result.type_lookup_and_execute_with_attribute_error(
-                    i_s,
-                    from,
-                    "__next__",
-                    &NoArgs::new(from),
-                );
+                let (iter_result, yields) = self.infer_yield_from_details(yield_from);
                 generator.yield_type.error_if_not_matches(
                     i_s,
                     &yields,
@@ -774,6 +749,46 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         } else {
             Inferred::new_none()
         }
+    }
+
+    fn infer_yield_from_details(&self, yield_from: YieldFrom) -> (Inferred, Inferred) {
+        let from = NodeRef::new(self.file, yield_from.index());
+        let expr_result = self.infer_expression(yield_from.expression());
+        let added_iter_issue = Cell::new(false);
+        let iter_result = expr_result.type_lookup_and_execute(
+            self.i_s,
+            self.file,
+            "__iter__",
+            &NoArgs::new(from),
+            &|_| {
+                if !added_iter_issue.get() {
+                    added_iter_issue.set(true);
+                    from.add_issue(
+                        self.i_s,
+                        IssueKind::YieldFromCannotBeApplied {
+                            to: expr_result.format_short(self.i_s),
+                        },
+                    )
+                }
+            },
+        );
+        let yields = iter_result.type_lookup_and_execute_with_attribute_error(
+            self.i_s,
+            from,
+            "__next__",
+            &NoArgs::new(from),
+        );
+        (
+            iter_result,
+            yields.save_redirect(self.i_s, self.file, yield_from.index()),
+        )
+    }
+
+    pub fn infer_yield_from_expr(&self, yield_from: YieldFrom) -> Inferred {
+        if let Some(inferred) = self.check_point_cache(yield_from.index()) {
+            return inferred;
+        }
+        self.infer_yield_from_details(yield_from).1
     }
 
     fn infer_target(&self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
@@ -1271,7 +1286,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         // name.
                         match name_def.maybe_import() {
                             Some(NameImportParent::ImportFromAsName(i)) => {
-                                node_ref = NodeRef::new(self.file, i.import_from().index())
+                                if let Some(imp) = i.import_from() {
+                                    node_ref = NodeRef::new(self.file, imp.index())
+                                }
                             }
                             Some(NameImportParent::DottedAsName(i)) => {
                                 node_ref = NodeRef::new(self.file, i.import().index())
@@ -1354,6 +1371,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             let original_inf = self.infer_name_of_definition_by_index(first_index);
+            if self.i_s.db.mode == Mode::LanguageServer {
+                // This information is only needed if we need to access it again and otherwise
+                // irrelevant, because we only acccess the information of the first name def.
+                save(name_def.index(), &original_inf);
+            }
             check_assign_including_partials(first_index, &original_inf, None)
         } else {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
@@ -2965,10 +2987,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
                             return None;
                         }
+                        let mut inf = self.infer_primary(prim, &mut ResultContext::Unknown);
+                        if !self.point(index).calculated() {
+                            // This could have been set in infer_primary (especially in
+                            // language server mode)
+                            inf = inf.save_redirect(self.i_s, self.file, index);
+                        }
                         Some((
-                            self.infer_primary(prim, &mut ResultContext::Unknown)
-                                .save_redirect(self.i_s, self.file, index)
-                                .maybe_saved_node_ref(self.i_s.db)?,
+                            inf.maybe_saved_node_ref(self.i_s.db)?,
                             primary_or_atom,
                             None,
                         ))
@@ -3134,7 +3160,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
     fn _infer_primary(&self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
         if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
-            return inf;
+            return if self.i_s.db.mode == Mode::LanguageServer {
+                inf.save_redirect(self.i_s, self.file, primary.index())
+            } else {
+                inf
+            };
         }
         let base = match self.try_to_infer_partial_from_primary(primary) {
             Some(t) => return Inferred::from_type(t),
@@ -3261,7 +3291,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
         use AtomContent::*;
         let specific = match atom.unpack() {
-            Name(n) => return self.infer_name_reference(n),
+            Name(n) => {
+                let result = self.infer_name_reference(n);
+                return if self.i_s.db.mode == Mode::LanguageServer
+                    && !self.point(atom.index()).calculated()
+                    // Avoid saving cycles, so that they are treated the same in all modes (easier
+                    // for consistent test results).
+                    && result.maybe_specific(self.i_s.db) != Some(Specific::Cycle)
+                {
+                    // This information is needed when doing goto/completions
+                    result.save_redirect(i_s, self.file, atom.index())
+                } else {
+                    result
+                };
+            }
             Int(i) => match self.parse_int(i) {
                 Some(_) => {
                     return check_literal(result_context, i_s, i.index(), Specific::IntLiteral);
@@ -3504,7 +3547,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         .save_redirect(self.i_s, self.file, subject_expr.index())
     }
 
-    fn infer_primary_target(
+    pub fn infer_primary_target(
         &self,
         primary_target: PrimaryTarget,
         use_narrows: bool,
@@ -3634,7 +3677,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // This is typically a global in the module scope, which is completely useless.
                     let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
                     let inference = node_ref.file.inference(i_s);
-                    if let Err(()) = inference.calculate_diagnostics() {
+                    if let Err(()) = inference.ensure_module_symbols_flow_analysis() {
                         // It feels weird that we add this to the global node.
                         node_ref.add_issue(
                             self.i_s,
@@ -3646,18 +3689,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                     return inference.infer_point_resolution(pr);
                 }
-                let index = node_ref.node_index - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE
-                    + NAME_DEF_TO_NAME_DIFFERENCE;
-                if node_ref.file.points.get(index).calculated() {
-                    self.check_point_cache(index).unwrap()
+                let g_or_n_ref = node_ref.global_or_nonlocal_ref();
+                if g_or_n_ref.point().calculated() {
+                    self.check_point_cache(g_or_n_ref.node_index).unwrap()
                 } else {
                     let p = node_ref.point();
                     if p.specific() == Specific::AnyDueToError {
                         return Inferred::new_any_from_error();
                     }
-                    debug_assert_eq!(node_ref.point().specific(), Specific::GlobalVariable);
+                    debug_assert_eq!(p.specific(), Specific::GlobalVariable);
                     self.with_correct_context(true, |inference| {
-                        inference.infer_name_by_str(node_ref.as_code(), index)
+                        inference.infer_name_by_str(node_ref.as_code(), g_or_n_ref.node_index)
                     })
                 }
             }
@@ -3691,7 +3733,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .inference(&InferenceState::new(self.i_s.db, node_ref.file))
                 .with_correct_context(global_redirect, |inference| {
                     let ensure_flow_analysis = || {
-                        if inference.calculate_diagnostics().is_err() {
+                        if inference.ensure_module_symbols_flow_analysis().is_err() {
                             add_issue(IssueKind::CannotDetermineType {
                                 for_: node_ref.as_code().into(),
                             });
@@ -3772,7 +3814,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     self.i_s.db,
                     NodeRef::new(self.file, func_node.index()),
                 );
-                func.ensure_cached_func(self.i_s);
 
                 let to_inferred = |is_classmethod: bool| {
                     let mut t = if func.node_ref.node_index
@@ -3797,17 +3838,32 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let specific = self.point(node_index).specific();
                 if let Some(annotation) = name_def.maybe_param_annotation() {
                     self.use_cached_param_annotation(annotation)
-                } else if self.i_s.current_function().is_some() {
+                } else {
+                    let new_any = |param_index| {
+                        if let Some(usage) = func
+                            .type_vars(self.i_s.db)
+                            .find_untyped_param_type_var(func.as_link(), param_index)
+                        {
+                            return Type::TypeVar(usage);
+                        }
+                        if let Some(cls) = func.class {
+                            if let Some(usage) = cls
+                                .type_vars(self.i_s)
+                                .find_untyped_param_type_var(cls.as_link(), param_index)
+                            {
+                                return Type::TypeVar(usage);
+                            }
+                        }
+                        Type::Any(AnyCause::Unannotated)
+                    };
                     if specific == Specific::MaybeSelfParam {
                         match func.first_param_kind(self.i_s) {
                             FirstParamKind::Self_ => to_inferred(false),
                             FirstParamKind::ClassOfSelf => to_inferred(true),
-                            FirstParamKind::InStaticmethod => {
-                                Inferred::from_type(Type::Any(AnyCause::Unannotated))
-                            }
+                            FirstParamKind::InStaticmethod => Inferred::from_type(new_any(0)),
                         }
                     } else {
-                        for param in func_node.params().iter() {
+                        for (i, param) in func_node.params().iter().enumerate() {
                             if param.name_def().index() == name_def.index() {
                                 return match param.kind() {
                                     ParamKind::Star => Inferred::from_type(
@@ -3816,19 +3872,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     ParamKind::StarStar => Inferred::from_type(new_class!(
                                         self.i_s.db.python_state.dict_node_ref().as_link(),
                                         self.i_s.db.python_state.str_type(),
-                                        Type::Any(AnyCause::Unannotated),
+                                        new_any(i)
                                     )),
-                                    _ => Inferred::new_any(AnyCause::Unannotated),
+                                    _ => Inferred::from_type(new_any(i)),
                                 };
                             }
                         }
                         unreachable!()
                     }
-                } else if specific == Specific::MaybeSelfParam {
-                    // Usages from lambdas might land here? This feels like a weird case.
-                    Inferred::new_saved(self.file, node_index)
-                } else {
-                    Inferred::new_any(AnyCause::Unannotated)
                 }
             }
             FunctionOrLambda::Lambda(lambda) => lookup_lambda_param(self.i_s, lambda, node_index),
@@ -3862,7 +3913,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if let Some(class) = self.i_s.current_class() {
                 debug_assert!(
                     matches!(class.generics(), Generics::Self_ { .. } | Generics::None,),
-                    "{class:?}",
+                    "{defining_stmt:?} {class:?}",
                 )
             }
         }
@@ -3979,7 +4030,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     AssignKind::Normal,
                 )
             }
-            DefiningStmt::MatchStmt(_) => {
+            DefiningStmt::MatchStmt(_) | DefiningStmt::Error(_) => {
                 // This should basically only ever happen on weird error cases where errors are
                 // added in other places. We assign Any to make sure
                 self.assign_to_name_def_simple(
@@ -4244,6 +4295,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     check_point_cache_with!(pub infer_decorator, Self::_infer_decorator, Decorator);
     fn _infer_decorator(&self, decorator: Decorator) -> Inferred {
+        if !self.has_frames() {
+            // This is a bit special and might be considered a bug. It might happen because
+            // decorators are inferred in a lazy way.
+            return FLOW_ANALYSIS.with(|fa| {
+                fa.with_frame_that_exports_widened_entries(self.i_s, || {
+                    self._infer_decorator(decorator)
+                })
+            });
+        }
         let expr = decorator.named_expression().expression();
         if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
             if let PrimaryContent::Execution(exec) = primary.second() {
@@ -4281,11 +4341,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    pub(super) fn infer_dotted_name(&self, dotted: DottedName) -> Inferred {
+    pub fn infer_pattern_dotted_name(&self, dotted: DottedPatternName) -> Inferred {
         match dotted.unpack() {
-            DottedNameContent::Name(name) => self.infer_name_reference(name),
-            DottedNameContent::DottedName(dotted_name, name) => {
-                let result = self.infer_dotted_name(dotted_name);
+            DottedPatternNameContent::Name(name) => self.infer_name_reference(name),
+            DottedPatternNameContent::DottedName(dotted_name, name) => {
+                let result = self.infer_pattern_dotted_name(dotted_name);
                 let node_ref = NodeRef::new(self.file, dotted.index());
                 result
                     .lookup(self.i_s, node_ref, name.as_code(), LookupKind::Normal)
@@ -4544,7 +4604,8 @@ impl StarImportResult {
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
         match self {
             Self::Link(link) => {
-                NodeRef::from_link(i_s.db, *link).infer_name_of_definition_by_index(i_s)
+                let node_ref = NodeRef::from_link(i_s.db, *link);
+                node_ref.infer_name_of_definition_by_index(i_s)
             }
             Self::AnyDueToError => Inferred::new_any_from_error(),
         }

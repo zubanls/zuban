@@ -291,12 +291,25 @@ def bar(x: Any, y: A):
     reveal_type(x + y)  # N: Revealed type is "Any"
     reveal_type(y + x)  # N: Revealed type is "Any"
 
-[case explicit_never_list_tuple_unpacking]
+[case explicit_never_list_tuple_unpacking_mypy_compatible]
+# flags: --mypy-compatible
 from typing import Never
 xx: list[Never] = []
 
 for (y, z) in xx:  # E: "Never" object is not iterable
     reveal_type(y)
+
+1()  # E: "int" not callable
+
+[case explicit_never_list_tuple_unpacking_no_mypy_compatible]
+# flags: --no-mypy-compatible
+from typing import Never
+xx: list[Never] = []
+
+for (y, z) in xx:  # E: "Never" object is not iterable
+    reveal_type(y)  # E: Statement is unreachable
+
+1()  # E: "int" not callable
 
 [case set_literal_item_mismatch]
 from typing import Set
@@ -973,6 +986,7 @@ list(x for s in lst if (x := s))
 list(x for s in lst if (x := s))
 
 [case after_invalid_syntax_function_should_still_be_importable]
+# flags: --no-warn-unreachable
 import m, n
 reveal_type(m.x)  # N: Revealed type is "int"
 reveal_type(n.x)  # N: Revealed type is "int"
@@ -1007,7 +1021,8 @@ def f(char: str) -> None:
     if char <= "\u009f": ...
     if char <= "\u019f": ...
 
-[case nested_class_in_untyped_def_with_forward_reference]
+[case nested_class_in_untyped_def_with_forward_reference_no_check_untyped]
+# flags: --no-check-untyped-defs
 def f(x):
     class Outer:
         def meth(self, x: Nested): ...
@@ -1015,6 +1030,7 @@ def f(x):
         class Nested: ...
 
 [case nested_class_in_untyped_def_and_unreachable_no_crash]
+import sys
 def f(x):
     if sys.platform.startswith('undefined_operating_system'):
         class Outer:
@@ -1107,3 +1123,26 @@ __main__:2: error: "return" outside function
 def short_type(obj: object) -> str:
     t = str(type(obj))
     return t.split(".")[-1].rstrip("'>")
+
+[case broken_if_and_variables_after_should_still_resolve]
+def f() -> None:
+    x = 1
+    if asd fds:  # E: invalid syntax
+        reveal_type(x)  # E: invalid syntax # N: Revealed type is "int"
+    reveal_type(x)  # N: Revealed type is "int"
+
+[case broken_scope1]
+a = 1
+ b = 1  # E: invalid syntax
+c = 1
+
+[case broken_scope2]
+a = 1
+if bool()  # E: invalid syntax
+    b = 1  # E: invalid syntax
+c = 1
+
+[case diagnostics_after_trailing_semicolon_regression]
+a = 1;
+
+1()  # E: "int" not callable

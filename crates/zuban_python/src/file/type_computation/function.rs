@@ -121,6 +121,10 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         self.add_to_node_index(FUNC_TO_TYPE_VAR_DIFF)
     }
 
+    pub fn unannotated_return_reference(&self) -> NodeRef<'file> {
+        NodeRef::new(self.file, self.node().colon_index())
+    }
+
     pub(crate) fn expect_decorated_node(&self) -> Decorated {
         self.node().maybe_decorated().unwrap()
     }
@@ -191,7 +195,25 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if type_var_reference.point().calculated() {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
         }
-        let (type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s, class);
+        let (mut type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s, class);
+        if type_vars.is_empty() && !i_s.db.project.settings.mypy_compatible {
+            let node = self.node();
+            if !node.is_typed() && !["__init__", "__new__"].contains(&node.name().as_code()) {
+                let mut skip_first = class.is_some();
+                if skip_first {
+                    if let Some(decorated) = node.maybe_decorated() {
+                        for decorator in decorated.decorators().iter() {
+                            if decorator.as_code().contains("staticmethod") {
+                                // TODO this is not proper type inference, but should probably
+                                // suffice for now.
+                                skip_first = false;
+                            }
+                        }
+                    }
+                }
+                type_vars = TypeVarLikes::new_untyped_params(node, skip_first)
+            }
+        }
         match type_vars.len() {
             0 => type_var_reference
                 .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),

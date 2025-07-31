@@ -532,10 +532,15 @@ def __getattr__(n) -> typing.Any: ...
 __getattr__ = 1  # E: Invalid signature "int" for "__getattr__"
 
 [case type_var_used_in_untyped_function]
+# flags: --no-check-untyped-defs
 from typing import TypeVar
 def f():
     T = TypeVar("T")
-    f: T  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    f: T  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs \
+          # E: Type variable "__main__.T" is unbound \
+          # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+          # N: (Hint: Use "T" in function signature to bind "T" inside a function)
+
 
 [case conditional_type_invalid_when_any_is_assigned]
 # flags: --disallow-redefinition

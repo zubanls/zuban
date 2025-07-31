@@ -16,6 +16,14 @@ use crate::{
 };
 
 impl Type {
+    pub fn gather_types(&self, i_s: &InferenceState, other: &Self) -> Type {
+        if i_s.flags().use_joins {
+            self.common_base_type(i_s, other)
+        } else {
+            self.simplified_union(i_s, other)
+        }
+    }
+
     pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Type {
         self.common_base_type_internal(i_s, other, None)
     }

@@ -262,7 +262,7 @@ import ns_pkg_w_stubs
 
 a: ns_pkg_w_stubs.untyped
 b: ns_pkg_w_stubs.untyped.A
-c: ns_pkg_w_stubs.typed  # E: Module "ns_pkg_w_stubs-stubs.typed" is not valid as a type \
+c: ns_pkg_w_stubs.typed  # E: Module "ns_pkg_w_stubs.typed" is not valid as a type \
                          # N: Perhaps you meant to use a protocol matching the module structure?
 d: ns_pkg_w_stubs.typed.A  # E: Name "ns_pkg_w_stubs.typed.A" is not defined
 
@@ -551,3 +551,81 @@ if bool():
     a = None
 else:
     a = 1
+
+[case relative_import_many_dots_without_namespace]
+
+[file outer.py]
+x = 1
+
+[file bar/inner.py]
+y = ""
+
+[file bar/__init__.py]
+
+[file bar/foo.py]
+def f() -> None:
+    from . import outer  # E: Module "bar" has no attribute "outer"
+    from . import inner
+    from .outer import x  # E: Cannot find implementation or library stub for module named "bar.outer"
+    from .inner import y
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "str"
+
+def g() -> None:
+    from .. import outer  # E: No parent module -- cannot perform relative import
+    from .. import inner  # E: No parent module -- cannot perform relative import
+    from ..outer import x  # E: No parent module -- cannot perform relative import
+    from ..inner import y  # E: No parent module -- cannot perform relative import \
+                           # E: Cannot find implementation or library stub for module named "inner"
+    reveal_type(x)  # N: Revealed type is "int"
+    reveal_type(y)  # N: Revealed type is "Any"
+
+def h() -> None:
+    from ... import outer  # E: No parent module -- cannot perform relative import
+    from ... import inner  # E: No parent module -- cannot perform relative import
+    from ...outer import x  # E: No parent module -- cannot perform relative import
+    from ...inner import y  # E: No parent module -- cannot perform relative import
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "Any"
+
+def i() -> None:
+    from .... import outer  # E: No parent module -- cannot perform relative import
+    from .... import inner  # E: No parent module -- cannot perform relative import
+
+[case relative_import_many_dots_with_namespace]
+
+[file outer.py]
+x = 1
+
+[file bar/inner.py]
+y = ""
+
+[file bar/foo.py]
+def f() -> None:
+    from . import inner
+    from . import outer  # E: Module "bar" has no attribute "outer"
+    from .outer import x  # E: Cannot find implementation or library stub for module named "bar.outer"
+    from .inner import y
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "str"
+
+def g() -> None:
+    from .. import inner  # E: No parent module -- cannot perform relative import
+    from .. import outer  # E: No parent module -- cannot perform relative import
+    from ..outer import x  # E: No parent module -- cannot perform relative import
+    from ..inner import y  # E: No parent module -- cannot perform relative import \
+                           # E: Cannot find implementation or library stub for module named "inner"
+    reveal_type(x)  # N: Revealed type is "int"
+    reveal_type(y)  # N: Revealed type is "Any"
+
+def h() -> None:
+    from ... import inner  # E: No parent module -- cannot perform relative import
+    from ... import outer  # E: No parent module -- cannot perform relative import
+    from ...outer import x  # E: No parent module -- cannot perform relative import
+    from ...inner import y  # E: No parent module -- cannot perform relative import
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "Any"
+
+def i() -> None:
+    from .... import inner  # E: No parent module -- cannot perform relative import
+    from .... import outer  # E: No parent module -- cannot perform relative import

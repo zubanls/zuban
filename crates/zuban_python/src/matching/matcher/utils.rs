@@ -8,7 +8,7 @@ use super::{
         ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
         ResultContext, SignatureMatch,
     },
-    type_var_matcher::{FunctionOrCallable, TypeVarMatcher},
+    type_var_matcher::TypeVarMatcher,
     ReplaceSelfInMatcher,
 };
 use crate::{
@@ -31,10 +31,10 @@ use crate::{
         NeverCause, ParamSpecTypeVars, ReplaceSelf, ReplaceTypeVarLikes, Tuple, TupleArgs,
         TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance,
     },
-    type_helpers::{Callable, Class, Function},
+    type_helpers::{Callable, Class, FuncLike, Function},
 };
 
-pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     mut callable: Callable<'a>,
@@ -47,58 +47,77 @@ pub(crate) fn calculate_callable_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     if let Some(c) = callable.defined_in.as_mut() {
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
-    calculate_dunder_init_type_vars_and_return(
-        i_s,
-        class,
-        FunctionOrCallable::Callable(callable),
-        args,
-        add_issue,
-        skip_first_param,
-        result_context,
-        on_type_error,
-    )
+    calc_dunder_init_type_vars(i_s, class, &callable, |matcher, _| {
+        calc_type_vars_for_callable_internal(
+            i_s,
+            matcher,
+            &callable,
+            Some(class),
+            args,
+            &add_issue,
+            skip_first_param,
+            class.node_ref.as_link(),
+            result_context,
+            on_type_error,
+        )
+    })
 }
 
-pub(crate) fn calculate_class_dunder_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
-    class: &Class,
+    class: &'a Class,
     mut function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError>,
+    on_type_error: OnTypeError,
 ) -> CalculatedTypeArgs {
     if let Some(c) = function.class.as_mut() {
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
-    calculate_dunder_init_type_vars_and_return(
-        i_s,
-        class,
-        FunctionOrCallable::Function(function),
-        args,
-        add_issue,
-        true,
-        result_context,
-        on_type_error,
-    )
+    calc_dunder_init_type_vars(i_s, class, &function, |matcher, class_type_vars| {
+        if class_type_vars.has_from_untyped_params() {
+            calc_untyped_func_type_vars_with_matcher(
+                matcher,
+                i_s,
+                &function,
+                args,
+                add_issue,
+                true,
+                class_type_vars,
+                class.as_link(),
+                result_context,
+                on_type_error,
+            )
+        } else {
+            calc_type_vars_for_func_internal(
+                i_s,
+                matcher,
+                &function,
+                Some(class),
+                args,
+                add_issue,
+                true,
+                class.node_ref.as_link(),
+                result_context,
+                Some(on_type_error),
+            )
+        }
+    })
 }
 
-fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
+fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
-    class: &Class,
-    func_or_callable: FunctionOrCallable<'a>,
-    args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
-    skip_first_param: bool,
-    result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError>,
+    class: &'a Class,
+    func_like: &dyn FuncLike,
+    check: impl FnOnce(Matcher, &'a TypeVarLikes) -> CalculatedTypeArgs,
 ) -> CalculatedTypeArgs {
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
     let class_matcher_needed =
         matches!(class.generics, Generics::NotDefinedYet { .. }) && !type_vars.is_empty();
     // Function type vars need to be calculated, so annotations are used.
-    let func_type_vars = func_or_callable.type_vars(i_s);
+    let func_type_vars = func_like.type_vars(i_s.db);
 
     let match_in_definition = class.node_ref.as_link();
     let mut tv_matchers = vec![];
@@ -107,30 +126,14 @@ fn calculate_dunder_init_type_vars_and_return<'db: 'a, 'a>(
     }
     if !func_type_vars.is_empty() {
         tv_matchers.push(TypeVarMatcher::new(
-            func_or_callable.defined_at(),
+            func_like.defined_at(),
             func_type_vars.clone(),
         ));
     }
     let as_self_type = || class.as_type(i_s.db);
-    let matcher = Matcher::new(
-        Some(class),
-        func_or_callable,
-        tv_matchers,
-        Some(&as_self_type),
-    );
+    let matcher = Matcher::new(Some(class), func_like, tv_matchers, Some(&as_self_type));
 
-    let mut type_arguments = calculate_type_vars(
-        i_s,
-        matcher,
-        func_or_callable,
-        Some(class),
-        args,
-        add_issue,
-        skip_first_param,
-        match_in_definition,
-        result_context,
-        on_type_error,
-    );
+    let mut type_arguments = check(matcher, type_vars);
     if !class_matcher_needed {
         type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
             ClassGenerics::List(generics_list) => Some(generics_list),
@@ -315,7 +318,7 @@ impl CalculatedTypeArgs {
     }
 }
 
-pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_func_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
@@ -328,16 +331,10 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     debug!("Calculate type vars for {}", function.diagnostic_string());
-    let func_or_callable = FunctionOrCallable::Function(function);
-    calculate_type_vars(
+    calc_type_vars_for_func_internal(
         i_s,
-        get_matcher(
-            func_or_callable,
-            match_in_definition,
-            replace_self,
-            type_vars,
-        ),
-        func_or_callable,
+        get_matcher(&function, match_in_definition, replace_self, type_vars),
+        &function,
         None,
         args,
         add_issue,
@@ -348,7 +345,74 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
-pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    function: &Function<'a, 'a>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
+    add_issue: impl Fn(IssueKind),
+    skip_first_param: bool,
+    type_vars: &'a TypeVarLikes,
+    match_in_definition: PointLink,
+    replace_self: Option<ReplaceSelfInMatcher>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> CalculatedTypeArgs {
+    let matcher = get_matcher(function, function.as_link(), replace_self, type_vars);
+    calc_untyped_func_type_vars_with_matcher(
+        matcher,
+        i_s,
+        function,
+        args,
+        add_issue,
+        skip_first_param,
+        type_vars,
+        match_in_definition,
+        result_context,
+        on_type_error,
+    )
+}
+
+fn calc_untyped_func_type_vars_with_matcher<'db: 'a, 'a>(
+    matcher: Matcher,
+    i_s: &InferenceState<'db, '_>,
+    function: &Function<'a, 'a>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
+    add_issue: impl Fn(IssueKind),
+    skip_first_param: bool,
+    type_vars: &'a TypeVarLikes,
+    match_in_definition: PointLink,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError,
+) -> CalculatedTypeArgs {
+    calc_type_vars_with_callback(
+        i_s,
+        matcher,
+        function,
+        None,
+        &add_issue,
+        match_in_definition,
+        result_context,
+        Some(on_type_error),
+        |matcher| {
+            match_arguments_against_params(
+                i_s,
+                matcher,
+                function,
+                &add_issue,
+                Some(on_type_error),
+                InferrableParamIterator::new(
+                    i_s.db,
+                    function
+                        .iter_untyped_params(match_in_definition, type_vars)
+                        .skip(skip_first_param as usize),
+                    args,
+                ),
+            )
+        },
+    )
+}
+
+pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
@@ -358,18 +422,17 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     replace_self: Option<ReplaceSelf>,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
-    let func_or_callable = FunctionOrCallable::Callable(callable);
     let type_vars = &callable.content.type_vars;
     let x: &dyn Fn() -> Type = &|| replace_self.unwrap()().unwrap_or(Type::Self_);
-    calculate_type_vars(
+    calc_type_vars_for_callable_internal(
         i_s,
         get_matcher(
-            func_or_callable,
+            &callable,
             callable.content.defined_at,
             replace_self.map(|_| x),
             type_vars,
         ),
-        func_or_callable,
+        &callable,
         None,
         args,
         add_issue,
@@ -381,7 +444,7 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
 }
 
 fn get_matcher<'a>(
-    func_or_callable: FunctionOrCallable<'a>,
+    func_like: &'a dyn FuncLike,
     match_in_definition: PointLink,
     replace_self: Option<ReplaceSelfInMatcher<'a>>,
     type_vars: &TypeVarLikes,
@@ -391,13 +454,60 @@ fn get_matcher<'a>(
     } else {
         vec![TypeVarMatcher::new(match_in_definition, type_vars.clone())]
     };
-    Matcher::new(None, func_or_callable, matcher, replace_self)
+    Matcher::new(None, func_like, matcher, replace_self)
 }
 
-fn calculate_type_vars<'db: 'a, 'a>(
+fn apply_result_context(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    result_context: &mut ResultContext,
+    return_class: Option<&Class>,
+    func_like: &dyn FuncLike,
+    on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
+) {
+    result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
+        if let Some(return_class) = return_class {
+            // This is kind of a special case. Since __init__ has no return annotation, we simply
+            // check if the classes match and then push the generics there.
+            let type_var_likes = return_class.type_vars(i_s);
+            if !type_var_likes.is_empty() {
+                debug_assert!(matches!(
+                    return_class.generics,
+                    Generics::NotDefinedYet { .. }
+                ));
+                if Class::with_self_generics(i_s.db, return_class.node_ref)
+                    .as_type(i_s.db)
+                    .is_sub_type_of(i_s, matcher, expected)
+                    .bool()
+                {
+                    matcher.reset_invalid_bounds_of_context(i_s)
+                } else {
+                    // Here we reset all bounds, because it did not match.
+                    for tv_matcher in &mut matcher.type_var_matchers {
+                        for calc in tv_matcher.calculating_type_args.iter_mut() {
+                            *calc = Default::default();
+                        }
+                    }
+                    on_reset_class_type_vars(matcher, return_class)
+                }
+            }
+        } else {
+            let return_type = func_like.inferred_return_type(i_s);
+            // Fill the type var arguments from context
+            return_type.is_sub_type_of(i_s, matcher, expected);
+            matcher.reset_invalid_bounds_of_context(i_s)
+        }
+        debug!(
+            "Finished trying to infer context type arguments: [{}]",
+            matcher.type_var_matchers[0].debug_format(i_s.db)
+        );
+    });
+}
+
+fn calc_type_vars_for_func_internal<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
-    mut matcher: Matcher,
-    func_or_callable: FunctionOrCallable<'a>,
+    matcher: Matcher,
+    function: &Function<'a, '_>,
     return_class: Option<&Class>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueKind),
@@ -406,11 +516,83 @@ fn calculate_type_vars<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
+    calc_type_vars_with_callback(
+        i_s,
+        matcher,
+        function,
+        return_class,
+        &add_issue,
+        match_in_definition,
+        result_context,
+        on_type_error,
+        |mut matcher| {
+            match_arguments_against_params(
+                i_s,
+                &mut matcher,
+                function,
+                &add_issue,
+                on_type_error,
+                function.iter_args_with_params(i_s.db, args, skip_first_param),
+            )
+        },
+    )
+}
+
+fn calc_type_vars_for_callable_internal<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    matcher: Matcher,
+    callable: &Callable<'a>,
+    return_class: Option<&Class>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
+    add_issue: impl Fn(IssueKind),
+    skip_first_param: bool,
+    match_in_definition: PointLink,
+    result_context: &mut ResultContext,
+    on_type_error: Option<OnTypeError>,
+) -> CalculatedTypeArgs {
+    calc_type_vars_with_callback(
+        i_s,
+        matcher,
+        callable,
+        return_class,
+        &add_issue,
+        match_in_definition,
+        result_context,
+        on_type_error,
+        |mut matcher| match &callable.content.params {
+            CallableParams::Simple(params) => match_arguments_against_params(
+                i_s,
+                &mut matcher,
+                callable,
+                &add_issue,
+                on_type_error,
+                InferrableParamIterator::new(
+                    i_s.db,
+                    params.iter().skip(skip_first_param as usize),
+                    args,
+                ),
+            ),
+            CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
+        },
+    )
+}
+
+fn calc_type_vars_with_callback<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    mut matcher: Matcher,
+    func_like: &dyn FuncLike,
+    return_class: Option<&Class>,
+    add_issue: impl Fn(IssueKind),
+    match_in_definition: PointLink,
+    result_context: &mut ResultContext,
+    on_type_error: Option<OnTypeError>,
+    check_params: impl FnOnce(&mut Matcher) -> SignatureMatch,
+) -> CalculatedTypeArgs {
     let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
-        let mut add_init_generics = |matcher: &mut _, return_class: &Class| {
-            if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
-                if let Some(func_class) = func_or_callable.class() {
+        let mut add_init_generics = |matcher: &mut Matcher, return_class: &Class| {
+            if let Some(t) = func_like.first_self_or_class_annotation(i_s) {
+                if let Some(func_class) = func_like.class() {
                     // When an __init__ has a self annotation, it's a bit special, because it influences
                     // the generics.
                     let m = Class::with_self_generics(i_s.db, return_class.node_ref)
@@ -448,69 +630,16 @@ fn calculate_type_vars<'db: 'a, 'a>(
         if let Some(return_class) = return_class {
             add_init_generics(&mut matcher, return_class)
         }
-        result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
-            if let Some(return_class) = return_class {
-                // This is kind of a special case. Since __init__ has no return annotation, we simply
-                // check if the classes match and then push the generics there.
-                let type_var_likes = return_class.type_vars(i_s);
-                if !type_var_likes.is_empty() {
-                    debug_assert!(matches!(
-                        return_class.generics,
-                        Generics::NotDefinedYet { .. }
-                    ));
-                    if Class::with_self_generics(i_s.db, return_class.node_ref)
-                        .as_type(i_s.db)
-                        .is_sub_type_of(i_s, &mut matcher, expected)
-                        .bool()
-                    {
-                        matcher.reset_invalid_bounds_of_context(i_s)
-                    } else {
-                        // Here we reset all bounds, because it did not match.
-                        for tv_matcher in &mut matcher.type_var_matchers {
-                            for calc in tv_matcher.calculating_type_args.iter_mut() {
-                                *calc = Default::default();
-                            }
-                        }
-                        add_init_generics(&mut matcher, return_class);
-                    }
-                }
-            } else {
-                let return_type = func_or_callable.return_type(i_s);
-                // Fill the type var arguments from context
-                return_type.is_sub_type_of(i_s, &mut matcher, expected);
-                matcher.reset_invalid_bounds_of_context(i_s)
-            }
-            debug!(
-                "Finished trying to infer context type arguments: [{}]",
-                matcher.type_var_matchers[0].debug_format(i_s.db)
-            );
-        });
-    }
-    let matches = match func_or_callable {
-        FunctionOrCallable::Function(function) => match_arguments_against_params(
+        apply_result_context(
             i_s,
             &mut matcher,
-            func_or_callable,
-            &add_issue,
-            on_type_error,
-            function.iter_args_with_params(i_s.db, args, skip_first_param),
-        ),
-        FunctionOrCallable::Callable(callable) => match &callable.content.params {
-            CallableParams::Simple(params) => match_arguments_against_params(
-                i_s,
-                &mut matcher,
-                func_or_callable,
-                &add_issue,
-                on_type_error,
-                InferrableParamIterator::new(
-                    i_s.db,
-                    params.iter().skip(skip_first_param as usize),
-                    args,
-                ),
-            ),
-            CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
-        },
-    };
+            result_context,
+            return_class,
+            func_like,
+            |matcher, return_class| add_init_generics(matcher, return_class),
+        )
+    }
+    let matches = check_params(&mut matcher);
     let mut result = matcher.into_type_arguments(i_s, match_in_definition);
     if matches!(result.matches, SignatureMatch::False { .. }) {
         if on_type_error.is_some() {
@@ -529,7 +658,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
         if let Some(type_arguments) = &result.type_arguments {
             debug!(
                 "Calculated type vars for {}: [{}]",
-                func_or_callable
+                func_like
                     .diagnostic_string(i_s.db)
                     .as_deref()
                     .unwrap_or("function"),
@@ -548,18 +677,20 @@ pub(crate) fn match_arguments_against_params<
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    func_or_callable: FunctionOrCallable,
+    func_like: &dyn FuncLike,
     add_issue: &impl Fn(IssueKind),
     on_type_error: Option<OnTypeError>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let diagnostic_string = |prefix: &str| {
-        (on_type_error.unwrap().generate_diagnostic_string)(&func_or_callable, i_s.db)
+        (on_type_error.unwrap().generate_diagnostic_string)(func_like, i_s.db)
             .map(|s| (prefix.to_owned() + &s).into())
     };
     let too_few_arguments = || {
-        let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-        add_issue(IssueKind::TooFewArguments(s));
+        if on_type_error.is_some() {
+            let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
+            add_issue(IssueKind::TooFewArguments(s));
+        }
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
@@ -757,7 +888,7 @@ pub(crate) fn match_arguments_against_params<
                     i_s,
                     &param_spec,
                     args,
-                    func_or_callable,
+                    func_like,
                     add_issue,
                     on_type_error,
                     &diagnostic_string,
@@ -903,7 +1034,7 @@ pub(crate) fn match_arguments_against_params<
         }
     }
     let add_keyword_argument_issue = |arg: &Arg, name: &str| {
-        let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
+        let s = match func_like.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
                 "{} gets multiple values for keyword argument \"{name}\"",
                 diagnostic_string("").as_deref().unwrap_or("function"),

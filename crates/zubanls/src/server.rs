@@ -18,7 +18,7 @@ use lsp_types::Uri;
 use notify::EventKind;
 use serde::{de::DeserializeOwned, Serialize};
 use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
-use zuban_python::{PanicRecovery, Project};
+use zuban_python::{Mode, PanicRecovery, Project};
 
 use crate::capabilities::{server_capabilities, ClientCapabilities};
 use crate::notification_handlers::TestPanic;
@@ -161,8 +161,11 @@ pub fn run_server_with_custom_connection(
                             typ: lsp_types::MessageType::ERROR,
                             message: format!(
                             "ZubanLS paniced, please open an issue on GitHub with the details:\n\
-                     {panic_info}\n\n{backtrace}"
-                        ),
+                                Version:{}\n\
+                                {panic_info}\n\n\
+                                {backtrace}",
+                                env!("CARGO_PKG_VERSION")
+                            ),
                         })
                         .unwrap(),
                     },
@@ -362,7 +365,7 @@ impl<'sender> GlobalState<'sender> {
             *project = Some(if let Some(recovery) = self.panic_recovery.take() {
                 Project::from_recovery(vfs, config, recovery)
             } else {
-                Project::new(vfs, config)
+                Project::new(vfs, config, Mode::LanguageServer)
             });
             project.as_mut().unwrap()
         }
@@ -404,6 +407,16 @@ impl<'sender> GlobalState<'sender> {
             global_state: self,
         }
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
+        .on_sync_mut::<Completion>(GlobalState::handle_completion)
+        .on_sync_mut::<HoverRequest>(GlobalState::handle_hover)
+        .on_sync_mut::<GotoDeclaration>(GlobalState::handle_goto_declaration)
+        .on_sync_mut::<GotoDefinition>(GlobalState::handle_goto_definition)
+        .on_sync_mut::<GotoTypeDefinition>(GlobalState::handle_goto_type_definition)
+        .on_sync_mut::<GotoImplementation>(GlobalState::handle_goto_implementation)
+        .on_sync_mut::<References>(GlobalState::handle_references)
+        .on_sync_mut::<DocumentHighlightRequest>(GlobalState::handle_document_highlight)
+        .on_sync_mut::<PrepareRenameRequest>(GlobalState::prepare_rename)
+        .on_sync_mut::<Rename>(GlobalState::rename)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
     }
@@ -436,7 +449,10 @@ impl<'sender> GlobalState<'sender> {
                 self.respond(lsp_server::Response::new_err(
                     request_id,
                     lsp_server::ErrorCode::InternalError as i32,
-                    "Server paniced, will now restart".to_string(),
+                    format!(
+                        "Server paniced, will now restart (version {})",
+                        env!("CARGO_PKG_VERSION")
+                    ),
                 ));
             }
             self.recover_from_panic();
@@ -550,14 +566,14 @@ impl<'sender> GlobalState<'sender> {
             for path in files {
                 self.sent_diagnostic_count += 1;
                 let project = self.project();
-                let Some(mut document) = project.document(&path) else {
+                let Some(document) = project.document(&path) else {
                     tracing::info!(
                         "Wanted to publish diagnostics for {}, but it does not exist anymore",
                         path.as_uri()
                     );
                     continue;
                 };
-                let diagnostics = Self::diagnostics_for_file(&mut document, encoding);
+                let diagnostics = Self::diagnostics_for_file(document, encoding);
                 tracing::info!(
                     "Publish diagnostics for {}, (#{} overall)",
                     path.as_uri(),

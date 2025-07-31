@@ -53,7 +53,7 @@ def typed_fully_generic_passthrough(x: T) -> T:
     return x
 
 def typed_bound_generic_passthrough(x: TList) -> TList:
-    ##? list()
+    #? TList()
     x
 
     return x
@@ -120,19 +120,19 @@ out_typed[1]
 
 
 for j in typed_variadic_tuple_generic_passthrough(untyped_tuple_str_int):
-    ##? str() int()
+    #? str() int()
     j
 
 for k in typed_variadic_tuple_generic_passthrough(typed_tuple_str_int):
-    ##? str() int()
+    #? str() int()
     k
 
 for l in typed_variadic_tuple_generic_passthrough(variadic_tuple_str):
-    ##? str()
+    #? str()
     l
 
 for m in typed_variadic_tuple_generic_passthrough(variadic_tuple_str_int):
-    ##? str() int()
+    #? str() int()
     m
 
 #? float
@@ -157,40 +157,41 @@ for q in typed_bound_generic_passthrough(typed_list_str):
 
 
 for r in typed_quoted_return_generic_passthrough("something"):
-    ##? str()
+    #? str()
     r
 
 for s in typed_quoted_return_generic_passthrough(42):
-    ##? int()
+    #? int()
     s
 
 
-##? str()
+#? str()
 typed_quoted_input_generic_passthrough(("something",))
 
-##? int()
+#? int()
 typed_quoted_input_generic_passthrough((42,))
 
 
 
-class CustomList(List):
+# jedi-diff: class CustomList(List):
+class CustomList[T](List[T]):
     def get_first(self):
         return self[0]
 
 
-##? str()
+#? str()
 CustomList[str]()[0]
-##? str()
+#? str()
 CustomList[str]().get_first()
 
-##? str()
+#? str()
 typed_fully_generic_passthrough(CustomList[str]())[0]
-##?
+#?
 typed_list_generic_passthrough(CustomList[str])[0]
 
 
 def typed_bound_type_implicit_any_generic_passthrough(x: TType) -> TType:
-    ##? Type()
+    #? TType()
     x
     return x
 
@@ -213,10 +214,10 @@ typed_fully_generic_passthrough(MyClass)
 #? MyClass()
 typed_fully_generic_passthrough(MyClass())
 
-##? my_func
+#? my_func
 typed_fully_generic_passthrough(my_func)
 
-##? CustomList()
+#? CustomList()
 typed_bound_generic_passthrough(CustomList[str]())
 
 # should be list(), but we don't validate generic typevar upper bounds
@@ -248,7 +249,7 @@ def will_be_decorated(the_param: complex) -> float:
 
 is_decorated = decorator(will_be_decorated)
 
-##? will_be_decorated
+#? will_be_decorated
 is_decorated
 
 #? ['the_param=']
@@ -263,12 +264,12 @@ class class_decorator_factory_plain:
 #? class_decorator_factory_plain()
 class_decorator_factory_plain()
 
-##?
+#?
 class_decorator_factory_plain()()
 
 is_decorated_by_class_decorator_factory = class_decorator_factory_plain()(will_be_decorated)
 
-##? will_be_decorated
+#? will_be_decorated
 is_decorated_by_class_decorator_factory
 
 #? ['the_param=']
@@ -279,7 +280,7 @@ is_decorated_by_class_decorator_factory(the_par
 def decorator_factory_plain() -> Callable[[T], T]:
     pass
 
-#? Callable()
+#? typing.Callable
 decorator_factory_plain()
 
 #?
@@ -290,7 +291,7 @@ decorator_factory_plain()(42)
 
 is_decorated_by_plain_factory = decorator_factory_plain()(will_be_decorated)
 
-##? will_be_decorated
+#? will_be_decorated
 is_decorated_by_plain_factory
 
 #? ['the_param=']
@@ -305,12 +306,12 @@ class class_decorator_factory_bound_callable:
 #? class_decorator_factory_bound_callable()
 class_decorator_factory_bound_callable()
 
-##? Callable()
-class_decorator_factory_bound_callable()()
+#? typing.Callable
+class_decorator_factory_bound_callable()(lambda: ...)
 
 is_decorated_by_class_bound_factory = class_decorator_factory_bound_callable()(will_be_decorated)
 
-##? will_be_decorated
+#? will_be_decorated
 is_decorated_by_class_bound_factory
 
 #? ['the_param=']
@@ -321,15 +322,19 @@ is_decorated_by_class_bound_factory(the_par
 def decorator_factory_bound_callable() -> Callable[[TCallable], TCallable]:
     pass
 
-#? Callable()
+#? typing.Callable
 decorator_factory_bound_callable()
 
-##? Callable()
+#? typing.Callable
+decorator_factory_bound_callable()(lambda: ...)
+#? int()
+decorator_factory_bound_callable()(1)
+#?
 decorator_factory_bound_callable()()
 
 is_decorated_by_bound_factory = decorator_factory_bound_callable()(will_be_decorated)
 
-##? will_be_decorated
+#? will_be_decorated
 is_decorated_by_bound_factory
 
 #? ['the_param=']
@@ -347,5 +352,5 @@ class That(Generic[T]):
 inst = That([("abc", 2)])
 
 # No completions here, but should have completions for `int`
-##? int()
+#? int()
 inst.get()

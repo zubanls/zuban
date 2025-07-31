@@ -1,7 +1,7 @@
 extern crate insta;
 
 use parsa_python::*;
-use test_utils::dedent;
+use utils::dedent;
 
 fn tree_to_string(tree: PyTree) -> String {
     fn recurse(code: &mut String, node: &PyNode, depth: usize) {
@@ -315,4 +315,21 @@ parametrize_snapshots!(
             (x,) += 1
             z
         "#);
+    complex_dedents_no_crash: dedent(r#"
+        def f():
+            asdf = 3
+             asdf
+            asdf(
+            asdf
+        class X: ...
+        "#);
+    semicolon: dedent(r#"
+        temp = 1;
+        class A:
+            a = 3
+            #? int()
+            a
+        "#);
+    completion_on_func_call1: "f(3).\n";
+    completion_on_func_call2: "f(1 for a in []).\n";
 );

@@ -1,16 +1,19 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DefiningStmt, DottedAsName, DottedAsNameContent, DottedName, DottedNameContent, ImportFrom,
-    ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    DefiningStmt, DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent,
+    ImportFrom, ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use utils::AlreadySeen;
+use vfs::FileIndex;
 
 use crate::{
     database::{Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::File,
-    imports::{find_ancestor, global_import, namespace_import, ImportResult},
+    imports::{
+        find_import_ancestor, global_import, namespace_import, ImportAncestor, ImportResult,
+    },
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -89,10 +92,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     ) {
         match dotted_as_name.unpack() {
             DottedAsNameContent::Simple(name_def, rest) => {
-                if self.point(name_def.index()).calculated() {
+                let node_ref = NodeRef::new(self.file, name_def.index());
+                if node_ref.point().calculated() {
                     // It was already assigned (probably during type computation)
                     return;
                 }
+                node_ref.set_point(Point::new_calculating());
+
                 let result = self.global_import(name_def.name());
                 assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
                 if let Some(rest) = rest {
@@ -100,12 +106,17 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         self.cache_import_dotted_name(rest, result);
                     }
                 }
+                if node_ref.point().calculating() {
+                    node_ref.set_point(Point::new_uncalculated())
+                }
             }
             DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                if self.point(as_name_def.index()).calculated() {
+                let node_ref = NodeRef::new(self.file, as_name_def.index());
+                if node_ref.point().calculated() {
                     // It was already assigned (probably during type computation)
                     return;
                 }
+                node_ref.set_point(Point::new_calculating());
 
                 let result = self.cache_import_dotted_name(dotted_name, None);
                 let inf = match result {
@@ -113,12 +124,15 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     None => Inferred::new_module_not_found(),
                 };
                 assign_to_name_def(as_name_def, Some(inf));
+                if node_ref.point().calculating() {
+                    node_ref.set_point(Point::new_uncalculated())
+                }
             }
         }
     }
 
     #[inline]
-    pub(super) fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
+    pub fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
         let point = self.point(star_import.star_node);
         if point.calculated() {
             return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
@@ -155,14 +169,24 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub(super) fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
         let (level, dotted_name) = import_from.level_with_dotted_name();
-        let maybe_level_file = (level > 0)
-            .then(|| {
-                find_ancestor(self.i_s.db, self.file, level).or_else(|| {
+        let maybe_level_file = if level > 0 {
+            match find_import_ancestor(self.i_s.db, self.file, level) {
+                ImportAncestor::Found(import_result) => Some(import_result),
+                ImportAncestor::Workspace => {
                     self.add_issue(import_from.index(), IssueKind::NoParentModule);
+                    // This is not correct in theory, we should simply abort here. However in
+                    // practice this can be useful, because if the sys path is wrong this still
+                    // provides some information, especially with completions/goto.
                     None
-                })
-            })
-            .flatten();
+                }
+                ImportAncestor::NoParentModule => {
+                    self.add_issue(import_from.index(), IssueKind::NoParentModule);
+                    return None;
+                }
+            }
+        } else {
+            None
+        };
         match dotted_name {
             Some(dotted_name) => self.cache_import_dotted_name(dotted_name, maybe_level_file),
             None => maybe_level_file,
@@ -172,11 +196,18 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub(super) fn assign_import_from_only_particular_name_def(
         &self,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<ModuleAccessDetail>),
     ) {
-        let import_from = as_name.import_from();
-        let from_first_part = self.import_from_first_part(import_from);
-        self.cache_import_from_part(import_from, &from_first_part, as_name, assign_to_name_def)
+        if let Some(import_from) = as_name.import_from() {
+            let from_first_part = self.import_from_first_part(import_from);
+            self.cache_import_from_part(import_from, &from_first_part, as_name, assign_to_name_def)
+        } else {
+            assign_to_name_def(
+                as_name.name_def(),
+                PointResolution::Inferred(Inferred::new_any_from_error()),
+                None,
+            )
+        }
     }
 
     pub(super) fn resolve_import_from_name_def_without_narrowing(
@@ -194,13 +225,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
                     match redirect_to_link {
                         Some(link) => {
-                            self.set_point(
-                                name_def.index(),
-                                link.into_redirect_point(Locality::Todo),
-                            );
+                            self.set_point(name_def.index(), link.into_point(Locality::Todo));
                         }
                         None => {
-                            // We can not assign in all cases here, for example in the precense of
+                            // We can not assign in all cases here, for example in the presence of
                             // a module __getattr__, we don't know the assignment type, yet.
                             if let PointResolution::Inferred(inf) = pr {
                                 found_pr = Some(PointResolution::Inferred(inf.save_redirect(
@@ -239,7 +267,6 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             if cfg!(debug_assertions) {
                 let p = self.point(name_def.index());
                 debug_assert!(!p.calculated(), "{p:?}");
-                debug_assert!(!p.calculating(), "{p:?}");
             }
             let write_name_def = self.is_allowed_to_assign_on_import_without_narrowing(name_def);
             let inf = inf.unwrap_or_else(|| {
@@ -269,7 +296,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub fn cache_import_dotted_name(
         &self,
-        dotted: DottedName,
+        dotted: DottedImportName,
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
         let node_ref = NodeRef::new(self.file, dotted.index());
@@ -330,7 +357,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             result
         };
         let result = match dotted.unpack() {
-            DottedNameContent::Name(name) => {
+            DottedImportNameContent::Name(name) => {
                 if let Some(base) = base {
                     infer_name(self, base, name)
                 } else {
@@ -341,7 +368,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     result
                 }
             }
-            DottedNameContent::DottedName(dotted_name, name) => {
+            DottedImportNameContent::DottedName(dotted_name, name) => {
                 let result = self.cache_import_dotted_name(dotted_name, base)?;
                 infer_name(self, result, name)
             }
@@ -380,7 +407,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         import_from: ImportFrom,
         from_first_part: &Option<ImportResult>,
         as_name: ImportFromAsName,
-        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<PointLink>),
+        assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<ModuleAccessDetail>),
     ) {
         let (import_name, name_def) = as_name.unpack();
 
@@ -443,7 +470,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         from_first_part: &ImportResult,
         import_name: Name,
-    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+    ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let name = import_name.as_str();
         let convert_imp_result = |imp_result| match imp_result {
             ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
@@ -515,7 +542,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let i_s = self.i_s;
-        if let Some(r) = self.resolve_star_import_name(name_str, Some(save_to_index), &narrow_name)
+        if let Some((r, _)) =
+            self.resolve_star_import_name(name_str, Some(save_to_index), &narrow_name)
         {
             return r;
         }
@@ -591,7 +619,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             .into_maybe_inferred()
                         {
                             if matches!(name_str, "__package__" | "__file__")
-                                || name_str == "__doc__" && self.file.tree.root().has_docstr()
+                                || name_str == "__doc__"
+                                    && self.file.tree.root().docstring().is_some()
                             {
                                 inf = inf.remove_none(i_s);
                             }
@@ -782,7 +811,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         name: &str,
         add_issue: impl Fn(IssueKind),
-    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+    ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let result = self.resolve_module_access_internal(name, add_issue);
         if cfg!(feature = "zuban_debug") {
             if let Some((pr, _)) = &result {
@@ -805,13 +834,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         name: &str,
         add_issue: impl Fn(IssueKind),
-    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
+    ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let db = self.i_s.db;
         Some(if let Some(name_ref) = self.file.lookup_symbol(name) {
             if let Some(r) = self.file.maybe_submodule_reexport(self.i_s, name_ref, name) {
                 return Some((
                     PointResolution::Inferred(r.into_inferred()),
-                    Some(name_ref.as_link()),
+                    Some(ModuleAccessDetail::OnName(name_ref.as_link())),
                 ));
             }
             if is_reexport_issue(db, name_ref) {
@@ -842,7 +871,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             node_ref: name_def_ref,
                             global_redirect: true,
                         },
-                        Some(name_ref.as_link()),
+                        Some(ModuleAccessDetail::OnName(name_ref.as_link())),
                     ));
                 }
             }
@@ -853,11 +882,22 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     global_redirect: true,
                 }
             }
-            (resolved, Some(name_ref.as_link()))
+            (
+                resolved,
+                Some(ModuleAccessDetail::OnName(name_ref.as_link())),
+            )
         } else if let Some(r) = self.file.sub_module_lookup(db, name) {
-            (PointResolution::Inferred(r.into_inferred()), None)
-        } else if let Some(r) = self.resolve_star_import_name(name, None, &|_, _, _| None) {
-            (r, None)
+            let to = match r {
+                LookupResult::FileReference(file_index) => {
+                    Some(ModuleAccessDetail::OnFile(file_index))
+                }
+                _ => None,
+            };
+            (PointResolution::Inferred(r.into_inferred()), to)
+        } else if let Some((r, points_to)) =
+            self.resolve_star_import_name(name, None, &|_, _, _| None)
+        {
+            (r, points_to.map(ModuleAccessDetail::OnName))
         } else if let Some(r) = self.file.lookup_symbol("__getattr__") {
             (PointResolution::ModuleGetattrName(r), None)
         } else {
@@ -902,7 +942,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         name: &str,
         save_to_index: Option<NodeIndex>,
         narrow_name: &dyn Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
-    ) -> Option<PointResolution<'file>> {
+    ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
         let star_imp = self.lookup_from_star_import(name, true)?;
         Some(match star_imp {
             StarImportResult::Link(link) => match save_to_index {
@@ -911,22 +951,31 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         save_to_index,
                         Point::new_redirect(link.file, link.node_index, Locality::Todo),
                     );
-                    self.resolve_point(save_to_index, narrow_name).unwrap()
+                    (
+                        self.resolve_point(save_to_index, narrow_name).unwrap(),
+                        Some(link),
+                    )
                 }
                 None => {
                     let node_ref = NodeRef::from_link(self.i_s.db, link);
-                    self.with_new_file(node_ref.file)
-                        .resolve_name(node_ref.expect_name(), narrow_name)
+                    (
+                        self.with_new_file(node_ref.file)
+                            .resolve_name(node_ref.expect_name(), narrow_name),
+                        Some(link),
+                    )
                 }
             },
-            StarImportResult::AnyDueToError => PointResolution::Inferred(match save_to_index {
-                Some(save_to_index) => {
-                    star_imp
-                        .as_inferred(self.i_s)
-                        .save_redirect(self.i_s, self.file, save_to_index)
-                }
-                None => star_imp.as_inferred(self.i_s),
-            }),
+            StarImportResult::AnyDueToError => (
+                PointResolution::Inferred(match save_to_index {
+                    Some(save_to_index) => star_imp.as_inferred(self.i_s).save_redirect(
+                        self.i_s,
+                        self.file,
+                        save_to_index,
+                    ),
+                    None => star_imp.as_inferred(self.i_s),
+                }),
+                None,
+            ),
         })
     }
 
@@ -1021,17 +1070,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             return None;
         }
         let other_file = self.star_import_file(star_import)?;
-        if let Some(dunder) = other_file.maybe_dunder_all(self.i_s.db) {
-            // Name not in __all__
-            if !dunder.iter().any(|x| x.as_str(self.i_s.db) == name) {
-                debug!("Name {name} found in star imports, but it's not in __all__");
-                return None;
-            }
-        } else if name.starts_with('_') {
-            return None;
-        }
 
         if let Some(name_ref) = other_file.lookup_symbol(name) {
+            if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
+                return None;
+            }
             if !is_reexport_issue(self.i_s.db, name_ref) {
                 let mut result = StarImportResult::Link(name_ref.as_link());
                 if is_class_star_import
@@ -1049,6 +1092,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             .with_new_file(other_file)
             .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen))
         {
+            if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
+                return None;
+            }
             Some(l)
         } else {
             debug!(
@@ -1113,11 +1159,27 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     }
 }
 
+pub(crate) enum ModuleAccessDetail {
+    OnName(PointLink),
+    OnFile(FileIndex),
+}
+
+impl ModuleAccessDetail {
+    pub fn into_point(self, locality: Locality) -> Point {
+        match self {
+            ModuleAccessDetail::OnName(link) => link.into_redirect_point(locality),
+            ModuleAccessDetail::OnFile(file_index) => {
+                Point::new_file_reference(file_index, locality)
+            }
+        }
+    }
+}
+
 fn is_valid_builtins_export(name: &str) -> bool {
     !name.starts_with('_') || is_magic_method(name)
 }
 
-fn is_reexport_issue(db: &Database, name_ref: NodeRef) -> bool {
+pub fn is_reexport_issue(db: &Database, name_ref: NodeRef) -> bool {
     if !name_ref.file.is_stub() && !name_ref.file.flags(db).no_implicit_reexport {
         return false;
     }

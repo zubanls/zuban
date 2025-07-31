@@ -22,10 +22,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, FunctionOrOverload, Inferred, MroIndex},
     matching::{
-        calculate_callable_dunder_init_type_vars_and_return,
-        calculate_callable_type_vars_and_return, calculate_class_dunder_init_type_vars_and_return,
-        format_got_expected, maybe_class_usage, ErrorStrs, FunctionOrCallable, Generic, Generics,
-        LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage, ErrorStrs,
+        Generic, Generics, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::{
@@ -35,6 +34,7 @@ use crate::{
         TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
         Variance,
     },
+    type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
 };
 
@@ -183,14 +183,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 */
 
-                let calculated_type_args = calculate_class_dunder_init_type_vars_and_return(
+                let calculated_type_args = calc_class_dunder_init_type_vars(
                     i_s,
                     self,
                     func,
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     result_context,
-                    Some(on_type_error),
+                    on_type_error,
                 );
                 ClassExecutionResult::ClassGenerics(
                     calculated_type_args.type_arguments_into_class_generics(i_s.db),
@@ -200,7 +200,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let calculated_type_args = match dunder_init_class.as_base_class(i_s.db, self) {
                     Some(class) => {
                         let from_class = matches!(dunder_init_class, TypeOrClass::Class(_));
-                        calculate_callable_dunder_init_type_vars_and_return(
+                        calc_callable_dunder_init_type_vars(
                             i_s,
                             self,
                             Callable::new(&callable_content, from_class.then_some(class)),
@@ -212,7 +212,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                     }
                     // Happens for example when NamedTuples are involved.
-                    None => calculate_callable_type_vars_and_return(
+                    None => calc_callable_type_vars(
                         i_s,
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(i_s.mode),
@@ -246,7 +246,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 ) {
                 OverloadResult::Single(callable) => {
                     // Execute the found function to create the diagnostics.
-                    let result = calculate_callable_dunder_init_type_vars_and_return(
+                    let result = calc_callable_dunder_init_type_vars(
                         i_s,
                         self,
                         callable,
@@ -753,7 +753,7 @@ impl<'db: 'a, 'a> Class<'a> {
         bind: impl FnOnce(LookupResult, TypeOrClass<'a>, MroIndex) -> T,
     ) -> T {
         if name == "__doc__" {
-            let t = if self.node().has_docstr() {
+            let t = if self.node().docstring().is_some() {
                 i_s.db.python_state.str_type()
             } else {
                 Type::None
@@ -1049,7 +1049,10 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         let type_var_likes = self.type_vars(&InferenceState::new(format_data.db, self.file));
         // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
-        if !type_var_likes.is_empty() && !matches!(self.generics, Generics::NotDefinedYet { .. }) {
+        if !type_var_likes.is_empty()
+            && !matches!(self.generics, Generics::NotDefinedYet { .. })
+            && !type_var_likes.has_from_untyped_params()
+        {
             // Returns something like [str] or [List[int], Set[Any]]
             let strings: Vec<_> = self
                 .generics()
@@ -1302,7 +1305,7 @@ impl<'db: 'a, 'a> Class<'a> {
             _ => (),
         }
 
-        let d = |_: &FunctionOrCallable, _: &Database| Some(format!("\"{}\"", self.name()));
+        let d = |_: &dyn FuncLike, _: &Database| Some(format!("\"{}\"", self.name()));
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {
@@ -1363,18 +1366,34 @@ impl<'db: 'a, 'a> Class<'a> {
             .calculated()
         {
             if !db.project.settings.mypy_compatible {
-                self.node_ref.file.ensure_calculated_diagnostics(db)?;
+                let result = self.file.ensure_module_symbols_flow_analysis(db);
+                if result.is_err() {
+                    debug!(
+                        "Wanted to calculate class {:?} diagnostics, but could not calculated file {}",
+                        self.name(),
+                        self.file.qualified_name(db)
+                    );
+                }
+                result?;
             }
-            FLOW_ANALYSIS.with(|fa| {
+            let result = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_and_delay_further(db, || {
                     self.file
                         .inference(&InferenceState::from_class(db, self))
                         .calculate_class_block_diagnostics(*self, class_block)
                 })
-            })?;
+            });
+            if result.is_err() {
+                debug!(
+                    "Wanted to calculate class {:?} diagnostics, but could not calculate file {}",
+                    self.name(),
+                    self.file.qualified_name(db)
+                );
+            }
             // At this point we just lose reachability information for the class. This is
             // probably the price we pay, since we allow weird (in reality impossible?) forward
             // statements in Mypy.
+            result?
         }
         Ok(())
     }
@@ -1387,16 +1406,10 @@ impl<'db: 'a, 'a> Class<'a> {
             return;
         };
         if class_infos.has_uncalculated_variances() {
-            let file = self.node_ref.file;
             // It is very possible that the diagnostics are already calculating and the result will
             // error, but this does not matter, because we cannot guarantee that all variances are
             // calculated. This is a best effort thing.
-            // It also feels strange that we have to type check a whole file to know the variance
-            // of a class. But we at least need to do narrowing for the file, because the variance
-            // may depend on self variables, which may depend on inferred file state.
-            if let Err(()) = file.ensure_calculated_diagnostics(db) {
-                // If the file is already being type checked, we simply try to infer the variance
-                // without the narrowed types.
+            if class_infos.has_uncalculated_variances() {
                 self.infer_variance_of_type_params(db, false);
             }
         }
@@ -1537,11 +1550,15 @@ impl<'db: 'a, 'a> Class<'a> {
         .into_iter()
         .enumerate()
         {
-            for (name, node_index) in table.iter() {
+            for (name, &node_index) in table.iter() {
                 if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
+                    // Still needs to be calculated so the function is properly initialized for the
+                    // `self.<name>` variables
+                    NodeRef::new(self.file, node_index)
+                        .infer_name_of_definition_by_index(&i_s.with_class_context(self));
                     continue;
                 }
-                if let Some((inf, attr_kind)) = lookup_member(name, *node_index, i == 1) {
+                if let Some((inf, attr_kind)) = lookup_member(name, node_index, i == 1) {
                     // Mypy allows return types to be the current class.
                     let t = self.erase_return_self_type(inf.as_cow_type(i_s));
                     if let Some(with_object_t) = replace_type_var_with_object(&t) {

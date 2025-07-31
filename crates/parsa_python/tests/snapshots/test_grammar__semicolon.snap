@@ -1,0 +1,53 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 43
+expression: tree_to_string(tree)
+snapshot_kind: text
+---
+file: 0-49
+ stmt: 1-11
+  simple_stmts: 1-11
+   simple_stmt: 1-9
+    assignment: 1-9
+     star_targets: 1-5
+      name_def: 1-5
+       Name: 1-5 "temp"
+     Keyword: 6-7 "="
+     star_expressions: 8-9
+      expression: 8-9
+       atom: 8-9
+        Number: 8-9 "1"
+   Keyword: 9-10 ";"
+   Newline: 10-11 "\n"
+ stmt: 11-49
+  class_def: 11-49
+   Keyword: 11-16 "class"
+   name_def: 17-18
+    Name: 17-18 "A"
+   Keyword: 18-19 ":"
+   block: 19-49
+    Newline: 19-20 "\n"
+    Indent: 24-24 ""
+    stmt: 24-30
+     simple_stmts: 24-30
+      simple_stmt: 24-29
+       assignment: 24-29
+        star_targets: 24-25
+         name_def: 24-25
+          Name: 24-25 "a"
+        Keyword: 26-27 "="
+        star_expressions: 28-29
+         expression: 28-29
+          atom: 28-29
+           Number: 28-29 "3"
+      Newline: 29-30 "\n"
+    stmt: 47-49
+     simple_stmts: 47-49
+      simple_stmt: 47-48
+       star_expressions: 47-48
+        expression: 47-48
+         atom: 47-48
+          Name: 47-48 "a"
+      Newline: 48-49 "\n"
+    Dedent: 49-49 ""
+ Endmarker: 49-49 ""

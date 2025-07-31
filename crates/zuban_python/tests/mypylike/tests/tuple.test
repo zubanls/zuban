@@ -439,26 +439,26 @@ def bar(*ts: *Ts):
     foo(1, *ts, 1, 1)  # E: Argument 4 to "foo" has incompatible type "int"; expected "str"
 
 [case tuple_arbitrary_len_against_unpack_matching_with_type_var_tuple]
-from typing import TypeVarTuple, TypeVar
+from typing import TypeVarTuple, TypeVar, Any
 Ts = TypeVarTuple("Ts")
 T = TypeVar("T")
 
-def f1(*args: int): ...
-def f2(*args: int | str): ...
-def f3(*args: int | str | bytes): ...
+def f1(*args: int) -> Any: ...
+def f2(*args: int | str) -> Any: ...
+def f3(*args: int | str | bytes) -> Any: ...
 
-def b(*args: *tuple[*Ts, int | str]): ...
+def b(*args: *tuple[*Ts, int | str]) -> Any: ...
 
 f1 = b
 f2 = b
 f3 = b  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Ts], int | str]])], Any]", variable has type "Callable[[VarArg(int | str | bytes)], Any]")
 
-def g1(tup: tuple[int, int], *args: int): ...
-def g2(tup: tuple[str, str], *args: int): ...
-def g3(tup: tuple[int, ...], *args: int): ...
-def g4(tup: tuple[str, ...], *args: int): ...
+def g1(tup: tuple[int, int], *args: int) -> Any: ...
+def g2(tup: tuple[str, str], *args: int) -> Any: ...
+def g3(tup: tuple[int, ...], *args: int) -> Any: ...
+def g4(tup: tuple[str, ...], *args: int) -> Any: ...
 
-def c(tup: tuple[*Ts], *args: *tuple[*Ts, int]): ...
+def c(tup: tuple[*Ts], *args: *tuple[*Ts, int]) -> Any: ...
 
 g1 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[int, int], VarArg(int)], Any]")
 g2 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, str], VarArg(int)], Any]")
@@ -466,7 +466,7 @@ g3 = c
 g4 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, ...], VarArg(int)], Any]")
 
 [case common_base_type_for_fixed_len_tuple_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mypy-compatible --use-joins
 x = [
     (1, ""),
     (1, b''),
@@ -474,7 +474,7 @@ x = [
 reveal_type(x)  # N: Revealed type is "list[tuple[int, typing.Sequence[object]]]"
 
 [case common_base_type_for_fixed_len_tuple_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --no-mypy-compatible --use-joins
 x = [
     (1, ""),
     (1, b''),
@@ -488,7 +488,7 @@ def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     reveal_type(t)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
 [case common_base_type_for_arbitrary_len_tuple_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --no-mypy-compatible --use-joins
 def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     t = [x, y]
     reveal_type(t)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
@@ -502,7 +502,7 @@ def f(x: tuple[str, ...], y: tuple[bytes]):
     reveal_type(t2)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
 [case common_base_type_for_arbitrary_vs_fixed_len_tuple_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --no-mypy-compatible --use-joins
 def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     t1 = [x, y]
     reveal_type(t1)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
@@ -518,7 +518,7 @@ def f(x: tuple[str, bytes], y: tuple[str]):
     reveal_type(t2)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
 [case common_base_type_for_different_fixed_len_tuples_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --no-mypy-compatible --use-joins
 def f(x: tuple[str, bytes], y: tuple[str]):
     t1 = [x, y]
     reveal_type(t1)  # N: Revealed type is "list[tuple[str | bytes, ...]]"

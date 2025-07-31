@@ -28,6 +28,7 @@ create_grammar!(
           simple_stmts | Newline
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
         | function_def | class_def | decorated | async_stmt | match_stmt
+        | broken_scope
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
@@ -36,6 +37,9 @@ create_grammar!(
         | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
     async_stmt: "async" (function_def | with_stmt | for_stmt)
+
+    // Only relevant for error recovery, can happen e.g. with a syntax error in an if expression
+    broken_scope: Indent stmt+ Dedent
 
     // SIMPLE STATEMENTS
     // =================
@@ -61,13 +65,13 @@ create_grammar!(
     import_name: "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
     import_from:
-        | "from" ("." | "...")* dotted_name "import" import_from_targets
+        | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         | "from" ("." | "...")+ "import" import_from_targets
     import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
     import_from_as_name: Name "as" name_def | name_def
     dotted_as_names: ",".dotted_as_name+
-    dotted_as_name: dotted_name "as" name_def | name_def ["." dotted_name]
-    dotted_name: [dotted_name "."] Name
+    dotted_as_name: dotted_import_name "as" name_def | name_def ["." dotted_import_name]
+    dotted_import_name: [dotted_import_name "."] Name
 
     // COMPOUND STATEMENTS
     // ===================
@@ -194,7 +198,7 @@ create_grammar!(
     or_pattern:? "|".(
         literal_pattern | class_pattern | wildcard_pattern
         | group_pattern | sequence_pattern | mapping_pattern
-        | pattern_capture_target !"." | dotted_name
+        | pattern_capture_target !"." | dotted_pattern_name
     )+
 
     literal_pattern:
@@ -216,14 +220,15 @@ create_grammar!(
     mapping_pattern:
         | "{" double_star_pattern? "}"
         | "{" ",".key_value_pattern+ ["," double_star_pattern?] "}"
-    key_value_pattern: (literal_pattern | dotted_name) ":" pattern
+    key_value_pattern: (literal_pattern | dotted_pattern_name) ":" pattern
     double_star_pattern: "**" pattern_capture_target ","?
 
-    class_pattern: dotted_name "(" param_patterns? ")"
+    class_pattern: dotted_pattern_name "(" param_patterns? ")"
     param_patterns:
           ",".(pattern !"=")+ [",".(keyword_pattern)+] ","?
         | ",".(keyword_pattern)+ ","?
     keyword_pattern: Name "=" pattern
+    dotted_pattern_name: [dotted_pattern_name "."] Name
 
     // Type statement
     // ---------------
@@ -276,7 +281,7 @@ create_grammar!(
     // Bitwise operators
     // -----------------
 
-    bitwise_or:?   [bitwise_or "|"] bitwise_xor
+    bitwise_or:?  [bitwise_or "|"] bitwise_xor
     bitwise_xor:? [bitwise_xor "^"] bitwise_and
     bitwise_and:? [bitwise_and "&"] shift_expr
     shift_expr:?  [shift_expr ("<<"|">>")] sum

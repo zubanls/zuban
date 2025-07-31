@@ -15,27 +15,35 @@ pub(crate) fn create_sys_path(
 
     sys_path.extend(settings.prepended_site_packages.iter().cloned());
 
+    let new_unchecked = |p: &str| handler.unchecked_normalized_path(handler.unchecked_abs_path(p));
+    if let Some(path) = lib_path(settings) {
+        tracing::info!("Decided to use {path} as the Python lib folder");
+        sys_path.push(new_unchecked(&path));
+    } else {
+        tracing::warn!("Did not find a Python lib folder (on Linux e.g. /usr/lib/python3.12)");
+    }
+
     if let Some(env) = &settings.environment {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
-        let p = site_packages_path_from_venv(env, settings.python_version);
-        sys_path.push(handler.unchecked_normalized_path(
-            handler.unchecked_abs_path(
-                p.to_str().expect(
-                    "Should never happen, because we only put together valid unicode paths",
-                ),
-            ),
-        ));
+        let p = site_packages_path_from_venv(env, settings.python_version_or_default());
+        sys_path.push(new_unchecked(p.to_str().expect(
+            "Should never happen, because we only put together valid unicode paths",
+        )));
         add_editable_src_packages(handler, &mut sys_path, env);
     } else {
         // TODO use a real sys path
         //"../typeshed/stubs".into(),
-        //"/usr/lib/python3/dist-packages".into(),
-        //"/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
-        //"/usr/lib/python3.8".into(),
         //"/home/<user>/.local/lib/python3.8/site-packages".into(),
-        //"/usr/local/lib/python3.8/dist-packages".into(),
+    }
+    // TODO maybe add these paths for Windows/Mac as well
+    if cfg!(target_os = "linux") && settings.add_global_packages_default {
+        // TODO maybe add /usr/local/lib/python3.12/dist-packages
+        let p = "/usr/lib/python3/dist-packages";
+        if std::fs::exists(p).is_ok_and(|found| found) {
+            sys_path.push(new_unchecked(p));
+        }
     }
     sys_path
 }
@@ -94,6 +102,152 @@ fn add_editable_src_packages(
     }
 }
 
+fn lib_path(settings: &Settings) -> Option<String> {
+    let check = |path: String| {
+        let os_path = Path::new(&path).join("os.py");
+        match std::fs::exists(&path) {
+            Ok(true) => {
+                tracing::debug!("Found {os_path:?} -> choosing {path} as the library path");
+                Some(path)
+            }
+            Ok(false) => {
+                tracing::debug!(
+                    "Tried to lookup {os_path:?} to find the library path but it does not exist"
+                );
+                None
+            }
+            Err(err) => {
+                tracing::warn!(
+                    "Got error while trying to find the library path {os_path:?}: {err:?}"
+                );
+                None
+            }
+        }
+    };
+    let check_path_buf = |path_buf: PathBuf| match path_buf.into_os_string().into_string() {
+        Ok(s) => check(s),
+        Err(err) => {
+            tracing::error!("Python seems to be installed in a non-utf8 path: {err:?}");
+            None
+        }
+    };
+    let with_which = |executable_name| {
+        let path_of_exe = match which::which(executable_name) {
+            Ok(path_of_exe) => match path_of_exe.canonicalize() {
+                Ok(p) => p,
+                Err(err) => {
+                    tracing::warn!("Wanted to canonicalize {path_of_exe:?} but got error: {err:?}");
+                    /*
+                    fn iter_dir_paths_that_start_with<'a>(dir: &'a Path, starts_with: &'a str) -> impl Iterator<Item=PathBuf> + 'a {
+                        dbg!(dir.read_dir());
+                        dir.read_dir().ok().map(|iterator| {
+                            iterator.filter_map(move |e| {
+                                dbg!(&e);
+                                match e {
+                                    Ok(entry) if entry.file_name().to_str()?.starts_with(starts_with) => {
+                                        Some(entry.path().to_path_buf())
+                                    }
+                                    _ => None
+                                }
+                            })
+                        }).into_iter().flatten()
+                    }
+                    // We currently check for these weird Python Apps on Windows, because it seems to be
+                    // very hard to resolve the reparse points. Note that this feels extremely buggy and
+                    // incomplete and should likely be replaced with a better solution.
+                    // If you want to check the file details, use `fsutil reparsepoint`
+                    for p in iter_dir_paths_that_start_with(&Path::new(r"C:\\Program Files\WindowsApps"), "PythonSoftwareFoundation.Python") {
+                        tracing::debug!("Checking potential path {p:?}");
+                        match p.join("Lib").into_os_string().into_string() {
+                            Ok(s) => {
+                                if let result @ Some(_) = check(s) {
+                                    return result
+                                }
+                            }
+                            Err(err) => {
+                                tracing::error!("Python seems to be installed in a non-utf8 path: {err:?}");
+                            }
+                        }
+                    }
+                    */
+                    path_of_exe
+                }
+            },
+            Err(err) => {
+                tracing::warn!(
+                    "Got error while trying to run which on {executable_name:?}: {err:?}"
+                );
+                return None;
+            }
+        };
+        // Python itself uses an algorithm where they check all parents for the lib folder.
+        // Skip the first entry, because that's the executable itself.
+        for parent in path_of_exe.ancestors().skip(1) {
+            if cfg!(windows) {
+                if let result @ Some(_) = check_path_buf(parent.join("Lib")) {
+                    return result;
+                }
+            } else {
+                let lib_path = parent.join("lib");
+                let mut found = vec![];
+                match std::fs::read_dir(&lib_path) {
+                    Ok(list) => {
+                        for entry in list {
+                            match entry {
+                                Ok(entry) => {
+                                    if let Some(version) = entry
+                                        .file_name()
+                                        .to_str()
+                                        .and_then(|s| s.strip_prefix("python3."))
+                                        .and_then(|s| s.parse::<usize>().ok())
+                                    {
+                                        found.push((version, entry.path()));
+                                    }
+                                }
+                                Err(err) => {
+                                    tracing::warn!(
+                                        "Wanted to list lib dir {lib_path:?}, but got: {err:?}",
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        tracing::debug!("Wanted to list lib dir {lib_path:?}, but got: {err:?}");
+                    }
+                }
+                found.sort();
+                for (_version, in_path) in found.into_iter().rev() {
+                    if let result @ Some(_) = check_path_buf(in_path) {
+                        return result;
+                    }
+                }
+            }
+        }
+        tracing::info!("Did not find a parent in {path_of_exe:?} that contains a lib folder");
+        None
+    };
+    if cfg!(windows) {
+        // Typically paths like: C:\Users\<you>\AppData\Local\Programs\Python\Python312\Lib\
+        with_which("python3.exe").or_else(|| with_which("python.exe"))
+    } else if cfg!(any(target_os = "macos", target_os = "ios")) {
+        with_which("python3")
+        // Mac depends on whether it's from python.org or Homebrew or other sources, e.g.:
+        // /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/
+        //    or /usr/local/Cellar/python@3.12/.../Frameworks/.../lib/python3.12/
+    } else {
+        if let Some(version) = settings.python_version {
+            let path = format!("/usr/lib/python{}.{}", version.major, version.minor);
+            if let result @ Some(_) = check(path) {
+                return result;
+            } else {
+                tracing::warn!("Got python version {:?}, but could not find", version);
+            }
+        }
+        with_which("python3")
+    }
+}
+
 pub(crate) fn typeshed_path_from_executable() -> Rc<NormalizedPath> {
     let mut executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
@@ -133,6 +287,17 @@ pub(crate) fn typeshed_path_from_executable() -> Rc<NormalizedPath> {
         }
         if let Some(p) = maybe_has_zuban(&env_folder) {
             return p;
+        }
+        // TODO uv simply copies the executable to ~/.local/bin/ and we do not know the actual venv
+        // path anymore. I'm not sure what to do here other than hardcoding it.
+        if let Some(user_home) =
+            std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))
+        {
+            if let Some(p) =
+                maybe_has_zuban(&Path::new(&user_home).join("AppData/Roaming/uv/tools/zuban/Lib/"))
+            {
+                return p;
+            }
         }
     } else {
         let lib_folder = env_folder.join("lib");

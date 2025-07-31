@@ -339,7 +339,7 @@ def bar(x: AClass) -> None:
     x.delete(10, 20)
 
 [case self_type_filtering_of_classmethod_overload]
-from typing import Optional, Type, TypeVar, overload, Union, Generic
+from typing import Optional, Type, TypeVar, overload, Union, Generic, Any
 
 T = TypeVar("T")
 
@@ -357,7 +357,7 @@ class A(Generic[T]):
     def delete(cls: Type[A[str]], id: bytes) -> bytes: ...
 
     @classmethod
-    def delete(cls, id):
+    def delete(cls, id) -> Any:
         ...
 
 def foo_no_generics(x: Type[A]) -> None:

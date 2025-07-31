@@ -6,7 +6,8 @@ import typing
 asdf = ''
 asdf: int
 # This is not necessarily correct, but for now this is ok (at least no error).
-#? int()
+# jedi-diff #? int()
+#? str()
 asdf
 
 
@@ -21,7 +22,7 @@ with_typing_module[0]
 somelist = [1, 2, 3, "A", "A"]
 element : int
 for element in somelist:
-    ##? int()
+    #? int()
     element
 
 test_string: str = NOT_DEFINED
@@ -31,7 +32,7 @@ test_string
 
 char: str
 for char in NOT_DEFINED:
-    ##? str()
+    #? str()
     char
 
 
@@ -44,7 +45,8 @@ class Foo():
     baz: typing.ClassVar[str]
 
 
-##?
+# jedi-diff #?
+#? int()
 Foo.bar
 #? int()
 Foo().bar
@@ -74,11 +76,13 @@ class VarClass:
         self.var_
 
 
-#? ['var_class1', 'var_class2', 'var_instance1']
+# jedi-diff: #? ['var_class1', 'var_class2', 'var_instance1']
+#? ['var_class1', 'var_class2', 'var_instance1', 'var_instance2']
 VarClass.var_
 #? int()
 VarClass.var_instance1
-##?
+# jedi-diff #?
+#? float()
 VarClass.var_instance2
 #? str()
 VarClass.var_class1

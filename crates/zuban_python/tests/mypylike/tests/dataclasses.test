@@ -92,7 +92,7 @@ class C(A[List[T]]): ...
 
 C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "list[Never]"
 y = C([1])
-reveal_type(y.foo())  # N: Revealed type is "List[int]"
+reveal_type(y.foo())  # N: Revealed type is "list[int]"
 
 [case dataclass_inheritance_method_generics_with_dataclass]
 from typing import TypeVar, Generic, List
@@ -417,9 +417,9 @@ from typing import dataclass_transform
 reveal_type(dataclass_transform())  # N: Revealed type is "object"
 
 [case dataclass_transform_wrong_args]
-from typing import dataclass_transform
+from typing import dataclass_transform, Any
 @dataclass_transform(order_default=True)
-def foo(x: int): ...
+def foo(x: int) -> Any: ...
 
 @foo(order=False)  # E: Unexpected keyword argument "order" for "foo"
 class D:
@@ -522,7 +522,7 @@ class OpSignature:
 [case dataclass_post_init_should_not_crash2]
 import m
 
-def _construct_named_inputs_and_attrs(signature: m.OpSignature): ...
+def f(signature: m.OpSignature): ...
 
 [file m.py]
 import dataclasses
@@ -534,4 +534,8 @@ EMPTY = bool()
 class OpSignature:
     default: dataclasses.InitVar[Any] = EMPTY
 
-    def __post_init__(self) -> None: ...
+    def __post_init__(self) -> None: ...  # E: Signature of "__post_init__" incompatible with supertype "dataclass" \
+                                          # N:      Superclass: \
+                                          # N:          def __post_init__(self, default: Any) -> None \
+                                          # N:      Subclass: \
+                                          # N:          def __post_init__(self) -> None

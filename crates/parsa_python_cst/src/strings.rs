@@ -1,6 +1,11 @@
+use std::borrow::Cow;
+
 use parsa_python::{
     CodeIndex, NonterminalType::fstring, PyNode, PyNodeType::Nonterminal, SiblingIterator,
 };
+use utils::dedent_cow;
+
+use crate::Strings;
 
 #[derive(Debug)]
 pub enum PythonString<'db> {
@@ -182,6 +187,13 @@ impl<'db> PythonString<'db> {
             Self::FString => None,
         }
     }
+    pub fn into_cow_str(self) -> Option<Cow<'db, str>> {
+        match self {
+            Self::Ref(_, s) => Some(Cow::Borrowed(s)),
+            Self::String(_, s) => Some(Cow::Owned(s)),
+            Self::FString => None,
+        }
+    }
 }
 
 pub(crate) fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(
@@ -254,6 +266,25 @@ pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {
         inner_start_offset: inner_start_offset as CodeIndex,
         had_raw_modifier,
     }
+}
+
+pub(crate) fn clean_docstring(strings: Strings) -> Option<Cow<str>> {
+    let s = strings.as_python_string().into_cow_str()?;
+    Some(match dedent_cow(s) {
+        Cow::Borrowed(s) => Cow::Borrowed(s),
+        Cow::Owned(mut s) => {
+            trim_string_in_place(&mut s);
+            Cow::Owned(s)
+        }
+    })
+}
+
+fn trim_string_in_place(s: &mut String) {
+    let trimmed = s.trim();
+    let start = s.find(trimmed).unwrap();
+    let end = start + trimmed.len();
+    s.drain(end..);
+    s.drain(..start);
 }
 
 #[cfg(test)]

@@ -17,18 +17,21 @@ config.workspace = true
 lazy_static.workspace = true
 regex.workspace = true
 tracing.workspace = true
+lsp-types.workspace = true
+which = "*"
 
 [dev-dependencies]
 clap.workspace = true
 test_utils.workspace = true
 logging_config.workspace = true
+shlex = "*"
 
 [features]
 zuban_debug = []
 
-#[[test]]
-#name = "blackbox"
-#harness = false
+[[test]]
+name = "blackbox"
+harness = false
 
 [[test]]
 name = "mypylike"

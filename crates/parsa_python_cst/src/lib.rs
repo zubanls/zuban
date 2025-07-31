@@ -1,4 +1,5 @@
 mod bytes;
+mod completion;
 mod match_stmt;
 mod strings;
 
@@ -10,6 +11,8 @@ use std::{
 };
 
 pub use bytes::parse_python_bytes_literal;
+use completion::scope_for_node;
+pub use completion::{CompletionNode, RestNode, Scope};
 pub use match_stmt::{
     CasePattern, KeyEntryInPattern, MappingPatternItem, ParamPattern, PatternKind,
     SequencePatternItem, StarPatternContent, SubjectExprContent,
@@ -148,6 +151,134 @@ impl Tree {
         let node = self.0.node_by_index(index);
         node.as_code().get(..40).unwrap_or_else(|| node.as_code())
     }
+
+    pub fn goto_node(&self, position: CodeIndex) -> (Scope, GotoNode) {
+        // First check the token left and right of the cursor
+        let mut left = self.0.leaf_by_position(position);
+        let mut right = left;
+        if left.start() == position {
+            if let Some(n) = left.previous_leaf() {
+                if n.end() == position {
+                    left = n;
+                }
+            }
+        } else if left.end() == position {
+            if let Some(n) = left.next_leaf() {
+                if n.start() == position {
+                    right = n;
+                }
+            }
+        }
+        // From now on left is the node we're passing.
+        if left.index != right.index {
+            use TerminalType::*;
+            let order = [
+                Name,
+                Number,
+                String,
+                Bytes,
+                FStringString,
+                FStringStart,
+                FStringEnd,
+            ];
+            match left.type_() {
+                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
+                    match right.type_() {
+                        PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
+                            let is_alpha =
+                                |n: PyNode| n.as_code().chars().all(|x| x.is_alphanumeric());
+                            if is_alpha(right) && !is_alpha(left) {
+                                // Prefer keywords to operators
+                                left = right;
+                            }
+                        }
+                        Terminal(t) | ErrorTerminal(t) => {
+                            // If it is any of the wanted types, just use that instead.
+                            if order.contains(&t) {
+                                left = right;
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
+                    match right.type_() {
+                        Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
+                            let order_func = |type_| {
+                                order.iter().position(|&t| t == type_).unwrap_or(usize::MAX)
+                            };
+                            let left_index = order_func(left_terminal);
+                            let right_index = order_func(right_terminal);
+                            // Both are terminals, prefer the one that is higher in the order
+                            if right_index < left_index {
+                                left = right;
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+                Nonterminal(_) | ErrorNonterminal(_) => unreachable!(),
+            }
+        }
+        let goto_node = match left.type_() {
+            Terminal(t) | ErrorTerminal(t) => match t {
+                TerminalType::Name => {
+                    let parent = left.parent().unwrap();
+                    if parent.is_type(Nonterminal(primary)) {
+                        GotoNode::Primary(Primary::new(parent))
+                    } else if parent.is_type(Nonterminal(import_from_as_name)) {
+                        GotoNode::ImportFromAsName {
+                            import_as_name: ImportFromAsName::new(parent),
+                            on_name: Name::new(left),
+                        }
+                    } else if parent.is_type(Nonterminal(name_def)) {
+                        let par_parent = parent.parent().unwrap();
+                        if par_parent.is_type(Nonterminal(import_from_as_name)) {
+                            GotoNode::ImportFromAsName {
+                                import_as_name: ImportFromAsName::new(par_parent),
+                                on_name: Name::new(left),
+                            }
+                        } else if par_parent.is_type(Nonterminal(t_primary)) {
+                            GotoNode::PrimaryTarget(PrimaryTarget::new(par_parent))
+                        } else if par_parent.is_type(Nonterminal(global_stmt)) {
+                            GotoNode::GlobalName(NameDef::new(parent))
+                        } else if par_parent.is_type(Nonterminal(nonlocal_stmt)) {
+                            GotoNode::NonlocalName(NameDef::new(parent))
+                        } else {
+                            GotoNode::Name(Name::new(left))
+                        }
+                    } else if parent.is_type(Nonterminal(t_primary)) {
+                        GotoNode::PrimaryTarget(PrimaryTarget::new(parent))
+                    } else {
+                        GotoNode::Name(Name::new(left))
+                    }
+                }
+                _ => GotoNode::None,
+            },
+            PyNodeType::Keyword => {
+                let parent = left.parent().unwrap();
+                if parent.is_type(Nonterminal(primary)) {
+                    GotoNode::Primary(Primary::new(parent))
+                } else if parent.is_type(Nonterminal(t_primary)) {
+                    GotoNode::PrimaryTarget(PrimaryTarget::new(parent))
+                } else if parent.is_type(Nonterminal(atom)) {
+                    GotoNode::Atom(Atom::new(parent))
+                } else {
+                    GotoNode::None
+                }
+            }
+            PyNodeType::ErrorKeyword => GotoNode::None,
+            Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
+        };
+        (scope_for_node(left), goto_node)
+    }
+
+    pub fn filter_all_names<'x>(&'x self) -> impl Iterator<Item = Name<'x>> {
+        self.0.nodes().filter_map(|n| {
+            n.is_type(Terminal(TerminalType::Name))
+                .then(|| Name::new(n))
+        })
+    }
 }
 
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
@@ -181,7 +312,7 @@ pub enum InterestingNode<'db> {
     Ternary(Ternary<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
-    DottedName(DottedName<'db>),
+    DottedPatternName(DottedPatternName<'db>),
     Walrus(Walrus<'db>),
 }
 pub struct InterestingNodes<'db>(SearchIterator<'db>);
@@ -207,14 +338,36 @@ impl<'db> Iterator for InterestingNodes<'db> {
                 InterestingNode::Comprehension(Comprehension::new(n))
             } else if n.is_type(Nonterminal(dict_comprehension)) {
                 InterestingNode::DictComprehension(DictComprehension::new(n))
-            } else if n.is_type(Nonterminal(dotted_name)) {
-                InterestingNode::DottedName(DottedName::new(n))
+            } else if n.is_type(Nonterminal(dotted_pattern_name)) {
+                InterestingNode::DottedPatternName(DottedPatternName::new(n))
             } else {
                 debug_assert_eq!(n.type_(), Nonterminal(walrus));
                 InterestingNode::Walrus(Walrus::new(n))
             }
         })
     }
+}
+
+macro_rules! create_interesting_node_searcher {
+    ($name:ident) => {
+        impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
+            fn search_interesting_nodes(&self) -> InterestingNodes<'db> {
+                const SEARCH_NAMES: &[PyNodeType] = &[
+                    Terminal(TerminalType::Name),
+                    Nonterminal(conjunction),
+                    Nonterminal(disjunction),
+                    Nonterminal(yield_expr),
+                    Nonterminal(lambda),
+                    Nonterminal(ternary),
+                    Nonterminal(comprehension),
+                    Nonterminal(dict_comprehension),
+                    Nonterminal(dotted_pattern_name),
+                    Nonterminal(walrus),
+                ];
+                InterestingNodes(self.node.search(SEARCH_NAMES, true))
+            }
+        }
+    };
 }
 
 macro_rules! create_struct {
@@ -273,23 +426,7 @@ macro_rules! create_struct {
             }
         }
 
-        impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
-            fn search_interesting_nodes(&self) -> InterestingNodes<'db> {
-                const SEARCH_NAMES: &[PyNodeType] = &[
-                    Terminal(TerminalType::Name),
-                    Nonterminal(conjunction),
-                    Nonterminal(disjunction),
-                    Nonterminal(yield_expr),
-                    Nonterminal(lambda),
-                    Nonterminal(ternary),
-                    Nonterminal(comprehension),
-                    Nonterminal(dict_comprehension),
-                    Nonterminal(dotted_name),
-                    Nonterminal(walrus),
-                ];
-                InterestingNodes(self.node.search(SEARCH_NAMES, true))
-            }
-        }
+        create_interesting_node_searcher!($name);
     };
 }
 
@@ -344,7 +481,7 @@ create_nonterminal_structs!(
 
     ImportFrom: import_from
     ImportName: import_name
-    DottedName: dotted_name
+    DottedImportName: dotted_import_name
     DottedAsName: dotted_as_name
     ImportFromAsName: import_from_as_name
 
@@ -378,6 +515,7 @@ create_nonterminal_structs!(
     FString: fstring
     FStringExpr: fstring_expr
     FStringFormatSpec: fstring_format_spec
+    FStringConversion: fstring_conversion
 
     List: atom
     Set: atom
@@ -430,12 +568,16 @@ create_nonterminal_structs!(
     DoubleStarPattern: double_star_pattern
     ClassPattern: class_pattern
     KeywordPattern: keyword_pattern
+    DottedPatternName: dotted_pattern_name
 
     TypeParams: type_params
     TypeParam: type_param
     TypeParamBound: type_param_bound
     TypeParamDefault: type_param_default
     TypeParamStarredDefault: type_param_starred_default
+
+    // Error recovery
+    BrokenScope: broken_scope
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -481,16 +623,43 @@ impl<'db> Name<'db> {
         n.expect_type()
     }
 
+    pub fn simple_parent(&self) -> SimpleNameParent<'db> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(atom)) {
+            SimpleNameParent::Atom
+        } else if parent.is_type(Nonterminal(name_def)) {
+            SimpleNameParent::NameDef(NameDef::new(parent))
+        } else {
+            SimpleNameParent::Other
+        }
+    }
+
     pub fn parent(&self) -> NameParent<'db> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {
-            NameParent::Atom
+            NameParent::Atom(Atom::new(parent))
         } else if parent.is_type(Nonterminal(name_def)) {
             NameParent::NameDef(NameDef::new(parent))
         } else if parent.is_type(Nonterminal(primary)) {
             NameParent::Primary(Primary::new(parent))
+        } else if parent.is_type(Nonterminal(t_primary)) {
+            NameParent::PrimaryTarget(PrimaryTarget::new(parent))
+        } else if parent.is_type(Nonterminal(kwarg)) {
+            NameParent::Kwarg(Kwarg::new(parent))
+        } else if parent.is_type(Nonterminal(keyword_pattern)) {
+            NameParent::KeywordPattern(KeywordPattern::new(parent))
+        } else if parent.is_type(Nonterminal(import_from_as_name)) {
+            NameParent::ImportFromAsName(ImportFromAsName::new(parent))
+        } else if parent.is_type(Nonterminal(dotted_import_name)) {
+            NameParent::DottedImportName(DottedImportName::new(parent))
+        } else if parent.is_type(Nonterminal(dotted_pattern_name)) {
+            NameParent::DottedPatternName(DottedPatternName::new(parent))
         } else {
-            NameParent::Other
+            assert!(
+                parent.is_type(Nonterminal(fstring_conversion)),
+                "{parent:?}"
+            );
+            NameParent::FStringConversion(FStringConversion::new(parent))
         }
     }
 
@@ -569,14 +738,44 @@ impl<'db> Name<'db> {
         };
         n.node.parent().unwrap().is_type(Nonterminal(function_def))
     }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
+
+    pub fn clean_docstring(&self) -> Cow<'db, str> {
+        let docstr = |n: &Self| {
+            let name_def_ = n.name_def()?;
+            let strings_ = if let Some(func) = name_def_.maybe_name_of_func() {
+                func.docstring()
+            } else {
+                name_def_.maybe_name_of_class()?.docstring()
+            };
+            strings::clean_docstring(strings_?)
+        };
+        docstr(self).unwrap_or_else(|| Cow::Borrowed(""))
+    }
+}
+
+#[derive(Debug)]
+pub enum SimpleNameParent<'db> {
+    NameDef(NameDef<'db>),
+    Atom,
+    Other,
 }
 
 #[derive(Debug)]
 pub enum NameParent<'db> {
     NameDef(NameDef<'db>),
+    Atom(Atom<'db>),
     Primary(Primary<'db>),
-    Atom,
-    Other,
+    PrimaryTarget(PrimaryTarget<'db>),
+    Kwarg(Kwarg<'db>),
+    KeywordPattern(KeywordPattern<'db>),
+    ImportFromAsName(ImportFromAsName<'db>),
+    DottedImportName(DottedImportName<'db>),
+    DottedPatternName(DottedPatternName<'db>),
+    FStringConversion(FStringConversion<'db>),
 }
 
 pub enum FunctionOrLambda<'db> {
@@ -636,6 +835,7 @@ pub enum DefiningStmt<'db> {
     TypeAlias(TypeAlias<'db>),
     GlobalStmt(GlobalStmt<'db>),
     NonlocalStmt(NonlocalStmt<'db>),
+    Error(Error<'db>),
 }
 
 impl DefiningStmt<'_> {
@@ -659,6 +859,7 @@ impl DefiningStmt<'_> {
             DefiningStmt::TypeAlias(a) => a.index(),
             DefiningStmt::GlobalStmt(g) => g.index(),
             DefiningStmt::NonlocalStmt(n) => n.index(),
+            DefiningStmt::Error(e) => e.index(),
         }
     }
 }
@@ -697,10 +898,15 @@ impl<'db> File<'db> {
         StmtLikeIterator::from_stmt_iterator(self.node, self.node.iter_children())
     }
 
-    pub fn has_docstr(&self) -> bool {
-        self.iter_stmt_likes()
-            .next()
-            .is_some_and(|first| first.node.is_string())
+    pub fn docstring(&self) -> Option<Strings<'db>> {
+        let first = self.iter_stmt_likes().next()?;
+        first.node.maybe_string()
+    }
+
+    pub fn clean_docstring(&self) -> Cow<'db, str> {
+        self.docstring()
+            .and_then(|d| strings::clean_docstring(d))
+            .unwrap_or_else(|| Cow::Borrowed(""))
     }
 }
 
@@ -892,9 +1098,15 @@ impl<'db> Expression<'db> {
         node.is_type(Nonterminal(lambda))
     }
 
+    fn maybe_string(&self) -> Option<Strings<'db>> {
+        match self.maybe_unpacked_atom()? {
+            AtomContent::Strings(s) => Some(s),
+            _ => None,
+        }
+    }
+
     pub fn is_string(&self) -> bool {
-        self.maybe_unpacked_atom()
-            .is_some_and(|atom_content| matches!(atom_content, AtomContent::Strings(_)))
+        self.maybe_string().is_some()
     }
 
     pub fn search_names(&self) -> NameIterator<'db> {
@@ -1243,6 +1455,14 @@ impl<'db> Iterator for TargetIterator<'db> {
     }
 }
 
+impl<'db> BrokenScope<'db> {
+    pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
+        let mut iterator = self.node.iter_children();
+        let indent_leaf = iterator.next().unwrap(); // get rid of indent leaf
+        StmtLikeIterator::from_stmt_iterator(indent_leaf, iterator)
+    }
+}
+
 impl<'db> Block<'db> {
     pub fn iter_stmt_likes(&self) -> StmtLikeIterator<'db> {
         let mut iterator = self.node.iter_children();
@@ -1488,6 +1708,7 @@ pub enum StmtLikeContent<'db> {
     WithStmt(WithStmt<'db>),
     MatchStmt(MatchStmt<'db>),
     Error(Error<'db>),
+    BrokenScope(BrokenScope<'db>),
     Newline,
 }
 
@@ -1550,6 +1771,8 @@ impl<'db> StmtLikeContent<'db> {
             Self::MatchStmt(MatchStmt::new(child))
         } else if child.is_type(Nonterminal(async_stmt)) {
             Self::AsyncStmt(AsyncStmt::new(child))
+        } else if child.is_type(Nonterminal(broken_scope)) {
+            Self::BrokenScope(BrokenScope::new(child))
         } else {
             debug_assert_eq!(child.type_(), Terminal(TerminalType::Newline));
             Self::Newline
@@ -1563,11 +1786,8 @@ impl<'db> StmtLikeContent<'db> {
         }
     }
 
-    pub fn is_string(&self) -> bool {
-        let Some(expr) = self.maybe_simple_expr() else {
-            return false;
-        };
-        expr.is_string()
+    pub fn maybe_string(&self) -> Option<Strings<'db>> {
+        self.maybe_simple_expr()?.maybe_string()
     }
 }
 
@@ -1587,7 +1807,7 @@ impl<'db> StmtLikeIterator<'db> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct StmtLikeIteratorItem<'db> {
     pub parent_index: NodeIndex,
     pub node: StmtLikeContent<'db>,
@@ -1599,7 +1819,7 @@ impl<'db> Iterator for StmtLikeIterator<'db> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(node) = self.simple_stmts.next() {
             if node.is_type(Terminal(TerminalType::Newline)) {
-                return None;
+                return self.next();
             }
             return Some(StmtLikeIteratorItem {
                 parent_index: node.index,
@@ -1920,11 +2140,8 @@ impl<'db> ClassDef<'db> {
         }
     }
 
-    pub fn has_docstr(&self) -> bool {
-        self.block()
-            .iter_stmt_likes()
-            .next()
-            .is_some_and(|first| first.node.is_string())
+    pub fn docstring(&self) -> Option<Strings<'db>> {
+        self.block().iter_stmt_likes().next()?.node.maybe_string()
     }
 }
 
@@ -1977,10 +2194,23 @@ impl<'db> FunctionDef<'db> {
         None
     }
 
+    pub fn colon_index(&self) -> NodeIndex {
+        for child in self.node.iter_children().skip(2) {
+            if child.as_code() == ":" {
+                return child.index;
+            }
+        }
+        unreachable!()
+    }
+
     pub fn is_typed(&self) -> bool {
         // A function is considered typed according to Mypy if at least param or return annotation
         // is used.
-        self.return_annotation().is_some() || self.params().iter().any(|p| p.annotation().is_some())
+        self.return_annotation().is_some() || self.has_param_annotations()
+    }
+
+    pub fn has_param_annotations(&self) -> bool {
+        self.params().iter().any(|p| p.annotation().is_some())
     }
 
     pub fn type_params(&self) -> Option<TypeParams<'db>> {
@@ -2012,11 +2242,23 @@ impl<'db> FunctionDef<'db> {
         }
     }
 
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
+
     pub fn maybe_decorated(&self) -> Option<Decorated<'db>> {
         match self.parent() {
             FunctionParent::Decorated(dec) | FunctionParent::DecoratedAsync(dec) => Some(dec),
             _ => None,
         }
+    }
+
+    pub fn in_conditional_scope(&self) -> bool {
+        let parent_block = self.node.parent_until(&[Nonterminal(block)]);
+        parent_block.is_some_and(|block_| {
+            let parent = block_.parent().unwrap();
+            parent.is_type(Nonterminal(if_stmt)) || parent.is_type(Nonterminal(else_block))
+        })
     }
 
     pub fn unpack(
@@ -2088,6 +2330,32 @@ impl<'db> FunctionDef<'db> {
             },
             _ => false,
         }
+    }
+
+    pub fn on_name_def_in_scope(&self, callback: &mut impl FnMut(NameDef<'db>)) {
+        for p in self.params().iter() {
+            callback(p.name_def())
+        }
+        const SEARCH_NAME_DEFS: &[PyNodeType] = &[
+            Nonterminal(name_def),
+            Nonterminal(function_def),
+            Nonterminal(class_def),
+            Nonterminal(lambda),
+            Nonterminal(t_primary),
+        ];
+        for node in self.body().node.search(SEARCH_NAME_DEFS, true) {
+            if node.is_type(Nonterminal(name_def)) {
+                callback(NameDef::new(node))
+            } else if node.is_type(Nonterminal(function_def)) {
+                callback(FunctionDef::new(node).name_def())
+            } else if node.is_type(Nonterminal(class_def)) {
+                callback(ClassDef::new(node).name_def())
+            }
+        }
+    }
+
+    pub fn docstring(&self) -> Option<Strings<'db>> {
+        self.body().iter_stmt_likes().next()?.node.maybe_string()
     }
 }
 
@@ -2607,13 +2875,13 @@ impl<'db> Iterator for AssignmentTargetIterator<'db> {
 }
 
 impl<'db> ImportFrom<'db> {
-    pub fn level_with_dotted_name(&self) -> (usize, Option<DottedName<'db>>) {
-        // | "from" ("." | "...")* dotted_name "import" import_from_targets
+    pub fn level_with_dotted_name(&self) -> (usize, Option<DottedImportName<'db>>) {
+        // | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
         let mut level = 0;
         for node in self.node.iter_children().skip(1) {
-            if node.is_type(Nonterminal(dotted_name)) {
-                return (level, Some(DottedName::new(node)));
+            if node.is_type(Nonterminal(dotted_import_name)) {
+                return (level, Some(DottedImportName::new(node)));
             } else if node.as_code() == "." {
                 level += 1;
             } else if node.as_code() == "..." {
@@ -2695,45 +2963,54 @@ impl<'db> ImportFromAsName<'db> {
         name.index() != name_d.name_index() && name.as_code() == name_d.as_code()
     }
 
-    pub fn import_from(&self) -> ImportFrom<'db> {
-        let import_from_node = self
-            .node
+    pub fn import_from(&self) -> Option<ImportFrom<'db>> {
+        self.node
             .parent_until(&[Nonterminal(import_from)])
-            .expect("There should always be an import_from");
-        ImportFrom::new(import_from_node)
+            .map(ImportFrom::new)
     }
 }
 
-impl<'db> DottedName<'db> {
+impl<'db> DottedImportName<'db> {
+    pub fn unpack(&self) -> DottedImportNameContent<'db> {
+        let mut children = self.node.iter_children();
+        let first = children.next().unwrap();
+        if first.is_type(Terminal(TerminalType::Name)) {
+            DottedImportNameContent::Name(Name::new(first))
+        } else {
+            children.next();
+            let name = children.next().unwrap();
+            DottedImportNameContent::DottedName(DottedImportName::new(first), Name::new(name))
+        }
+    }
+}
+
+pub enum DottedImportNameContent<'db> {
+    DottedName(DottedImportName<'db>, Name<'db>),
+    Name(Name<'db>),
+}
+
+impl<'db> DottedPatternName<'db> {
     pub fn first_name(&self) -> Name<'db> {
         let n = self.node.next_leaf().unwrap();
         Name::new(n)
     }
 
-    pub fn unpack(&self) -> DottedNameContent<'db> {
+    pub fn unpack(&self) -> DottedPatternNameContent<'db> {
         let mut children = self.node.iter_children();
         let first = children.next().unwrap();
         if first.is_type(Terminal(TerminalType::Name)) {
-            DottedNameContent::Name(Name::new(first))
+            DottedPatternNameContent::Name(Name::new(first))
         } else {
             children.next();
             let name = children.next().unwrap();
-            DottedNameContent::DottedName(DottedName::new(first), Name::new(name))
+            DottedPatternNameContent::DottedName(DottedPatternName::new(first), Name::new(name))
         }
     }
 }
 
-pub enum DottedNameContent<'db> {
-    DottedName(DottedName<'db>, Name<'db>),
+pub enum DottedPatternNameContent<'db> {
+    DottedName(DottedPatternName<'db>, Name<'db>),
     Name(Name<'db>),
-}
-
-impl<'db> DottedNameContent<'db> {
-    pub fn last_name(&self) -> Name<'db> {
-        match self {
-            Self::Name(name) | Self::DottedName(_, name) => *name,
-        }
-    }
 }
 
 impl<'db> ImportName<'db> {
@@ -2757,8 +3034,8 @@ impl<'db> Iterator for DottedAsNameIterator<'db> {
 }
 
 pub enum DottedAsNameContent<'db> {
-    Simple(NameDef<'db>, Option<DottedName<'db>>),
-    WithAs(DottedName<'db>, NameDef<'db>),
+    Simple(NameDef<'db>, Option<DottedImportName<'db>>),
+    WithAs(DottedImportName<'db>, NameDef<'db>),
 }
 
 impl<'db> DottedAsName<'db> {
@@ -2769,11 +3046,11 @@ impl<'db> DottedAsName<'db> {
         if first.is_type(Nonterminal(name_def)) {
             DottedAsNameContent::Simple(
                 NameDef::new(first),
-                maybe_second.map(|s| DottedName::new(s.next_sibling().unwrap())),
+                maybe_second.map(|s| DottedImportName::new(s.next_sibling().unwrap())),
             )
         } else {
             DottedAsNameContent::WithAs(
-                DottedName::new(first),
+                DottedImportName::new(first),
                 NameDef::new(maybe_second.unwrap().next_sibling().unwrap()),
             )
         }
@@ -3297,7 +3574,7 @@ impl<'db> Iterator for ComparisonIterator<'db> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum PrimaryOrAtom<'db> {
     Primary(Primary<'db>),
     Atom(Atom<'db>),
@@ -3312,6 +3589,7 @@ impl<'db> PrimaryOrAtom<'db> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum PrimaryTargetOrAtom<'db> {
     PrimaryTarget(PrimaryTarget<'db>),
     Atom(Atom<'db>),
@@ -3550,6 +3828,7 @@ impl<'db> DelTargets<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum ReturnOrYield<'db> {
     Return(ReturnStmt<'db>),
     Yield(YieldExpr<'db>),
@@ -3741,6 +4020,10 @@ impl<'db> Lambda<'db> {
         }
         (params, Expression::new(iterator.next().unwrap()))
     }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
 }
 
 impl<'db> NameDef<'db> {
@@ -3790,9 +4073,10 @@ impl<'db> NameDef<'db> {
                 Nonterminal(stmt),
                 Nonterminal(import_from_as_name),
                 Nonterminal(dotted_as_name),
+                ErrorNonterminal(stmt),
             ])
             .unwrap();
-        if node.is_type(Nonterminal(stmt)) {
+        if node.is_type(Nonterminal(stmt)) || node.is_type(ErrorNonterminal(stmt)) {
             None
         } else if node.is_type(Nonterminal(import_from_as_name)) {
             Some(NameImportParent::ImportFromAsName(ImportFromAsName::new(
@@ -3826,6 +4110,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(type_alias),
                 Nonterminal(global_stmt),
                 Nonterminal(nonlocal_stmt),
+                ErrorNonterminal(stmt),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(function_def)) {
@@ -3862,6 +4147,10 @@ impl<'db> NameDef<'db> {
             DefiningStmt::GlobalStmt(GlobalStmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
             DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
+            DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
+        } else if stmt_node.is_type(ErrorNonterminal(stmt)) {
+            DefiningStmt::Error(Error::new(stmt_node))
         } else {
             unreachable!(
                 "Reached a previously unknown defining statement {:?}",
@@ -3922,6 +4211,26 @@ impl<'db> NameDef<'db> {
         }
     }
 
+    pub fn definition_range(&self) -> (NodeIndex, NodeIndex) {
+        // Mostly used for LSP's targetRange in gotoDefinition, etc
+        let mut parent = self.node.parent().unwrap();
+        while matches!(
+            parent.type_(),
+            Nonterminal(
+                star_targets
+                    | star_target
+                    | single_target
+                    | import_from_as_name
+                    | import_from_targets
+                    | dotted_as_names
+                    | dotted_as_name
+            )
+        ) {
+            parent = parent.parent().unwrap();
+        }
+        (parent.start(), parent.end())
+    }
+
     pub fn name_can_be_overwritten(&self) -> bool {
         let parent = self.node.parent().unwrap();
         // The following nodes can not be overwritten:
@@ -3951,6 +4260,11 @@ impl<'db> NameDef<'db> {
         let n = self.node.parent().unwrap();
         n.is_type(Nonterminal(function_def))
             .then(|| FunctionDef::new(n))
+    }
+
+    pub fn maybe_name_of_class(&self) -> Option<ClassDef<'db>> {
+        let n = self.node.parent().unwrap();
+        n.is_type(Nonterminal(class_def)).then(|| ClassDef::new(n))
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
@@ -4088,6 +4402,12 @@ impl<'db> Atom<'db> {
             },
             _ => unreachable!(),
         }
+    }
+
+    pub fn maybe_expression_parent(&self) -> Option<Expression<'db>> {
+        let n = self.node.parent().unwrap();
+        n.is_type(Nonterminal(expression))
+            .then(|| Expression::new(n))
     }
 }
 
@@ -4311,10 +4631,38 @@ impl<'db> Expressions<'db> {
     }
 }
 
-pub enum NameOrKeywordLookup<'db> {
+#[derive(Debug, Copy, Clone)]
+pub enum GotoNode<'db> {
     Name(Name<'db>),
-    Keyword(Keyword<'db>),
+    ImportFromAsName {
+        import_as_name: ImportFromAsName<'db>,
+        on_name: Name<'db>,
+    },
+    Primary(Primary<'db>),
+    PrimaryTarget(PrimaryTarget<'db>),
+    GlobalName(NameDef<'db>),
+    NonlocalName(NameDef<'db>),
+    Atom(Atom<'db>),
     None,
+}
+
+impl<'db> GotoNode<'db> {
+    pub fn on_name(&self) -> Option<Name<'db>> {
+        Some(match self {
+            GotoNode::Name(n) => *n,
+            GotoNode::ImportFromAsName { on_name, .. } => *on_name,
+            GotoNode::Primary(p) => match p.second() {
+                PrimaryContent::Attribute(name) => name,
+                _ => return None,
+            },
+            GotoNode::PrimaryTarget(primary_target) => match primary_target.second() {
+                PrimaryContent::Attribute(name) => name,
+                _ => return None,
+            },
+            GotoNode::GlobalName(n) | GotoNode::NonlocalName(n) => n.name(),
+            GotoNode::Atom(_) | GotoNode::None => return None,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -4402,86 +4750,6 @@ impl<'db> Target<'db> {
     }
 }
 
-impl<'db> NameOrKeywordLookup<'db> {
-    pub fn from_position(tree: &'db Tree, position: CodeIndex) -> Self {
-        // First check the token left and right of the cursor
-        let mut left = tree.0.leaf_by_position(position);
-        let mut right = left;
-        if left.start() == position {
-            if let Some(n) = left.previous_leaf() {
-                if n.end() == position {
-                    left = n;
-                }
-            }
-        } else if left.end() == position {
-            if let Some(n) = left.next_leaf() {
-                if n.start() == position {
-                    right = n;
-                }
-            }
-        }
-        // From now on left is the node we're passing.
-        if left.index != right.index {
-            use TerminalType::*;
-            let order = [
-                Name,
-                Number,
-                String,
-                Bytes,
-                FStringString,
-                FStringStart,
-                FStringEnd,
-            ];
-            match left.type_() {
-                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                    match right.type_() {
-                        PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                            let is_alpha =
-                                |n: PyNode| n.as_code().chars().all(|x| x.is_alphanumeric());
-                            if is_alpha(right) && !is_alpha(left) {
-                                // Prefer keywords to operators
-                                left = right;
-                            }
-                        }
-                        Terminal(t) | ErrorTerminal(t) => {
-                            // If it is any of the wanted types, just use that instead.
-                            if order.contains(&t) {
-                                left = right;
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
-                    match right.type_() {
-                        Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
-                            let order_func = |type_| {
-                                order.iter().position(|&t| t == type_).unwrap_or(usize::MAX)
-                            };
-                            let left_index = order_func(left_terminal);
-                            let right_index = order_func(right_terminal);
-                            // Both are terminals, prefer the one that is higher in the order
-                            if right_index < left_index {
-                                left = right;
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                Nonterminal(_) | ErrorNonterminal(_) => unreachable!(),
-            }
-        }
-        match left.type_() {
-            Terminal(t) | ErrorTerminal(t) => match t {
-                TerminalType::Name => Self::Name(Name::new(left)),
-                _ => Self::None,
-            },
-            PyNodeType::ErrorKeyword | PyNodeType::Keyword => Self::Keyword(Keyword::new(left)),
-            Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
-        }
-    }
-}
-
 #[derive(Debug, Copy, Clone)]
 pub struct Error<'db> {
     node: PyNode<'db>,
@@ -4490,6 +4758,7 @@ pub struct Error<'db> {
 impl<'db> Error<'db> {
     #[inline]
     pub fn new(node: PyNode<'db>) -> Self {
+        debug_assert!(node.is_error_recovery_node());
         Self { node }
     }
 
@@ -4519,3 +4788,5 @@ impl<'db> Error<'db> {
             && self.node.nth_child(0).maybe_error_leaf() == Some(TerminalType::Dedent)
     }
 }
+
+create_interesting_node_searcher!(Error);

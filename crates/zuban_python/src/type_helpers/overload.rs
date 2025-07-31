@@ -11,10 +11,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_callable_dunder_init_type_vars_and_return,
-        calculate_callable_type_vars_and_return, replace_class_type_vars_in_callable,
-        ArgumentIndexWithParam, CalculatedTypeArgs, FunctionOrCallable, Generics, OnTypeError,
-        ResultContext, SignatureMatch,
+        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArgs, Generics,
+        OnTypeError, ResultContext, SignatureMatch,
     },
     type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
     utils::debug_indent,
@@ -64,7 +63,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                result_context: &mut ResultContext,
                                callable: Callable| {
             if search_init {
-                calculate_callable_dunder_init_type_vars_and_return(
+                calc_callable_dunder_init_type_vars(
                     i_s,
                     class.unwrap(),
                     callable,
@@ -75,7 +74,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     None,
                 )
             } else {
-                calculate_callable_type_vars_and_return(
+                calc_callable_type_vars(
                     i_s,
                     callable,
                     args.iter(i_s.mode),
@@ -245,12 +244,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
             on_overload_mismatch()
         } else {
-            let f_or_c = FunctionOrCallable::Callable(Callable::new(
-                self.overload.iter_functions().next().unwrap(),
-                self.class,
-            ));
+            let c = Callable::new(self.overload.iter_functions().next().unwrap(), self.class);
             let t = IssueKind::OverloadMismatch {
-                name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db)
+                name: (on_type_error.generate_diagnostic_string)(&c, i_s.db)
                     .expect(
                         "The diagnostic string should always be set for overloads, \
                              because the name is always defined",
@@ -396,7 +392,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             for (i, callable) in self.overload.iter_functions().enumerate() {
                 let callable = Callable::new(callable, self.class);
                 let calculated_type_args = if search_init {
-                    calculate_callable_dunder_init_type_vars_and_return(
+                    calc_callable_dunder_init_type_vars(
                         i_s,
                         class.unwrap(),
                         callable,
@@ -407,7 +403,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         None,
                     )
                 } else {
-                    calculate_callable_type_vars_and_return(
+                    calc_callable_type_vars(
                         i_s,
                         callable,
                         non_union_args.clone().into_iter(),

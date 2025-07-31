@@ -467,8 +467,8 @@ impl Type {
                     return Match::new_false()
                 }
                 if matcher.is_matching_reverse() {
-                    if let Some(func_or_callable) = matcher.func_or_callable {
-                        if let Some(func_class) = func_or_callable.class() {
+                    if let Some(func_like) = matcher.func_like {
+                        if let Some(func_class) = func_like.class() {
                             return self.matches(
                                 i_s,
                                 matcher,

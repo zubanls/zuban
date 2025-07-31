@@ -27,18 +27,14 @@ and store it at:
 You might want to run `cargo install cargo-insta` and run `cargo insta` for
 reviewing some tests (especially with parsers).
 
-I usually use this to test:
+With debug enabled and other potentially useful cases:
 
-    CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test -- --nocapture
-
-or:
-
-    CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test -- --nocapture
-
-with debug enabled:
-
-    RUST_BACKTRACE=1 CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test --features zuban_debug
-    CARGO_TARGET_DIR=/tmp/cargo_target  cargo test --features zuban_debug
+    cargo test --features zuban_debug
+    cargo test --test mypylike -- --only-typecheck testGenericMethodReturnType
+    cargo test --test mypylike -- --only-language-server
+    cargo test -- --nocapture
+    RUSTFLAGS="-Z macro-backtrace" cargo test
+    CARGO_TARGET_DIR=/tmp/cargo_target cargo test
 
 Debugging:
 
@@ -82,6 +78,8 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 
 ## Progress History
 
+### Mypy-Like Tests
+
 - 2022-09-27:  1170 /  2547 (0.08s -> 14625 tests/s 44b39e90299909bb1672a0a64699c42145efda35)
 - 2023-01-20:  1622 /  2989 (0.13s -> 12476 tests/s 914aede21d716bd80b9a790c213b6d54024b8b79)
 - 2023-02-23:  1750 /  3104 (0.27s ->  6481 tests/s a8d9592a77286caa42501c69ea8b7b89c430c4a8) (note: Cache typeshed multiple times)
@@ -110,6 +108,11 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 - 2025-03-23:  8968 / 10369 (1.27s ->  7061 tests/s 4d34f7bc9aaa82ed1b64c54479a29932953a8eb8)
 - 2025-04-23:  9272 / 10582 (1.62s ->  5723 tests/s b068ac600aff0dd46bf9e97c4889339ec99fc763) (note: tests cannot reuse Python versions sometimes)
 - 2025-05-23:  9400 / 10701 (1.71s ->  5497 tests/s 4827fc01e4052bfe9fbbd0535a84906ae9159b7d)
+- 2025-07-23:  9573 / 10859 (1.89s ->  5065 tests/s 5b5c3779cde57d943d8d0f06c3ef1e0142f49da3)
+
+# Jedi-Like Tests
+
+- 2025-07-23: 1908 / 2494 77% (0.10s -> 24940 tests/s 5b5c3779cde57d943d8d0f06c3ef1e0142f49da3)
 
 ## Unsound?
 

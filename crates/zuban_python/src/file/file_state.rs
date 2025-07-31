@@ -3,44 +3,24 @@ use std::{any::Any, pin::Pin, rc::Rc};
 
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
-use vfs::FileIndex;
+use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
-    database::Database,
-    diagnostics::Diagnostic,
-    file::PythonFile,
-    inferred::Inferred,
-    lines::PositionInfos,
-    name::{Name, Names},
-    PythonProject,
+    database::Database, diagnostics::Diagnostic, file::PythonFile, inferred::Inferred,
+    lines::PositionInfos, InputPosition, PythonProject,
 };
 
-#[derive(Debug)]
-pub(crate) enum Leaf<'db> {
-    Name(Box<dyn Name<'db> + 'db>),
-    String,
-    Number,
-    Keyword(Keyword<'db>),
-    None,
-}
-
 pub trait File: std::fmt::Debug {
-    // Called each time a file is loaded
-    fn implementation<'db>(&self, _names: Names<'db>) -> Names<'db> {
-        vec![]
-    }
-    fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db>;
-    fn infer_operator_leaf<'db>(&'db self, db: &'db Database, keyword: Keyword<'db>) -> Inferred;
     fn file_index(&self) -> FileIndex;
 
-    fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
+    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<CodeIndex>;
     fn byte_to_position_infos<'db>(
         &'db self,
         db: &'db Database,
         byte: CodeIndex,
     ) -> PositionInfos<'db>;
 
-    fn file_path<'db>(&self, db: &'db Database) -> &'db str {
+    fn file_path<'db>(&self, db: &'db Database) -> &'db NormalizedPath {
         db.file_path(self.file_index())
     }
     fn code(&self) -> &str;
