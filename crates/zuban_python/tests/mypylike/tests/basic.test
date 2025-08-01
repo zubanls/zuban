@@ -1146,3 +1146,9 @@ c = 1
 a = 1;
 
 1()  # E: "int" not callable
+
+[case assert_type_list_int]
+from typing import assert_type
+def x(l: list[int]):
+    assert_type(l, list[int])
+    assert_type(l, list[str])  # E: Expression is of type "list[int]", not "list[str]"

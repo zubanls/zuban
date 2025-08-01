@@ -1003,11 +1003,8 @@ testIgnoreInsideClassDoesntAffectWhole
 # import of typeshed stubs
 testErrorFromGoogleCloud
 
-# Invalid assert_type
-testAliasExplicitNoArgsCallable
 # typing.assert_type in untyped functions
 testAssertTypeUncheckedFunction
-testAssertTypeUncheckedFunctionWithUntypedCheck
 # "Only @runtime_checkable protocols can be used with instance and class checks" in untyped functions
 testOverloadOnProtocol
 # function type mismatch when untyped
