@@ -134,13 +134,20 @@ impl Type {
                 callable(self, l)
             }
             Type::Any(cause) => callable(self, LookupDetails::any(*cause)),
-            Type::None => callable(
-                self,
-                i_s.db
+            Type::None => {
+                let mut result = i_s
+                    .db
                     .python_state
                     .none_instance()
-                    .lookup_with_details(i_s, add_issue, name, kind),
-            ),
+                    .lookup_with_details(i_s, add_issue, name, kind);
+                if name == "__class__" {
+                    // The class of None is Type[None]
+                    result
+                        .lookup
+                        .update_inferred(Inferred::from_type(Type::Type(Rc::new(Type::None))))
+                }
+                callable(self, result)
+            }
             Type::Literal(literal) => {
                 let instance = literal.as_instance(i_s.db);
                 let l = instance.lookup_with_details(i_s, add_issue, name, kind);

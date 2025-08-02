@@ -48,6 +48,13 @@ impl LookupResult {
         }
     }
 
+    pub fn update_inferred(&mut self, new: Inferred) {
+        match self {
+            Self::GotoName { inf, .. } => *inf = new,
+            _ => *self = Self::UnknownName(new),
+        }
+    }
+
     pub fn into_inferred(self) -> Inferred {
         self.into_maybe_inferred()
             .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
