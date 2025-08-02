@@ -362,3 +362,21 @@ def takes_None(x: None) -> None:
     ...
 
 assert_type(takes_None(None), None)
+
+[case generator_invalid_send_type]
+from typing import Generator
+def generator21() -> Generator[None, int, None]:
+    x: float = yield
+
+
+def generator22() -> Generator[None, str, None]:
+    yield from generator21()  # E: Incompatible send types in yield from (actual type "int", expected type "str")
+
+# contravariant matching, so object is not fine
+def generator23() -> Generator[None, object, None]:
+    yield from generator21()  # E: Incompatible send types in yield from (actual type "int", expected type "object")
+
+class IntSub(int): ...
+
+def generator24() -> Generator[None, IntSub, None]:
+    yield from generator21()

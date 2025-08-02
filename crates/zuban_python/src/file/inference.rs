@@ -721,6 +721,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 return if let Some(other) =
                     GeneratorType::from_type(i_s.db, iter_result.as_cow_type(i_s))
                 {
+                    if let Some(expected_send_type) = &generator.send_type {
+                        if let Some(got_send_type) = &other.send_type {
+                            if !expected_send_type
+                                .is_simple_sub_type_of(i_s, got_send_type)
+                                .bool()
+                            {
+                                from.add_issue(
+                                    i_s,
+                                    IssueKind::YieldFromIncompatibleSendTypes {
+                                        got: got_send_type.format_short(i_s.db),
+                                        expected: expected_send_type.format_short(i_s.db),
+                                    },
+                                );
+                            }
+                        }
+                    }
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)
                     } else if result_context.expect_not_none() {

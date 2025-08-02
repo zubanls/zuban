@@ -56,6 +56,7 @@ pub(crate) enum IssueKind {
     ReturnStmtInFunctionWithNeverReturn,
     ImplicitReturnInFunctionWithNeverReturn,
     MissingReturnStatement { code: &'static str },
+    YieldFromIncompatibleSendTypes { got: Box<str>, expected: Box<str> },
     YieldFromCannotBeApplied { to: Box<str> },
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
@@ -802,6 +803,9 @@ impl<'db> Diagnostic<'db> {
             ImplicitReturnInFunctionWithNeverReturn =>
                 "Implicit return in function which does not return".to_string(),
             MissingReturnStatement { .. } => "Missing return statement".to_string(),
+            YieldFromIncompatibleSendTypes { got, expected } => format!(
+                r#"Incompatible send types in yield from (actual type "{got}", expected type "{expected}")"#
+            ),
             YieldFromCannotBeApplied { to } => format!(r#""yield from" can't be applied to "{to}""#),
             YieldValueExpected => "Yield value expected".to_string(),
             IncompatibleAssignment{got, expected} => format!(
