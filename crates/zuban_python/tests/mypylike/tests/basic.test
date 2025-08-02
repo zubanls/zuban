@@ -1163,3 +1163,18 @@ def func2(val1: type[None]):
     assert_type(val1, type[None])
 
 func2(None.__class__)  # OK
+
+[case type_alias_type_var_execution]
+from typing import TypeVar, TypeAlias, Type
+T = TypeVar("T")
+TA7: TypeAlias = type[T]
+TA8: TypeAlias = Type[T]
+
+def func11(t1: TA7[T]) -> T:
+    return t1()
+
+def func12(t1: TA8[T]) -> T:
+    return t1()
+
+def func13(t1: type[T]) -> T:
+    return t1()

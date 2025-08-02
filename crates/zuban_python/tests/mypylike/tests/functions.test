@@ -133,12 +133,14 @@ def baz(**kwargs: str) -> None:
 [case simple_type_var_getitem_and_execute]
 from typing import TypeVar
 T = TypeVar("T")
+# It's debatable that this is allowed. specialtypes_type.py in conformance
+# tests allows this so we should as well.
 def foo(x: T, y: type[T]) -> None:
     x[1]  # E: Value of type "T" is not indexable
     x()  # E: "T" not callable
 
     y[1]  # E: Type application is only supported for generic classes
-    y()  # E: "T" not callable
+    y()
 
 [case param_spec_kwargs_getitem]
 from typing import ParamSpec, Callable

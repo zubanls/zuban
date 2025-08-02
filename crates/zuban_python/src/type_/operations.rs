@@ -1014,15 +1014,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
                 Inferred::from_type(type_.clone())
             }
-            _ => {
-                args.add_issue(
-                    i_s,
-                    IssueKind::NotCallable {
-                        type_: format!("\"{}\"", type_.format_short(i_s.db)).into(),
-                    },
-                );
-                Inferred::new_any_from_error()
-            }
+            _ => Inferred::from_type(type_.clone()),
         },
         Type::NewType(n) => {
             n.check_initialization_args(i_s, args, on_type_error);
