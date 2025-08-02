@@ -1152,3 +1152,7 @@ from typing import assert_type
 def x(l: list[int]):
     assert_type(l, list[int])
     assert_type(l, list[str])  # E: Expression is of type "list[int]", not "list[str]"
+
+[case forward_refs_binary_union_operator_disallowed]
+# flags: --no-mypy-compatible
+x: "int | str"  # E: The | operator should not be used in forward references. Use ...: 'x' | 'y' instead
