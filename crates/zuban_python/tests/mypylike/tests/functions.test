@@ -382,3 +382,14 @@ class IntSub(int): ...
 
 def generator24() -> Generator[None, IntSub, None]:
     yield from generator21()
+
+[case callable_type_subtyping]
+from typing import Callable, Any
+# From conformance tests specialtypes_type.py
+def func13(v: type):
+    x1: Callable[..., Any] = v  # OK
+    x2: Callable[[int, int], int] = v  # OK
+    x3: object = v  # OK
+    x4: type = v  # OK
+    x5: type[int] = v  # OK
+    x6: type[Any] = v  # OK

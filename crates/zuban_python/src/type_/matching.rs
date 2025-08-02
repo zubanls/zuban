@@ -15,7 +15,7 @@ use crate::{
     },
     params::matches_params,
     recoverable_error,
-    type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
+    type_::{AnyCause, CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -744,6 +744,13 @@ impl Type {
             }
             Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
                 c1.return_type.matches(i_s, matcher, t2, variance)
+            }
+            Type::Type(t2) if t2.is_any() => {
+                matcher.set_all_contained_type_vars_to_any(
+                    &Type::Callable(Rc::new(c1.clone())),
+                    AnyCause::Todo,
+                );
+                return Match::new_true();
             }
             Type::Any(_) => {
                 // Return false, because this case is handled in check_protocol_and_other_side.
