@@ -10,3 +10,8 @@ def g3(f: Callable[[object], object]) -> None: pass
 g3(f)  # E: Value of type variable "T" of "g3" cannot be "object"
 def g4(f: Callable[[int], str]) -> None: pass
 g4(f)  # E: Argument 1 to "g4" has incompatible type "Callable[[T], T]"; expected "Callable[[int], str]"
+
+[case type_var_default_nested]
+from typing import TypeVar
+Y2 = TypeVar("Y2", int, str)
+AlsoOk2 = TypeVar("AlsoOk2", int, str, bool, default=Y2)

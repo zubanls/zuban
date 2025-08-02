@@ -1051,14 +1051,16 @@ impl TypeVar {
                             }
                         }
                         TypeVarKind::Constraints(mut constraints) => {
-                            if !constraints.any(|constraint| {
-                                default
-                                    .is_sub_type_of(
-                                        i_s,
-                                        &mut Matcher::with_ignored_promotions(),
-                                        constraint,
-                                    )
-                                    .bool()
+                            if !default.unpack_type_var_constraint(i_s.db).all(|default| {
+                                constraints.any(|constraint| {
+                                    default
+                                        .is_sub_type_of(
+                                            i_s,
+                                            &mut Matcher::with_ignored_promotions(),
+                                            constraint,
+                                        )
+                                        .bool()
+                                })
                             }) {
                                 node_ref.add_issue(
                                     i_s,
@@ -1117,6 +1119,27 @@ impl TypeVar {
             s += &default.format(format_data);
         }
         s
+    }
+}
+
+impl Type {
+    fn unpack_type_var_constraint<'a>(
+        &'a self,
+        db: &'a Database,
+    ) -> impl Iterator<Item = &'a Type> {
+        let result = match self {
+            Type::TypeVar(tv) => match tv.type_var.kind(db) {
+                TypeVarKind::Unrestricted => None,
+                TypeVarKind::Bound(_) => None,
+                TypeVarKind::Constraints(constraints) => Some(constraints),
+            },
+            _ => None,
+        };
+        result
+            .is_none()
+            .then_some(self)
+            .into_iter()
+            .chain(result.into_iter().flatten())
     }
 }
 
