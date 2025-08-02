@@ -218,7 +218,7 @@ pub(crate) fn execute_assert_type<'db>(
         return error_non_positional();
     };
     let first = if matches!(result_context, ResultContext::ExpectUnused) {
-        first.infer(&mut ResultContext::Unknown)
+        first.infer(&mut ResultContext::RevealType)
     } else {
         first.infer(result_context)
     };

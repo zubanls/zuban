@@ -355,3 +355,10 @@ class C:
     a: Final = defaultdict(lambda: len(a)) # E: Name "a" is not defined
     b: ClassVar = defaultdict(lambda: len(b)) # E: Name "b" is not defined
     c: dict[str, int] = defaultdict(lambda: len(x))
+
+[case assert_type_allows_none]
+from typing import assert_type
+def takes_None(x: None) -> None:
+    ...
+
+assert_type(takes_None(None), None)
