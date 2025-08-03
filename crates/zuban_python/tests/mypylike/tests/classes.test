@@ -1886,3 +1886,21 @@ class Multi1(X, Y): ...  # E: Cannot override final attribute "x" (previously de
                          # E: Cannot override final attribute "y" (previously declared in base class "Y")  [misc]
 class Multi2(Y, X): ...  # E: Cannot override writable attribute "x" with a final one  [misc] \
                          # E: Cannot override writable attribute "y" with a final one  [misc]
+
+[case class_ambigous_write]
+from typing import TypeVar, Generic
+T = TypeVar("T")
+# from conformance tests (generics_type_erasure.py)
+class Node(Generic[T]):
+    label: T
+    def __init__(self, label: T | None = None) -> None:
+        if label is not None:
+            self.label = label
+
+Node[int].label = 1  # E: Access to generic instance variables via class is ambiguous
+Node[int].label      # E: Access to generic instance variables via class is ambiguous
+Node.label = 1       # E: Access to generic instance variables via class is ambiguous
+Node.label           # E: Access to generic instance variables via class is ambiguous
+
+n1: Node[int] = Node()
+type(n1).label       # E: Access to generic instance variables via class is ambiguous

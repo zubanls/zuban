@@ -24,8 +24,8 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{
-        add_attribute_error, specific_to_type, AttributeKind, Inferred, MroIndex, UnionValue,
-        NAME_DEF_TO_DEFAULTDICT_DIFF,
+        add_attribute_error, specific_to_type, ApplyClassDescriptorsOrigin, AttributeKind,
+        Inferred, MroIndex, UnionValue, NAME_DEF_TO_DEFAULTDICT_DIFF,
     },
     matching::{
         format_got_expected, CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent,
@@ -202,7 +202,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         c.lookup(
                             self.i_s,
                             name_def.as_code(),
-                            ClassLookupOptions::new(&|_| ()).without_descriptors(),
+                            ClassLookupOptions::new(&|_| ())
+                                .with_origin(ApplyClassDescriptorsOrigin::AssignContext),
                         )
                         .lookup
                     } else {
@@ -1702,7 +1703,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     i_s,
                     name_str,
                     ClassLookupOptions::new(&|issue| node_ref.add_issue(i_s, issue))
-                        .without_descriptors(),
+                        .with_origin(ApplyClassDescriptorsOrigin::AssignToClass),
                 );
                 if let Some(inf) = lookup_details.lookup.maybe_inferred() {
                     if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {

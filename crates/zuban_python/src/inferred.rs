@@ -1329,7 +1329,7 @@ impl<'db: 'slf, 'slf> Inferred {
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         func_class_type: &TypeOrClass,
         add_issue: impl Fn(IssueKind),
-        apply_descriptor: bool,
+        apply_descriptors: ApplyClassDescriptorsOrigin,
         as_type_type: Option<&dyn Fn() -> Type>,
     ) -> Option<(Self, AttributeKind)> {
         let mut attr_kind = AttributeKind::Attribute;
@@ -1360,7 +1360,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance
                         | Specific::AnnotationOrTypeCommentFinal) => {
                             if specific == Specific::AnnotationOrTypeCommentWithTypeVars
-                                && apply_descriptor
+                                && apply_descriptors.should_add_ambigous_class_var_access()
                             {
                                 add_issue(IssueKind::AmbigousClassVariableAccess);
                             }
@@ -1380,7 +1380,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 class,
                                 attribute_class,
                                 add_issue,
-                                apply_descriptor,
+                                apply_descriptors,
                                 &t,
                                 as_type_type,
                                 func_class_type,
@@ -1464,7 +1464,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 class,
                                 attribute_class,
                                 add_issue,
-                                apply_descriptor,
+                                apply_descriptors,
                                 t,
                                 as_type_type,
                                 func_class_type,
@@ -1479,7 +1479,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 class,
                                 attribute_class,
                                 add_issue,
-                                apply_descriptor,
+                                apply_descriptors,
                                 t,
                                 as_type_type,
                                 func_class_type,
@@ -1493,7 +1493,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 class,
                                 attribute_class,
                                 add_issue,
-                                apply_descriptor,
+                                apply_descriptors,
                                 &widened.widened,
                                 as_type_type,
                                 func_class_type,
@@ -1518,7 +1518,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         class,
                         attribute_class,
                         add_issue,
-                        apply_descriptor,
+                        apply_descriptors,
                         t,
                         as_type_type,
                         func_class_type,
@@ -1539,7 +1539,7 @@ impl<'db: 'slf, 'slf> Inferred {
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         add_issue: impl Fn(IssueKind),
-        apply_descriptor: bool,
+        apply_descriptors: ApplyClassDescriptorsOrigin,
         t: &Type,
         as_type_type: Option<&dyn Fn() -> Type>,
         func_class_type: &TypeOrClass,
@@ -1553,7 +1553,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     )))))
                 }
                 FunctionKind::Property { .. } => {
-                    if apply_descriptor {
+                    if apply_descriptors.should_apply() {
                         return Some(Some(Inferred::from_type(
                             i_s.db.python_state.property_type(),
                         )));
@@ -1598,7 +1598,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
 
         if let Type::Class(c) = t {
-            if apply_descriptor {
+            if apply_descriptors.should_apply() {
                 let class_ref = ClassNodeRef::from_link(i_s.db, c.link);
                 let inst = use_instance_with_ref(
                     class_ref,
@@ -2853,6 +2853,24 @@ pub fn specific_to_type<'db>(
 enum ApplyDescriptorsKind {
     All,
     NoBoundMethod,
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum ApplyClassDescriptorsOrigin {
+    ClassAccess,
+    AssignToClass,
+    InstanceSetattrAccess,
+    AssignContext,
+}
+
+impl ApplyClassDescriptorsOrigin {
+    pub fn should_apply(&self) -> bool {
+        matches!(self, Self::ClassAccess)
+    }
+
+    fn should_add_ambigous_class_var_access(&self) -> bool {
+        matches!(self, Self::ClassAccess | Self::AssignToClass)
+    }
 }
 
 pub fn add_attribute_error(

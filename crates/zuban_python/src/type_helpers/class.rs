@@ -20,7 +20,9 @@ use crate::{
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::{AttributeKind, FunctionOrOverload, Inferred, MroIndex},
+    inferred::{
+        ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, Inferred, MroIndex,
+    },
     matching::{
         calc_callable_dunder_init_type_vars, calc_callable_type_vars,
         calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage, ErrorStrs,
@@ -835,7 +837,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let result = if options.kind == LookupKind::Normal {
             if class_infos.class_kind == ClassKind::Enum
-                && options.use_descriptors
+                && options.apply_descriptors_origin.should_apply()
                 && name == "_ignore_"
             {
                 return LookupDetails {
@@ -860,7 +862,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 in_class,
                                 class_t,
                                 options.add_issue,
-                                options.use_descriptors,
+                                options.apply_descriptors_origin,
                                 options.as_type_type,
                             );
                             result.map(|inf| {
@@ -871,7 +873,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         match &class {
                             TypeOrClass::Class(in_class) => {
                                 if class_infos.has_slots
-                                    && options.use_descriptors
+                                    && options.apply_descriptors_origin.should_apply()
                                     && self.in_slots(i_s.db, name)
                                 {
                                     (options.add_issue)(
@@ -907,7 +909,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if matches!(
                             attr_kind,
                             AttributeKind::Attribute | AttributeKind::AnnotatedAttribute
-                        ) && options.use_descriptors
+                        ) && options.apply_descriptors_origin.should_apply()
                         {
                             // It seems like normal class lookups are different for ClassVars and
                             // other attributes in Mypy, see testMetaclassConflictingInstanceVars
@@ -2263,7 +2265,7 @@ impl NewOrInitConstructor<'_> {
 pub(crate) struct ClassLookupOptions<'x> {
     add_issue: &'x dyn Fn(IssueKind),
     kind: LookupKind,
-    use_descriptors: bool,
+    apply_descriptors_origin: ApplyClassDescriptorsOrigin,
     super_count: usize,
     avoid_metaclass: bool,
     as_type_type: Option<&'x dyn Fn() -> Type>,
@@ -2274,7 +2276,7 @@ impl<'x> ClassLookupOptions<'x> {
         Self {
             add_issue,
             kind: LookupKind::Normal,
-            use_descriptors: true,
+            apply_descriptors_origin: ApplyClassDescriptorsOrigin::ClassAccess,
             super_count: 0,
             avoid_metaclass: false,
             as_type_type: None,
@@ -2291,8 +2293,8 @@ impl<'x> ClassLookupOptions<'x> {
         self
     }
 
-    pub fn without_descriptors(mut self) -> Self {
-        self.use_descriptors = false;
+    pub fn with_origin(mut self, apply_descriptors_origin: ApplyClassDescriptorsOrigin) -> Self {
+        self.apply_descriptors_origin = apply_descriptors_origin;
         self
     }
 

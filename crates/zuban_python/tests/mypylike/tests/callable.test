@@ -564,3 +564,14 @@ c.h  # E: Invalid self argument "C" to attribute function "h" with type "Callabl
 c.i  # E: Invalid self argument "C" to attribute function "i" with type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[C, ...]], str]])], None]"
 c.j
 c.k
+
+[case class_matching_against_param_spec_with_type_var_syntax_late_bound]
+from typing import Callable, Sequence
+# From conformance tests generics_syntax_scoping.py
+def decorator2[**P, R](x: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    ...
+
+T = int(0)
+
+@decorator2(T)  # OK
+class ClassE[T](Sequence[T]): ...

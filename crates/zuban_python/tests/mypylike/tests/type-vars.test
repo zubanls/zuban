@@ -18,13 +18,13 @@ Y2 = TypeVar("Y2", int, str)
 AlsoOk2 = TypeVar("AlsoOk2", int, str, bool, default=Y2)
 
 [case type_var_syntax_nested_type_variables_not_reachable]
-# From conformance tests
+# From conformance tests generics_syntax_declarations.py
 class ClassG[V]:
     class ClassD[T: dict[str, V]]:  # E: Name "V" is not defined
         ...
 
 [case type_var_syntax_allowed_in_keyword_arg_in_class]
-# From conformance tests
+# From conformance tests generics_syntax_scoping.py
 class Foo[T]: ...
 class BaseClassC[T]:
     def __init_subclass__(cls, param: type[Foo[T]]) -> None:

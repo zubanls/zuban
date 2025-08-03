@@ -11,7 +11,9 @@ use crate::{
     file::{on_argument_type_error, ORDERING_METHODS},
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::{add_attribute_error, AttributeKind, Inferred, MroIndex},
+    inferred::{
+        add_attribute_error, ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex,
+    },
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
@@ -79,7 +81,7 @@ impl<'a> Instance<'a> {
                 i_s,
                 name_str,
                 ClassLookupOptions::new(&|issue| from.add_issue(i_s, issue))
-                    .without_descriptors()
+                    .with_origin(ApplyClassDescriptorsOrigin::InstanceSetattrAccess)
                     .with_avoid_metaclass(),
             )
             .or_else(|| {
