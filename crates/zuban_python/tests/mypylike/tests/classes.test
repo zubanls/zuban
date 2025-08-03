@@ -1904,3 +1904,9 @@ Node.label           # E: Access to generic instance variables via class is ambi
 
 n1: Node[int] = Node()
 type(n1).label       # E: Access to generic instance variables via class is ambiguous
+
+[case __init_subclass__in_abcmeta]
+from abc import ABC, ABCMeta
+class B(metaclass=type, x=1): ...  # E: Unexpected keyword argument "x" for "__init_subclass__" of "object"
+class C(ABC, x=1): ...  # E: Unexpected keyword argument "x" for "__init_subclass__" of "object"
+class D(metaclass=ABCMeta, x=1): ...  # E: Unexpected keyword argument "x" for "__init_subclass__" of "object"

@@ -1066,30 +1066,13 @@ impl Inference<'_, '_, '_> {
         let mut checked_keywords = false;
         if c.maybe_dataclass(db).is_none()
             && c.maybe_typed_dict().is_none()
-            && c.maybe_metaclass(db).is_none()
+            && c.maybe_metaclass(db).is_none_or(|m| {
+                m == db.python_state.bare_type_node_ref().as_link()
+                    || m == db.python_state.abc_meta_link()
+            })
             && !c.incomplete_mro(db)
         {
-            if let Some(init_subclass) =
-                lookup_details
-                    .lookup
-                    .into_maybe_inferred()
-                    .filter(|_| match lookup_details.class {
-                        TypeOrClass::Type(t) => true,
-                        TypeOrClass::Class(c) => {
-                            //c.node_ref != self.i_s.db.python_state.object_node_ref()
-                            true
-                        }
-                    })
-            {
-                /*
-                    if defn.info.metaclass_type and defn.info.metaclass_type.type.fullname not in (
-                        "builtins.type",
-                        "abc.ABCMeta",
-                    ):
-                        # We can't safely check situations when both __init_subclass__ and a custom
-                        # metaclass are present.
-                        return
-                */
+            if let Some(init_subclass) = lookup_details.lookup.into_maybe_inferred() {
                 let details = match arguments {
                     Some(args) => ArgumentsDetails::Node(args),
                     None => ArgumentsDetails::None,
