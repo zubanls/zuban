@@ -9,11 +9,11 @@ use config::TypeCheckerFlags;
 use parsa_python_cst::*;
 
 use super::{
-    first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, ClassNodeRef, FuncNodeRef,
-    OtherDefinitionIterator,
+    first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error,
+    ClassNodeRef, FuncNodeRef, OtherDefinitionIterator,
 };
 use crate::{
-    arguments::{CombinedArgs, KnownArgs, NoArgs},
+    arguments::{CombinedArgs, InitSubclassArgs, KnownArgs, NoArgs, SimpleArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation,
         ParentScope, Point, Specific,
@@ -856,32 +856,6 @@ impl Inference<'_, '_, '_> {
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
 
-        if let Some(arguments) = arguments {
-            for argument in arguments.iter() {
-                match argument {
-                    Argument::Positional(_) => (), // These are checked in ensure_cached_class_infos
-                    Argument::Keyword(kwarg) => {
-                        let (name, expr) = kwarg.unpack();
-                        if name.as_str() != "metaclass" {
-                            // Generate diagnostics
-                            self.infer_expression(expr);
-                            debug!(
-                                "TODO shouldn't we handle this? In \
-                                testNewAnalyzerClassKeywordsForward it's ignored..."
-                            )
-                        }
-                    }
-                    Argument::Star(starred) => {
-                        NodeRef::new(self.file, starred.index())
-                            .add_type_issue(db, IssueKind::InvalidBaseClass);
-                    }
-                    Argument::StarStar(double_starred) => {
-                        NodeRef::new(self.file, double_starred.index())
-                            .add_type_issue(db, IssueKind::InvalidBaseClass);
-                    }
-                }
-            }
-        }
         if let Some(decorated) = class.maybe_decorated() {
             // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
             let mut inferred = Inferred::from_saved_node_ref(class_node_ref.into());
@@ -898,6 +872,7 @@ impl Inference<'_, '_, '_> {
 
         let class_infos = class_node_ref.use_cached_class_infos(db);
         let c = Class::with_self_generics(db, class_node_ref);
+        self.check_class_keyword_params(c, arguments);
 
         if let Some(type_params) = type_params {
             self.check_type_params_redefinitions(c.class_storage.parent_scope, type_params);
@@ -1077,6 +1052,87 @@ impl Inference<'_, '_, '_> {
             }
             if type_params.is_none() {
                 check_protocol_type_var_variances(self.i_s, c)
+            }
+        }
+    }
+
+    fn check_class_keyword_params(&self, c: Class, arguments: Option<Arguments>) {
+        let lookup_details = c.lookup(
+            self.i_s,
+            "__init_subclass__",
+            ClassLookupOptions::new(&|_| todo!()).with_ignore_self(),
+        );
+        let db = self.i_s.db;
+        let mut checked_keywords = false;
+        if c.maybe_dataclass(db).is_none()
+            && c.maybe_typed_dict().is_none()
+            && c.maybe_metaclass(db).is_none()
+            && !c.incomplete_mro(db)
+        {
+            if let Some(init_subclass) =
+                lookup_details
+                    .lookup
+                    .into_maybe_inferred()
+                    .filter(|_| match lookup_details.class {
+                        TypeOrClass::Type(t) => true,
+                        TypeOrClass::Class(c) => {
+                            //c.node_ref != self.i_s.db.python_state.object_node_ref()
+                            true
+                        }
+                    })
+            {
+                /*
+                    if defn.info.metaclass_type and defn.info.metaclass_type.type.fullname not in (
+                        "builtins.type",
+                        "abc.ABCMeta",
+                    ):
+                        # We can't safely check situations when both __init_subclass__ and a custom
+                        # metaclass are present.
+                        return
+                */
+                let details = match arguments {
+                    Some(args) => ArgumentsDetails::Node(args),
+                    None => ArgumentsDetails::None,
+                };
+                let args = SimpleArgs::new(*self.i_s, self.file, c.node_index, details);
+                init_subclass.execute_with_details(
+                    self.i_s,
+                    &InitSubclassArgs(args),
+                    &mut ResultContext::ExpectUnused,
+                    OnTypeError::new(&on_argument_type_error),
+                );
+                checked_keywords = true;
+            }
+        }
+
+        if let Some(arguments) = arguments {
+            for argument in arguments.iter() {
+                match argument {
+                    Argument::Positional(_) => (), // These are checked in ensure_cached_class_infos
+                    Argument::Keyword(kwarg) => {
+                        if !checked_keywords {
+                            let (name, expr) = kwarg.unpack();
+                            if name.as_str() != "metaclass" {
+                                // Generate diagnostics
+                                self.infer_expression(expr);
+                                debug!(
+                                    "TODO shouldn't we handle this? In \
+                                testNewAnalyzerClassKeywordsForward it's ignored..."
+                                )
+                            }
+                        }
+                    }
+                    Argument::Star(starred) => {
+                        NodeRef::new(self.file, starred.index())
+                            .add_type_issue(db, IssueKind::InvalidBaseClass);
+                    }
+                    Argument::StarStar(double_starred) => {
+                        if !checked_keywords {
+                            NodeRef::new(self.file, double_starred.index())
+                                .add_type_issue(db, IssueKind::InvalidBaseClass);
+                        }
+                    }
+                }
             }
         }
     }

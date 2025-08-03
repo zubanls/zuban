@@ -12,6 +12,22 @@ def g4(f: Callable[[int], str]) -> None: pass
 g4(f)  # E: Argument 1 to "g4" has incompatible type "Callable[[T], T]"; expected "Callable[[int], str]"
 
 [case type_var_default_nested]
+# From conformance tests
 from typing import TypeVar
 Y2 = TypeVar("Y2", int, str)
 AlsoOk2 = TypeVar("AlsoOk2", int, str, bool, default=Y2)
+
+[case type_var_syntax_nested_type_variables_not_reachable]
+# From conformance tests
+class ClassG[V]:
+    class ClassD[T: dict[str, V]]:  # E: Name "V" is not defined
+        ...
+
+[case type_var_syntax_allowed_in_keyword_arg_in_class]
+# From conformance tests
+class Foo[T]: ...
+class BaseClassC[T]:
+    def __init_subclass__(cls, param: type[Foo[T]]) -> None:
+        ...
+class ClassC[T](BaseClassC[T], param=Foo[T]):
+    ...

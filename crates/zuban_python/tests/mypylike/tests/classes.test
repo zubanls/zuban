@@ -131,7 +131,7 @@ def check_bound3(x: Type[V]) -> None:
 from typing import Type, Any
 foo: dict[str, Type[Any]]
 
-class Bar(**foo): ...  # E: Invalid base class "**foo"
+class Bar(**foo): ...
 
 [case staticmethod_and_classmethod]
 # This is tested in testClassMethodAndStaticMethod, but only one side, so test

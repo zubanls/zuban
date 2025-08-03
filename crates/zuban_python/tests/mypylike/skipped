@@ -11,6 +11,9 @@ goto_doc_contains_stdlib_compiled
 docs_alias
 docs_property
 
+type_var_syntax_nested_type_variables_not_reachable
+type_var_syntax_allowed_in_keyword_arg_in_class
+
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef
@@ -813,12 +816,6 @@ testDecoratedConstructorsBad
 testTypeEquivalentTypeAnyEdgeCase
 
 # __init_subclass__
-testOverride__init_subclass__WithDifferentSignature
-testInitSubclassWrongType
-testInitSubclassTooFewArgs
-testInitSubclassTooFewArgs2
-testInitSubclassWithImports
-testTooManyArgsForObject
 testNoClassKeywordsForNamedTuple
 testTypedDictWithClassLevelKeywords
 

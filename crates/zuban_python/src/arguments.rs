@@ -135,6 +135,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
                         None
                     }
                 },
+                ignore_metaclass_keyword: false,
             },
             ArgumentsDetails::Comprehension(comprehension) => {
                 ArgIteratorBase::Comprehension(self.i_s.with_mode(mode), self.file, comprehension)
@@ -689,6 +690,7 @@ enum ArgIteratorBase<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
         iterator: std::iter::Enumerate<ArgsIterator<'a>>,
+        ignore_metaclass_keyword: bool,
         kwargs_before_star_args: Option<Vec<CSTArgument<'a>>>,
     },
     Comprehension(InferenceState<'db, 'a>, &'a PythonFile, Comprehension<'a>),
@@ -789,6 +791,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                 file,
                 iterator,
                 kwargs_before_star_args,
+                ignore_metaclass_keyword,
             } => {
                 for (i, arg) in iterator.by_ref() {
                     match arg {
@@ -802,6 +805,9 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                         }
                         CSTArgument::Keyword(kwarg) => {
                             let (name, expression) = kwarg.unpack();
+                            if *ignore_metaclass_keyword && name.as_code() == "metaclass" {
+                                continue;
+                            }
                             if let Some(kwargs_before_star_args) = kwargs_before_star_args {
                                 kwargs_before_star_args.push(arg);
                             } else {
@@ -1271,6 +1277,50 @@ impl<'db> Args<'db> for NoArgs<'_> {
 
     fn as_node_ref_internal(&self) -> Option<NodeRef> {
         Some(self.node_ref)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct InitSubclassArgs<'db, 'a>(pub SimpleArgs<'db, 'a>);
+
+impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
+    fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
+        let mut iterator = self.0.iter(mode);
+        for arg in iterator.clone() {
+            if !arg.is_keyword_argument() {
+                iterator.next();
+            }
+        }
+        if let ArgIteratorBase::Iterator {
+            ref mut ignore_metaclass_keyword,
+            ..
+        } = &mut iterator.current
+        {
+            // 'metaclass' keyword is consumed by the rest of the type machinery,
+            // and is never passed to __init_subclass__ implementations
+            *ignore_metaclass_keyword = true
+        }
+        iterator
+    }
+
+    fn calculate_diagnostics_for_any_callable(&self) {
+        self.0.calculate_diagnostics_for_any_callable()
+    }
+
+    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+        self.0.as_node_ref_internal()
+    }
+
+    fn points_backup(&self) -> Option<PointsBackup> {
+        self.0.points_backup()
+    }
+
+    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
+        self.0.reset_points_from_backup(backup)
+    }
+
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs> {
+        None
     }
 }
 

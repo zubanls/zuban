@@ -1667,6 +1667,7 @@ impl<'db> NameBinder<'db> {
     }
 }
 
+#[derive(Debug)]
 struct AnnotationName<'db> {
     name: Name<'db>,
     // The name foo in `foo: bar`
