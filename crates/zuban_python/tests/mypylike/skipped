@@ -16,8 +16,6 @@ type_var_syntax_nested_type_variables_not_reachable
 type_var_syntax_allowed_in_keyword_arg_in_class
 class_matching_against_param_spec_with_type_var_syntax_late_bound
 
-class_ambigous_write
-
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef

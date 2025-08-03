@@ -1607,7 +1607,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let base = base.as_cow_type(i_s);
         let node_ref = NodeRef::new(self.file, primary_target.index());
         let name_str = name_def.as_code();
-        let mut save_narrowed = true;
+        let save_narrowed = Cell::new(true);
         for t in base.iter_with_unpacked_unions(i_s.db) {
             let property_is_read_only = |class_name| {
                 from.add_issue(
@@ -1620,15 +1620,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             };
             match t {
                 Type::Class(c) => {
-                    save_narrowed &= c
-                        .class(i_s.db)
-                        .instance()
-                        .check_set_descriptor_and_return_should_narrow(
-                            i_s,
-                            node_ref,
-                            name_def.name(),
-                            value,
-                        );
+                    save_narrowed.set(
+                        c.class(i_s.db)
+                            .instance()
+                            .check_set_descriptor_and_return_should_narrow(
+                                i_s,
+                                node_ref,
+                                name_def.name(),
+                                value,
+                            )
+                            & save_narrowed.get(),
+                    );
                     continue;
                 }
                 Type::Dataclass(d) => {
@@ -1648,21 +1650,23 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             _ => false,
                         };
                         if !is_unknown {
-                            save_narrowed = false;
+                            save_narrowed.set(false);
                             property_is_read_only(d.class(i_s.db).name().into())
                         }
                     }
-                    save_narrowed &= inst.check_set_descriptor_and_return_should_narrow(
-                        i_s,
-                        node_ref,
-                        name_def.name(),
-                        value,
+                    save_narrowed.set(
+                        inst.check_set_descriptor_and_return_should_narrow(
+                            i_s,
+                            node_ref,
+                            name_def.name(),
+                            value,
+                        ) & save_narrowed.get(),
                     );
                     continue;
                 }
                 Type::NamedTuple(nt) => {
                     if nt.search_param(i_s.db, name_def.as_code()).is_some() {
-                        save_narrowed = false;
+                        save_narrowed.set(false);
                         property_is_read_only(nt.name(i_s.db).into());
                         continue;
                     }
@@ -1674,7 +1678,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             .iter()
                             .any(|member| member.name(i_s.db) == name_str) =>
                     {
-                        save_narrowed = false;
+                        save_narrowed.set(false);
                         from.add_issue(
                             i_s,
                             IssueKind::CannotAssignToFinal {
@@ -1687,7 +1691,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     _ => (),
                 },
                 Type::Super { .. } => {
-                    save_narrowed = false;
+                    save_narrowed.set(false);
                     from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
                     continue;
                 }
@@ -1702,8 +1706,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let lookup_details = c.lookup(
                     i_s,
                     name_str,
-                    ClassLookupOptions::new(&|issue| node_ref.add_issue(i_s, issue))
-                        .with_origin(ApplyClassDescriptorsOrigin::AssignToClass),
+                    ClassLookupOptions::new(&|issue| {
+                        save_narrowed.set(false);
+                        node_ref.add_issue(i_s, issue)
+                    })
+                    .with_origin(ApplyClassDescriptorsOrigin::AssignToClass),
                 );
                 if let Some(inf) = lookup_details.lookup.maybe_inferred() {
                     if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
@@ -1738,21 +1745,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 );
                 declaration_t =
                     Cow::Owned(declaration_t.into_owned().avoid_implicit_literal(i_s.db));
-                save_narrowed = false;
+                save_narrowed.set(false);
             }
             declaration_t.error_if_not_matches(
                 i_s,
                 value,
                 |issue| from.add_issue(i_s, issue),
                 |error_types| {
-                    save_narrowed = false;
+                    save_narrowed.set(false);
                     let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     Some(IssueKind::IncompatibleAssignment { got, expected })
                 },
             );
         }
         if matches!(assign_kind, AssignKind::Normal)
-            && save_narrowed
+            && save_narrowed.get()
             // It seems like on explicit Any Mypy does not narrow
             // TODO it should not narrow on all Any declaration, not just base
             && !matches!(base.as_ref(), Type::Any(AnyCause::Explicit))
