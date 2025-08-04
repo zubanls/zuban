@@ -27,7 +27,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         expr: Expression,
         total: bool,
     ) -> TypedDictMember {
-        let calculated = self.compute_type(expr);
+        let calculated = self.compute_type(expr).remove_annotated();
         let mut required = total;
         let mut read_only = false;
         let type_ = match calculated {
@@ -64,7 +64,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unknown(UnknownCause::ReportedIssue)
         } else {
             let mut modifiers = TypedDictFieldModifiers::default();
-            let t = match self.compute_slice_type_content(first) {
+            let t = match self.compute_slice_type_content(first).remove_annotated() {
                 TypeContent::TypedDictMemberModifiers(m, t) => {
                     modifiers = m;
                     t

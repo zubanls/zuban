@@ -289,6 +289,13 @@ enum TypeContent<'db, 'a> {
 
 impl TypeContent<'_, '_> {
     const UNKNOWN_REPORTED: Self = Self::Unknown(UnknownCause::ReportedIssue);
+
+    fn remove_annotated(self) -> Self {
+        match self {
+            Self::Annotated(inner) => inner.remove_annotated(),
+            slf => slf,
+        }
+    }
 }
 
 enum ClassGetItemResult<'db> {
