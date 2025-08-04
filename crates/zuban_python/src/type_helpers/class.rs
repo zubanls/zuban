@@ -1529,13 +1529,15 @@ impl<'db: 'a, 'a> Class<'a> {
                 .get()
                 .map(|t| t.as_ref())
             {
-                Some(Type::Dataclass(_)) => {
+                Some(Type::Dataclass(d)) => {
                     if let AttributeKind::AnnotatedAttribute = attr_kind {
-                        attr_kind = AttributeKind::Property {
-                            setter_type: None,
-                            is_final: false,
-                            is_abstract: true,
-                        };
+                        if d.options.frozen == Some(true) {
+                            attr_kind = AttributeKind::Property {
+                                setter_type: None,
+                                is_final: false,
+                                is_abstract: true,
+                            };
+                        }
                     }
                 }
                 Some(Type::TypedDict(td)) => match &td.generics {

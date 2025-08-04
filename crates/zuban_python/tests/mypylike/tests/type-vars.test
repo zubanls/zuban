@@ -31,3 +31,18 @@ class BaseClassC[T]:
         ...
 class ClassC[T](BaseClassC[T], param=Foo[T]):
     ...
+
+[case dataclass_invariant_type_var]
+from dataclasses import dataclass
+@dataclass
+class MutableDataclass[T]:
+    x: T
+
+
+a: MutableDataclass[float] = MutableDataclass[int](1)  # E: Incompatible types in assignment (expression has type "MutableDataclass[int]", variable has type "MutableDataclass[float]")
+
+@dataclass(frozen=True)
+class FrozenDataclass[T]:
+    x: T
+
+b: FrozenDataclass[float] = FrozenDataclass[int](1)
