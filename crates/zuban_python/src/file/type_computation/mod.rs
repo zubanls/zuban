@@ -548,7 +548,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let from = NodeRef::new(self.file, starred.index());
                 self.cache_annotation_or_type_comment_detailed(
                     param_annotation.index(),
-                    |slf| slf.compute_type_expression_part(starred.expression_part()),
+                    |slf| {
+                        slf.compute_type_expression_part(starred.expression_part())
+                            .remove_annotated()
+                    },
                     from,
                     false,
                     Some(&|slf, tc| {
@@ -720,7 +723,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_guard = None;
         self.cache_annotation_or_type_comment_detailed(
             annotation.index(),
-            |slf| match slf.compute_type(expr) {
+            |slf| match slf.compute_type(expr).remove_annotated() {
                 TypeContent::TypeGuardInfo(guard) => {
                     type_guard = Some(guard);
                     TypeContent::Type(self.name_resolution.i_s.db.python_state.bool_type())
@@ -743,7 +746,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) {
         self.cache_annotation_or_type_comment_detailed(
             annotation_index,
-            |slf| slf.compute_type(expr),
+            |slf| slf.compute_type(expr).remove_annotated(),
             NodeRef::new(self.file, expr.index()),
             is_implicit_optional,
             map_type_callback,
@@ -2488,7 +2491,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let params = self.calculate_callable_params(iterator.next().unwrap(), false, false);
             let mut guard = None;
             let return_type = if let Some(s) = iterator.next() {
-                match self.compute_slice_type_content(s) {
+                match self.compute_slice_type_content(s).remove_annotated() {
                     TypeContent::TypeGuardInfo(g) => {
                         guard = Some(g);
                         db.python_state.bool_type()
@@ -2589,7 +2592,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() > 0 {
             return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
-        let t = match self.compute_slice_type_content(content) {
+        let t = match self.compute_slice_type_content(content).remove_annotated() {
             TypeContent::SpecialCase(Specific::BuiltinsType | Specific::TypingType) => {
                 self.i_s.db.python_state.bare_type_type()
             }
@@ -2655,7 +2658,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() != 0 {
             self.add_issue(slice_type.as_node_ref(), IssueKind::FinalTooManyArguments);
         }
-        match self.compute_slice_type_content(first) {
+        match self.compute_slice_type_content(first).remove_annotated() {
             TypeContent::ClassVar(_) => {
                 slice_type
                     .as_node_ref()
@@ -2997,7 +3000,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
         for s in slice_type.iter() {
-            let result = self.compute_slice_type_content(s);
+            let result = self.compute_slice_type_content(s).remove_annotated();
             let unpacked_type_var_tuple = matches!(
                 &result,
                 TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(t))
@@ -4365,7 +4368,9 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             }
         }
         let s = self.slices.next()?;
-        let t = type_computation.compute_slice_type_content(s);
+        let t = type_computation
+            .compute_slice_type_content(s)
+            .remove_annotated();
         match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
             TuplePart::Type(t) => Some((s.as_node_ref(), t)),
             TuplePart::TupleUnpack(u) => {
@@ -4392,7 +4397,9 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         match result {
             Ok(t) => Some((from, t)),
             Err(s) => {
-                let t = type_computation.compute_slice_type_content(s);
+                let t = type_computation
+                    .compute_slice_type_content(s)
+                    .remove_annotated();
                 match type_computation.convert_slice_type_or_tuple_unpack(t, from) {
                     TuplePart::Type(t) => Some((from, t)),
                     TuplePart::TupleUnpack(u) => {
@@ -4568,7 +4575,9 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     break;
                 }
             }
-            let t = type_computation.compute_slice_type_content(s);
+            let t = type_computation
+                .compute_slice_type_content(s)
+                .remove_annotated();
             if allow_empty_tuple
                 && matches!(
                     t,
