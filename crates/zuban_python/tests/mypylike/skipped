@@ -11,8 +11,6 @@ goto_doc_contains_stdlib_compiled
 docs_alias
 docs_property
 
-testTypedDictAnnotatedWithSpecialForms
-
 # conformance tests: scoping
 type_var_syntax_nested_type_variables_not_reachable
 type_var_syntax_allowed_in_keyword_arg_in_class

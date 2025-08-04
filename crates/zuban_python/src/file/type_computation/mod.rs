@@ -548,10 +548,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let from = NodeRef::new(self.file, starred.index());
                 self.cache_annotation_or_type_comment_detailed(
                     param_annotation.index(),
-                    |slf| {
-                        slf.compute_type_expression_part(starred.expression_part())
-                            .remove_annotated()
-                    },
+                    |slf| slf.compute_type_expression_part(starred.expression_part()),
                     from,
                     false,
                     Some(&|slf, tc| {
@@ -723,7 +720,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_guard = None;
         self.cache_annotation_or_type_comment_detailed(
             annotation.index(),
-            |slf| match slf.compute_type(expr).remove_annotated() {
+            |slf| match slf.compute_type(expr) {
                 TypeContent::TypeGuardInfo(guard) => {
                     type_guard = Some(guard);
                     TypeContent::Type(self.name_resolution.i_s.db.python_state.bool_type())
@@ -746,7 +743,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) {
         self.cache_annotation_or_type_comment_detailed(
             annotation_index,
-            |slf| slf.compute_type(expr).remove_annotated(),
+            |slf| slf.compute_type(expr),
             NodeRef::new(self.file, expr.index()),
             is_implicit_optional,
             map_type_callback,
@@ -781,155 +778,164 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
         let mut type_ = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
-            None => match type_ {
-                TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
-                    if !is_implicit_optional =>
-                {
-                    debug_assert!(type_storage_node_ref.point().calculated());
-                    // It might already have been calculated (because of recursions), in that case
-                    // just don't set it. We only ever want to use this case when everything is
-                    // clean (no recursions, type vars, etc.)
-                    if !annotation_node_ref.point().calculated() {
-                        annotation_node_ref.set_point(Point::new_specific(
-                            Specific::AnnotationOrTypeCommentSimpleClassInstance,
-                            Locality::Todo,
-                        ));
-                    }
-                    return;
-                }
-                TypeContent::SpecialCase(Specific::TypingClassVar)
-                    if !matches!(
-                        self.origin,
-                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
-                    ) || i_s.current_class().is_none()
-                        || i_s.current_function().is_some() =>
-                {
-                    self.add_issue(
-                        type_storage_node_ref,
-                        IssueKind::ClassVarOnlyInAssignmentsInClass,
-                    );
-                    Type::ERROR
-                }
-                TypeContent::SpecialCase(
-                    specific @ (Specific::TypingTypeAlias
-                    | Specific::TypingFinal
-                    | Specific::TypingClassVar),
-                ) if matches!(
-                    self.origin,
-                    TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
-                ) =>
-                {
-                    debug_assert!(!is_implicit_optional);
-                    let specific = match specific {
-                        Specific::TypingTypeAlias => {
-                            let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
-                                is_initialized,
-                                type_comment,
-                            } = self.origin
-                            else {
-                                unreachable!()
-                            };
-                            if !is_initialized {
-                                // e.g. x: TypeAlias
-                                self.add_issue(
-                                    type_storage_node_ref,
-                                    IssueKind::TypeAliasRightSideNeeded,
-                                );
-                                None
-                            } else if type_comment {
-                                // Simply ignore stuff like `x = int | str # type: TypeAlias` for now
-                                self.add_issue(
-                                    type_storage_node_ref,
-                                    IssueKind::TypeAliasInTypeCommentNotSupported,
-                                );
-                                None
-                            } else {
-                                Some(Specific::AnnotationTypeAlias)
-                            }
+            None => {
+                match &type_ {
+                    TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
+                        if !is_implicit_optional =>
+                    {
+                        debug_assert!(type_storage_node_ref.point().calculated());
+                        // It might already have been calculated (because of recursions), in that case
+                        // just don't set it. We only ever want to use this case when everything is
+                        // clean (no recursions, type vars, etc.)
+                        if !annotation_node_ref.point().calculated() {
+                            annotation_node_ref.set_point(Point::new_specific(
+                                Specific::AnnotationOrTypeCommentSimpleClassInstance,
+                                Locality::Todo,
+                            ));
                         }
-                        Specific::TypingFinal => {
-                            self.add_issue_if_final_attribute_in_wrong_place(type_storage_node_ref);
-                            Some(Specific::AnnotationOrTypeCommentFinal)
-                        }
-                        Specific::TypingClassVar => Some(Specific::AnnotationOrTypeCommentClassVar),
-                        _ => unreachable!(),
-                    };
-                    if let Some(specific) = specific {
-                        annotation_node_ref
-                            .set_point(Point::new_specific(specific, Locality::Todo));
                         return;
-                    } else {
-                        Type::ERROR
                     }
+                    _ => (),
                 }
-                TypeContent::ClassVar(t) => {
-                    is_class_var = true;
-                    if !matches!(
-                        self.origin,
-                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
-                    ) {
+                match type_.remove_annotated() {
+                    TypeContent::SpecialCase(Specific::TypingClassVar)
+                        if !matches!(
+                            self.origin,
+                            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                        ) || i_s.current_class().is_none()
+                            || i_s.current_function().is_some() =>
+                    {
                         self.add_issue(
                             type_storage_node_ref,
                             IssueKind::ClassVarOnlyInAssignmentsInClass,
                         );
                         Type::ERROR
-                    } else if self.has_type_vars_or_self {
-                        let i_s = self.i_s;
-                        let class = i_s.current_class().unwrap();
-                        if uses_class_generics(class, &t) {
-                            self.add_issue(
-                                type_storage_node_ref,
-                                IssueKind::ClassVarCannotContainTypeVariables,
-                            );
-                            Type::ERROR
-                        } else if !class.type_vars(i_s).is_empty() && t.has_self_type(i_s.db) {
-                            self.add_issue(
-                                type_storage_node_ref,
-                                IssueKind::ClassVarCannotContainSelfTypeInGenericClass,
-                            );
-                            t
-                        } else {
-                            t
-                        }
-                    } else {
-                        t
                     }
-                }
-                TypeContent::Final(t) => {
-                    if let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
-                        is_initialized,
-                        ..
-                    } = self.origin
+                    TypeContent::SpecialCase(
+                        specific @ (Specific::TypingTypeAlias
+                        | Specific::TypingFinal
+                        | Specific::TypingClassVar),
+                    ) if matches!(
+                        self.origin,
+                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                    ) =>
                     {
-                        is_final = true;
-                        if !is_initialized
-                            && !self.file.is_stub()
-                            && !self.final_is_assigned_in_init(annotation_node_ref)
-                        {
-                            self.add_issue(
-                                type_storage_node_ref,
-                                IssueKind::FinalNameMustBeInitializedWithValue,
-                            );
+                        debug_assert!(!is_implicit_optional);
+                        let specific = match specific {
+                            Specific::TypingTypeAlias => {
+                                let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                                    is_initialized,
+                                    type_comment,
+                                } = self.origin
+                                else {
+                                    unreachable!()
+                                };
+                                if !is_initialized {
+                                    // e.g. x: TypeAlias
+                                    self.add_issue(
+                                        type_storage_node_ref,
+                                        IssueKind::TypeAliasRightSideNeeded,
+                                    );
+                                    None
+                                } else if type_comment {
+                                    // Simply ignore stuff like `x = int | str # type: TypeAlias` for now
+                                    self.add_issue(
+                                        type_storage_node_ref,
+                                        IssueKind::TypeAliasInTypeCommentNotSupported,
+                                    );
+                                    None
+                                } else {
+                                    Some(Specific::AnnotationTypeAlias)
+                                }
+                            }
+                            Specific::TypingFinal => {
+                                self.add_issue_if_final_attribute_in_wrong_place(
+                                    type_storage_node_ref,
+                                );
+                                Some(Specific::AnnotationOrTypeCommentFinal)
+                            }
+                            Specific::TypingClassVar => {
+                                Some(Specific::AnnotationOrTypeCommentClassVar)
+                            }
+                            _ => unreachable!(),
+                        };
+                        if let Some(specific) = specific {
+                            annotation_node_ref
+                                .set_point(Point::new_specific(specific, Locality::Todo));
+                            return;
+                        } else {
+                            Type::ERROR
                         }
-                        self.add_issue_if_final_attribute_in_wrong_place(type_storage_node_ref);
-                        if i_s
-                            .current_class()
-                            .is_some_and(|class| uses_class_generics(class, &t))
-                        {
+                    }
+                    TypeContent::ClassVar(t) => {
+                        is_class_var = true;
+                        if !matches!(
+                            self.origin,
+                            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                        ) {
                             self.add_issue(
                                 type_storage_node_ref,
-                                IssueKind::FinalInClassBodyCannotDependOnTypeVariables,
+                                IssueKind::ClassVarOnlyInAssignmentsInClass,
                             );
                             Type::ERROR
+                        } else if self.has_type_vars_or_self {
+                            let i_s = self.i_s;
+                            let class = i_s.current_class().unwrap();
+                            if uses_class_generics(class, &t) {
+                                self.add_issue(
+                                    type_storage_node_ref,
+                                    IssueKind::ClassVarCannotContainTypeVariables,
+                                );
+                                Type::ERROR
+                            } else if !class.type_vars(i_s).is_empty() && t.has_self_type(i_s.db) {
+                                self.add_issue(
+                                    type_storage_node_ref,
+                                    IssueKind::ClassVarCannotContainSelfTypeInGenericClass,
+                                );
+                                t
+                            } else {
+                                t
+                            }
                         } else {
                             t
                         }
-                    } else {
-                        self.as_type(TypeContent::Final(t), type_storage_node_ref)
                     }
+                    TypeContent::Final(t) => {
+                        if let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                            is_initialized,
+                            ..
+                        } = self.origin
+                        {
+                            is_final = true;
+                            if !is_initialized
+                                && !self.file.is_stub()
+                                && !self.final_is_assigned_in_init(annotation_node_ref)
+                            {
+                                self.add_issue(
+                                    type_storage_node_ref,
+                                    IssueKind::FinalNameMustBeInitializedWithValue,
+                                );
+                            }
+                            self.add_issue_if_final_attribute_in_wrong_place(type_storage_node_ref);
+                            if i_s
+                                .current_class()
+                                .is_some_and(|class| uses_class_generics(class, &t))
+                            {
+                                self.add_issue(
+                                    type_storage_node_ref,
+                                    IssueKind::FinalInClassBodyCannotDependOnTypeVariables,
+                                );
+                                Type::ERROR
+                            } else {
+                                t
+                            }
+                        } else {
+                            self.as_type(TypeContent::Final(t), type_storage_node_ref)
+                        }
+                    }
+                    type_ => self.as_type(type_, type_storage_node_ref),
                 }
-                _ => self.as_type(type_, type_storage_node_ref),
-            },
+            }
         };
         if is_implicit_optional {
             type_.make_optional()
