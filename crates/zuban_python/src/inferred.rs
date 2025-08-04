@@ -2136,7 +2136,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         }
                                     }
                                 }
-                                if alias.application_allowed() {
+                                if alias.application_allowed(i_s.db) {
                                     return execute_type_of_type(
                                         i_s,
                                         args,

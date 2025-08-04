@@ -25,3 +25,22 @@ class F(Generic[Unpack[Ts], T1, T2]): pass
 F[int, str]
 F[int, str, float]
 F[int, str, float, bool]
+
+[case type_var_tuple_aliases]
+# flags: --no-mypy-compatible
+# From conformance tests (generics_typevartuple_specialization.py)
+from typing import TypeVarTuple, TypeVar
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+Ts1 = TypeVarTuple("Ts1")
+Ts2 = TypeVarTuple("Ts2")
+
+IntTupleVar = tuple[int, *Ts1]  # OK
+IntFloatTupleVar = IntTupleVar[float, *Ts2]  # OK
+IntFloatsTupleVar = IntTupleVar[*tuple[float, ...]]  # OK
+
+IntTupleGeneric = tuple[int, T]
+
+IntTupleGeneric[str]  # OK
+IntTupleGeneric[*Ts]  # E: Unpack is only valid in a variadic position  # E: TypeVarTuple "Ts" is unbound
+IntTupleGeneric[*tuple[float, ...]]  # E: Unpack is only valid in a variadic position

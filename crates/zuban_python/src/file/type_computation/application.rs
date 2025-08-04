@@ -138,7 +138,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             result_context,
             ResultContext::AssignmentNewDefinition { .. }
         );
-        if !from_alias_definition && !alias.application_allowed() {
+        if !from_alias_definition && !alias.application_allowed(self.i_s.db) {
             slice_type
                 .as_node_ref()
                 .add_issue(self.i_s, IssueKind::OnlyClassTypeApplication);

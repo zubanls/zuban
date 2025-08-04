@@ -823,12 +823,12 @@ impl TypeAlias {
         NodeRef::from_link(db, self.name).as_code()
     }
 
-    pub fn application_allowed(&self) -> bool {
-        self.is_valid()
-            && matches!(
-                self.type_if_valid(),
-                Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_)
-            )
+    pub fn application_allowed(&self, db: &Database) -> bool {
+        self.is_valid() && {
+            let t = self.type_if_valid();
+            matches!(t, Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_))
+                || !db.project.settings.mypy_compatible && matches!(t, Type::Tuple(_))
+        }
     }
 
     pub fn as_type_and_set_type_vars_any(&self, db: &Database) -> Type {
