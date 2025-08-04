@@ -130,6 +130,7 @@ impl Project {
         select_files::with_relevant_files(&self.db, |file| {
             checked_files += 1;
             let mut issues = file.diagnostics(&self.db).into_vec();
+            issues.sort_by_key(|issue| issue.start_position().byte_position);
             if !issues.is_empty() {
                 files_with_errors += 1;
                 all_diagnostics.append(&mut issues)
