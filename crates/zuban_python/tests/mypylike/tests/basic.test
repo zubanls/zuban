@@ -1178,3 +1178,9 @@ def func12(t1: TA8[T]) -> T:
 
 def func13(t1: type[T]) -> T:
     return t1()
+
+[case assert_type_equals_implicit_literals]
+from typing import assert_type
+def func3[*Ts, T](*args: * tuple[int, *Ts, T]) -> tuple[T, *Ts]: ...
+
+assert_type(func3(1, "", 3j, 3.4), tuple[float, str, complex])
