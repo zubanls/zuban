@@ -15,9 +15,9 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        first_defined_name_of_multi_def, use_cached_param_annotation_type, FuncNodeRef, FuncParent,
-        OtherDefinitionIterator, PythonFile, RedefinitionResult, TypeVarCallbackReturn,
-        FLOW_ANALYSIS,
+        first_defined_name_of_multi_def, on_argument_type_error, use_cached_param_annotation_type,
+        FuncNodeRef, FuncParent, OtherDefinitionIterator, PythonFile, RedefinitionResult,
+        TypeVarCallbackReturn, FLOW_ANALYSIS,
     },
     format_data::FormatData,
     inference_state::{InferenceState, Mode},
@@ -856,7 +856,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         );
         for (decorator_index, inferred_dec) in inferred_decs {
             let nr = NodeRef::new(self.node_ref.file, decorator_index);
-            inferred = inferred_dec.execute(i_s, &KnownArgs::new(&inferred, nr));
+            inferred = inferred_dec.execute_with_details(
+                i_s,
+                &KnownArgs::new(&inferred, nr),
+                &mut ResultContext::ExpectUnused,
+                OnTypeError::new(&on_argument_type_error),
+            );
         }
         if is_abstract && is_final {
             self.add_issue_onto_start_including_decorator(

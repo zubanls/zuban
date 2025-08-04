@@ -393,3 +393,15 @@ def func13(v: type):
     x4: type = v  # OK
     x5: type[int] = v  # OK
     x6: type[Any] = v  # OK
+
+[case decorator_that_returns_none_is_ok]
+from typing import Concatenate, Callable, ParamSpec
+P = ParamSpec("P")
+# From conformance tests (generics_paramspec_semantics.py)
+def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None:
+    ...
+
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]"
+def one(x: str) -> int: ...
+@expects_int_first  # OK
+def four(*args: int) -> int: ...
