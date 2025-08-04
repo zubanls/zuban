@@ -1910,3 +1910,8 @@ from abc import ABC, ABCMeta
 class B(metaclass=type, x=1): ...  # E: Unexpected keyword argument "x" for "__init_subclass__" of "object"
 class C(ABC, x=1): ...  # E: Unexpected keyword argument "x" for "__init_subclass__" of "object"
 class D(metaclass=ABCMeta, x=1): ...  # E: Unexpected keyword argument "x" for "__init_subclass__" of "object"
+
+[case classvar_without_type]
+from typing import ClassVar
+class C:
+    x: ClassVar  # E: Type in ClassVar[...] can only be omitted if there is an initializer

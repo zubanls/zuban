@@ -646,7 +646,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown)
                     .as_type(self.i_s)
             } else {
-                annotation_ref.add_issue(self.i_s, IssueKind::FinalWithoutInitializerAndType);
+                annotation_ref.add_issue(
+                    self.i_s,
+                    IssueKind::WithoutInitializerAndType {
+                        kind: match annotation_ref.point().maybe_specific() {
+                            Some(Specific::AnnotationOrTypeCommentClassVar) => "ClassVar",
+                            Some(Specific::AnnotationOrTypeCommentFinal) => "Final",
+                            _ => {
+                                recoverable_error!("Got unknown initializer {annotation_ref:?}");
+                                "<unknown>"
+                            }
+                        },
+                    },
+                );
                 Type::ERROR
             };
             if annotation_ref.point().specific() == Specific::AnnotationOrTypeCommentClassVar {

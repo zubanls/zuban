@@ -186,7 +186,7 @@ pub(crate) enum IssueKind {
     FinalTooManyArguments,
     FinalNameMustBeInitializedWithValue,
     FinalInWrongPlace,
-    FinalWithoutInitializerAndType,
+    WithoutInitializerAndType { kind: &'static str },
     FinalInClassBodyCannotDependOnTypeVariables,
     FinalAndClassVarUsedBoth,
     FinalCanOnlyBeUsedInMethods,
@@ -1334,8 +1334,9 @@ impl<'db> Diagnostic<'db> {
             FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),
             FinalInWrongPlace =>
                 "Final can be only used as an outermost qualifier in a variable annotation".to_string(),
-            FinalWithoutInitializerAndType =>
-                "Type in Final[...] can only be omitted if there is an initializer".to_string(),
+            WithoutInitializerAndType { kind } => format!(
+                "Type in {kind}[...] can only be omitted if there is an initializer"
+            ),
             FinalInClassBodyCannotDependOnTypeVariables =>
                 "Final name declared in class body cannot depend on type variables".to_string(),
             FinalAndClassVarUsedBoth =>
