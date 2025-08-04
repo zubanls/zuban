@@ -731,6 +731,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         alias.set_invalid();
                     }
                     _ => {
+                        let is_annotated = matches!(tc, TypeContent::Annotated(_));
                         let type_ = comp.as_type(tc, node_ref);
                         let is_recursive_alias = comp.is_recursive_alias;
                         let mut had_error = false;
@@ -765,9 +766,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             had_error = true;
                         }
                         if had_error {
-                            alias.set_valid(Type::ERROR, false);
+                            alias.set_valid(Type::ERROR, false, is_annotated);
                         } else {
-                            alias.set_valid(type_, is_recursive_alias);
+                            alias.set_valid(type_, is_recursive_alias, is_annotated);
                         }
                         if is_recursive_alias {
                             // Since the type aliases are not finished at the time of the type
@@ -806,9 +807,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 alias.type_vars.clone(),
                             )),
                             comp.is_recursive_alias,
+                            false,
                         );
                     }
-                    None => alias.set_valid(Type::ERROR, false),
+                    None => alias.set_valid(Type::ERROR, false, false),
                 }
             }
             CalculatingAliasType::NamedTuple(args) => {
@@ -826,18 +828,23 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 params,
                             )),
                             comp.is_recursive_alias,
+                            false,
                         );
                     }
-                    None => alias.set_valid(Type::ERROR, false),
+                    None => alias.set_valid(Type::ERROR, false, false),
                 }
             }
             CalculatingAliasType::NewType(a) => match comp.compute_new_type_assignment(
                 &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
             ) {
                 Some(new_type) => {
-                    alias.set_valid(Type::NewType(Rc::new(new_type)), comp.is_recursive_alias);
+                    alias.set_valid(
+                        Type::NewType(Rc::new(new_type)),
+                        comp.is_recursive_alias,
+                        false,
+                    );
                 }
-                None => alias.set_valid(Type::ERROR, false),
+                None => alias.set_valid(Type::ERROR, false, false),
             },
             CalculatingAliasType::TypeAliasType(_) => unreachable!(), // Remapped previously
         };
@@ -1239,7 +1246,7 @@ fn check_for_and_replace_type_type_in_finished_alias(
             alias.name,
             alias.from_type_syntax,
         );
-        alias.set_valid(Type::ERROR, false);
+        alias.set_valid(Type::ERROR, false, false);
         save_alias(alias_origin, alias)
     }
 }

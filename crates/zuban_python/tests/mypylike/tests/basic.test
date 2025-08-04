@@ -1184,3 +1184,29 @@ from typing import assert_type
 def func3[*Ts, T](*args: * tuple[int, *Ts, T]) -> tuple[T, *Ts]: ...
 
 assert_type(func3(1, "", 3j, 3.4), tuple[float, str, complex])
+
+[case annotated_incompatibility_with_type]
+from typing import TypeAlias, Annotated, Any, TypeVar
+T = TypeVar("T")
+# Copied from conformance tests (qualifiers_annotated.py)
+# > Annotated is not type compatible with type or type[T]
+SmallInt: TypeAlias = Annotated[int, ""]
+
+not_type1: type[Any] = Annotated[int, ""]  # E: Incompatible types in assignment (expression has type "_SpecialForm", variable has type "Type[Any]")
+not_type2: type[Any] = SmallInt  # E: Incompatible types in assignment (expression has type "_SpecialForm", variable has type "Type[Any]")
+
+
+def func4(x: type[T]) -> T:
+    return x()
+
+
+func4(Annotated[str, ""])  # E: Argument 1 to "func4" has incompatible type "_SpecialForm"; expected "Type[Never]"
+func4(SmallInt)  # E: Argument 1 to "func4" has incompatible type "_SpecialForm"; expected "Type[Never]"
+
+
+# > An attempt to call Annotated (whether parameterized or not) should be
+# > treated as a type error by type checkers.
+
+Annotated()  # E: "_SpecialForm" not callable
+Annotated[int, ""]()  # E: "_SpecialForm" not callable
+SmallInt(1)  # E: "<typing special form>" not callable

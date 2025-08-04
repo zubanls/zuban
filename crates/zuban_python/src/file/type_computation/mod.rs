@@ -277,6 +277,7 @@ enum TypeContent<'db, 'a> {
     TypeGuardInfo(TypeGuardInfo),
     TypedDictFieldModifier(TypedDictFieldModifier),
     CallableParam(CallableParam),
+    Annotated(Box<TypeContent<'db, 'a>>),
     ParamSpecAttr {
         usage: ParamSpecUsage,
         name: &'a str,
@@ -1259,6 +1260,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ))));
             }
             TypeContent::TypeGuardInfo(_) => return Some(self.i_s.db.python_state.bool_type()),
+            TypeContent::Annotated(t) => return self.as_type_or_error(*t, node_ref),
             TypeContent::Unknown(_) => (),
             TypeContent::ClassVar(_) => {
                 self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
@@ -2915,7 +2917,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::UNKNOWN_REPORTED
         } else {
             // Annotated[..., ...] can simply be ignored and the first part can be used.
-            self.compute_slice_type_content(first)
+            TypeContent::Annotated(Box::new(self.compute_slice_type_content(first)))
         }
     }
 

@@ -746,6 +746,7 @@ struct CalculatedTypeAlias {
     // a type alias that has `is_recursive` is different.
     type_: Rc<Type>,
     is_recursive: bool,
+    is_annotated: bool, // e.g. X: TypeAlias = Annotated[int, "something"]
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -791,6 +792,13 @@ impl TypeAlias {
         !matches!(self.state.get().unwrap(), TypeAliasState::Invalid)
     }
 
+    pub fn is_annotated(&self) -> bool {
+        self.state.get().is_some_and(|s| match s {
+            TypeAliasState::Valid(a) => a.is_annotated,
+            TypeAliasState::Invalid => false,
+        })
+    }
+
     pub fn type_if_valid(&self) -> &Type {
         let Some(state) = self.state.get() else {
             recoverable_error!("Alias type access while still calculating should not happen");
@@ -806,11 +814,12 @@ impl TypeAlias {
         self.state.get().is_none()
     }
 
-    pub fn set_valid(&self, type_: Type, is_recursive: bool) {
+    pub fn set_valid(&self, type_: Type, is_recursive: bool, is_annotated: bool) {
         self.state
             .set(TypeAliasState::Valid(CalculatedTypeAlias {
                 type_: Rc::new(type_),
                 is_recursive,
+                is_annotated,
             }))
             .unwrap()
     }
