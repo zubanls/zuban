@@ -172,7 +172,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 Inferred::new_any_from_error()
             }
             Specific::TypingTuple => {
-                compute_type_application!(
+                return compute_type_application!(
                     self,
                     slice_type,
                     result_context,
@@ -236,6 +236,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 )
             }
             _ => unreachable!("{:?}", specific),
-        }
+        };
+        Inferred::from_type(self.i_s.db.python_state.typing_special_form_type())
     }
 }

@@ -1219,3 +1219,56 @@ class ClassA:
     b: Annotated[ClassVar[int], ""] = 1
     c: Final[Annotated[int, ""]] = 1
     d: Annotated[Final[int], ""] = 1
+
+[case valid_type_alias_implicit_from_conformance_tests]
+# from conformance tests (aliases_implicit.py)
+from typing import TypeVar, ParamSpec, Callable, Union, Any, assert_type, Concatenate
+TFloat = TypeVar("TFloat", bound=float)
+S = TypeVar("S")
+T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R")
+
+GoodTypeAlias1 = Union[int, str]
+GoodTypeAlias2 = int | None
+GoodTypeAlias3 = list[GoodTypeAlias2]
+GoodTypeAlias4 = list[T]
+GoodTypeAlias5 = tuple[T, ...] | list[T]
+GoodTypeAlias6 = tuple[int, int, S, T]
+GoodTypeAlias7 = Callable[..., int]
+GoodTypeAlias8 = Callable[[int, T], T]
+GoodTypeAlias9 = Callable[Concatenate[int, P], R]
+GoodTypeAlias10 = Any
+GoodTypeAlias11 = GoodTypeAlias1 | GoodTypeAlias2 | list[GoodTypeAlias4[int]]
+GoodTypeAlias12 = list[TFloat]
+GoodTypeAlias13 = Callable[P, None]
+
+
+def good_type_aliases(
+    p1: GoodTypeAlias1,
+    p2: GoodTypeAlias2,
+    p3: GoodTypeAlias3,
+    p4: GoodTypeAlias4[int],
+    p5: GoodTypeAlias5[str],
+    p6: GoodTypeAlias6[int, str],
+    p7: GoodTypeAlias7,
+    p8: GoodTypeAlias8[str],
+    p9: GoodTypeAlias9[[str, str], None],
+    p10: GoodTypeAlias10,
+    p11: GoodTypeAlias11,
+    p12: GoodTypeAlias12[bool],
+    p13: GoodTypeAlias13
+):
+    assert_type(p1, int | str)
+    assert_type(p2, int | None)
+    assert_type(p3, list[int | None])
+    assert_type(p4, list[int])
+    assert_type(p5, tuple[str, ...] | list[str])
+    assert_type(p6, tuple[int, int, int, str])
+    assert_type(p7, Callable[..., int])
+    assert_type(p8, Callable[[int, str], str])
+    assert_type(p9, Callable[[int, str, str], None])
+    assert_type(p10, Any)
+    assert_type(p11, int | str | None | list[list[int]])
+    assert_type(p12, list[bool])
+    assert_type(p13, Callable[..., None])

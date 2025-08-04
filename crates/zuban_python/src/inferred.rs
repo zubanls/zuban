@@ -2217,7 +2217,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         assignment_definition,
                     } = result_context
                     {
-                        // In these casees it's pretty obvious that we are defining a TypeAlias.
+                        // In these cases it's pretty obvious that we are defining a TypeAlias.
                         // Therefore simply compute it as such.
                         let node_ref = NodeRef::from_link(i_s.db, *assignment_definition);
                         let assignment = node_ref.expect_assignment();
@@ -2226,7 +2226,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             .name_resolution_for_types(i_s)
                             .compute_explicit_type_assignment(assignment);
                     }
-                    let result = slice_type
+                    return slice_type
                         .file
                         .name_resolution_for_types(i_s)
                         .compute_type_application_on_typing_class(
@@ -2234,10 +2234,6 @@ impl<'db: 'slf, 'slf> Inferred {
                             *slice_type,
                             result_context,
                         );
-                    if matches!(specific, Specific::TypingTuple) {
-                        return result;
-                    }
-                    return Inferred::from_type(i_s.db.python_state.typing_special_form_type());
                 }
                 _ => {
                     let node_ref = NodeRef::from_link(i_s.db, link);
