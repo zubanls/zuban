@@ -15,16 +15,22 @@ use crate::{
     type_helpers::Class,
 };
 
-macro_rules! compute_type_application {
-    ($self:ident, $slice_type:expr, $result_context:expr, $method:ident $args:tt) => {{
+macro_rules! maybe_compute_new_type_alias_definition {
+    ($self:ident, $result_context:expr) => {{
         match $result_context {
-            ResultContext::AssignmentNewDefinition { assignment_definition } => {
+            ResultContext::AssignmentNewDefinition {
+                assignment_definition,
+            } => {
                 let node_ref = NodeRef::from_link($self.i_s.db, *assignment_definition);
                 let assignment = node_ref.expect_assignment();
                 return $self.compute_explicit_type_assignment(assignment);
             }
             _ => (),
         };
+    }};
+}
+macro_rules! compute_type_application {
+    ($self:ident, $slice_type:expr, $result_context:expr, $method:ident $args:tt) => {{
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
                 return result
@@ -78,6 +84,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {
+        maybe_compute_new_type_alias_definition!(self, result_context);
         compute_type_application!(
             self,
             slice_type,
@@ -92,6 +99,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {
+        maybe_compute_new_type_alias_definition!(self, result_context);
         compute_type_application!(
             self,
             slice_type,
@@ -106,6 +114,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {
+        maybe_compute_new_type_alias_definition!(self, result_context);
         compute_type_application!(
             self,
             slice_type,
@@ -120,6 +129,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {
+        maybe_compute_new_type_alias_definition!(self, result_context);
         compute_type_application!(
             self,
             slice_type,
@@ -134,22 +144,22 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {
-        let from_alias_definition = matches!(
-            result_context,
-            ResultContext::AssignmentNewDefinition { .. }
-        );
-        if !from_alias_definition && !alias.application_allowed(self.i_s.db) {
-            slice_type
-                .as_node_ref()
-                .add_issue(self.i_s, IssueKind::OnlyClassTypeApplication);
-            return Inferred::new_any_from_error();
-        }
-        let result = compute_type_application!(
-            self,
-            slice_type,
-            result_context,
-            compute_type_get_item_on_alias(alias, slice_type)
-        );
+        let check = || {
+            maybe_compute_new_type_alias_definition!(self, result_context);
+            if !alias.application_allowed(self.i_s.db) {
+                slice_type
+                    .as_node_ref()
+                    .add_issue(self.i_s, IssueKind::OnlyClassTypeApplication);
+                return Inferred::new_any_from_error();
+            }
+            compute_type_application!(
+                self,
+                slice_type,
+                result_context,
+                compute_type_get_item_on_alias(alias, slice_type)
+            )
+        };
+        let result = check();
         if alias.from_type_syntax {
             Inferred::from_type(self.i_s.db.python_state.type_alias_type_type())
         } else {
@@ -163,6 +173,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {
+        maybe_compute_new_type_alias_definition!(self, result_context);
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 self.add_issue(

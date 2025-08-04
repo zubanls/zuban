@@ -2213,19 +2213,6 @@ impl<'db: 'slf, 'slf> Inferred {
                     | Specific::TypingCallable
                     | Specific::MypyExtensionsFlexibleAlias),
                 ) => {
-                    if let ResultContext::AssignmentNewDefinition {
-                        assignment_definition,
-                    } = result_context
-                    {
-                        // In these cases it's pretty obvious that we are defining a TypeAlias.
-                        // Therefore simply compute it as such.
-                        let node_ref = NodeRef::from_link(i_s.db, *assignment_definition);
-                        let assignment = node_ref.expect_assignment();
-                        return node_ref
-                            .file
-                            .name_resolution_for_types(i_s)
-                            .compute_explicit_type_assignment(assignment);
-                    }
                     return slice_type
                         .file
                         .name_resolution_for_types(i_s)
