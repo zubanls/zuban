@@ -575,3 +575,15 @@ T = int(0)
 
 @decorator2(T)  # OK
 class ClassE[T](Sequence[T]): ...
+
+[case assert_type_callable_with_paramspec]
+from typing import Callable, ParamSpec, assert_type
+
+P = ParamSpec("P")
+def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]:
+    ...
+def returns_int(a: str, b: bool, /) -> int:
+    ...
+
+f1 = changes_return_type_to_str(returns_int)
+assert_type(f1, Callable[[str, bool], str])

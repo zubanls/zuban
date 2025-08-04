@@ -256,7 +256,7 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
             .iter()
             .zip(td2.members(db).iter())
             .all(|(m1, m2)| {
-                m1.name == m2.name
+                m1.name.as_str(db) == m2.name.as_str(db)
                     && m1.required == m2.required
                     && m1.read_only == m2.read_only
                     && eq(&m1.type_, &m2.type_)
@@ -273,15 +273,24 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
     let params_eq = |p1: &CallableParams, p2: &CallableParams| match (p1, p2) {
         (CallableParams::Simple(ps1), CallableParams::Simple(ps2)) => {
             ps1.iter().zip(ps2.iter()).all(|(p1, p2)| {
-                p1.name == p2.name
-                    && p1.has_default == p2.has_default
+                p1.has_default == p2.has_default
                     && match (&p1.type_, &p2.type_) {
-                        (ParamType::PositionalOnly(t1), ParamType::PositionalOnly(t2))
-                        | (
+                        (ParamType::PositionalOnly(t1), ParamType::PositionalOnly(t2)) => {
+                            eq(t1, t2)
+                        }
+                        (
                             ParamType::PositionalOrKeyword(t1),
                             ParamType::PositionalOrKeyword(t2),
                         )
-                        | (ParamType::KeywordOnly(t1), ParamType::KeywordOnly(t2)) => eq(t1, t2),
+                        | (ParamType::KeywordOnly(t1), ParamType::KeywordOnly(t2)) => {
+                            eq(t1, t2)
+                                && match (p1.name.as_ref(), p2.name.as_ref()) {
+                                    (Some(n1), Some(n2)) => n1.as_str(db) == n2.as_str(db),
+                                    // Should these cases even happen?
+                                    (None, None) => true,
+                                    (_, _) => false,
+                                }
+                        }
                         (ParamType::Star(pt1), ParamType::Star(pt2)) => match (pt1, pt2) {
                             (StarParamType::ArbitraryLen(t1), StarParamType::ArbitraryLen(t2)) => {
                                 eq(t1, t2)
