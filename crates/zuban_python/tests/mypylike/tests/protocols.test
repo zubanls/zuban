@@ -313,3 +313,29 @@ var: type[Proto]
 var = Proto  # E: Can only assign concrete classes to a variable of type "Type[Proto]"
 var = Concrete  # OK
 var().meth()  # OK
+
+[case protocols_frozen_dataclass_assignment]
+# Copied from conformance tests (protocols_definition.py)
+from typing import Protocol, Sequence
+from dataclasses import dataclass
+class Template6(Protocol):
+    @property
+    def val1(self) -> Sequence[float]:
+        ...
+
+    @val1.setter
+    def val1(self, val: Sequence[float]) -> None:
+        ...
+
+@dataclass(frozen=False)
+class Concrete6_Good3:
+    val1: Sequence[float] = [0]
+
+@dataclass(frozen=True)
+class Concrete6_Bad3:
+    val1: Sequence[float] = [0]
+
+
+v6_good3: Template6 = Concrete6_Good3()  # OK
+v6_bad3: Template6 = Concrete6_Bad3()  # E: Incompatible types in assignment (expression has type "Concrete6_Bad3", variable has type "Template6") \
+                                       # N: Protocol member Template6.val1 expected settable variable, got read-only attribute

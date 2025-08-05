@@ -139,10 +139,8 @@ fn lib_path(settings: &Settings) -> Option<String> {
                     tracing::warn!("Wanted to canonicalize {path_of_exe:?} but got error: {err:?}");
                     /*
                     fn iter_dir_paths_that_start_with<'a>(dir: &'a Path, starts_with: &'a str) -> impl Iterator<Item=PathBuf> + 'a {
-                        dbg!(dir.read_dir());
                         dir.read_dir().ok().map(|iterator| {
                             iterator.filter_map(move |e| {
-                                dbg!(&e);
                                 match e {
                                     Ok(entry) if entry.file_name().to_str()?.starts_with(starts_with) => {
                                         Some(entry.path().to_path_buf())

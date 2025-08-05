@@ -1074,6 +1074,25 @@ pub(crate) fn lookup_on_dataclass<'a>(
     add_issue: impl Fn(IssueKind),
     name: &str,
 ) -> LookupDetails<'a> {
+    if self_.options.frozen == Some(true) {
+        if let Some(param) = dataclass_init_func(self_, i_s.db)
+            .expect_simple_params()
+            .iter()
+            .find(|p| p.name.as_ref().unwrap().as_str(i_s.db) == name)
+        {
+            return LookupDetails::new(
+                Type::Dataclass(self_.clone()),
+                LookupResult::UnknownName(Inferred::from_type(
+                    param.type_.maybe_type().unwrap().clone(),
+                )),
+                AttributeKind::Property {
+                    setter_type: None,
+                    is_final: false,
+                    is_abstract: true,
+                },
+            );
+        }
+    }
     let (result, attr_kind) = lookup_symbol_internal(self_.clone(), i_s, name);
     if result.is_some() {
         return LookupDetails::new(Type::Dataclass(self_.clone()), result, attr_kind);
