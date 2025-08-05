@@ -15,7 +15,9 @@ use crate::{
     },
     params::matches_params,
     recoverable_error,
-    type_::{AnyCause, CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
+    type_::{
+        AnyCause, CallableLike, CallableParams, LiteralKind, TupleArgs, TupleUnpack, Variance,
+    },
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -214,6 +216,13 @@ impl Type {
             Self::Intersection(intersection1) => Match::all(intersection1.iter_entries(), |t| {
                 t.matches(i_s, matcher, value_type, variance)
             }),
+            Self::LiteralString => match value_type {
+                Self::Literal(l) => match &l.kind {
+                    LiteralKind::String(_) => Match::new_true(),
+                    _ => Match::new_false(),
+                },
+                _ => Match::new_false(),
+            },
         }
     }
 

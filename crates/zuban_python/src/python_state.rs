@@ -1070,6 +1070,7 @@ impl PythonState {
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
+    node_ref_to_class!(pub str_class, str_node_ref);
     node_ref_to_class!(bool, bool_node_ref);
     node_ref_to_class!(str, str_node_ref);
     node_ref_to_class!(bytes, bytes_node_ref);

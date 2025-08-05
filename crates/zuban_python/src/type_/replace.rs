@@ -255,7 +255,8 @@ impl Type {
             | Type::CustomBehavior(_)
             | Type::DataclassTransformObj(_)
             | Type::ParamSpecArgs(_)
-            | Type::ParamSpecKwargs(_) => None,
+            | Type::ParamSpecKwargs(_)
+            | Type::LiteralString => None,
         }
     }
 }

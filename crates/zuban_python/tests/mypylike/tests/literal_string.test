@@ -1,0 +1,25 @@
+[case literal_string_definitions]
+# Copied from conformance tests (literals_literalstring.py)
+from typing import LiteralString, TypeVar, Literal
+variable_annotation: LiteralString
+
+def my_function(literal_string: LiteralString) -> LiteralString:
+    ...
+
+class Foo:
+    my_attribute: LiteralString = ""
+
+type_argument: list[LiteralString]
+
+T = TypeVar("T", bound=LiteralString)
+
+bad_union: Literal["hello", LiteralString]  # E: Parameter 2 of Literal[...] is invalid
+bad_nesting: Literal[LiteralString]  # E: Parameter 1 of Literal[...] is invalid
+
+[case literal_string_simple_matching]
+# flags: --no-mypy-compatible
+from typing import Literal, LiteralString
+def func1(a: Literal["one"], b: Literal["two"], c: str):
+    x1: LiteralString = a
+    x2: Literal[""] = b  # E: Incompatible types in assignment (expression has type "Literal['two']", variable has type "Literal['']")
+    x3: LiteralString = c  # E: Incompatible types in assignment (expression has type "str", variable has type "LiteralString")

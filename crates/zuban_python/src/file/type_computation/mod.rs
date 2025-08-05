@@ -1111,10 +1111,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return Some(db.python_state.type_of_any.clone());
                 }
                 Specific::TypingLiteralString => {
-                    return Some(Type::new_class(
-                        db.python_state.str_node_ref().as_link(),
-                        ClassGenerics::None,
-                    ))
+                    return Some(if db.project.settings.mypy_compatible {
+                        Type::new_class(
+                            db.python_state.str_node_ref().as_link(),
+                            ClassGenerics::None,
+                        )
+                    } else {
+                        Type::LiteralString
+                    })
                 }
                 Specific::TypingLiteral => {
                     self.add_issue(

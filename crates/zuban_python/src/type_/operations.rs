@@ -461,6 +461,15 @@ impl Type {
                 );
             }
             Type::DataclassTransformObj(_) => callable(self, LookupDetails::none()),
+            Type::LiteralString => {
+                let l = i_s
+                    .db
+                    .python_state
+                    .str_class()
+                    .instance()
+                    .lookup_with_details(i_s, add_issue, name, kind);
+                callable(self, l)
+            }
         }
     }
 

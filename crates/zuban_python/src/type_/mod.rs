@@ -472,6 +472,7 @@ pub(crate) enum Type {
     DataclassTransformObj(DataclassTransformObj),
     Self_,
     None,
+    LiteralString,
     Any(AnyCause),
     Never(NeverCause),
 }
@@ -998,6 +999,7 @@ impl Type {
             Self::Super { .. } => "super".into(),
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
             Self::DataclassTransformObj(_) => "TODO dataclass_transform".into(),
+            Self::LiteralString => "LiteralString".into(),
         }
     }
 
@@ -1034,7 +1036,8 @@ impl Type {
             | Self::DataclassTransformObj(_)
             | Self::Enum(_)
             | Self::EnumMember(_)
-            | Self::NewType(_) => (),
+            | Self::NewType(_)
+            | Self::LiteralString => (),
             Self::RecursiveType(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
                     generics.search_type_vars(found_type_var)
@@ -1133,7 +1136,8 @@ impl Type {
             | Self::DataclassTransformObj(_)
             | Self::EnumMember(_)
             | Self::Super { .. }
-            | Self::Namespace(_) => false,
+            | Self::Namespace(_)
+            | Self::LiteralString => false,
             Self::Dataclass(d) => search_in_generic_class(&d.class),
             Self::TypedDict(d) => d.has_any_internal(i_s, already_checked),
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
