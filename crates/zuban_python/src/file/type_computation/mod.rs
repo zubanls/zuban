@@ -1596,7 +1596,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 .then(|| GenericsList::generics_from_vec(generics)),
                         ))))
                     }
-                    TypeContent::InvalidVariable(t) => {
+                    TypeContent::InvalidVariable(
+                        t @ (InvalidVariableType::Variable(_)
+                        | InvalidVariableType::Function { .. }),
+                    ) => {
                         t.add_issue(
                             self.i_s.db,
                             |t| self.add_issue(s.as_node_ref(), t),

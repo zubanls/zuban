@@ -652,3 +652,12 @@ P = ParamSpec("P")
 
 x: ParamSpec = P
 y: int = P  # E: Incompatible types in assignment (expression has type "ParamSpec", variable has type "int")
+
+[case invalid_type_when_inferred]
+X = [int][0]
+Y = 3[0]  # E: Value of type "int" is not indexable
+def f(
+    x: X,  # E: Variable "__main__.X" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    y: Y  # E: Variable "__main__.Y" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+):
+    reveal_type(x)  # N: Revealed type is "Any"
