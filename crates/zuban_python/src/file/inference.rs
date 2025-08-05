@@ -2372,7 +2372,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         debug!("Found a BitwiseOr expression that looks like a type alias");
                         let node_ref = NodeRef::from_link(self.i_s.db, *assignment_definition);
                         let assignment = node_ref.expect_assignment();
-                        return self.compute_explicit_type_assignment(assignment);
+                        if let Some((_, None, _)) =
+                            assignment.maybe_simple_type_expression_assignment()
+                        {
+                            return self.compute_explicit_type_assignment(assignment);
+                        }
                     }
                 }
                 self.infer_operation(or.as_operation())

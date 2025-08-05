@@ -1227,6 +1227,16 @@ T = TypeVar("T")
 alias1 = tuple[T, ...] | list[T] | str
 alias2 = str | tuple[T, ...] | list[T]
 
+non_alias1, non_alias2 = list[T] | str  # E: "UnionType" object is not iterable \
+                                        # E: Type variable "__main__.T" is unbound \
+                                        # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+                                        # N: (Hint: Use "T" in function signature to bind "T" inside a function)
+non_alias3: type = list[T] | str  # E: Incompatible types in assignment (expression has type "UnionType", variable has type "Type[Any]") \
+                                  # E: Type variable "__main__.T" is unbound \
+                                  # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
+                                  # N: (Hint: Use "T" in function signature to bind "T" inside a function)
+
+
 [case valid_type_alias_implicit_from_conformance_tests]
 # from conformance tests (aliases_implicit.py)
 from typing import TypeVar, ParamSpec, Callable, Union, Any, assert_type, Concatenate
