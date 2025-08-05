@@ -286,3 +286,30 @@ def check(foo: Foo[int], foo2: Foo[str], bar: Bar[int], bar2: Bar[str]) -> Proto
                     # N:         def foo(self: Proto) -> int \
                     # N:     Got: \
                     # N:         def foo(self: Bar[str]) -> str
+
+[case protocols_concrete_vs_abstract_subtyping]
+# Copied from conformance tests (protocols_class_objects.py)
+# > Variables and parameters annotated with Type[Proto] accept only concrete
+# (non-protocol) subtypes of Proto.
+
+from abc import abstractmethod
+from typing import Any, ClassVar, Protocol
+
+class Proto(Protocol):
+    @abstractmethod
+    def meth(self) -> int: ...
+
+class Concrete:
+    def meth(self) -> int:
+        return 42
+
+def fun(cls: type[Proto]) -> int:
+    return cls().meth()  # OK
+
+fun(Proto)  # E: Only concrete class can be given where "Type[Proto]" is expected
+fun(Concrete)  # OK
+
+var: type[Proto]
+var = Proto  # E: 
+var = Concrete  # OK
+var().meth()  # OK
