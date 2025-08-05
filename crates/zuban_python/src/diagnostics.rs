@@ -133,6 +133,7 @@ pub(crate) enum IssueKind {
     OnlyClassTypeApplication,
     InvalidBaseClass,
     TypeAliasSyntaxInBaseClassIsInvalid,
+    TypeAliasSyntaxInFunction,
     CannotInheritFromFinalClass { class_name: Box<str> },
     FinalClassHasAbstractAttributes { class_name: Box<str>, attributes: Box<str> },
     FinalMethodIsAbstract { name: Box<str> },
@@ -1230,6 +1231,8 @@ impl<'db> Diagnostic<'db> {
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
             TypeAliasSyntaxInBaseClassIsInvalid =>
                 "Type alias defined using \"type\" statement not valid as base class".to_string(),
+            TypeAliasSyntaxInFunction =>
+                "Type alias not allowed in function".to_string(),
             CannotInheritFromFinalClass { class_name } => format!(
                 r#"Cannot inherit from final class "{class_name}""#
             ),

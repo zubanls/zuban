@@ -1297,3 +1297,9 @@ class X(int): ...
 x: float = X()
 y: float = True
 z: float = bool()
+
+[case alias_disallowed_in_function]
+# flags: --no-mypy-compatible
+# Copied from conformance tests (aliases_type_statement.py)
+def func3() -> None:
+    type BadTypeAlias15 = int  # E: Type alias not allowed in function

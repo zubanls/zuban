@@ -874,6 +874,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         type_alias: parsa_python_cst::TypeAlias,
     ) -> Lookup<'file, 'file> {
+        if self.i_s.current_function().is_some() && !self.i_s.db.project.settings.mypy_compatible {
+            self.add_issue(type_alias.index(), IssueKind::TypeAliasSyntaxInFunction)
+        }
         let (name_def, type_params, expr) = type_alias.unpack();
         let alias_type_ref = type_alias_type_node_ref(self.file, type_alias);
         if alias_type_ref.point().calculated() {
