@@ -1167,13 +1167,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
         let check_assign_to_known_definition =
             |first_name_link, original: &Inferred, base_class| {
+                let declaration_t = original.as_cow_type(i_s);
                 if original.add_issue_if_final_assignment(
                     i_s,
                     from,
                     name_def.as_code(),
                     lookup_self_attribute_in_bases.is_some(),
                 ) {
-                    let declaration_t = original.as_cow_type(i_s);
                     self.check_assignment_type(
                         value,
                         &declaration_t.into_owned().avoid_implicit_literal(i_s.db),
@@ -1183,9 +1183,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     );
                     return;
                 }
+                if declaration_t.type_of_protocol_to_type_of_protocol_assignment(i_s.db, value) {
+                    from.add_issue(
+                        self.i_s,
+                        IssueKind::OnlyConcreteClassAllowedWhereTypeExpectedForVariable {
+                            type_: declaration_t.format_short(i_s.db),
+                        },
+                    );
+                    return;
+                }
 
                 if matches!(assign_kind, AssignKind::Annotation { .. }) {
-                    let declaration_t = original.as_cow_type(i_s);
                     self.check_assignment_type(
                         value,
                         &declaration_t,
@@ -1194,7 +1202,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         assign_kind,
                     );
                 } else {
-                    let declaration_t = original.as_cow_type(i_s);
                     narrow(first_name_link, &declaration_t)
                 }
             };

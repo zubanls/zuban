@@ -310,6 +310,6 @@ fun(Proto)  # E: Only concrete class can be given where "Type[Proto]" is expecte
 fun(Concrete)  # OK
 
 var: type[Proto]
-var = Proto  # E: 
+var = Proto  # E: Can only assign concrete classes to a variable of type "Type[Proto]"
 var = Concrete  # OK
 var().meth()  # OK

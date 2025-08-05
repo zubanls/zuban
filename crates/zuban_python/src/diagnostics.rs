@@ -252,6 +252,7 @@ pub(crate) enum IssueKind {
     CannotInstantiateProtocol { name: Box<str> },
     CannotInstantiateAbstractClass{ name: Box<str>, abstract_attributes: Box<[PointLink]> },
     OnlyConcreteClassAllowedWhereTypeExpected { type_: Box<str> },
+    OnlyConcreteClassAllowedWhereTypeExpectedForVariable { type_: Box<str> },
     UnpackRequiresExactlyOneArgument,
     UnpackOnlyValidInVariadicPosition,
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
@@ -1498,6 +1499,9 @@ impl<'db> Diagnostic<'db> {
             }
             OnlyConcreteClassAllowedWhereTypeExpected { type_ } => format!(
                 r#"Only concrete class can be given where "{type_}" is expected"#
+            ),
+            OnlyConcreteClassAllowedWhereTypeExpectedForVariable  { type_ } => format!(
+                r#"Can only assign concrete classes to a variable of type "{type_}""#
             ),
             UnpackRequiresExactlyOneArgument =>
                 "Unpack[...] requires exactly one type argument".to_string(),

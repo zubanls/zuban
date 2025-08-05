@@ -16,7 +16,6 @@ use crate::{
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::ClassNodeRef,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{maybe_class_usage, ErrorTypes, GotType},
@@ -817,25 +816,10 @@ pub(crate) fn match_arguments_against_params<
                     };
                 }
             }
-            if let Type::Type(type_) = expected.as_ref() {
-                if let Some(cls) = type_.maybe_class(i_s.db) {
-                    if cls.is_protocol(i_s.db) {
-                        if let Some(node_ref) = value.maybe_saved_node_ref(i_s.db) {
-                            if node_ref.maybe_class().is_some() {
-                                let cls2 = Class::from_non_generic_node_ref(
-                                    ClassNodeRef::from_node_ref(node_ref),
-                                );
-                                if cls2.is_protocol(i_s.db) {
-                                    add_issue(
-                                        IssueKind::OnlyConcreteClassAllowedWhereTypeExpected {
-                                            type_: expected.format_short(i_s.db),
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+            if expected.type_of_protocol_to_type_of_protocol_assignment(i_s.db, &value) {
+                add_issue(IssueKind::OnlyConcreteClassAllowedWhereTypeExpected {
+                    type_: expected.format_short(i_s.db),
+                })
             }
             if matches!(m, Match::True { with_any: true }) {
                 argument_indices_with_any.push(ArgumentIndexWithParam {

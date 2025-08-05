@@ -1608,6 +1608,28 @@ impl Type {
             Some(result)
         }
     }
+
+    pub fn type_of_protocol_to_type_of_protocol_assignment(
+        &self,
+        db: &Database,
+        value: &Inferred,
+    ) -> bool {
+        if let Type::Type(type_) = self {
+            if let Some(cls) = type_.maybe_class(db) {
+                if cls.is_protocol(db) {
+                    if let Some(node_ref) = value.maybe_saved_node_ref(db) {
+                        if node_ref.maybe_class().is_some() {
+                            let cls2 = Class::from_non_generic_node_ref(
+                                ClassNodeRef::from_node_ref(node_ref),
+                            );
+                            return cls2.is_protocol(db);
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
 }
 
 impl FromIterator<Type> for Type {
