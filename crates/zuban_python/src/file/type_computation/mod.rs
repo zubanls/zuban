@@ -4283,6 +4283,34 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         TypeVarLikes::from_vec(type_var_likes)
     }
+
+    pub fn bitwise_or_might_be_a_type(&self, or: BitwiseOr) -> bool {
+        let (left, right) = or.unpack();
+        self.expr_part_might_be_a_type(left) && self.expr_part_might_be_a_type(right)
+    }
+
+    fn expr_part_might_be_a_type(&self, expr_part: ExpressionPart) -> bool {
+        let lookup = match expr_part {
+            ExpressionPart::BitwiseOr(b) => return self.bitwise_or_might_be_a_type(b),
+            ExpressionPart::Primary(p) => match p.second() {
+                PrimaryContent::Attribute(_) => self.lookup_type_primary_if_only_names(p),
+                PrimaryContent::Execution(_) => return false,
+                PrimaryContent::GetItem(_) => {
+                    self.lookup_type_primary_or_atom_if_only_names(p.first())
+                }
+            },
+            ExpressionPart::Atom(a) => match a.unpack() {
+                AtomContent::NoneLiteral => return true,
+                _ => self.lookup_type_primary_or_atom_if_only_names(PrimaryOrAtom::Atom(a)),
+            },
+            _ => return false,
+        };
+        match lookup {
+            Some(Lookup::T(TypeContent::InvalidVariable(_))) => false,
+            Some(_) => true,
+            None => false,
+        }
+    }
 }
 
 #[derive(Debug)]

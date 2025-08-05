@@ -2368,7 +2368,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     assignment_definition,
                 } = result_context
                 {
-                    if might_be_a_bitwise_or_alias(or) {
+                    if self.bitwise_or_might_be_a_type(or) {
                         debug!("Found a BitwiseOr expression that looks like a type alias");
                         let node_ref = NodeRef::from_link(self.i_s.db, *assignment_definition);
                         let assignment = node_ref.expect_assignment();
@@ -4417,34 +4417,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         is_no_type_check
     }
-}
-
-fn might_be_a_bitwise_or_alias(or: BitwiseOr) -> bool {
-    fn check_atom(a: Atom) -> bool {
-        matches!(a.unpack(), AtomContent::Name(_) | AtomContent::NoneLiteral)
-    }
-    fn check_expr_part(expr_part: ExpressionPart) -> bool {
-        match expr_part {
-            ExpressionPart::BitwiseOr(b) => might_be_a_bitwise_or_alias(b),
-            ExpressionPart::Primary(p) => {
-                fn check_primary(p: Primary) -> bool {
-                    (match p.first() {
-                        PrimaryOrAtom::Atom(atom) => check_atom(atom),
-                        PrimaryOrAtom::Primary(p) => check_primary(p),
-                    }) && match p.second() {
-                        PrimaryContent::Attribute(_) => true,
-                        PrimaryContent::Execution(_) => false,
-                        PrimaryContent::GetItem(_) => true,
-                    }
-                }
-                check_primary(p)
-            }
-            ExpressionPart::Atom(a) => check_atom(a),
-            _ => false,
-        }
-    }
-    let (left, right) = or.unpack();
-    check_expr_part(left) && check_expr_part(right)
 }
 
 pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {

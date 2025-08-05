@@ -1226,6 +1226,7 @@ T = TypeVar("T")
 
 alias1 = tuple[T, ...] | list[T] | str
 alias2 = str | tuple[T, ...] | list[T]
+alias3 = tuple[set[T], ...] | tuple[list[T]]
 
 non_alias1, non_alias2 = list[T] | str  # E: "UnionType" object is not iterable \
                                         # E: Type variable "__main__.T" is unbound \
