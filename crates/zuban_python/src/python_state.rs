@@ -204,6 +204,7 @@ pub(crate) struct PythonState {
     types_module_type_index: NodeIndex,
     types_none_type_index: Option<NodeIndex>,
     types_ellipsis_type_index: Option<NodeIndex>,
+    types_union_type_index: Option<NodeIndex>,
     builtins_ellipsis_fallback_index: Option<NodeIndex>,
     collections_namedtuple_index: NodeIndex,
     collections_defaultdict_index: NodeIndex,
@@ -302,6 +303,7 @@ impl PythonState {
             types_module_type_index: 0,
             types_none_type_index: None,
             types_ellipsis_type_index: None,
+            types_union_type_index: None,
             builtins_ellipsis_fallback_index: None,
             typeshed_supports_keys_and_get_item_index: 0,
             typing_type_var_index: 0,
@@ -691,6 +693,7 @@ impl PythonState {
         cache_index!(typing_special_form_index, typing, "_SpecialForm");
         cache_optional_index!(types_none_type_index, types, "NoneType");
         cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
+        cache_optional_index!(types_union_type_index, types, "UnionType");
         if let Some(ellipsis) = db.python_state.builtins().lookup_symbol("ellipsis") {
             if matches!(
                 ellipsis
@@ -1048,6 +1051,7 @@ impl PythonState {
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
+    optional_attribute_link!(types, union_type_link, types_union_type_index);
     optional_attribute_link!(
         builtins,
         ellipsis_fallback_link,
@@ -1118,6 +1122,13 @@ impl PythonState {
 
     pub fn ellipsis_type(&self) -> Type {
         Type::new_class(self.ellipsis_link(), ClassGenerics::None)
+    }
+
+    pub fn union_type(&self) -> Option<Type> {
+        Some(Type::new_class(
+            self.union_type_link()?,
+            ClassGenerics::None,
+        ))
     }
 
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {

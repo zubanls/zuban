@@ -2368,14 +2368,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     assignment_definition,
                 } = result_context
                 {
-                    if self.bitwise_or_might_be_a_type(or) {
-                        debug!("Found a BitwiseOr expression that looks like a type alias");
-                        let node_ref = NodeRef::from_link(self.i_s.db, *assignment_definition);
-                        let assignment = node_ref.expect_assignment();
-                        if let Some((_, None, _)) =
-                            assignment.maybe_simple_type_expression_assignment()
-                        {
-                            return self.compute_explicit_type_assignment(assignment);
+                    if let Some(union_type) = self.i_s.db.python_state.union_type() {
+                        if self.bitwise_or_might_be_a_type(or) {
+                            debug!("Found a BitwiseOr expression that looks like a type alias");
+                            let node_ref = NodeRef::from_link(self.i_s.db, *assignment_definition);
+                            let assignment = node_ref.expect_assignment();
+                            if let Some((_, None, _)) =
+                                assignment.maybe_simple_type_expression_assignment()
+                            {
+                                self.compute_explicit_type_assignment(assignment);
+                                return Inferred::from_type(union_type);
+                            }
                         }
                     }
                 }
