@@ -13,7 +13,6 @@ docs_property
 
 valid_type_alias_implicit_from_conformance_tests
 
-testRecursiveAliasNewStyleSupported
 testTypeAliasWithNewStyleUnionChangedToVariable
 alias_of_classes
 union_alias_attr_access

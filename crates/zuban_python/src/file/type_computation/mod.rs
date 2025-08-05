@@ -3510,10 +3510,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     #[inline]
     fn handle_name_def(i_s: &InferenceState<'db, '_>, node_ref: NodeRef) -> Lookup<'db, 'db> {
         let node_ref = node_ref.to_db_lifetime(i_s.db);
-        if node_ref.point().maybe_calculated_and_specific() == Some(Specific::Cycle) {
-            return Lookup::T(TypeContent::UNKNOWN_REPORTED);
-        }
-
         let name_def = node_ref.expect_name_def();
         return match name_def.expect_type() {
             TypeLike::ClassDef(c) => {
