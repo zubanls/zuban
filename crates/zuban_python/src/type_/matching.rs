@@ -38,11 +38,17 @@ impl Type {
             ),
             Type::Type(t1) => match value_type {
                 Type::Type(t2) => {
-                    let m = t1.matches(i_s, matcher, t2, variance);
-                    if t2.is_union_like(i_s.db) {
-                        m
+                    if matches!(t2.as_ref(), Type::NewType(_)) {
+                        // NewType can never be subtyped as type[Any], because unlike all other
+                        // types it is not an actual type and is more like a function.
+                        Match::new_false()
                     } else {
-                        m.similar_if_false()
+                        let m = t1.matches(i_s, matcher, t2, variance);
+                        if t2.is_union_like(i_s.db) {
+                            m
+                        } else {
+                            m.similar_if_false()
+                        }
                     }
                 }
                 Type::Union(_) => match t1.as_ref() {

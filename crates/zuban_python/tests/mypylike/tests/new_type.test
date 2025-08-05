@@ -102,3 +102,13 @@ N(*[1])  # E: NewTypes expect a single positional argument
 
 def unpack(x: tuple[*Ts]):
     N(*x)  # E: NewTypes expect a single positional argument
+
+[case new_type_is_no_type]
+# From conformance tests (aliases_newtype.py) and slightly extended
+from typing import NewType, Any, Type
+UserId = NewType("UserId", int)
+reveal_type(UserId)  # N: Revealed type is "Type[__main__.UserId]"
+_: type = UserId  # E: Incompatible types in assignment (expression has type "Type[UserId]", variable has type "Type[Any]")
+
+a: Type[Any] = UserId  # E: Incompatible types in assignment (expression has type "Type[UserId]", variable has type "Type[Any]")
+b: Type[UserId] = UserId  # E: Incompatible types in assignment (expression has type "Type[UserId]", variable has type "Type[UserId]")
