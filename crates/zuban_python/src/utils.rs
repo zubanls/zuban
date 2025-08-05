@@ -188,3 +188,23 @@ pub fn rc_slice_into_vec<T: Clone>(this: Rc<[T]>) -> Vec<T> {
 pub fn is_magic_method(name: &str) -> bool {
     name.starts_with("__") && name.ends_with("__")
 }
+
+pub enum EitherIterator<IT1, IT2> {
+    Left(IT1),
+    Right(IT2),
+}
+
+impl<IT1, IT2, T> Iterator for EitherIterator<IT1, IT2>
+where
+    IT1: Iterator<Item = T>,
+    IT2: Iterator<Item = T>,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Left(iterator) => iterator.next(),
+            Self::Right(iterator) => iterator.next(),
+        }
+    }
+}

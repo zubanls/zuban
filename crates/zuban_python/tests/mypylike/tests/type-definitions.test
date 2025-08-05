@@ -661,3 +661,8 @@ def f(
     y: Y  # E: Variable "__main__.Y" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ):
     reveal_type(x)  # N: Revealed type is "Any"
+
+[case literal_nested]
+# Copied from conformance tests (literals_parametrizations.py)
+from typing import Literal
+good11: Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]

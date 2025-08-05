@@ -55,7 +55,7 @@ use crate::{
         UnionType, WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
-    utils::rc_slice_into_vec,
+    utils::{rc_slice_into_vec, EitherIterator},
 };
 
 pub(crate) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
@@ -2747,17 +2747,37 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
+            let format_index = &Cell::new(0);
             TypeContent::Type(Type::Union(UnionType::new(
                 slice_type
                     .iter()
-                    .enumerate()
-                    .map(|(i, s)| UnionEntry {
-                        type_: {
-                            let t = self.compute_get_item_on_literal_item(s, i + 1);
-                            self.as_type(t, s.as_node_ref())
-                        },
-                        format_index: i,
+                    .map(|s| {
+                        let t = self.compute_get_item_on_literal_item(s, format_index.get() + 1);
+                        let type_ = self.as_type(t, s.as_node_ref());
+                        match type_ {
+                            Type::Union(u) => {
+                                let mut highest = 0;
+                                let start_format_index = format_index.get();
+                                EitherIterator::Left(u.entries.into_vec().into_iter().map(
+                                    move |mut e| {
+                                        highest = highest.max(e.format_index);
+                                        format_index.set(start_format_index + highest + 1);
+                                        e.format_index += start_format_index;
+                                        e
+                                    },
+                                ))
+                            }
+                            _ => {
+                                let e = UnionEntry {
+                                    type_,
+                                    format_index: format_index.get(),
+                                };
+                                format_index.set(format_index.get() + 1);
+                                EitherIterator::Right(std::iter::once(e))
+                            }
+                        }
                     })
+                    .flatten()
                     .collect(),
                 false,
             )))
@@ -2913,7 +2933,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.add_issue(
                         slice.as_node_ref(),
                         IssueKind::InvalidType(
-                            format!("Parameter {} of Literal[...] is invalid", index).into(),
+                            format!("Parameter {index} of Literal[...] is invalid").into(),
                         ),
                     );
                     TypeContent::UNKNOWN_REPORTED
