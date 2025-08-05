@@ -1290,3 +1290,10 @@ def good_type_aliases(
     assert_type(p11, int | str | None | list[list[int]])
     assert_type(p12, list[bool])
     assert_type(p13, Callable[..., None])
+
+[case float_promotions_with_subclasses_of_int]
+class X(int): ...
+
+x: float = X()
+y: float = True
+z: float = bool()

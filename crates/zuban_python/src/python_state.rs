@@ -817,28 +817,6 @@ impl PythonState {
         )));
         s.iterable_of_str = new_class!(s.iterable_link(), s.str_type(),);
 
-        // Set promotions
-        s.int()
-            .class_storage
-            .promote_to
-            .set(Some(s.float_node_ref().as_link()));
-        s.float()
-            .class_storage
-            .promote_to
-            .set(Some(s.complex_node_ref().as_link()));
-        if !db.project.flags.disable_memoryview_promotion {
-            s.memoryview_class_with_generics_to_be_defined()
-                .class_storage
-                .promote_to
-                .set(Some(s.bytes_node_ref().as_link()));
-        }
-        if !db.project.flags.disable_bytearray_promotion {
-            s.bytearray()
-                .class_storage
-                .promote_to
-                .set(Some(s.bytes_node_ref().as_link()));
-        }
-
         s.dataclass_fields_type = new_class!(
             s.dict_node_ref().as_link(),
             s.str_type(),
@@ -854,6 +832,33 @@ impl PythonState {
         s.builtins_bool_mro = builtins_bool_mro;
         s.builtins_str_mro = builtins_str_mro;
         s.builtins_bytes_mro = builtins_bytes_mro;
+
+        // Set promotions
+        let s = &db.python_state;
+        s.int()
+            .use_cached_class_infos(&db)
+            .promote_to
+            .set(Some(s.float_node_ref().as_link()));
+        s.bool()
+            .use_cached_class_infos(&db)
+            .promote_to
+            .set(Some(s.float_node_ref().as_link()));
+        s.float()
+            .use_cached_class_infos(&db)
+            .promote_to
+            .set(Some(s.complex_node_ref().as_link()));
+        if !db.project.flags.disable_memoryview_promotion {
+            s.memoryview_class_with_generics_to_be_defined()
+                .use_cached_class_infos(&db)
+                .promote_to
+                .set(Some(s.bytes_node_ref().as_link()));
+        }
+        if !db.project.flags.disable_bytearray_promotion {
+            s.bytearray()
+                .use_cached_class_infos(&db)
+                .promote_to
+                .set(Some(s.bytes_node_ref().as_link()));
+        }
     }
 
     #[inline]

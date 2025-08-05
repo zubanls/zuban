@@ -135,7 +135,7 @@ impl Type {
 }
 
 fn check_promotion(db: &Database, promote: Class, other: Class) -> Option<Type> {
-    if let Some(promote_to) = promote.class_storage.promote_to.get() {
+    if let Some(promote_to) = promote.use_cached_class_infos(db).promote_to.get() {
         let promoted = Class::from_non_generic_link(db, promote_to);
         if promoted.node_ref == other.node_ref {
             Some(Type::new_class(

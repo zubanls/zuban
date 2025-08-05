@@ -1110,7 +1110,7 @@ impl Database {
             new_db
                 .python_state
                 .bytearray()
-                .class_storage
+                .use_cached_class_infos(&new_db)
                 .promote_to
                 .set(None);
         }
@@ -1118,7 +1118,7 @@ impl Database {
             new_db
                 .python_state
                 .memoryview_class_with_generics_to_be_defined()
-                .class_storage
+                .use_cached_class_infos(&new_db)
                 .promote_to
                 .set(None);
         }
@@ -1401,7 +1401,6 @@ pub(crate) struct ClassStorage {
     pub self_symbol_table: SymbolTable,
     pub abstract_attributes: Box<[NodeIndex]>,
     pub parent_scope: ParentScope,
-    pub promote_to: Cell<Option<PointLink>>,
     pub slots: Option<Box<[StringSlice]>>,
 }
 
@@ -1448,6 +1447,7 @@ pub(crate) struct ClassInfos {
     pub is_runtime_checkable: bool,
     pub abstract_attributes: Box<[PointLink]>,
     pub dataclass_transform: Option<Box<DataclassTransformObj>>,
+    pub promote_to: Cell<Option<PointLink>>,
     // Does not need to be a HashMap, because this is typically the size of 1-2
     pub variance_map: Vec<(TypeVarName, OnceCell<Variance>)>,
     // We have this less for caching and more to be able to have different types.

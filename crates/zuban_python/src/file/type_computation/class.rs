@@ -1,4 +1,8 @@
-use std::{borrow::Cow, cell::OnceCell, rc::Rc};
+use std::{
+    borrow::Cow,
+    cell::{Cell, OnceCell},
+    rc::Rc,
+};
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent,
@@ -707,6 +711,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut has_slots = self.class_storage.slots.is_some();
         let mut is_final = false;
         let mut dataclass_transform = None;
+        let mut promote_to = None;
         let undefined_generics_type = OnceCell::new();
         let set_type_to_dataclass = |dc: &DataclassTransformObj, set_frozen_state_unknown: bool| {
             let mut options = dc.as_dataclass_options();
@@ -864,6 +869,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     Type::Class(c) => {
                                         let c = Self::from_link(db, c.link);
                                         if let Some(cached) = c.maybe_cached_class_infos(db) {
+                                            if let new_promote @ Some(_) = cached.promote_to.get() {
+                                                promote_to = new_promote;
+                                            }
                                             if cached.class_kind != ClassKind::Normal
                                                 && class_kind == ClassKind::Normal
                                                 && !matches!(cached.class_kind, ClassKind::Protocol)
@@ -1144,6 +1152,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     })
                     .collect(),
                 total_ordering: false,
+                promote_to: Cell::from(promote_to),
                 is_runtime_checkable: true,
                 abstract_attributes,
                 dataclass_transform,

@@ -5,7 +5,7 @@ use super::{
     UnionType, WithUnpack,
 };
 use crate::{
-    database::{ComplexPoint, MetaclassState},
+    database::MetaclassState,
     debug,
     file::ClassNodeRef,
     inference_state::InferenceState,
@@ -327,10 +327,8 @@ impl Type {
             // In no-strict optional cases we don't want to match.
             return Match::new_false();
         }
-        let ComplexPoint::Class(storage) = class2_node_ref.maybe_complex().unwrap() else {
-            unreachable!()
-        };
-        if let Some(promote_to) = storage.promote_to.get() {
+        let infos = class2_node_ref.use_cached_class_infos(i_s.db);
+        if let Some(promote_to) = infos.promote_to.get() {
             let cls_node_ref = ClassNodeRef::from_link(i_s.db, promote_to);
             self.is_same_type(
                 i_s,

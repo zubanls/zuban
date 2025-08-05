@@ -144,7 +144,6 @@ impl<'db> NameBinder<'db> {
                     abstract_attributes: unresolved_class.abstract_attributes,
                     self_symbol_table,
                     parent_scope: unresolved_class.parent_scope,
-                    promote_to: Default::default(),
                     slots,
                 })),
                 Locality::NameBinder,
