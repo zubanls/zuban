@@ -10,7 +10,7 @@ use crate::{
     matching::{CouldBeALiteral, Generic, ResultContext},
     type_::{
         CallableParams, ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType,
-        TupleArgs, Type, TypedDict, TypedDictGenerics,
+        TupleArgs, Type, TypeVarKind, TypedDict, TypedDictGenerics,
     },
     utils::join_with_commas,
 };
@@ -386,6 +386,15 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
         ),
         (Type::Intersection(i1), Type::Intersection(i2)) => {
             is_equal_union_or_intersection(db, i1.iter_entries(), i2.iter_entries())
+        }
+        (Type::Any(_), Type::TypeVar(tv)) | (Type::TypeVar(tv), Type::Any(_)) => {
+            match tv.type_var.kind(db) {
+                TypeVarKind::Unrestricted => false,
+                // TODO this should probably match in different ways and check if this is from
+                // untyped defs.
+                TypeVarKind::Bound(bound) => bound.is_any(),
+                TypeVarKind::Constraints(_) => false,
+            }
         }
         _ => t1 == t2,
     }
