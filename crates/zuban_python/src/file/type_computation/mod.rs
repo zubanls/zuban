@@ -404,19 +404,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
                 |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {
-                    StarExpressionContent::Expression(expr) => {
-                        if !comp.i_s.db.project.settings.mypy_compatible {
-                            if let ExpressionContent::ExpressionPart(ExpressionPart::BitwiseOr(_)) =
-                                expr.unpack()
-                            {
-                                comp.add_issue_for_index(
-                                    expr.index(),
-                                    IssueKind::UnionsDisallowedInForwardReferences,
-                                )
-                            }
-                        }
-                        comp.compute_type(expr)
-                    }
+                    StarExpressionContent::Expression(expr) => comp.compute_type(expr),
                     _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                 };
             let old_manager = std::mem::take(&mut self.type_var_manager);
