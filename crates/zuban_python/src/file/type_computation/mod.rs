@@ -1116,9 +1116,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             db.python_state.str_node_ref().as_link(),
                             ClassGenerics::None,
                         )
-                    } else {
+                    } else if db
+                        .project
+                        .flags
+                        .enabled_error_codes
+                        .iter()
+                        .any(|s| s == "incomplete-literalstring")
+                    {
                         Type::LiteralString
-                    })
+                    } else {
+                        // TODO enable this
+                        // Type::LiteralString
+                        Type::new_class(
+                            db.python_state.str_node_ref().as_link(),
+                            ClassGenerics::None,
+                        )
+                    });
                 }
                 Specific::TypingLiteral => {
                     self.add_issue(
