@@ -13,6 +13,11 @@ docs_property
 
 valid_type_alias_implicit_from_conformance_tests
 
+testRecursiveAliasNewStyleSupported
+testTypeAliasWithNewStyleUnionChangedToVariable
+alias_of_classes
+union_alias_attr_access
+
 # conformance tests: scoping
 type_var_syntax_nested_type_variables_not_reachable
 type_var_syntax_allowed_in_keyword_arg_in_class

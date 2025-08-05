@@ -1220,6 +1220,13 @@ class ClassA:
     c: Final[Annotated[int, ""]] = 1
     d: Annotated[Final[int], ""] = 1
 
+[case implicit_alias_with_bitwise_or_recognized]
+from typing import TypeVar
+T = TypeVar("T")
+
+alias1 = tuple[T, ...] | list[T] | str
+alias2 = str | tuple[T, ...] | list[T]
+
 [case valid_type_alias_implicit_from_conformance_tests]
 # from conformance tests (aliases_implicit.py)
 from typing import TypeVar, ParamSpec, Callable, Union, Any, assert_type, Concatenate
