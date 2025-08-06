@@ -339,3 +339,23 @@ class Concrete6_Bad3:
 v6_good3: Template6 = Concrete6_Good3()  # OK
 v6_bad3: Template6 = Concrete6_Bad3()  # E: Incompatible types in assignment (expression has type "Concrete6_Bad3", variable has type "Template6") \
                                        # N: Protocol member Template6.val1 expected settable variable, got read-only attribute
+
+[case protocols_runtime_checkable_issubclass]
+# Copied from conformance tests (protocols_runtime_checkable.py)
+from typing import Protocol, runtime_checkable, Any
+@runtime_checkable
+class DataProtocol(Protocol):
+    name: str
+
+    def method1(self) -> int:
+        ...
+
+@runtime_checkable
+class NonDataProtocol(Protocol):
+    def method1(self) -> int:
+        ...
+
+def func2(a: Any):
+    if issubclass(a, (NonDataProtocol, DataProtocol)):  # E: Only protocols that don't have non-method members can be used with issubclass() \
+                                                        # N: Protocol "DataProtocol" has non-method member(s): name
+        return

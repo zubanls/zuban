@@ -39,30 +39,6 @@ impl Inference<'_, '_, '_> {
                 Type::NewType(_) => cannot_use_with("NewType"),
                 _ => (),
             }
-            if let Some(cls) = t.maybe_class(self.i_s.db) {
-                let class_infos = cls.use_cached_class_infos(self.i_s.db);
-                if matches!(class_infos.class_kind, ClassKind::Protocol) {
-                    if !class_infos.is_runtime_checkable {
-                        self.add_issue(arg.index(), IssueKind::ProtocolNotRuntimeCheckable)
-                    }
-                    if issubclass {
-                        let non_method_protocol_members =
-                            cls.non_method_protocol_members(self.i_s.db);
-                        if !non_method_protocol_members.is_empty() {
-                            self.add_issue(
-                                arg.index(),
-                                IssueKind::IssubcclassWithProtocolNonMethodMembers {
-                                    protocol: cls.name().into(),
-                                    non_method_members: join_with_commas(
-                                        non_method_protocol_members.into_iter(),
-                                    )
-                                    .into(),
-                                },
-                            )
-                        }
-                    }
-                }
-            }
         }
         Some(isinstance_type)
     }
@@ -134,7 +110,12 @@ impl Inference<'_, '_, '_> {
                     _ => (),
                 }
 
-                self.process_isinstance_type(part, &inf.as_cow_type(self.i_s), from_union)
+                self.process_isinstance_type(
+                    part,
+                    &inf.as_cow_type(self.i_s),
+                    issubclass,
+                    from_union,
+                )
             }
         }
     }
@@ -143,12 +124,15 @@ impl Inference<'_, '_, '_> {
         &self,
         part: ExpressionPart,
         t: &Type,
+        issubclass: bool,
         from_union: bool,
     ) -> Option<Type> {
         match t {
             Type::Tuple(tup) => match &tup.args {
-                TupleArgs::FixedLen(ts) => self.process_tuple_types(part, ts.iter()),
-                TupleArgs::ArbitraryLen(t) => self.process_isinstance_type(part, t, false),
+                TupleArgs::FixedLen(ts) => self.process_tuple_types(part, ts.iter(), issubclass),
+                TupleArgs::ArbitraryLen(t) => {
+                    self.process_isinstance_type(part, t, issubclass, false)
+                }
                 TupleArgs::WithUnpack(w) => match &w.unpack {
                     TupleUnpack::ArbitraryLen(t) => self.process_tuple_types(
                         part,
@@ -156,6 +140,7 @@ impl Inference<'_, '_, '_> {
                             .iter()
                             .chain(w.after.iter())
                             .chain(std::iter::once(t)),
+                        issubclass,
                     ),
                     TupleUnpack::TypeVarTuple(_) => None,
                 },
@@ -171,6 +156,29 @@ impl Inference<'_, '_, '_> {
                             IssueKind::CannotUseIsinstanceWithParametrizedGenerics,
                         );
                         return Some(Type::ERROR);
+                    }
+                    let class = cls.class(self.i_s.db);
+                    let class_infos = class.use_cached_class_infos(self.i_s.db);
+                    if matches!(class_infos.class_kind, ClassKind::Protocol) {
+                        if !class_infos.is_runtime_checkable {
+                            self.add_issue(part.index(), IssueKind::ProtocolNotRuntimeCheckable)
+                        }
+                        if issubclass {
+                            let non_method_protocol_members =
+                                class.non_method_protocol_members(self.i_s.db);
+                            if !non_method_protocol_members.is_empty() {
+                                self.add_issue(
+                                    part.index(),
+                                    IssueKind::IssubcclassWithProtocolNonMethodMembers {
+                                        protocol: class.name().into(),
+                                        non_method_members: join_with_commas(
+                                            non_method_protocol_members.into_iter(),
+                                        )
+                                        .into(),
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
                 Some((**t).clone())
@@ -193,9 +201,10 @@ impl Inference<'_, '_, '_> {
         &self,
         part: ExpressionPart,
         types: impl Iterator<Item = &'x Type>,
+        issubclass: bool,
     ) -> Option<Type> {
         let ts: Option<Vec<Type>> = types
-            .map(|t| self.process_isinstance_type(part, t, true))
+            .map(|t| self.process_isinstance_type(part, t, issubclass, true))
             .collect();
         let ts = ts?;
         Some(match ts.len() {
