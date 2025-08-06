@@ -45,14 +45,14 @@ use crate::{
     type_::{
         add_param_spec_to_params, AnyCause, CallableContent, CallableParam, CallableParams,
         CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
-        FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
-        MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause, ParamSpec, ParamSpecArg,
-        ParamSpecUsage, ParamType, RecursiveType, RecursiveTypeOrigin, ReplaceTypeVarLikes,
-        StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type,
-        TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind, TypeVarKindInfos,
-        TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTuple,
-        TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, TypedDict, TypedDictGenerics, UnionEntry,
-        UnionType, WithUnpack,
+        GenericClass, GenericItem, GenericsList, Literal, LiteralKind, MaybeUnpackGatherer,
+        NamedTuple, Namespace, NeverCause, ParamSpec, ParamSpecArg, ParamSpecUsage, ParamType,
+        RecursiveType, RecursiveTypeOrigin, ReplaceTypeVarLikes, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo,
+        TypeLikeInTypeVar, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTuple, TypeVarTupleUsage,
+        TypeVarUsage, TypeVarVariance, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
+        WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
     utils::{rc_slice_into_vec, EitherIterator},
@@ -2515,20 +2515,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             } else {
                 Type::Any(AnyCause::Todo)
             };
+
             Rc::new(CallableContent {
-                name: None,
-                class_name: None,
-                defined_at,
-                kind: FunctionKind::Function {
-                    had_first_self_or_class_annotation: true,
-                },
-                type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
                 guard,
-                is_abstract: false,
-                is_final: false,
-                no_type_check: false,
-                params,
-                return_type,
+                ..CallableContent::new_simple(
+                    None,
+                    None,
+                    defined_at,
+                    self.i_s.db.python_state.empty_type_var_likes.clone(),
+                    params,
+                    return_type,
+                )
             })
         } else {
             self.add_issue(slice_type.as_node_ref(), IssueKind::InvalidCallableArgCount);

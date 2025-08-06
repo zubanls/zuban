@@ -1554,20 +1554,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         return_type: Type,
     ) -> CallableContent {
         CallableContent {
-            name: Some(DbString::StringSlice(self.name_string_slice())),
-            class_name: self.class.map(|c| c.name_string_slice()),
-            defined_at: self.node_ref.as_link(),
             // The actual kind is set by using the decorated() function.
             kind: FunctionKind::Function {
                 had_first_self_or_class_annotation,
             },
-            guard: None,
-            is_abstract: false,
-            is_final: false,
-            params,
-            type_vars,
-            return_type,
-            no_type_check: false,
+            ..CallableContent::new_simple(
+                Some(DbString::StringSlice(self.name_string_slice())),
+                self.class.map(|c| c.name_string_slice()),
+                self.node_ref.as_link(),
+                type_vars,
+                params,
+                return_type,
+            )
         }
     }
 

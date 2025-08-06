@@ -255,19 +255,17 @@ impl NamedTuple {
                     )),
                 ));
                 Rc::new(CallableContent {
-                    name: Some(DbString::Static("_make")),
-                    class_name: Some(self.name),
-                    defined_at: PointLink::new(FileIndex(0), 0),
                     kind: FunctionKind::Classmethod {
                         had_first_self_or_class_annotation: true,
                     },
-                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                    guard: None,
-                    is_abstract: false,
-                    is_final: false,
-                    no_type_check: false,
-                    params: CallableParams::new_simple(params.into()),
-                    return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                    ..CallableContent::new_simple(
+                        Some(DbString::Static("_make")),
+                        Some(self.name),
+                        PointLink::new(FileIndex(0), 0),
+                        i_s.db.python_state.empty_type_var_likes.clone(),
+                        CallableParams::new_simple(params.into()),
+                        as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                    )
                 })
             }),
             "_fields" => Type::Tuple(Tuple::new_fixed_length(
