@@ -2,7 +2,7 @@ use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
     Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamIterator,
-    ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, StmtLikeContent,
+    ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, TrivialBodyState,
     YieldExprContent,
 };
 
@@ -127,45 +127,27 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
         // In Mypy this is called "is_trivial_body"
-        let mut stmts = self.node().body().iter_stmt_likes();
-        let mut stmt_like = stmts.next().unwrap();
-        // Skip the first docstring
-        if stmt_like.node.maybe_string().is_some() {
-            let Some(s) = stmts.next() else {
-                return true; // It was simply a docstring
-            };
-            stmt_like = s
-        }
-
-        match stmt_like.node {
-            StmtLikeContent::PassStmt(_) => true,
-            StmtLikeContent::StarExpressions(star_exprs) => star_exprs
-                .maybe_simple_expression()
-                .is_some_and(|expr| expr.is_string() || expr.is_ellipsis_literal()),
-            StmtLikeContent::RaiseStmt(raise_stmt) => {
-                raise_stmt.unpack().is_some_and(|(expr, _)| {
-                    match self
-                        .node_ref
-                        .file
-                        .inference(i_s)
-                        .infer_expression(expr)
-                        .as_cow_type(i_s)
-                        .as_ref()
-                    {
+        match self.node().trivial_body_state() {
+            TrivialBodyState::Known(known) => known,
+            TrivialBodyState::RaiseExpr(expr) => {
+                match self
+                    .node_ref
+                    .file
+                    .inference(i_s)
+                    .infer_expression(expr)
+                    .as_cow_type(i_s)
+                    .as_ref()
+                {
+                    Type::Class(cls) => cls.link == i_s.db.python_state.notimplementederror_link(),
+                    Type::Type(t) => match t.as_ref() {
                         Type::Class(cls) => {
                             cls.link == i_s.db.python_state.notimplementederror_link()
                         }
-                        Type::Type(t) => match t.as_ref() {
-                            Type::Class(cls) => {
-                                cls.link == i_s.db.python_state.notimplementederror_link()
-                            }
-                            _ => false,
-                        },
                         _ => false,
-                    }
-                })
+                    },
+                    _ => false,
+                }
             }
-            _ => false,
         }
     }
 

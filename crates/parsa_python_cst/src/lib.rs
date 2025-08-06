@@ -2357,6 +2357,38 @@ impl<'db> FunctionDef<'db> {
     pub fn docstring(&self) -> Option<Strings<'db>> {
         self.body().iter_stmt_likes().next()?.node.maybe_string()
     }
+
+    pub fn trivial_body_state(&self) -> TrivialBodyState {
+        // In Mypy this is handled in "is_trivial_body"
+        let mut stmts = self.body().iter_stmt_likes();
+        let mut stmt_like = stmts.next().unwrap();
+        // Skip the first docstring
+        if stmt_like.node.maybe_string().is_some() {
+            let Some(s) = stmts.next() else {
+                return TrivialBodyState::Known(true); // It was simply a docstring
+            };
+            stmt_like = s
+        }
+
+        TrivialBodyState::Known(match stmt_like.node {
+            StmtLikeContent::PassStmt(_) => true,
+            StmtLikeContent::StarExpressions(star_exprs) => star_exprs
+                .maybe_simple_expression()
+                .is_some_and(|expr| expr.is_string() || expr.is_ellipsis_literal()),
+            StmtLikeContent::RaiseStmt(raise_stmt_) => {
+                if let Some((expr, _)) = raise_stmt_.unpack() {
+                    return TrivialBodyState::RaiseExpr(expr);
+                }
+                false
+            }
+            _ => false,
+        })
+    }
+}
+
+pub enum TrivialBodyState<'db> {
+    Known(bool),
+    RaiseExpr(Expression<'db>),
 }
 
 pub enum FunctionParent<'db> {

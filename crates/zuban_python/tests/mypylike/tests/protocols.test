@@ -359,3 +359,26 @@ def func2(a: Any):
     if issubclass(a, (NonDataProtocol, DataProtocol)):  # E: Only protocols that don't have non-method members can be used with issubclass() \
                                                         # N: Protocol "DataProtocol" has non-method member(s): name
         return
+
+[case protocols_not_instantiated]
+# Copied from conformance tests (protocols_explicit.py)
+from abc import ABC, abstractmethod
+from typing import ClassVar, Protocol
+
+class PColor(Protocol):
+    @abstractmethod
+    def draw(self) -> str:
+        ...
+
+    def complex_method(self) -> int:
+        return 1
+
+class NiceColor(PColor):
+    def draw(self) -> str:
+        return "deep blue"
+
+class BadColor(PColor):
+    def draw(self) -> str:
+        return super().draw()  # E: no default implementation
+
+v1: PColor = NiceColor()

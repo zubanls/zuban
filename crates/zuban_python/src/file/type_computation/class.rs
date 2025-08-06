@@ -8,7 +8,7 @@ use parsa_python_cst::{
     ArgOrComprehension, Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent,
     AsyncStmtContent, ClassDef, Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg,
     NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator,
-    Target, TypeLike,
+    Target, TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -1345,10 +1345,20 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     .is_none();
             let variance = match name_node_ref.expect_name().expect_type() {
                 TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
-                TypeLike::Function(_) => {
+                TypeLike::Function(func) => {
                     let p = name_node_ref.point();
                     debug_assert!(p.is_name_of_name_def_like(), "{p:?}");
-                    if p.node_index() != name_index {
+                    if p.node_index() == name_index {
+                        is_abstract &= match func.trivial_body_state() {
+                            TrivialBodyState::Known(k) => k,
+                            TrivialBodyState::RaiseExpr(expression) => {
+                                // TODO this is currently a heuristic to avoid using inference
+                                // in Function::has_trivial_body()
+                                let code = expression.as_code();
+                                ["NotImplementedError", "NotImplementedError()"].contains(&code)
+                            }
+                        };
+                    } else {
                         let mut has_overload = false;
                         let mut has_non_overload = false;
                         for index in OtherDefinitionIterator::new(&file.points, name_index) {
