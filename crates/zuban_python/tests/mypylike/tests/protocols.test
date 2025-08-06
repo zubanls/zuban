@@ -382,3 +382,32 @@ class BadColor(PColor):
         return super().draw()  # E: no default implementation
 
 v1: PColor = NiceColor()
+
+[case protocol_assign_to_classvar]
+# Copied from conformance tests (protocols_explicit.py)
+from typing import ClassVar, Protocol
+class Proto1(Protocol):
+    cm1: ClassVar[int]
+    cm2: ClassVar[int] = 0
+
+    im1: int
+    im2: int = 2
+    im3: int
+
+    def __init__(self):
+        self.im3 = 3
+
+
+class Proto2(Protocol):
+    cm10: int
+
+
+class Proto3(Proto2, Protocol):
+    cm11: int
+
+
+class Concrete1(Proto1):
+    def __init__(self) -> None:
+        self.cm1 = 1
+        self.im1 = 1
+        self.im3 = 3

@@ -1741,10 +1741,11 @@ impl<'db: 'a, 'a> Class<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
-        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, _, _| {
+        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, c, _| {
             if let Some(inf) = lookup.into_maybe_inferred() {
                 if inf.maybe_saved_specific(i_s.db)
                     == Some(Specific::AnnotationOrTypeCommentClassVar)
+                    && !c.is_protocol(i_s.db)
                 {
                     add_issue(IssueKind::CannotAssignToClassVarViaInstance { name: name.into() })
                 } else if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
@@ -1959,6 +1960,13 @@ impl<'a> TypeOrClass<'a> {
         match self {
             TypeOrClass::Class(c) => c.as_type(db),
             TypeOrClass::Type(t) => t.clone().into_owned(),
+        }
+    }
+
+    pub fn is_protocol(&self, db: &Database) -> bool {
+        match self {
+            TypeOrClass::Class(c) => c.is_protocol(db),
+            TypeOrClass::Type(_) => false,
         }
     }
 }
