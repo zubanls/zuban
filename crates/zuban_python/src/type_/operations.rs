@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, NoArgs},
-    database::{Database, Specific},
+    database::{ComplexPoint, Database, Specific},
     debug,
     diagnostics::IssueKind,
     file::PythonFile,
@@ -25,8 +25,8 @@ use crate::{
     recoverable_error,
     type_::{Intersection, NamedTuple},
     type_helpers::{
-        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
-        OverloadedFunction,
+        Callable, Class, ClassLookupOptions, Function, Instance, InstanceLookupOptions,
+        LookupDetails, OverloadedFunction,
     },
 };
 
@@ -302,7 +302,7 @@ impl Type {
                 mro_index,
             } => {
                 let class = class.class(i_s.db);
-                let l = if matches!(bound_to.as_ref(), Type::Type(_)) {
+                let mut l = if matches!(bound_to.as_ref(), Type::Type(_)) {
                     class.lookup(
                         i_s,
                         name,
@@ -325,6 +325,28 @@ impl Type {
                     add_issue(IssueKind::UndefinedInSuperclass { name: name.into() });
                     callable(self, LookupDetails::any(AnyCause::FromError));
                     return;
+                }
+                // Set is_abstract_from_super
+                if let Some(inf) = l.lookup.maybe_inferred() {
+                    if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) =
+                        inf.maybe_complex_point(i_s.db)
+                    {
+                        if (c.is_abstract || l.class.is_protocol(i_s.db)) && {
+                            let from = NodeRef::from_link(i_s.db, c.defined_at);
+                            !from.file.is_stub()
+                                && from.maybe_function().is_some_and(|_| {
+                                    let func = Function::new_with_unknown_parent(i_s.db, from);
+                                    func.has_trivial_body(&i_s.with_func_context(&func))
+                                })
+                        } {
+                            let mut new_callable = c.as_ref().clone();
+                            new_callable.is_abstract_from_super = true;
+                            l.lookup
+                                .update_inferred(Inferred::from_type(Type::Callable(Rc::new(
+                                    new_callable,
+                                ))))
+                        }
+                    }
                 }
                 callable(self, l)
             }

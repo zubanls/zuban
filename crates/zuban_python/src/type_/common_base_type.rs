@@ -343,6 +343,7 @@ fn common_base_for_callables(
             type_vars: c1.type_vars.clone(),
             guard: common_base_guard(i_s, &c1.guard, &c2.guard),
             is_abstract: c1.is_abstract && c2.is_abstract,
+            is_abstract_from_super: false,
             is_final: c1.is_final && c2.is_final,
             params,
             return_type: c1.return_type.common_base_type_internal(

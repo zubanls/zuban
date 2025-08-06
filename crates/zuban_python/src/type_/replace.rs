@@ -121,6 +121,7 @@ impl Type {
                             .as_ref()
                             .map(|g| g.replace_internal(self).unwrap_or_else(|| g.clone())),
                         is_abstract: c.is_abstract,
+                        is_abstract_from_super: c.is_abstract_from_super,
                         is_final: c.is_final,
                         no_type_check: c.no_type_check,
                         params: c
@@ -382,6 +383,7 @@ impl CallableContent {
             type_vars: self.type_vars.clone(),
             guard: new_guard.unwrap_or_else(|| self.guard.clone()),
             is_abstract: self.is_abstract,
+            is_abstract_from_super: self.is_abstract_from_super,
             is_final: self.is_final,
             no_type_check: self.no_type_check,
             params,
@@ -824,6 +826,7 @@ impl ReplaceTypeVarLikesHelper<'_, '_> {
                 .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
             guard: new_guard.unwrap_or_else(|| c.guard.clone()),
             is_abstract: c.is_abstract,
+            is_abstract_from_super: c.is_abstract_from_super,
             is_final: c.is_final,
             no_type_check: c.no_type_check,
             params,

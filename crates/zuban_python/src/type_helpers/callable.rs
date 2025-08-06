@@ -51,6 +51,19 @@ impl<'a> Callable<'a> {
         result_context: &mut ResultContext,
         as_self_type: Option<ReplaceSelf>,
     ) -> Inferred {
+        if self.content.is_abstract_from_super {
+            args.add_issue(
+                i_s,
+                IssueKind::CallToAbstractMethodViaSuper {
+                    method_name: self.content.name(i_s.db).into(),
+                    class_name: self
+                        .content
+                        .class_name
+                        .map(|c| c.as_str(i_s.db).into())
+                        .unwrap_or_else(|| "<class>".into()),
+                },
+            )
+        }
         let return_type = &self.content.return_type;
         if result_context.expect_not_none() && matches!(&return_type, Type::None) {
             args.add_issue(

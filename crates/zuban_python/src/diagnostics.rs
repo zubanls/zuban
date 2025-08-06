@@ -562,6 +562,7 @@ impl IssueKind {
             TypeIsNarrowedTypeIsNotSubtypeOfInput { .. } => "narrowed-type-not-subtype",
             DecoratorOnTopOfPropertyNotSupported => "prop-decorator",
             CannotInstantiateAbstractClass { .. } => "abstract",
+            CallToAbstractMethodViaSuper { .. } => "safe-super",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }

@@ -463,6 +463,7 @@ pub(crate) struct CallableContent {
     pub guard: Option<TypeGuardInfo>,
     pub return_type: Type,
     pub is_abstract: bool,
+    pub is_abstract_from_super: bool,
     pub is_final: bool,
     pub no_type_check: bool, // Has a decorator with @typing.no_type_check
 }
@@ -505,6 +506,7 @@ impl CallableContent {
             guard: None,
             return_type,
             is_abstract: false,
+            is_abstract_from_super: false,
             is_final: false,
             no_type_check: false,
         }
@@ -533,6 +535,7 @@ impl CallableContent {
             params: CallableParams::Any(cause),
             guard: None,
             is_abstract: false,
+            is_abstract_from_super: false,
             is_final: false,
             no_type_check: false,
             return_type: Type::Any(cause),
