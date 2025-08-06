@@ -379,7 +379,7 @@ class NiceColor(PColor):
 
 class BadColor(PColor):
     def draw(self) -> str:
-        return super().draw()  # E: no default implementation
+        return super().draw()  # E: Call to abstract method "draw" of "PColor" with trivial body via super() is unsafe
 
 v1: PColor = NiceColor()
 

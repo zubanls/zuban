@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, NoArgs},
-    database::{ComplexPoint, Database, Specific},
+    database::{Database, Specific},
     debug,
     diagnostics::IssueKind,
     file::PythonFile,
@@ -327,27 +327,7 @@ impl Type {
                     return;
                 }
                 // Set is_abstract_from_super
-                if let Some(inf) = l.lookup.maybe_inferred() {
-                    if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) =
-                        inf.maybe_complex_point(i_s.db)
-                    {
-                        if (c.is_abstract || l.class.is_protocol(i_s.db)) && {
-                            let from = NodeRef::from_link(i_s.db, c.defined_at);
-                            !from.file.is_stub()
-                                && from.maybe_function().is_some_and(|_| {
-                                    let func = Function::new_with_unknown_parent(i_s.db, from);
-                                    func.has_trivial_body(&i_s.with_func_context(&func))
-                                })
-                        } {
-                            let mut new_callable = c.as_ref().clone();
-                            new_callable.is_abstract_from_super = true;
-                            l.lookup
-                                .update_inferred(Inferred::from_type(Type::Callable(Rc::new(
-                                    new_callable,
-                                ))))
-                        }
-                    }
-                }
+                set_is_abstract_from_super(i_s, &mut l);
                 callable(self, l)
             }
             Type::Dataclass(d) => callable(self, lookup_on_dataclass(d, i_s, add_issue, name)),
@@ -1115,6 +1095,29 @@ pub(crate) fn execute_type_of_type<'db>(
                 type_.format_short(i_s.db),
             );
             Inferred::new_any_from_error()
+        }
+    }
+}
+
+fn set_is_abstract_from_super(i_s: &InferenceState, l: &mut LookupDetails) {
+    if let Some(inf) = l.lookup.maybe_inferred() {
+        match inf.as_cow_type(i_s).as_ref() {
+            Type::Callable(c) => {
+                if (c.is_abstract || l.class.is_protocol(i_s.db)) && {
+                    let from = NodeRef::from_link(i_s.db, c.defined_at);
+                    !from.file.is_stub()
+                        && from.maybe_function().is_some_and(|_| {
+                            let func = Function::new_with_unknown_parent(i_s.db, from);
+                            func.has_trivial_body(&i_s.with_func_context(&func))
+                        })
+                } {
+                    let mut new_callable = c.as_ref().clone();
+                    new_callable.is_abstract_from_super = true;
+                    l.lookup
+                        .update_inferred(Inferred::from_type(Type::Callable(Rc::new(new_callable))))
+                }
+            }
+            _ => (),
         }
     }
 }

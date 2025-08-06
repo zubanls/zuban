@@ -10,7 +10,6 @@ goto_doc_contains_stdlib_compiled
 
 docs_alias
 docs_property
-protocols_not_instantiated
 
 # conformance tests: scoping
 type_var_syntax_nested_type_variables_not_reachable
@@ -756,13 +755,9 @@ testSubtypingFunctionsTrivialSuffixRequired
 testSubtypingFunctionsTrivialSuffixOptional
 
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
-testEmptyBodyUnsafeAbstractSuper
 testEmptyBodyUnsafeAbstractSuperOverloads
 testEmptyBodyUnsafeAbstractSuperProperty
-testAbstractBodyTurnsEmptyProtocol
 testSuperWithAbstractProperty
-testEmptyBodyNoSuperWarningWithoutStrict
-testEmptyBodyNoSuperWarningOptionalReturn
 testIgnoreErrorsWithUnsafeSuperCall_no_empty
 testMixinProtocolSuper
 testAbstractOverloadsWithoutImplementationAllowed
