@@ -543,7 +543,23 @@ impl CallableParams {
                                             new_params.extend_from_slice(&params);
                                         }
                                         CallableParams::Any(cause) => {
-                                            overwritten_params = Some(CallableParams::Any(cause))
+                                            if new_params.is_empty() {
+                                                overwritten_params =
+                                                    Some(CallableParams::Any(cause))
+                                            } else {
+                                                new_params.push(CallableParam::new_anonymous(
+                                                    ParamType::Star(StarParamType::ArbitraryLen(
+                                                        Type::Any(cause),
+                                                    )),
+                                                ));
+                                                new_params.push(CallableParam::new_anonymous(
+                                                    ParamType::StarStar(
+                                                        StarStarParamType::ValueType(Type::Any(
+                                                            cause,
+                                                        )),
+                                                    ),
+                                                ));
+                                            }
                                         }
                                         CallableParams::Never(cause) => {
                                             overwritten_params = Some(CallableParams::Never(cause))
