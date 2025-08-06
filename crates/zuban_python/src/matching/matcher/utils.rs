@@ -27,8 +27,8 @@ use crate::{
     type_::{
         match_arbitrary_len_vs_unpack, match_unpack, CallableContent, CallableParams,
         CallableWithParent, ClassGenerics, GenericItem, GenericsList, MaybeUnpackGatherer,
-        NeverCause, ParamSpecTypeVars, ReplaceSelf, ReplaceTypeVarLikes, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance,
+        NeverCause, ParamSpecTypeVars, ReplaceSelf, ReplaceTypeVarLikes, StringSlice, Tuple,
+        TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
 };
@@ -693,12 +693,48 @@ pub(crate) fn match_arguments_against_params<
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
-    let mut missing_unpacked_typed_dict_names: Option<Vec<_>> = None;
+    let mut missing_unpacked_typed_dict_names: Option<Vec<(StringSlice, bool)>> = None;
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     // lambdas are analyzed at the end to improve type inference.
     let mut delayed_params = vec![];
     let mut params_iterator = args_with_params.by_ref().enumerate();
+    let add_keyword_argument_issue_maybe_multi_value =
+        |arg: &Arg, name: &str, is_multi_value_issue| {
+            let s = match is_multi_value_issue {
+                true => format!(
+                    "{} gets multiple values for keyword argument \"{name}\"",
+                    diagnostic_string("").as_deref().unwrap_or("function"),
+                ),
+                false => {
+                    if arg.is_from_star_star_args() {
+                        format!(
+                            "Extra argument \"{name}\" from **args{}",
+                            diagnostic_string(" for ").as_deref().unwrap_or(""),
+                        )
+                    } else {
+                        format!(
+                            "Unexpected keyword argument \"{name}\"{}",
+                            diagnostic_string(" for ").as_deref().unwrap_or(""),
+                        )
+                    }
+                }
+            };
+            if i_s.db.project.settings.mypy_compatible {
+                // Mypy adds these issues on top of the whole function call instead of the specific
+                // keyword argument.
+                add_issue(IssueKind::ArgumentIssue(s.into()));
+            } else {
+                arg.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
+            }
+        };
+    let add_keyword_argument_issue = |arg: &Arg, name: &str| {
+        add_keyword_argument_issue_maybe_multi_value(
+            arg,
+            name,
+            func_like.has_keyword_param_with_name(i_s.db, name),
+        )
+    };
     while let Some(((i, p), was_delayed)) = params_iterator
         .next()
         .map(|x| (x, false))
@@ -996,7 +1032,15 @@ pub(crate) fn match_arguments_against_params<
             } => {
                 // Checking totality for **Unpack[<TypedDict>]
                 if let Some(m) = missing_unpacked_typed_dict_names.as_mut() {
-                    m.retain(|n| n != name)
+                    if let Some(index) = m.iter().position(|(n, _)| n == name) {
+                        m.swap_remove(index);
+                    } else {
+                        add_keyword_argument_issue_maybe_multi_value(
+                            argument,
+                            name.as_str(i_s.db),
+                            true,
+                        )
+                    }
                 } else {
                     let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
                         p.param.specific(i_s.db)
@@ -1007,8 +1051,8 @@ pub(crate) fn match_arguments_against_params<
                     missing_unpacked_typed_dict_names = Some(
                         td.members(i_s.db)
                             .iter()
-                            .filter(|m| &m.name != name && m.required)
-                            .map(|m| m.name)
+                            .filter(|m| &m.name != name)
+                            .map(|m| (m.name, m.required))
                             .collect(),
                     );
                 }
@@ -1017,34 +1061,6 @@ pub(crate) fn match_arguments_against_params<
             ParamArgument::None => (),
         }
     }
-    let add_keyword_argument_issue = |arg: &Arg, name: &str| {
-        let s = match func_like.has_keyword_param_with_name(i_s.db, name) {
-            true => format!(
-                "{} gets multiple values for keyword argument \"{name}\"",
-                diagnostic_string("").as_deref().unwrap_or("function"),
-            ),
-            false => {
-                if arg.is_from_star_star_args() {
-                    format!(
-                        "Extra argument \"{name}\" from **args{}",
-                        diagnostic_string(" for ").as_deref().unwrap_or(""),
-                    )
-                } else {
-                    format!(
-                        "Unexpected keyword argument \"{name}\"{}",
-                        diagnostic_string(" for ").as_deref().unwrap_or(""),
-                    )
-                }
-            }
-        };
-        if i_s.db.project.settings.mypy_compatible {
-            // Mypy adds these issues on top of the whole function call instead of the specific
-            // keyword argument.
-            add_issue(IssueKind::ArgumentIssue(s.into()));
-        } else {
-            arg.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
-        }
-    };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
         let s = "Too many positional arguments";
@@ -1109,8 +1125,10 @@ pub(crate) fn match_arguments_against_params<
             }
         }
         if let Some(missing_unpacked_typed_dict_names) = missing_unpacked_typed_dict_names {
-            for missing in missing_unpacked_typed_dict_names {
-                add_missing_kw_issue(missing.as_str(i_s.db))
+            for (missing, required) in missing_unpacked_typed_dict_names {
+                if required {
+                    add_missing_kw_issue(missing.as_str(i_s.db))
+                }
             }
         }
         if let Some(unused_td) = &args_with_params.unused_unpack_typed_dict.maybe_unchecked() {

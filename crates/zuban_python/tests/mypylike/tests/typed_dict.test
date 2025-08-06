@@ -237,3 +237,24 @@ class B(A0[str]):  # E: Bad number of arguments for type alias, expected 0, give
 
 def f(x: B) -> None:
     reveal_type(x['x'])  # N: Revealed type is "Any"
+
+[case typed_dict_in_callable_unpack_for_conformance_tests]
+# Copied in parts from conformance tests (callables_kwargs.py)
+from typing import TypedDict, Required, NotRequired, Unpack
+class TD1(TypedDict):
+    v1: Required[int]
+    v2: NotRequired[str]
+
+
+class TD2(TD1):
+    v3: Required[str]
+
+def func1(**kwargs: Unpack[TD2]) -> None: ...
+def func2(v3: str, **kwargs: Unpack[TD1]) -> None: ...
+def func3() -> None:
+    td2 = TD2(v1=2, v3="4")
+    func2(**td2)  # OK
+    func1(v1=2, **td2)  # E: "func1" gets multiple values for keyword argument "v1"
+    func2(1, **td2)  # E: "func2" gets multiple values for keyword argument "v3" \
+                     # E: Argument 1 to "func2" has incompatible type "int"; expected "str"
+    func2(v1=1, **td2)  # E: "func2" gets multiple values for keyword argument "v1"
