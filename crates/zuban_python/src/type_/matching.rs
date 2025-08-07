@@ -701,15 +701,6 @@ impl Type {
             {
                 Match::new_true()
             }
-            Type::TypedDict(_) if class1.node_ref == i_s.db.python_state.dict_node_ref() => {
-                let m = class1
-                    .nth_type_argument(i_s.db, 0)
-                    .is_simple_same_type(i_s, &i_s.db.python_state.str_type());
-                if !m.bool() {
-                    return m;
-                }
-                matches!(class1.nth_type_argument(i_s.db, 0), Type::Any(_)).into()
-            }
             Type::TypeVar(tv)
                 if class1.node_ref == i_s.db.python_state.object_node_ref()
                     && tv.type_var.is_unrestricted() =>

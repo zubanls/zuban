@@ -302,3 +302,26 @@ class BadTypedDict2(TypedDict, metaclass=type):  # E: Unexpected keyword argumen
 # This should generate an error because "other" is not an allowed keyword argument.
 class BadTypedDict3(TypedDict, other=True):  # E: Unexpected keyword argument "other" for TypedDict
     name: str
+
+[case typed_dict_not_assignable_to_any_dict]
+# Copied from conformance tests (typeddicts_type_consistency.py)
+from typing import TypedDict, Mapping, Any
+
+class B3(TypedDict):
+    x: int
+    y: int
+
+
+b3: B3 = {"x": 0, "y": 0}
+
+# > A TypedDict isn’t consistent with any Dict[...] type.
+
+d1: dict[str, int] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, int]")
+d2: dict[str, object] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, object]")
+d3: dict[Any, Any] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[Any, Any]")
+
+# > A TypedDict with all int values is not consistent with Mapping[str, int].
+
+m1: Mapping[str, int] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "Mapping[str, int]")
+m2: Mapping[str, object] = b3  # OK
+m3: Mapping[str, Any] = b3  # OK

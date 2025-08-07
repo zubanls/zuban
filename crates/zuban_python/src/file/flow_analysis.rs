@@ -4388,6 +4388,17 @@ fn split_and_intersect(
             let mut matched_with_any = true;
             let mut had_any = None;
             for isinstance_t in isinstance_type.iter_with_unpacked_unions(i_s.db) {
+                // dict is not a super type of TypedDict, because both are mutable, but we still
+                // want isinstance to separate it when used with isinstance
+                if matches!(t, Type::TypedDict(_))
+                    && isinstance_t
+                        .maybe_class(i_s.db)
+                        .is_some_and(|c| c.node_ref == i_s.db.python_state.dict_node_ref())
+                {
+                    matched = true;
+                    matched_with_any = false;
+                    continue;
+                }
                 if isinstance_t.is_any() {
                     had_any = Some(isinstance_t.clone());
                     continue;
