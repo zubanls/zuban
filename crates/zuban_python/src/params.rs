@@ -154,7 +154,13 @@ pub fn matches_simple_params<
                 );
                 return matches;
             }
-            if param1.has_default() && !param2.has_default() {
+            if param1.has_default()
+                && !(param2.has_default()
+                    || matches!(
+                        specific2,
+                        WrappedParamType::Star(_) | WrappedParamType::StarStar(_)
+                    ))
+            {
                 debug!(
                     "Mismatch callable, because {:?} has default and {:?} hasn't",
                     param1.name(i_s.db),

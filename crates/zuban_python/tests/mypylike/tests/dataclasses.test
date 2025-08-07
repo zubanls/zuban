@@ -506,6 +506,35 @@ class Customer1Subclass(Customer1):  # E: Non-frozen dataclass cannot inherit fr
 
 c1_1 = Customer1(id=3, name="Sue", other_name="Susan")
 
+[case dataclass_transform_overload]
+# Copied from conformance tests (dataclasses_transform_func.py)
+from typing import overload, dataclass_transform, Any, TypeVar, Callable
+T = TypeVar("T")
+@overload
+@dataclass_transform(kw_only_default=True, order_default=True)
+def create_model(cls: T) -> T: ...
+
+
+@overload
+@dataclass_transform(kw_only_default=True, order_default=True)
+def create_model(
+    *,
+    frozen: bool = False,
+    kw_only: bool = True,
+    order: bool = True,
+) -> Callable[[T], T]: ...
+
+
+def create_model(*args: Any, **kwargs: Any) -> Any: ...
+
+@create_model(kw_only=False, order=False)
+class Customer1:
+    id: int
+    name: str
+
+c1_1 = Customer1(id=3, name="Sue")
+c1_1.id = 4
+
 [case dataclass_enum_combination]
 from dataclasses import dataclass
 from enum import Enum
