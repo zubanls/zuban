@@ -102,7 +102,7 @@ fn matches_params_detailed(
     }
 }
 
-// Check whether params of f1 are assignable to params of f2, like f2 = f1 or in other words that
+// Check whether params of f2 are assignable to params of f1, like f1 = f2 or in other words that
 // f2 is wider than f1.
 pub fn matches_simple_params<
     'db: 'x + 'y,
@@ -306,19 +306,17 @@ pub fn matches_simple_params<
                             continue;
                         }
                         WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
-                            if let Some(member2) = param1
-                                .name(i_s.db)
-                                .and_then(|name1| u.find_member(i_s.db, name1))
-                            {
-                                // TODO check if param can be optional
-                                if let Some(t1) = t1 {
-                                    matches &= t1.matches(i_s, matcher, &member2.type_, variance);
-                                }
-                                continue;
-                            } else {
-                                debug!("Param mismatch because kw name was not found in unpack");
-                                return Match::new_false();
+                            let m = params1_matches_unpacked_dict(
+                                i_s,
+                                matcher,
+                                std::iter::once(param1).chain(params1.by_ref()),
+                                u,
+                                variance,
+                            );
+                            if !m.bool() {
+                                return m;
                             }
+                            break;
                         }
                         WrappedParamType::StarStar(_) => {
                             debug!(
@@ -617,6 +615,53 @@ pub fn matches_simple_params<
         }
     }
     matches
+}
+
+fn params1_matches_unpacked_dict<'db: 'x, 'x>(
+    i_s: &InferenceState<'db, '_>,
+    matcher: &mut Matcher,
+    params1: impl Iterator<Item = impl Param<'x>>,
+    u: &TypedDict,
+    variance: Variance,
+) -> Match {
+    let mut required_members: Vec<_> = u.members(i_s.db).iter().filter(|m| m.required).collect();
+    for param1 in params1 {
+        match param1.specific(i_s.db) {
+            WrappedParamType::KeywordOnly(t1) => {
+                if let Some(member2) = param1
+                    .name(i_s.db)
+                    .and_then(|name1| u.find_member(i_s.db, name1))
+                {
+                    required_members.retain(|n| n.name == member2.name);
+                    // TODO check if param can be optional
+                    if let Some(t1) = t1 {
+                        let m = t1.matches(i_s, matcher, &member2.type_, variance);
+                        if !m.bool() {
+                            debug!(
+                                "Param mismatch because unpacked type mismatched for {:?}",
+                                param1.name(i_s.db)
+                            );
+                            return m;
+                        }
+                    }
+                } else {
+                    debug!("Param mismatch because kw name was not found in unpack");
+                    return Match::new_false();
+                }
+            }
+            _ => return Match::new_false(),
+        }
+    }
+    if cfg!(debug_assertions) && !required_members.is_empty() {
+        debug!(
+            "Param mismatch because the required members {:?} were not matched",
+            required_members
+                .iter()
+                .map(|m| m.name.as_str(i_s.db))
+                .collect::<Vec<_>>()
+        );
+    }
+    return required_members.is_empty().into();
 }
 
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
