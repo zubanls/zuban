@@ -980,15 +980,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     if name == "__slots__" && dataclass.options.slots {
         return LookupDetails::new(
             Type::Dataclass(dataclass.clone()),
-            LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
-                repeat_with(|| i_s.db.python_state.str_type())
-                    .take(
-                        dataclass_init_func(dataclass, i_s.db)
-                            .expect_simple_params()
-                            .len(),
-                    )
-                    .collect(),
-            )))),
+            slots_as_lookup_result(dataclass, i_s.db),
             AttributeKind::Attribute,
         );
     } else if name == "__match_args__" && dataclass.options.match_args {
@@ -1002,6 +994,14 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             .with_kind(kind)
             .with_as_type_type(&|| Type::Type(in_type.clone())),
     )
+}
+
+fn slots_as_lookup_result(self_: &Rc<Dataclass>, db: &Database) -> LookupResult {
+    LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
+        repeat_with(|| db.python_state.str_type())
+            .take(dataclass_init_func(self_, db).expect_simple_params().len())
+            .collect(),
+    ))))
 }
 
 fn lookup_symbol_internal(
@@ -1031,6 +1031,12 @@ fn lookup_symbol_internal(
                 dataclass_init_func(&self_, i_s.db).clone(),
             )))),
             AttributeKind::DefMethod { is_final: false },
+        );
+    }
+    if self_.options.slots && name == "__slots__" {
+        return (
+            slots_as_lookup_result(&self_, i_s.db),
+            AttributeKind::Attribute,
         );
     }
     (LookupResult::None, AttributeKind::Attribute)

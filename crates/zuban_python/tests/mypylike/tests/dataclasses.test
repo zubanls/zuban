@@ -539,3 +539,11 @@ class OpSignature:
                                           # N:          def __post_init__(self, default: Any) -> None \
                                           # N:      Subclass: \
                                           # N:          def __post_init__(self) -> None
+                                          #
+[case dataclass_slots_access]
+from dataclasses import dataclass
+@dataclass(slots=True)
+class DC5:
+    a: int
+DC5.__slots__   
+DC5(1).__slots__
