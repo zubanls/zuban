@@ -1287,6 +1287,17 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         NodeRef::new(self.node_ref.file, expr.index()).add_type_issue(db, issue)
                     })
                     .unwrap_or(true);
+                } else {
+                    NodeRef::new(self.file, name.index()).add_type_issue(
+                        db,
+                        IssueKind::ArgumentIssue(
+                            format!(
+                                "Unexpected keyword argument {:?} for TypedDict",
+                                name.as_code()
+                            )
+                            .into(),
+                        ),
+                    )
                 }
             }
         }
