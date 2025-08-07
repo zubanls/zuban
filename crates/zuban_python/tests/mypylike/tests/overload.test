@@ -721,3 +721,17 @@ def f(*, x: int) -> int: ...
 @overload
 def f(x: str, /) -> str: ...
 def f(x = None, /, **kwargs) -> int | str: ...
+
+[case overload_dunder_should_not_have_an_issue]
+# Copied from conformance tests (overloads_basic.py)
+from typing import overload
+class Bytes:
+    @overload
+    def __getitem__(self, __i: int) -> int: ...
+    @overload
+    def __getitem__(self, __s: slice) -> bytes: ...
+    def __getitem__(self, __i_or_s: int | slice) -> int | bytes:
+        if isinstance(__i_or_s, int):
+            return 0
+        else:
+            return b""

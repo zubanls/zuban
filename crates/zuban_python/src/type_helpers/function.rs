@@ -1914,12 +1914,9 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         }
     }
 
-    fn kind(&self, db: &Database) -> ParamKind {
+    fn kind(&self, _: &Database) -> ParamKind {
         let mut t = self.param.kind();
-        if t == ParamKind::PositionalOrKeyword
-            && db.project.settings.mypy_compatible
-            && is_private(self.param.name_def().as_code())
-        {
+        if t == ParamKind::PositionalOrKeyword && is_private(self.param.name_def().as_code()) {
             // Mypy treats __ params as positional only
             t = ParamKind::PositionalOnly
         }
