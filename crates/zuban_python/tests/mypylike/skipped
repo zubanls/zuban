@@ -17,6 +17,8 @@ type_var_syntax_allowed_in_keyword_arg_in_class
 class_matching_against_param_spec_with_type_var_syntax_late_bound
 # conformance tests: literal_string
 literal_string_simple_matching
+# conformance tests: named tuple definitions
+disallow_subclassing_of_named_tuple_and_overwriting_attr
 
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric

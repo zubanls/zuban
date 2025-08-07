@@ -156,3 +156,18 @@ Point3 = namedtuple("Point3", ('x', 'y'))
 r = Point3(1, 2)
 del r.x  # E: NamedTuple attributes cannot be deleted
 del r[0]  # E: "Point3" has no attribute "__delitem__"
+
+[case disallow_subclassing_of_named_tuple_and_overwriting_attr]
+# Copied in parts from conformance tests (namedtuples_define_class.py)
+from typing import NamedTuple
+class Point(NamedTuple):
+    x: int
+    y: int
+    units: str = "meters"
+
+class PointWithName(Point):
+    name: str = ""  # OK
+
+class BadPointWithName(Point):
+    name: str = ""  # OK
+    x: int = 0  # E: Cannot override namedtuple attr
