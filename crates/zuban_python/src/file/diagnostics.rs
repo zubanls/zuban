@@ -33,10 +33,11 @@ use crate::{
     params::{matches_params, Param, WrappedParamType, WrappedStar},
     recoverable_error,
     type_::{
-        dataclass_post_init_func, format_callable_params, merge_class_type_vars, AnyCause,
-        CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind, FunctionOverload,
-        GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult, NeverCause,
-        ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarVariance, Variance,
+        dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
+        merge_class_type_vars, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
+        LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
+        TypeVarVariance, Variance,
     },
     type_helpers::{
         cache_class_name, is_private, Callable, Class, ClassLookupOptions, FirstParamKind,
@@ -927,6 +928,7 @@ impl Inference<'_, '_, '_> {
         let class_infos = class_node_ref.use_cached_class_infos(db);
         if let Some(t) = class_infos.undefined_generics_type.get() {
             if let Type::Dataclass(d) = t.as_ref() {
+                ensure_calculated_dataclass(d, db);
                 if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
                     c.add_issue_on_name(
                         db,

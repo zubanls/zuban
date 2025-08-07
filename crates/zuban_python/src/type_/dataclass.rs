@@ -921,11 +921,11 @@ pub(crate) fn dataclass_initialize<'db>(
 }
 
 pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a CallableContent {
-    ensure_calculated(self_, db);
+    ensure_calculated_dataclass(self_, db);
     &self_.inits.get().unwrap().__init__
 }
 
-fn ensure_calculated(self_: &Rc<Dataclass>, db: &Database) {
+pub fn ensure_calculated_dataclass(self_: &Rc<Dataclass>, db: &Database) {
     if self_.inits.get().is_none() {
         debug!("Calculate dataclass {}", self_.class(db).name());
         let indent = debug_indent();
@@ -941,7 +941,7 @@ pub fn dataclass_post_init_func<'a>(
     self_: &'a Rc<Dataclass>,
     db: &Database,
 ) -> &'a CallableContent {
-    ensure_calculated(self_, db);
+    ensure_calculated_dataclass(self_, db);
     &self_.inits.get().unwrap().__post_init__
 }
 

@@ -37,8 +37,8 @@ pub(crate) use self::{
     },
     dataclass::{
         dataclass_init_func, dataclass_initialize, dataclass_post_init_func, dataclasses_replace,
-        lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
-        DataclassOptions, DataclassTransformObj,
+        ensure_calculated_dataclass, lookup_dataclass_symbol, lookup_on_dataclass,
+        lookup_on_dataclass_type, Dataclass, DataclassOptions, DataclassTransformObj,
     },
     enum_::{
         lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance, Enum,

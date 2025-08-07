@@ -479,7 +479,7 @@ x.y # E: "object" has no attribute "y"
 x[0]  # E: Value of type "object" is not indexable
 reveal_type(x)  # N: Revealed type is "object"
 
-[case dataclass_transform_valid_fields]
+[case dataclass_transform_conformance_tests]
 # Copied from conformance tests (dataclasses_transform_class.py)
 from typing import dataclass_transform, Any
 
@@ -493,6 +493,18 @@ def model_field(*, init: bool = True, default: Any | None = None, alias: str | N
     field_specifiers=(ModelField, model_field),
 )
 class ModelBase: ...
+
+class Customer1(ModelBase, frozen=True):
+    id: int = model_field()
+    name: str = model_field()
+    name2: str = model_field(alias="other_name", default="None")
+
+# This should generate an error because a non-frozen dataclass cannot
+# derive from a frozen one.
+class Customer1Subclass(Customer1):  # E: Non-frozen dataclass cannot inherit from a frozen dataclass
+    salary: float = model_field()
+
+c1_1 = Customer1(id=3, name="Sue", other_name="Susan")
 
 [case dataclass_enum_combination]
 from dataclasses import dataclass
