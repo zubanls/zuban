@@ -134,3 +134,25 @@ str_lst = ['']
 E = namedtuple("E", [*str_lst])  # E: String literal expected as "namedtuple()" item
 
 F = namedtuple("F", f'x, {1}')  # E: List or tuple literal expected as the second argument to "namedtuple()"
+
+[case disallow_deleting_namedtuple_field]
+from typing import NamedTuple
+from collections import namedtuple
+class Point1(NamedTuple):
+    x: int
+
+p = Point1(1)
+del p.x  # E: NamedTuple attributes cannot be deleted
+del p[0]  # E: "Point1" has no attribute "__delitem__"
+
+Point2 = NamedTuple("Point2", [('x', int)])
+
+q = Point2(1)
+del q.x  # E: NamedTuple attributes cannot be deleted
+del q[0]  # E: "Point2" has no attribute "__delitem__"
+
+Point3 = namedtuple("Point3", ('x', 'y'))
+
+r = Point3(1, 2)
+del r.x  # E: NamedTuple attributes cannot be deleted
+del r[0]  # E: "Point3" has no attribute "__delitem__"

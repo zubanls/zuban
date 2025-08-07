@@ -27,7 +27,7 @@ use crate::{
     file::{ClassNodeRef, OtherDefinitionIterator},
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::{Inferred, UnionValue},
+    inferred::{add_attribute_error, Inferred, UnionValue},
     matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     recoverable_error,
@@ -2172,12 +2172,43 @@ impl Inference<'_, '_, '_> {
                 self.delete_name(name_def);
             }
             Target::NameExpression(primary_target, name_def) => {
-                // TODO this should still be implemented
-                //self.infer_single_target(target);
-                let node_ref = NodeRef::new(self.file, name_def.index());
                 // We do a normal lookup to check that the attribute is there.
-                self.infer_primary_target_or_atom(primary_target.first())
-                    .lookup(self.i_s, node_ref, name_def.as_code(), LookupKind::Normal);
+                let inf = self.infer_primary_target_or_atom(primary_target.first());
+                inf.run_after_lookup_on_each_union_member(
+                    self.i_s,
+                    self.file,
+                    name_def.as_code(),
+                    LookupKind::Normal,
+                    &|issue| self.add_issue(primary_target.index(), issue),
+                    &mut |on_t, details| {
+                        if matches!(details.lookup, LookupResult::None) {
+                            add_attribute_error(
+                                self.i_s,
+                                NodeRef::new(self.file, primary_target.index()),
+                                &inf.as_cow_type(self.i_s),
+                                on_t,
+                                name_def.as_code(),
+                            );
+                        }
+                        // TODO this should still be implemented for all cases
+                        if details.attr_kind.is_read_only_property() {
+                            let named_tuple_attr_cannot_be_deleted = || {
+                                self.add_issue(
+                                    primary_target.index(),
+                                    IssueKind::NamedTupleAttributeCannotBeDeleted,
+                                )
+                            };
+                            if let Some(cls) = on_t.maybe_class(self.i_s.db) {
+                                if cls.maybe_named_tuple_base(self.i_s.db).is_some() {
+                                    named_tuple_attr_cannot_be_deleted()
+                                }
+                            }
+                            if let Type::NamedTuple(_) = on_t {
+                                named_tuple_attr_cannot_be_deleted()
+                            }
+                        }
+                    },
+                );
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
