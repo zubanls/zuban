@@ -177,7 +177,6 @@ fn common_sub_type_for_callables(
                 is_abstract: c1.is_abstract && c2.is_abstract,
                 is_abstract_from_super: c1.is_abstract_from_super && c2.is_abstract_from_super,
                 is_final: c1.is_final && c2.is_final,
-                no_type_check: false,
                 params,
                 return_type,
             });

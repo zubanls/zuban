@@ -351,7 +351,6 @@ fn common_base_for_callables(
                 &c2.return_type,
                 Some(checked_recursions),
             ),
-            no_type_check: false,
         }))
     } else {
         if Matcher::default().matches_callable(i_s, c1, c2).bool() {

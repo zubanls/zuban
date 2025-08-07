@@ -859,7 +859,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.kind = kind.clone();
             callable.is_abstract = is_abstract;
             callable.is_final = is_final;
-            callable.no_type_check = no_type_check;
             if no_type_check {
                 callable.set_all_types_to_any_for_no_type_check(AnyCause::Explicit);
             }
