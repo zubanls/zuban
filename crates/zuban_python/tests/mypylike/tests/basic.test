@@ -1181,6 +1181,17 @@ def func3[*Ts, T](*args: * tuple[int, *Ts, T]) -> tuple[T, *Ts]: ...
 
 assert_type(func3(1, "", 3j, 3.4), tuple[float, str, complex])
 
+[case assert_type_for_enum_literals]
+from typing import Literal, assert_type
+from enum import Enum
+
+class Color1(Enum):
+    RED = 1
+    GREEN = 2
+
+assert_type(Color1.RED, Literal[Color1.RED])
+assert_type(Color1.RED, Literal[Color1.GREEN])  # E: Expression is of type "Literal[Color1.RED]", not "Literal[Color1.GREEN]"
+
 [case annotated_incompatibility_with_type]
 # Copied from conformance tests (qualifiers_annotated.py)
 from typing import TypeAlias, Annotated, Any, TypeVar

@@ -387,6 +387,9 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
         (Type::Intersection(i1), Type::Intersection(i2)) => {
             is_equal_union_or_intersection(db, i1.iter_entries(), i2.iter_entries())
         }
+        (Type::EnumMember(m1), Type::EnumMember(m2)) => {
+            m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
+        }
         (Type::Any(_), Type::TypeVar(tv)) | (Type::TypeVar(tv), Type::Any(_)) => {
             match tv.type_var.kind(db) {
                 TypeVarKind::Unrestricted => false,
