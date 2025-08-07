@@ -479,6 +479,21 @@ x.y # E: "object" has no attribute "y"
 x[0]  # E: Value of type "object" is not indexable
 reveal_type(x)  # N: Revealed type is "object"
 
+[case dataclass_transform_valid_fields]
+# Copied from conformance tests (dataclasses_transform_class.py)
+from typing import dataclass_transform, Any
+
+class ModelField:
+    def __init__(self, *, init: bool = True, default: Any | None = None) -> None: ...
+
+def model_field(*, init: bool = True, default: Any | None = None, alias: str | None = None) -> Any: ...
+
+@dataclass_transform(
+    kw_only_default=True,
+    field_specifiers=(ModelField, model_field),
+)
+class ModelBase: ...
+
 [case dataclass_enum_combination]
 from dataclasses import dataclass
 from enum import Enum
@@ -541,6 +556,7 @@ class OpSignature:
                                           # N:          def __post_init__(self) -> None
                                           #
 [case dataclass_slots_access]
+# Copied from conformance tests (dataclasses_slots.py)
 from dataclasses import dataclass
 @dataclass(slots=True)
 class DC5:

@@ -2048,22 +2048,28 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         value: Expression,
         field_specifiers: &mut Rc<[PointLink]>,
     ) {
-        let check =
-            || -> Result<Rc<[_]>, IssueKind> {
-                if let Some(tuple) = value.maybe_tuple() {
-                    return tuple.iter().map(|s| {
-                    if let StarLikeExpression::NamedExpression(ne) = s {
-                        if let Some(Lookup::T(TypeContent::InvalidVariable(
-                            InvalidVariableType::Function { node_ref },
-                        ))) = self.lookup_type_expr_if_only_names(ne.expression()) {
-                            return Ok(node_ref.as_link())
+        let check = || -> Result<Rc<[_]>, IssueKind> {
+            if let Some(tuple) = value.maybe_tuple() {
+                return tuple
+                    .iter()
+                    .map(|s| {
+                        if let StarLikeExpression::NamedExpression(ne) = s {
+                            match self.lookup_type_expr_if_only_names(ne.expression()) {
+                                Some(Lookup::T(TypeContent::InvalidVariable(
+                                    InvalidVariableType::Function { node_ref },
+                                ))) => return Ok(node_ref.as_link()),
+                                Some(Lookup::T(TypeContent::Class { node_ref, .. })) => {
+                                    return Ok(node_ref.as_link())
+                                }
+                                _ => (),
+                            }
                         }
-                    }
-                    Err(IssueKind::DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers)
-                }).collect();
-                }
-                Err(IssueKind::DataclassTransformFieldSpecifiersMustBeTuple)
-            };
+                        Err(IssueKind::DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers)
+                    })
+                    .collect();
+            }
+            Err(IssueKind::DataclassTransformFieldSpecifiersMustBeTuple)
+        };
         match check() {
             Ok(new_specifiers) => *field_specifiers = new_specifiers,
             Err(issue) => self.add_type_issue(value.index(), issue),
