@@ -532,3 +532,12 @@ def f(z: tuple[tuple[str, int], ...]) -> None:
     if x and x[0][0] == "":
         x = x[1:]
         reveal_type(x)  # N: Revealed type is "tuple[tuple[str, int], ...]"
+
+[case arbitrary_len_tuple_definitions_in_conformance_tests]
+t30: tuple[int, ...]  # OK
+t31: tuple[int, int, ...]  # E: Unexpected "..."
+t32: tuple[...]  # E: Unexpected "..."
+t33: tuple[..., int]  # E: Unexpected "..."
+t34: tuple[int, ..., int]  # E: Unexpected "..."
+t35: tuple[*tuple[str], ...]  # E: Unpack is only valid in a variadic position
+t36: tuple[*tuple[str, ...], ...]  # E: Unpack is only valid in a variadic position

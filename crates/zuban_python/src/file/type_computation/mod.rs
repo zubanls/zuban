@@ -2179,7 +2179,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(SliceOrSimple::Simple(s)) = iterator.next() {
-            if s.named_expr.is_ellipsis_literal() {
+            if s.named_expr.is_ellipsis_literal() && iterator.next().is_none() {
                 let t = self.compute_slice_type(first);
                 return TypeContent::Type(Type::Tuple(Tuple::new_arbitrary_length(t)));
             }
