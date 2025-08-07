@@ -270,3 +270,16 @@ UNDEFINED = UndefinedType._singleton
 reveal_type(UNDEFINED)  # N: Revealed type is "__main__.UndefinedType"
 
 def x(z: str | UndefinedType = UNDEFINED): ...
+
+[case custom_enum_meta_still_valid_as_enum_literals]
+# Copied from conformance tests (enums_definition.py)
+from enum import EnumType
+from typing import Literal, assert_type
+class CustomEnumType(EnumType): pass
+class CustomEnum2(metaclass=CustomEnumType): pass
+class Color11(CustomEnum2):
+    RED = 1
+    GREEN = 2
+
+assert_type(Color11.RED, Literal[Color11.RED])
+reveal_type(Color11.GREEN)  # N: Revealed type is "Literal[__main__.Color11.GREEN]?"

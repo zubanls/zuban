@@ -570,7 +570,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
 
         if let MetaclassState::Some(link) = class_infos.metaclass {
-            if link == db.python_state.enum_meta_link() {
+            if Class::from_non_generic_link(db, link)
+                .class_link_in_mro(db, db.python_state.enum_meta_link())
+            {
                 if !self.use_cached_type_vars(db).is_empty_or_untyped() {
                     self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
                 }
