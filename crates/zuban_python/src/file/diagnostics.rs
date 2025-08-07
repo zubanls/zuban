@@ -1271,8 +1271,10 @@ impl Inference<'_, '_, '_> {
         function.cache_func(self.i_s);
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
-        if let Some(Type::Callable(c)) = function.node_ref.maybe_type() {
-            if c.no_type_check {
+        if let Some(decorated) = func_node.maybe_decorated() {
+            if function.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable)
+                && self.is_no_type_check(decorated)
+            {
                 return Ok(());
             }
         }

@@ -356,27 +356,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return;
         }
         let maybe_decorated = self.node().maybe_decorated();
+        let mut no_type_check = false;
         if let Some(decorated) = maybe_decorated {
-            if self
+            no_type_check = self
                 .node_ref
                 .file
                 .inference(i_s)
-                .is_no_type_check(decorated)
-            {
-                let mut callable_t = self.as_callable_content_internal(
-                    i_s.db.python_state.empty_type_var_likes.clone(),
-                    CallableParams::Any(AnyCause::Explicit),
-                    false,
-                    Type::Any(AnyCause::Explicit),
-                );
-                callable_t.no_type_check = true;
-                self.node_ref
-                    .insert_type(Type::Callable(Rc::new(callable_t)));
-                return;
-            }
+                .is_no_type_check(decorated);
         }
-
-        let maybe_computed = self.ensure_cached_type_vars(i_s);
+        let maybe_computed = if no_type_check {
+            None
+        } else {
+            self.ensure_cached_type_vars(i_s)
+        };
         if let Some(decorated) = maybe_decorated {
             if let Some(class) = self.class {
                 let class = Class::with_self_generics(i_s.db, class.node_ref);
@@ -718,6 +710,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_abstract = false;
         let mut is_final = false;
         let mut is_override = false;
+        let mut no_type_check = false;
         let mut dataclass_transform = None;
         let mut inferred_decs = vec![];
         for decorator in decorated.decorators().iter_reverse() {
@@ -823,13 +816,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::DataclassTransform(transform) => {
                     dataclass_transform = Some(transform);
                 }
+                InferredDecorator::NoTypeCheck => no_type_check = true,
             }
         }
         let mut inferred = Inferred::from_type(
             base_t
                 .map(|c| Type::Callable(Rc::new(c)))
                 .unwrap_or_else(|| {
-                    if is_overload {
+                    if no_type_check {
+                        Type::Callable(Rc::new(self.as_no_type_check_callable(i_s.db)))
+                    } else if is_overload {
                         self.as_type_without_inferring_return_type(i_s)
                     } else {
                         self.as_type(i_s, FirstParamProperties::None)
@@ -863,6 +859,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.kind = kind.clone();
             callable.is_abstract = is_abstract;
             callable.is_final = is_final;
+            callable.no_type_check = no_type_check;
+            if no_type_check {
+                callable.set_all_types_to_any_for_no_type_check(AnyCause::Explicit);
+            }
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable);
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
         };
@@ -1569,6 +1569,45 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
+    fn as_no_type_check_callable(&self, db: &Database) -> CallableContent {
+        let params = if db.project.settings.mypy_compatible {
+            CallableParams::Any(AnyCause::Explicit)
+        } else {
+            CallableParams::Simple(
+                self.iter_params()
+                    .map(|p| {
+                        let any = Type::Any(AnyCause::Explicit);
+                        let type_ = match p.kind(db) {
+                            ParamKind::PositionalOnly => ParamType::PositionalOnly(any),
+                            ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(any),
+                            ParamKind::KeywordOnly => ParamType::KeywordOnly(any),
+                            ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLen(any)),
+                            ParamKind::StarStar => {
+                                ParamType::StarStar(StarStarParamType::ValueType(any))
+                            }
+                        };
+                        CallableParam {
+                            type_,
+                            has_default: p.has_default(),
+                            name: Some({
+                                let n = p.param.name_def();
+                                StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
+                                    .into()
+                            }),
+                            might_have_type_vars: false,
+                        }
+                    })
+                    .collect(),
+            )
+        };
+        self.as_callable_content_internal(
+            db.python_state.empty_type_var_likes.clone(),
+            params,
+            false,
+            Type::Any(AnyCause::Explicit),
+        )
+    }
+
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> {
         let file = self.node_ref.file;
         self.node()
@@ -2050,6 +2089,9 @@ fn infer_decorator_details(
         if saved_link == i_s.db.python_state.abstractmethod_link() {
             return InferredDecorator::Abstractmethod;
         }
+        if saved_link == i_s.db.python_state.no_type_check_link() {
+            return InferredDecorator::NoTypeCheck;
+        }
         let node_ref = NodeRef::from_link(i_s.db, saved_link);
         // All these cases are classes.
         if node_ref.maybe_class().is_some() {
@@ -2112,6 +2154,7 @@ enum InferredDecorator {
     DataclassTransform(DataclassTransformObj),
     Abstractmethod,
     Override,
+    NoTypeCheck,
     Final,
 }
 

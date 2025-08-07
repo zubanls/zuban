@@ -818,6 +818,34 @@ impl CallableContent {
             guard.type_.search_type_vars(found_type_var)
         }
     }
+
+    pub fn set_all_types_to_any_for_no_type_check(&mut self, cause: AnyCause) {
+        self.params = match &self.params {
+            CallableParams::Simple(params) => CallableParams::Simple(
+                params
+                    .iter()
+                    .map(|p| {
+                        let mut p = p.clone();
+                        match &mut p.type_ {
+                            ParamType::PositionalOnly(t)
+                            | ParamType::PositionalOrKeyword(t)
+                            | ParamType::KeywordOnly(t) => *t = Type::Any(cause),
+                            ParamType::Star(s) => {
+                                *s = StarParamType::ArbitraryLen(Type::Any(cause))
+                            }
+                            ParamType::StarStar(s) => {
+                                *s = StarStarParamType::ValueType(Type::Any(cause))
+                            }
+                        }
+                        p
+                    })
+                    .collect(),
+            ),
+            CallableParams::Any(_) | CallableParams::Never(_) => CallableParams::Any(cause),
+        };
+        self.guard = None;
+        self.return_type = Type::Any(cause)
+    }
 }
 
 pub(crate) enum WrongPositionalCount {

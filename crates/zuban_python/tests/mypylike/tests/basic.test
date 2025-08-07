@@ -1305,3 +1305,43 @@ def func3() -> None:
 from typing import Any, assert_type
 def foo(x):
     assert_type(x, Any)
+
+[case no_type_check_but_params_for_calls_are_still_checked_in_mypy_compatible]
+# flags: --no-mypy-compatible
+# Copied from conformance tests (directives_no_type_check.py)
+from typing import no_type_check
+@no_type_check
+def func1(a: int, b: str) -> None:
+    c = a + b  # E?: No error should be reported
+    return 1  # E?: No error should be reported
+
+func1(b"invalid", b"arguments")  # E?: No error should be reported
+# This should still be an error because type checkers should ignore
+# annotations, but still check the argument count.
+func1()  # E: Missing positional arguments "a", "b" in call to "func1"
+
+[case no_type_check_when_type_is_changed]
+from typing import no_type_check, Callable
+
+def dec(x) -> Callable[[int], str]: ...
+
+@dec
+@no_type_check
+def f(a: int, b: str) -> None: ...
+
+f(1, 2)  # E: Too many arguments for "f"
+f(1)
+reveal_type(f(b''))  # N: Revealed type is "Any"
+
+[case no_type_check_when_callable_becomes_none]
+from typing import no_type_check, Callable
+
+def dec(x) -> None: ...
+
+@dec
+@no_type_check
+def f(a: 1 + 2, b: str) -> None:
+    ...
+
+reveal_type(f) # N: Revealed type is "None"
+f(1, 2)  # E: "None" not callable
