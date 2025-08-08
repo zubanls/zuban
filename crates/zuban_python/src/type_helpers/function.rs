@@ -622,6 +622,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     debug_assert_ne!(pre_unreachable, current_index - NAME_TO_FUNCTION_DIFF);
                     let original_func = NodeRef::new(self.node_ref.file, pre_unreachable);
+
+                    if let Some(ComplexPoint::FunctionOverload(o)) = original_func.maybe_complex() {
+                        for c in o.functions.iter_functions() {
+                            if c.defined_at == self.node_ref.as_link() {
+                                return c.kind.clone();
+                            }
+                        }
+                        if let Some(implementation) = &o.implementation {
+                            if implementation.callable.defined_at == self.node_ref.as_link() {
+                                return implementation.callable.kind.clone();
+                            }
+                        }
+                    }
                     Function::new(original_func, self.class).kind(i_s)
                 } else {
                     FunctionKind::Function {
@@ -643,7 +656,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any_from_error();
         };
 
-        let file = self.node_ref.file;
         if details.is_overload {
             return if let Some(overload) = self.calculate_next_overload_items(i_s, details) {
                 Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(overload)))

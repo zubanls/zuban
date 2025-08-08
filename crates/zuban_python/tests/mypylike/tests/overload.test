@@ -779,3 +779,26 @@ x = 1
 [out]
 __main__:3:1:5:8: error: Single overload definition, multiple required
 __main__:7:1:8:25: error: Single overload definition, multiple required
+
+[case overload_inconsistent_staticmethod]
+from m import C
+
+C().func("")  # E: Argument 1 to "func" of "C" has incompatible type "str"; expected "int"
+C().func(1)
+C.func("")
+C.func(1) # E: No overload variant of "func" of "C" matches argument type "int" \
+          # N: Possible overload variants: \
+          # N:     def func(self, int, /) -> int \
+          # N:     def func(str, /) -> str
+
+
+[file m.pyi]
+from typing import overload
+class C:
+    @overload  # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    def func(self, x: int, /) -> int:
+        ...
+    @overload
+    @staticmethod
+    def func(x: str, /) -> str:
+        ...

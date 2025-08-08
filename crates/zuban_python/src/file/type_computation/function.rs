@@ -1,8 +1,8 @@
 use std::{borrow::Cow, cell::Cell};
 
 use parsa_python_cst::{
-    Decorated, FunctionDef, FunctionParent, NodeIndex, ParamAnnotation, ParamKind,
-    ReturnAnnotation, ReturnOrYield,
+    FunctionDef, FunctionParent, NodeIndex, ParamAnnotation, ParamKind, ReturnAnnotation,
+    ReturnOrYield,
 };
 use utils::FastHashSet;
 
