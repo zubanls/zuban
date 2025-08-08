@@ -802,3 +802,17 @@ class C:
     @staticmethod
     def func(x: str, /) -> str:
         ...
+
+[case overload_incorrect_final_positions]
+# flags: --show-column-numbers --show-error-end
+from typing import overload, final
+class C:
+    @overload
+    @final
+    def func(self) -> None: ...
+    @overload
+    def func(self, x: int) -> None: ...
+    def func(self, x: int | None = None) -> None: ...
+
+[out]
+__main__:5:5:5:11: error: @final should be applied only to overload implementation

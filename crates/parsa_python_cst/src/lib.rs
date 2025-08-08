@@ -80,6 +80,17 @@ impl Tree {
         self.0.node_by_index(index).end()
     }
 
+    pub fn node_end_position_without_whitespace(&self, index: NodeIndex) -> CodeIndex {
+        let node = self.0.node_by_index(index);
+        let mut leaf = node.last_leaf_in_subtree();
+        while leaf.is_type(Terminal(TerminalType::Newline))
+            || leaf.is_type(Terminal(TerminalType::Dedent))
+        {
+            leaf = leaf.previous_leaf().unwrap();
+        }
+        leaf.end()
+    }
+
     pub fn type_ignore_comment_for(
         &self,
         start: CodeIndex,

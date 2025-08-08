@@ -644,7 +644,7 @@ impl Issue {
         Self {
             kind,
             start_position: tree.node_start_position(node_index),
-            end_position: tree.node_end_position(node_index),
+            end_position: tree.node_end_position_without_whitespace(node_index),
             from_name_binder,
         }
     }
