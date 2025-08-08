@@ -1455,11 +1455,9 @@ impl Type {
         matcher: &mut Matcher,
         find: &impl Fn(&Type) -> Option<TRANSFER>,
         on_unique_found: impl FnOnce(&mut Matcher, TRANSFER) -> T,
-    ) -> Option<T> {
-        let found = self
-            .find_unique_type_in_unpacked_union(db, matcher, find)
-            .ok()?;
-        Some(on_unique_found(matcher, found))
+    ) -> Result<T, UniqueInUnpackedUnionError> {
+        let found = self.find_unique_type_in_unpacked_union(db, matcher, find)?;
+        Ok(on_unique_found(matcher, found))
     }
 
     fn find_unique_type_in_unpacked_union<T>(
@@ -1993,7 +1991,7 @@ impl From<CallableLike> for Type {
 }
 
 #[derive(Debug)]
-enum UniqueInUnpackedUnionError {
+pub enum UniqueInUnpackedUnionError {
     None,
     Multiple,
 }

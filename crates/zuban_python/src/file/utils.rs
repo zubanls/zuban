@@ -21,7 +21,7 @@ use crate::{
     type_::{
         check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue, AnyCause,
         IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes, Type,
-        TypedDict, TypedDictGenerics,
+        TypedDict, TypedDictGenerics, UniqueInUnpackedUnionError,
     },
     Inferred,
 };
@@ -78,7 +78,8 @@ impl<'db> Inference<'db, '_, '_> {
         wanted_node_ref: ClassNodeRef,
     ) -> Option<Inferred> {
         let i_s = self.i_s;
-        result_context.on_unique_type_in_unpacked_union(
+        let is_empty = matches!(elements, StarLikeExpressionIterator::Empty);
+        let result = result_context.on_unique_type_in_unpacked_union(
             i_s,
             wanted_node_ref,
             |matcher, cls_matcher| {
@@ -87,7 +88,7 @@ impl<'db> Inference<'db, '_, '_> {
                     .next()
                     .unwrap();
 
-                let item = if matches!(elements, StarLikeExpressionIterator::Empty) {
+                let item = if is_empty {
                     matcher
                         .replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
                         .into_owned()
@@ -110,7 +111,14 @@ impl<'db> Inference<'db, '_, '_> {
                 };
                 Inferred::from_type(new_class!(wanted_node_ref.as_link(), item))
             },
-        )
+        )?;
+        match result {
+            Ok(inf) => Some(inf),
+            Err(UniqueInUnpackedUnionError::Multiple) if is_empty => Some(Inferred::from_type(
+                new_class!(wanted_node_ref.as_link(), Type::Any(AnyCause::Todo)),
+            )),
+            _ => None,
+        }
     }
 
     // For {..}
@@ -135,9 +143,14 @@ impl<'db> Inference<'db, '_, '_> {
             return typed_dict_result;
         }
 
-        infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
-            self.check_dict_literal_with_context(matcher, key_t, value_t, dict)
-        })
+        infer_dict_like(
+            i_s,
+            result_context,
+            dict.iter_elements().next().is_none(),
+            |matcher, key_t, value_t| {
+                self.check_dict_literal_with_context(matcher, key_t, value_t, dict)
+            },
+        )
     }
 
     fn check_typed_dict_literal_with_context(
@@ -593,9 +606,10 @@ pub fn infer_string_index(
 pub fn infer_dict_like(
     i_s: &InferenceState,
     result_context: &mut ResultContext,
+    is_empty: bool,
     infer_with_context: impl FnOnce(&mut Matcher, &Type, &Type) -> Option<Type>,
 ) -> Option<Inferred> {
-    result_context.on_unique_type_in_unpacked_union(
+    let result = result_context.on_unique_type_in_unpacked_union(
         i_s,
         i_s.db.python_state.dict_node_ref(),
         |matcher, cls_matcher| {
@@ -615,7 +629,18 @@ pub fn infer_dict_like(
                 )
             }))
         },
-    )
+    )?;
+    match result {
+        Ok(inf) => Some(inf),
+        Err(UniqueInUnpackedUnionError::Multiple) if is_empty => {
+            Some(Inferred::from_type(new_class!(
+                i_s.db.python_state.dict_node_ref().as_link(),
+                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::Todo),
+            )))
+        }
+        _ => None,
+    }
 }
 
 pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> FunctionDef {

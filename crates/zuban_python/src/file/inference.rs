@@ -4194,7 +4194,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     value.avoid_implicit_literal(i_s.db),
                 )
             };
-            let found = infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
+            let found = infer_dict_like(i_s, result_context, false, |matcher, key_t, value_t| {
                 let mut check = |expected_t: &Type, expr, part| {
                     let inf = self.infer_expression_with_context(
                         expr,
@@ -4266,6 +4266,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         .replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
                         .into_owned()
                 })
+                .map(|result| result.ok())
+                .flatten()
                 .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
                 .avoid_implicit_literal(i_s.db)
         })

@@ -4,7 +4,7 @@ use super::Matcher;
 use crate::{
     database::PointLink,
     file::ClassNodeRef,
-    type_::{AnyCause, TupleArgs, Type},
+    type_::{AnyCause, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
     InferenceState,
 };
@@ -74,7 +74,7 @@ impl<'a> ResultContext<'a, '_> {
         i_s: &InferenceState,
         class: ClassNodeRef,
         on_unique_found: impl FnOnce(&mut Matcher, Matcher) -> T,
-    ) -> Option<T> {
+    ) -> Option<Result<T, UniqueInUnpackedUnionError>> {
         self.with_type_if_exists(|t, matcher| {
             t.on_unique_type_in_unpacked_union(
                 i_s.db,
@@ -95,7 +95,6 @@ impl<'a> ResultContext<'a, '_> {
                 on_unique_found,
             )
         })
-        .flatten()
     }
 
     pub fn has_explicit_type(&self) -> bool {
@@ -173,6 +172,7 @@ impl<'a> ResultContext<'a, '_> {
                     None
                 },
             )
+            .ok()
         })
         .flatten()
         .flatten()

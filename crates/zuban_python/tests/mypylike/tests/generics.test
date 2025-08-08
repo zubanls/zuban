@@ -1782,3 +1782,13 @@ class Sub(Generic[U]):
 
 class Super(Sub[T]):
     foo: T
+
+[case context_inference_for_unions_again_empty_literals_should_not_result_in_never]
+def f() -> list[int] | list[str]:
+    return []
+
+def g() -> set[int] | set[str]:
+    return set()
+
+def h() -> dict[int, int] | dict[str, str]:
+    return {}
