@@ -1924,3 +1924,14 @@ class C:
 
     def __init__(self, x: int):
         pass
+
+[case class_with_new_and_return_specialization]
+# From conformance tests (constructors_call_new.py)
+from typing import Generic, assert_type, TypeVar
+T = TypeVar("T")
+class Class8(Generic[T]):
+    def __new__(cls, *args, **kwargs) -> "Class8[list[T]]": ...
+
+
+assert_type(Class8[int](), Class8[list[int]])
+assert_type(Class8[str](), Class8[list[str]])

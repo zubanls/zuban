@@ -1319,7 +1319,7 @@ impl<'db: 'a, 'a> Class<'a> {
             // Only subclasses of the current class are valid, otherwise return the current
             // class. Diagnostics will care about these cases and raise errors when needed.
             if !result.is_any()
-                && self
+                && Self::with_undefined_generics(self.node_ref)
                     .as_type(i_s.db)
                     .is_simple_super_type_of(i_s, &result)
                     .bool()
