@@ -190,8 +190,8 @@ pub(crate) enum IssueKind {
     FinalInClassBodyCannotDependOnTypeVariables,
     FinalAndClassVarUsedBoth,
     FinalCanOnlyBeUsedInMethods,
-    FinalShouldBeAppliedOnlyToOverloadImplementation,
-    FinalInStubMustBeAppliedToFirstOverload,
+    ShouldBeAppliedOnlyToOverloadImplementation { kind: &'static str },
+    InStubMustBeAppliedToFirstOverload { kind: &'static str },
     NeedTypeArgumentForFinalInDataclass,
     ProtocolMemberCannotBeFinal,
     FinalAttributeOnlyValidInClassBodyOrInit,
@@ -1346,10 +1346,12 @@ impl<'db> Diagnostic<'db> {
                 "Variable should not be annotated with both ClassVar and Final".to_string(),
             FinalCanOnlyBeUsedInMethods =>
                 "@final cannot be used with non-method functions".to_string(),
-            FinalShouldBeAppliedOnlyToOverloadImplementation =>
-                "@final should be applied only to overload implementation".to_string(),
-            FinalInStubMustBeAppliedToFirstOverload =>
-                "In a stub file @final must be applied only to the first overload".to_string(),
+            ShouldBeAppliedOnlyToOverloadImplementation { kind } => format!(
+                "@{kind} should be applied only to overload implementation"
+            ),
+            InStubMustBeAppliedToFirstOverload { kind } => format!(
+                "In a stub file @{kind} must be applied only to the first overload"
+            ),
             NeedTypeArgumentForFinalInDataclass =>
                 "Need type argument for Final[...] with non-literal default in dataclass".to_string(),
             ProtocolMemberCannotBeFinal => "Protocol member cannot be final".to_string(),

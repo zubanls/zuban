@@ -816,3 +816,36 @@ class C:
 
 [out]
 __main__:5:5:5:11: error: @final should be applied only to overload implementation
+
+[case overload_override_in_correct_positions]
+# flags: --no-mypy-compatible
+from typing import overload, override, final
+class C:
+    def to_override(self, x: int) -> int: ...
+
+class D(C):
+    @overload
+    def to_override(self, x: int) -> int: ...
+    @overload
+    @override  # E: @override should be applied only to overload implementation
+    def to_override(
+        self, x: str
+    ) -> str:
+        ...
+    @override
+    def to_override(self, x: int | str) -> int | str: ...
+
+[file m.pyi]
+from typing import overload, override
+class E:
+    def to_override(self, x: int) -> int: ...
+
+class F(E):
+    @overload
+    def to_override(self, x: int) -> int: ...
+    @overload
+    @override  # E: In a stub file @override must be applied only to the first overload
+    def to_override(
+        self, x: str
+    ) -> str:
+        ...

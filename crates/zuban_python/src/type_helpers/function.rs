@@ -1027,26 +1027,35 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_override = details.is_override;
         let mut dataclass_transform = details.dataclass_transform;
         let should_error_out = Cell::new(false);
-        let mut add_func = |func: &Function, inf: Inferred, is_first: bool| {
+        let add_issue_for_decorators_in_wrong_positions = |func: &Function, is_first: bool| {
+            if !(in_stub && is_first) {
+                for decorator in func.node().maybe_decorated().unwrap().decorators().iter() {
+                    let add = |kind| {
+                        NodeRef::new(func.node_ref.file, decorator.index()).add_issue(
+                            i_s,
+                            match in_stub {
+                                false => {
+                                    IssueKind::ShouldBeAppliedOnlyToOverloadImplementation { kind }
+                                }
+                                true => IssueKind::InStubMustBeAppliedToFirstOverload { kind },
+                            },
+                        )
+                    };
+                    match infer_decorator_details(i_s, func.node_ref.file, decorator, true) {
+                        InferredDecorator::Final => add("final"),
+                        InferredDecorator::Override if !i_s.db.project.settings.mypy_compatible => {
+                            add("override")
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        };
+        let mut add_func = |func: &Function, inf: Inferred, is_first: bool, is_override| {
             let base = inf.as_cow_type(i_s);
             if let Some(CallableLike::Callable(callable)) = base.maybe_callable(i_s) {
-                if callable.is_final && !(in_stub && is_first) {
-                    for decorator in func.node().maybe_decorated().unwrap().decorators().iter() {
-                        if matches!(
-                            infer_decorator_details(i_s, func.node_ref.file, decorator, true),
-                            InferredDecorator::Final
-                        ) {
-                            NodeRef::new(func.node_ref.file, decorator.index()).add_issue(
-                                i_s,
-                                match in_stub {
-                                    false => {
-                                        IssueKind::FinalShouldBeAppliedOnlyToOverloadImplementation
-                                    }
-                                    true => IssueKind::FinalInStubMustBeAppliedToFirstOverload,
-                                },
-                            )
-                        }
-                    }
+                if callable.is_final || is_override {
+                    add_issue_for_decorators_in_wrong_positions(func, is_first)
                 }
                 if callable.is_abstract {
                     has_abstract = true;
@@ -1065,7 +1074,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         };
         let mut inconsistent_function_kind = None;
-        add_func(self, details.inferred, true);
+        add_func(self, details.inferred, true, details.is_override);
         let mut implementation: Option<OverloadImplementation> = None;
         loop {
             let point = file.points.get(current_name_index);
@@ -1138,7 +1147,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     NodeRef::from_link(i_s.db, implementation.function_link)
                         .add_issue(i_s, IssueKind::OverloadImplementationNotLast)
                 }
-                add_func(&next_func, next_details.inferred, false)
+                add_func(
+                    &next_func,
+                    next_details.inferred,
+                    false,
+                    next_details.is_override,
+                )
             } else {
                 // Check if the implementing function was already set
                 if implementation.is_none() {
