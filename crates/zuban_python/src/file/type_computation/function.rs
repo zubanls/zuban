@@ -125,10 +125,6 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         NodeRef::new(self.file, self.node().colon_index())
     }
 
-    pub(crate) fn expect_decorated_node(&self) -> Decorated {
-        self.node().maybe_decorated().unwrap()
-    }
-
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
         let node = self.node();
         self.file.add_issue(

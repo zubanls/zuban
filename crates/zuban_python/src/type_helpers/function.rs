@@ -661,10 +661,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 };
                 if let Some(wrong) = callable.has_exactly_one_positional_parameter() {
                     match wrong {
-                        WrongPositionalCount::TooMany => {
-                            NodeRef::new(file, self.expect_decorated_node().index())
-                                .add_issue(i_s, IssueKind::TooManyArguments(" for property".into()))
-                        }
+                        WrongPositionalCount::TooMany => self
+                            .add_issue_onto_start_including_decorator(
+                                i_s,
+                                IssueKind::TooManyArguments(" for property".into()),
+                            ),
                         // IssueType::MethodWithoutArguments will be checked and added later.
                         WrongPositionalCount::TooFew => (),
                     }
@@ -1153,13 +1154,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 AnyCause::FromError,
                             ),
                         });
-                        NodeRef::new(func_ref.file, next_func.expect_decorated_node().index())
-                            .add_issue(
-                                i_s,
-                                IssueKind::NotCallable {
-                                    type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
-                                },
-                            )
+                        next_func.add_issue_onto_start_including_decorator(
+                            i_s,
+                            IssueKind::NotCallable {
+                                type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
+                            },
+                        )
                     }
                 }
             }
@@ -1183,8 +1183,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 FunctionKind::Property { .. } => "property",
                 FunctionKind::Function { .. } => unreachable!(),
             };
-            NodeRef::new(self.node_ref.file, self.expect_decorated_node().index())
-                .add_issue(i_s, IssueKind::OverloadInconsistentKind { kind })
+            self.add_issue_onto_start_including_decorator(
+                i_s,
+                IssueKind::OverloadInconsistentKind { kind },
+            )
         }
         if functions.len() < 2 && !should_error_out.get() {
             self.add_issue_onto_start_including_decorator(i_s, IssueKind::OverloadSingleNotAllowed);
