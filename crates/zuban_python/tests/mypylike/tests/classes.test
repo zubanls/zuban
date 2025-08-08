@@ -1935,3 +1935,12 @@ class Class8(Generic[T]):
 
 assert_type(Class8[int](), Class8[list[int]])
 assert_type(Class8[str](), Class8[list[str]])
+
+[case type_call_should_work_on_all_types]
+# From conformance tests (constructors_call_type.py)
+from typing import TypeVar
+T = TypeVar("T")
+class Meta1(type):
+    # Ignore possible errors related to incompatible override
+    def __call__(cls: type[T], x: int, y: str) -> T:  # type: ignore
+        return type.__call__(cls)

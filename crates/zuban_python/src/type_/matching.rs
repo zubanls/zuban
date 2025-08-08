@@ -648,45 +648,46 @@ impl Type {
             Type::Class(c2) => {
                 Self::matches_class(i_s, matcher, class1, &c2.class(i_s.db), variance)
             }
-            Type::Type(t2) => match t2.as_ref() {
-                Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
-                    TypeVarKind::Bound(bound) => Self::matches_class_against_type(
-                        i_s,
-                        matcher,
-                        class1,
-                        &Type::Type(Rc::new(bound.clone())),
-                        variance,
-                    ),
-                    TypeVarKind::Constraints(_) => {
-                        debug!("TODO TypeVar constraint matching");
-                        Match::new_true()
-                    }
-                    TypeVarKind::Unrestricted => Match::new_false(),
-                },
-                Type::Class(c2) => {
-                    match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
-                        MetaclassState::Some(link) => {
-                            // Protocols are handled separately
-                            if class1.is_protocol(i_s.db) {
-                                return Match::new_false();
+            Type::Type(t2) => {
+                let result = match t2.as_ref() {
+                    Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
+                        TypeVarKind::Bound(bound) => Self::matches_class_against_type(
+                            i_s,
+                            matcher,
+                            class1,
+                            &Type::Type(Rc::new(bound.clone())),
+                            variance,
+                        ),
+                        TypeVarKind::Constraints(_) => {
+                            debug!("TODO TypeVar constraint matching");
+                            Match::new_true()
+                        }
+                        TypeVarKind::Unrestricted => Match::new_false(),
+                    },
+                    Type::Class(c2) => {
+                        match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
+                            MetaclassState::Some(link) => {
+                                // Protocols are handled separately
+                                if class1.is_protocol(i_s.db) {
+                                    return Match::new_false();
+                                }
+                                class1.as_type(i_s.db).matches(
+                                    i_s,
+                                    matcher,
+                                    &Type::new_class(link, ClassGenerics::None),
+                                    variance,
+                                )
                             }
-                            class1.as_type(i_s.db).matches(
-                                i_s,
-                                matcher,
-                                &Type::new_class(link, ClassGenerics::None),
-                                variance,
-                            )
-                        }
-                        MetaclassState::Unknown => {
-                            (class1.is_metaclass(i_s.db) || class1.incomplete_mro(i_s.db)).into()
-                        }
-                        MetaclassState::None => {
-                            (class1.node_ref == i_s.db.python_state.bare_type_node_ref()).into()
+                            MetaclassState::Unknown => (class1.is_metaclass(i_s.db)
+                                || class1.incomplete_mro(i_s.db))
+                            .into(),
+                            MetaclassState::None => Match::new_false(),
                         }
                     }
-                }
-                _ => (class1.node_ref == i_s.db.python_state.bare_type_node_ref()).into(),
-            },
+                    _ => Match::new_false(),
+                };
+                result.or(|| (class1.node_ref == i_s.db.python_state.bare_type_node_ref()).into())
+            }
             Type::Literal(literal) if variance == Variance::Covariant => {
                 Self::matches_class_against_type(
                     i_s,
