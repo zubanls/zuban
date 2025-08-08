@@ -1194,8 +1194,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
             && !has_abstract
         {
-            name_def_node_ref(functions.last().unwrap().defined_at)
-                .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
+            if i_s.db.project.settings.mypy_compatible {
+                name_def_node_ref(functions.first().unwrap().defined_at)
+                    .name_ref_of_name_def()
+                    .add_issue_onto_start_including_decorator(
+                        i_s,
+                        IssueKind::OverloadImplementationNeeded,
+                    );
+            } else {
+                name_def_node_ref(functions.first().unwrap().defined_at)
+                    .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
+            }
         }
         if let Some(implementation) = &implementation {
             if in_stub {
