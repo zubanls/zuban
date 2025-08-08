@@ -1915,3 +1915,12 @@ class D(metaclass=ABCMeta, x=1): ...  # E: Unexpected keyword argument "x" for "
 from typing import ClassVar
 class C:
     x: ClassVar  # E: Type in ClassVar[...] can only be omitted if there is an initializer
+
+[case class_new_with_no_return_allowed]
+from typing import NoReturn, assert_type
+class C:
+    def __new__(cls) -> NoReturn:
+        raise NotImplementedError
+
+    def __init__(self, x: int):
+        pass

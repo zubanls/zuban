@@ -1745,8 +1745,7 @@ impl Inference<'_, '_, '_> {
                                 )
                             }
                         }
-                        Type::Type(_) => (),
-                        Type::Any(_) => (),
+                        Type::Type(_) | Type::Any(_) | Type::Never(_) => (),
                         Type::Enum(e) if e.class == class.node_ref.as_link() => (),
                         t => self.add_issue(
                             return_annotation.index(),
