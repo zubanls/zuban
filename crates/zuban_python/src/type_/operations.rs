@@ -1020,13 +1020,24 @@ pub(crate) fn execute_type_of_type<'db>(
         Type::Class(c) => c
             .class(i_s.db)
             .execute(i_s, args, result_context, on_type_error, true),
-        Type::TypeVar(t) => match t.type_var.kind(i_s.db) {
-            TypeVarKind::Bound(bound) => {
-                execute_type_of_type(i_s, args, result_context, on_type_error, bound);
-                Inferred::from_type(type_.clone())
-            }
-            _ => Inferred::from_type(type_.clone()),
-        },
+        Type::TypeVar(t) => {
+            match t.type_var.kind(i_s.db) {
+                TypeVarKind::Bound(bound) => {
+                    execute_type_of_type(i_s, args, result_context, on_type_error, bound);
+                }
+                TypeVarKind::Unrestricted => {
+                    execute_type_of_type(
+                        i_s,
+                        args,
+                        result_context,
+                        on_type_error,
+                        &i_s.db.python_state.object_type(),
+                    );
+                }
+                _ => (), // This should probably never happen
+            };
+            Inferred::from_type(type_.clone())
+        }
         Type::NewType(n) => {
             n.check_initialization_args(i_s, args, on_type_error);
             Inferred::from_type(Type::NewType(n.clone()))

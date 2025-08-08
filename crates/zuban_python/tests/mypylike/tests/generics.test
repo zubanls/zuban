@@ -1792,3 +1792,11 @@ def g() -> set[int] | set[str]:
 
 def h() -> dict[int, int] | dict[str, str]:
     return {}
+
+[case unrestricted_type_of_typevar]
+# Copied from conformance tests (constructors_call_type.py)
+from typing import TypeVar
+T = TypeVar("T")
+def f(cls: type[T]):
+    cls()  # OK
+    cls(1)  # E: Too many arguments for "object"
