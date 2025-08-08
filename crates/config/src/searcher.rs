@@ -24,13 +24,14 @@ pub fn find_workspace_config(
     workspace_dir: &AbsPath,
     on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<ProjectOptions> {
-    Ok(find_mypy_config_file_in_dir(vfs, workspace_dir, on_check_path)?.project_options)
+    Ok(find_mypy_config_file_in_dir(vfs, workspace_dir, false, on_check_path)?.project_options)
 }
 
 pub fn find_cli_config(
     vfs: &dyn VfsHandler,
     current_dir: &AbsPath,
     config_file: Option<&Path>,
+    mypy_compatible_default: bool,
 ) -> anyhow::Result<FoundConfig> {
     if let Some(config_file) = config_file.as_ref() {
         let Some(config_path) = config_file.as_os_str().to_str() else {
@@ -46,7 +47,7 @@ pub fn find_cli_config(
             config_path: Some(vfs.absolute_path(current_dir, config_path)),
         })
     } else {
-        find_mypy_config_file_in_dir(vfs, current_dir, |_| ())
+        find_mypy_config_file_in_dir(vfs, current_dir, mypy_compatible_default, |_| ())
     }
 }
 
@@ -82,6 +83,7 @@ fn initialize_config(
 fn find_mypy_config_file_in_dir(
     vfs: &dyn VfsHandler,
     dir: &AbsPath,
+    mypy_compatible_default: bool,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<FoundConfig> {
     for config_path in CONFIG_PATHS.iter() {
@@ -110,7 +112,11 @@ fn find_mypy_config_file_in_dir(
     }
     tracing::info!("No relevant config found");
     Ok(FoundConfig {
-        project_options: ProjectOptions::default(),
+        project_options: if mypy_compatible_default {
+            ProjectOptions::mypy_default()
+        } else {
+            ProjectOptions::default()
+        },
         diagnostic_config: DiagnosticConfig::default(),
         config_path: None,
     })

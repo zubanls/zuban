@@ -273,10 +273,15 @@ fn project_from_cli(
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
-    let mut found = find_cli_config(&local_fs, &current_dir, cli.config_file.as_deref())
-        .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
+    let mut found = find_cli_config(
+        &local_fs,
+        &current_dir,
+        cli.config_file.as_deref(),
+        // Set the default to not mypy compatible, at least for now
+        cli.mypy_compatible && !cli.no_mypy_compatible,
+    )
+    .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
     let mut options = found.project_options;
-    options.settings.mypy_compatible = true;
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
