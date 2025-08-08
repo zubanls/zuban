@@ -1870,6 +1870,16 @@ impl<'db> Decorated<'db> {
     pub fn decorators(&self) -> Decorators<'db> {
         Decorators::new(self.node.nth_child(0))
     }
+
+    pub fn end_position_last_leaf(&self) -> CodeIndex {
+        let mut leaf = self.node.last_leaf_in_subtree();
+        while leaf.is_type(Terminal(TerminalType::Newline))
+            || leaf.is_type(Terminal(TerminalType::Dedent))
+        {
+            leaf = leaf.previous_leaf().unwrap();
+        }
+        leaf.end()
+    }
 }
 
 pub enum Decoratee<'db> {

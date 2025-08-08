@@ -763,3 +763,19 @@ class Bytes:
             return 0
         else:
             return b""
+
+[case overload_function_only_one_positions]
+# flags: --show-column-numbers --show-error-end
+from typing import overload
+@overload
+def func1() -> None:
+    ...
+
+@overload
+def func2() -> None: ...
+
+x = 1
+
+[out]
+__main__:3:1:5:8: error: Single overload definition, multiple required
+__main__:7:1:8:25: error: Single overload definition, multiple required
