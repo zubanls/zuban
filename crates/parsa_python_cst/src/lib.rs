@@ -2889,7 +2889,7 @@ impl AssignmentRightSide<'_> {
             Self::StarExpressions(star_exprs) => {
                 const SEARCH_NAMES: &[PyNodeType] =
                     &[Terminal(TerminalType::Name), Nonterminal(yield_expr)];
-                star_exprs.node.search(SEARCH_NAMES, true).next().is_some()
+                star_exprs.node.search(SEARCH_NAMES, true).next().is_none()
             }
             Self::YieldExpr(_) => false,
         }

@@ -409,9 +409,9 @@ impl<'db> NameBinder<'db> {
                         | AssignmentContent::AugAssign(_, _, right) => {
                             index_right(right);
                             if right.is_inferrable_without_flow_analysis() {
-                                IndexingCause::Other
-                            } else {
                                 IndexingCause::ConstantAssignment
+                            } else {
+                                IndexingCause::Other
                             }
                         }
                         AssignmentContent::WithAnnotation(_, _, Some(right)) => {
