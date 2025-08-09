@@ -260,7 +260,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                             "Too many positional arguments for \"TypeVarTuple\"".into(),
                         ),
                     );
-                    return None;
+                    break;
                 }
                 ArgKind::Keyword(KeywordArg {
                     key,
@@ -279,7 +279,6 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                                 .into(),
                             ),
                         );
-                        return None;
                     }
                 },
                 ArgKind::Comprehension { .. } => {
@@ -380,7 +379,7 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                             "Too many positional arguments for \"ParamSpec\"".into(),
                         ),
                     );
-                    return None;
+                    break;
                 }
                 ArgKind::Keyword(KeywordArg {
                     key: "covariant" | "contravariant" | "bound",
@@ -390,7 +389,6 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                         i_s,
                         IssueKind::ParamSpecKeywordArgumentWithoutDefinedSemantics,
                     );
-                    return None;
                 }
                 _ => arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" }),
             }

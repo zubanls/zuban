@@ -44,3 +44,11 @@ IntTupleGeneric = tuple[int, T]
 IntTupleGeneric[str]  # OK
 IntTupleGeneric[*Ts]  # E: Unpack is only valid in a variadic position  # E: TypeVarTuple "Ts" is unbound
 IntTupleGeneric[*tuple[float, ...]]  # E: Unpack is only valid in a variadic position
+
+[case two_typevartuples_in_class_not_allowed_even_with_invalid_definitions]
+from typing import Generic, TypeVarTuple
+Ts1 = TypeVarTuple("Ts1", int, str)  # E: Too many positional arguments for "TypeVarTuple"
+Ts2 = TypeVarTuple("Ts2", bound=int)  # E: Unexpected keyword argument "bound" for "TypeVarTuple"
+
+class Array3(Generic[*Ts1, *Ts2]):  # E: Can only use one type var tuple in a class def
+    ...
