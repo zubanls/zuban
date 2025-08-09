@@ -643,6 +643,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let needed_recalculation = !to_annot_expr.point().calculated();
         if needed_recalculation {
             let mut t = if let Some(right_side) = right_side {
+                let module_point = NodeRef::new(self.file, 0).point();
+                if !module_point.calculating() && !module_point.calculated() {
+                    let result = self.file.ensure_module_symbols_flow_analysis(self.i_s.db);
+                    debug_assert_eq!(result, Ok(()));
+                    debug_assert!(to_annot_expr.point().calculated());
+                    if to_annot_expr.point().calculated() {
+                        return true;
+                    }
+                }
                 self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown)
                     .as_type(self.i_s)
             } else {

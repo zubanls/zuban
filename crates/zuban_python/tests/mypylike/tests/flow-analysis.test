@@ -433,4 +433,72 @@ def dec() -> Callable[[Callable], Never]: ...
 @dec()
 def foo(): ...
 
-[out]
+[case global_final_unfinished_using_flow_analysis]
+import m
+reveal_type(m.x)  # N: Revealed type is "Literal[2] | Literal[3]"
+
+[file m.py]
+from typing import Final, Literal
+
+y: Literal[1, 2, 3] = 1
+if y == 1:
+    y = 2
+else:
+    y = 3
+
+x: Final = y
+
+[case class_final_unfinished_using_flow_analysis]
+import m
+reveal_type(m.C.x)  # N: Revealed type is "Literal[2] | Literal[3]"
+
+[file m.py]
+from typing import Final, Literal
+
+class C:
+    y: Literal[1, 2, 3] = 1
+    if y == 1:
+        y = 2
+    else:
+        y = 3
+
+    x: Final = y
+
+[case func_final_unfinished_using_flow_analysis]
+from typing import Final, Literal
+
+def f() -> None:
+    reveal_type(x)  # E: Name "x" is used before definition \
+                    # N: Revealed type is "Literal[1] | Literal[2] | Literal[3]"
+    y: Literal[1, 2, 3] = 1
+    if y == 1:
+        y = 2
+    else:
+        y = 3
+    x: Final = y
+    reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2] | Literal[3]"
+
+def g() -> None:
+    y: Literal[1, 2, 3] = 1
+    if y == 1:
+        y = 2
+    else:
+        y = 3
+    x: Final = y
+    reveal_type(x)  # N: Revealed type is "Literal[2] | Literal[3]"
+
+[case classvar_unfinished_using_flow_analysis]
+import m
+reveal_type(m.C.x)  # N: Revealed type is "Literal[2] | Literal[3]"
+
+[file m.py]
+from typing import ClassVar, Literal
+
+class C:
+    y: Literal[1, 2, 3] = 1
+    if y == 1:
+        y = 2
+    else:
+        y = 3
+
+    x: ClassVar = y
