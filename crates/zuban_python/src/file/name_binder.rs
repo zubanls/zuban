@@ -396,22 +396,28 @@ impl<'db> NameBinder<'db> {
                     let unpacked = assignment.unpack();
                     // First we have to index the right side, before we can begin indexing the left
                     // side.
+                    let mut index_right = |right: &_| match right {
+                        AssignmentRightSide::YieldExpr(yield_expr) => {
+                            self.index_non_block_node(yield_expr, ordered)
+                        }
+                        AssignmentRightSide::StarExpressions(star_exprs) => {
+                            self.index_non_block_node(star_exprs, ordered)
+                        }
+                    };
                     let cause = match &unpacked {
                         AssignmentContent::Normal(_, right)
-                        | AssignmentContent::WithAnnotation(_, _, Some(right))
                         | AssignmentContent::AugAssign(_, _, right) => {
-                            match right {
-                                AssignmentRightSide::YieldExpr(yield_expr) => {
-                                    self.index_non_block_node(yield_expr, ordered)
-                                }
-                                AssignmentRightSide::StarExpressions(star_exprs) => {
-                                    self.index_non_block_node(star_exprs, ordered)
-                                }
-                            };
+                            index_right(right);
                             if right.is_inferrable_without_flow_analysis() {
                                 IndexingCause::Other
                             } else {
                                 IndexingCause::ConstantAssignment
+                            }
+                        }
+                        AssignmentContent::WithAnnotation(_, _, Some(right)) => {
+                            index_right(right);
+                            IndexingCause::Annotation {
+                                definition_name_index: None,
                             }
                         }
                         AssignmentContent::WithAnnotation(_, _, None) => {
@@ -2136,7 +2142,7 @@ struct UnorderedReference<'db> {
     ordered: bool,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 enum IndexingCause {
     Annotation {
         definition_name_index: Option<NodeIndex>,

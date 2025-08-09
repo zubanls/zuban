@@ -411,3 +411,28 @@ class Concrete1(Proto1):
         self.cm1 = 1
         self.im1 = 1
         self.im3 = 3
+
+[case protocol_callable_matching_precise_types]
+# flags: --allow-redefinition
+from typing import Any, Callable, ParamSpec, Protocol, TypeVar, cast, overload
+
+class Proto1(Protocol):
+    def __call__(self, *vals: bytes, max_len: int | None = None) -> list[bytes]:
+        ...
+
+def cb1_good1(*vals: bytes, max_len: int | None = None) -> list[bytes]:
+    return []
+
+def cb1_bad1(*vals: bytes, max_items: int | None) -> list[bytes]:
+    return []
+
+def cb1_bad2(*vals: bytes) -> list[bytes]:
+    return []
+
+def cb1_bad3(*vals: bytes, max_len: str | None) -> list[bytes]:
+    return []
+
+cb1: Proto1 = cb1_good1  # OK
+cb1 = cb1_bad1  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(int | None, 'max_items')], list[bytes]]", variable has type "Proto1")
+cb1 = cb1_bad2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes)], list[bytes]]", variable has type "Proto1")
+cb1 = cb1_bad3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(str | None, 'max_len')], list[bytes]]", variable has type "Proto1")
