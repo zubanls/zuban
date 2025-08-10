@@ -1320,10 +1320,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
-            TypeContent::ParamSpecAttr { usage, name } => {
+            TypeContent::ParamSpecAttr { name, .. } => {
                 match name {
-                    "args" => return Some(Type::ParamSpecArgs(usage)),
-                    "kwargs" => return Some(Type::ParamSpecKwargs(usage)),
+                    "args" | "kwargs" => {
+                        self.add_issue(node_ref, IssueKind::ParamSpecComponentsNotAllowed);
+                    }
                     _ => (), // Error was added earlier
                 }
             }

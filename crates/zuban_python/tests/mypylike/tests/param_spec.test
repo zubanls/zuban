@@ -191,3 +191,23 @@ class D(C):
 def f(x: str) -> None: ...
 D(f, 1)
 D(f, '')
+
+[case param_invalid_usages_in_sub_funcs]
+# Copied from conformance tests (generics_paramspec_components.py)
+from typing import ParamSpec, Callable, Any
+P = ParamSpec("P")
+def puts_p_into_scope1(f: Callable[P, int]) -> None:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> None:  # OK
+        pass
+
+    def mixed_up(*args: P.kwargs, **kwargs: P.args) -> None:  # E: Use "P.args" for variadic "*" parameter  # E: Use "P.kwargs" for variadic "**" parameter
+        pass
+
+    def misplaced1(x: P.args) -> None:  # E: ParamSpec components are not allowed here
+        pass
+
+    def bad_kwargs1(*args: P.args, **kwargs: P.args) -> None:  # E: Use "P.kwargs" for variadic "**" parameter
+        pass
+
+    def bad_kwargs2(*args: P.args, **kwargs: Any) -> None:  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+        pass

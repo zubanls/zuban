@@ -73,14 +73,14 @@ class Bar(List[Bar]): ...  # E: Name "Bar" is used before definition
 from typing import ParamSpec
 P = ParamSpec("P")
 def foo(*args: P.args, **kwargs: P.kwargs) -> None:
-    x: P.args
-    y: P.kwargs
+    x: P.args  # E: ParamSpec components are not allowed here
+    y: P.kwargs  # E: ParamSpec components are not allowed here
     z: P.undefined  # E: Name "P.undefined" is not defined
     x = args
     y = kwargs
     if bool():
-        x = y  # E: Incompatible types in assignment (expression has type "P.kwargs", variable has type "P.args")
-    y = x  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")
+        x = y
+    y = x
 
 [case namespace_attr]
 import foo
