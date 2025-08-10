@@ -3,8 +3,8 @@ use std::fmt;
 use parsa_python_cst::{
     Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
     Int, Name, NameDef, NameDefParent, NameImportParent, NamedExpression, NodeIndex, Primary,
-    PrimaryTarget, Slices, StarExpression, StarStarExpression, StarredExpression, StringLiteral,
-    NAME_DEF_TO_NAME_DIFFERENCE,
+    PrimaryTarget, Scope, Slices, StarExpression, StarStarExpression, StarredExpression,
+    StringLiteral, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::FileIndex;
 
@@ -404,6 +404,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn node_end_position(self) -> CodeIndex {
         self.file.tree.node_end_position(self.node_index)
+    }
+
+    pub fn node_parent_scope(self) -> Scope<'file> {
+        self.file.tree.node_parent_scope(self.node_index)
     }
 
     pub fn line_one_based(&self, db: &Database) -> usize {

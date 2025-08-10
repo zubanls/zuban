@@ -72,6 +72,10 @@ impl Tree {
         Some(StarExpressions::new(node))
     }
 
+    pub fn node_parent_scope(&self, index: NodeIndex) -> Scope {
+        scope_for_node(self.0.node_by_index(index))
+    }
+
     pub fn node_start_position(&self, index: NodeIndex) -> CodeIndex {
         self.0.node_by_index(index).start()
     }

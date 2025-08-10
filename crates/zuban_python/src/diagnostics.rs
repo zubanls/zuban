@@ -263,6 +263,7 @@ pub(crate) enum IssueKind {
     AlreadyDefinedTypeParameter { name: Box<str> },
     DuplicateTypeVarInTypeAliasType { name: Box<str> },
     MultipleTypeVarTupleDisallowedInTypeParams { in_type_alias_type: bool },
+    InvalidTypeVarOfOuterClass { name: Box<str> },
 
     CannotUseIsinstanceWith { func: &'static str, with: &'static str },
     CannotUseIsinstanceWithParametrizedGenerics,
@@ -1535,6 +1536,9 @@ impl<'db> Diagnostic<'db> {
                     "Can only use one TypeVarTuple in type params".to_string()
                 }
             }
+            InvalidTypeVarOfOuterClass { name } => format!(
+                "\"{name}\" may not be used, because it's defined in an outer class"
+            ),
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),
             CannotUseIsinstanceWithParametrizedGenerics =>

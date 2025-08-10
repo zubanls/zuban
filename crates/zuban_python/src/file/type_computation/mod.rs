@@ -4054,11 +4054,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn within_type_var_like_definition<T>(
         &self,
         node_ref: NodeRef,
+        check_invalid_outer_type_vars: bool,
         callback: impl FnOnce(TypeComputation) -> T,
     ) -> T {
         let in_definition = node_ref.as_link();
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _| {
-            i_s.find_parent_type_var(&type_var_like).unwrap_or_else(
+            let mut found = i_s.find_parent_type_var(&type_var_like);
+            if check_invalid_outer_type_vars {
+                found = check_for_invalid_outer_type_vars(i_s.db, node_ref, found)
+            }
+            found.unwrap_or_else(
                 || TypeVarCallbackReturn::NotFound {
                     allow_late_bound_callables: true,
                 }, // TODO it should probably something like this for recursive TypeVar defaults
@@ -4081,7 +4086,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         from_type_var_syntax: bool,
     ) -> Type {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, |mut comp| {
+        self.within_type_var_like_definition(node_ref, from_type_var_syntax, |mut comp| {
             match comp.compute_type(expr) {
                 TypeContent::InvalidVariable(_) if !from_type_var_syntax => {
                     // TODO this is a bit weird and should probably generate other errors
@@ -4138,7 +4143,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_type_var_default(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, |mut comp| {
+        self.within_type_var_like_definition(node_ref, false, |mut comp| {
             let tc = comp.compute_type(expr);
             Some(comp.as_type(tc, node_ref))
         })
@@ -4146,7 +4151,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, |mut comp| {
+        self.within_type_var_like_definition(node_ref, false, |mut comp| {
             comp.calculate_callable_params_for_expr(expr, false, false)
         })
     }
@@ -4162,7 +4167,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 TypeVarTupleDefaultOrigin::TypeParam(star_expr) => star_expr.index(),
             },
         );
-        self.within_type_var_like_definition(node_ref, |mut comp| {
+        self.within_type_var_like_definition(node_ref, false, |mut comp| {
             let unpacked = match origin {
                 TypeVarTupleDefaultOrigin::OldSchool(expr) => match comp.compute_type(expr) {
                     TypeContent::Unpacked(unpacked) => unpacked,
@@ -4336,6 +4341,30 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             None => false,
         }
     }
+}
+
+fn check_for_invalid_outer_type_vars(
+    db: &Database,
+    node_ref: NodeRef,
+    found: Option<TypeVarCallbackReturn>,
+) -> Option<TypeVarCallbackReturn> {
+    if let Some(TypeVarCallbackReturn::TypeVarLike(tvl)) = &found {
+        if let Scope::Class(c) = node_ref.node_parent_scope() {
+            let in_definition = tvl.in_definition();
+            if in_definition.node_index != c.index()
+                && NodeRef::from_link(db, in_definition)
+                    .maybe_class()
+                    .is_some()
+            {
+                return Some(TypeVarCallbackReturn::AddIssue(
+                    IssueKind::InvalidTypeVarOfOuterClass {
+                        name: tvl.as_type_var_like().name(db).into(),
+                    },
+                ));
+            }
+        }
+    }
+    found
 }
 
 #[derive(Debug)]

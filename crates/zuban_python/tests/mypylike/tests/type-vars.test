@@ -17,11 +17,18 @@ from typing import TypeVar
 Y2 = TypeVar("Y2", int, str)
 AlsoOk2 = TypeVar("AlsoOk2", int, str, bool, default=Y2)
 
-[case type_var_syntax_nested_type_variables_not_reachable]
+[case type_var_syntax_bound_nested_type_variables_not_reachable]
 # From conformance tests generics_syntax_declarations.py
 class ClassG[V]:
-    class ClassD[T: dict[str, V]]:  # E: Name "V" is not defined
+    class ClassD[T: dict[str, V]]:  # E: "V" may not be used, because it's defined in an outer class
         ...
+
+[case other_type_var_syntax_nested_type_variables_not_reachable]
+class C[V]:
+    class D[T=list[V]]: ... # E: Type parameter "T" has a default type that refers to one or more type variables that are out of scope
+    class E[*Ts=*tuple[V]]: ... # E: Type parameter "Ts" has a default type that refers to one or more type variables that are out of scope
+    class F[**P=[V]]: ... # E: Type parameter "P" has a default type that refers to one or more type variables that are out of scope
+    class G[T: (V, bytes)]: ... # E: TypeVar constraint type cannot be parametrized by type variables
 
 [case type_var_syntax_allowed_in_keyword_arg_in_class]
 # From conformance tests generics_syntax_scoping.py
