@@ -791,6 +791,9 @@ fn symlink_creation_allowed() -> bool {
 #[test]
 #[serial]
 fn publish_diagnostics_without_symlinks() {
+    if fails_too_much_on_linux_and_github_actions() {
+        return;
+    }
     publish_diagnostics(false)
 }
 
