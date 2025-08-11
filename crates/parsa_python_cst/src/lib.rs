@@ -678,6 +678,15 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn is_part_of_primary_ancestors(&self) -> bool {
+        let parent = self.node.parent().unwrap();
+        if !parent.is_type(Nonterminal(atom)) && !parent.is_type(Nonterminal(primary)) {
+            return false;
+        }
+        let parent = parent.parent().unwrap();
+        parent.is_type(Nonterminal(primary)) && self.node.index < parent.nth_child(1).index
+    }
+
     pub fn maybe_atom_of_primary(&self) -> Option<Primary<'db>> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {

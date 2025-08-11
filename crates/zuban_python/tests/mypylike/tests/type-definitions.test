@@ -72,7 +72,7 @@ class Bar(List[Bar]): ...  # E: Name "Bar" is used before definition
 [case invalid_usage_of_param_spec_attr]
 from typing import ParamSpec
 P = ParamSpec("P")
-def foo(*args: P.args, **kwargs: P.kwargs) -> None:
+def foo(*args: P.args, **kwargs: P.kwargs) -> None:  # E: ParamSpec "P" is unbound
     x: P.args  # E: ParamSpec components are not allowed here
     y: P.kwargs  # E: ParamSpec components are not allowed here
     z: P.undefined  # E: Name "P.undefined" is not defined

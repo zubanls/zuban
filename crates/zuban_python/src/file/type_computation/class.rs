@@ -7,8 +7,8 @@ use std::{
 use parsa_python_cst::{
     ArgOrComprehension, Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent,
     AsyncStmtContent, ClassDef, Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg,
-    NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator,
-    Target, TrivialBodyState, TypeLike,
+    Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent,
+    StmtLikeIterator, Target, TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -753,7 +753,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             i_s,
                             self.node_ref.file,
                             self.node_ref.as_link(),
-                            &mut |_, _: &_, tvl: TypeVarLike, _| {
+                            &mut |_, _: &_, tvl: TypeVarLike, _, _: Name| {
                                 if has_type_params {
                                     // This can happen if two type var likes are used.
                                     unbound_type_vars.insert(tvl);
@@ -833,7 +833,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             i_s,
                             self.node_ref.file,
                             self.node_ref.as_link(),
-                            &mut |_, _: &_, type_var_like: TypeVarLike, _| {
+                            &mut |_, _: &_, type_var_like: TypeVarLike, _, _: Name| {
                                 if let Some(usage) =
                                     type_vars.find(&type_var_like, self.node_ref.as_link())
                                 {

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    keywords_contain, AtomContent, CodeIndex, StarLikeExpression, StarLikeExpressionIterator,
+    keywords_contain, AtomContent, CodeIndex, Name, StarLikeExpression, StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -230,7 +230,7 @@ pub(crate) fn new_typing_named_tuple(
     in_type_definition: bool,
 ) -> Option<Rc<NamedTuple>> {
     let (_, second_node_ref, _, _) = check_named_tuple_name(i_s, "NamedTuple", args)?;
-    let on_type_var = &mut |i_s: &InferenceState, _: &_, type_var_like, _| {
+    let on_type_var = &mut |i_s: &InferenceState, _: &_, type_var_like, _, _: Name| {
         i_s.find_parent_type_var(&type_var_like)
             .unwrap_or(TypeVarCallbackReturn::NotFound {
                 allow_late_bound_callables: false,

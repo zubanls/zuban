@@ -2,9 +2,9 @@ use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent, Atom,
-    AtomContent, Expression, ExpressionContent, ExpressionPart, NameDef, NameOrPrimaryWithNames,
-    NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, PythonString, StarExpressionContent, Target,
-    TypeLike,
+    AtomContent, Expression, ExpressionContent, ExpressionPart, Name, NameDef,
+    NameOrPrimaryWithNames, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, PythonString,
+    StarExpressionContent, Target, TypeLike,
 };
 use utils::{AlreadySeen, FastHashSet};
 
@@ -680,30 +680,33 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         };
 
         let mut unbound_type_vars = FastHashSet::default();
-        let mut type_var_callback = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
-            if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
-                if let TypeVarCallbackReturn::TypeVarLike(_) = &result {
-                    if matches!(origin, CalculatingAliasType::Normal) {
-                        return TypeVarCallbackReturn::AddIssue(IssueKind::BoundTypeVarInAlias {
-                            name: Box::from(type_var_like.name(i_s.db)),
-                        });
+        let mut type_var_callback =
+            |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _, _: Name| {
+                if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
+                    if let TypeVarCallbackReturn::TypeVarLike(_) = &result {
+                        if matches!(origin, CalculatingAliasType::Normal) {
+                            return TypeVarCallbackReturn::AddIssue(
+                                IssueKind::BoundTypeVarInAlias {
+                                    name: Box::from(type_var_like.name(i_s.db)),
+                                },
+                            );
+                        }
+                    }
+                    return result;
+                }
+                if let Some(usage) = alias.type_vars.find(&type_var_like, alias.location) {
+                    TypeVarCallbackReturn::TypeVarLike(usage)
+                } else if let CalculatingAliasType::NewType(_) = &origin {
+                    TypeVarCallbackReturn::UnboundTypeVar
+                } else if matches!(cause, AliasCause::SyntaxOrTypeAliasType) {
+                    unbound_type_vars.insert(type_var_like);
+                    TypeVarCallbackReturn::AnyDueToError
+                } else {
+                    TypeVarCallbackReturn::NotFound {
+                        allow_late_bound_callables: false,
                     }
                 }
-                return result;
-            }
-            if let Some(usage) = alias.type_vars.find(&type_var_like, alias.location) {
-                TypeVarCallbackReturn::TypeVarLike(usage)
-            } else if let CalculatingAliasType::NewType(_) = &origin {
-                TypeVarCallbackReturn::UnboundTypeVar
-            } else if matches!(cause, AliasCause::SyntaxOrTypeAliasType) {
-                unbound_type_vars.insert(type_var_like);
-                TypeVarCallbackReturn::AnyDueToError
-            } else {
-                TypeVarCallbackReturn::NotFound {
-                    allow_late_bound_callables: false,
-                }
-            }
-        };
+            };
         let p = self.file.points.get(expr.index());
         let mut comp = TypeComputation::new(
             self.i_s,

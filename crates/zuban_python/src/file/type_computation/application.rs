@@ -1,6 +1,8 @@
 // For Type Application, e.g. x = list[int]()
 use std::rc::Rc;
 
+use parsa_python_cst::Name;
+
 use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
 use crate::matching::ResultContext;
@@ -31,7 +33,7 @@ macro_rules! maybe_compute_new_type_alias_definition {
 }
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $result_context:expr, $method:ident $args:tt) => {{
-        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>| {
+        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable: Option<_>, _: Name| {
             if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
                 return result
             }

@@ -76,6 +76,7 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &TypeVarManager<PointLink>,
     TypeVarLike,
     Option<PointLink>, // current_callable
+    Name,              // Which name we are working with
 ) -> TypeVarCallbackReturn;
 
 #[derive(Debug, Clone)]
@@ -337,6 +338,7 @@ fn type_computation_for_variable_annotation(
     _manager: &TypeVarManager<PointLink>,
     type_var_like: TypeVarLike,
     current_callable: Option<PointLink>,
+    _: Name,
 ) -> TypeVarCallbackReturn {
     if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
         return result;
@@ -3120,6 +3122,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     &self.type_var_manager,
                     type_var_like.clone(),
                     self.current_callable,
+                    name,
                 ) {
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(usage)) => {
                         TypeContent::Type(Type::TypeVar(usage))
@@ -4056,7 +4059,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         callback: impl FnOnce(TypeComputation) -> T,
     ) -> T {
         let in_definition = node_ref.as_link();
-        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _| {
+        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _, _: Name| {
             let mut found = i_s.find_parent_type_var(&type_var_like);
             if check_invalid_outer_type_vars {
                 found = check_for_invalid_outer_type_vars(i_s.db, node_ref, found)
@@ -4102,7 +4105,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         from_type_var_syntax: bool,
     ) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _| {
+        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _, _: Name| {
             if i_s.find_parent_type_var(&type_var_like).is_some() {
                 TypeVarCallbackReturn::AddIssue(IssueKind::TypeVarConstraintCannotHaveTypeVariables)
             } else {

@@ -1,7 +1,7 @@
 use std::{borrow::Cow, cell::Cell};
 
 use parsa_python_cst::{
-    FunctionDef, FunctionParent, NodeIndex, ParamAnnotation, ParamKind, ReturnAnnotation,
+    FunctionDef, FunctionParent, Name, NodeIndex, ParamAnnotation, ParamKind, ReturnAnnotation,
     ReturnOrYield,
 };
 use utils::FastHashSet;
@@ -242,10 +242,12 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let in_result_type = Cell::new(false);
         let mut unbound_in_params = vec![];
         let mut unbound_type_vars = FastHashSet::default();
+        let mut unbound_param_specs: FastHashSet<TypeVarLike> = FastHashSet::default();
         let mut on_type_var = |i_s: &InferenceState,
                                manager: &TypeVarManager<PointLink>,
                                type_var_like: TypeVarLike,
-                               current_callable: Option<_>| {
+                               current_callable: Option<_>,
+                               on_name: Name| {
             class
                 .and_then(|class| {
                     class
@@ -262,11 +264,19 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                         unbound_type_vars.insert(type_var_like);
                         return TypeVarCallbackReturn::AnyDueToError;
                     }
-                    if in_result_type.get()
-                        && manager.position(&type_var_like).is_none()
-                        && current_callable.is_none()
-                    {
-                        unbound_in_params.push(type_var_like.clone());
+                    if in_result_type.get() {
+                        if manager.position(&type_var_like).is_none() && current_callable.is_none()
+                        {
+                            unbound_in_params.push(type_var_like.clone());
+                        } else if let TypeVarLike::ParamSpec(_) = &type_var_like {
+                            unbound_param_specs.remove(&type_var_like);
+                        }
+                    } else if let TypeVarLike::ParamSpec(_) = &type_var_like {
+                        if manager.position(&type_var_like).is_none()
+                            && on_name.is_part_of_primary_ancestors()
+                        {
+                            unbound_param_specs.insert(type_var_like);
+                        }
                     }
                     TypeVarCallbackReturn::NotFound {
                         allow_late_bound_callables: in_result_type.get(),
@@ -372,6 +382,10 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 IssueKind::TypeParametersShouldBeDeclared { type_var_like },
             );
         }
+        for type_var_like in unbound_param_specs.into_iter() {
+            self.add_issue_for_declaration(i_s, IssueKind::UnboundTypeVarLike { type_var_like });
+        }
+        // if type_vars.iter().any(|tv| matches!(tv))
         (type_vars, type_guard, star_annotation)
     }
 

@@ -108,12 +108,9 @@ testTypeVarTupleInvariant
 unite_type_vars_mypy_issue_5874_no_join
 # Invalid ParamSpec definitions
 testParamSpecLocations
-testUnboundParamSpec
-testArgsKwargsWithoutParamSpecVar
 testRunParamSpecInsufficientArgs
 testRunParamSpecConcatenateInsufficientArgs
 testRunParamSpecConcatenateInsufficientArgsInDecorator
-testParamSpecScoping
 testRunParamSpecDuplicateArgsKwargs
 
 # union math vs. type var

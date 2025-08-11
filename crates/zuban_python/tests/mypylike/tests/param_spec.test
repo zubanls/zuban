@@ -145,7 +145,7 @@ def test(f: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> None:
 from typing import ParamSpec
 P = ParamSpec("P")
 
-def foo(*args: P.args, x: int, **kwargs: P.kwargs): ...  # E: Arguments not allowed after ParamSpec.args
+def foo(*args: P.args, x: int, **kwargs: P.kwargs): ...  # E: Arguments not allowed after ParamSpec.args  # E: ParamSpec "P" is unbound
 
 foo(1, 2, 3, 4)
 

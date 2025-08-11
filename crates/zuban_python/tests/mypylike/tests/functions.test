@@ -170,7 +170,7 @@ P = ParamSpec('P')
 
 def foo(*args: P.args, **kwargs: P.kwargs) -> Callable[P, None]: ...
 
-def f(with_unpack: tuple[str, *tuple[str, ...]],
+def f(with_unpack: tuple[str, *tuple[str, ...]],  # E: ParamSpec "P" is unbound
       arbitrary_len: tuple[int, ...],
       dct: dict[str, int],
       *args: P.args,
