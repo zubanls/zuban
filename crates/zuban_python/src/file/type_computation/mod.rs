@@ -1639,7 +1639,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     })
                 {
                     let result = self.point_resolution_to_type_name_lookup(resolved);
-                    let tc = self.resolve_type_name_lookup(result, name.index());
+                    let tc = self.resolve_type_name_lookup(result, name);
                     debug!("Point resolution for module: {tc:?}");
                     tc
                 } else {
@@ -1709,7 +1709,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'x> {
         if let Some(pr) = self.lookup_type_name_on_class(cls, name) {
             let tnl = self.point_resolution_to_type_name_lookup(pr);
-            self.resolve_type_name_lookup(tnl, name.index())
+            self.resolve_type_name_lookup(tnl, name)
         } else {
             self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
             TypeContent::UNKNOWN_REPORTED
@@ -3097,22 +3097,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             stop_on_assignments: true,
         }
         .lookup_type_name(name);
-        self.resolve_type_name_lookup(lookup, name.index())
+        self.resolve_type_name_lookup(lookup, name)
     }
 
     fn resolve_type_name_lookup(
         &mut self,
         lookup: Lookup<'db, 'db>,
-        origin_index: NodeIndex,
+        name: Name,
     ) -> TypeContent<'db, 'x> {
         match lookup {
             Lookup::T(c @ TypeContent::SpecialCase(Specific::TypingAny))
                 if self.flags().disallow_any_explicit =>
             {
-                self.add_issue(
-                    NodeRef::new(self.file, origin_index),
-                    IssueKind::DisallowedAnyExplicit,
-                );
+                self.add_issue_for_index(name.index(), IssueKind::DisallowedAnyExplicit);
                 c
             }
             Lookup::T(c) => c,
@@ -3134,14 +3131,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::ParamSpec(usage)
                     }
                     TypeVarCallbackReturn::UnboundTypeVar => {
-                        let node_ref = NodeRef::new(self.file, origin_index);
-                        node_ref
-                            .add_issue(self.i_s, IssueKind::UnboundTypeVarLike { type_var_like });
+                        self.add_issue_for_index(
+                            name.index(),
+                            IssueKind::UnboundTypeVarLike { type_var_like },
+                        );
                         TypeContent::UNKNOWN_REPORTED
                     }
                     TypeVarCallbackReturn::AddIssue(kind) => {
-                        let node_ref = NodeRef::new(self.file, origin_index);
-                        node_ref.add_issue(self.i_s, kind);
+                        self.add_issue_for_index(name.index(), kind);
                         TypeContent::UNKNOWN_REPORTED
                     }
                     TypeVarCallbackReturn::NotFound {
