@@ -385,7 +385,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 };
             }
-            Specific::PartialSet
+            return None;
         } else {
             return None;
         };
