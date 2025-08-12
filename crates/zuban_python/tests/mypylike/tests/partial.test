@@ -371,3 +371,43 @@ for _, z in ((1, set()), ("", set())):
 from collections import defaultdict
 x: dict[str, tuple[str, ...]] = defaultdict(tuple)
 y: dict[str, tuple[int, ...]]  = defaultdict(tuple[int])
+
+[case partial_set_return_from_untyped_func1]
+# flags: --no-mypy-compatible
+def f(x, errors=None):
+    if errors is None:
+        errors = set()
+
+    if x > 1:
+        errors.add(x)
+        return (0, errors)
+    return ("", errors)
+
+size, errors = f(1)
+reveal_type(errors)  # N: Revealed type is "set[Any] | set[Never]"
+
+[case partial_set_return_from_untyped_func2]
+# flags: --no-mypy-compatible
+def f(x, errors=None):
+    if errors is None:
+        errors = set()
+
+    if x > 1:
+        return (0, errors)
+    return ("", errors)
+
+size, errors = f(1)
+reveal_type(errors)  # N: Revealed type is "set[Any] | set[Never]"
+
+[case partial_set_return_from_untyped_func3]
+# flags: --no-mypy-compatible
+def f():
+    return set()
+
+x = f()
+x.add(1)
+reveal_type(x)  # N: Revealed type is "set[int]"
+
+y = f()
+y.add("")
+reveal_type(y)  # N: Revealed type is "set[str]"

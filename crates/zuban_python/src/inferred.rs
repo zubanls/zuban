@@ -182,6 +182,10 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 Specific::PartialList => Cow::Borrowed(&i_s.db.python_state.list_of_never),
                 Specific::PartialDict => Cow::Borrowed(&i_s.db.python_state.dict_of_never),
+                Specific::PartialSet => Cow::Owned(new_class!(
+                    i_s.db.python_state.set_node_ref().as_link(),
+                    Type::Never(NeverCause::Inference),
+                )),
                 _ => unreachable!("{:?}", specific),
             },
             InferredState::UnsavedFileReference(file_index) => {
