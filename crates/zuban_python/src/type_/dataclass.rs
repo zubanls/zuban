@@ -1084,7 +1084,7 @@ pub(crate) fn lookup_on_dataclass<'a>(
         if let Some(param) = dataclass_init_func(self_, i_s.db)
             .expect_simple_params()
             .iter()
-            .find(|p| p.name.as_ref().unwrap().as_str(i_s.db) == name)
+            .find(|p| p.name.as_ref().is_some_and(|n| n.as_str(i_s.db) == name))
         {
             return LookupDetails::new(
                 Type::Dataclass(self_.clone()),

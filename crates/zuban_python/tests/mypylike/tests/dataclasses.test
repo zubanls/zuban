@@ -604,3 +604,15 @@ class DC5:
     a: int
 DC5.__slots__   
 DC5(1).__slots__
+
+[case invalid_frozen_dataclass_base_access]
+from dataclasses import dataclass
+@dataclass(frozen=True)
+class C(Undefined):  # E: Name "Undefined" is not defined
+    x: int
+
+x = C(x=1, y=1)
+reveal_type(x.x)  # N: Revealed type is "int"
+reveal_type(x.y)  # N: Revealed type is "Any"
+x.x = 1  # E: Property "x" defined in "C" is read-only
+x.y = ""  # E: Property "y" defined in "C" is read-only
