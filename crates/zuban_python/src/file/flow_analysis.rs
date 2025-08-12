@@ -747,8 +747,11 @@ impl FlowAnalysis {
     }
 
     fn remove_key_if_modifies_ancestors(&self, i_s: &InferenceState, key: &FlowKey) {
-        self.tos_frame()
-            .entries
+        let Some(mut tos) = self.maybe_tos_frame() else {
+            recoverable_error!("Expected a tos to remove {key:?}");
+            return;
+        };
+        tos.entries
             .retain(|entry| !entry.modifies_ancestors || !entry.key.equals(i_s.db, key))
     }
 
