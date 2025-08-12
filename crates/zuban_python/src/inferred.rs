@@ -24,6 +24,7 @@ use crate::{
     },
     new_class,
     node_ref::NodeRef,
+    recoverable_error,
     type_::{
         execute_tuple_class, execute_type_of_type, merge_class_type_vars, AnyCause,
         CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
@@ -186,7 +187,28 @@ impl<'db: 'slf, 'slf> Inferred {
                     i_s.db.python_state.set_node_ref().as_link(),
                     Type::Never(NeverCause::Inference),
                 )),
-                _ => unreachable!("{:?}", specific),
+                Specific::PartialDefaultDict => Cow::Owned(new_class!(
+                    i_s.db.python_state.defaultdict_link(),
+                    Type::Never(NeverCause::Inference),
+                    Type::Never(NeverCause::Inference),
+                )),
+                Specific::PartialDefaultDictWithList => Cow::Owned(new_class!(
+                    i_s.db.python_state.defaultdict_link(),
+                    Type::Never(NeverCause::Inference),
+                    i_s.db.python_state.list_of_never.clone(),
+                )),
+                Specific::PartialDefaultDictWithSet => Cow::Owned(new_class!(
+                    i_s.db.python_state.defaultdict_link(),
+                    Type::Never(NeverCause::Inference),
+                    new_class!(
+                        i_s.db.python_state.set_node_ref().as_link(),
+                        Type::Never(NeverCause::Inference),
+                    )
+                )),
+                _ => {
+                    recoverable_error!("UnsavedSpecific {specific:?} type should not be handled");
+                    Cow::Borrowed(&Type::ERROR)
+                }
             },
             InferredState::UnsavedFileReference(file_index) => {
                 Cow::Owned(Type::Module(*file_index))

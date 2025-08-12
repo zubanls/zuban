@@ -411,3 +411,17 @@ reveal_type(x)  # N: Revealed type is "set[int]"
 y = f()
 y.add("")
 reveal_type(y)  # N: Revealed type is "set[str]"
+
+[case partial_defaultdict_return_from_untyped_func]
+# flags: --no-mypy-compatible
+from collections import defaultdict
+def f(x, errors=None):
+    if errors is None:
+        errors = defaultdict(list)
+
+    if x > 1:
+        return (0, errors)
+    return ("", errors)
+
+size, errors = f(1)
+reveal_type(errors)  # N: Revealed type is "collections.defaultdict[Any, Any] | collections.defaultdict[Never, list[Never]]"
