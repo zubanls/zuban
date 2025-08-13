@@ -1960,9 +1960,45 @@ reveal_type(C(1).join())  # N: Revealed type is "Any"
 [case class_inheritance_no_check_of_inferred_return_type]
 # flags: --no-mypy-compatible
 class A:
-  def join(self):
+  def untyped(self):
+      return 1
+  def typed(self) -> int:
+      return 1
+
+  @property
+  def untyped_property(self):
+      return 1
+  @property
+  def typed_property(self) -> int:
       return 1
 
 class B(A):
-  def join(self):
+  def untyped(self):
       return ""
+  def typed(self):
+      return ""
+
+  @property
+  def untyped_property(self):
+      return ""
+  @property
+  def typed_property(self):
+      return ""
+
+class C(A):
+  def untyped(self) -> str:
+      return ""
+  def typed(self) -> str:  # E: Return type "str" of "typed" incompatible with return type "int" in supertype "A"
+      return ""
+
+  @property
+  def untyped_property(self) -> str:
+      return ""
+
+  @property
+  def typed_property(self) -> str: # E: Signature of "typed_property" incompatible with supertype "A" \
+                                   # N:      Superclass: \
+                                   # N:          int \
+                                   # N:      Subclass: \
+                                   # N:          str
+       return ""

@@ -839,7 +839,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     if no_type_check {
                         Type::Callable(Rc::new(self.as_no_type_check_callable(i_s.db)))
                     } else if is_overload {
-                        self.as_type_without_inferring_return_type(i_s)
+                        self.as_type_without_inferring_return_type(i_s, FirstParamProperties::None)
                     } else {
                         self.as_type(i_s, FirstParamProperties::None)
                     }
@@ -1110,7 +1110,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     FunctionDetails {
                         inferred: Inferred::from_type(
-                            next_func.as_type_without_inferring_return_type(i_s),
+                            next_func.as_type_without_inferring_return_type(
+                                i_s,
+                                FirstParamProperties::None,
+                            ),
                         ),
                         kind: FunctionKind::Function {
                             had_first_self_or_class_annotation: self
@@ -1339,11 +1342,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         )
     }
 
-    pub fn as_type_without_inferring_return_type(&self, i_s: &InferenceState) -> Type {
+    pub fn as_type_without_inferring_return_type(
+        &self,
+        i_s: &InferenceState,
+        first_param: FirstParamProperties,
+    ) -> Type {
         Type::Callable(Rc::new(self.as_callable_with_options(
             i_s,
             AsCallableOptions {
-                first_param: FirstParamProperties::None,
+                first_param,
                 return_type: self.return_type(i_s),
             },
         )))

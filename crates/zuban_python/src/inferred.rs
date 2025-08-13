@@ -854,6 +854,7 @@ impl<'db: 'slf, 'slf> Inferred {
         add_issue: impl Fn(IssueKind),
         mro_index: MroIndex,
         disallow_lazy_bound_method: bool,
+        avoid_inferring_return_types: bool,
     ) -> Option<(Self, AttributeKind)> {
         self.bind_instance_descriptors_internal(
             i_s,
@@ -864,6 +865,7 @@ impl<'db: 'slf, 'slf> Inferred {
             mro_index,
             ApplyDescriptorsKind::All,
             disallow_lazy_bound_method,
+            avoid_inferring_return_types,
         )
     }
 
@@ -877,6 +879,7 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
         disallow_lazy_bound_method: bool,
+        avoid_inferring_return_types: bool,
     ) -> Option<(Self, AttributeKind)> {
         match &self.state {
             InferredState::Saved(definition) => {
@@ -945,6 +948,17 @@ impl<'db: 'slf, 'slf> Inferred {
                                     )),
                                     attr_kind,
                                 ))
+                            } else if avoid_inferring_return_types {
+                                Some((
+                                    Self::from_type(
+                                        BoundMethod::new(
+                                            &instance,
+                                            BoundMethodFunction::Function(func),
+                                        )
+                                        .as_type_without_inferring_returns(i_s),
+                                    ),
+                                    attr_kind,
+                                ))
                             } else if disallow_lazy_bound_method {
                                 Some((
                                     Self::from_type(
@@ -1003,6 +1017,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 } else {
                                     ApplyDescriptorsKind::NoBoundMethod
                                 },
+                                avoid_inferring_return_types,
                             ) {
                                 return r.map(|(inf, _)| (inf, attr_kind));
                             }
@@ -1140,6 +1155,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     add_issue,
                                     t,
                                     apply_descriptors_kind,
+                                    avoid_inferring_return_types,
                                 ) {
                                     return inf;
                                 }
@@ -1153,6 +1169,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     add_issue,
                                     &widened.widened,
                                     apply_descriptors_kind,
+                                    avoid_inferring_return_types,
                                 ) {
                                     return inf;
                                 } else {
@@ -1178,6 +1195,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         add_issue,
                         t,
                         apply_descriptors_kind,
+                        avoid_inferring_return_types,
                     ) {
                         return inf;
                     }
@@ -1198,6 +1216,7 @@ impl<'db: 'slf, 'slf> Inferred {
         add_issue: impl Fn(IssueKind),
         t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
+        avoid_inferring_return_types: bool,
     ) -> Option<Option<(Self, AttributeKind)>> {
         let mut t = t; // Weird lifetime issue
         let add_invalid_self_arg = |c: &CallableContent| {
@@ -1247,9 +1266,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Function { .. } => (),
                 FunctionKind::Property { setter_type, .. } => {
                     return Some(Some(
-                        if let Some(t) =
-                            calculate_property_return(i_s, &instance, &attribute_class, c)
-                        {
+                        if let Some(t) = calculate_property_return(
+                            i_s,
+                            &instance,
+                            &attribute_class,
+                            c,
+                            avoid_inferring_return_types,
+                        ) {
                             let setter_type = setter_type.as_ref().map(|s| match s.as_ref() {
                                 PropertySetter::OtherType(t)
                                     if attribute_class

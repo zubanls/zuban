@@ -725,6 +725,7 @@ pub(crate) fn lookup_on_tuple<'x>(
                     add_issue,
                     mro_index,
                     false,
+                    false,
                 ) else {
                     return LookupDetails::none();
                 };

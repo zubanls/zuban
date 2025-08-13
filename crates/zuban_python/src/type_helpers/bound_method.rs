@@ -59,4 +59,19 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             BoundMethodFunction::Overload(f) => f.as_type(i_s, Some(&|| self.instance.clone())),
         }
     }
+
+    pub fn as_type_without_inferring_returns<'db: 'a>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Type {
+        match &self.function {
+            BoundMethodFunction::Function(f) => f.as_type_without_inferring_return_type(
+                i_s,
+                FirstParamProperties::Skip {
+                    to_self_instance: &|| self.instance.clone(),
+                },
+            ),
+            BoundMethodFunction::Overload(_) => self.as_type(i_s),
+        }
+    }
 }

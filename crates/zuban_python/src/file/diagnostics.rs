@@ -2386,13 +2386,17 @@ fn find_and_check_override(
         name,
         // NamedTuple / Tuple are special, because they insert an additional type of themselves.
         InstanceLookupOptions::new(&add_lookup_issue)
-            .with_skip_first_of_mro(i_s.db, &override_class),
+            .with_skip_first_of_mro(i_s.db, &override_class)
+            .with_avoid_inferring_return_types(),
     );
     add_error_if_final(i_s, from, name, &original_details);
 
     if original_details.lookup.is_some() {
-        let override_details =
-            instance.lookup_with_details(i_s, add_lookup_issue, name, LookupKind::Normal);
+        let override_details = instance.lookup(
+            i_s,
+            name,
+            InstanceLookupOptions::new(&add_lookup_issue).with_avoid_inferring_return_types(),
+        );
         if !has_override_decorator
             && from
                 .file

@@ -1,6 +1,6 @@
 use std::{borrow::Cow, rc::Rc};
 
-use parsa_python_cst::ParamKind;
+use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{
@@ -13,6 +13,7 @@ use crate::{
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     matching::{maybe_class_usage, Generics},
+    node_ref::NodeRef,
     params::{
         params_have_self_type_after_self, Param, WrappedParamType, WrappedStar, WrappedStarStar,
     },
@@ -544,6 +545,10 @@ impl CallableContent {
             db.python_state.empty_type_var_likes.clone(),
             cause,
         )
+    }
+
+    pub fn maybe_original_function<'db>(&self, db: &'db Database) -> Option<FunctionDef<'db>> {
+        NodeRef::from_link(db, self.defined_at).maybe_function()
     }
 
     pub fn expect_simple_params(&self) -> &[CallableParam] {

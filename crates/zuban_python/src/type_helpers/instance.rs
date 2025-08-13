@@ -362,6 +362,7 @@ impl<'a> Instance<'a> {
                         mro_index,
                         options.disallow_lazy_bound_method
                             || matches!(class, TypeOrClass::Type(Cow::Owned(_))),
+                        options.avoid_inferring_return_types,
                     )
                     .map(|inf| {
                         attr_kind = inf.1;
@@ -690,6 +691,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                                 |issue| (self.add_issue)(issue),
                                 mro_index,
                                 false,
+                                false,
                             )
                             .map(|inf| inf.0)
                         })
@@ -1011,6 +1013,7 @@ pub(crate) struct InstanceLookupOptions<'x> {
     disallow_lazy_bound_method: bool,
     without_object: bool,
     check_total_ordering: bool,
+    avoid_inferring_return_types: bool,
 }
 
 impl<'x> InstanceLookupOptions<'x> {
@@ -1025,6 +1028,7 @@ impl<'x> InstanceLookupOptions<'x> {
             disallow_lazy_bound_method: false,
             without_object: false,
             check_total_ordering: true,
+            avoid_inferring_return_types: false,
         }
     }
 
@@ -1078,6 +1082,12 @@ impl<'x> InstanceLookupOptions<'x> {
 
     pub fn without_total_ordering_lookup(mut self) -> Self {
         self.check_total_ordering = false;
+        self
+    }
+
+    pub fn with_avoid_inferring_return_types(mut self) -> Self {
+        self.disallow_lazy_bound_method = true;
+        self.avoid_inferring_return_types = true;
         self
     }
 }

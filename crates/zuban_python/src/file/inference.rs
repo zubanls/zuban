@@ -982,6 +982,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     |issue| from.add_issue(i_s, issue),
                     MroIndex(0),
                     false,
+                    false,
                 ) {
                     new
                 } else {
