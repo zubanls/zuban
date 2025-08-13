@@ -2166,7 +2166,7 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let instance = func.class.unwrap().instance();
-        let options = InstanceLookupOptions::new(&|_| ());
+        let options = InstanceLookupOptions::new(&|_| ()).with_avoid_inferring_return_types();
         let normal_method = instance.lookup(i_s, normal_magic_name, options).lookup;
         if let Some(normal_inf) = normal_method.into_maybe_inferred() {
             let inplace_method = instance.lookup(i_s, func.name(), options).lookup;

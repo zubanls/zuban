@@ -677,3 +677,26 @@ class C(A):
     @staticmethod
     def typed_staticmethod(self) -> str: # E: Return type "str" of "typed_staticmethod" incompatible with return type "int" in supertype "A"
          return ""
+
+[case incompatible_untyped_inplace_methods]
+# flags: --no-mypy-compatible
+class A:
+    def __iadd__(self, other):
+        return 1
+    def __add__(self, other):
+        return ""
+
+    def __imul__(self, other) -> int:
+        return 1
+    def __mul__(self, other):
+        return ""
+
+    def __isub__(self, other):
+        return ""
+    def __sub__(self, other) -> int:
+        return 1
+
+    def __ior__(self, other) -> str:  # E: Signatures of "__ior__" and "__or__" are incompatible
+        return ""
+    def __or__(self, other) -> int:
+        return 1
