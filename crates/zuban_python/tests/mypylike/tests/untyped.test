@@ -548,3 +548,132 @@ def g(x):
 
 reveal_type(f(1))  # N: Revealed type is "int | Any"
 reveal_type(f(""))  # N: Revealed type is "str | Any"
+
+[case no_check_untyped_defs_with_no_mypy_compatible_methods]
+# flags: --no-mypy-compatible --no-check-untyped-defs
+class C:
+    def __init__(self, x):
+        self.x = x
+
+    def join(self):
+        x = self.x
+        return x
+
+reveal_type(C(1).join())  # N: Revealed type is "Any"
+
+[case class_inheritance_no_check_of_inferred_return_type1]
+# flags: --no-mypy-compatible
+class A:
+    def untyped(self):
+        return 1
+    def typed(self) -> int:
+        return 1
+
+    @property
+    def untyped_property(self):
+        return 1
+    @property
+    def typed_property(self) -> int:
+        return 1
+
+class B(A):
+    def untyped(self):
+        return ""
+    def typed(self):
+        return ""
+
+    @property
+    def untyped_property(self):
+        return ""
+    @property
+    def typed_property(self):
+        return ""
+
+class C(A):
+    def untyped(self) -> str:
+        return ""
+    def typed(self) -> str:  # E: Return type "str" of "typed" incompatible with return type "int" in supertype "A"
+        return ""
+
+    @property
+    def untyped_property(self) -> str:
+        return ""
+
+    @property
+    def typed_property(self) -> str: # E: Signature of "typed_property" incompatible with supertype "A" \
+                                       # N:      Superclass: \
+                                     # N:          int \
+                                     # N:      Subclass: \
+                                     # N:          str
+         return ""
+
+[case class_inheritance_no_check_of_inferred_return_type2]
+# flags: --no-mypy-compatible
+def dec[T](x: T) -> T: ...
+class A:
+    @dec
+    def untyped(self):
+        return 1
+    @dec
+    def typed(self) -> int:
+        return 1
+
+    @classmethod
+    def untyped_classmethod(self):
+        return 1
+    @classmethod
+    def typed_classmethod(self) -> int:
+        return 1
+
+    @staticmethod
+    def untyped_staticmethod(self):
+        return 1
+    @staticmethod
+    def typed_staticmethod(self) -> int:
+        return 1
+
+class B(A):
+    @dec
+    def untyped(self):
+        return ""
+    @dec
+    def typed(self):
+        return ""
+
+    @classmethod
+    def untyped_classmethod(self):
+        return ""
+    @classmethod
+    def typed_classmethod(self):
+        return ""
+
+    @staticmethod
+    def untyped_staticmethod(self):
+        return ""
+    @staticmethod
+    def typed_staticmethod(self):
+        return ""
+
+class C(A):
+    @dec
+    def untyped(self) -> str:
+        return ""
+    @dec
+    def typed(self) -> str:  # E: Return type "str" of "typed" incompatible with return type "int" in supertype "A"
+        return ""
+
+    @classmethod
+    def untyped_classmethod(self) -> str:
+        return ""
+
+    @classmethod
+    def typed_classmethod(self) -> str: # E: Return type "str" of "typed_classmethod" incompatible with return type "int" in supertype "A"
+         return ""
+
+    @staticmethod
+    def untyped_staticmethod(self) -> str:
+        return ""
+
+    @staticmethod
+    def typed_staticmethod(self) -> str: # E: Return type "str" of "typed_staticmethod" incompatible with return type "int" in supertype "A"
+         return ""

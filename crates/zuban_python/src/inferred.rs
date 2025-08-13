@@ -1238,7 +1238,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 {
                     debug_assert!(matches!(c.kind, FunctionKind::Function { .. }));
                     if let Some(f) = c.first_positional_type() {
-                        let new_c = create_signature_without_self_for_callable(
+                        let mut new_c = create_signature_without_self_for_callable(
                             i_s,
                             c,
                             &instance,
@@ -1250,6 +1250,15 @@ impl<'db: 'slf, 'slf> Inferred {
                             add_invalid_self_arg(c);
                             i_s.db.python_state.any_callable_from_error.clone()
                         });
+                        if avoid_inferring_return_types {
+                            if let Some(func) = new_c.maybe_original_function(i_s.db) {
+                                if func.return_annotation().is_none() {
+                                    let mut new = new_c.as_ref().clone();
+                                    new.return_type = Type::Any(AnyCause::Unannotated);
+                                    new_c = Rc::new(new)
+                                }
+                            }
+                        }
                         return Some(Some((
                             Inferred::from_type(Type::Callable(new_c)),
                             AttributeKind::DefMethod {
@@ -1314,7 +1323,14 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Some((Self::new_any_from_error(), AttributeKind::Attribute)));
                     }
                     let is_final = c.is_final;
-                    return Some(result.map(|c| {
+                    return Some(result.map(|mut c| {
+                        if avoid_inferring_return_types {
+                            if let Some(func) = c.maybe_original_function(i_s.db) {
+                                if func.return_annotation().is_none() {
+                                    c.return_type = Type::Any(AnyCause::Unannotated);
+                                }
+                            }
+                        }
                         (
                             callable_into_inferred(c),
                             AttributeKind::Classmethod { is_final },
@@ -1322,12 +1338,24 @@ impl<'db: 'slf, 'slf> Inferred {
                     }));
                 }
                 FunctionKind::Staticmethod => {
+                    let mut t = t.clone();
+                    if avoid_inferring_return_types {
+                        if let Some(func) = c.maybe_original_function(i_s.db) {
+                            if func.return_annotation().is_none() {
+                                if let Type::Callable(c) = &t {
+                                    let mut new_c = c.as_ref().clone();
+                                    new_c.return_type = Type::Any(AnyCause::Unannotated);
+                                    t = Type::Callable(Rc::new(new_c));
+                                }
+                            }
+                        }
+                    }
                     return Some(Some((
-                        Inferred::from_type(t.clone()),
+                        Inferred::from_type(t),
                         AttributeKind::Staticmethod {
                             is_final: c.is_final,
                         },
-                    )))
+                    )));
                 }
             },
             Type::CustomBehavior(custom) => {
