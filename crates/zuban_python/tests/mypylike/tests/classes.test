@@ -1944,3 +1944,25 @@ class Meta1(type):
     # Ignore possible errors related to incompatible override
     def __call__(cls: type[T], x: int, y: str) -> T:  # type: ignore
         return type.__call__(cls)
+
+[case no_check_untyped_defs_with_no_mypy_compatible_methods]
+# flags: --no-mypy-compatible --no-check-untyped-defs
+class C:
+  def __init__(self, x):
+      self.x = x
+
+  def join(self):
+      x = self.x
+      return x
+
+reveal_type(C(1).join())  # N: Revealed type is "Any"
+
+[case class_inheritance_no_check_of_inferred_return_type]
+# flags: --no-mypy-compatible
+class A:
+  def join(self):
+      return 1
+
+class B(A):
+  def join(self):
+      return ""

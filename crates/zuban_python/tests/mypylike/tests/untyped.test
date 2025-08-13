@@ -78,7 +78,7 @@ reveal_type(f(""))  # N: Revealed type is "str"
 def f(x):
     1()
     return x
-reveal_type(f(""))  # N: Revealed type is "str"
+reveal_type(f(""))  # N: Revealed type is "Any"
 
 [case untyped_class]
 # flags: --no-mypy-compatible

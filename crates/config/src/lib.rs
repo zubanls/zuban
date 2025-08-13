@@ -123,12 +123,6 @@ impl Settings {
             .collect::<anyhow::Result<Vec<_>>>()?;
         Ok(())
     }
-
-    #[inline]
-    pub fn infer_untyped_returns(&self) -> bool {
-        // For now this is an alias
-        !self.mypy_compatible
-    }
 }
 
 fn to_normalized_path(

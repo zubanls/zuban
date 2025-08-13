@@ -1704,7 +1704,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     ) -> Inferred {
         let return_annotation = self.return_annotation();
         let calculated_type_vars =
-            if self.node().is_typed() || !i_s.db.project.settings.infer_untyped_returns() {
+            if self.node().is_typed() || !self.file.should_infer_untyped_returns(i_s.db) {
                 calc_func_type_vars(
                     i_s,
                     *self,
@@ -1756,7 +1756,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            if i_s.db.project.settings.infer_untyped_returns() {
+            if self.file.should_infer_untyped_returns(i_s.db) {
                 self.return_without_annotation(
                     i_s,
                     self.ensure_cached_untyped_return(i_s),
@@ -2295,7 +2295,7 @@ impl GeneratorType {
 
 impl FuncLike for Function<'_, '_> {
     fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
-        if !i_s.db.project.settings.infer_untyped_returns() || self.return_annotation().is_some() {
+        if !self.file.should_infer_untyped_returns(i_s.db) || self.return_annotation().is_some() {
             FuncNodeRef::return_type(self, i_s)
         } else {
             Cow::Owned(self.ensure_cached_untyped_return(i_s).as_type(i_s))

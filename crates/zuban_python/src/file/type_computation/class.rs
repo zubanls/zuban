@@ -172,7 +172,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 .compute_type_params_definition(i_s.as_parent_scope(), type_params, false)
         } else {
             let mut found = TypeVarFinder::find_class_type_vars(i_s, self);
-            if found.is_empty() && i_s.db.project.settings.infer_untyped_returns() {
+            if found.is_empty() && self.file.should_infer_untyped_returns(i_s.db) {
                 let storage = self.class_storage();
                 if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__") {
                     if let Some(func) = NodeRef::new(self.file, name_index)
@@ -612,7 +612,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             was_typed_dict = Some(td);
         }
 
-        if type_vars.is_empty() && db.project.settings.infer_untyped_returns() {
+        if type_vars.is_empty() && self.file.should_infer_untyped_returns(i_s.db) {
             // TODO this is a weird place to put it, we also override type vars here and it's
             // especially questionable that we inherit from the first type vars and not from the
             // same class that has the __init__/__new__ that the rest of our logic uses. However
