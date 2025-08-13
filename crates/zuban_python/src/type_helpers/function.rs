@@ -1756,16 +1756,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            if !i_s.db.project.settings.infer_untyped_returns() {
-                // The mypy-compatible case
-                return Inferred::new_any(AnyCause::Unannotated);
-            } else {
+            if i_s.db.project.settings.infer_untyped_returns() {
                 self.return_without_annotation(
                     i_s,
                     self.ensure_cached_untyped_return(i_s),
                     calculated_type_vars,
                     replace_self_type,
                 )
+            } else {
+                // The mypy-compatible case
+                return Inferred::new_any(AnyCause::Unannotated);
             }
         };
         if self.is_async() && !self.is_generator() {

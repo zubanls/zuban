@@ -1343,6 +1343,7 @@ impl Database {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct PythonProject {
     pub sys_path: Vec<Rc<NormalizedPath>>,
     pub settings: Settings,

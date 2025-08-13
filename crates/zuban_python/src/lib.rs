@@ -54,6 +54,11 @@ pub struct Project {
 impl Project {
     pub fn new(vfs: Box<dyn VfsHandler>, options: ProjectOptions, mode: Mode) -> Self {
         let db = Database::new(vfs, options, mode);
+        Self::new_internal(db)
+    }
+
+    fn new_internal(db: Database) -> Self {
+        tracing::debug!("Project settings: {:#?}", &db.project);
         Self { db }
     }
 
@@ -68,7 +73,7 @@ impl Project {
 
     pub fn without_watcher(options: ProjectOptions, mode: Mode) -> Self {
         let db = Database::new(Box::new(LocalFS::without_watcher()), options, mode);
-        Self { db }
+        Self::new_internal(db)
     }
 
     pub fn invalidate_path(&mut self, path: &AbsPath) {

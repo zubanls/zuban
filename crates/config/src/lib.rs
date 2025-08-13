@@ -26,7 +26,7 @@ pub struct DiagnosticConfig {
     pub show_column_numbers: bool,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct ProjectOptions {
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
@@ -499,13 +499,13 @@ enum OverrideKind {
     ModuleName,     // e.g. foo.bar (has the highest priority
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum OverridePathPart {
     Part(Box<str>),
     Wildcard,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OverridePath {
     path: Vec<OverridePathPart>,
     kind: OverrideKind,
@@ -590,13 +590,13 @@ impl OverridePath {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum OverrideIniOrTomlValue {
     Toml(Value),
     Ini(Box<str>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OverrideConfig {
     pub module: OverridePath, // Path like foo.bar or foo.bar.*
     // Key/Value mappings
