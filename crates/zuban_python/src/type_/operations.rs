@@ -127,10 +127,19 @@ impl Type {
         add_issue: &dyn Fn(IssueKind),
         callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
+        let options = || {
+            let mut options = InstanceLookupOptions::new(add_issue).with_kind(kind);
+            /* TODO
+            if avoid_inferring_return_types {
+                options = options.with_avoid_inferring_return_types();
+            }
+            */
+            options
+        };
         match self {
             Type::Class(c) => {
                 let inst = Instance::new(c.class(i_s.db), from_inferred);
-                let l = inst.lookup_with_details(i_s, add_issue, name, kind);
+                let l = inst.lookup(i_s, name, options());
                 callable(self, l)
             }
             Type::Any(cause) => callable(self, LookupDetails::any(*cause)),
@@ -139,7 +148,7 @@ impl Type {
                     .db
                     .python_state
                     .none_instance()
-                    .lookup_with_details(i_s, add_issue, name, kind);
+                    .lookup(i_s, name, options());
                 if name == "__class__" {
                     // The class of None is Type[None]
                     result
@@ -150,20 +159,15 @@ impl Type {
             }
             Type::Literal(literal) => {
                 let instance = literal.as_instance(i_s.db);
-                let l = instance.lookup_with_details(i_s, add_issue, name, kind);
+                let l = instance.lookup(i_s, name, options());
                 callable(self, l)
             }
             t @ Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => {
                     if let Type::Class(c) = bound {
                         let inst = Instance::new(c.class(i_s.db), None);
-                        let l = inst.lookup(
-                            i_s,
-                            name,
-                            InstanceLookupOptions::new(add_issue)
-                                .with_kind(kind)
-                                .with_as_self_instance(&|| t.clone()),
-                        );
+                        let l =
+                            inst.lookup(i_s, name, options().with_as_self_instance(&|| t.clone()));
                         callable(self, l)
                     } else {
                         bound.run_after_lookup_on_each_union_member(
@@ -188,8 +192,11 @@ impl Type {
                     // should just use a precreated object() from somewhere.
                     callable(
                         self,
-                        Instance::new(i_s.db.python_state.object_class(), None)
-                            .lookup_with_details(i_s, add_issue, name, kind),
+                        Instance::new(i_s.db.python_state.object_class(), None).lookup(
+                            i_s,
+                            name,
+                            options(),
+                        ),
                     )
                 }
                 TypeVarKind::Unrestricted => {
@@ -198,8 +205,7 @@ impl Type {
                     // should just use a precreated object() from somewhere.
                     callable(
                         self,
-                        Instance::new(s.object_class(), None)
-                            .lookup_with_details(i_s, add_issue, name, kind),
+                        Instance::new(s.object_class(), None).lookup(i_s, name, options()),
                     )
                 }
             },
@@ -229,8 +235,11 @@ impl Type {
             ),
             Type::Callable(_) | Type::FunctionOverload(_) => callable(
                 self,
-                Instance::new(i_s.db.python_state.function_class(), None)
-                    .lookup_with_details(i_s, add_issue, name, kind),
+                Instance::new(i_s.db.python_state.function_class(), None).lookup(
+                    i_s,
+                    name,
+                    options(),
+                ),
             ),
             Type::Module(file_index) => {
                 let lookup = i_s
@@ -293,7 +302,7 @@ impl Type {
                     ),
                     from_inferred,
                 );
-                let l = inst.lookup_on_self(i_s, &add_issue, name, kind);
+                let l = inst.lookup(i_s, name, options().with_as_self_instance(&|| Type::Self_));
                 callable(self, l)
             }
             Type::Super {
@@ -345,9 +354,7 @@ impl Type {
                     let l = Instance::new(c.class(i_s.db), None).lookup(
                         i_s,
                         name,
-                        InstanceLookupOptions::new(add_issue)
-                            .with_kind(kind)
-                            .with_as_self_instance(&|| self.clone()),
+                        options().with_as_self_instance(&|| self.clone()),
                     );
                     callable(self, l)
                 } else {
@@ -469,7 +476,7 @@ impl Type {
                     .python_state
                     .str_class()
                     .instance()
-                    .lookup_with_details(i_s, add_issue, name, kind);
+                    .lookup(i_s, name, options());
                 callable(self, l)
             }
         }
