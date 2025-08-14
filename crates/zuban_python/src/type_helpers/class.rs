@@ -373,7 +373,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     name,
                     InstanceLookupOptions::new(&|_| had_binding_error.set(true))
                         .with_as_self_instance(&|| other.clone())
-                        .with_disallowed_lazy_bound_method(),
+                        .with_avoid_inferring_return_types(),
                 );
                 let protocol_inf = protocol_lookup_details.lookup.into_inferred();
 

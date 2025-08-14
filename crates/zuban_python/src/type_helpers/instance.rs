@@ -1070,11 +1070,6 @@ impl<'x> InstanceLookupOptions<'x> {
         self
     }
 
-    pub fn with_disallowed_lazy_bound_method(mut self) -> Self {
-        self.disallow_lazy_bound_method = true;
-        self
-    }
-
     pub fn without_object(mut self) -> Self {
         self.without_object = true;
         self
