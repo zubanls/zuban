@@ -422,7 +422,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             let m = protocol_t.matches(i_s, matcher, &t2, variance);
 
-                            let is_final_mismatch = lookup_details.attr_kind == AttributeKind::Final && protocol_lookup_details.attr_kind != AttributeKind::Final;
+                            let is_final_mismatch = lookup_details.attr_kind == AttributeKind::Final
+                                && protocol_lookup_details.attr_kind != AttributeKind::Final;
 
                             let mut maybe_add_conflict_note = |notes: &mut Vec<_>| {
                                 if !had_conflict_note {
@@ -447,11 +448,13 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &protocol_t,
                                             &t2,
-                                            &c.lookup(i_s, name, ClassLookupOptions::new(&|_| ()).with_as_type_type(&|| if other.is_subclassable(i_s.db) {
-                                                Type::Type(Rc::new(other.clone()))
-                                            } else {
-                                                self.as_type_type(i_s.db)
-                                            }))
+                                            &c.lookup(i_s, name, ClassLookupOptions::new(&|_| ())
+                                                    .with_as_type_type(&|| if other.is_subclassable(i_s.db) {
+                                                        Type::Type(Rc::new(other.clone()))
+                                                    } else {
+                                                        self.as_type_type(i_s.db)
+                                                    })
+                                                )
                                                 .lookup
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
