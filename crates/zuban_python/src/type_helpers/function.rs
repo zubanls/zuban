@@ -274,7 +274,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         match self.parent(db) {
             FuncParent::Module => None,
             FuncParent::Function(func) => func.parent_class(db),
-            FuncParent::Class(_) => unreachable!(), // Handled above
+            FuncParent::Class(_) => {
+                // Handled above
+                recoverable_error!("The class of the func is not set");
+                None
+            }
         }
     }
 

@@ -3888,13 +3888,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     NodeRef::new(self.file, func_node.index()),
                 );
 
-                let to_inferred = |is_classmethod: bool| {
-                    let mut t = if func.node_ref.node_index
-                        < self.i_s.current_class().unwrap().node_ref.node_index
-                    {
+                let self_to_inferred = |is_classmethod: bool| {
+                    let Some(cls) = self.i_s.current_class() else {
+                        recoverable_error!("Expected a class in i_s because we're on a self param");
+                        return Inferred::new_any(AnyCause::Internal);
+                    };
+                    let mut t = if func.node_ref.node_index < cls.node_ref.node_index {
                         // If the function is defined before the class, the class is part of the
                         // function.
-                        func.class.unwrap().as_type(self.i_s.db)
+                        if let Some(cls) = func.class {
+                            cls.as_type(self.i_s.db)
+                        } else {
+                            recoverable_error!(
+                                "Expected a class in func because we're on a self param"
+                            );
+                            Type::Any(AnyCause::Internal)
+                        }
                     } else {
                         if !is_classmethod {
                             return Inferred::new_saved(self.file, node_index);
@@ -3931,8 +3940,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     };
                     if specific == Specific::MaybeSelfParam {
                         match func.first_param_kind(self.i_s) {
-                            FirstParamKind::Self_ => to_inferred(false),
-                            FirstParamKind::ClassOfSelf => to_inferred(true),
+                            FirstParamKind::Self_ => self_to_inferred(false),
+                            FirstParamKind::ClassOfSelf => self_to_inferred(true),
                             FirstParamKind::InStaticmethod => Inferred::from_type(new_any(0)),
                         }
                     } else {
