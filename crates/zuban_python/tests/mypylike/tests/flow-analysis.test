@@ -502,3 +502,17 @@ class C:
         y = 3
 
     x: ClassVar = y
+
+[case protocol_matching_class_should_not_crash]
+from typing import Protocol
+import m
+
+class P(Protocol):
+    x: int
+
+Transformer: type["P"]
+Transformer = m.C
+
+[file m.py]
+class C:
+    x: int

@@ -852,7 +852,7 @@ pub(crate) fn match_arguments_against_params<
                     };
                 }
             }
-            if expected.type_of_protocol_to_type_of_protocol_assignment(i_s.db, &value) {
+            if expected.type_of_protocol_to_type_of_protocol_assignment(i_s, &value) {
                 add_issue(IssueKind::OnlyConcreteClassAllowedWhereTypeExpected {
                     type_: expected.format_short(i_s.db),
                 })

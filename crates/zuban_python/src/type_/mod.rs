@@ -1609,18 +1609,19 @@ impl Type {
 
     pub fn type_of_protocol_to_type_of_protocol_assignment(
         &self,
-        db: &Database,
+        i_s: &InferenceState,
         value: &Inferred,
     ) -> bool {
         if let Type::Type(type_) = self {
-            if let Some(cls) = type_.maybe_class(db) {
-                if cls.is_protocol(db) {
-                    if let Some(node_ref) = value.maybe_saved_node_ref(db) {
+            if let Some(cls) = type_.maybe_class(i_s.db) {
+                if cls.is_protocol(i_s.db) {
+                    if let Some(node_ref) = value.maybe_saved_node_ref(i_s.db) {
                         if node_ref.maybe_class().is_some() {
                             let cls2 = Class::from_non_generic_node_ref(
                                 ClassNodeRef::from_node_ref(node_ref),
                             );
-                            return cls2.is_protocol(db);
+                            node_ref.ensure_cached_class_infos(i_s);
+                            return cls2.is_protocol(i_s.db);
                         }
                     }
                 }

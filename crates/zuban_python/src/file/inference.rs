@@ -1193,7 +1193,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     );
                     return;
                 }
-                if declaration_t.type_of_protocol_to_type_of_protocol_assignment(i_s.db, value) {
+                if declaration_t.type_of_protocol_to_type_of_protocol_assignment(i_s, value) {
                     from.add_issue(
                         self.i_s,
                         IssueKind::OnlyConcreteClassAllowedWhereTypeExpectedForVariable {
