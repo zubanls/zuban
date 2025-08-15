@@ -757,3 +757,16 @@ def safeiter(it):
 
 for x in safeiter([1]):
     reveal_type(x)  # N: Revealed type is "Any"
+
+[case classmethod_instantiation_no_crash]
+# flags: --no-mypy-compatible
+def w(cls):
+    return 1
+
+class C:
+    with_args = classmethod(w)
+
+# TODO these errors are wrong
+reveal_type(C.with_args)  # E: Argument 2 to "__get__" of "classmethod" has incompatible type "Type[C]"; expected "Type[_T]" \
+                          # N: Revealed type is "def [_T] () -> int"
+x = C.with_args()  # E: Argument 2 to "__get__" of "classmethod" has incompatible type "Type[C]"; expected "Type[_T]"

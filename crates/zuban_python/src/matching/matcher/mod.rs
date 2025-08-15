@@ -26,6 +26,7 @@ use crate::{
     diagnostics::IssueKind,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
+    matching::Generic,
     params::{
         matches_params, InferrableParamIterator, Param, WrappedParamType, WrappedStar,
         WrappedStarStar,
@@ -825,13 +826,22 @@ impl<'a> Matcher<'a> {
                 }
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
-                return MatcherFormatResult::Str(
-                    func_class
-                        .generics()
-                        .nth_usage(format_data.db, usage)
-                        .format(format_data)
-                        .unwrap_or("()".into()),
-                );
+                let generic = func_class.generics().nth_usage(format_data.db, usage);
+                let is_same = match (usage, &generic) {
+                    (TypeVarLikeUsage::TypeVar(u1), Generic::TypeArg(t2)) => match t2.as_ref() {
+                        Type::TypeVar(u2) => u1 == u2,
+                        _ => false,
+                    },
+                    // TODO there should probably be TypeVarTuple/ParamSpec cases here, but we can
+                    // probably just wait until we have a proper test case.
+                    _ => false,
+                };
+                // If it's the same, it probably recurses, which we want to avoid
+                if !is_same {
+                    return MatcherFormatResult::Str(
+                        generic.format(format_data).unwrap_or("()".into()),
+                    );
+                }
             }
         }
         format_data

@@ -1062,7 +1062,10 @@ impl Inference<'_, '_, '_> {
         let lookup_details = c.lookup(
             self.i_s,
             "__init_subclass__",
-            ClassLookupOptions::new(&|_| todo!()).with_ignore_self(),
+            ClassLookupOptions::new(&|issue| {
+                debug!("TODO __init_subclass__ error ignored: {issue:?}")
+            })
+            .with_ignore_self(),
         );
         let db = self.i_s.db;
         let mut checked_keywords = false;
