@@ -2430,6 +2430,18 @@ impl<'db: 'slf, 'slf> Inferred {
         }
         None
     }
+
+    pub fn to_proper_type(self, i_s: &InferenceState) -> Self {
+        // In inferred return types of functions we don't want to return functions as such, because
+        // they might refer to themselves and therefore recurse.
+        if let Some(node_ref) = self.maybe_saved_node_ref(i_s.db) {
+            match node_ref.point().maybe_specific() {
+                Some(Specific::Function) => return Inferred::from_type(self.as_type(i_s)),
+                _ => (),
+            }
+        }
+        self
+    }
 }
 
 fn load_bound_method<'db: 'a, 'a, 'b>(

@@ -263,7 +263,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 new_class!(i_s.db.python_state.generator_link(), t, Type::None, ret_t)
             }));
         }
-        let result = result.unwrap_or_else(|| Inferred::new_none());
+        let result = result
+            .unwrap_or_else(|| Inferred::new_none())
+            .to_proper_type(i_s);
         result.save_redirect(i_s, reference.file, reference.node_index)
     }
 
