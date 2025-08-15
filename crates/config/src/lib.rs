@@ -186,9 +186,7 @@ impl ProjectOptions {
             ..Default::default()
         };
         let ini = Ini::load_from_str_opt(code, options)?;
-        let mut flags = TypeCheckerFlags::mypy_default();
-        let mut settings = Settings::default();
-        let mut overrides = vec![];
+        let mut result = Self::mypy_default();
         let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
             let Some(name) = name else { continue };
@@ -199,8 +197,8 @@ impl ProjectOptions {
                         vfs,
                         current_dir,
                         Some(config_file_path),
-                        &mut settings,
-                        &mut flags,
+                        &mut result.settings,
+                        &mut result.flags,
                         diagnostic_config,
                         key,
                         IniOrTomlValue::Ini(value),
@@ -209,7 +207,7 @@ impl ProjectOptions {
             } else if let Some(rest) = name.strip_prefix("mypy-") {
                 had_relevant_section = true;
                 for rest in rest.split(',') {
-                    overrides.push(OverrideConfig {
+                    result.overrides.push(OverrideConfig {
                         module: rest.into(),
                         config: section
                             .iter()
@@ -219,12 +217,8 @@ impl ProjectOptions {
                 }
             }
         }
-        order_overrides_for_priority(&mut overrides);
-        Ok(had_relevant_section.then(|| ProjectOptions {
-            settings,
-            flags,
-            overrides,
-        }))
+        order_overrides_for_priority(&mut result.overrides);
+        Ok(had_relevant_section.then(|| result))
     }
 
     pub fn from_pyproject_toml(
@@ -236,13 +230,11 @@ impl ProjectOptions {
     ) -> anyhow::Result<Option<Self>> {
         let document = code.parse::<DocumentMut>()?;
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
-            let mut flags = TypeCheckerFlags::mypy_default();
-            let mut settings = Settings::default();
+            let mut result = ProjectOptions::mypy_default();
             let Item::Table(table) = config else {
                 bail!("Expected tool.mypy to be a table in pyproject.toml");
             };
 
-            let mut overrides = vec![];
             for (key, item) in table.iter() {
                 match item {
                     Item::Value(value) => {
@@ -250,8 +242,8 @@ impl ProjectOptions {
                             vfs,
                             current_dir,
                             Some(config_file_path),
-                            &mut settings,
-                            &mut flags,
+                            &mut result.settings,
+                            &mut result.flags,
                             diagnostic_config,
                             key,
                             IniOrTomlValue::Toml(value),
@@ -274,7 +266,7 @@ impl ProjectOptions {
                                         }
                                     }
                                 }
-                                overrides.push(OverrideConfig { module, config })
+                                result.overrides.push(OverrideConfig { module, config })
                             }
                         }
                     }
@@ -283,12 +275,8 @@ impl ProjectOptions {
                     }
                 }
             }
-            order_overrides_for_priority(&mut overrides);
-            Ok(Some(ProjectOptions {
-                settings,
-                flags,
-                overrides,
-            }))
+            order_overrides_for_priority(&mut result.overrides);
+            Ok(Some(result))
         } else {
             Ok(None)
         }
