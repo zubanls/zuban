@@ -700,3 +700,36 @@ class A:
         return ""
     def __or__(self, other) -> int:
         return 1
+
+[case protocol_matching_should_not_infer_return_types]
+# flags: --no-mypy-compatible
+import m
+x: m.P1 = m.C1()  # E: Incompatible types in assignment (expression has type "C1", variable has type "P1") \
+                  # N: Following member(s) of "C1" have conflicts: \
+                  # N:     Expected: \
+                  # N:         def x(self) -> int \
+                  # N:     Got: \
+                  # N:         def x(self) -> str
+y: m.P1 = m.C2()  # E: Incompatible types in assignment (expression has type "C2", variable has type "P1") \
+                  # N: Following member(s) of "C2" have conflicts: \
+                  # N:     Expected: \
+                  # N:         def x(self) -> int \
+                  # N:     Got: \
+                  # N:         def x(self) -> str
+a: m.P2 = m.C1()
+b: m.P2 = m.C2()
+
+[file m.py]
+from typing import Protocol
+class P1(Protocol):
+    def x(self) -> int: ...
+class P2(Protocol):
+    def x(self):
+        return 1
+
+class C1:
+    def x(self):
+        return ""
+class C2:
+    def x(self) -> str:
+        return ""
