@@ -733,7 +733,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
                 debug_assert!(
                     file_index != self.file.file_index || next_node_index != node_index,
-                    "{file_index}:{node_index}"
+                    "{:#?}",
+                    NodeRef::new(self.file, node_index)
                 );
                 let resolve = |r: &NameResolution<'db, 'file, '_>| {
                     let new_p = r.point(next_node_index);

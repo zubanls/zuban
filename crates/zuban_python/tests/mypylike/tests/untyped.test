@@ -740,3 +740,20 @@ def g(x):
     return g
 
 reveal_type(g(1))  # N: Revealed type is "def [T1 <: Any] (x: int) -> Any"
+
+[case func_recursion_while_calculating_diagnostics]
+# flags: --no-mypy-compatible
+def safeiter(it):
+    def n():
+        while True:
+            try:
+                return n(it)
+            except StopIteration:
+                raise
+
+    it = iter(it)
+    while True:
+        yield reveal_type(n())  # N: Revealed type is "Any"
+
+for x in safeiter([1]):
+    reveal_type(x)  # N: Revealed type is "Any"

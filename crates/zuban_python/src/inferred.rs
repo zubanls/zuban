@@ -1836,7 +1836,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
             InferredState::UnsavedFileReference(file_index) => format!("UnsavedFile({file_index})"),
-            InferredState::UnsavedComplex(c) => format!("Unsaved{}", format_complex(db, None, c)),
+            InferredState::UnsavedComplex(c) => format!("Unsaved({})", format_complex(db, None, c)),
             InferredState::UnsavedSpecific(specific) => format!("UnsavedSpecific({specific:?})"),
             InferredState::BoundMethod {
                 instance,

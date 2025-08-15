@@ -205,6 +205,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any_from_error();
         }
         reference.set_point(Point::new_calculating());
+        let body = self.node().body();
+        if self.file.points.get(body.index()).calculating() {
+            // This would also recurse, because we are already calculating the function's results
+            return Inferred::new_any_from_error();
+        }
         debug!("Checking cached untyped return for func {}", self.name());
         let _indent = debug_indent();
         self.node_ref
