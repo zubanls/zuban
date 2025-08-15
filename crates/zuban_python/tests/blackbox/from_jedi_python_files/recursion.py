@@ -85,8 +85,7 @@ InstanceAttributeIfs().a2
 class A:
     def a(self, b):
         for x in [self.a(i) for i in b]:
-            # jedi-diff: #?
-            #? types.NoneType()
+            #?
             x
 
 class B:
