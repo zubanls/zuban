@@ -1,0 +1,18 @@
+[package]
+name = "zuban_benchmark"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+homepage.workspace = true
+authors.workspace = true
+
+[dev-dependencies]
+criterion = "*"
+utils.workspace = true
+zuban_python.workspace = true
+parsa_python_cst.workspace = true
+
+[[bench]]
+name = "parsa_python"
+harness = false
