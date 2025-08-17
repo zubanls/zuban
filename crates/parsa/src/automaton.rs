@@ -5,6 +5,7 @@ use utils::FastHashMap;
 pub const NODE_START: u16 = 1 << 15;
 pub const ERROR_RECOVERY_BIT: u16 = 1 << 14;
 
+type SquashedTransitions = FastHashMap<InternalSquashedType, Plan>;
 pub type Automatons = FastHashMap<InternalNonterminalType, RuleAutomaton>;
 pub type InternalStrToToken = FastHashMap<&'static str, InternalTerminalType>;
 pub type InternalStrToNode = FastHashMap<&'static str, InternalNonterminalType>;
@@ -1004,12 +1005,10 @@ fn plans_for_dfa(
         debug_assert!(!plans.contains_key(c));
     }
 
-    let mut result = SquashedTransitions(
-        plans
-            .iter()
-            .map(|(&t, (_, plan))| (t, plan.clone()))
-            .collect(),
-    );
+    let mut result: SquashedTransitions = plans
+        .iter()
+        .map(|(&t, (_, plan))| (t, plan.clone()))
+        .collect();
     if !conflict_tokens.is_empty() {
         let automaton = automatons.get_mut(&automaton_key).unwrap();
         let (generated_dfa_ids, end) = split_tokens(automaton, dfa_state, conflict_transitions);
@@ -1028,7 +1027,7 @@ fn plans_for_dfa(
             debug_assert!(!left_recursive);
             for (transition, mut new_plan) in new_plans.into_iter() {
                 if conflict_tokens.contains(&transition) {
-                    if let Some(fallback_plan) = result.remove(transition) {
+                    if let Some(fallback_plan) = result.remove(&transition) {
                         let automaton = automatons.get_mut(&automaton_key).unwrap();
                         // This sets a const pointer on the fallback plan. This is only save,
                         // because the plans are not touched after they have been generated.
@@ -1095,7 +1094,7 @@ fn create_left_recursion_plans(
                         if let TransitionType::Nonterminal(node_id) = transition.type_ {
                             if node_id == automaton.type_ {
                                 for (&t, p) in transition.next_dfa().transition_to_plan.iter() {
-                                    if plans.contains_key(t) {
+                                    if plans.contains_key(&t) {
                                         panic!("ambigous: {} contains left recursion with alternatives!",
                                                dfa_state.from_rule);
                                     }
@@ -1319,44 +1318,4 @@ fn nonterminal_to_str(
         }
     }
     panic!("Something is very wrong, integer not found");
-}
-
-// Use this struct to access it, so we can optimize the internals easier.
-#[derive(Default, Debug, Clone)]
-pub struct SquashedTransitions(FastHashMap<InternalSquashedType, Plan>);
-
-impl SquashedTransitions {
-    fn insert(&mut self, key: InternalSquashedType, plan: Plan) {
-        self.0.insert(key, plan);
-    }
-
-    pub fn extend(&mut self, other: Self) {
-        self.0.extend(other.0)
-    }
-
-    pub fn remove(&mut self, key: InternalSquashedType) -> Option<Plan> {
-        self.0.remove(&key)
-    }
-
-    #[inline]
-    pub fn get(&self, key: InternalSquashedType) -> Option<&Plan> {
-        self.0.get(&key)
-    }
-
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    fn into_iter(self) -> impl IntoIterator<Item = (InternalSquashedType, Plan)> {
-        self.0.into_iter()
-    }
-
-    fn iter(&self) -> impl Iterator<Item = (&InternalSquashedType, &Plan)> {
-        self.0.iter()
-    }
-
-    fn contains_key(&self, key: InternalSquashedType) -> bool {
-        self.0.contains_key(&key)
-    }
 }
