@@ -1,10 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt,
-    hash::BuildHasherDefault,
-    iter::repeat,
-    pin::Pin,
-};
+use std::{collections::HashSet, fmt, iter::repeat, pin::Pin};
 
 use utils::FastHashMap;
 
@@ -137,7 +131,6 @@ struct DFATransition {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum StackMode {
-    PositivePeek,
     Alternative(*const Plan),
     LL,
 }
@@ -145,7 +138,6 @@ pub enum StackMode {
 impl std::fmt::Debug for StackMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::PositivePeek => write!(f, "PositivePeek"),
             Self::Alternative(plan) => {
                 let dfa = unsafe { &(**plan) }.next_dfa();
                 write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
@@ -327,7 +319,7 @@ impl RuleAutomaton {
                 (new_start, new_end)
             }
             // TODO Cut is ignored for now.
-            Cut(rule1, rule2) => {
+            Cut(_, _) => {
                 unimplemented!()
             }
             Next(rule1, rule2) => {
@@ -401,7 +393,7 @@ impl RuleAutomaton {
         // Since we have the intial `starts` grouped by the mode change, we can
         // now just check for all ε-transitions that have no mode change.
         let grouped_nfas = self.group_nfas(starts);
-        for (i, dfa_state) in self.dfa_states.iter_mut().enumerate() {
+        for dfa_state in self.dfa_states.iter_mut() {
             if dfa_state.nfa_set == grouped_nfas {
                 return dfa_state as &mut DFAState;
             }
@@ -447,7 +439,6 @@ impl RuleAutomaton {
                 // The nodes that have no proper type are only interesting if there's a mode
                 // change.
                 if let Some(t) = transition.type_ {
-                    let t = transition.type_.unwrap();
                     match grouped_transitions.get_mut(&(t)).and_then(|x| {
                         if transition.is_terminal_nonterminal_or_keyword() {
                             Some(x)
@@ -513,6 +504,7 @@ impl RuleAutomaton {
         }
     }
 
+    #[allow(unused)]
     pub fn illustrate_dfas(&self, nonterminal_map: &InternalStrToNode) -> String {
         // Sorry for this code, it's really ugly, but since it's really only for debugging
         // purposes, I don't care too much. ~dave
@@ -709,7 +701,6 @@ pub fn generate_automatons(
         ..Default::default()
     };
     let mut automatons = FastHashMap::default();
-    let dfa_counter = 0;
     for (internal_type, (rule_name, rule)) in rules {
         let mut automaton = RuleAutomaton {
             type_: *internal_type,
@@ -905,7 +896,7 @@ fn plans_for_dfa(
                     );
                 }
                 match &first_plans[&node_id] {
-                    FirstPlan::Calculated(transitions, is_left_recursive) => {
+                    FirstPlan::Calculated(transitions, _) => {
                         for (&t, nested_plan) in transitions.iter() {
                             add_if_no_conflict(
                                 &mut plans,
@@ -940,7 +931,7 @@ fn plans_for_dfa(
                 );
             }
             TransitionType::PositiveLookaheadStart => {
-                let (mut next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
+                let (next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
                 for t in peek_terminals {
                     plans.insert(
                         t,
@@ -958,7 +949,7 @@ fn plans_for_dfa(
                 }
             }
             TransitionType::NegativeLookaheadStart => {
-                let (mut next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
+                let (next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
                 let (mut next_plans, _) = plans_for_dfa(
                     nonterminal_map,
                     keywords,
@@ -1085,33 +1076,6 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
     }
 }
 
-fn create_lookahead_plans(
-    automaton_key: InternalNonterminalType,
-    transition: DFATransition,
-    inner_plans: &SquashedTransitions,
-) -> SquashedTransitions {
-    let mode = match transition.type_ {
-        TransitionType::PositiveLookaheadStart => StackMode::PositivePeek,
-        _ => unreachable!(),
-    };
-    SquashedTransitions(
-        inner_plans
-            .iter()
-            .map(|(k, plan)| {
-                (
-                    *k,
-                    nest_plan(
-                        plan,
-                        automaton_key,
-                        search_lookahead_end(plan.next_dfa()),
-                        mode,
-                    ),
-                )
-            })
-            .collect(),
-    )
-}
-
 fn create_left_recursion_plans(
     automatons: &Automatons,
     automaton_key: InternalNonterminalType,
@@ -1196,7 +1160,7 @@ fn calculate_peek_dfa<'a>(
         .transitions
         .iter()
         .map(|transition| match transition.type_ {
-            TransitionType::Terminal(type_, debug_text) => type_.to_squashed(),
+            TransitionType::Terminal(type_, _) => type_.to_squashed(),
             TransitionType::Keyword(keyword) => keywords.squashed(keyword).unwrap(),
             _ => {
                 panic!("Only terminal lookaheads are allowed");

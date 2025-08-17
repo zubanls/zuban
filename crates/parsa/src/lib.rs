@@ -1,4 +1,3 @@
-#![allow(unused)]
 extern crate lazy_static;
 
 mod automaton;
@@ -14,7 +13,6 @@ pub use automaton::{
 pub use grammar::{
     CodeIndex, CodeLength, Grammar, InternalNode, InternalTree, NodeIndex, Token, Tokenizer,
 };
-#[macro_export]
 pub use lazy_static::lazy_static;
 pub use utils::FastHashMap;
 

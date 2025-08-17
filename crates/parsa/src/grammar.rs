@@ -1,4 +1,4 @@
-use std::{cell::UnsafeCell, fmt, marker::PhantomData};
+use std::{fmt, marker::PhantomData};
 
 use utils::FastHashMap;
 
@@ -6,7 +6,7 @@ use crate::{
     automaton::{
         generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
         InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode,
-        Rule, RuleAutomaton, RuleMap, SoftKeywords, Squashable, StackMode,
+        RuleMap, SoftKeywords, Squashable, StackMode,
     },
     backtracking::BacktrackingTokenizer,
 };
@@ -48,6 +48,7 @@ impl InternalNode {
 }
 
 // This node is currently not used and just here for future optimization purposes.
+#[allow(unused)]
 struct CompressedNode {
     next_node_offset: u8,
     type_: i8,
@@ -79,11 +80,14 @@ impl InternalTree {
 
 #[derive(Debug)]
 pub struct Grammar<T> {
+    #[allow(unused)]
     terminal_map: &'static InternalStrToToken,
+    #[allow(unused)]
     nonterminal_map: &'static InternalStrToNode,
     phantom: PhantomData<T>,
     automatons: Automatons,
     pub keywords: Keywords,
+    #[allow(unused)]
     soft_keywords: SoftKeywords,
 }
 
@@ -246,7 +250,7 @@ impl<'a, T: Token> Grammar<T> {
             ModeData::LL => {
                 stack.pop_normal();
             }
-            ModeData::Alternative(backtracking_point) => {
+            ModeData::Alternative(_) => {
                 let old_tos = stack.stack_nodes.pop().unwrap();
                 let tos = stack.tos_mut();
                 tos.children_count = old_tos.children_count;
@@ -325,7 +329,7 @@ impl<'a, T: Token> Grammar<T> {
                 while stack.stack_nodes.len() > i {
                     let stack_node = stack.stack_nodes.pop().unwrap();
                     update_tree_node_position(&mut stack.tree_nodes, &stack_node);
-                    let mut n = stack
+                    let n = stack
                         .tree_nodes
                         .get_mut(stack_node.tree_node_index)
                         .unwrap();
@@ -426,9 +430,6 @@ impl<'a, T: Token> Grammar<T> {
                         children_count,
                         enabled_token_recording,
                     );
-                }
-                StackMode::PositivePeek => {
-                    panic!("Pushing peeks is currently not supported")
                 }
             };
             stack.tos_mut().latest_child_node_index = stack.tree_nodes.len();
@@ -535,6 +536,7 @@ impl<'a> Stack<'a> {
         tos.latest_child_node_index = next;
     }
 
+    #[allow(unused)]
     fn debug_tree(
         &self,
         nonterminal_map: &'static InternalStrToNode,
@@ -622,6 +624,6 @@ impl StackNode<'_> {
 #[inline]
 fn update_tree_node_position(tree_nodes: &mut [InternalNode], stack_node: &StackNode) {
     let last_tree_node = *tree_nodes.last().unwrap();
-    let mut n = tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+    let n = tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
     n.length = last_tree_node.end_index() - n.start_index;
 }
