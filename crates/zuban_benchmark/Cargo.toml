@@ -10,7 +10,6 @@ authors.workspace = true
 [dev-dependencies]
 criterion = "*"
 utils.workspace = true
-zuban_python.workspace = true
 parsa_python_cst.workspace = true
 
 [[bench]]

@@ -2009,7 +2009,6 @@ dependencies = [
  "criterion",
  "parsa_python_cst",
  "utils",
- "zuban_python",
 ]
 
 [[package]]
