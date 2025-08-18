@@ -141,7 +141,7 @@ impl StringSlice {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum DbString {
     StringSlice(StringSlice),
-    RcStr(Rc<str>),
+    ArcStr(Arc<str>),
     Static(&'static str),
 }
 
@@ -149,7 +149,7 @@ impl DbString {
     pub fn as_str<'x>(&'x self, db: &'x Database) -> &'x str {
         match self {
             Self::StringSlice(s) => s.as_str(db),
-            Self::RcStr(s) => s,
+            Self::ArcStr(s) => s,
             Self::Static(s) => s,
         }
     }
@@ -161,7 +161,7 @@ impl DbString {
                 code_index,
                 code_index + s.len() as CodeIndex,
             ))),
-            PythonString::String(_, s) => Some(Self::RcStr(s.into())),
+            PythonString::String(_, s) => Some(Self::ArcStr(s.into())),
             PythonString::FString => None,
         }
     }
@@ -801,7 +801,7 @@ impl Type {
                         None,
                         i_s.db.python_state.tuple_node_ref().as_link(),
                         i_s.db.python_state.empty_type_var_likes.clone(),
-                        CallableParams::new_simple(Rc::new([param])),
+                        CallableParams::new_simple(Arc::new([param])),
                         Type::Tuple(tup.clone()),
                     ),
                 )))
@@ -1676,7 +1676,7 @@ pub(crate) enum FunctionKind {
     },
     Property {
         had_first_self_or_class_annotation: bool,
-        setter_type: Option<Rc<PropertySetter>>,
+        setter_type: Option<Arc<PropertySetter>>,
     },
     Classmethod {
         had_first_self_or_class_annotation: bool,

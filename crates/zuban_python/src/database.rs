@@ -658,7 +658,7 @@ pub(crate) enum ComplexPoint {
     TypedDictDefinition(TypedDictDefinition),
     // Sometimes needed when a Final is defined in a class and initialized in __init__.
     IndirectFinal(Arc<Type>),
-    WidenedType(Rc<WidenedType>),
+    WidenedType(Arc<WidenedType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),

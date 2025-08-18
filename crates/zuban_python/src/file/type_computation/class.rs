@@ -1,7 +1,6 @@
 use std::{
     borrow::Cow,
     cell::{Cell, OnceCell},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -1336,7 +1335,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             None,
             self.node_ref.as_link(),
             self.use_cached_type_vars(db).clone(),
-            CallableParams::new_simple(Rc::from(vec)),
+            CallableParams::new_simple(Arc::from(vec)),
             Type::Self_,
         )
     }

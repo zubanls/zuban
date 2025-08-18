@@ -1,7 +1,6 @@
 use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -52,7 +51,7 @@ impl NamedTuple {
             None,
             defined_at,
             type_var_likes,
-            CallableParams::new_simple(Rc::from(params)),
+            CallableParams::new_simple(Arc::from(params)),
             Type::Self_,
         );
         Arc::new(NamedTuple::new(name, callable))

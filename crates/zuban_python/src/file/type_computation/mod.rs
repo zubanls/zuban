@@ -14,7 +14,7 @@ pub(crate) use class::{
 };
 pub(crate) use function::{FuncNodeRef, FuncParent};
 
-use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use named_tuple::{new_collections_named_tuple, new_typing_named_tuple};
 use parsa_python_cst::{SliceType as CSTSliceType, *};
@@ -501,7 +501,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ))
             }
             Type::NamedTuple(nt) => {
-                // TODO performance: this is already an Rc and should not need to be
+                // TODO performance: this is already an Arc and should not need to be
                 // duplicated.
                 CalculatedBaseClass::NamedTuple(nt)
             }
@@ -1482,14 +1482,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::SpecialCase(Specific::TypingNamedTuple) => {
                     let args = SimpleArgs::from_primary(*self.i_s, self.file, primary);
                     TypeContent::Type(match new_typing_named_tuple(self.i_s, &args, true) {
-                        Some(rc) => Type::NamedTuple(rc),
+                        Some(arc) => Type::NamedTuple(arc),
                         None => Type::ERROR,
                     })
                 }
                 TypeContent::SpecialCase(Specific::CollectionsNamedTuple) => {
                     let args = SimpleArgs::from_primary(*self.i_s, self.file, primary);
                     TypeContent::Type(match new_collections_named_tuple(self.i_s, &args) {
-                        Some(rc) => Type::NamedTuple(rc),
+                        Some(arc) => Type::NamedTuple(arc),
                         None => Type::ERROR,
                     })
                 }
@@ -2216,7 +2216,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if had_issue {
             CallableParams::Any(AnyCause::FromError)
         } else {
-            CallableParams::new_simple(Rc::from(params))
+            CallableParams::new_simple(Arc::from(params))
         }
     }
 
@@ -2473,7 +2473,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         _ => unreachable!(),
                     }
                 }
-                CallableParams::new_simple(Rc::from(params))
+                CallableParams::new_simple(Arc::from(params))
             }
             Some(AtomContent::Ellipsis) => CallableParams::Any(AnyCause::Explicit),
             _ => match self.compute_type(expr) {
@@ -2483,9 +2483,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeContent::Unknown(cause) => CallableParams::Any(cause.into()),
                 TypeContent::Concatenate(p) => p,
-                t if allow_aesthetic_class_simplification => CallableParams::new_simple(Rc::new([
-                    self.check_param(t, NodeRef::new(self.file, expr.index())),
-                ])),
+                t if allow_aesthetic_class_simplification => {
+                    CallableParams::new_simple(Arc::new([
+                        self.check_param(t, NodeRef::new(self.file, expr.index()))
+                    ]))
+                }
                 _ => return None,
             },
         })

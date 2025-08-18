@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::RefCell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::RefCell, sync::Arc};
 
 use parsa_python_cst::{NodeIndex, ParamKind};
 use vfs::FileIndex;
@@ -1293,7 +1293,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         &attribute_class,
                                         &|| Some(instance.clone()),
                                     );
-                                    Rc::new(PropertySetter::OtherType(t.into_owned()))
+                                    Arc::new(PropertySetter::OtherType(t.into_owned()))
                                 }
                                 _ => s.clone(),
                             });
@@ -2583,7 +2583,7 @@ fn proper_classmethod_callable(
             }
             let first_param = vec.remove(0);
 
-            callable.params = CallableParams::Simple(Rc::from(vec));
+            callable.params = CallableParams::Simple(Arc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
                 let c = Callable::new(original_callable, None);
                 let mut matcher = Matcher::new_callable_matcher(&c);
@@ -3002,7 +3002,7 @@ pub(crate) enum AttributeKind {
     ClassVar,
     Final,
     Property {
-        setter_type: Option<Rc<PropertySetter>>,
+        setter_type: Option<Arc<PropertySetter>>,
         is_final: bool,
         is_abstract: bool,
     },

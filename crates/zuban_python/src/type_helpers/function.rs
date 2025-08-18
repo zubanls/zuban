@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, fmt, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::Cell, fmt, sync::Arc};
 
 use parsa_python_cst::{
     Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamIterator,
@@ -694,7 +694,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     return Inferred::new_any_from_error();
                 }
-                // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
+                // Make sure the old Arc count is decreased, so we can use it mutable without cloning.
                 drop(details);
                 self.calculate_property_setter_and_deleter(
                     i_s,
@@ -960,7 +960,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         );
                         Type::ERROR
                     };
-                    PropertyModifier::Setter(Rc::new(PropertySetter::OtherType(setter)))
+                    PropertyModifier::Setter(Arc::new(PropertySetter::OtherType(setter)))
                 }
                 "deleter" => PropertyModifier::Deleter,
                 _ => PropertyModifier::JustADecorator,
@@ -1597,7 +1597,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 might_have_type_vars: p.might_have_type_vars(),
             });
         }
-        return_result(CallableParams::new_simple(Rc::from(new_params)))
+        return_result(CallableParams::new_simple(Arc::from(new_params)))
     }
 
     fn as_callable_content_internal(
@@ -2182,7 +2182,7 @@ fn infer_decorator_details(
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
-                        setter_type: Some(Rc::new(PropertySetter::SameTypeFromCachedProperty)),
+                        setter_type: Some(Arc::new(PropertySetter::SameTypeFromCachedProperty)),
                     },
                     is_abstract: false,
                 };
@@ -2223,7 +2223,7 @@ struct FunctionDetails {
 
 enum PropertyModifier {
     JustADecorator,
-    Setter(Rc<PropertySetter>),
+    Setter(Arc<PropertySetter>),
     Deleter,
 }
 

@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use parsa_python_cst::{
     keywords_contain, AtomContent, CodeIndex, Name, StarLikeExpression, StarLikeExpressionIterator,
@@ -24,8 +24,8 @@ use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallback
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(crate) fn compute_collections_named_tuple(&self, args: &dyn Args<'db>) -> Inferred {
         match new_collections_named_tuple(self.i_s, args) {
-            Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                Arc::new(Type::NamedTuple(rc)),
+            Some(arc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
+                Arc::new(Type::NamedTuple(arc)),
             )),
             None => Inferred::new_invalid_type_definition(),
         }
@@ -422,7 +422,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
         None,
         second_node_ref.as_link(),
         i_s.db.python_state.empty_type_var_likes.clone(),
-        CallableParams::new_simple(Rc::from(params)),
+        CallableParams::new_simple(Arc::from(params)),
         Type::Self_,
     );
     Some(Arc::new(NamedTuple::new(name, callable)))
@@ -461,7 +461,7 @@ pub fn add_named_tuple_param(
     let name_str = field_name.as_str(db);
     let mut field_name = field_name.into();
     let mut add_and_change = |issue| {
-        field_name = DbString::RcStr(Rc::from(format!("_{}", params.len() - 1)));
+        field_name = DbString::ArcStr(Arc::from(format!("_{}", params.len() - 1)));
         if !rename {
             add_issue(issue)
         }

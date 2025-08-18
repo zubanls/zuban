@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use super::{
     callable::add_param_spec_to_params, simplified_union_from_iterators_with_format_index,
@@ -446,7 +446,7 @@ impl FunctionKind {
             } => match setter_type.as_ref() {
                 PropertySetter::SameTypeFromCachedProperty => None,
                 PropertySetter::OtherType(type_) => Some(FunctionKind::Property {
-                    setter_type: Some(Rc::new(PropertySetter::OtherType(
+                    setter_type: Some(Arc::new(PropertySetter::OtherType(
                         type_.replace_internal(replacer)?,
                     ))),
                     had_first_self_or_class_annotation: *had_first_self_or_class_annotation,

@@ -1770,7 +1770,7 @@ fn infer_params_from_args<'db>(
                         let Some(key) = arg.keyword_name(i_s.db) else {
                             unreachable!()
                         };
-                        CallableParam::new(DbString::RcStr(key.into()), ParamType::KeywordOnly(t))
+                        CallableParam::new(DbString::ArcStr(key.into()), ParamType::KeywordOnly(t))
                     }
                     (false, true) => CallableParam::new_anonymous(ParamType::Star(
                         StarParamType::ArbitraryLen(t),

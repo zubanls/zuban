@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::*;
 
@@ -4706,7 +4706,7 @@ impl StarImportResult {
 
 fn move_lambda_context_keyword_to_positional_or_keyword(
     db: &Database,
-    context_params: &mut Rc<[CallableParam]>,
+    context_params: &mut Arc<[CallableParam]>,
     params: ParamIterator,
 ) {
     *context_params = context_params

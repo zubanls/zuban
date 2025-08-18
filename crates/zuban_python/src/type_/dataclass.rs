@@ -2,7 +2,6 @@ use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
     iter::repeat_with,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -84,7 +83,7 @@ impl Default for DataclassOptions {
 
 impl std::fmt::Debug for Dataclass {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // We don't want to display inits, since it can contain an Rc of the dataclass.
+        // We don't want to display inits, since it can contain an Arc of the dataclass.
         f.debug_struct("Dataclass")
             .field("class", &self.class)
             .field("options", &self.options)
@@ -1137,7 +1136,7 @@ fn order_func(self_: Arc<Dataclass>, i_s: &InferenceState) -> LookupResult {
             None,
             self_.class.link,
             i_s.db.python_state.empty_type_var_likes.clone(),
-            CallableParams::new_simple(Rc::new([CallableParam::new_anonymous(
+            CallableParams::new_simple(Arc::new([CallableParam::new_anonymous(
                 ParamType::PositionalOnly(Type::Dataclass(self_)),
             )])),
             i_s.db.python_state.bool_type(),
@@ -1154,7 +1153,7 @@ fn type_order_func(self_: Arc<Dataclass>, i_s: &InferenceState) -> LookupResult 
             None,
             self_.class.link,
             TypeVarLikes::new(Arc::new([TypeVarLike::TypeVar(type_var)])),
-            CallableParams::new_simple(Rc::new([
+            CallableParams::new_simple(Arc::new([
                 CallableParam::new(
                     DbString::Static("self"),
                     ParamType::PositionalOnly(Type::TypeVar(tv_usage.clone())),

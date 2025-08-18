@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
@@ -289,7 +289,7 @@ impl CallableParam {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum CallableParams {
-    Simple(Rc<[CallableParam]>),
+    Simple(Arc<[CallableParam]>),
     Any(AnyCause),
     Never(NeverCause),
 }
@@ -297,12 +297,12 @@ pub(crate) enum CallableParams {
 impl CallableParams {
     pub const ERROR: CallableParams = CallableParams::Any(AnyCause::FromError);
 
-    pub fn new_simple(params: Rc<[CallableParam]>) -> Self {
+    pub fn new_simple(params: Arc<[CallableParam]>) -> Self {
         Self::Simple(params)
     }
 
     pub fn new_param_spec(p: ParamSpecUsage) -> Self {
-        Self::Simple(Rc::new([
+        Self::Simple(Arc::new([
             CallableParam::new_anonymous(ParamType::Star(StarParamType::ParamSpecArgs(p.clone()))),
             CallableParam::new_anonymous(ParamType::StarStar(StarStarParamType::ParamSpecKwargs(
                 p,

@@ -834,7 +834,7 @@ impl FlowAnalysis {
                             name_def_ref.as_code()
                         );
                         name_def_ref.insert_complex(
-                            ComplexPoint::WidenedType(Rc::new(WidenedType {
+                            ComplexPoint::WidenedType(Arc::new(WidenedType {
                                 original: ComplexPoint::TypeInstance(declaration_t),
                                 widened,
                             })),

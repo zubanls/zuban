@@ -1,4 +1,4 @@
-use std::{ptr::null, rc::Rc, sync::Arc};
+use std::{ptr::null, sync::Arc};
 
 use config::PythonVersion;
 use parsa_python_cst::{FunctionDef, Name, NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
@@ -807,7 +807,7 @@ impl PythonState {
             None,
             PointLink::new(FileIndex(0), 0),
             s.empty_type_var_likes.clone(),
-            CallableParams::new_simple(Rc::new([
+            CallableParams::new_simple(Arc::new([
                 CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
                     AnyCause::Internal,
                 ))),

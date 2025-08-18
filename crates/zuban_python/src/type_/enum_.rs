@@ -345,7 +345,7 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
                     Type::Enum(member.enum_.clone()),
                     LookupResult::UnknownName(Inferred::from_type(Type::Literal(Literal {
                         implicit: true,
-                        kind: LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
+                        kind: LiteralKind::String(DbString::ArcStr(member.name(i_s.db).into())),
                     }))),
                     AttributeKind::Attribute,
                 )
