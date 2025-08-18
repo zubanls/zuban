@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use crate::{
     arguments::Args,
@@ -76,7 +76,7 @@ impl Intersection {
         match (t1, t2) {
             (Type::Type(t1), Type::Type(t2)) => {
                 return Self::new_instance_intersection(i_s, t1.as_ref(), t2.as_ref(), add_issue)
-                    .map(|out| Type::Type(Rc::new(out)))
+                    .map(|out| Type::Type(Arc::new(out)))
             }
             (Type::Union(u), _) => return handle_union(u, t2),
             (_, Type::Union(u)) => return handle_union(u, t1),

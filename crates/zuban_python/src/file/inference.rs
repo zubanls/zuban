@@ -951,7 +951,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             );
             save(
                 name_def.index(),
-                &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
+                &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Arc::new(
                     ancestor_inf.as_type(i_s),
                 ))),
             );
@@ -1592,7 +1592,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             save(
                 name_def.index(),
-                &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Rc::new(
+                &Inferred::new_unsaved_complex(ComplexPoint::IndirectFinal(Arc::new(
                     base_inf.as_type(i_s),
                 ))),
             );
@@ -3911,7 +3911,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         Type::Self_
                     };
                     if is_classmethod {
-                        t = Type::Type(Rc::new(t))
+                        t = Type::Type(Arc::new(t))
                     }
                     Inferred::from_type(t)
                 };

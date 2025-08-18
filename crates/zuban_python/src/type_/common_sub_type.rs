@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use parsa_python_cst::ParamKind;
 
@@ -32,7 +32,7 @@ impl Type {
                 } else if &new == t2.as_ref() {
                     Some(other.clone())
                 } else {
-                    Some(Type::Type(Rc::new(new)))
+                    Some(Type::Type(Arc::new(new)))
                 }
             }
             _ => {

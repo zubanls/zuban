@@ -1,5 +1,5 @@
 // For Type Application, e.g. x = list[int]()
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use parsa_python_cst::Name;
 
@@ -53,13 +53,13 @@ macro_rules! compute_type_application {
         let t = tcomp.$method $args;
         match t {
             TypeContent::SimpleGeneric{class_link, generics, ..} => {
-                Inferred::from_type(Type::Type(Rc::new(Type::new_class(class_link, generics))))
+                Inferred::from_type(Type::Type(Arc::new(Type::new_class(class_link, generics))))
             }
             TypeContent::Type(mut type_) => {
                 tcomp.into_type_vars(|_, recalculate_type_vars| {
                     type_ = recalculate_type_vars(&type_);
                 });
-                Inferred::from_type(Type::Type(Rc::new(type_)))
+                Inferred::from_type(Type::Type(Arc::new(type_)))
             },
             TypeContent::Unknown(cause) => Inferred::new_any(cause.into()),
             TypeContent::InvalidVariable(var) => {

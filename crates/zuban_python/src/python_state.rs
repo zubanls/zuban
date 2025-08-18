@@ -354,9 +354,9 @@ impl PythonState {
             dataclasses_capital_field_index: 0,
             dataclasses_replace_index: 0,
             type_of_object: Type::None, // Will be set later
-            type_of_any: Type::Type(Rc::new(Type::Any(AnyCause::Todo))),
-            type_of_self: Type::Type(Rc::new(Type::Self_)),
-            type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(
+            type_of_any: Type::Type(Arc::new(Type::Any(AnyCause::Todo))),
+            type_of_self: Type::Type(Arc::new(Type::Self_)),
+            type_of_arbitrary_tuple: Type::Type(Arc::new(Type::Tuple(
                 Tuple::new_arbitrary_length_with_any(),
             ))),
             list_of_any: Type::None, // Will be set later
@@ -775,7 +775,7 @@ impl PythonState {
 
         let s = &mut db.python_state;
         let object_type = s.object_type();
-        s.type_of_object = Type::Type(Rc::new(object_type));
+        s.type_of_object = Type::Type(Arc::new(object_type));
         s.list_of_any = new_class!(s.list_node_ref().as_link(), Type::ERROR);
         s.dict_of_any = new_class!(s.dict_node_ref().as_link(), Type::ERROR, Type::ERROR);
         s.set_of_any = new_class!(s.set_node_ref().as_link(), Type::ERROR);
@@ -1263,7 +1263,7 @@ fn typing_changes(
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
     if let Some(none_type_index) = types.symbol_table.lookup_symbol("NoneType") {
         // Making NoneType Type[None] just makes type checking way easier.
-        NodeRef::new(types, none_type_index).insert_type(Type::Type(Rc::new(Type::None)));
+        NodeRef::new(types, none_type_index).insert_type(Type::Type(Arc::new(Type::None)));
     }
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");

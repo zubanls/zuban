@@ -2,7 +2,6 @@ use std::{
     borrow::Cow,
     cell::Cell,
     collections::{HashMap, HashSet},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -1554,7 +1553,7 @@ impl Inference<'_, '_, '_> {
                             Type::Type(t) => {
                                 if let Type::TypeVar(tv) = t.as_ref() {
                                     if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
-                                        new = Some(Type::Type(Rc::new(b.clone())));
+                                        new = Some(Type::Type(Arc::new(b.clone())));
                                     }
                                 }
                             }
@@ -1580,7 +1579,7 @@ impl Inference<'_, '_, '_> {
                         };
                         if !erased_is_protocol {
                             if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
-                                class_t = Type::Type(Rc::new(class_t));
+                                class_t = Type::Type(Arc::new(class_t));
                             };
                             if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
                                 let param_name = first_param.name_def().as_code();

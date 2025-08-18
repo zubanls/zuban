@@ -3,7 +3,7 @@
  * standard type checking. Type checking should always be done first.
  * */
 
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Atom, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName, NameDefParent,
@@ -973,7 +973,7 @@ pub(crate) fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a,
                         Type::Type(t) if t.is_union_like(db) => {
                             unpacked = Some(
                                 t.iter_with_unpacked_unions(db)
-                                    .map(|t| Type::Type(Rc::new(t.clone()))),
+                                    .map(|t| Type::Type(Arc::new(t.clone()))),
                             )
                         }
                         _ => non_unpacked = Some(t.clone()),

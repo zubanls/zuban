@@ -1494,7 +1494,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let name_ref = NodeRef::new(self.node_ref.file, p.param.name_def().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
                         if self.is_dunder_new() {
-                            Type::Type(Rc::new(Type::Self_))
+                            Type::Type(Arc::new(Type::Self_))
                         } else {
                             match kind {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
@@ -1550,7 +1550,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
                                 unreachable!()
                             };
-                            StarParamType::ArbitraryLen(Rc::unwrap_or_clone(t))
+                            StarParamType::ArbitraryLen(Arc::unwrap_or_clone(t))
                         }
                         _ => StarParamType::UnpackedTuple(tup),
                     })

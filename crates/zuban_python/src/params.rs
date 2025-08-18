@@ -1,4 +1,4 @@
-use std::{borrow::Cow, iter::Peekable, rc::Rc};
+use std::{borrow::Cow, iter::Peekable, rc::Rc, sync::Arc};
 
 use parsa_python_cst::ParamKind;
 
@@ -439,7 +439,7 @@ pub fn matches_simple_params<
                                             matches &= matcher.match_or_add_type_var_tuple(
                                                 i_s,
                                                 tvt,
-                                                TupleArgs::ArbitraryLen(Rc::new((**t2).clone())),
+                                                TupleArgs::ArbitraryLen(Arc::new((**t2).clone())),
                                                 variance,
                                             )
                                         }

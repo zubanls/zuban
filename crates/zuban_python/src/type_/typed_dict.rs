@@ -2,6 +2,7 @@ use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
     rc::Rc,
+    sync::Arc,
 };
 
 use super::{
@@ -916,7 +917,7 @@ pub(crate) fn lookup_on_typed_dict<'a>(
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
-    let bound = || Rc::new(Type::TypedDict(typed_dict.clone()));
+    let bound = || Arc::new(Type::TypedDict(typed_dict.clone()));
     let lookup = LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
         "get" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
         "setdefault" => CustomBehavior::new_method(typed_dict_setdefault, Some(bound())),

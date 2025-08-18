@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     keywords_contain, AtomContent, CodeIndex, Name, StarLikeExpression, StarLikeExpressionIterator,
@@ -24,9 +24,9 @@ use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallback
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(crate) fn compute_collections_named_tuple(&self, args: &dyn Args<'db>) -> Inferred {
         match new_collections_named_tuple(self.i_s, args) {
-            Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
-                Type::NamedTuple(rc),
-            ))),
+            Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
+                Arc::new(Type::NamedTuple(rc)),
+            )),
             None => Inferred::new_invalid_type_definition(),
         }
     }

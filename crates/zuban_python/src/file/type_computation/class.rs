@@ -522,7 +522,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             // It is possible that there was a dataclass_transform in the metaclass
             let _ = class_infos
                 .undefined_generics_type
-                .set(Rc::new(Type::Dataclass(dataclass.clone())));
+                .set(Arc::new(Type::Dataclass(dataclass.clone())));
             if let Some(was) = match class_infos.class_kind {
                 ClassKind::Normal => None,
                 ClassKind::Protocol => Some("A Protocol"),
@@ -588,7 +588,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         members,
                         OnceCell::new(),
                     );
-                    let enum_type = Rc::new(Type::Enum(enum_.clone()));
+                    let enum_type = Arc::new(Type::Enum(enum_.clone()));
                     // In case enum is combined with dataclass, just let the dataclass win
                     let _ = class_infos.undefined_generics_type.set(enum_type.clone());
                 }
@@ -605,7 +605,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             // In case TypedDict is combined with dataclass, just let the dataclass win
             let _ = class_infos
                 .undefined_generics_type
-                .set(Rc::new(Type::TypedDict(td.clone())));
+                .set(Arc::new(Type::TypedDict(td.clone())));
             NodeRef::new(self.node_ref.file, self.node().name_def().index()).insert_complex(
                 ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
                 Locality::ImplicitExtern,
@@ -677,7 +677,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     if let Some(t) = p.type_.maybe_positional_type() {
                                         if i == 0 {
                                             p.type_ = ParamType::PositionalOnly(Type::Type(
-                                                Rc::new(t.clone()),
+                                                Arc::new(t.clone()),
                                             ));
                                         }
                                     }
@@ -731,7 +731,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 }
             }
             undefined_generics_type
-                .set(Rc::new(Type::Dataclass(Dataclass::new_uninitialized(
+                .set(Arc::new(Type::Dataclass(Dataclass::new_uninitialized(
                     self.node_ref.as_link(),
                     type_vars,
                     options,

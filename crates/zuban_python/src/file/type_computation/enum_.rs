@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use parsa_python_cst::{
     AtomContent, CodeIndex, DictElement, Expression, StarLikeExpression, StarLikeExpressionIterator,
@@ -128,7 +128,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return None;
         }
 
-        Some(Inferred::from_type(Type::Type(Rc::new(Type::Enum(
+        Some(Inferred::from_type(Type::Type(Arc::new(Type::Enum(
             Enum::new(
                 name,
                 class.node_ref.as_link(),

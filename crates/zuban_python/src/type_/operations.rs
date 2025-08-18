@@ -153,7 +153,7 @@ impl Type {
                     // The class of None is Type[None]
                     result
                         .lookup
-                        .update_inferred(Inferred::from_type(Type::Type(Rc::new(Type::None))))
+                        .update_inferred(Inferred::from_type(Type::Type(Arc::new(Type::None))))
                 }
                 callable(self, result)
             }
@@ -847,7 +847,7 @@ pub(crate) fn attribute_access_of_type(
     kind: LookupKind,
     result_context: &mut ResultContext,
     callable: &mut impl FnMut(&Type, LookupDetails),
-    in_type: Rc<Type>,
+    in_type: Arc<Type>,
 ) {
     let details = match in_type.as_ref() {
         Type::Union(union) => {
@@ -860,7 +860,7 @@ pub(crate) fn attribute_access_of_type(
                     kind,
                     result_context,
                     callable,
-                    Rc::new(t.clone()),
+                    Arc::new(t.clone()),
                 )
             }
             return;
@@ -882,7 +882,7 @@ pub(crate) fn attribute_access_of_type(
                         kind,
                         result_context,
                         callable,
-                        Rc::new(t.clone()),
+                        Arc::new(t.clone()),
                     )
                 }
             },
@@ -952,7 +952,7 @@ pub(crate) fn attribute_access_of_type(
                             kind,
                             result_context,
                             &mut |t, details| on_lookup_result(t, details),
-                            Rc::new(t.clone()),
+                            Arc::new(t.clone()),
                         );
                     },
                     add_issue,
@@ -970,7 +970,7 @@ pub(crate) fn attribute_access_of_type(
                 kind,
                 result_context,
                 callable,
-                Rc::new(r.calculated_type(i_s.db).clone()),
+                Arc::new(r.calculated_type(i_s.db).clone()),
             );
             return;
         }

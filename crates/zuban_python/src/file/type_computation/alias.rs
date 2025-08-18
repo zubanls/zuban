@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent, Atom,
@@ -276,7 +276,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         args.details.iter().next()
                     {
                         if arg.expression().is_none_literal() {
-                            return Ok(Lookup::T(TypeContent::Type(Type::Type(Rc::new(
+                            return Ok(Lookup::T(TypeContent::Type(Type::Type(Arc::new(
                                 Type::None,
                             )))));
                         }
@@ -354,7 +354,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match self.compute_type_assignment(assignment) {
             Lookup::T(TypeContent::TypeAlias(ta)) => {
                 if ta.is_valid() {
-                    Inferred::from_type(Type::Type(Rc::new(ta.type_if_valid().clone())))
+                    Inferred::from_type(Type::Type(Arc::new(ta.type_if_valid().clone())))
                 } else {
                     Inferred::new_any_from_error()
                 }

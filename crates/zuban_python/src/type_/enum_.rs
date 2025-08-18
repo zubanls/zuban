@@ -2,6 +2,7 @@ use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
     rc::Rc,
+    sync::Arc,
 };
 
 use super::{
@@ -259,7 +260,7 @@ pub(crate) enum EnumKind {
 pub(crate) fn lookup_on_enum_class<'a>(
     i_s: &InferenceState<'a, '_>,
     add_issue: impl Fn(IssueKind),
-    in_type: &Rc<Type>,
+    in_type: &Arc<Type>,
     enum_: &Rc<Enum>,
     name: &str,
     kind: LookupKind,

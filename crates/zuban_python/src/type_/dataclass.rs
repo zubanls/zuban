@@ -947,7 +947,7 @@ pub fn dataclass_post_init_func<'a>(
 }
 
 pub(crate) fn lookup_on_dataclass_type<'a>(
-    in_type: &Rc<Type>,
+    in_type: &Arc<Type>,
     dataclass: &'a Rc<Dataclass>,
     i_s: &'a InferenceState,
     add_issue: impl Fn(IssueKind),

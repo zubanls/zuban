@@ -190,7 +190,7 @@ impl TypeArgs {
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self::new(TupleArgs::ArbitraryLen(Rc::new(arg)))
+        Self::new(TupleArgs::ArbitraryLen(Arc::new(arg)))
     }
 
     pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
@@ -449,7 +449,7 @@ pub(crate) enum Type {
     Intersection(Intersection),
     FunctionOverload(Arc<FunctionOverload>),
     TypeVar(TypeVarUsage),
-    Type(Rc<Type>),
+    Type(Arc<Type>),
     Tuple(Rc<Tuple>),
     Callable(Arc<CallableContent>),
     RecursiveType(Rc<RecursiveType>),
@@ -465,8 +465,8 @@ pub(crate) enum Type {
     Module(FileIndex),
     Namespace(Rc<Namespace>),
     Super {
-        class: Rc<GenericClass>,
-        bound_to: Rc<Type>,
+        class: Arc<GenericClass>,
+        bound_to: Arc<Type>,
         mro_index: usize,
     },
     CustomBehavior(CustomBehavior),
@@ -513,7 +513,7 @@ impl Type {
                     u.entries
                         .iter()
                         .map(|e| UnionEntry {
-                            type_: Type::Type(Rc::new(e.type_.clone())),
+                            type_: Type::Type(Arc::new(e.type_.clone())),
                             format_index: e.format_index,
                         })
                         .collect(),
@@ -1898,7 +1898,7 @@ type CustomBehaviorCallback = for<'db> fn(
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub(crate) enum CustomBehaviorKind {
     Function,
-    Method { bound: Option<Rc<Type>> },
+    Method { bound: Option<Arc<Type>> },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -1915,14 +1915,14 @@ impl CustomBehavior {
         }
     }
 
-    pub(crate) fn new_method(callback: CustomBehaviorCallback, bound: Option<Rc<Type>>) -> Self {
+    pub(crate) fn new_method(callback: CustomBehaviorCallback, bound: Option<Arc<Type>>) -> Self {
         Self {
             callback,
             kind: CustomBehaviorKind::Method { bound },
         }
     }
 
-    pub fn bind(&self, bound: Rc<Type>) -> Self {
+    pub fn bind(&self, bound: Arc<Type>) -> Self {
         Self {
             callback: self.callback,
             kind: match self.kind {

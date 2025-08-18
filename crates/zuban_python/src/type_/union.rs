@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
     rc::Rc,
+    sync::Arc,
 };
 
 use super::{
@@ -83,7 +84,7 @@ impl TupleArgs {
                         .collect(),
                 })
             }
-            (_, _) => TupleArgs::ArbitraryLen(Rc::new(
+            (_, _) => TupleArgs::ArbitraryLen(Arc::new(
                 self.simplified_union_of_tuple_entries(i_s)
                     .simplified_union(i_s, &other.simplified_union_of_tuple_entries(i_s)),
             )),

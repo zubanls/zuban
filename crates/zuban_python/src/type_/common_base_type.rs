@@ -271,7 +271,7 @@ fn common_base_type_for_non_class(
         }
         Type::Type(t1) => {
             if let Type::Type(t2) = type2 {
-                return Some(Type::Type(Rc::new(t1.common_base_type_internal(
+                return Some(Type::Type(Arc::new(t1.common_base_type_internal(
                     i_s,
                     t2,
                     Some(checked_recursions),
@@ -598,19 +598,19 @@ impl TupleArgs {
                             .collect(),
                     )
                 } else {
-                    Self::ArbitraryLen(Rc::new(common_base_type_from_iterator(
+                    Self::ArbitraryLen(Arc::new(common_base_type_from_iterator(
                         i_s,
                         ts1.iter().chain(ts2.iter()),
                         checked_recursions,
                     )))
                 }
             }
-            (Self::ArbitraryLen(t1), Self::ArbitraryLen(t2)) => Self::ArbitraryLen(Rc::from(
+            (Self::ArbitraryLen(t1), Self::ArbitraryLen(t2)) => Self::ArbitraryLen(Arc::from(
                 t1.common_base_type_internal(i_s, t2, checked_recursions),
             )),
             (Self::ArbitraryLen(t), Self::FixedLen(ts))
             | (Self::FixedLen(ts), Self::ArbitraryLen(t)) => {
-                Self::ArbitraryLen(Rc::new(common_base_type_from_iterator(
+                Self::ArbitraryLen(Arc::new(common_base_type_from_iterator(
                     i_s,
                     std::iter::once(t.as_ref()).chain(ts.iter()),
                     checked_recursions,

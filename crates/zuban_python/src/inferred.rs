@@ -1096,7 +1096,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 Some(attribute_class),
                                             );
                                             let t = IssueKind::InvalidClassMethodFirstArgument {
-                                                argument_type: Type::Type(Rc::new(instance))
+                                                argument_type: Type::Type(Arc::new(instance))
                                                     .format_short(i_s.db),
                                                 function_name: Box::from(overload.name(i_s.db)),
                                                 // Mypy just picks the first function.
@@ -1315,7 +1315,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let result = infer_class_method_on_instance(i_s, &instance, attribute_class, c);
                     if result.is_none() {
                         let t = IssueKind::InvalidClassMethodFirstArgument {
-                            argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
+                            argument_type: Type::Type(Arc::new(instance)).format_short(i_s.db),
                             function_name: c.name(i_s.db).into(),
                             callable: t.format_short(i_s.db),
                         };
@@ -1360,7 +1360,7 @@ impl<'db: 'slf, 'slf> Inferred {
             },
             Type::CustomBehavior(custom) => {
                 return Some(Some((
-                    Inferred::from_type(Type::CustomBehavior(custom.bind(Rc::new(instance)))),
+                    Inferred::from_type(Type::CustomBehavior(custom.bind(Arc::new(instance)))),
                     AttributeKind::DefMethod { is_final: false },
                 )))
             }
@@ -2521,7 +2521,7 @@ pub fn infer_class_method_on_instance<'db: 'class, 'class>(
         &func_class,
         None,
         || instance.clone(),
-        || Type::Type(Rc::new(instance.clone())),
+        || Type::Type(Arc::new(instance.clone())),
     )
 }
 
@@ -2730,7 +2730,7 @@ fn type_of_complex<'db: 'x, 'x>(
             }
             let t = alias.type_if_valid();
             if t.is_subclassable(i_s.db) || matches!(t, Type::TypedDict(_) | Type::Any(_)) {
-                Type::Type(Rc::new(alias.as_type_and_set_type_vars_any(i_s.db)))
+                Type::Type(Arc::new(alias.as_type_and_set_type_vars_any(i_s.db)))
             } else {
                 i_s.db.python_state.typing_special_form_type()
             }
@@ -2854,16 +2854,16 @@ pub fn specific_to_type<'db>(
         Specific::BuiltinsIssubclass => Cow::Owned(i_s.db.python_state.issubclass_type(i_s.db)),
         Specific::BuiltinsSuper => Cow::Owned(i_s.db.python_state.super_type()),
         Specific::TypingTypeVarClass => {
-            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.type_var_type())))
+            Cow::Owned(Type::Type(Arc::new(i_s.db.python_state.type_var_type())))
         }
-        Specific::TypingTypeVarTupleClass => Cow::Owned(Type::Type(Rc::new(
+        Specific::TypingTypeVarTupleClass => Cow::Owned(Type::Type(Arc::new(
             i_s.db.python_state.type_var_tuple_type(),
         ))),
         Specific::TypingParamSpecClass => {
-            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.param_spec_type())))
+            Cow::Owned(Type::Type(Arc::new(i_s.db.python_state.param_spec_type())))
         }
         Specific::BuiltinsType => {
-            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.bare_type_type())))
+            Cow::Owned(Type::Type(Arc::new(i_s.db.python_state.bare_type_type())))
         }
         Specific::TypingTuple => Cow::Borrowed(&i_s.db.python_state.type_of_arbitrary_tuple),
         Specific::CollectionsNamedTuple => Cow::Owned(
@@ -2902,7 +2902,7 @@ pub fn specific_to_type<'db>(
         Specific::RevealTypeFunction => Cow::Owned(i_s.db.python_state.reveal_type(i_s.db)),
         Specific::None => Cow::Borrowed(&Type::None),
         Specific::TypingNewType => {
-            Cow::Owned(Type::Type(Rc::new(i_s.db.python_state.new_type_type())))
+            Cow::Owned(Type::Type(Arc::new(i_s.db.python_state.new_type_type())))
         }
         // Typeshed defines this as object()
         Specific::TypingAny => Cow::Owned(i_s.db.python_state.object_type()),
@@ -2920,7 +2920,7 @@ pub fn specific_to_type<'db>(
         Specific::MypyExtensionsFlexibleAlias => Cow::Borrowed(&Type::Any(AnyCause::Internal)),
         // TODO dataclass transforms should probably be handled properly
         Specific::TypingDataclassTransform => Cow::Owned(i_s.db.python_state.function_type()),
-        Specific::TypingTypeAliasType => Cow::Owned(Type::Type(Rc::new(
+        Specific::TypingTypeAliasType => Cow::Owned(Type::Type(Arc::new(
             i_s.db.python_state.type_alias_type_type(),
         ))),
         actual => unreachable!("{actual:?}"),

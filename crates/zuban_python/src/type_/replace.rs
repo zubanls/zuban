@@ -193,7 +193,7 @@ impl Type {
                 })?,
                 u.might_have_type_vars,
             ))),
-            Type::Type(t) => Some(Type::Type(Rc::new(t.replace_internal(replacer)?))),
+            Type::Type(t) => Some(Type::Type(Arc::new(t.replace_internal(replacer)?))),
             Type::Tuple(content) => Some(Type::Tuple(Tuple::new(
                 content.args.replace_internal(replacer)?,
             ))),
@@ -507,7 +507,7 @@ impl CallableParams {
                                         return Some(());
                                     }
                                     TupleArgs::ArbitraryLen(t) => {
-                                        StarParamType::ArbitraryLen(Rc::unwrap_or_clone(t))
+                                        StarParamType::ArbitraryLen(Arc::unwrap_or_clone(t))
                                     }
                                     TupleArgs::WithUnpack(mut with_unpack) => {
                                         let before = std::mem::replace(
@@ -704,7 +704,7 @@ impl TupleArgs {
             Self::FixedLen(ts) => Self::FixedLen(maybe_replace_iterable(ts.iter(), |t| {
                 t.replace_internal(replacer)
             })?),
-            Self::ArbitraryLen(t) => Self::ArbitraryLen(Rc::new(t.replace_internal(replacer)?)),
+            Self::ArbitraryLen(t) => Self::ArbitraryLen(Arc::new(t.replace_internal(replacer)?)),
             Self::WithUnpack(unpack) => {
                 let new_before: Option<Vec<_>> =
                     maybe_replace_iterable(unpack.before.iter(), |t| t.replace_internal(replacer));

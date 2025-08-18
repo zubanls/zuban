@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use super::{
     CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, TypeVarLike,
@@ -56,7 +56,7 @@ impl Type {
                 Type::Union(_) => match t1.as_ref() {
                     Type::Union(u) => {
                         let repacked = Type::Union(UnionType::from_types(
-                            u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
+                            u.iter().map(|t| Type::Type(Arc::new(t.clone()))).collect(),
                             u.might_have_type_vars,
                         ));
                         repacked.matches_internal(i_s, matcher, value_type, variance)
@@ -550,7 +550,7 @@ impl Type {
                     unreachable!();
                 };
                 let repacked = Type::Union(UnionType::from_types(
-                    u.iter().map(|t| Type::Type(Rc::new(t.clone()))).collect(),
+                    u.iter().map(|t| Type::Type(Arc::new(t.clone()))).collect(),
                     u.might_have_type_vars,
                 ));
                 self.matches_union(i_s, matcher, u1, &repacked, variance)
@@ -655,7 +655,7 @@ impl Type {
                             i_s,
                             matcher,
                             class1,
-                            &Type::Type(Rc::new(bound.clone())),
+                            &Type::Type(Arc::new(bound.clone())),
                             variance,
                         ),
                         TypeVarKind::Constraints(_) => {
@@ -1097,7 +1097,7 @@ fn match_unpack_internal(
                             matches &= check_type_var_tuple(
                                 matcher,
                                 tvt2,
-                                TupleArgs::ArbitraryLen(Rc::new(inner_t1.clone())),
+                                TupleArgs::ArbitraryLen(Arc::new(inner_t1.clone())),
                             )
                         }
                         TupleUnpack::ArbitraryLen(inner_t2) => {

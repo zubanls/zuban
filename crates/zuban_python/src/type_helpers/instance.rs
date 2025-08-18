@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::Name;
 
@@ -227,7 +227,7 @@ impl<'a> Instance<'a> {
         self.type_lookup(i_s, &add_issue, "__get__")
             .into_maybe_inferred()
             .map(|inf| {
-                let c_t = Type::Type(Rc::new(instance.clone()));
+                let c_t = Type::Type(Arc::new(instance.clone()));
                 inf.execute(
                     i_s,
                     &CombinedArgs::new(
@@ -743,8 +743,8 @@ fn execute_super_internal<'db>(
             return Ok(Inferred::new_any(AnyCause::Todo));
         }
         Ok(Inferred::from_type(Type::Super {
-            class: Rc::new(c.as_generic_class(i_s.db)),
-            bound_to: Rc::new(t),
+            class: Arc::new(c.as_generic_class(i_s.db)),
+            bound_to: Arc::new(t),
             mro_index,
         }))
     };
@@ -768,7 +768,7 @@ fn execute_super_internal<'db>(
                     match first_param_kind {
                         FirstParamKind::Self_ => Type::Self_,
                         FirstParamKind::ClassOfSelf if assume_instance => Type::Self_,
-                        FirstParamKind::ClassOfSelf => Type::Type(Rc::new(Type::Self_)),
+                        FirstParamKind::ClassOfSelf => Type::Type(Arc::new(Type::Self_)),
                         FirstParamKind::InStaticmethod => unreachable!(),
                     }
                 };
@@ -865,7 +865,7 @@ fn execute_super_internal<'db>(
                 let Some(cls) = i_s.current_class() else {
                     return Ok(Inferred::new_any(*cause));
                 };
-                (cls, Type::Type(Rc::new(Type::Self_)))
+                (cls, Type::Type(Arc::new(Type::Self_)))
             }
             _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
         },

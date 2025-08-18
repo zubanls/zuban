@@ -28,7 +28,7 @@ use crate::{
 
 thread_local! {
     static ARBITRARY_TUPLE: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo));
-    static ARBITRARY_TUPLE_ARGS_FROM_ERROR: TupleArgs = TupleArgs::ArbitraryLen(Rc::new(Type::ERROR));
+    static ARBITRARY_TUPLE_ARGS_FROM_ERROR: TupleArgs = TupleArgs::ArbitraryLen(Arc::new(Type::ERROR));
     static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::ERROR);
 }
 
@@ -48,7 +48,7 @@ impl Tuple {
 
     pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Rc<Self> {
         Rc::new(Self {
-            args: TupleArgs::ArbitraryLen(Rc::new(t)),
+            args: TupleArgs::ArbitraryLen(Arc::new(t)),
             tuple_class_generics: OnceCell::from(generics),
         })
     }
@@ -58,7 +58,7 @@ impl Tuple {
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Rc<Self> {
-        Self::new(TupleArgs::ArbitraryLen(Rc::new(arg)))
+        Self::new(TupleArgs::ArbitraryLen(Arc::new(arg)))
     }
 
     pub fn new_arbitrary_length_with_any() -> Rc<Self> {
@@ -393,7 +393,7 @@ impl Tuple {
                                 if let TupleUnpack::ArbitraryLen(t) = out.unpack {
                                     // We can simplify
                                     return Inferred::from_type(Type::Tuple(Tuple::new(
-                                        TupleArgs::ArbitraryLen(Rc::new(t)),
+                                        TupleArgs::ArbitraryLen(Arc::new(t)),
                                     )));
                                 }
                             }
@@ -522,7 +522,7 @@ impl WithUnpack {
 pub(crate) enum TupleArgs {
     WithUnpack(WithUnpack),
     FixedLen(Arc<[Type]>),
-    ArbitraryLen(Rc<Type>),
+    ArbitraryLen(Arc<Type>),
 }
 
 impl TupleArgs {
@@ -606,7 +606,7 @@ impl TupleArgs {
                 )
             }
             (ArbitraryLen(t1), ArbitraryLen(t2)) => {
-                Self::ArbitraryLen(Rc::new(t1.merge_matching_parts(db, t2)))
+                Self::ArbitraryLen(Arc::new(t1.merge_matching_parts(db, t2)))
             }
             _ => Tuple::new_arbitrary_length_with_any().args.clone(),
         }
@@ -637,7 +637,7 @@ impl TupleArgs {
                 } else {
                     TupleArgs::WithUnpack(WithUnpack {
                         before: before.into(),
-                        unpack: TupleUnpack::ArbitraryLen(Rc::unwrap_or_clone(t)),
+                        unpack: TupleUnpack::ArbitraryLen(Arc::unwrap_or_clone(t)),
                         after: after.into(),
                     })
                 }
@@ -753,11 +753,11 @@ pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupDetails
         match name {
             "__mul__" | "__rmul__" => {
                 LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
-                    CustomBehavior::new_method(tuple_mul, Some(Rc::new(Type::Tuple(tuple)))),
+                    CustomBehavior::new_method(tuple_mul, Some(Arc::new(Type::Tuple(tuple)))),
                 )))
             }
             "__add__" => LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
-                CustomBehavior::new_method(tuple_add, Some(Rc::new(Type::Tuple(tuple)))),
+                CustomBehavior::new_method(tuple_add, Some(Arc::new(Type::Tuple(tuple)))),
             ))),
             _ => LookupResult::None,
         },
@@ -983,7 +983,7 @@ impl MaybeUnpackGatherer {
         match self.unpack {
             Some(unpack) => match unpack {
                 TupleUnpack::ArbitraryLen(t) if self.before.is_empty() && self.after.is_empty() => {
-                    TupleArgs::ArbitraryLen(Rc::new(t))
+                    TupleArgs::ArbitraryLen(Arc::new(t))
                 }
                 _ => TupleArgs::WithUnpack(WithUnpack {
                     before: self.before.into(),

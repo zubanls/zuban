@@ -3188,7 +3188,7 @@ impl Inference<'_, '_, '_> {
             });
         }
         if issubclass && !matches!(isinstance_type, Type::Never(_)) {
-            isinstance_type = Type::Type(Rc::new(isinstance_type))
+            isinstance_type = Type::Type(Arc::new(isinstance_type))
         }
 
         let (truthy, falsey) = split_and_intersect(
@@ -3288,7 +3288,7 @@ impl Inference<'_, '_, '_> {
                 Type::Type(inner) => match inner.as_ref() {
                     Type::Union(union) => {
                         for inner in union.iter() {
-                            add_t(&Type::Type(Rc::new(inner.clone())));
+                            add_t(&Type::Type(Arc::new(inner.clone())));
                         }
                     }
                     _ => add_t(t),
@@ -4446,7 +4446,7 @@ fn split_and_intersect(
             Type::Type(inner) => match inner.as_ref() {
                 Type::Union(union) => {
                     for inner in union.iter() {
-                        split(&Type::Type(Rc::new(inner.clone())))
+                        split(&Type::Type(Arc::new(inner.clone())))
                     }
                 }
                 _ => split(t),

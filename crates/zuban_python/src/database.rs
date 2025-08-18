@@ -653,11 +653,11 @@ pub(crate) enum ComplexPoint {
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<OverloadDefinition>),
     // e.g. X = NamedTuple('X', []), does not include classes.
-    NamedTupleDefinition(Rc<Type>),
+    NamedTupleDefinition(Arc<Type>),
     // e.g. X = TypedDict('X', {'x': int}), does not include classes.
     TypedDictDefinition(TypedDictDefinition),
     // Sometimes needed when a Final is defined in a class and initialized in __init__.
-    IndirectFinal(Rc<Type>),
+    IndirectFinal(Arc<Type>),
     WidenedType(Rc<WidenedType>),
 
     // Relevant for types only (not inference)
@@ -719,7 +719,7 @@ pub(crate) struct WidenedType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct TypedDictDefinition {
-    pub type_: Rc<Type>,
+    pub type_: Arc<Type>,
     pub deferred_subclass_member_initializations: Box<RefCell<Vec<Rc<TypedDict>>>>,
     pub total: bool,
 }
@@ -727,7 +727,7 @@ pub(crate) struct TypedDictDefinition {
 impl TypedDictDefinition {
     pub fn new(typed_dict: Rc<TypedDict>, total: bool) -> Self {
         Self {
-            type_: Rc::new(Type::TypedDict(typed_dict)),
+            type_: Arc::new(Type::TypedDict(typed_dict)),
             deferred_subclass_member_initializations: Default::default(),
             total,
         }
@@ -745,7 +745,7 @@ impl TypedDictDefinition {
 struct CalculatedTypeAlias {
     // This is intentionally private, it should not be used anywhere else, because the behavior of
     // a type alias that has `is_recursive` is different.
-    type_: Rc<Type>,
+    type_: Arc<Type>,
     is_recursive: bool,
     is_annotated: bool, // e.g. X: TypeAlias = Annotated[int, "something"]
 }
@@ -818,7 +818,7 @@ impl TypeAlias {
     pub fn set_valid(&self, type_: Type, is_recursive: bool, is_annotated: bool) {
         self.state
             .set(TypeAliasState::Valid(CalculatedTypeAlias {
-                type_: Rc::new(type_),
+                type_: Arc::new(type_),
                 is_recursive,
                 is_annotated,
             }))
@@ -1453,7 +1453,7 @@ pub(crate) struct ClassInfos {
     // Does not need to be a HashMap, because this is typically the size of 1-2
     pub variance_map: Vec<(TypeVarName, OnceCell<Variance>)>,
     // We have this less for caching and more to be able to have different types.
-    pub undefined_generics_type: OnceCell<Rc<Type>>,
+    pub undefined_generics_type: OnceCell<Arc<Type>>,
 }
 
 impl ClassInfos {

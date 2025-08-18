@@ -451,7 +451,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             &t2,
                                             &c.lookup(i_s, name, ClassLookupOptions::new(&|_| ())
                                                     .with_as_type_type(&|| if other.is_subclassable(i_s.db) {
-                                                        Type::Type(Rc::new(other.clone()))
+                                                        Type::Type(Arc::new(other.clone()))
                                                     } else {
                                                         self.as_type_type(i_s.db)
                                                     })
@@ -1179,14 +1179,14 @@ impl<'db: 'a, 'a> Class<'a> {
             class_infos
                 .undefined_generics_type
                 .get_or_init(|| {
-                    Rc::new(Type::new_class(
+                    Arc::new(Type::new_class(
                         self.node_ref.as_link(),
                         ClassGenerics::NotDefinedYet,
                     ))
                 })
                 .clone()
         } else {
-            Rc::new(self.as_type(db))
+            Arc::new(self.as_type(db))
         })
     }
 
@@ -2363,6 +2363,6 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
     if type_part.is_never() {
         first_arg // Must be never
     } else {
-        Inferred::from_type(Type::Type(Rc::new(type_part)))
+        Inferred::from_type(Type::Type(Arc::new(type_part)))
     }
 }

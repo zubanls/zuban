@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::{super::Match, Matcher, MatcherFormatResult};
 use crate::{
@@ -241,7 +241,7 @@ impl BoundKind {
         match tv {
             TypeVarLike::TypeVar(_) => Self::TypeVar(Type::Any(cause)),
             TypeVarLike::TypeVarTuple(_) => {
-                Self::TypeVarTuple(TupleArgs::ArbitraryLen(Rc::new(Type::Any(cause))))
+                Self::TypeVarTuple(TupleArgs::ArbitraryLen(Arc::new(Type::Any(cause))))
             }
             TypeVarLike::ParamSpec(_) => Self::ParamSpec(CallableParams::Any(cause)),
         }
