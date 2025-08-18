@@ -203,7 +203,7 @@ impl Type {
                 }
                 Some(Type::Callable(Arc::new(c.replace_internal(replacer)?)))
             }
-            Type::RecursiveType(rec) => Some(Type::RecursiveType(Rc::new(RecursiveType::new(
+            Type::RecursiveType(rec) => Some(Type::RecursiveType(Arc::new(RecursiveType::new(
                 rec.link,
                 Some(rec.generics.as_ref()?.replace_internal(replacer)?),
             )))),
@@ -233,7 +233,7 @@ impl Type {
                     })?;
                 let mut constructor = nt.__new__.as_ref().clone();
                 constructor.params = CallableParams::new_simple(new_params);
-                Some(Type::NamedTuple(Rc::new(NamedTuple::new(
+                Some(Type::NamedTuple(Arc::new(NamedTuple::new(
                     nt.name,
                     constructor,
                 ))))
@@ -781,7 +781,7 @@ impl GenericsList {
 }
 
 impl TypedDict {
-    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Rc<Self>> {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Arc<Self>> {
         let generics = match &self.generics {
             TypedDictGenerics::Generics(generics) => {
                 TypedDictGenerics::Generics(generics.replace_internal(replacer)?)

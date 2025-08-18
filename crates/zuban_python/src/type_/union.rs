@@ -2,7 +2,6 @@ use std::{
     borrow::{Borrow, Cow},
     collections::HashMap,
     hash::{Hash, Hasher},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -267,7 +266,7 @@ fn try_contracting_enum_members(entries: &mut Vec<UnionEntry>) {
     entries.retain_mut(|entry| {
         if let Type::EnumMember(member) = &entry.type_ {
             for (first_member, count) in enum_counts.values() {
-                if Rc::ptr_eq(&member.enum_, &first_member.enum_)
+                if Arc::ptr_eq(&member.enum_, &first_member.enum_)
                     && first_member.enum_.members.len() <= *count
                 {
                     debug_assert_eq!(first_member.enum_.members.len(), *count);

@@ -1,4 +1,4 @@
-use std::{mem, rc::Rc, sync::Arc};
+use std::{mem, sync::Arc};
 
 use parsa_python_cst::{
     ArgsIterator, Argument as CSTArgument, ArgumentsDetails, Comprehension, Expression,
@@ -1212,7 +1212,7 @@ enum ArgsKwargsIterator<'a> {
     },
     TypedDict {
         db: &'a Database,
-        typed_dict: Rc<TypedDict>,
+        typed_dict: Arc<TypedDict>,
         iterator_index: usize,
         position: usize,
         node_ref: NodeRef<'a>,

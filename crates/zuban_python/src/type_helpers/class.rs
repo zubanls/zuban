@@ -2,7 +2,6 @@ use std::{
     borrow::Cow,
     cell::{Cell, RefCell},
     fmt,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -1761,7 +1760,7 @@ impl<'db: 'a, 'a> Class<'a> {
         self.check_slots(i_s, add_issue, name)
     }
 
-    pub fn maybe_named_tuple_base(&self, db: &'a Database) -> Option<Rc<NamedTuple>> {
+    pub fn maybe_named_tuple_base(&self, db: &'a Database) -> Option<Arc<NamedTuple>> {
         if self.use_cached_class_infos(db).class_kind == ClassKind::NamedTuple {
             for (_, base) in self.mro(db) {
                 if let TypeOrClass::Type(base) = base {
@@ -1775,7 +1774,7 @@ impl<'db: 'a, 'a> Class<'a> {
         None
     }
 
-    pub fn maybe_tuple_base(&self, db: &Database) -> Option<Rc<Tuple>> {
+    pub fn maybe_tuple_base(&self, db: &Database) -> Option<Arc<Tuple>> {
         match self.use_cached_class_infos(db).class_kind {
             ClassKind::NamedTuple | ClassKind::Tuple => {
                 for (_, base) in self.mro(db) {
@@ -1793,7 +1792,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn maybe_dataclass(&self, db: &Database) -> Option<Rc<Dataclass>> {
+    pub fn maybe_dataclass(&self, db: &Database) -> Option<Arc<Dataclass>> {
         // TODO this should probably not be needed.
         match self
             .maybe_cached_class_infos(db)?
@@ -1806,7 +1805,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn maybe_typed_dict(&self) -> Option<Rc<TypedDict>> {
+    pub fn maybe_typed_dict(&self) -> Option<Arc<TypedDict>> {
         self.maybe_typed_dict_definition()
             .map(|tdd| tdd.typed_dict())
     }

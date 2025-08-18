@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use parsa_python_cst::ParamKind;
 
@@ -539,7 +539,7 @@ fn common_base_for_tuples(
     tup1: &Tuple,
     tup2: &Tuple,
     checked_recursions: Option<CheckedTypeRecursion>,
-) -> Rc<Tuple> {
+) -> Arc<Tuple> {
     if let Some(tup1) = tup1.maybe_avoid_implicit_literal(i_s.db) {
         common_base_for_tuples(i_s, &tup1, tup2, checked_recursions)
     } else if let Some(tup2) = tup2.maybe_avoid_implicit_literal(i_s.db) {

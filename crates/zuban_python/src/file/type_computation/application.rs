@@ -1,5 +1,5 @@
 // For Type Application, e.g. x = list[int]()
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use parsa_python_cst::Name;
 
@@ -112,7 +112,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_type_application_on_named_tuple(
         &self,
-        named_tuple: Rc<NamedTuple>,
+        named_tuple: Arc<NamedTuple>,
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {
@@ -127,7 +127,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_type_application_on_typed_dict(
         &self,
-        typed_dict: Rc<TypedDict>,
+        typed_dict: Arc<TypedDict>,
         slice_type: SliceType,
         result_context: &ResultContext,
     ) -> Inferred {

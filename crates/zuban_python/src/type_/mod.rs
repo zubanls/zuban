@@ -301,7 +301,7 @@ impl GenericsList {
     fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveType>>,
+        already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         self.iter().any(|g| match g {
             GenericItem::TypeArg(t) => t.has_any_internal(i_s, already_checked),
@@ -450,20 +450,20 @@ pub(crate) enum Type {
     FunctionOverload(Arc<FunctionOverload>),
     TypeVar(TypeVarUsage),
     Type(Arc<Type>),
-    Tuple(Rc<Tuple>),
+    Tuple(Arc<Tuple>),
     Callable(Arc<CallableContent>),
-    RecursiveType(Rc<RecursiveType>),
-    NewType(Rc<NewType>),
+    RecursiveType(Arc<RecursiveType>),
+    NewType(Arc<NewType>),
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
-    Dataclass(Rc<Dataclass>),
-    TypedDict(Rc<TypedDict>),
-    NamedTuple(Rc<NamedTuple>),
-    Enum(Rc<Enum>),
+    Dataclass(Arc<Dataclass>),
+    TypedDict(Arc<TypedDict>),
+    NamedTuple(Arc<NamedTuple>),
+    Enum(Arc<Enum>),
     EnumMember(EnumMember),
     Module(FileIndex),
-    Namespace(Rc<Namespace>),
+    Namespace(Arc<Namespace>),
     Super {
         class: Arc<GenericClass>,
         bound_to: Arc<Type>,
@@ -712,7 +712,7 @@ impl Type {
         None
     }
 
-    pub fn maybe_typed_dict(&self, _: &Database) -> Option<Rc<TypedDict>> {
+    pub fn maybe_typed_dict(&self, _: &Database) -> Option<Arc<TypedDict>> {
         match self {
             Type::TypedDict(td) => Some(td.clone()),
             _ => None,
@@ -771,7 +771,7 @@ impl Type {
                         let mut type_var_dataclass = (**d).clone();
                         type_var_dataclass.class = Class::with_self_generics(i_s.db, cls.node_ref)
                             .as_generic_class(i_s.db);
-                        init.return_type = Type::Dataclass(Rc::new(type_var_dataclass));
+                        init.return_type = Type::Dataclass(Arc::new(type_var_dataclass));
                     }
                     return Some(CallableLike::Callable(Arc::new(init)));
                 }
@@ -1080,7 +1080,7 @@ impl Type {
     fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveType>>,
+        already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         let mut search_in_generic_class = |c: &GenericClass| match &c.generics {
             ClassGenerics::List(generics) => generics.has_any_internal(i_s, already_checked),
@@ -1414,7 +1414,7 @@ impl Type {
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        callable: &mut impl FnMut(&mut Matcher, Rc<TypedDict>) -> bool,
+        callable: &mut impl FnMut(&mut Matcher, Arc<TypedDict>) -> bool,
     ) -> bool {
         self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
             Type::TypedDict(td) => callable(matcher, td.clone()),
@@ -1643,7 +1643,7 @@ impl FromIterator<Type> for Type {
 }
 
 impl Tuple {
-    pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Rc<Self>> {
+    pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Arc<Self>> {
         if let TupleArgs::FixedLen(ts) = &self.args {
             if ts
                 .iter()

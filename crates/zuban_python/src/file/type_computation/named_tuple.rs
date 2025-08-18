@@ -104,7 +104,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     pub(super) fn compute_type_get_item_on_named_tuple(
         &mut self,
-        named_tuple: Rc<NamedTuple>,
+        named_tuple: Arc<NamedTuple>,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let db = self.i_s.db;
@@ -228,7 +228,7 @@ pub(crate) fn new_typing_named_tuple(
     i_s: &InferenceState,
     args: &dyn Args,
     in_type_definition: bool,
-) -> Option<Rc<NamedTuple>> {
+) -> Option<Arc<NamedTuple>> {
     let (_, second_node_ref, _, _) = check_named_tuple_name(i_s, "NamedTuple", args)?;
     let on_type_var = &mut |i_s: &InferenceState, _: &_, type_var_like, _, _: Name| {
         i_s.find_parent_type_var(&type_var_like)
@@ -290,7 +290,7 @@ pub(crate) fn new_typing_named_tuple_internal(
 pub(crate) fn new_collections_named_tuple<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
-) -> Option<Rc<NamedTuple>> {
+) -> Option<Arc<NamedTuple>> {
     let (name, second_node_ref, atom_content, _) = check_named_tuple_name(i_s, "namedtuple", args)?;
     let mut params = start_namedtuple_params(i_s.db);
     let mut rename = false;
@@ -425,7 +425,7 @@ pub(crate) fn new_collections_named_tuple<'db>(
         CallableParams::new_simple(Rc::from(params)),
         Type::Self_,
     );
-    Some(Rc::new(NamedTuple::new(name, callable)))
+    Some(Arc::new(NamedTuple::new(name, callable)))
 }
 
 fn check_named_tuple_has_no_fields_with_underscore(

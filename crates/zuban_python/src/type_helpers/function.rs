@@ -1547,7 +1547,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     };
                     ParamType::Star(match &tup.args {
                         TupleArgs::ArbitraryLen(_) => {
-                            let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
+                            let TupleArgs::ArbitraryLen(t) = Arc::unwrap_or_clone(tup).args else {
                                 unreachable!()
                             };
                             StarParamType::ArbitraryLen(Arc::unwrap_or_clone(t))

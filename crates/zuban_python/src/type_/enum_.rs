@@ -1,7 +1,6 @@
 use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -25,13 +24,13 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub(crate) struct EnumMember {
-    pub enum_: Rc<Enum>,
+    pub enum_: Arc<Enum>,
     pub member_index: usize,
     pub implicit: bool,
 }
 
 impl EnumMember {
-    pub fn new(enum_: Rc<Enum>, member_index: usize, implicit: bool) -> Self {
+    pub fn new(enum_: Arc<Enum>, member_index: usize, implicit: bool) -> Self {
         Self {
             enum_,
             member_index,
@@ -58,7 +57,7 @@ impl EnumMember {
     }
 
     pub fn is_same_member(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.enum_, &other.enum_) && self.member_index == other.member_index
+        Arc::ptr_eq(&self.enum_, &other.enum_) && self.member_index == other.member_index
     }
 
     fn member_definition(&self) -> &EnumMemberDefinition {
@@ -172,8 +171,8 @@ impl Enum {
         parent_scope: ParentScope,
         members: Box<[EnumMemberDefinition]>,
         has_customized_new: OnceCell<bool>,
-    ) -> Rc<Self> {
-        Rc::new(Self {
+    ) -> Arc<Self> {
+        Arc::new(Self {
             name,
             defined_at,
             parent_scope,
@@ -187,7 +186,7 @@ impl Enum {
         Class::from_non_generic_link(db, self.class)
     }
 
-    pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str, implicit: bool) -> Option<EnumMember> {
+    pub fn lookup(rc: &Arc<Enum>, db: &Database, name: &str, implicit: bool) -> Option<EnumMember> {
         for (index, member) in rc.members.iter().enumerate() {
             if name == member.name(db) {
                 return Some(EnumMember::new(rc.clone(), index, implicit));
@@ -261,7 +260,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
     i_s: &InferenceState<'a, '_>,
     add_issue: impl Fn(IssueKind),
     in_type: &Arc<Type>,
-    enum_: &Rc<Enum>,
+    enum_: &Arc<Enum>,
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
@@ -287,7 +286,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
 pub(crate) fn lookup_on_enum_instance<'a>(
     i_s: &'a InferenceState,
     add_issue: &dyn Fn(IssueKind),
-    enum_: &'a Rc<Enum>,
+    enum_: &'a Arc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
     match name {
@@ -315,7 +314,7 @@ pub(crate) fn lookup_on_enum_instance<'a>(
 fn lookup_on_enum_instance_fallback<'a>(
     i_s: &'a InferenceState,
     add_issue: &dyn Fn(IssueKind),
-    enum_: &'a Rc<Enum>,
+    enum_: &'a Arc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
     Instance::new(enum_.class(i_s.db), None).lookup(
@@ -377,7 +376,7 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
     lookup_on_enum_instance_fallback(i_s, add_issue, &member.enum_, name)
 }
 
-fn lookup_members_on_enum(i_s: &InferenceState, enum_: &Rc<Enum>, name: &str) -> LookupResult {
+fn lookup_members_on_enum(i_s: &InferenceState, enum_: &Arc<Enum>, name: &str) -> LookupResult {
     match Enum::lookup(enum_, i_s.db, name, true) {
         Some(m) => LookupResult::UnknownName(Inferred::from_type(Type::EnumMember(m))),
         None => LookupResult::None,

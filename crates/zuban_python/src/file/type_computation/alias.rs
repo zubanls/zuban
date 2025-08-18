@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent, Atom,
@@ -842,7 +842,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             ) {
                 Some(new_type) => {
                     alias.set_valid(
-                        Type::NewType(Rc::new(new_type)),
+                        Type::NewType(Arc::new(new_type)),
                         comp.is_recursive_alias,
                         false,
                     );

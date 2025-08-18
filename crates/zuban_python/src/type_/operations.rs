@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use super::{
     dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
@@ -1083,7 +1083,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 };
                 let mut __new__ = Arc::unwrap_or_clone(__new__);
                 __new__.type_vars = i_s.db.python_state.empty_type_var_likes.clone();
-                Rc::new(NamedTuple::new(nt.name, __new__))
+                Arc::new(NamedTuple::new(nt.name, __new__))
             }))
         }
         Type::Enum(_enum_) => {

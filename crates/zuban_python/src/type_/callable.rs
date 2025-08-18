@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
@@ -26,14 +26,14 @@ use crate::{
 pub(crate) enum StarParamType {
     ArbitraryLen(Type),
     ParamSpecArgs(ParamSpecUsage),
-    UnpackedTuple(Rc<Tuple>),
+    UnpackedTuple(Arc<Tuple>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum StarStarParamType {
     ValueType(Type),
     ParamSpecKwargs(ParamSpecUsage),
-    UnpackTypedDict(Rc<TypedDict>),
+    UnpackTypedDict(Arc<TypedDict>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -123,9 +123,9 @@ pub(crate) enum ParamTypeDetails<'a> {
     Type(&'a Type),
     #[expect(dead_code)]
     ParamSpecUsage(&'a ParamSpecUsage),
-    UnpackedTuple(Rc<Tuple>),
+    UnpackedTuple(Arc<Tuple>),
     #[expect(dead_code)]
-    UnpackTypedDict(Rc<TypedDict>),
+    UnpackTypedDict(Arc<TypedDict>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -347,7 +347,7 @@ impl CallableParams {
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveType>>,
+        already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         match self {
             Self::Simple(params) => params.iter().any(|param| match &param.type_ {
@@ -668,7 +668,7 @@ impl CallableContent {
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveType>>,
+        already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         self.guard
             .as_ref()

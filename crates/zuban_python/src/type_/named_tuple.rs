@@ -29,7 +29,7 @@ use crate::{
 pub(crate) struct NamedTuple {
     pub name: StringSlice,
     pub __new__: Arc<CallableContent>,
-    tuple: OnceCell<Rc<Tuple>>,
+    tuple: OnceCell<Arc<Tuple>>,
 }
 
 impl NamedTuple {
@@ -46,7 +46,7 @@ impl NamedTuple {
         name: StringSlice,
         type_var_likes: TypeVarLikes,
         params: Vec<CallableParam>,
-    ) -> Rc<Self> {
+    ) -> Arc<Self> {
         let callable = CallableContent::new_simple(
             Some(DbString::StringSlice(name)),
             None,
@@ -55,15 +55,15 @@ impl NamedTuple {
             CallableParams::new_simple(Rc::from(params)),
             Type::Self_,
         );
-        Rc::new(NamedTuple::new(name, callable))
+        Arc::new(NamedTuple::new(name, callable))
     }
 
-    pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
+    pub fn clone_with_new_init_class(&self, name: StringSlice) -> Arc<NamedTuple> {
         let mut nt = self.clone();
         let mut callable = nt.__new__.as_ref().clone();
         callable.name = Some(DbString::StringSlice(name));
         nt.__new__ = Arc::new(callable);
-        Rc::new(nt)
+        Arc::new(nt)
     }
 
     pub fn params(&self) -> &[CallableParam] {
@@ -88,7 +88,7 @@ impl NamedTuple {
         format!("{module}.{}", self.name(db))
     }
 
-    pub fn as_tuple(&self) -> Rc<Tuple> {
+    pub fn as_tuple(&self) -> Arc<Tuple> {
         self.tuple
             .get_or_init(|| {
                 Tuple::new_fixed_length(

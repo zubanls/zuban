@@ -247,7 +247,7 @@ struct TypedDictFieldModifiers {
 #[derive(Debug, Clone)]
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
-    Namespace(Rc<Namespace>),
+    Namespace(Arc<Namespace>),
     Class {
         node_ref: ClassNodeRef<'db>,
         has_type_vars: bool,
@@ -257,9 +257,9 @@ enum TypeContent<'db, 'a> {
         class_link: PointLink,
         generics: ClassGenerics,
     },
-    Dataclass(Rc<Dataclass>),
-    NamedTuple(Rc<NamedTuple>),
-    TypedDictDefinition(Rc<TypedDict>),
+    Dataclass(Arc<Dataclass>),
+    NamedTuple(Arc<NamedTuple>),
+    TypedDictDefinition(Arc<TypedDict>),
     TypeAlias(&'db TypeAlias),
     TypeAliasWithAppliedGenerics(Type),
     Type(Type),
@@ -323,12 +323,12 @@ impl Lookup<'_, '_> {
 enum CalculatedBaseClass {
     Type(Type),
     Protocol { with_brackets: bool },
-    NamedTuple(Rc<NamedTuple>),
+    NamedTuple(Arc<NamedTuple>),
     TypedDict,
     NewNamedTuple,
     Generic,
     Invalid,
-    InvalidEnum(Rc<Enum>),
+    InvalidEnum(Arc<Enum>),
     TypeAliasSyntax,
     Unknown,
 }
@@ -1267,7 +1267,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .maybe_alias()
                     .unwrap()
                     .type_vars;
-                return Some(Type::RecursiveType(Rc::new(RecursiveType::new(
+                return Some(Type::RecursiveType(Arc::new(RecursiveType::new(
                     link,
                     (!type_var_likes.is_empty())
                         .then(|| type_var_likes.as_default_or_any_generic_list(self.i_s.db)),
@@ -1276,7 +1276,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::RecursiveClass(class_ref) => {
                 self.is_recursive_alias = true;
                 let type_var_likes = class_ref.type_vars(self.i_s);
-                return Some(Type::RecursiveType(Rc::new(RecursiveType::new(
+                return Some(Type::RecursiveType(Arc::new(RecursiveType::new(
                     class_ref.as_link(),
                     (!type_var_likes.is_empty())
                         .then(|| type_var_likes.as_default_or_any_generic_list(self.i_s.db)),
@@ -1407,7 +1407,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeCompTupleUnpack {
         match type_or_unpack {
             TypeOrUnpack::TypeVarTuple(tvt) => TypeCompTupleUnpack::TypeVarTuple(tvt),
-            TypeOrUnpack::Type(Type::Tuple(tup)) => match Rc::unwrap_or_clone(tup).args {
+            TypeOrUnpack::Type(Type::Tuple(tup)) => match Arc::unwrap_or_clone(tup).args {
                 TupleArgs::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
                 TupleArgs::ArbitraryLen(t) => TypeCompTupleUnpack::ArbitraryLen(t),
                 TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(arc_slice_into_vec(ts)),
@@ -1582,7 +1582,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.is_recursive_alias = true;
                         let alias = &NodeRef::from_link(self.i_s.db, link).maybe_alias().unwrap();
                         let generics = self.compute_generics_for_alias(s, alias);
-                        TypeContent::Type(Type::RecursiveType(Rc::new(RecursiveType::new(
+                        TypeContent::Type(Type::RecursiveType(Arc::new(RecursiveType::new(
                             link,
                             (!generics.is_empty())
                                 .then(|| GenericsList::generics_from_vec(generics)),
@@ -1598,7 +1598,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             type_var_likes,
                             &mut generics,
                         );
-                        TypeContent::Type(Type::RecursiveType(Rc::new(RecursiveType::new(
+                        TypeContent::Type(Type::RecursiveType(Arc::new(RecursiveType::new(
                             class_node_ref.as_link(),
                             (!type_var_likes.is_empty())
                                 .then(|| GenericsList::generics_from_vec(generics)),
@@ -2266,7 +2266,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     CallableParam::new_anonymous(ParamType::Star(StarParamType::UnpackedTuple(tup)))
                 }
                 TupleArgs::ArbitraryLen(_) => {
-                    let TupleArgs::ArbitraryLen(t) = Rc::unwrap_or_clone(tup).args else {
+                    let TupleArgs::ArbitraryLen(t) = Arc::unwrap_or_clone(tup).args else {
                         unreachable!();
                     };
                     CallableParam::new_anonymous(ParamType::Star(StarParamType::ArbitraryLen(
@@ -2299,7 +2299,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let previous = params.pop().unwrap();
                         let tup_args = match previous.type_ {
                             ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
-                                Rc::unwrap_or_clone(tup).args
+                                Arc::unwrap_or_clone(tup).args
                             }
                             ParamType::Star(StarParamType::ArbitraryLen(t)) => {
                                 TupleArgs::ArbitraryLen(Arc::new(t))

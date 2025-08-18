@@ -2,7 +2,6 @@ use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
     ops::Deref,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -27,9 +26,9 @@ use crate::{
 };
 
 thread_local! {
-    static ARBITRARY_TUPLE: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo));
+    static ARBITRARY_TUPLE: Arc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo));
     static ARBITRARY_TUPLE_ARGS_FROM_ERROR: TupleArgs = TupleArgs::ArbitraryLen(Arc::new(Type::ERROR));
-    static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::ERROR);
+    static ARBITRARY_TUPLE_FROM_ERROR: Arc<Tuple> = Tuple::new_arbitrary_length(Type::ERROR);
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -39,33 +38,33 @@ pub(crate) struct Tuple {
 }
 
 impl Tuple {
-    pub fn new(args: TupleArgs) -> Rc<Self> {
-        Rc::new(Self {
+    pub fn new(args: TupleArgs) -> Arc<Self> {
+        Arc::new(Self {
             args,
             tuple_class_generics: OnceCell::new(),
         })
     }
 
-    pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Rc<Self> {
-        Rc::new(Self {
+    pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Arc<Self> {
+        Arc::new(Self {
             args: TupleArgs::ArbitraryLen(Arc::new(t)),
             tuple_class_generics: OnceCell::from(generics),
         })
     }
 
-    pub fn new_fixed_length(args: Arc<[Type]>) -> Rc<Self> {
+    pub fn new_fixed_length(args: Arc<[Type]>) -> Arc<Self> {
         Self::new(TupleArgs::FixedLen(args))
     }
 
-    pub fn new_arbitrary_length(arg: Type) -> Rc<Self> {
+    pub fn new_arbitrary_length(arg: Type) -> Arc<Self> {
         Self::new(TupleArgs::ArbitraryLen(Arc::new(arg)))
     }
 
-    pub fn new_arbitrary_length_with_any() -> Rc<Self> {
+    pub fn new_arbitrary_length_with_any() -> Arc<Self> {
         ARBITRARY_TUPLE.with(|t| t.clone())
     }
 
-    pub fn new_arbitrary_length_with_any_from_error() -> Rc<Self> {
+    pub fn new_arbitrary_length_with_any_from_error() -> Arc<Self> {
         ARBITRARY_TUPLE_FROM_ERROR.with(|t| t.clone())
     }
 
@@ -400,7 +399,7 @@ impl Tuple {
                             Inferred::from_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(out))))
                         }
                         TupleArgs::ArbitraryLen(_) => {
-                            Inferred::from_type(Type::Tuple(Rc::new(self.clone())))
+                            Inferred::from_type(Type::Tuple(Arc::new(self.clone())))
                         }
                     }
                 })
@@ -502,7 +501,7 @@ impl WithUnpack {
     fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveType>>,
+        already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         self.before
             .iter()
@@ -548,7 +547,7 @@ impl TupleArgs {
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveType>>,
+        already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         match self {
             Self::FixedLen(ts) => ts.iter().any(|t| t.has_any_internal(i_s, already_checked)),
@@ -705,7 +704,7 @@ fn merge_types(original: impl MergableTypes, new: impl MergableTypes) -> Arc<[Ty
 }
 
 pub(crate) fn lookup_on_tuple<'x>(
-    tuple: &'x Rc<Tuple>,
+    tuple: &'x Arc<Tuple>,
     i_s: &'x InferenceState,
     add_issue: impl Fn(IssueKind),
     name: &str,
@@ -747,7 +746,7 @@ pub(crate) fn lookup_on_tuple<'x>(
     })
 }
 
-pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupDetails<'static> {
+pub fn lookup_tuple_magic_methods(tuple: Arc<Tuple>, name: &str) -> LookupDetails<'static> {
     LookupDetails::new(
         Type::Tuple(tuple.clone()),
         match name {
@@ -789,7 +788,7 @@ fn tuple_add<'db>(
 
 fn tuple_add_internal<'db>(
     i_s: &InferenceState<'db, '_>,
-    tuple1: Rc<Tuple>,
+    tuple1: Arc<Tuple>,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
@@ -849,7 +848,7 @@ fn tuple_mul<'db>(
 
 fn tuple_mul_internal<'db>(
     i_s: &InferenceState<'db, '_>,
-    tuple: Rc<Tuple>,
+    tuple: Arc<Tuple>,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;

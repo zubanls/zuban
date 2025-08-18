@@ -720,12 +720,12 @@ pub(crate) struct WidenedType {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct TypedDictDefinition {
     pub type_: Arc<Type>,
-    pub deferred_subclass_member_initializations: Box<RefCell<Vec<Rc<TypedDict>>>>,
+    pub deferred_subclass_member_initializations: Box<RefCell<Vec<Arc<TypedDict>>>>,
     pub total: bool,
 }
 
 impl TypedDictDefinition {
-    pub fn new(typed_dict: Rc<TypedDict>, total: bool) -> Self {
+    pub fn new(typed_dict: Arc<TypedDict>, total: bool) -> Self {
         Self {
             type_: Arc::new(Type::TypedDict(typed_dict)),
             deferred_subclass_member_initializations: Default::default(),
@@ -733,7 +733,7 @@ impl TypedDictDefinition {
         }
     }
 
-    pub fn typed_dict(&self) -> Rc<TypedDict> {
+    pub fn typed_dict(&self) -> Arc<TypedDict> {
         match self.type_.as_ref() {
             Type::TypedDict(typed_dict) => typed_dict.clone(),
             _ => unreachable!(),
@@ -843,7 +843,7 @@ impl TypeAlias {
 
     pub fn as_type_and_set_type_vars_any(&self, db: &Database) -> Type {
         if self.is_recursive() {
-            return Type::RecursiveType(Rc::new(RecursiveType::new(
+            return Type::RecursiveType(Arc::new(RecursiveType::new(
                 self.location,
                 (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
@@ -875,7 +875,7 @@ impl TypeAlias {
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Cow<Type> {
         if self.is_recursive() && !remove_recursive_wrapper {
-            return Cow::Owned(Type::RecursiveType(Rc::new(RecursiveType::new(
+            return Cow::Owned(Type::RecursiveType(Arc::new(RecursiveType::new(
                 self.location,
                 (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(

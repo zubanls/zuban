@@ -1305,9 +1305,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         total
     }
 
-    fn named_tuple_from_class(&self, db: &Database) -> Rc<NamedTuple> {
+    fn named_tuple_from_class(&self, db: &Database) -> Arc<NamedTuple> {
         let name = self.name_string_slice();
-        Rc::new(NamedTuple::new(
+        Arc::new(NamedTuple::new(
             name,
             self.initialize_named_tuple_class_members(db, name),
         ))
@@ -1521,7 +1521,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     }
 }
 
-fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Rc<TypedDict>) {
+fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<TypedDict>) {
     let typed_dict_definition = cls.maybe_typed_dict_definition().unwrap();
     let mut typed_dict_members = TypedDictMemberGatherer::default();
     if let Some(args) = cls.node().arguments() {
@@ -1704,9 +1704,9 @@ struct BaseToBeAdded<'a> {
 enum BaseKind {
     Class(PointLink),
     Dataclass(PointLink),
-    NamedTuple(Rc<NamedTuple>),
-    TypedDict(Rc<TypedDict>),
-    Tuple(Rc<Tuple>),
+    NamedTuple(Arc<NamedTuple>),
+    TypedDict(Arc<TypedDict>),
+    Tuple(Arc<Tuple>),
     Type,
     Enum,
 }

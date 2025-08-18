@@ -106,8 +106,8 @@ impl Hash for Dataclass {
 }
 
 impl Dataclass {
-    pub fn new(class: GenericClass, options: DataclassOptions) -> Rc<Self> {
-        Rc::new(Self {
+    pub fn new(class: GenericClass, options: DataclassOptions) -> Arc<Self> {
+        Arc::new(Self {
             class,
             inits: OnceCell::new(),
             options,
@@ -118,7 +118,7 @@ impl Dataclass {
         link: PointLink,
         type_vars: &TypeVarLikes,
         options: DataclassOptions,
-    ) -> Rc<Self> {
+    ) -> Arc<Self> {
         Self::new(
             GenericClass {
                 link,
@@ -168,7 +168,7 @@ struct Inits {
     __post_init__: CallableContent,
 }
 
-fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Inits {
+fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Inits {
     let cls = dataclass.class(db);
     let mut with_indexes = vec![];
     let file = cls.node_ref.file;
@@ -805,7 +805,7 @@ fn run_on_dataclass(
     i_s: &InferenceState,
     from: Option<NodeRef>,
     t: &Type,
-    callback: &mut impl FnMut(&Rc<Dataclass>),
+    callback: &mut impl FnMut(&Arc<Dataclass>),
 ) -> bool {
     // Result type signals if we were successful
     let type_var_error = |tv: &TypeVar| {
@@ -852,7 +852,7 @@ fn run_on_dataclass(
 }
 
 pub(crate) fn dataclass_initialize<'db>(
-    dataclass: &Rc<Dataclass>,
+    dataclass: &Arc<Dataclass>,
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
@@ -900,7 +900,7 @@ pub(crate) fn dataclass_initialize<'db>(
                                 type_vars.as_self_generic_list(dataclass.class.link),
                             );
 
-                            return Some(Type::Dataclass(Rc::new(dc)));
+                            return Some(Type::Dataclass(Arc::new(dc)));
                         }
                     }
                     Some(Type::Dataclass(dataclass.clone()))
@@ -921,12 +921,12 @@ pub(crate) fn dataclass_initialize<'db>(
     }))
 }
 
-pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a CallableContent {
+pub fn dataclass_init_func<'a>(self_: &'a Arc<Dataclass>, db: &Database) -> &'a CallableContent {
     ensure_calculated_dataclass(self_, db);
     &self_.inits.get().unwrap().__init__
 }
 
-pub fn ensure_calculated_dataclass(self_: &Rc<Dataclass>, db: &Database) {
+pub fn ensure_calculated_dataclass(self_: &Arc<Dataclass>, db: &Database) {
     if self_.inits.get().is_none() {
         debug!("Calculate dataclass {}", self_.class(db).name());
         let indent = debug_indent();
@@ -939,7 +939,7 @@ pub fn ensure_calculated_dataclass(self_: &Rc<Dataclass>, db: &Database) {
 }
 
 pub fn dataclass_post_init_func<'a>(
-    self_: &'a Rc<Dataclass>,
+    self_: &'a Arc<Dataclass>,
     db: &Database,
 ) -> &'a CallableContent {
     ensure_calculated_dataclass(self_, db);
@@ -948,7 +948,7 @@ pub fn dataclass_post_init_func<'a>(
 
 pub(crate) fn lookup_on_dataclass_type<'a>(
     in_type: &Arc<Type>,
-    dataclass: &'a Rc<Dataclass>,
+    dataclass: &'a Arc<Dataclass>,
     i_s: &'a InferenceState,
     add_issue: impl Fn(IssueKind),
     name: &str,
@@ -997,7 +997,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     )
 }
 
-fn slots_as_lookup_result(self_: &Rc<Dataclass>, db: &Database) -> LookupResult {
+fn slots_as_lookup_result(self_: &Arc<Dataclass>, db: &Database) -> LookupResult {
     LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
         repeat_with(|| db.python_state.str_type())
             .take(dataclass_init_func(self_, db).expect_simple_params().len())
@@ -1006,7 +1006,7 @@ fn slots_as_lookup_result(self_: &Rc<Dataclass>, db: &Database) -> LookupResult 
 }
 
 fn lookup_symbol_internal(
-    self_: Rc<Dataclass>,
+    self_: Arc<Dataclass>,
     i_s: &InferenceState<'_, '_>,
     name: &str,
 ) -> (LookupResult, AttributeKind) {
@@ -1044,7 +1044,7 @@ fn lookup_symbol_internal(
 }
 
 fn dunder_match_args_tuple(
-    self_: Rc<Dataclass>,
+    self_: Arc<Dataclass>,
     i_s: &InferenceState<'_, '_>,
 ) -> (LookupResult, AttributeKind) {
     let __init__ = dataclass_init_func(&self_, i_s.db);
@@ -1063,7 +1063,7 @@ fn dunder_match_args_tuple(
 }
 
 pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
-    self_: &'a Rc<Dataclass>,
+    self_: &'a Arc<Dataclass>,
     i_s: &InferenceState<'db, '_>,
     name: &str,
 ) -> (Option<Class<'a>>, LookupResult) {
@@ -1076,7 +1076,7 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
 }
 
 pub(crate) fn lookup_on_dataclass<'a>(
-    self_: &'a Rc<Dataclass>,
+    self_: &'a Arc<Dataclass>,
     i_s: &'a InferenceState,
     add_issue: impl Fn(IssueKind),
     name: &str,
@@ -1130,7 +1130,7 @@ pub(crate) fn lookup_on_dataclass<'a>(
     lookup_details
 }
 
-fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
+fn order_func(self_: Arc<Dataclass>, i_s: &InferenceState) -> LookupResult {
     LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
         CallableContent::new_simple(
             None,
@@ -1145,7 +1145,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
     ))))
 }
 
-fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
+fn type_order_func(self_: Arc<Dataclass>, i_s: &InferenceState) -> LookupResult {
     let type_var = Rc::new(TypeVar::new_self(TypeVarKindInfos::Unrestricted));
     let tv_usage = TypeVarUsage::new(type_var.clone(), self_.class.link, 0.into());
     LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(

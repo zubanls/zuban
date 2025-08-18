@@ -1,7 +1,6 @@
 use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -74,8 +73,8 @@ impl TypedDict {
         members: Box<[TypedDictMember]>,
         defined_at: PointLink,
         generics: TypedDictGenerics,
-    ) -> Rc<Self> {
-        Rc::new(Self {
+    ) -> Arc<Self> {
+        Arc::new(Self {
             name,
             members: OnceCell::from(members),
             defined_at,
@@ -89,13 +88,13 @@ impl TypedDict {
         members: Box<[TypedDictMember]>,
         defined_at: PointLink,
         type_var_likes: TypeVarLikes,
-    ) -> Rc<Self> {
+    ) -> Arc<Self> {
         let generics = if type_var_likes.is_empty() {
             TypedDictGenerics::None
         } else {
             TypedDictGenerics::NotDefinedYet(type_var_likes)
         };
-        Rc::new(Self {
+        Arc::new(Self {
             name: Some(name),
             members: OnceCell::from(members),
             defined_at,
@@ -109,13 +108,13 @@ impl TypedDict {
         defined_at: PointLink,
         type_var_likes: TypeVarLikes,
         is_final: bool,
-    ) -> Rc<Self> {
+    ) -> Arc<Self> {
         let generics = if type_var_likes.is_empty() {
             TypedDictGenerics::None
         } else {
             TypedDictGenerics::NotDefinedYet(type_var_likes)
         };
-        Rc::new(Self {
+        Arc::new(Self {
             name: Some(name),
             members: OnceCell::new(),
             defined_at,
@@ -129,14 +128,14 @@ impl TypedDict {
         self.members.set(members).unwrap()
     }
 
-    pub fn apply_generics(&self, db: &Database, generics: TypedDictGenerics) -> Rc<Self> {
+    pub fn apply_generics(&self, db: &Database, generics: TypedDictGenerics) -> Arc<Self> {
         let mut members = OnceCell::new();
         if let TypedDictGenerics::Generics(generics) = &generics {
             if let Some(ms) = self.members.get() {
                 members = OnceCell::from(Self::remap_members_with_generics(db, ms, generics))
             }
         }
-        Rc::new(TypedDict {
+        Arc::new(TypedDict {
             name: self.name,
             members,
             defined_at: self.defined_at,
@@ -246,7 +245,7 @@ impl TypedDict {
         ))
     }
 
-    pub fn intersection(&self, i_s: &InferenceState, other: &Self) -> Rc<TypedDict> {
+    pub fn intersection(&self, i_s: &InferenceState, other: &Self) -> Arc<TypedDict> {
         let mut new_members = vec![];
         for m1 in self.members(i_s.db).iter() {
             for m2 in other.members(i_s.db).iter() {
@@ -362,8 +361,8 @@ impl TypedDict {
         &self,
         generics: TypedDictGenerics,
         mut callable: &mut impl FnMut(&Type) -> Option<Type>,
-    ) -> Rc<Self> {
-        Rc::new(TypedDict {
+    ) -> Arc<Self> {
+        Arc::new(TypedDict {
             name: self.name,
             members: if let Some(members) = self.members.get() {
                 OnceCell::from(
@@ -381,7 +380,7 @@ impl TypedDict {
         })
     }
 
-    pub fn with_any_generics(&self, db: &Database) -> Rc<Self> {
+    pub fn with_any_generics(&self, db: &Database) -> Arc<Self> {
         let TypedDictGenerics::NotDefinedYet(type_var_likes) = &self.generics else {
             unreachable!()
         };
@@ -433,7 +432,7 @@ impl TypedDict {
     pub fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveType>>,
+        already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         self.members(i_s.db)
             .iter()
@@ -441,7 +440,7 @@ impl TypedDict {
     }
 }
 
-pub fn rc_typed_dict_as_callable(db: &Database, slf: Rc<TypedDict>) -> CallableContent {
+pub fn rc_typed_dict_as_callable(db: &Database, slf: Arc<TypedDict>) -> CallableContent {
     CallableContent::new_simple(
         slf.name.map(DbString::StringSlice),
         None,
@@ -873,7 +872,7 @@ fn typed_dict_update_internal<'db>(
 }
 
 pub(crate) fn initialize_typed_dict<'db>(
-    typed_dict: Rc<TypedDict>,
+    typed_dict: Arc<TypedDict>,
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
 ) -> Inferred {
@@ -911,7 +910,7 @@ pub(crate) fn initialize_typed_dict<'db>(
 }
 
 pub(crate) fn lookup_on_typed_dict<'a>(
-    typed_dict: Rc<TypedDict>,
+    typed_dict: Arc<TypedDict>,
     i_s: &'a InferenceState,
     add_issue: &dyn Fn(IssueKind),
     name: &str,
@@ -979,7 +978,7 @@ pub(crate) fn infer_typed_dict_arg(
 pub(crate) fn check_typed_dict_call<'db>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    typed_dict: Rc<TypedDict>,
+    typed_dict: Arc<TypedDict>,
     args: &dyn Args<'db>,
 ) -> Option<Type> {
     let mut extra_keys = vec![];

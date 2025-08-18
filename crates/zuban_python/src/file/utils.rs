@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use parsa_python_cst::{
     Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef, Int, NodeIndex,
@@ -156,7 +156,7 @@ impl<'db> Inference<'db, '_, '_> {
     fn check_typed_dict_literal_with_context(
         &self,
         matcher: &mut Matcher,
-        typed_dict: Rc<TypedDict>,
+        typed_dict: Arc<TypedDict>,
         dict: Dict,
     ) -> Option<Type> {
         let i_s = self.i_s;

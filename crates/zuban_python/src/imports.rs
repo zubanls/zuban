@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use utils::match_case;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, WorkspaceKind};
@@ -17,8 +17,8 @@ const INIT_PYI: &str = "__init__.pyi";
 #[derive(Debug)]
 pub(crate) enum ImportResult {
     File(FileIndex),
-    Namespace(Rc<Namespace>), // A Python Namespace package, i.e. a directory
-    PyTypedMissing,           // Files exist, but the py.typed marker is missing.
+    Namespace(Arc<Namespace>), // A Python Namespace package, i.e. a directory
+    PyTypedMissing,            // Files exist, but the py.typed marker is missing.
 }
 
 impl ImportResult {
@@ -322,7 +322,7 @@ pub fn python_import_with_needs_exact_case<'x>(
         }
     }
     if !namespace_directories.is_empty() {
-        return Some(ImportResult::Namespace(Rc::new(Namespace {
+        return Some(ImportResult::Namespace(Arc::new(Namespace {
             directories: namespace_directories.into(),
         })));
     }
@@ -392,7 +392,7 @@ pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> I
     }
     ImportAncestor::Found(match load_init_file(db, &parent, file.file_index) {
         Some(index) => ImportResult::File(index),
-        None => ImportResult::Namespace(Rc::new(Namespace {
+        None => ImportResult::Namespace(Arc::new(Namespace {
             directories: [parent].into(),
         })),
     })

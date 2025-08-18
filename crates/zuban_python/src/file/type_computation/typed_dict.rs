@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use parsa_python_cst::{Annotation, AtomContent, DictElement, Expression};
 
@@ -109,7 +109,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     pub(super) fn compute_type_get_item_on_typed_dict(
         &mut self,
-        typed_dict: Rc<TypedDict>,
+        typed_dict: Arc<TypedDict>,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let db = self.i_s.db;

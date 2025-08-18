@@ -1,4 +1,4 @@
-use std::{borrow::Cow, iter::Peekable, rc::Rc, sync::Arc};
+use std::{borrow::Cow, iter::Peekable, sync::Arc};
 
 use parsa_python_cst::ParamKind;
 
@@ -994,12 +994,12 @@ impl<'x> Param<'x> for &'x CallableParam {
 }
 
 pub(crate) enum UnpackTypedDictState {
-    Unused(Rc<TypedDict>),
+    Unused(Arc<TypedDict>),
     CheckingUnusedKwArgs,
     Used,
 }
 impl UnpackTypedDictState {
-    pub fn maybe_unchecked(&self) -> Option<Rc<TypedDict>> {
+    pub fn maybe_unchecked(&self) -> Option<Arc<TypedDict>> {
         match self {
             Self::Unused(td) => Some(td.clone()),
             _ => None,
@@ -1407,14 +1407,14 @@ pub(crate) enum WrappedParamType<'a> {
 pub(crate) enum WrappedStar<'a> {
     ArbitraryLen(Option<Cow<'a, Type>>),
     ParamSpecArgs(&'a ParamSpecUsage),
-    UnpackedTuple(Rc<Tuple>),
+    UnpackedTuple(Arc<Tuple>),
 }
 
 #[derive(Debug)]
 pub(crate) enum WrappedStarStar<'a> {
     ValueType(Option<Cow<'a, Type>>),
     ParamSpecKwargs(&'a ParamSpecUsage),
-    UnpackTypedDict(Rc<TypedDict>),
+    UnpackTypedDict(Arc<TypedDict>),
 }
 
 impl ParamArgument<'_, '_> {
