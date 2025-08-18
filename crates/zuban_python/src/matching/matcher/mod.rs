@@ -1782,7 +1782,7 @@ fn infer_params_from_args<'db>(
                 params.push(p);
             }
             InferredArg::StarredWithUnpack(mut u) => {
-                let mut after: Result<std::rc::Rc<[Type]>, _> = u
+                let mut after: Result<std::sync::Arc<[Type]>, _> = u
                     .after
                     .iter()
                     .map(|t| Ok(t.clone()))

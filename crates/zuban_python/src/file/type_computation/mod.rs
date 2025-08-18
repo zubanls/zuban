@@ -55,7 +55,7 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{cache_class_name, Class, Function},
-    utils::{rc_slice_into_vec, EitherIterator},
+    utils::{arc_slice_into_vec, EitherIterator},
 };
 
 pub(crate) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
@@ -583,9 +583,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::Tuple(_))) => t,
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
                 Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                    before: Rc::from([]),
+                    before: Arc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(tvt),
-                    after: Rc::from([]),
+                    after: Arc::from([]),
                 })))
             }
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
@@ -1410,7 +1410,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeOrUnpack::Type(Type::Tuple(tup)) => match Rc::unwrap_or_clone(tup).args {
                 TupleArgs::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
                 TupleArgs::ArbitraryLen(t) => TypeCompTupleUnpack::ArbitraryLen(t),
-                TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(rc_slice_into_vec(ts)),
+                TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(arc_slice_into_vec(ts)),
             },
             TypeOrUnpack::Unknown(cause) => {
                 TypeCompTupleUnpack::ArbitraryLen(Rc::new(Type::Any(cause.into())))
@@ -2228,9 +2228,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => ParamType::Star(
                 StarParamType::UnpackedTuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                    before: Rc::from([]),
+                    before: Arc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(tvt),
-                    after: Rc::from([]),
+                    after: Arc::from([]),
                 }))),
             ),
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
@@ -2311,15 +2311,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         };
                         let with_unpack = match tup_args {
                             TupleArgs::WithUnpack(mut with_unpack) => {
-                                let mut after = rc_slice_into_vec(with_unpack.after);
+                                let mut after = arc_slice_into_vec(with_unpack.after);
                                 after.push(new);
                                 with_unpack.after = after.into();
                                 with_unpack
                             }
                             TupleArgs::ArbitraryLen(t) => WithUnpack {
-                                before: Rc::from([]),
+                                before: Arc::from([]),
                                 unpack: TupleUnpack::ArbitraryLen(Rc::unwrap_or_clone(t)),
-                                after: Rc::from([new]),
+                                after: Arc::from([new]),
                             },
                             TupleArgs::FixedLen(_) => unreachable!(),
                         };
@@ -4380,9 +4380,9 @@ impl TypeCompTupleUnpack {
     fn into_tuple_args(self) -> TupleArgs {
         match self {
             Self::TypeVarTuple(tvt) => TupleArgs::WithUnpack(WithUnpack {
-                before: Rc::from([]),
+                before: Arc::from([]),
                 unpack: TupleUnpack::TypeVarTuple(tvt),
-                after: Rc::from([]),
+                after: Arc::from([]),
             }),
             Self::ArbitraryLen(t) => TupleArgs::ArbitraryLen(t),
             Self::FixedLen(ts) => TupleArgs::FixedLen(ts.into()),

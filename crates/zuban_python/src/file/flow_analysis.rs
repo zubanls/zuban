@@ -3,6 +3,7 @@ use std::{
     cell::{Cell, RefCell, RefMut},
     collections::VecDeque,
     rc::Rc,
+    sync::Arc,
 };
 
 use parsa_python_cst::{
@@ -1449,11 +1450,11 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
             Type::Tuple(tup) => match &tup.args {
                 TupleArgs::ArbitraryLen(t) => Some((
                     Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                        before: Rc::new([(**t).clone()]),
+                        before: Arc::new([(**t).clone()]),
                         unpack: TupleUnpack::ArbitraryLen((**t).clone()),
-                        after: Rc::new([]),
+                        after: Arc::new([]),
                     }))),
-                    Type::Tuple(Tuple::new_fixed_length(Rc::new([]))),
+                    Type::Tuple(Tuple::new_fixed_length(Arc::new([]))),
                 )),
                 _ => None,
             },
@@ -3296,7 +3297,7 @@ impl Inference<'_, '_, '_> {
             }
         }
         let falsey = if matches!(callable_t, Type::Never(_)) {
-            callable_t = Type::Intersection(Intersection::new(Rc::new([
+            callable_t = Type::Intersection(Intersection::new(Arc::new([
                 Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
                 input_t.into_owned(),
             ])));
@@ -4307,7 +4308,7 @@ fn narrow_len_for_tuples(
                             add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
                                 before: as_repeated_t(t, lower_than),
                                 unpack: TupleUnpack::ArbitraryLen((**t).clone()),
-                                after: Rc::new([]),
+                                after: Arc::new([]),
                             }))));
                         }
                         return true;

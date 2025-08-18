@@ -839,7 +839,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.infer_primary_target(t, from_aug_assign)
             }
             Target::Tuple(targets) => {
-                let out: Option<Rc<[Type]>> = targets
+                let out: Option<Arc<[Type]>> = targets
                     .map(|target| {
                         self.infer_target(target, from_aug_assign)
                             .map(|i| i.as_type(self.i_s))

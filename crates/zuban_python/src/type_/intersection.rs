@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
 
 use crate::{
     arguments::Args,
@@ -19,11 +19,11 @@ type RunOnUnionEntry<'a> =
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Intersection {
-    entries: Rc<[Type]>,
+    entries: Arc<[Type]>,
 }
 
 impl Intersection {
-    pub fn new(entries: Rc<[Type]>) -> Self {
+    pub fn new(entries: Arc<[Type]>) -> Self {
         debug_assert!(entries.len() > 1);
         Self { entries }
     }
@@ -36,7 +36,7 @@ impl Intersection {
         };
         add(t1);
         add(t2);
-        Self::new(Rc::from(entries))
+        Self::new(Arc::from(entries))
     }
 
     pub(crate) fn new_instance_intersection(

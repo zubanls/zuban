@@ -1,4 +1,4 @@
-use std::{mem, rc::Rc};
+use std::{mem, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     ArgsIterator, Argument as CSTArgument, ArgumentsDetails, Comprehension, Expression,
@@ -1182,7 +1182,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     })
                 } else {
                     if !with_unpack.before.is_empty() {
-                        with_unpack.before = Rc::new([]);
+                        with_unpack.before = Arc::new([]);
                     }
                     Some(Arg {
                         kind: ArgKind::StarredWithUnpack {

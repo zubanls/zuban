@@ -5,7 +5,7 @@ mod matcher;
 mod result_context;
 mod utils;
 
-use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, sync::Arc};
 
 pub(crate) use generic::Generic;
 pub(crate) use generics::Generics;
@@ -306,7 +306,7 @@ pub(crate) enum IteratorContent {
     Inferred(Inferred),
     // The code before makes sure that no type var tuples are passed.
     FixedLenTupleGenerics {
-        entries: Rc<[Type]>,
+        entries: Arc<[Type]>,
         current_index: usize,
     },
     WithUnpack {
@@ -319,7 +319,7 @@ pub(crate) enum IteratorContent {
 }
 
 impl IteratorContent {
-    pub fn new_tuple(entries: Rc<[Type]>) -> IteratorContent {
+    pub fn new_tuple(entries: Arc<[Type]>) -> IteratorContent {
         Self::FixedLenTupleGenerics {
             entries,
             current_index: 0,

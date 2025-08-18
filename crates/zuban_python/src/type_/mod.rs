@@ -89,10 +89,10 @@ use crate::{
 };
 
 thread_local! {
-    static EMPTY_TYPES: Rc<[Type]> = Rc::new([]);
+    static EMPTY_TYPES: Arc<[Type]> = Arc::new([]);
 }
 
-pub(crate) fn empty_types() -> Rc<[Type]> {
+pub(crate) fn empty_types() -> Arc<[Type]> {
     EMPTY_TYPES.with(|t| t.clone())
 }
 

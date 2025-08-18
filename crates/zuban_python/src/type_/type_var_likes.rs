@@ -1510,9 +1510,9 @@ impl TypeVarLikeUsage {
             TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArg(Type::TypeVar(usage)),
             TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArgs(TypeArgs {
                 args: TupleArgs::WithUnpack(WithUnpack {
-                    before: Rc::from([]),
+                    before: Arc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(usage),
-                    after: Rc::from([]),
+                    after: Arc::from([]),
                 }),
             }),
             TypeVarLikeUsage::ParamSpec(usage) => usage.into_generic_item(),
@@ -1529,9 +1529,9 @@ impl TypeVarLikeUsage {
                 usage.index = index;
                 GenericItem::TypeArgs(TypeArgs {
                     args: TupleArgs::WithUnpack(WithUnpack {
-                        before: Rc::from([]),
+                        before: Arc::from([]),
                         unpack: TupleUnpack::TypeVarTuple(usage),
-                        after: Rc::from([]),
+                        after: Arc::from([]),
                     }),
                 })
             }

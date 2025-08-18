@@ -23,7 +23,7 @@ use crate::{
     matching::{Generics, IteratorContent, OnTypeError, ResultContext},
     type_::{AnyCause, Type},
     type_helpers::{Class, ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
-    utils::{join_with_commas, rc_slice_into_vec},
+    utils::{arc_slice_into_vec, join_with_commas},
 };
 
 thread_local! {
@@ -53,7 +53,7 @@ impl Tuple {
         })
     }
 
-    pub fn new_fixed_length(args: Rc<[Type]>) -> Rc<Self> {
+    pub fn new_fixed_length(args: Arc<[Type]>) -> Rc<Self> {
         Self::new(TupleArgs::FixedLen(args))
     }
 
@@ -465,17 +465,17 @@ impl TupleUnpack {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct WithUnpack {
-    pub before: Rc<[Type]>,
+    pub before: Arc<[Type]>,
     pub unpack: TupleUnpack,
-    pub after: Rc<[Type]>,
+    pub after: Arc<[Type]>,
 }
 
 impl WithUnpack {
     pub fn with_empty_before_and_after(unpack: TupleUnpack) -> Self {
         Self {
-            before: Rc::from([]),
+            before: Arc::from([]),
             unpack,
-            after: Rc::from([]),
+            after: Arc::from([]),
         }
     }
 
@@ -521,7 +521,7 @@ impl WithUnpack {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TupleArgs {
     WithUnpack(WithUnpack),
-    FixedLen(Rc<[Type]>),
+    FixedLen(Arc<[Type]>),
     ArbitraryLen(Rc<Type>),
 }
 
@@ -667,7 +667,7 @@ impl TupleArgs {
     }
 }
 
-pub trait MergableTypes: Deref<Target = [Type]> + Into<Rc<[Type]>> {
+pub trait MergableTypes: Deref<Target = [Type]> + Into<Arc<[Type]>> {
     fn into_iter_types(self) -> impl Iterator<Item = Type>;
     fn into_types_vec(self) -> Vec<Type>;
 }
@@ -682,17 +682,17 @@ impl MergableTypes for Vec<Type> {
     }
 }
 
-impl MergableTypes for Rc<[Type]> {
+impl MergableTypes for Arc<[Type]> {
     fn into_iter_types(self) -> impl Iterator<Item = Type> {
         self.into_types_vec().into_iter()
     }
 
     fn into_types_vec(self) -> Vec<Type> {
-        rc_slice_into_vec(self)
+        arc_slice_into_vec(self)
     }
 }
 
-fn merge_types(original: impl MergableTypes, new: impl MergableTypes) -> Rc<[Type]> {
+fn merge_types(original: impl MergableTypes, new: impl MergableTypes) -> Arc<[Type]> {
     if original.is_empty() {
         new.into()
     } else if new.is_empty() {

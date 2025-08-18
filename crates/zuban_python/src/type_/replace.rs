@@ -13,7 +13,7 @@ use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
     type_::{AnyCause, NeverCause, TupleUnpack, WithUnpack},
-    utils::rc_slice_into_vec,
+    utils::arc_slice_into_vec,
 };
 
 pub(crate) type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<GenericItem>;
@@ -499,7 +499,7 @@ impl CallableParams {
                                 }
                                 match replaced {
                                     TupleArgs::FixedLen(types) => {
-                                        for t in rc_slice_into_vec(types) {
+                                        for t in arc_slice_into_vec(types) {
                                             new_params.push(CallableParam::new_anonymous(
                                                 ParamType::PositionalOnly(t),
                                             ))
@@ -512,7 +512,7 @@ impl CallableParams {
                                     TupleArgs::WithUnpack(mut with_unpack) => {
                                         let before = std::mem::replace(
                                             &mut with_unpack.before,
-                                            Rc::from([]),
+                                            Arc::from([]),
                                         );
                                         for t in before.iter() {
                                             new_params.push(CallableParam::new_anonymous(
