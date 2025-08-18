@@ -209,7 +209,7 @@ impl<'a, T: Token> Grammar<T> {
             let tos = stack.tos();
             let is_final = tos.dfa_state.is_final;
             let mode = tos.mode;
-            match tos.dfa_state.transition_to_plan.get(&transition) {
+            match tos.dfa_state.transition_to_plan.lookup(transition) {
                 None => {
                     //dbg!(stack.tos().dfa_state.from_rule);
                     //dbg!(stack.tos().dfa_state.transition_to_plan.values()

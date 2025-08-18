@@ -100,7 +100,7 @@ pub struct DFAState {
 
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
-    pub transition_to_plan: SquashedTransitions,
+    pub transition_to_plan: FastLookupTransitions,
     pub from_rule: &'static str,
 }
 
@@ -411,7 +411,7 @@ impl RuleAutomaton {
             from_alternative_list_index,
             node_may_be_omitted: self.node_may_be_omitted,
             from_rule: self.name,
-            transition_to_plan: Default::default(),
+            transition_to_plan: FastLookupTransitions::new_empty(),
             transitions: Default::default(),
         })));
         self.dfa_states.last_mut().unwrap() as &mut DFAState
@@ -498,7 +498,7 @@ impl RuleAutomaton {
                 from_alternative_list_index: None,
                 node_may_be_omitted: self.node_may_be_omitted,
                 from_rule: self.name,
-                transition_to_plan: Default::default(),
+                transition_to_plan: FastLookupTransitions::new_empty(),
                 transitions: Default::default(),
             }));
             self.no_transition_dfa_id = Some(list_index);
@@ -715,6 +715,8 @@ pub fn generate_automatons(
         automatons.insert(*internal_type, automaton);
     }
 
+    let terminal_count = keywords.counter;
+
     // Calculate first plans
     let mut first_plans = Default::default();
     let rule_labels = automatons
@@ -741,7 +743,9 @@ pub fn generate_automatons(
             );
         }
         automaton.dfa_states[0].transition_to_plan = match &first_plans[rule_label] {
-            FirstPlan::Calculated(plans, _) => plans.clone(),
+            FirstPlan::Calculated(plans, _) => {
+                FastLookupTransitions::from_plans(terminal_count, plans.clone())
+            }
             _ => unreachable!(),
         };
     }
@@ -758,7 +762,8 @@ pub fn generate_automatons(
                 DFAStateId(i),
                 false,
             );
-            automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan = plans;
+            automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan =
+                FastLookupTransitions::from_plans(terminal_count, plans);
         }
 
         // Left recursion can be calculated here, because first nodes are not relevant, because
@@ -766,9 +771,13 @@ pub fn generate_automatons(
         for i in 1..automatons[rule_label].dfa_states.len() {
             let left_recursion_plans =
                 create_left_recursion_plans(&automatons, *rule_label, DFAStateId(i), &first_plans);
-            automatons.get_mut(rule_label).unwrap().dfa_states[i]
-                .transition_to_plan
-                .extend(left_recursion_plans);
+            let dfa = &mut automatons.get_mut(rule_label).unwrap().dfa_states[i];
+            if dfa.transition_to_plan.0.is_empty() {
+                dfa.transition_to_plan =
+                    FastLookupTransitions::from_plans(terminal_count, left_recursion_plans);
+            } else {
+                dfa.transition_to_plan.extend(left_recursion_plans);
+            }
         }
         //if nonterminal_map.get("content") == Some(rule_label) {
         //    println!("{}", &automatons.get(rule_label).unwrap().illustrate_dfas(nonterminal_map));
@@ -1093,7 +1102,7 @@ fn create_left_recursion_plans(
                     for transition in &automaton.dfa_states[0].transitions {
                         if let TransitionType::Nonterminal(node_id) = transition.type_ {
                             if node_id == automaton.type_ {
-                                for (&t, p) in transition.next_dfa().transition_to_plan.iter() {
+                                for (t, p) in transition.next_dfa().transition_to_plan.iter() {
                                     if plans.contains_key(&t) {
                                         panic!("ambigous: {} contains left recursion with alternatives!",
                                                dfa_state.from_rule);
@@ -1318,4 +1327,37 @@ fn nonterminal_to_str(
         }
     }
     panic!("Something is very wrong, integer not found");
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct FastLookupTransitions(Vec<Option<Plan>>);
+
+impl FastLookupTransitions {
+    fn new_empty() -> Self {
+        Self(Default::default())
+    }
+
+    fn from_plans(terminal_count: usize, transitions: SquashedTransitions) -> Self {
+        debug_assert_ne!(terminal_count, 0);
+        let mut slf = Self(std::iter::repeat(None).take(terminal_count).collect());
+        slf.extend(transitions);
+        slf
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (InternalSquashedType, &Plan)> {
+        self.0.iter().enumerate().filter_map(|(i, plan)| {
+            plan.as_ref()
+                .map(|plan| (InternalSquashedType(i as u16), plan))
+        })
+    }
+
+    fn extend(&mut self, other: SquashedTransitions) {
+        for (index, plan) in other.into_iter() {
+            self.0[index.0 as usize] = Some(plan);
+        }
+    }
+
+    pub fn lookup(&self, index: InternalSquashedType) -> Option<&Plan> {
+        self.0[index.0 as usize].as_ref()
+    }
 }
