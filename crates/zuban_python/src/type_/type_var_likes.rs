@@ -3,7 +3,6 @@ use std::{
     cell::{Cell, OnceCell},
     hash::{Hash, Hasher},
     ops::AddAssign,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -359,15 +358,15 @@ pub(crate) enum TypeVarVariance {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct TypeVarLikes(Rc<[TypeVarLike]>);
+pub(crate) struct TypeVarLikes(Arc<[TypeVarLike]>);
 
 impl TypeVarLikes {
-    pub fn new(rc: Rc<[TypeVarLike]>) -> Self {
-        Self(rc)
+    pub fn new(arc: Arc<[TypeVarLike]>) -> Self {
+        Self(arc)
     }
 
     pub fn from_vec(vec: Vec<TypeVarLike>) -> Self {
-        Self(Rc::from(vec))
+        Self(Arc::from(vec))
     }
 
     pub fn new_untyped_params(func: FunctionDef, skip_first: bool) -> Self {
@@ -376,7 +375,7 @@ impl TypeVarLikes {
                 .iter()
                 .enumerate()
                 .skip(skip_first as usize)
-                .map(|(i, _)| TypeVarLike::TypeVar(Rc::new(TypeVar::for_untyped_param(i))))
+                .map(|(i, _)| TypeVarLike::TypeVar(Arc::new(TypeVar::for_untyped_param(i))))
                 .collect(),
         )
     }
@@ -532,9 +531,9 @@ impl std::ops::Index<usize> for TypeVarLikes {
 
 #[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq)]
 pub(crate) enum TypeVarLike {
-    TypeVar(Rc<TypeVar>),
-    TypeVarTuple(Rc<TypeVarTuple>),
-    ParamSpec(Rc<ParamSpec>),
+    TypeVar(Arc<TypeVar>),
+    TypeVarTuple(Arc<TypeVarTuple>),
+    ParamSpec(Arc<ParamSpec>),
 }
 
 impl TypeVarLike {
@@ -570,19 +569,19 @@ impl TypeVarLike {
             TypeVarLike::TypeVar(tv) => {
                 let mut new_tv = tv.as_ref().clone();
                 new_tv.default = Some(TypeLikeInTypeVar::new_known(Type::ERROR));
-                Self::TypeVar(Rc::new(new_tv))
+                Self::TypeVar(Arc::new(new_tv))
             }
             TypeVarLike::TypeVarTuple(tvt) => {
                 let mut new_tvt = tvt.as_ref().clone();
                 new_tvt.default = Some(TypeLikeInTypeVar::new_known(
                     TypeArgs::new_arbitrary_from_error(),
                 ));
-                Self::TypeVarTuple(Rc::new(new_tvt))
+                Self::TypeVarTuple(Arc::new(new_tvt))
             }
             TypeVarLike::ParamSpec(param_spec) => {
                 let mut new_p = param_spec.as_ref().clone();
                 new_p.default = Some(TypeLikeInTypeVar::new_known(CallableParams::ERROR));
-                Self::ParamSpec(Rc::new(new_p))
+                Self::ParamSpec(Arc::new(new_p))
             }
         }
     }
@@ -595,7 +594,7 @@ impl TypeVarLike {
                     unreachable!()
                 };
                 new_tv.default = Some(TypeLikeInTypeVar::new_known(t));
-                Self::TypeVar(Rc::new(new_tv))
+                Self::TypeVar(Arc::new(new_tv))
             }
             TypeVarLike::TypeVarTuple(tvt) => {
                 let mut new_tvt = tvt.as_ref().clone();
@@ -603,7 +602,7 @@ impl TypeVarLike {
                     unreachable!()
                 };
                 new_tvt.default = Some(TypeLikeInTypeVar::new_known(ts));
-                Self::TypeVarTuple(Rc::new(new_tvt))
+                Self::TypeVarTuple(Arc::new(new_tvt))
             }
             TypeVarLike::ParamSpec(param_spec) => {
                 let mut new_p = param_spec.as_ref().clone();
@@ -611,7 +610,7 @@ impl TypeVarLike {
                     unreachable!()
                 };
                 new_p.default = Some(TypeLikeInTypeVar::new_known(pa.params));
-                Self::ParamSpec(Rc::new(new_p))
+                Self::ParamSpec(Arc::new(new_p))
             }
         }
     }
@@ -756,9 +755,9 @@ impl TypeVarLike {
 impl Hash for TypeVarLike {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            TypeVarLike::TypeVar(tv) => Rc::as_ptr(tv).hash(state),
-            TypeVarLike::TypeVarTuple(tvt) => Rc::as_ptr(tvt).hash(state),
-            TypeVarLike::ParamSpec(p) => Rc::as_ptr(p).hash(state),
+            TypeVarLike::TypeVar(tv) => Arc::as_ptr(tv).hash(state),
+            TypeVarLike::TypeVarTuple(tvt) => Arc::as_ptr(tvt).hash(state),
+            TypeVarLike::ParamSpec(p) => Arc::as_ptr(p).hash(state),
         }
     }
 }
@@ -1295,7 +1294,7 @@ impl Eq for ParamSpec {}
 
 #[derive(Debug, Eq, Clone)]
 pub(crate) struct TypeVarUsage {
-    pub type_var: Rc<TypeVar>,
+    pub type_var: Arc<TypeVar>,
     pub in_definition: PointLink,
     pub index: TypeVarIndex,
     // This should only ever be used for type matching. This is also only used for stuff like
@@ -1305,7 +1304,7 @@ pub(crate) struct TypeVarUsage {
 }
 
 impl TypeVarUsage {
-    pub fn new(type_var: Rc<TypeVar>, in_definition: PointLink, index: TypeVarIndex) -> Self {
+    pub fn new(type_var: Arc<TypeVar>, in_definition: PointLink, index: TypeVarIndex) -> Self {
         Self {
             type_var,
             in_definition,
@@ -1317,7 +1316,7 @@ impl TypeVarUsage {
 
 impl std::cmp::PartialEq for TypeVarUsage {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.type_var, &other.type_var)
+        Arc::ptr_eq(&self.type_var, &other.type_var)
             && self.in_definition == other.in_definition
             && self.index == other.index
             && self.temporary_matcher_id == other.temporary_matcher_id
@@ -1326,7 +1325,7 @@ impl std::cmp::PartialEq for TypeVarUsage {
 
 impl Hash for TypeVarUsage {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        Rc::as_ptr(&self.type_var).hash(state);
+        Arc::as_ptr(&self.type_var).hash(state);
         self.in_definition.hash(state);
         self.index.hash(state);
         self.temporary_matcher_id.hash(state);
@@ -1335,7 +1334,7 @@ impl Hash for TypeVarUsage {
 
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub(crate) struct TypeVarTupleUsage {
-    pub type_var_tuple: Rc<TypeVarTuple>,
+    pub type_var_tuple: Arc<TypeVarTuple>,
     pub in_definition: PointLink,
     pub index: TypeVarIndex,
     pub temporary_matcher_id: u32,
@@ -1343,7 +1342,7 @@ pub(crate) struct TypeVarTupleUsage {
 
 impl TypeVarTupleUsage {
     pub fn new(
-        type_var_tuple: Rc<TypeVarTuple>,
+        type_var_tuple: Arc<TypeVarTuple>,
         in_definition: PointLink,
         index: TypeVarIndex,
     ) -> Self {
@@ -1358,7 +1357,7 @@ impl TypeVarTupleUsage {
 
 impl Hash for TypeVarTupleUsage {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        Rc::as_ptr(&self.type_var_tuple).hash(state);
+        Arc::as_ptr(&self.type_var_tuple).hash(state);
         self.in_definition.hash(state);
         self.index.hash(state);
         self.temporary_matcher_id.hash(state);
@@ -1367,14 +1366,14 @@ impl Hash for TypeVarTupleUsage {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct ParamSpecUsage {
-    pub param_spec: Rc<ParamSpec>,
+    pub param_spec: Arc<ParamSpec>,
     pub in_definition: PointLink,
     pub index: TypeVarIndex,
     pub temporary_matcher_id: u32,
 }
 
 impl ParamSpecUsage {
-    pub fn new(param_spec: Rc<ParamSpec>, in_definition: PointLink, index: TypeVarIndex) -> Self {
+    pub fn new(param_spec: Arc<ParamSpec>, in_definition: PointLink, index: TypeVarIndex) -> Self {
         Self {
             param_spec,
             in_definition,
@@ -1393,7 +1392,7 @@ impl ParamSpecUsage {
 
 impl Hash for ParamSpecUsage {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        Rc::as_ptr(&self.param_spec).hash(state);
+        Arc::as_ptr(&self.param_spec).hash(state);
         self.in_definition.hash(state);
         self.index.hash(state);
         self.temporary_matcher_id.hash(state);

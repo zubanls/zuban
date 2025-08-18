@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::{
     arguments::{ArgKind, Args, KeywordArg},
@@ -171,7 +171,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
         } else {
             TypeVarKindInfos::Unrestricted
         };
-        Some(TypeVarLike::TypeVar(Rc::new(TypeVar::new(
+        Some(TypeVarLike::TypeVar(Arc::new(TypeVar::new(
             TypeVarLikeName::InString {
                 name_node: PointLink {
                     file: name_node.file_index(),
@@ -293,7 +293,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                 ),
             }
         }
-        Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(
+        Some(TypeVarLike::TypeVarTuple(Arc::new(TypeVarTuple::new(
             TypeVarLikeName::InString {
                 name_node: PointLink {
                     file: name_node.file_index(),
@@ -393,7 +393,7 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                 _ => arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" }),
             }
         }
-        Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec::new(
+        Some(TypeVarLike::ParamSpec(Arc::new(ParamSpec::new(
             TypeVarLikeName::InString {
                 name_node: PointLink {
                     file: name_node.file_index(),

@@ -1,6 +1,6 @@
 use std::{
     ops::{BitAnd, BitAndAssign},
-    rc::Rc,
+    sync::Arc,
 };
 
 use crate::type_::{Type, TypeVar};
@@ -58,7 +58,7 @@ pub(crate) enum MismatchReason {
     ConstraintAlreadySet,
     ConstraintMismatch {
         expected: Type,
-        type_var: Rc<TypeVar>,
+        type_var: Arc<TypeVar>,
     },
     ProtocolMismatches {
         notes: Box<[Box<str>]>,

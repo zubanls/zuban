@@ -2047,9 +2047,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn fill_dataclass_transform_field_specifiers(
         &self,
         value: Expression,
-        field_specifiers: &mut Rc<[PointLink]>,
+        field_specifiers: &mut Arc<[PointLink]>,
     ) {
-        let check = || -> Result<Rc<[_]>, IssueKind> {
+        let check = || -> Result<Arc<[_]>, IssueKind> {
             if let Some(tuple) = value.maybe_tuple() {
                 return tuple
                     .iter()

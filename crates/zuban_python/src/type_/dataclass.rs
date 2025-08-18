@@ -40,7 +40,7 @@ use crate::{
     utils::debug_indent,
 };
 
-type FieldSpecifiers = Rc<[PointLink]>;
+type FieldSpecifiers = Arc<[PointLink]>;
 
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
@@ -1146,14 +1146,14 @@ fn order_func(self_: Arc<Dataclass>, i_s: &InferenceState) -> LookupResult {
 }
 
 fn type_order_func(self_: Arc<Dataclass>, i_s: &InferenceState) -> LookupResult {
-    let type_var = Rc::new(TypeVar::new_self(TypeVarKindInfos::Unrestricted));
+    let type_var = Arc::new(TypeVar::new_self(TypeVarKindInfos::Unrestricted));
     let tv_usage = TypeVarUsage::new(type_var.clone(), self_.class.link, 0.into());
     LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
         CallableContent::new_simple(
             None,
             None,
             self_.class.link,
-            TypeVarLikes::new(Rc::new([TypeVarLike::TypeVar(type_var)])),
+            TypeVarLikes::new(Arc::new([TypeVarLike::TypeVar(type_var)])),
             CallableParams::new_simple(Rc::new([
                 CallableParam::new(
                     DbString::Static("self"),
@@ -1185,7 +1185,7 @@ impl Default for DataclassTransformObj {
             order_default: false,
             kw_only_default: false,
             frozen_default: false,
-            field_specifiers: Rc::default(),
+            field_specifiers: Arc::default(),
         }
     }
 }

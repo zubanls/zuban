@@ -984,7 +984,7 @@ pub fn merge_class_type_vars(
             })
         }).unwrap_or(class_t);
         */
-        let self_type_var = Rc::new(TypeVar::new_self(TypeVarKindInfos::Bound(
+        let self_type_var = Arc::new(TypeVar::new_self(TypeVarKindInfos::Bound(
             TypeLikeInTypeVar::new_known(bound),
         )));
         self_type_var_usage = Some(TypeVarUsage::new(

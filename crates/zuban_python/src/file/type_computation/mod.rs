@@ -4243,7 +4243,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         None => TypeVarKindInfos::Unrestricted,
                     };
                     let default = default.map(|d| d.expression().index());
-                    TypeVarLike::TypeVar(Rc::new(TypeVar::new(
+                    TypeVarLike::TypeVar(Arc::new(TypeVar::new(
                         name,
                         scope,
                         kind,
@@ -4253,11 +4253,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 TypeParamKind::TypeVarTuple(default) => {
                     let default = default.map(|d| d.unpack().index());
-                    TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple::new(name, scope, default)))
+                    TypeVarLike::TypeVarTuple(Arc::new(TypeVarTuple::new(name, scope, default)))
                 }
                 TypeParamKind::ParamSpec(default) => {
                     let default = default.map(|d| d.expression().index());
-                    TypeVarLike::ParamSpec(Rc::new(ParamSpec::new(name, scope, default)))
+                    TypeVarLike::ParamSpec(Arc::new(ParamSpec::new(name, scope, default)))
                 }
             };
             // It might feel a bit weird, that we insert the TypeVars and also return them

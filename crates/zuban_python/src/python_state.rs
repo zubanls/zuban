@@ -250,7 +250,7 @@ pub(crate) struct PythonState {
 
 impl PythonState {
     pub fn reserve() -> Self {
-        let empty_type_var_likes = TypeVarLikes::new(Rc::new([]));
+        let empty_type_var_likes = TypeVarLikes::new(Arc::new([]));
         Self {
             builtins: null(),
             typing: null(),
