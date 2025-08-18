@@ -5,6 +5,7 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
     rc::Rc,
+    sync::Arc,
 };
 
 use parsa_python_cst::{Name, NodeIndex};
@@ -62,9 +63,11 @@ macro_rules! new_class {
     ($link:expr, $($arg:expr),+$(,)?) => {
         $crate::type_::Type::new_class(
             $link,
-            $crate::type_::ClassGenerics::List($crate::type_::GenericsList::new_generics(std::rc::Rc::new([
-                $($crate::type_::GenericItem::TypeArg($arg)),*
-            ])))
+            $crate::type_::ClassGenerics::List(
+                $crate::type_::GenericsList::new_generics(std::sync::Arc::new([
+                    $($crate::type_::GenericItem::TypeArg($arg)),*
+                ]))
+            )
         )
     }
 }
@@ -176,6 +179,15 @@ pub fn join_with_commas(input: impl Iterator<Item = String>) -> String {
 }
 
 pub fn rc_slice_into_vec<T: Clone>(this: Rc<[T]>) -> Vec<T> {
+    // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+
+    // TODO we could avoid cloning here and just use a copy for the slice parts.
+    // See also some discussion how this could be done here:
+    // https://stackoverflow.com/questions/77511698/rct-try-unwrap-into-vect#comment136989622_77511997
+    Vec::from(this.as_ref())
+}
+
+pub fn arc_slice_into_vec<T: Clone>(this: Arc<[T]>) -> Vec<T> {
     // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
 
     // TODO we could avoid cloning here and just use a copy for the slice parts.

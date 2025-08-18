@@ -14,7 +14,7 @@ pub(crate) use class::{
 };
 pub(crate) use function::{FuncNodeRef, FuncParent};
 
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
 
 use named_tuple::{new_collections_named_tuple, new_typing_named_tuple};
 use parsa_python_cst::{SliceType as CSTSliceType, *};
@@ -2519,7 +2519,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Type::Any(AnyCause::Todo)
             };
 
-            Rc::new(CallableContent {
+            Arc::new(CallableContent {
                 guard,
                 ..CallableContent::new_simple(
                     None,

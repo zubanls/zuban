@@ -3,6 +3,7 @@ use std::{
     cell::Cell,
     collections::{HashMap, HashSet},
     rc::Rc,
+    sync::Arc,
 };
 
 use config::TypeCheckerFlags;
@@ -189,7 +190,7 @@ impl Inference<'_, '_, '_> {
                     unreachable!();
                 };
 
-                if !Type::Callable(Rc::new(callable.remove_first_positional_param().unwrap()))
+                if !Type::Callable(Arc::new(callable.remove_first_positional_param().unwrap()))
                     .is_simple_super_type_of(self.i_s, &actual)
                     .bool()
                 {
@@ -1159,7 +1160,7 @@ impl Inference<'_, '_, '_> {
                 let original_details = LookupDetails {
                     class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
                     lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(
-                        Rc::new(__post_init__.clone()),
+                        Arc::new(__post_init__.clone()),
                     ))),
                     attr_kind: AttributeKind::DefMethod { is_final: false },
                     mro_index: None,
@@ -2877,7 +2878,7 @@ fn operator_domain_is_widened(
     original: &Type,
 ) -> bool {
     override_overload.iter_functions().any(|overload_func| {
-        let widens_callable = |original: &Rc<CallableContent>| {
+        let widens_callable = |original: &Arc<CallableContent>| {
             let Some(original_domain) = original.first_positional_type() else {
                 return false;
             };

@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use super::{
     dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
@@ -1081,7 +1081,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 let Type::Callable(__new__) = inf.as_type(i_s) else {
                     unreachable!()
                 };
-                let mut __new__ = Rc::unwrap_or_clone(__new__);
+                let mut __new__ = Arc::unwrap_or_clone(__new__);
                 __new__.type_vars = i_s.db.python_state.empty_type_var_likes.clone();
                 Rc::new(NamedTuple::new(nt.name, __new__))
             }))
@@ -1132,7 +1132,9 @@ fn set_is_abstract_from_super(i_s: &InferenceState, l: &mut LookupDetails) {
                     let mut new_callable = c.as_ref().clone();
                     new_callable.is_abstract_from_super = true;
                     l.lookup
-                        .update_inferred(Inferred::from_type(Type::Callable(Rc::new(new_callable))))
+                        .update_inferred(Inferred::from_type(Type::Callable(Arc::new(
+                            new_callable,
+                        ))))
                 }
             }
             _ => (),

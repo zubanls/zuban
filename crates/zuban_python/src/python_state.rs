@@ -1,4 +1,4 @@
-use std::{ptr::null, rc::Rc};
+use std::{ptr::null, rc::Rc, sync::Arc};
 
 use config::PythonVersion;
 use parsa_python_cst::{FunctionDef, Name, NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
@@ -238,7 +238,7 @@ pub(crate) struct PythonState {
     pub tuple_of_obj: Type,
     pub tuple_of_unannotated_any: Type,
     pub dict_of_str_and_obj: Type,
-    pub any_callable_from_error: Rc<CallableContent>,
+    pub any_callable_from_error: Arc<CallableContent>,
     pub type_args_from_err: TypeArgs,
     pub generator_with_any_generics: Type,
     pub async_generator_with_any_generics: Type,
@@ -370,7 +370,7 @@ impl PythonState {
                 AnyCause::Unannotated,
             ))),
             dict_of_str_and_obj: Type::None, // Will be set later
-            any_callable_from_error: Rc::new(CallableContent::new_any(
+            any_callable_from_error: Arc::new(CallableContent::new_any(
                 empty_type_var_likes.clone(),
                 AnyCause::FromError,
             )),
@@ -802,7 +802,7 @@ impl PythonState {
             Type::Any(AnyCause::Internal),
             Type::Any(AnyCause::Internal),
         );
-        s.valid_getattr_supertype = Type::Callable(Rc::new(CallableContent::new_simple(
+        s.valid_getattr_supertype = Type::Callable(Arc::new(CallableContent::new_simple(
             None,
             None,
             PointLink::new(FileIndex(0), 0),

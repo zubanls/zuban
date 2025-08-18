@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
     iter::repeat_with,
     rc::Rc,
+    sync::Arc,
 };
 
 use parsa_python_cst::{
@@ -1027,7 +1028,7 @@ fn lookup_symbol_internal(
     }
     if self_.options.init && name == "__init__" {
         return (
-            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
                 dataclass_init_func(&self_, i_s.db).clone(),
             )))),
             AttributeKind::DefMethod { is_final: false },
@@ -1130,7 +1131,7 @@ pub(crate) fn lookup_on_dataclass<'a>(
 }
 
 fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
-    LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+    LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
         CallableContent::new_simple(
             None,
             None,
@@ -1147,7 +1148,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
 fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
     let type_var = Rc::new(TypeVar::new_self(TypeVarKindInfos::Unrestricted));
     let tv_usage = TypeVarUsage::new(type_var.clone(), self_.class.link, 0.into());
-    LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+    LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
         CallableContent::new_simple(
             None,
             None,

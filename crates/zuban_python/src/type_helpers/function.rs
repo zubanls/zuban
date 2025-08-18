@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
+use std::{borrow::Cow, cell::Cell, fmt, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Decorated, Decorator, ExpressionContent, ExpressionPart, Param as CSTParam, ParamIterator,
@@ -395,7 +395,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else if let Some(mut callable_t) = maybe_computed {
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable_t);
             self.node_ref
-                .insert_type(Type::Callable(Rc::new(callable_t)));
+                .insert_type(Type::Callable(Arc::new(callable_t)));
         } else {
             self.node_ref
                 .set_point(Point::new_specific(Specific::Function, Locality::Todo));
@@ -698,7 +698,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 drop(details);
                 self.calculate_property_setter_and_deleter(
                     i_s,
-                    Rc::make_mut(&mut callable),
+                    Arc::make_mut(&mut callable),
                     had_first_annotation,
                 );
                 Inferred::from_type(Type::Callable(callable))
@@ -845,10 +845,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let mut inferred = Inferred::from_type(
             base_t
-                .map(|c| Type::Callable(Rc::new(c)))
+                .map(|c| Type::Callable(Arc::new(c)))
                 .unwrap_or_else(|| {
                     if no_type_check {
-                        Type::Callable(Rc::new(self.as_no_type_check_callable(i_s.db)))
+                        Type::Callable(Arc::new(self.as_no_type_check_callable(i_s.db)))
                     } else if is_overload {
                         self.as_type_without_inferring_return_type(i_s, FirstParamProperties::None)
                     } else {
@@ -887,7 +887,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 callable.set_all_types_to_any_for_no_type_check(AnyCause::Explicit);
             }
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable);
-            *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
+            *inferred = Inferred::from_type(Type::Callable(Arc::new(callable)));
         };
         if self.node_ref.file.flags(i_s.db).disallow_any_decorated {
             let t = inferred.as_cow_type(i_s);
@@ -1183,7 +1183,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     } else if let Some(CallableLike::Callable(callable)) = t.maybe_callable(i_s) {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
-                            callable: Rc::unwrap_or_clone(callable),
+                            callable: Arc::unwrap_or_clone(callable),
                         });
                     } else {
                         implementation = Some(OverloadImplementation {
@@ -1358,7 +1358,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState,
         first_param: FirstParamProperties,
     ) -> Type {
-        Type::Callable(Rc::new(self.as_callable_with_options(
+        Type::Callable(Arc::new(self.as_callable_with_options(
             i_s,
             AsCallableOptions {
                 first_param,
@@ -1426,7 +1426,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn as_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> Type {
-        Type::Callable(Rc::new(self.as_callable(i_s, first)))
+        Type::Callable(Arc::new(self.as_callable(i_s, first)))
     }
 
     fn internal_as_type(

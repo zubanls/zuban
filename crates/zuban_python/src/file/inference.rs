@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
 
 use parsa_python_cst::*;
 
@@ -2833,7 +2833,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         "Inferred lambda from context as '{}'",
                         c.format(&FormatData::new_short(i_s.db))
                     );
-                    Some(Inferred::from_type(Type::Callable(Rc::new(c))))
+                    Some(Inferred::from_type(Type::Callable(Arc::new(c))))
                 } else {
                     None
                 }
@@ -2852,7 +2852,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     CallableParams::new_simple(params.map(to_callable_param).collect()),
                     result.as_type(self.i_s),
                 );
-                Inferred::from_type(Type::Callable(Rc::new(c)))
+                Inferred::from_type(Type::Callable(Arc::new(c)))
             })
     }
 

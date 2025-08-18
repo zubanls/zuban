@@ -2,6 +2,7 @@ use std::{
     cell::OnceCell,
     hash::{Hash, Hasher},
     rc::Rc,
+    sync::Arc,
 };
 
 use vfs::FileIndex;
@@ -27,7 +28,7 @@ use crate::{
 #[derive(Debug, Eq, Clone)]
 pub(crate) struct NamedTuple {
     pub name: StringSlice,
-    pub __new__: Rc<CallableContent>,
+    pub __new__: Arc<CallableContent>,
     tuple: OnceCell<Rc<Tuple>>,
 }
 
@@ -35,7 +36,7 @@ impl NamedTuple {
     pub fn new(name: StringSlice, __new__: CallableContent) -> Self {
         Self {
             name,
-            __new__: Rc::new(__new__),
+            __new__: Arc::new(__new__),
             tuple: OnceCell::new(),
         }
     }
@@ -61,7 +62,7 @@ impl NamedTuple {
         let mut nt = self.clone();
         let mut callable = nt.__new__.as_ref().clone();
         callable.name = Some(DbString::StringSlice(name));
-        nt.__new__ = Rc::new(callable);
+        nt.__new__ = Arc::new(callable);
         Rc::new(nt)
     }
 
@@ -195,7 +196,7 @@ impl NamedTuple {
                     );
                     params.push(new_param);
                 }
-                Rc::new(CallableContent::new_simple(
+                Arc::new(CallableContent::new_simple(
                     Some(DbString::Static(method_name)),
                     Some(self.name),
                     PointLink::new(FileIndex(0), 0),
@@ -226,7 +227,7 @@ impl NamedTuple {
                         as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                     )));
                 }
-                Rc::new(CallableContent::new_simple(
+                Arc::new(CallableContent::new_simple(
                     Some(DbString::Static("_as_dict")),
                     Some(self.name),
                     PointLink::new(FileIndex(0), 0),
@@ -254,7 +255,7 @@ impl NamedTuple {
                         Type::Any(AnyCause::Explicit),
                     )),
                 ));
-                Rc::new(CallableContent {
+                Arc::new(CallableContent {
                     kind: FunctionKind::Classmethod {
                         had_first_self_or_class_annotation: true,
                     },

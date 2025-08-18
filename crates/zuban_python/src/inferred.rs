@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{NodeIndex, ParamKind};
 use vfs::FileIndex;
@@ -53,7 +53,7 @@ impl From<usize> for MroIndex {
 #[derive(Debug)]
 pub(crate) enum FunctionOrOverload<'a> {
     Function(Function<'a, 'a>),
-    Callable(Rc<CallableContent>),
+    Callable(Arc<CallableContent>),
     Overload(OverloadedFunction<'a>),
 }
 
@@ -942,7 +942,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                                 Some((
                                     Self::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Type::Callable(Rc::new(
+                                        Type::Callable(Arc::new(
                                             matcher.remove_self_from_callable(i_s, callable),
                                         )),
                                     )),
@@ -1086,7 +1086,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 FunctionKind::Staticmethod
                                                 | FunctionKind::Property { .. } => unreachable!(),
                                             }
-                                            .map(Rc::new)
+                                            .map(Arc::new)
                                         })
                                         .collect();
                                     match results.len() {
@@ -1245,7 +1245,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             &attribute_class,
                             &f,
                         )
-                        .map(Rc::new)
+                        .map(Arc::new)
                         .unwrap_or_else(|| {
                             add_invalid_self_arg(c);
                             i_s.db.python_state.any_callable_from_error.clone()
@@ -1255,7 +1255,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if func.return_annotation().is_none() {
                                     let mut new = new_c.as_ref().clone();
                                     new.return_type = Type::Any(AnyCause::Unannotated);
-                                    new_c = Rc::new(new)
+                                    new_c = Arc::new(new)
                                 }
                             }
                         }
@@ -1345,7 +1345,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let Type::Callable(c) = &t {
                                     let mut new_c = c.as_ref().clone();
                                     new_c.return_type = Type::Any(AnyCause::Unannotated);
-                                    t = Type::Callable(Rc::new(new_c));
+                                    t = Type::Callable(Arc::new(new_c));
                                 }
                             }
                         }
@@ -1419,7 +1419,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let c = func.as_callable(i_s, FirstParamProperties::None);
-                            let c = Rc::new(merge_class_type_vars(
+                            let c = Arc::new(merge_class_type_vars(
                                 i_s.db,
                                 &c,
                                 *class,
@@ -1475,7 +1475,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         FunctionOverload::new(
                                             o.iter_functions()
                                                 .map(|c| {
-                                                    Rc::new(merge_class_type_vars(
+                                                    Arc::new(merge_class_type_vars(
                                                         i_s.db,
                                                         c,
                                                         *class,
@@ -1625,7 +1625,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let Type::Callable(c) = t {
             match c.kind {
                 FunctionKind::Function { .. } => {
-                    return Some(Some(Inferred::from_type(Type::Callable(Rc::new(
+                    return Some(Some(Inferred::from_type(Type::Callable(Arc::new(
                         merge_class_type_vars(i_s.db, &c, *class, attribute_class, func_class_type),
                     )))))
                 }
@@ -1752,7 +1752,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 else {
                                     return Self::new_any_from_error();
                                 };
-                                return Inferred::from_type(Type::Callable(Rc::new(c)));
+                                return Inferred::from_type(Type::Callable(Arc::new(c)));
                             }
                         }
                     },
@@ -2499,7 +2499,7 @@ fn infer_overloaded_class_method(
         .iter_functions()
         .filter_map(|callable| {
             let c = infer_class_method(i_s, class, attribute_class, callable, None)?;
-            Some(Rc::new(c))
+            Some(Arc::new(c))
         })
         .collect();
     Some(Inferred::from_type(match functions.len() {
@@ -2695,7 +2695,7 @@ fn proper_classmethod_callable(
 }
 
 fn callable_into_inferred(callable: CallableContent) -> Inferred {
-    Inferred::from_type(Type::Callable(Rc::new(callable)))
+    Inferred::from_type(Type::Callable(Arc::new(callable)))
 }
 
 fn type_of_complex<'db: 'x, 'x>(

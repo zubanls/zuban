@@ -4,6 +4,7 @@ use std::{
     hash::{Hash, Hasher},
     ops::AddAssign,
     rc::Rc,
+    sync::Arc,
 };
 
 use parsa_python_cst::{FunctionDef, NodeIndex};
@@ -118,7 +119,7 @@ impl<T: CallableId> TypeVarManager<T> {
         self.callables.push(c)
     }
 
-    pub fn is_callable_known(&self, callable: &Rc<CallableContent>) -> bool {
+    pub fn is_callable_known(&self, callable: &Arc<CallableContent>) -> bool {
         self.callables
             .iter()
             .any(|c| c.defined_at.matches_callable(callable))
@@ -158,7 +159,7 @@ impl<T: CallableId> TypeVarManager<T> {
         self.type_vars.last().map(|u| &u.type_var_like)
     }
 
-    pub fn type_vars_for_callable(&self, callable: &Rc<CallableContent>) -> TypeVarLikes {
+    pub fn type_vars_for_callable(&self, callable: &Arc<CallableContent>) -> TypeVarLikes {
         TypeVarLikes::new(
             self.type_vars
                 .iter()
@@ -282,7 +283,7 @@ impl Default for TypeVarManager<PointLink> {
     }
 }
 
-impl Default for TypeVarManager<Rc<CallableContent>> {
+impl Default for TypeVarManager<Arc<CallableContent>> {
     fn default() -> Self {
         Self {
             type_vars: vec![],
@@ -294,7 +295,7 @@ impl Default for TypeVarManager<Rc<CallableContent>> {
 pub trait CallableId: Clone {
     fn is_same(&self, other: &Self) -> bool;
     fn as_in_definition(&self) -> PointLink;
-    fn matches_callable(&self, callable: &Rc<CallableContent>) -> bool;
+    fn matches_callable(&self, callable: &Arc<CallableContent>) -> bool;
 }
 
 impl CallableId for PointLink {
@@ -306,14 +307,14 @@ impl CallableId for PointLink {
         *self
     }
 
-    fn matches_callable(&self, callable: &Rc<CallableContent>) -> bool {
+    fn matches_callable(&self, callable: &Arc<CallableContent>) -> bool {
         *self == callable.defined_at
     }
 }
 
-impl CallableId for Rc<CallableContent> {
+impl CallableId for Arc<CallableContent> {
     fn is_same(&self, other: &Self) -> bool {
-        Rc::ptr_eq(self, other)
+        Arc::ptr_eq(self, other)
     }
 
     fn as_in_definition(&self) -> PointLink {

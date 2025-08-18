@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use super::{
     callable::add_param_spec_to_params, simplified_union_from_iterators_with_format_index,
@@ -24,7 +24,7 @@ trait Replacer {
     fn replace_callable_params(&mut self, _: &CallableParams) -> Option<CallableParams> {
         None
     }
-    fn replace_callable(&mut self, _: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
+    fn replace_callable(&mut self, _: &Arc<CallableContent>) -> Option<Arc<CallableContent>> {
         None
     }
     fn replace_type_var_tuple(&mut self, _: &TypeVarTupleUsage) -> Option<TupleArgs> {
@@ -107,10 +107,13 @@ impl Type {
                 }
             }
             #[inline]
-            fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
+            fn replace_callable(
+                &mut self,
+                c: &Arc<CallableContent>,
+            ) -> Option<Arc<CallableContent>> {
                 let new = self.0.type_vars_for_callable(c);
                 (new != c.type_vars).then(|| {
-                    Rc::new(CallableContent {
+                    Arc::new(CallableContent {
                         name: c.name.clone(),
                         class_name: c.class_name,
                         defined_at: c.defined_at,
@@ -178,7 +181,7 @@ impl Type {
                     if let Some(new) = replacer.replace_callable(c) {
                         return Some(new);
                     }
-                    c.replace_internal(replacer).map(Rc::new)
+                    c.replace_internal(replacer).map(Arc::new)
                 })?),
             )),
             Type::Union(u) => Some(Type::Union(UnionType::new(
@@ -198,7 +201,7 @@ impl Type {
                 if let Some(new) = replacer.replace_callable(c) {
                     return Some(Type::Callable(new));
                 }
-                Some(Type::Callable(Rc::new(c.replace_internal(replacer)?)))
+                Some(Type::Callable(Arc::new(c.replace_internal(replacer)?)))
             }
             Type::RecursiveType(rec) => Some(Type::RecursiveType(Rc::new(RecursiveType::new(
                 rec.link,
@@ -891,8 +894,8 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
     }
 
     #[inline]
-    fn replace_callable(&mut self, c: &Rc<CallableContent>) -> Option<Rc<CallableContent>> {
-        self.replace_callable_without_rc(c).map(Rc::new)
+    fn replace_callable(&mut self, c: &Arc<CallableContent>) -> Option<Arc<CallableContent>> {
+        self.replace_callable_without_rc(c).map(Arc::new)
     }
 
     fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {

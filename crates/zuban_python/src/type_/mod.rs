@@ -23,6 +23,7 @@ use std::{
     hash::{Hash, Hasher},
     mem,
     rc::Rc,
+    sync::Arc,
 };
 
 use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
@@ -84,7 +85,7 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
-    utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
+    utils::{arc_slice_into_vec, bytes_repr, join_with_commas, str_repr},
 };
 
 thread_local! {
@@ -243,16 +244,16 @@ impl ClassGenerics {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct GenericsList(Rc<[GenericItem]>);
+pub(crate) struct GenericsList(Arc<[GenericItem]>);
 
 impl GenericsList {
-    pub fn new_generics(parts: Rc<[GenericItem]>) -> Self {
+    pub fn new_generics(parts: Arc<[GenericItem]>) -> Self {
         debug_assert!(!parts.is_empty());
         Self(parts)
     }
 
     pub fn generics_from_vec(parts: Vec<GenericItem>) -> Self {
-        Self::new_generics(Rc::from(parts))
+        Self::new_generics(Arc::from(parts))
     }
 
     pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericItem> {
@@ -294,7 +295,7 @@ impl GenericsList {
     }
 
     pub fn into_vec(self) -> Vec<GenericItem> {
-        rc_slice_into_vec(self.0)
+        arc_slice_into_vec(self.0)
     }
 
     fn has_any_internal(
@@ -352,12 +353,12 @@ impl Hash for Namespace {
 impl std::cmp::Eq for Namespace {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct FunctionOverload(Box<[Rc<CallableContent>]>);
+pub(crate) struct FunctionOverload(Box<[Arc<CallableContent>]>);
 
 impl FunctionOverload {
-    pub fn new(functions: Box<[Rc<CallableContent>]>) -> Rc<Self> {
+    pub fn new(functions: Box<[Arc<CallableContent>]>) -> Arc<Self> {
         debug_assert!(!functions.is_empty());
-        Rc::new(Self(functions))
+        Arc::new(Self(functions))
     }
 
     pub fn kind(&self) -> &FunctionKind {
@@ -368,7 +369,7 @@ impl FunctionOverload {
         self.0[0].is_abstract
     }
 
-    pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> + Clone {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Arc<CallableContent>> + Clone {
         self.0.iter()
     }
 }
@@ -446,11 +447,11 @@ pub(crate) enum Type {
     Class(GenericClass),
     Union(UnionType),
     Intersection(Intersection),
-    FunctionOverload(Rc<FunctionOverload>),
+    FunctionOverload(Arc<FunctionOverload>),
     TypeVar(TypeVarUsage),
     Type(Rc<Type>),
     Tuple(Rc<Tuple>),
-    Callable(Rc<CallableContent>),
+    Callable(Arc<CallableContent>),
     RecursiveType(Rc<RecursiveType>),
     NewType(Rc<NewType>),
     ParamSpecArgs(ParamSpecUsage),
@@ -722,7 +723,7 @@ impl Type {
         match self {
             Type::Callable(c) => Some(CallableLike::Callable(c.clone())),
             Type::Type(t) => t.type_type_maybe_callable(i_s),
-            Type::Any(cause) => Some(CallableLike::Callable(Rc::new(CallableContent::new_any(
+            Type::Any(cause) => Some(CallableLike::Callable(Arc::new(CallableContent::new_any(
                 i_s.db.python_state.empty_type_var_likes.clone(),
                 *cause,
             )))),
@@ -772,17 +773,17 @@ impl Type {
                             .as_generic_class(i_s.db);
                         init.return_type = Type::Dataclass(Rc::new(type_var_dataclass));
                     }
-                    return Some(CallableLike::Callable(Rc::new(init)));
+                    return Some(CallableLike::Callable(Arc::new(init)));
                 }
                 cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls)
             }
-            Type::TypedDict(td) => Some(CallableLike::Callable(Rc::new(
+            Type::TypedDict(td) => Some(CallableLike::Callable(Arc::new(
                 rc_typed_dict_as_callable(i_s.db, td.clone()),
             ))),
             Type::NamedTuple(nt) => {
                 let mut callable = nt.__new__.remove_first_positional_param().unwrap();
                 callable.return_type = self.clone();
-                Some(CallableLike::Callable(Rc::new(callable)))
+                Some(CallableLike::Callable(Arc::new(callable)))
             }
             Type::Tuple(tup) => {
                 // Tuple exists either as tuple() or tuple(<some iterable>), we can not force the
@@ -794,7 +795,7 @@ impl Type {
                 );
                 let mut param = CallableParam::new_anonymous(ParamType::PositionalOnly(iterable));
                 param.has_default = true;
-                Some(CallableLike::Callable(Rc::new(
+                Some(CallableLike::Callable(Arc::new(
                     CallableContent::new_simple(
                         None,
                         None,
@@ -1950,8 +1951,8 @@ impl CustomBehavior {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) enum CallableLike {
-    Callable(Rc<CallableContent>),
-    Overload(Rc<FunctionOverload>),
+    Callable(Arc<CallableContent>),
+    Overload(Arc<FunctionOverload>),
 }
 
 impl CallableLike {

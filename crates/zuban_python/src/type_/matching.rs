@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use super::{
     CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, TypeVarLike,
@@ -752,7 +752,7 @@ impl Type {
             }
             Type::Type(t2) if t2.is_any() => {
                 matcher.set_all_contained_type_vars_to_any(
-                    &Type::Callable(Rc::new(c1.clone())),
+                    &Type::Callable(Arc::new(c1.clone())),
                     AnyCause::Todo,
                 );
                 return Match::new_true();

@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
     ops::Deref,
     rc::Rc,
+    sync::Arc,
 };
 
 use super::{
@@ -74,7 +75,7 @@ impl Tuple {
                 .args
                 .simplified_union_of_tuple_entries(&InferenceState::new_in_unknown_file(db));
             debug!("Calculated tuple class generics: {}", t.format_short(db));
-            GenericsList::new_generics(Rc::new([GenericItem::TypeArg(t)]))
+            GenericsList::new_generics(Arc::new([GenericItem::TypeArg(t)]))
         })
     }
 

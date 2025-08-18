@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use parsa_python_cst::ParamKind;
 
@@ -160,14 +160,14 @@ fn common_sub_type_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,
     c2: &CallableContent,
-) -> Rc<CallableContent> {
+) -> Arc<CallableContent> {
     if c1.kind != c2.kind {
         debug!("TODO when a callable kind does not match should there still be a subtype?");
         return i_s.db.python_state.any_callable_from_error.clone();
     }
     if let Some(return_type) = c1.return_type.common_sub_type(i_s, &c2.return_type) {
         if let Some(params) = c1.params.common_sub_type(i_s, &c2.params) {
-            return Rc::new(CallableContent {
+            return Arc::new(CallableContent {
                 name: None,
                 class_name: None,
                 defined_at: c1.defined_at,
@@ -182,7 +182,7 @@ fn common_sub_type_for_callables(
             });
         }
     }
-    Rc::new(CallableContent::new_any(
+    Arc::new(CallableContent::new_any(
         i_s.db.python_state.empty_type_var_likes.clone(),
         AnyCause::Todo,
     ))

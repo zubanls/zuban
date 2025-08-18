@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 pub(super) use utils::AlreadySeen;
 
 use parsa_python_cst::ParamKind;
@@ -248,8 +248,8 @@ impl CalculatedTypeArgs {
         if let Some(type_var_likes) = self.type_var_likes {
             fn create_callable_hierarchy(
                 db: &Database,
-                manager: &mut TypeVarManager<Rc<CallableContent>>,
-                parent_callable: Option<Rc<CallableContent>>,
+                manager: &mut TypeVarManager<Arc<CallableContent>>,
+                parent_callable: Option<Arc<CallableContent>>,
                 type_var_likes: &TypeVarLikes,
                 t: &Type,
             ) {

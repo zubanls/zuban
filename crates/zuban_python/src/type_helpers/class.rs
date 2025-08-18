@@ -3,6 +3,7 @@ use std::{
     cell::{Cell, RefCell},
     fmt,
     rc::Rc,
+    sync::Arc,
 };
 
 use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Name, TypeLike};
@@ -1600,7 +1601,7 @@ impl<'db: 'a, 'a> Class<'a> {
             Type::Class(class) if class.link == self.node_ref.as_link() => {
                 let mut new_c = c.clone();
                 new_c.return_type = Type::Any(AnyCause::Internal);
-                Some(Rc::new(new_c))
+                Some(Arc::new(new_c))
             }
             _ => None,
         };
@@ -2232,7 +2233,7 @@ fn init_as_callable(
                     &|| unreachable!("was already replaced above"),
                 );
             }
-            Rc::new(c)
+            Arc::new(c)
         })
     };
     callable.and_then(|callable_like| match callable_like {

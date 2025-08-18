@@ -695,14 +695,14 @@ impl OverloadImplementation {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OverloadDefinition {
     pub implementation: Option<OverloadImplementation>,
-    pub functions: Rc<FunctionOverload>,
+    pub functions: Arc<FunctionOverload>,
     pub is_final: bool,    // Had @final
     pub is_override: bool, // Had @override
     pub dataclass_transform: Option<DataclassTransformObj>,
 }
 
 impl OverloadDefinition {
-    pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Arc<CallableContent>> {
         self.functions.iter_functions()
     }
 

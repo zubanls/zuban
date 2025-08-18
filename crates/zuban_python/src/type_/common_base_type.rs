@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use parsa_python_cst::ParamKind;
 
@@ -334,7 +334,7 @@ fn common_base_for_callables(
         .params
         .common_base_type(i_s, &c2.params, Some(checked_recursions))
     {
-        Type::Callable(Rc::new(CallableContent {
+        Type::Callable(Arc::new(CallableContent {
             name: None,
             class_name: None,
             defined_at: c1.defined_at,
@@ -354,10 +354,10 @@ fn common_base_for_callables(
         }))
     } else {
         if Matcher::default().matches_callable(i_s, c1, c2).bool() {
-            return Type::Callable(Rc::new(c2.clone()));
+            return Type::Callable(Arc::new(c2.clone()));
         }
         if Matcher::default().matches_callable(i_s, c2, c1).bool() {
-            return Type::Callable(Rc::new(c1.clone()));
+            return Type::Callable(Arc::new(c1.clone()));
         }
         i_s.db.python_state.function_type()
     }

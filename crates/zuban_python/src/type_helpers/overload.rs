@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::{Callable, Class};
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct OverloadedFunction<'a> {
-    overload: &'a Rc<FunctionOverload>,
+    overload: &'a Arc<FunctionOverload>,
     class: Option<Class<'a>>,
 }
 
@@ -43,7 +43,7 @@ pub(crate) enum UnionMathResult {
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
-    pub fn new(overload: &'a Rc<FunctionOverload>, class: Option<Class<'a>>) -> Self {
+    pub fn new(overload: &'a Arc<FunctionOverload>, class: Option<Class<'a>>) -> Self {
         Self { overload, class }
     }
 
@@ -500,7 +500,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         callable
                             .kind
                             .update_had_first_self_or_class_annotation(true);
-                        Rc::new(callable)
+                        Arc::new(callable)
                     })
                     .collect(),
             ))

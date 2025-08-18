@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     cell::{Cell, OnceCell},
     rc::Rc,
+    sync::Arc,
 };
 
 use parsa_python_cst::{
@@ -687,7 +688,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         c.kind = FunctionKind::Classmethod {
                             had_first_self_or_class_annotation: true,
                         };
-                        node_ref.insert_type(Type::Callable(Rc::new(c)));
+                        node_ref.insert_type(Type::Callable(Arc::new(c)));
                     }
                 }
             }
