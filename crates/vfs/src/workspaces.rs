@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use utils::match_case;
 
@@ -28,7 +28,7 @@ impl Workspaces {
         &mut self,
         vfs: &dyn VfsHandler,
         scheme: Scheme,
-        root: Rc<NormalizedPath>,
+        root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
         self.items.push(Workspace::new(vfs, scheme, root, kind))
@@ -38,7 +38,7 @@ impl Workspaces {
         &mut self,
         vfs: &dyn VfsHandler,
         scheme: Scheme,
-        root: Rc<NormalizedPath>,
+        root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
         self.items
@@ -245,14 +245,14 @@ impl Workspaces {
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    pub(crate) root_path: Rc<NormalizedPath>,
+    pub(crate) root_path: Arc<NormalizedPath>,
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
     // On Windows this is also necessary since changing the watch logic. We canonicalize watched
     // paths to avoid adding multiple watches for the same files. Therefore we also need to
     // canonicalize the paths here.
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
-    pub(crate) canonicalized_path: Rc<NormalizedPath>,
+    pub(crate) canonicalized_path: Arc<NormalizedPath>,
     pub(crate) scheme: Scheme,
     pub entries: Entries,
     pub kind: WorkspaceKind,
@@ -262,11 +262,11 @@ impl Workspace {
     fn new(
         vfs: &dyn VfsHandler,
         scheme: Scheme,
-        root_path: Rc<NormalizedPath>,
+        root_path: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) -> Rc<Self> {
         tracing::debug!("Add workspace {root_path}");
-        let root_path = Rc::<NormalizedPath>::from(root_path);
+        let root_path = Arc::<NormalizedPath>::from(root_path);
 
         let workspace;
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]

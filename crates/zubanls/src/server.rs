@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::atomic::AtomicI64;
+use std::sync::Arc;
 
 use anyhow::bail;
 use config::ProjectOptions;
@@ -36,7 +37,7 @@ fn version() -> &'static str {
 
 pub fn run_server_with_custom_connection(
     connection: Connection,
-    typeshed_path: Option<Rc<NormalizedPath>>,
+    typeshed_path: Option<Arc<NormalizedPath>>,
     cleanup: impl FnOnce() -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     tracing::info!("Server version {} will start", version());
@@ -205,7 +206,7 @@ pub(crate) struct GlobalState<'sender> {
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
-    typeshed_path: Option<Rc<NormalizedPath>>,
+    typeshed_path: Option<Arc<NormalizedPath>>,
     pub client_capabilities: ClientCapabilities,
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
@@ -219,7 +220,7 @@ impl<'sender> GlobalState<'sender> {
         sender: &'sender Sender<lsp_server::Message>,
         client_capabilities: ClientCapabilities,
         roots: Rc<[String]>,
-        typeshed_path: Option<Rc<NormalizedPath>>,
+        typeshed_path: Option<Arc<NormalizedPath>>,
     ) -> Self {
         GlobalState {
             paths_that_invalidate_whole_project: Default::default(),
@@ -616,7 +617,7 @@ impl<'sender> GlobalState<'sender> {
     ) -> anyhow::Result<PathWithScheme> {
         let (scheme, path) = unpack_uri(&uri)?;
         let handler = project.vfs_handler();
-        let path = handler.unchecked_abs_path_from_uri(Rc::from(path));
+        let path = handler.unchecked_abs_path_from_uri(Arc::from(path));
         Ok(if scheme.eq_lowercase("file") {
             let path = handler.normalize_rc_path(path);
             PathWithScheme::with_file_scheme(path)

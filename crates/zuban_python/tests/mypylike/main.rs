@@ -6,7 +6,7 @@ use std::{
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
     process::ExitCode,
-    rc::Rc,
+    sync::Arc,
     time::Instant,
 };
 
@@ -66,7 +66,7 @@ const BASE_PATH_STR: &str = "/mypylike/";
 const BASE_PATH_STR: &str = r"C:\\mypylike\";
 
 thread_local! {
-    static BASE_PATH: Rc<NormalizedPath> = {
+    static BASE_PATH: Arc<NormalizedPath> = {
         let local_fs = SimpleLocalFS::without_watcher();
         local_fs.normalize_rc_path(local_fs.unchecked_abs_path(BASE_PATH_STR))
     };

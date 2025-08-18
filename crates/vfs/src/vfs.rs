@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc};
+use std::{cell::OnceCell, collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc, sync::Arc};
 
 use tracing::Level;
 use utils::{FastHashSet, InsertOnlyVec};
@@ -199,7 +199,7 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&mut self, root_path: Rc<NormalizedPath>, kind: WorkspaceKind) {
+    pub fn add_workspace(&mut self, root_path: Arc<NormalizedPath>, kind: WorkspaceKind) {
         self.workspaces
             .add(&*self.handler, file_scheme(), root_path, kind)
     }
@@ -732,7 +732,7 @@ pub struct FileState<F> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathWithScheme {
-    pub(crate) path: Rc<NormalizedPath>,
+    pub(crate) path: Arc<NormalizedPath>,
     pub(crate) scheme: Scheme,
 }
 
@@ -740,7 +740,7 @@ impl PathWithScheme {
     fn new_sub_file() -> Self {
         thread_local! {
             static EMPTY_SCHEME: Rc<Box<str>> = Rc::new("".into());
-            static EMPTY_PATH: Rc<NormalizedPath> = NormalizedPath::new_rc(AbsPath::new_rc("".into()));
+            static EMPTY_PATH: Arc<NormalizedPath> = NormalizedPath::new_arc(AbsPath::new_arc("".into()));
         }
 
         EMPTY_PATH.with(|empty_path| {
@@ -751,11 +751,11 @@ impl PathWithScheme {
         })
     }
 
-    pub fn new(scheme: Scheme, path: Rc<NormalizedPath>) -> Self {
+    pub fn new(scheme: Scheme, path: Arc<NormalizedPath>) -> Self {
         Self { path, scheme }
     }
 
-    pub fn with_file_scheme(path: Rc<NormalizedPath>) -> Self {
+    pub fn with_file_scheme(path: Arc<NormalizedPath>) -> Self {
         Self {
             path,
             scheme: file_scheme(),

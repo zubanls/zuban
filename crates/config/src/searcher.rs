@@ -1,4 +1,4 @@
-use std::{io::Read, path::Path, rc::Rc};
+use std::{io::Read, path::Path, sync::Arc};
 
 use crate::{DiagnosticConfig, ProjectOptions};
 use vfs::{AbsPath, VfsHandler};
@@ -16,7 +16,7 @@ const CONFIG_PATHS: [&str; 4] = [
 pub struct FoundConfig {
     pub project_options: ProjectOptions,
     pub diagnostic_config: DiagnosticConfig,
-    pub config_path: Option<Rc<AbsPath>>,
+    pub config_path: Option<Arc<AbsPath>>,
 }
 
 pub fn find_workspace_config(
@@ -56,7 +56,7 @@ fn initialize_config(
     current_dir: &AbsPath,
     path: &str,
     content: String,
-) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Rc<AbsPath>)> {
+) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Arc<AbsPath>)> {
     let _p = tracing::info_span!("config_finder").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
     let config_path = vfs.absolute_path(current_dir, path);

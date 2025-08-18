@@ -1,6 +1,6 @@
 mod searcher;
 
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, sync::Arc};
 
 use anyhow::bail;
 use ini::{Ini, ParseOption};
@@ -37,15 +37,15 @@ pub struct ProjectOptions {
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: Option<PythonVersion>,
-    pub environment: Option<Rc<NormalizedPath>>,
-    pub mypy_path: Vec<Rc<NormalizedPath>>,
-    pub prepended_site_packages: Vec<Rc<NormalizedPath>>,
+    pub environment: Option<Arc<NormalizedPath>>,
+    pub mypy_path: Vec<Arc<NormalizedPath>>,
+    pub prepended_site_packages: Vec<Arc<NormalizedPath>>,
     /// Global packages are added by default (if we are not in a venv)
     pub add_global_packages_default: bool,
     pub mypy_compatible: bool,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
-    pub typeshed_path: Option<Rc<NormalizedPath>>,
+    pub typeshed_path: Option<Arc<NormalizedPath>>,
 }
 
 impl Default for Settings {
@@ -130,7 +130,7 @@ fn to_normalized_path(
     current_dir: &AbsPath,
     config_file_path: Option<&AbsPath>,
     s: &str,
-) -> Rc<NormalizedPath> {
+) -> Arc<NormalizedPath> {
     // Replace only $MYPY_CONFIG_FILE_DIR for now.
     handler.normalize_rc_path(if s.contains('$') {
         handler.absolute_path(current_dir, &replace_env_vars(config_file_path, s))

@@ -6,7 +6,7 @@ use std::{
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
     process::ExitCode,
-    rc::Rc,
+    sync::Arc,
     time::Instant,
 };
 
@@ -189,7 +189,7 @@ fn main() -> ExitCode {
     ExitCode::from(should_error_out as u8)
 }
 
-fn mypy_path() -> Vec<Rc<NormalizedPath>> {
+fn mypy_path() -> Vec<Arc<NormalizedPath>> {
     let base = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("blackbox");
@@ -203,7 +203,7 @@ fn mypy_path() -> Vec<Rc<NormalizedPath>> {
         .collect()
 }
 
-fn python_files(mypy_path: &[Rc<NormalizedPath>]) -> Vec<PathBuf> {
+fn python_files(mypy_path: &[Arc<NormalizedPath>]) -> Vec<PathBuf> {
     let mut entries = vec![];
     for path in mypy_path {
         entries.extend(

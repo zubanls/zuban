@@ -1,6 +1,6 @@
 use std::{
     path::{Path, PathBuf},
-    rc::Rc,
+    sync::Arc,
 };
 
 use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler};
@@ -10,7 +10,7 @@ use crate::{PythonVersion, Settings};
 pub(crate) fn create_sys_path(
     handler: &dyn VfsHandler,
     settings: &Settings,
-) -> Vec<Rc<NormalizedPath>> {
+) -> Vec<Arc<NormalizedPath>> {
     let mut sys_path = vec![];
 
     sys_path.extend(settings.prepended_site_packages.iter().cloned());
@@ -87,7 +87,7 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
 
 fn add_editable_src_packages(
     handler: &dyn VfsHandler,
-    sys_path: &mut Vec<Rc<NormalizedPath>>,
+    sys_path: &mut Vec<Arc<NormalizedPath>>,
     env: &NormalizedPath,
 ) {
     let Ok(entries) = env.as_ref().join("src").read_dir() else {
@@ -246,7 +246,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
     }
 }
 
-pub(crate) fn typeshed_path_from_executable() -> Rc<NormalizedPath> {
+pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
     let mut executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
                  a typeshed path in that case.",

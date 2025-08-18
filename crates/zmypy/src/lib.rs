@@ -1,5 +1,5 @@
 use std::process::ExitCode;
-use std::{path::PathBuf, rc::Rc};
+use std::{path::PathBuf, sync::Arc};
 
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
@@ -239,7 +239,7 @@ pub fn run(cli: Cli) -> ExitCode {
 fn with_exit_code(
     cli: Cli,
     current_dir: String,
-    typeshed_path: Option<Rc<NormalizedPath>>,
+    typeshed_path: Option<Arc<NormalizedPath>>,
 ) -> ExitCode {
     with_diagnostics_from_cli(cli, current_dir, typeshed_path, |diagnostics, config| {
         for diagnostic in diagnostics.issues.iter() {
@@ -253,7 +253,7 @@ fn with_exit_code(
 pub fn with_diagnostics_from_cli<T>(
     cli: Cli,
     current_dir: String,
-    typeshed_path: Option<Rc<NormalizedPath>>,
+    typeshed_path: Option<Arc<NormalizedPath>>,
     callback: impl FnOnce(Diagnostics, &DiagnosticConfig) -> T,
 ) -> T {
     tracing::info!("Checking in {current_dir}");
@@ -268,7 +268,7 @@ pub fn with_diagnostics_from_cli<T>(
 fn project_from_cli(
     cli: Cli,
     current_dir: &str,
-    typeshed_path: Option<Rc<NormalizedPath>>,
+    typeshed_path: Option<Arc<NormalizedPath>>,
     lookup_env_var: impl Fn(&str) -> Option<String>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
@@ -310,7 +310,7 @@ fn apply_flags(
     project_options: &mut ProjectOptions,
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
-    current_dir: Rc<AbsPath>,
+    current_dir: Arc<AbsPath>,
     config_path: Option<&AbsPath>,
 ) {
     macro_rules! apply {

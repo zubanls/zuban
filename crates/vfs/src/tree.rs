@@ -1,6 +1,7 @@
 use std::{
     cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     rc::{Rc, Weak},
+    sync::Arc,
 };
 
 use crate::{utils::VecRefWrapper, NormalizedPath, PathWithScheme, VfsHandler, Workspace};
@@ -70,7 +71,7 @@ impl Parent {
         }
     }
 
-    pub fn workspace_path(&self) -> Rc<NormalizedPath> {
+    pub fn workspace_path(&self) -> Arc<NormalizedPath> {
         match self {
             Self::Directory(dir) => dir.upgrade().unwrap().parent.workspace_path(),
             Self::Workspace(workspace) => workspace.upgrade().unwrap().root_path.clone(),
@@ -107,7 +108,7 @@ impl FileEntry {
         let parent = self.parent.absolute_path(vfs);
         PathWithScheme {
             // This should be normalized, because it's joined
-            path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
+            path: NormalizedPath::new_arc(vfs.join(&parent.path, &self.name)),
             scheme: parent.scheme,
         }
     }
@@ -221,7 +222,7 @@ impl Directory {
         let parent = self.parent.absolute_path(vfs);
         PathWithScheme {
             // This should be normalized, because it's joined
-            path: NormalizedPath::new_rc(vfs.join(&parent.path, &self.name)),
+            path: NormalizedPath::new_arc(vfs.join(&parent.path, &self.name)),
             scheme: parent.scheme,
         }
     }
@@ -505,7 +506,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_sizes() {
-        // This would ideally be 8, but the Rc<AbsPath> causes 16 bytes
+        // This would ideally be 8, but the Arc<AbsPath> causes 16 bytes
         assert_eq!(std::mem::size_of::<Parent>(), 16);
     }
 }

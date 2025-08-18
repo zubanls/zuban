@@ -1,4 +1,4 @@
-use std::{path::Path, rc::Rc};
+use std::{path::Path, rc::Rc, sync::Arc};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -12,7 +12,7 @@ impl AbsPath {
     }
     */
 
-    pub(crate) fn new_rc(x: Rc<str>) -> Rc<Self> {
+    pub(crate) fn new_arc(x: Arc<str>) -> Arc<Self> {
         // SAFETY: `AbsPath` is repr(transparent) over `str`
         unsafe { std::mem::transmute(x) }
     }
@@ -23,16 +23,16 @@ impl AbsPath {
 }
 
 impl ToOwned for AbsPath {
-    type Owned = Rc<AbsPath>;
+    type Owned = Arc<AbsPath>;
 
     fn to_owned(&self) -> Self::Owned {
         self.into()
     }
 }
 
-impl From<&AbsPath> for Rc<AbsPath> {
+impl From<&AbsPath> for Arc<AbsPath> {
     #[inline]
-    fn from(s: &AbsPath) -> Rc<AbsPath> {
+    fn from(s: &AbsPath) -> Arc<AbsPath> {
         let x: Rc<str> = s.0.into();
         unsafe { std::mem::transmute(x) }
     }

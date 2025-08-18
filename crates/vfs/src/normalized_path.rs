@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::AbsPath;
 
@@ -12,27 +12,27 @@ impl NormalizedPath {
         unsafe { std::mem::transmute(x) }
     }
 
-    pub(crate) fn new_rc(x: Rc<AbsPath>) -> Rc<Self> {
+    pub(crate) fn new_arc(x: Arc<AbsPath>) -> Arc<Self> {
         unsafe { std::mem::transmute(x) }
     }
 
-    pub fn rc_to_abs_path(p: Rc<NormalizedPath>) -> Rc<AbsPath> {
+    pub fn arc_to_abs_path(p: Arc<NormalizedPath>) -> Arc<AbsPath> {
         unsafe { std::mem::transmute(p) }
     }
 }
 
 impl ToOwned for NormalizedPath {
-    type Owned = Rc<NormalizedPath>;
+    type Owned = Arc<NormalizedPath>;
 
     fn to_owned(&self) -> Self::Owned {
         self.into()
     }
 }
 
-impl From<&NormalizedPath> for Rc<NormalizedPath> {
+impl From<&NormalizedPath> for Arc<NormalizedPath> {
     #[inline]
-    fn from(s: &NormalizedPath) -> Rc<NormalizedPath> {
-        let x: Rc<AbsPath> = s.0.into();
+    fn from(s: &NormalizedPath) -> Arc<NormalizedPath> {
+        let x: Arc<AbsPath> = s.0.into();
         unsafe { std::mem::transmute(x) }
     }
 }

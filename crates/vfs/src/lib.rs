@@ -9,7 +9,7 @@ mod utils;
 mod vfs;
 mod workspaces;
 
-use std::{borrow::Cow, path::Path, rc::Rc};
+use std::{borrow::Cow, path::Path, sync::Arc};
 
 use crossbeam_channel::Receiver;
 
@@ -61,20 +61,20 @@ pub trait VfsHandler {
 
     fn normalize_path<'s>(&self, path: &'s AbsPath) -> Cow<'s, NormalizedPath> {
         if cfg!(target_os = "windows") && path.contains("/") {
-            let p = AbsPath::new_rc(path.replace('/', "\\").into());
-            return Cow::Owned(NormalizedPath::new_rc(p));
+            let p = AbsPath::new_arc(path.replace('/', "\\").into());
+            return Cow::Owned(NormalizedPath::new_arc(p));
         }
         Cow::Borrowed(NormalizedPath::new(path))
     }
-    fn normalize_rc_path(&self, path: Rc<AbsPath>) -> Rc<NormalizedPath> {
+    fn normalize_rc_path(&self, path: Arc<AbsPath>) -> Arc<NormalizedPath> {
         match self.normalize_path(&path) {
             // If it's borrowed, it means it didn't change, so we can simply cast
-            Cow::Borrowed(_) => NormalizedPath::new_rc(path),
+            Cow::Borrowed(_) => NormalizedPath::new_arc(path),
             Cow::Owned(o) => o,
         }
     }
 
-    fn absolute_path(&self, current_dir: &AbsPath, path: &str) -> Rc<AbsPath> {
+    fn absolute_path(&self, current_dir: &AbsPath, path: &str) -> Arc<AbsPath> {
         let p = Path::new(&path);
         if p.is_absolute() {
             self.unchecked_abs_path(path)
@@ -83,26 +83,26 @@ pub trait VfsHandler {
         }
     }
 
-    fn normalize_uncheck_abs_path(&self, path: &str) -> Rc<NormalizedPath> {
+    fn normalize_uncheck_abs_path(&self, path: &str) -> Arc<NormalizedPath> {
         self.normalize_rc_path(self.unchecked_abs_path(path))
     }
 
-    fn unchecked_abs_path(&self, mut path: &str) -> Rc<AbsPath> {
+    fn unchecked_abs_path(&self, mut path: &str) -> Arc<AbsPath> {
         if let Some(new_root_path) = self.strip_separator_suffix(path) {
             path = new_root_path;
         }
-        AbsPath::new_rc(path.into())
+        AbsPath::new_arc(path.into())
     }
 
-    fn unchecked_abs_path_from_uri(&self, path: Rc<str>) -> Rc<AbsPath> {
-        AbsPath::new_rc(path.into())
+    fn unchecked_abs_path_from_uri(&self, path: Arc<str>) -> Arc<AbsPath> {
+        AbsPath::new_arc(path.into())
     }
 
-    fn unchecked_normalized_path(&self, path: Rc<AbsPath>) -> Rc<NormalizedPath> {
-        NormalizedPath::new_rc(path.into())
+    fn unchecked_normalized_path(&self, path: Arc<AbsPath>) -> Arc<NormalizedPath> {
+        NormalizedPath::new_arc(path.into())
     }
 
-    fn join(&self, path: &AbsPath, name: &str) -> Rc<AbsPath> {
+    fn join(&self, path: &AbsPath, name: &str) -> Arc<AbsPath> {
         self.unchecked_abs_path(Path::new(&**path).join(name).to_str().unwrap())
     }
 

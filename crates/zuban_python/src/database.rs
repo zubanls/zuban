@@ -4,6 +4,7 @@ use std::{
     fmt, mem,
     ops::Range,
     rc::Rc,
+    sync::Arc,
 };
 
 use config::{OverrideConfig, Settings};
@@ -1345,7 +1346,7 @@ impl Database {
 
 #[derive(Debug)]
 pub(crate) struct PythonProject {
-    pub sys_path: Vec<Rc<NormalizedPath>>,
+    pub sys_path: Vec<Arc<NormalizedPath>>,
     pub settings: Settings,
     pub flags: TypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,

@@ -1,7 +1,7 @@
 use std::{
     cell::RefCell,
     path::{Path, PathBuf},
-    rc::Rc,
+    sync::Arc,
 };
 
 use crossbeam_channel::{unbounded, Receiver};
@@ -298,11 +298,11 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
         }
     }
 
-    pub fn current_dir(&self) -> Rc<AbsPath> {
+    pub fn current_dir(&self) -> Arc<AbsPath> {
         self.unchecked_abs_path(std::env::current_dir().unwrap().to_str().unwrap())
     }
 
-    pub fn normalized_path_from_current_dir(&self, p: &str) -> Rc<NormalizedPath> {
+    pub fn normalized_path_from_current_dir(&self, p: &str) -> Arc<NormalizedPath> {
         self.normalize_rc_path(self.absolute_path(&self.current_dir(), p))
     }
 
