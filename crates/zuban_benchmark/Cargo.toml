@@ -11,7 +11,15 @@ authors.workspace = true
 criterion = "*"
 utils.workspace = true
 parsa_python_cst.workspace = true
+zuban_python.workspace = true
+config.workspace = true
+vfs.workspace = true
+test_utils.workspace = true
 
 [[bench]]
 name = "parsa_python"
+harness = false
+
+[[bench]]
+name = "zuban_python"
 harness = false

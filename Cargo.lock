@@ -2006,9 +2006,13 @@ dependencies = [
 name = "zuban_benchmark"
 version = "0.0.19"
 dependencies = [
+ "config",
  "criterion",
  "parsa_python_cst",
+ "test_utils",
  "utils",
+ "vfs",
+ "zuban_python",
 ]
 
 [[package]]
