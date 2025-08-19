@@ -1,6 +1,6 @@
 use std::{
-    cell::OnceCell,
     hash::{Hash, Hasher},
+    sync::OnceLock,
 };
 
 use super::{GenericsList, Type};
@@ -16,7 +16,7 @@ use crate::{
 pub(crate) struct RecursiveType {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
-    calculated_type: OnceCell<Type>,
+    calculated_type: OnceLock<Type>,
 }
 
 impl RecursiveType {
@@ -24,7 +24,7 @@ impl RecursiveType {
         Self {
             link,
             generics,
-            calculated_type: OnceCell::new(),
+            calculated_type: OnceLock::new(),
         }
     }
 

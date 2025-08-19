@@ -1,8 +1,7 @@
 use std::{
-    cell::OnceCell,
     hash::{Hash, Hasher},
     ops::Deref,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use super::{
@@ -34,21 +33,21 @@ thread_local! {
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct Tuple {
     pub args: TupleArgs,
-    pub(super) tuple_class_generics: OnceCell<GenericsList>,
+    pub(super) tuple_class_generics: OnceLock<GenericsList>,
 }
 
 impl Tuple {
     pub fn new(args: TupleArgs) -> Arc<Self> {
         Arc::new(Self {
             args,
-            tuple_class_generics: OnceCell::new(),
+            tuple_class_generics: OnceLock::new(),
         })
     }
 
     pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Arc<Self> {
         Arc::new(Self {
             args: TupleArgs::ArbitraryLen(Arc::new(t)),
-            tuple_class_generics: OnceCell::from(generics),
+            tuple_class_generics: OnceLock::from(generics),
         })
     }
 

@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell},
-    sync::Arc,
+    cell::Cell,
+    sync::{Arc, OnceLock},
 };
 
 use parsa_python_cst::{
@@ -585,7 +585,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         self.node_ref.as_link(),
                         self.class_storage.parent_scope,
                         members,
-                        OnceCell::new(),
+                        OnceLock::new(),
                     );
                     let enum_type = Arc::new(Type::Enum(enum_.clone()));
                     // In case enum is combined with dataclass, just let the dataclass win
@@ -714,7 +714,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut is_final = false;
         let mut dataclass_transform = None;
         let mut promote_to = None;
-        let undefined_generics_type = OnceCell::new();
+        let undefined_generics_type = OnceLock::new();
         let set_type_to_dataclass = |dc: &DataclassTransformObj, set_frozen_state_unknown: bool| {
             let mut options = dc.as_dataclass_options();
             if set_frozen_state_unknown {
@@ -1148,7 +1148,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     .iter()
                     .filter_map(|tvl| match tvl {
                         TypeVarLike::TypeVar(tv) if tv.variance == TypeVarVariance::Inferred => {
-                            Some((tv.name, OnceCell::new()))
+                            Some((tv.name, OnceLock::new()))
                         }
                         _ => None,
                     })

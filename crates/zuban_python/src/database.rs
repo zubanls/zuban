@@ -1,9 +1,9 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell},
+    cell::Cell,
     fmt, mem,
     ops::Range,
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock, RwLock},
 };
 
 use config::{OverrideConfig, Settings};
@@ -786,7 +786,7 @@ pub(crate) struct TypeAlias {
     pub from_type_syntax: bool, // `type X = int` or `X = TypeAlias(int)
     // The two attributes around is_recursive are calculated after the TypeAlias is
     // added to the DB.
-    state: OnceCell<TypeAliasState>,
+    state: OnceLock<TypeAliasState>,
 }
 
 impl TypeAlias {
@@ -801,7 +801,7 @@ impl TypeAlias {
             location,
             name,
             from_type_syntax,
-            state: OnceCell::new(),
+            state: OnceLock::new(),
         }
     }
 
@@ -1474,9 +1474,9 @@ pub(crate) struct ClassInfos {
     pub dataclass_transform: Option<Box<DataclassTransformObj>>,
     pub promote_to: Cell<Option<PointLink>>,
     // Does not need to be a HashMap, because this is typically the size of 1-2
-    pub variance_map: Vec<(TypeVarName, OnceCell<Variance>)>,
+    pub variance_map: Vec<(TypeVarName, OnceLock<Variance>)>,
     // We have this less for caching and more to be able to have different types.
-    pub undefined_generics_type: OnceCell<Arc<Type>>,
+    pub undefined_generics_type: OnceLock<Arc<Type>>,
 }
 
 impl ClassInfos {

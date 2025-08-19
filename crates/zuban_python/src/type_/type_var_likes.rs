@@ -1,9 +1,9 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell},
+    cell::Cell,
     hash::{Hash, Hasher},
     ops::AddAssign,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use parsa_python_cst::{FunctionDef, NodeIndex};
@@ -803,7 +803,7 @@ impl TypeVarLikeName {
 pub(crate) struct TypeLikeInTypeVar<T> {
     node: Option<NodeIndex>,
     calculating: Cell<bool>,
-    pub t: OnceCell<T>,
+    pub t: OnceLock<T>,
 }
 
 impl<T> TypeLikeInTypeVar<T> {
@@ -811,7 +811,7 @@ impl<T> TypeLikeInTypeVar<T> {
         Self {
             node: Some(node),
             calculating: Cell::new(false),
-            t: OnceCell::new(),
+            t: OnceLock::new(),
         }
     }
 
@@ -819,7 +819,7 @@ impl<T> TypeLikeInTypeVar<T> {
         Self {
             node: None,
             calculating: Cell::new(false),
-            t: OnceCell::from(t),
+            t: OnceLock::from(t),
         }
     }
 

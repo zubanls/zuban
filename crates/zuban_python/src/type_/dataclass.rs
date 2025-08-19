@@ -1,8 +1,7 @@
 use std::{
-    cell::OnceCell,
     hash::{Hash, Hasher},
     iter::repeat_with,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use parsa_python_cst::{
@@ -46,7 +45,7 @@ const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 #[derive(Clone, Eq)]
 pub(crate) struct Dataclass {
     pub class: GenericClass,
-    inits: OnceCell<Inits>,
+    inits: OnceLock<Inits>,
     pub options: DataclassOptions,
 }
 
@@ -108,7 +107,7 @@ impl Dataclass {
     pub fn new(class: GenericClass, options: DataclassOptions) -> Arc<Self> {
         Arc::new(Self {
             class,
-            inits: OnceCell::new(),
+            inits: OnceLock::new(),
             options,
         })
     }

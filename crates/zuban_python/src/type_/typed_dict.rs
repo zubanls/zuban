@@ -1,7 +1,6 @@
 use std::{
-    cell::OnceCell,
     hash::{Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use super::{
@@ -61,7 +60,7 @@ pub(crate) enum TypedDictGenerics {
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct TypedDict {
     pub name: Option<StringSlice>,
-    members: OnceCell<Box<[TypedDictMember]>>,
+    members: OnceLock<Box<[TypedDictMember]>>,
     pub defined_at: PointLink,
     pub generics: TypedDictGenerics,
     pub is_final: bool,
@@ -76,7 +75,7 @@ impl TypedDict {
     ) -> Arc<Self> {
         Arc::new(Self {
             name,
-            members: OnceCell::from(members),
+            members: OnceLock::from(members),
             defined_at,
             generics,
             is_final: false,
@@ -96,7 +95,7 @@ impl TypedDict {
         };
         Arc::new(Self {
             name: Some(name),
-            members: OnceCell::from(members),
+            members: OnceLock::from(members),
             defined_at,
             generics,
             is_final: false,
@@ -116,7 +115,7 @@ impl TypedDict {
         };
         Arc::new(Self {
             name: Some(name),
-            members: OnceCell::new(),
+            members: OnceLock::new(),
             defined_at,
             generics,
             is_final,
@@ -129,10 +128,10 @@ impl TypedDict {
     }
 
     pub fn apply_generics(&self, db: &Database, generics: TypedDictGenerics) -> Arc<Self> {
-        let mut members = OnceCell::new();
+        let mut members = OnceLock::new();
         if let TypedDictGenerics::Generics(generics) = &generics {
             if let Some(ms) = self.members.get() {
-                members = OnceCell::from(Self::remap_members_with_generics(db, ms, generics))
+                members = OnceLock::from(Self::remap_members_with_generics(db, ms, generics))
             }
         }
         Arc::new(TypedDict {
@@ -365,14 +364,14 @@ impl TypedDict {
         Arc::new(TypedDict {
             name: self.name,
             members: if let Some(members) = self.members.get() {
-                OnceCell::from(
+                OnceLock::from(
                     members
                         .iter()
                         .map(|m| m.replace_type(&mut callable))
                         .collect::<Box<_>>(),
                 )
             } else {
-                OnceCell::new()
+                OnceLock::new()
             },
             defined_at: self.defined_at,
             generics,

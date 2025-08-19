@@ -1,7 +1,6 @@
 use std::{
-    cell::OnceCell,
     hash::{Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use super::{
@@ -160,7 +159,7 @@ pub(crate) struct Enum {
     pub defined_at: PointLink,
     parent_scope: ParentScope,
     pub members: Box<[EnumMemberDefinition]>,
-    has_customized_new: OnceCell<bool>,
+    has_customized_new: OnceLock<bool>,
 }
 
 impl Enum {
@@ -170,7 +169,7 @@ impl Enum {
         defined_at: PointLink,
         parent_scope: ParentScope,
         members: Box<[EnumMemberDefinition]>,
-        has_customized_new: OnceCell<bool>,
+        has_customized_new: OnceLock<bool>,
     ) -> Arc<Self> {
         Arc::new(Self {
             name,

@@ -1,7 +1,6 @@
 use std::{
-    cell::OnceCell,
     hash::{Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use vfs::FileIndex;
@@ -28,7 +27,7 @@ use crate::{
 pub(crate) struct NamedTuple {
     pub name: StringSlice,
     pub __new__: Arc<CallableContent>,
-    tuple: OnceCell<Arc<Tuple>>,
+    tuple: OnceLock<Arc<Tuple>>,
 }
 
 impl NamedTuple {
@@ -36,7 +35,7 @@ impl NamedTuple {
         Self {
             name,
             __new__: Arc::new(__new__),
-            tuple: OnceCell::new(),
+            tuple: OnceLock::new(),
         }
     }
 

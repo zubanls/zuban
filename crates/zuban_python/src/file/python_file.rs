@@ -1,9 +1,9 @@
 use std::{
     borrow::Cow,
-    cell::{OnceCell, RefCell},
+    cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue};
@@ -85,7 +85,7 @@ impl SuperFile {
 pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
-    maybe_dunder_all: OnceCell<Option<Box<[DbString]>>>, // For __all__
+    maybe_dunder_all: OnceLock<Option<Box<[DbString]>>>, // For __all__
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
     pub complex_points: ComplexValues,
@@ -305,7 +305,7 @@ impl<'db> PythonFile {
             tree,
             file_index,
             symbol_table,
-            maybe_dunder_all: OnceCell::default(),
+            maybe_dunder_all: OnceLock::default(),
             points,
             complex_points,
             star_imports: star_imports.into_inner().into_boxed_slice(),
@@ -1120,6 +1120,6 @@ impl Iterator for OtherDefinitionIterator<'_> {
 
 #[derive(Clone, Default)]
 struct StubCache {
-    partial: OnceCell<bool>,
-    non_stub: OnceCell<Option<FileIndex>>,
+    partial: OnceLock<bool>,
+    non_stub: OnceLock<Option<FileIndex>>,
 }
