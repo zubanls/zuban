@@ -88,6 +88,10 @@ impl HashableRawStr {
     }
 }
 
+// The same notes to unsafety apply here
+unsafe impl Sync for HashableRawStr {}
+unsafe impl Send for HashableRawStr {}
+
 impl Hash for HashableRawStr {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_str().hash(state);
