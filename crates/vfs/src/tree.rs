@@ -1,9 +1,12 @@
 use std::{
-    cell::{Cell, Ref, RefCell, RefMut},
-    sync::{Arc, OnceLock, Weak},
+    cell::Cell,
+    sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
 };
 
-use crate::{utils::VecRefWrapper, NormalizedPath, PathWithScheme, VfsHandler, Workspace};
+use crate::{
+    utils::{MappedReadGuard, MappedWriteGuard, VecRwLockWrapper},
+    NormalizedPath, PathWithScheme, VfsHandler, Workspace,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileIndex(pub u32);
@@ -183,8 +186,14 @@ impl DirectoryEntry {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct Entries(RefCell<Vec<DirectoryEntry>>);
+#[derive(Debug, Default)]
+pub struct Entries(RwLock<Vec<DirectoryEntry>>);
+
+impl Clone for Entries {
+    fn clone(&self) -> Self {
+        Self(RwLock::new(self.0.try_read().unwrap().clone()))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Directory {
@@ -247,19 +256,19 @@ impl Directory {
 
 impl Entries {
     pub fn from_vec(vec: Vec<DirectoryEntry>) -> Self {
-        Self(RefCell::from(vec))
+        Self(RwLock::from(vec))
     }
 
-    fn borrow(&self) -> Ref<Vec<DirectoryEntry>> {
-        self.0.borrow()
+    fn borrow(&self) -> RwLockReadGuard<Vec<DirectoryEntry>> {
+        self.0.try_read().unwrap()
     }
 
-    pub(crate) fn borrow_mut(&self) -> RefMut<Vec<DirectoryEntry>> {
-        self.0.borrow_mut()
+    pub(crate) fn borrow_mut(&self) -> RwLockWriteGuard<Vec<DirectoryEntry>> {
+        self.0.try_write().unwrap()
     }
 
-    pub fn iter(&self) -> VecRefWrapper<DirectoryEntry> {
-        VecRefWrapper(self.borrow())
+    pub fn iter(&self) -> VecRwLockWrapper<Vec<DirectoryEntry>, DirectoryEntry> {
+        VecRwLockWrapper(MappedReadGuard::map(self.borrow(), |x| x))
     }
 
     pub(crate) fn remove_name(&self, name: &str) -> Option<DirectoryEntry> {
@@ -268,12 +277,15 @@ impl Entries {
         Some(entries.swap_remove(pos))
     }
 
-    pub fn search(&self, name: &str) -> Option<Ref<DirectoryEntry>> {
+    pub fn search(
+        &self,
+        name: &str,
+    ) -> Option<MappedReadGuard<Vec<DirectoryEntry>, DirectoryEntry>> {
         let borrow = self.borrow();
         // We need to do this indirectly, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
         let pos = borrow.iter().position(|entry| entry.name() == name)?;
-        Some(Ref::map(borrow, |dir| &dir[pos]))
+        Some(MappedReadGuard::map(borrow, |dir| &dir[pos]))
     }
 
     pub(crate) fn search_path(&self, vfs: &dyn VfsHandler, path: &str) -> Option<DirOrFile> {
@@ -294,12 +306,15 @@ impl Entries {
         None
     }
 
-    pub fn search_mut(&self, name: &str) -> Option<RefMut<DirectoryEntry>> {
+    pub fn search_mut(
+        &self,
+        name: &str,
+    ) -> Option<MappedWriteGuard<Vec<DirectoryEntry>, DirectoryEntry>> {
         let borrow = self.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
         borrow.iter().find(|entry| entry.name() == name)?;
-        Some(RefMut::map(borrow, |dir| {
+        Some(MappedWriteGuard::map(borrow, |dir| {
             dir.iter_mut().find(|entry| entry.name() == name).unwrap()
         }))
     }
@@ -417,8 +432,8 @@ pub enum DirOrFile {
     File(Arc<FileEntry>),
 }
 
-#[derive(Debug, Default, Clone)]
-pub(crate) struct Invalidations(RefCell<InvalidationDetail<Vec<FileIndex>>>);
+#[derive(Debug, Default)]
+pub(crate) struct Invalidations(RwLock<InvalidationDetail<Vec<FileIndex>>>);
 
 #[derive(Debug, Clone)]
 pub(crate) enum InvalidationDetail<T> {
@@ -446,15 +461,18 @@ impl<T> InvalidationDetail<T> {
 
 impl Invalidations {
     pub(crate) fn set_invalidates_db(&self) {
-        *self.0.borrow_mut() = InvalidationDetail::InvalidatesDb;
+        *self.0.try_write().unwrap() = InvalidationDetail::InvalidatesDb;
     }
 
     pub(crate) fn invalidates_db(&self) -> bool {
-        matches!(&*self.0.borrow(), InvalidationDetail::InvalidatesDb)
+        matches!(
+            &*self.0.try_read().unwrap(),
+            InvalidationDetail::InvalidatesDb
+        )
     }
 
     pub(crate) fn add(&self, element: FileIndex) {
-        if let InvalidationDetail::Some(invs) = &mut *self.0.borrow_mut() {
+        if let InvalidationDetail::Some(invs) = &mut *self.0.try_write().unwrap() {
             if !invs.contains(&element) {
                 invs.push(element);
             }
@@ -462,9 +480,9 @@ impl Invalidations {
     }
 
     pub(crate) fn extend(&mut self, other: Self) {
-        match (self.0.get_mut(), other.0.into_inner()) {
+        match (self.0.get_mut().unwrap(), other.0.into_inner().unwrap()) {
             (InvalidationDetail::Some(invs), InvalidationDetail::Some(other)) => invs.extend(other),
-            _ => self.0 = RefCell::new(InvalidationDetail::InvalidatesDb),
+            _ => self.0 = RwLock::new(InvalidationDetail::InvalidatesDb),
         }
     }
 
@@ -472,15 +490,19 @@ impl Invalidations {
         if self.invalidates_db() {
             return self.clone();
         }
-        Self(RefCell::new(self.0.take()))
+        Self(RwLock::new(std::mem::take(
+            &mut self.0.try_write().unwrap(),
+        )))
     }
 
-    pub(crate) fn iter(&self) -> InvalidationDetail<VecRefWrapper<FileIndex>> {
-        let r = self.0.borrow();
+    pub(crate) fn iter(
+        &self,
+    ) -> InvalidationDetail<VecRwLockWrapper<InvalidationDetail<Vec<FileIndex>>, FileIndex>> {
+        let r = self.0.try_read().unwrap();
         if let InvalidationDetail::InvalidatesDb = &*r {
             return InvalidationDetail::InvalidatesDb;
         }
-        InvalidationDetail::Some(VecRefWrapper(Ref::map(r, |r| {
+        InvalidationDetail::Some(VecRwLockWrapper(MappedReadGuard::map(r, |r| {
             let InvalidationDetail::Some(vec) = r else {
                 unreachable!()
             };
@@ -489,14 +511,20 @@ impl Invalidations {
     }
 
     pub(crate) fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {
-        self.0.into_inner().map(|invs| invs.into_iter())
+        self.0.into_inner().unwrap().map(|invs| invs.into_iter())
     }
 
     pub(crate) fn is_empty(&self) -> bool {
-        match &*self.0.borrow() {
+        match &*self.0.try_read().unwrap() {
             InvalidationDetail::Some(file_indexes) => file_indexes.is_empty(),
             InvalidationDetail::InvalidatesDb => false,
         }
+    }
+}
+
+impl Clone for Invalidations {
+    fn clone(&self) -> Self {
+        Self(RwLock::new(self.0.try_read().unwrap().clone()))
     }
 }
 
