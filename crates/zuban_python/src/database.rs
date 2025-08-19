@@ -3,7 +3,7 @@ use std::{
     cell::Cell,
     fmt, mem,
     ops::Range,
-    sync::{Arc, OnceLock, RwLock},
+    sync::{Arc, Mutex, OnceLock, RwLock},
 };
 
 use config::{OverrideConfig, Settings};
@@ -1135,16 +1135,14 @@ impl Database {
                 .python_state
                 .bytearray()
                 .use_cached_class_infos(&new_db)
-                .promote_to
-                .set(None);
+                .set_promote_to(None);
         }
         if new_db.project.flags.disable_memoryview_promotion {
             new_db
                 .python_state
                 .memoryview_class_with_generics_to_be_defined()
                 .use_cached_class_infos(&new_db)
-                .promote_to
-                .set(None);
+                .set_promote_to(None);
         }
         new_db
     }
@@ -1459,7 +1457,7 @@ pub(crate) struct ProtocolMember {
     pub variance: Variance,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub(crate) struct ClassInfos {
     pub mro: Box<[BaseClass]>, // Does never include `object`
     pub metaclass: MetaclassState,
@@ -1472,11 +1470,51 @@ pub(crate) struct ClassInfos {
     pub is_runtime_checkable: bool,
     pub abstract_attributes: Box<[PointLink]>,
     pub dataclass_transform: Option<Box<DataclassTransformObj>>,
-    pub promote_to: Cell<Option<PointLink>>,
+    pub promote_to: Mutex<Option<PointLink>>,
     // Does not need to be a HashMap, because this is typically the size of 1-2
     pub variance_map: Vec<(TypeVarName, OnceLock<Variance>)>,
     // We have this less for caching and more to be able to have different types.
     pub undefined_generics_type: OnceLock<Arc<Type>>,
+}
+
+impl Clone for ClassInfos {
+    fn clone(&self) -> Self {
+        Self {
+            mro: self.mro.clone(),
+            metaclass: self.metaclass.clone(),
+            class_kind: self.class_kind.clone(),
+            incomplete_mro: self.incomplete_mro,
+            protocol_members: self.protocol_members.clone(),
+            has_slots: self.has_slots,
+            is_final: self.is_final,
+            total_ordering: self.total_ordering,
+            is_runtime_checkable: self.is_runtime_checkable,
+            abstract_attributes: self.abstract_attributes.clone(),
+            dataclass_transform: self.dataclass_transform.clone(),
+            promote_to: Mutex::new(self.promote_to.lock().unwrap().clone()),
+            variance_map: self.variance_map.clone(),
+            undefined_generics_type: self.undefined_generics_type.clone(),
+        }
+    }
+}
+
+impl PartialEq for ClassInfos {
+    fn eq(&self, other: &Self) -> bool {
+        self.mro == other.mro
+            && self.metaclass == other.metaclass
+            && self.class_kind == other.class_kind
+            && self.incomplete_mro == other.incomplete_mro
+            && self.protocol_members == other.protocol_members
+            && self.has_slots == other.has_slots
+            && self.is_final == other.is_final
+            && self.total_ordering == other.total_ordering
+            && self.is_runtime_checkable == other.is_runtime_checkable
+            && self.abstract_attributes == other.abstract_attributes
+            && self.dataclass_transform == other.dataclass_transform
+            && *self.promote_to.lock().unwrap() == *other.promote_to.lock().unwrap()
+            && self.variance_map == other.variance_map
+            && self.undefined_generics_type == other.undefined_generics_type
+    }
 }
 
 impl ClassInfos {
@@ -1491,6 +1529,14 @@ impl ClassInfos {
         self.variance_map
             .iter()
             .any(|(_, lazy_variance)| lazy_variance.get().is_none())
+    }
+
+    pub fn promote_to(&self) -> Option<PointLink> {
+        *self.promote_to.lock().unwrap()
+    }
+
+    pub fn set_promote_to(&self, link: Option<PointLink>) {
+        *self.promote_to.lock().unwrap() = link
     }
 }
 

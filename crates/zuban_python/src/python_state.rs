@@ -837,27 +837,22 @@ impl PythonState {
         let s = &db.python_state;
         s.int()
             .use_cached_class_infos(&db)
-            .promote_to
-            .set(Some(s.float_node_ref().as_link()));
+            .set_promote_to(Some(s.float_node_ref().as_link()));
         s.bool()
             .use_cached_class_infos(&db)
-            .promote_to
-            .set(Some(s.float_node_ref().as_link()));
+            .set_promote_to(Some(s.float_node_ref().as_link()));
         s.float()
             .use_cached_class_infos(&db)
-            .promote_to
-            .set(Some(s.complex_node_ref().as_link()));
+            .set_promote_to(Some(s.complex_node_ref().as_link()));
         if !db.project.flags.disable_memoryview_promotion {
             s.memoryview_class_with_generics_to_be_defined()
                 .use_cached_class_infos(&db)
-                .promote_to
-                .set(Some(s.bytes_node_ref().as_link()));
+                .set_promote_to(Some(s.bytes_node_ref().as_link()));
         }
         if !db.project.flags.disable_bytearray_promotion {
             s.bytearray()
                 .use_cached_class_infos(&db)
-                .promote_to
-                .set(Some(s.bytes_node_ref().as_link()));
+                .set_promote_to(Some(s.bytes_node_ref().as_link()));
         }
     }
 

@@ -1,7 +1,6 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
-    sync::{Arc, OnceLock},
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use parsa_python_cst::{
@@ -871,7 +870,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     Type::Class(c) => {
                                         let c = Self::from_link(db, c.link);
                                         if let Some(cached) = c.maybe_cached_class_infos(db) {
-                                            if let new_promote @ Some(_) = cached.promote_to.get() {
+                                            if let new_promote @ Some(_) = cached.promote_to() {
                                                 promote_to = new_promote;
                                             }
                                             if cached.class_kind != ClassKind::Normal
@@ -1154,7 +1153,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     })
                     .collect(),
                 total_ordering: false,
-                promote_to: Cell::from(promote_to),
+                promote_to: Mutex::new(promote_to),
                 is_runtime_checkable: true,
                 abstract_attributes,
                 dataclass_transform,

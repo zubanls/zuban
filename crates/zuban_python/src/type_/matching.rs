@@ -343,7 +343,7 @@ impl Type {
             return Match::new_false();
         }
         let infos = class2_node_ref.use_cached_class_infos(i_s.db);
-        if let Some(promote_to) = infos.promote_to.get() {
+        if let Some(promote_to) = infos.promote_to() {
             let cls_node_ref = ClassNodeRef::from_link(i_s.db, promote_to);
             self.is_same_type(
                 i_s,
