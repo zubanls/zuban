@@ -1,7 +1,4 @@
-use std::{
-    cell::Cell,
-    sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
-};
+use std::sync::{Arc, Mutex, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 
 use crate::{
     utils::{MappedReadGuard, MappedWriteGuard, VecRwLockWrapper},
@@ -88,12 +85,23 @@ impl Parent {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct FileEntry {
     pub name: Box<str>,
-    file_index: Cell<Option<FileIndex>>,
+    file_index: Mutex<Option<FileIndex>>,
     pub(crate) invalidations: Invalidations,
     pub parent: Parent,
+}
+
+impl Clone for FileEntry {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            file_index: Mutex::new(*self.file_index.lock().unwrap()),
+            invalidations: self.invalidations.clone(),
+            parent: self.parent.clone(),
+        }
+    }
 }
 
 impl FileEntry {
@@ -129,11 +137,11 @@ impl FileEntry {
     }
 
     pub fn get_file_index(&self) -> Option<FileIndex> {
-        self.file_index.get()
+        *self.file_index.lock().unwrap()
     }
 
     pub(crate) fn set_file_index(&self, index: FileIndex) {
-        self.file_index.set(Some(index));
+        *self.file_index.lock().unwrap() = Some(index);
     }
 }
 
@@ -212,7 +220,7 @@ impl AddedFile {
     pub(crate) fn set_file_index(&self, index: FileIndex) {
         // Theoretically we could just search in the directory for the entry again, but I'm too
         // lazy for that and it's faster this way.
-        debug_assert!(self.file_entry.file_index.get().is_none());
+        debug_assert!(self.file_entry.get_file_index().is_none());
         self.file_entry.set_file_index(index);
     }
 }
