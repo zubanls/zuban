@@ -1,9 +1,9 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell, RefCell},
+    cell::{Cell, OnceCell},
     fmt, mem,
     ops::Range,
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use config::{OverrideConfig, Settings};
@@ -716,11 +716,35 @@ pub(crate) struct WidenedType {
     pub widened: Type,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub(crate) struct TypedDictDefinition {
     pub type_: Arc<Type>,
-    pub deferred_subclass_member_initializations: Box<RefCell<Vec<Arc<TypedDict>>>>,
+    pub deferred_subclass_member_initializations: Box<RwLock<Vec<Arc<TypedDict>>>>,
     pub total: bool,
+}
+
+impl Clone for TypedDictDefinition {
+    fn clone(&self) -> Self {
+        Self {
+            type_: self.type_.clone(),
+            // This is probably not necessary, because cloning is only used for some optimizations
+            // around tests, but we'll implement it anyway so people can count on a proper Clone in
+            // the future.
+            deferred_subclass_member_initializations: Box::new(RwLock::new(
+                self.deferred_subclass_member_initializations
+                    .try_read()
+                    .unwrap()
+                    .clone()
+                    .into(),
+            )),
+            total: self.total,
+        }
+    }
+}
+impl PartialEq for TypedDictDefinition {
+    fn eq(&self, other: &Self) -> bool {
+        self.type_ == other.type_
+    }
 }
 
 impl TypedDictDefinition {

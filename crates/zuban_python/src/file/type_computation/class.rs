@@ -1538,7 +1538,8 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<Typ
                     let super_cls = ClassInitializer::from_link(db, td.defined_at);
                     let tdd = super_cls.maybe_typed_dict_definition().unwrap();
                     tdd.deferred_subclass_member_initializations
-                        .borrow_mut()
+                        .try_write()
+                        .unwrap()
                         .push(typed_dict.clone());
                     debug!(
                         "Defer typed dict member initialization for {:?} after {:?}",
@@ -1565,7 +1566,8 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<Typ
     loop {
         let mut borrowed = typed_dict_definition
             .deferred_subclass_member_initializations
-            .borrow_mut();
+            .try_write()
+            .unwrap();
         let Some(deferred) = borrowed.pop() else {
             break;
         };
