@@ -1,9 +1,8 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
     hash::{Hash, Hasher},
     ops::AddAssign,
-    sync::{Arc, OnceLock},
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use parsa_python_cst::{FunctionDef, NodeIndex};
@@ -799,18 +798,28 @@ impl TypeVarLikeName {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct TypeLikeInTypeVar<T> {
     node: Option<NodeIndex>,
-    calculating: Cell<bool>,
+    calculating: Mutex<bool>,
     pub t: OnceLock<T>,
+}
+
+impl<T: Clone> Clone for TypeLikeInTypeVar<T> {
+    fn clone(&self) -> Self {
+        Self {
+            node: self.node.clone(),
+            calculating: Mutex::new(*self.calculating.lock().unwrap()),
+            t: self.t.clone(),
+        }
+    }
 }
 
 impl<T> TypeLikeInTypeVar<T> {
     pub fn new_lazy(node: NodeIndex) -> Self {
         Self {
             node: Some(node),
-            calculating: Cell::new(false),
+            calculating: Mutex::new(false),
             t: OnceLock::new(),
         }
     }
@@ -818,7 +827,7 @@ impl<T> TypeLikeInTypeVar<T> {
     pub fn new_known(t: T) -> Self {
         Self {
             node: None,
-            calculating: Cell::new(false),
+            calculating: Mutex::new(false),
             t: OnceLock::from(t),
         }
     }
@@ -831,17 +840,17 @@ impl<T> TypeLikeInTypeVar<T> {
         scope: ParentScope,
         calculate_type: impl FnOnce(&InferenceState, NodeRef) -> T,
     ) -> Result<&T, ()> {
-        if self.calculating.get() {
+        if *self.calculating.lock().unwrap() {
             return Err(());
         }
         Ok(self.t.get_or_init(|| {
-            self.calculating.set(true);
+            *self.calculating.lock().unwrap() = true;
             let node = self.node.unwrap();
             let file = name.file(db);
             let node_ref = NodeRef::new(file, node);
             InferenceState::run_with_parent_scope(db, file, scope, |i_s| {
                 let t = calculate_type(&i_s, node_ref);
-                self.calculating.set(false);
+                *self.calculating.lock().unwrap() = false;
                 t
             })
         }))
