@@ -1,6 +1,6 @@
 use std::{
-    cell::{Cell, OnceCell, Ref, RefCell, RefMut},
-    sync::{Arc, Weak},
+    cell::{Cell, Ref, RefCell, RefMut},
+    sync::{Arc, OnceLock, Weak},
 };
 
 use crate::{utils::VecRefWrapper, NormalizedPath, PathWithScheme, VfsHandler, Workspace};
@@ -188,7 +188,7 @@ pub struct Entries(RefCell<Vec<DirectoryEntry>>);
 
 #[derive(Debug, Clone)]
 pub struct Directory {
-    entries: OnceCell<Entries>,
+    entries: OnceLock<Entries>,
     pub parent: Parent,
     pub name: Box<str>,
 }
