@@ -22,7 +22,6 @@ use std::{
     cell::Cell,
     hash::{Hash, Hasher},
     mem,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -321,7 +320,7 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Namespace {
-    pub directories: Rc<[Rc<Directory>]>,
+    pub directories: Arc<[Arc<Directory>]>,
 }
 
 impl Namespace {
@@ -340,13 +339,13 @@ impl Namespace {
 
 impl std::cmp::PartialEq for Namespace {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.directories, &other.directories)
+        Arc::ptr_eq(&self.directories, &other.directories)
     }
 }
 
 impl Hash for Namespace {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        Rc::as_ptr(&self.directories).hash(state);
+        Arc::as_ptr(&self.directories).hash(state);
     }
 }
 

@@ -3,7 +3,7 @@
  * standard type checking. Type checking should always be done first.
  * */
 
-use std::{borrow::Cow, cell::Cell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::{
     Atom, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName, NameDefParent,
@@ -668,7 +668,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
         let db = self.infos.db;
         let in_name_regex = regex::Regex::new(&format!(r"\b{search_name}\b")).unwrap();
         let mut files = vec![];
-        let mut maybe_check_file = |file_entry: &Rc<FileEntry>| {
+        let mut maybe_check_file = |file_entry: &Arc<FileEntry>| {
             if let Some(file_index) = file_entry.get_file_index() {
                 let file = db.loaded_python_file(file_index);
                 if in_name_regex.is_match(file.tree.code())

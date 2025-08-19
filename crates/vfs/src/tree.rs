@@ -1,7 +1,6 @@
 use std::{
     cell::{Cell, OnceCell, Ref, RefCell, RefMut},
-    rc::{Rc, Weak},
-    sync::Arc,
+    sync::{Arc, Weak},
 };
 
 use crate::{utils::VecRefWrapper, NormalizedPath, PathWithScheme, VfsHandler, Workspace};
@@ -18,7 +17,7 @@ impl std::fmt::Display for FileIndex {
 #[derive(Debug, Clone)]
 pub enum Parent {
     Directory(Weak<Directory>),
-    Workspace(Weak<Workspace>),
+    Workspace(std::rc::Weak<Workspace>),
 }
 
 impl Parent {
@@ -33,14 +32,14 @@ impl Parent {
         }
     }
 
-    pub fn maybe_dir(&self) -> Result<Rc<Directory>, &Weak<Workspace>> {
+    pub fn maybe_dir(&self) -> Result<Arc<Directory>, &std::rc::Weak<Workspace>> {
         match self {
             Self::Directory(dir) => Ok(dir.upgrade().unwrap()),
             Self::Workspace(w) => Err(w),
         }
     }
 
-    pub fn most_outer_dir(&self) -> Option<Rc<Directory>> {
+    pub fn most_outer_dir(&self) -> Option<Arc<Directory>> {
         match self {
             Self::Directory(dir) => {
                 let d = dir.upgrade().unwrap();
@@ -95,8 +94,8 @@ pub struct FileEntry {
 }
 
 impl FileEntry {
-    pub(crate) fn new(parent: Parent, name: Box<str>) -> Rc<Self> {
-        Rc::new(Self {
+    pub(crate) fn new(parent: Parent, name: Box<str>) -> Arc<Self> {
+        Arc::new(Self {
             name,
             file_index: Default::default(),
             invalidations: Default::default(),
@@ -143,9 +142,9 @@ pub struct MissingEntry {
 
 #[derive(Debug, Clone)]
 pub enum DirectoryEntry {
-    File(Rc<FileEntry>),
+    File(Arc<FileEntry>),
     MissingEntry(MissingEntry),
-    Directory(Rc<Directory>),
+    Directory(Arc<Directory>),
 }
 
 impl DirectoryEntry {
@@ -197,7 +196,7 @@ pub struct Directory {
 #[derive(Debug)]
 pub(crate) struct AddedFile {
     pub(crate) invalidations: Invalidations,
-    pub(crate) file_entry: Rc<FileEntry>,
+    pub(crate) file_entry: Arc<FileEntry>,
 }
 
 impl AddedFile {
@@ -210,8 +209,8 @@ impl AddedFile {
 }
 
 impl Directory {
-    pub(crate) fn new(parent: Parent, name: Box<str>) -> Rc<Self> {
-        Rc::new(Self {
+    pub(crate) fn new(parent: Parent, name: Box<str>) -> Arc<Self> {
+        Arc::new(Self {
             entries: Default::default(),
             parent,
             name,
@@ -236,11 +235,11 @@ impl Directory {
         path + &self.name
     }
 
-    pub fn entries<'x>(vfs: &dyn VfsHandler, dir: &'x Rc<Directory>) -> &'x Entries {
+    pub fn entries<'x>(vfs: &dyn VfsHandler, dir: &'x Arc<Directory>) -> &'x Entries {
         dir.entries.get_or_init(|| {
             vfs.read_and_watch_dir(
                 &dir.absolute_path(vfs).path,
-                Parent::Directory(Rc::downgrade(dir)),
+                Parent::Directory(Arc::downgrade(dir)),
             )
         })
     }
@@ -414,8 +413,8 @@ impl Entries {
 
 #[derive(Debug)]
 pub enum DirOrFile {
-    Dir(Rc<Directory>),
-    File(Rc<FileEntry>),
+    Dir(Arc<Directory>),
+    File(Arc<FileEntry>),
 }
 
 #[derive(Debug, Default, Clone)]

@@ -3,7 +3,7 @@ use std::{
     cell::{OnceCell, RefCell},
     collections::{HashMap, VecDeque},
     fmt,
-    rc::Rc,
+    sync::Arc,
 };
 
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue};
@@ -372,7 +372,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn file_entry_and_is_package(&self, db: &'db Database) -> (&'db Rc<FileEntry>, bool) {
+    pub fn file_entry_and_is_package(&self, db: &'db Database) -> (&'db Arc<FileEntry>, bool) {
         let entry = self.file_entry(db);
         (
             entry,
@@ -750,7 +750,7 @@ impl<'db> PythonFile {
         Some(dunder_all.into())
     }
 
-    pub fn file_entry(&self, db: &'db Database) -> &'db Rc<FileEntry> {
+    pub fn file_entry(&self, db: &'db Database) -> &'db Arc<FileEntry> {
         db.vfs.file_entry(self.file_index)
     }
 
@@ -793,7 +793,7 @@ impl<'db> PythonFile {
     pub(crate) fn name_and_parent_dir(
         &self,
         db: &'db Database,
-    ) -> (&'db str, Option<Rc<Directory>>) {
+    ) -> (&'db str, Option<Arc<Directory>>) {
         name_and_parent_dir(self.file_entry(db), true)
     }
 
@@ -867,7 +867,7 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
     }
 }
 
-fn name_and_parent_dir(entry: &FileEntry, skip_stubs: bool) -> (&str, Option<Rc<Directory>>) {
+fn name_and_parent_dir(entry: &FileEntry, skip_stubs: bool) -> (&str, Option<Arc<Directory>>) {
     let name = &entry.name;
     let name = name
         .strip_suffix(".py")

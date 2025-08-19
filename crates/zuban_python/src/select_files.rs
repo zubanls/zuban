@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use config::TypeCheckerFlags;
 use utils::FastHashSet;
@@ -40,7 +40,7 @@ fn should_skip(flags: &TypeCheckerFlags, path: &AbsPath) -> bool {
 
 struct FileSelector<'db> {
     db: &'db Database,
-    to_be_loaded: Vec<(Rc<FileEntry>, PathWithScheme)>,
+    to_be_loaded: Vec<(Arc<FileEntry>, PathWithScheme)>,
     file_indexes: FastHashSet<FileIndex>,
 }
 
@@ -130,7 +130,7 @@ impl<'db> FileSelector<'db> {
         }
     }
 
-    fn add_file(&mut self, file: Rc<FileEntry>) {
+    fn add_file(&mut self, file: Arc<FileEntry>) {
         if let Some(file_index) = file.get_file_index() {
             self.file_indexes.insert(file_index);
         } else {
@@ -155,7 +155,7 @@ impl<'db> FileSelector<'db> {
         }
     }
 
-    fn handle_dir(&mut self, dir: &Rc<Directory>) {
+    fn handle_dir(&mut self, dir: &Arc<Directory>) {
         self.handle_entries(Directory::entries(&*self.db.vfs.handler, dir))
     }
 

@@ -3,7 +3,6 @@ use std::{
     cell::{Cell, OnceCell, RefCell},
     fmt, mem,
     ops::Range,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -644,7 +643,7 @@ pub(crate) struct PartialFlags {
 }
 
 // This is a core data structure and it should be kept as small as possible, because it's used in
-// arrays. It therefore uses a lot of Rcs.
+// arrays. It therefore uses a lot of Arcs.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum ComplexPoint {
     TypeInstance(Type),
@@ -1141,7 +1140,7 @@ impl Database {
 
     pub fn load_file_from_workspace(
         &self,
-        file_entry: &Rc<FileEntry>,
+        file_entry: &Arc<FileEntry>,
         invalidates_db: bool,
     ) -> Option<FileIndex> {
         self.vfs.ensure_file_for_file_entry(

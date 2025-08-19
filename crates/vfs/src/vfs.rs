@@ -104,7 +104,7 @@ impl<F: VfsFile> Vfs<F> {
                         let DirectoryEntry::Directory(new_dir) = search else {
                             unreachable!();
                         };
-                        Parent::Directory(Rc::downgrade(&new_dir))
+                        Parent::Directory(Arc::downgrade(&new_dir))
                     }
                     Parent::Workspace(_) => parent.clone(),
                 }
@@ -275,7 +275,7 @@ impl<F: VfsFile> Vfs<F> {
         &self.file_state(index).path
     }
 
-    pub fn file_entry(&self, index: FileIndex) -> &Rc<FileEntry> {
+    pub fn file_entry(&self, index: FileIndex) -> &Arc<FileEntry> {
         &self.file_state(index).file_entry
     }
 
@@ -289,7 +289,7 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn ensure_file_for_file_entry(
         &self,
-        file_entry: Rc<FileEntry>,
+        file_entry: Arc<FileEntry>,
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex, Box<str>) -> F,
     ) -> Option<FileIndex> {
@@ -303,7 +303,7 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn ensure_file_for_file_entry_with_conditional(
         &self,
-        file_entry: Rc<FileEntry>,
+        file_entry: Arc<FileEntry>,
         invalidates_db: bool,
         should_load: impl Fn(&str) -> bool,
         new_file: impl FnOnce(FileIndex, Box<str>) -> F,
@@ -676,7 +676,7 @@ impl<F: VfsFile> Vfs<F> {
 
     fn with_added_file(
         &self,
-        file_entry: Rc<FileEntry>,
+        file_entry: Arc<FileEntry>,
         path: PathWithScheme,
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex) -> F,
@@ -726,7 +726,7 @@ impl BitOrAssign for InvalidationResult {
 #[derive(Debug, Clone)]
 pub struct FileState<F> {
     path: PathWithScheme,
-    file_entry: Rc<FileEntry>,
+    file_entry: Arc<FileEntry>,
     file: OnceCell<F>,
 }
 
@@ -781,7 +781,7 @@ impl PathWithScheme {
 
 impl<F: VfsFile> FileState<F> {
     fn new_parsed(
-        file_entry: Rc<FileEntry>,
+        file_entry: Arc<FileEntry>,
         path: PathWithScheme,
         file: F,
         invalidates_db: bool,
@@ -815,7 +815,7 @@ impl<F: VfsFile> FileState<F> {
         Some(self.file()?.code())
     }
 
-    pub fn file_entry(&self) -> &Rc<FileEntry> {
+    pub fn file_entry(&self) -> &Arc<FileEntry> {
         &self.file_entry
     }
 
@@ -831,7 +831,7 @@ impl<F: VfsFile> FileState<F> {
 }
 
 impl<F: Clone> FileState<F> {
-    pub fn clone_box(&self, new_file_entry: Rc<FileEntry>) -> Pin<Box<Self>> {
+    pub fn clone_box(&self, new_file_entry: Arc<FileEntry>) -> Pin<Box<Self>> {
         let mut new = self.clone();
         new.file_entry = new_file_entry;
         Box::pin(new)

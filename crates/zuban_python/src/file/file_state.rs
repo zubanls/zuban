@@ -1,13 +1,9 @@
-#![allow(unused_imports, dead_code)] // TODO remove this
-use std::{any::Any, pin::Pin, rc::Rc};
-
-use config::DiagnosticConfig;
-use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
+#![allow(dead_code)] // TODO remove this
+use parsa_python_cst::CodeIndex;
 use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
-    database::Database, diagnostics::Diagnostic, file::PythonFile, inferred::Inferred,
-    lines::PositionInfos, InputPosition, PythonProject,
+    database::Database, diagnostics::Diagnostic, lines::PositionInfos, InputPosition, PythonProject,
 };
 
 pub trait File: std::fmt::Debug {

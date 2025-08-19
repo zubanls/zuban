@@ -178,7 +178,7 @@ pub fn join_with_commas(input: impl Iterator<Item = String>) -> String {
 }
 
 pub fn arc_slice_into_vec<T: Clone>(this: Arc<[T]>) -> Vec<T> {
-    // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+    // Performance issue: Arc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
 
     // TODO we could avoid cloning here and just use a copy for the slice parts.
     // See also some discussion how this could be done here:

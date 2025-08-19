@@ -116,7 +116,7 @@ impl Workspaces {
                     rest = new_rest;
                     let found = current_dir
                         .as_ref()
-                        .map(|dir: &Rc<Directory>| Directory::entries(vfs, dir))
+                        .map(|dir: &Arc<Directory>| Directory::entries(vfs, dir))
                         .unwrap_or(&workspace.entries)
                         .search(name)?;
                     match &*found {
@@ -132,7 +132,7 @@ impl Workspaces {
                     return Some((
                         workspace.as_ref(),
                         match current_dir {
-                            Some(dir) => Parent::Directory(Rc::downgrade(&dir)),
+                            Some(dir) => Parent::Directory(Arc::downgrade(&dir)),
                             None => Parent::Workspace(Rc::downgrade(workspace)),
                         },
                         name,
@@ -197,20 +197,20 @@ impl Workspaces {
     }
 
     pub(crate) fn clone_with_new_rcs(&self, vfs: &dyn VfsHandler) -> Self {
-        fn clone_inner_rcs(vfs: &dyn VfsHandler, dir: Directory) -> Rc<Directory> {
+        fn clone_inner_rcs(vfs: &dyn VfsHandler, dir: Directory) -> Arc<Directory> {
             // TODO not all entries need to be recalculated if it's not yet calculated
-            let dir = Rc::new(dir);
+            let dir = Arc::new(dir);
             for entry in Directory::entries(vfs, &dir).borrow_mut().iter_mut() {
                 match entry {
                     DirectoryEntry::File(file) => {
                         let mut new_file = file.as_ref().clone();
-                        new_file.parent = Parent::Directory(Rc::downgrade(&dir));
-                        *file = Rc::new(new_file);
+                        new_file.parent = Parent::Directory(Arc::downgrade(&dir));
+                        *file = Arc::new(new_file);
                     }
                     DirectoryEntry::MissingEntry { .. } => (),
                     DirectoryEntry::Directory(dir) => {
                         let mut new = dir.as_ref().clone();
-                        new.parent = Parent::Directory(Rc::downgrade(dir));
+                        new.parent = Parent::Directory(Arc::downgrade(dir));
                         *dir = clone_inner_rcs(vfs, new);
                     }
                 }
@@ -232,7 +232,7 @@ impl Workspaces {
                         debug_assert!(matches!(file.parent, Parent::Workspace(_)));
                         let mut new_file = file.as_ref().clone();
                         new_file.parent = Parent::Workspace(Rc::downgrade(&new_workspace));
-                        *file = Rc::new(new_file);
+                        *file = Arc::new(new_file);
                     }
                     DirectoryEntry::MissingEntry { .. } => (), // has no RCs
                 }
@@ -380,7 +380,7 @@ fn ensure_dirs_and_file(
             match &*x {
                 DirectoryEntry::Directory(rc) => {
                     return ensure_dirs_and_file(
-                        Parent::Directory(Rc::downgrade(rc)),
+                        Parent::Directory(Arc::downgrade(rc)),
                         Directory::entries(vfs, rc),
                         vfs,
                         rest,
@@ -396,7 +396,7 @@ fn ensure_dirs_and_file(
         };
         let dir2 = Directory::new(parent, Box::from(name));
         let mut result = ensure_dirs_and_file(
-            Parent::Directory(Rc::downgrade(&dir2)),
+            Parent::Directory(Arc::downgrade(&dir2)),
             Directory::entries(vfs, &dir2),
             vfs,
             rest,

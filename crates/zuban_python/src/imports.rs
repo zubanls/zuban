@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use utils::match_case;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, WorkspaceKind};
@@ -45,7 +45,7 @@ impl ImportResult {
     pub fn import_non_stub_for_stub_package(
         db: &Database,
         original_file: &PythonFile,
-        parent_dir: Option<Rc<Directory>>,
+        parent_dir: Option<Arc<Directory>>,
         name: &str,
     ) -> Option<Self> {
         let result = if let Some(parent_dir) = parent_dir {
@@ -83,7 +83,7 @@ impl ImportResult {
     pub fn import_stub_for_non_stub_package(
         db: &Database,
         original_file: &PythonFile,
-        parent_dir: Option<Rc<Directory>>,
+        parent_dir: Option<Arc<Directory>>,
         name: &str,
     ) -> Option<Self> {
         if let Some(parent_dir) = parent_dir {
@@ -340,7 +340,7 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
 
 fn load_init_file(
     db: &Database,
-    content: &Rc<Directory>,
+    content: &Arc<Directory>,
     from_file: FileIndex,
 ) -> Option<FileIndex> {
     let entries = Directory::entries(&*db.vfs.handler, content);
