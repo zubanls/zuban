@@ -17,7 +17,7 @@ impl std::fmt::Display for FileIndex {
 #[derive(Debug, Clone)]
 pub enum Parent {
     Directory(Weak<Directory>),
-    Workspace(std::rc::Weak<Workspace>),
+    Workspace(Weak<Workspace>),
 }
 
 impl Parent {
@@ -32,7 +32,7 @@ impl Parent {
         }
     }
 
-    pub fn maybe_dir(&self) -> Result<Arc<Directory>, &std::rc::Weak<Workspace>> {
+    pub fn maybe_dir(&self) -> Result<Arc<Directory>, &Weak<Workspace>> {
         match self {
             Self::Directory(dir) => Ok(dir.upgrade().unwrap()),
             Self::Workspace(w) => Err(w),

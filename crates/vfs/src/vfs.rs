@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, collections::HashMap, ops::BitOrAssign, pin::Pin, rc::Rc, sync::Arc};
+use std::{cell::OnceCell, collections::HashMap, ops::BitOrAssign, pin::Pin, sync::Arc};
 
 use tracing::Level;
 use utils::{FastHashSet, InsertOnlyVec};
@@ -11,10 +11,10 @@ use crate::{
 };
 
 thread_local! {
-    static FILE_SCHEME: Rc<Box<str>> = Rc::new("file".into());
+    static FILE_SCHEME: Arc<Box<str>> = Arc::new("file".into());
 }
 
-pub(crate) type Scheme = Rc<Box<str>>;
+pub(crate) type Scheme = Arc<Box<str>>;
 
 fn file_scheme() -> Scheme {
     FILE_SCHEME.with(|f| f.clone())
@@ -739,7 +739,7 @@ pub struct PathWithScheme {
 impl PathWithScheme {
     fn new_sub_file() -> Self {
         thread_local! {
-            static EMPTY_SCHEME: Rc<Box<str>> = Rc::new("".into());
+            static EMPTY_SCHEME: Arc<Box<str>> = Arc::new("".into());
             static EMPTY_PATH: Arc<NormalizedPath> = NormalizedPath::new_arc(AbsPath::new_arc("".into()));
         }
 

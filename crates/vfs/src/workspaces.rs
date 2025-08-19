@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use utils::match_case;
 
@@ -20,7 +20,7 @@ pub enum WorkspaceKind {
 
 #[derive(Debug, Default, Clone)]
 pub struct Workspaces {
-    items: Vec<Rc<Workspace>>,
+    items: Vec<Arc<Workspace>>,
 }
 
 impl Workspaces {
@@ -133,7 +133,7 @@ impl Workspaces {
                         workspace.as_ref(),
                         match current_dir {
                             Some(dir) => Parent::Directory(Arc::downgrade(&dir)),
-                            None => Parent::Workspace(Rc::downgrade(workspace)),
+                            None => Parent::Workspace(Arc::downgrade(workspace)),
                         },
                         name,
                     ));
@@ -151,7 +151,7 @@ impl Workspaces {
         for workspace in &mut self.items {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 return ensure_dirs_and_file(
-                    Parent::Workspace(Rc::downgrade(workspace)),
+                    Parent::Workspace(Arc::downgrade(workspace)),
                     &workspace.entries,
                     vfs,
                     p,
@@ -162,7 +162,7 @@ impl Workspaces {
             if workspace.kind == WorkspaceKind::Fallback {
                 return workspace
                     .entries
-                    .ensure_file(Parent::Workspace(Rc::downgrade(workspace)), &path.path);
+                    .ensure_file(Parent::Workspace(Arc::downgrade(workspace)), &path.path);
             }
         }
         unreachable!("Expected to be able to place the file {path:?}")
@@ -219,19 +219,19 @@ impl Workspaces {
         }
         let mut new = self.clone();
         for workspace in new.items.iter_mut() {
-            let new_workspace = Rc::new(workspace.as_ref().clone());
+            let new_workspace = Arc::new(workspace.as_ref().clone());
             for entry in new_workspace.entries.borrow_mut().iter_mut() {
                 match entry {
                     DirectoryEntry::Directory(dir) => {
                         debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
                         let mut new_dir = dir.as_ref().clone();
-                        new_dir.parent = Parent::Workspace(Rc::downgrade(&new_workspace));
+                        new_dir.parent = Parent::Workspace(Arc::downgrade(&new_workspace));
                         *dir = clone_inner_rcs(vfs, new_dir)
                     }
                     DirectoryEntry::File(file) => {
                         debug_assert!(matches!(file.parent, Parent::Workspace(_)));
                         let mut new_file = file.as_ref().clone();
-                        new_file.parent = Parent::Workspace(Rc::downgrade(&new_workspace));
+                        new_file.parent = Parent::Workspace(Arc::downgrade(&new_workspace));
                         *file = Arc::new(new_file);
                     }
                     DirectoryEntry::MissingEntry { .. } => (), // has no RCs
@@ -264,7 +264,7 @@ impl Workspace {
         scheme: Scheme,
         root_path: Arc<NormalizedPath>,
         kind: WorkspaceKind,
-    ) -> Rc<Self> {
+    ) -> Arc<Self> {
         tracing::debug!("Add workspace {root_path}");
         let root_path = Arc::<NormalizedPath>::from(root_path);
 
@@ -299,7 +299,7 @@ impl Workspace {
                     root_path.to_string()
                 }
             };
-            workspace = Rc::new(Self {
+            workspace = Arc::new(Self {
                 entries: Default::default(),
                 scheme,
                 root_path,
@@ -310,7 +310,7 @@ impl Workspace {
         };
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios")))]
         {
-            workspace = Rc::new(Self {
+            workspace = Arc::new(Self {
                 entries: Default::default(),
                 scheme,
                 root_path,
@@ -322,7 +322,7 @@ impl Workspace {
         }
         let new_entries = vfs.read_and_watch_dir(
             &workspace.root_path,
-            Parent::Workspace(Rc::downgrade(&workspace)),
+            Parent::Workspace(Arc::downgrade(&workspace)),
         );
         *workspace.entries.borrow_mut() = std::mem::take(&mut new_entries.borrow_mut());
         workspace
@@ -378,10 +378,10 @@ fn ensure_dirs_and_file(
         let mut invs = Default::default();
         if let Some(x) = entries.search(name) {
             match &*x {
-                DirectoryEntry::Directory(rc) => {
+                DirectoryEntry::Directory(arc) => {
                     return ensure_dirs_and_file(
-                        Parent::Directory(Arc::downgrade(rc)),
-                        Directory::entries(vfs, rc),
+                        Parent::Directory(Arc::downgrade(arc)),
+                        Directory::entries(vfs, arc),
                         vfs,
                         rest,
                     )
