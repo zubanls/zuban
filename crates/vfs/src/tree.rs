@@ -1,9 +1,8 @@
 use std::sync::{Arc, Mutex, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 
-use crate::{
-    utils::{MappedReadGuard, MappedWriteGuard, VecRwLockWrapper},
-    NormalizedPath, PathWithScheme, VfsHandler, Workspace,
-};
+use utils::{MappedReadGuard, MappedWriteGuard, VecRwLockWrapper};
+
+use crate::{NormalizedPath, PathWithScheme, VfsHandler, Workspace};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileIndex(pub u32);
@@ -276,7 +275,7 @@ impl Entries {
     }
 
     pub fn iter(&self) -> VecRwLockWrapper<Vec<DirectoryEntry>, DirectoryEntry> {
-        VecRwLockWrapper(MappedReadGuard::map(self.borrow(), |x| x))
+        VecRwLockWrapper::new(MappedReadGuard::map(self.borrow(), |x| x))
     }
 
     pub(crate) fn remove_name(&self, name: &str) -> Option<DirectoryEntry> {
@@ -510,7 +509,7 @@ impl Invalidations {
         if let InvalidationDetail::InvalidatesDb = &*r {
             return InvalidationDetail::InvalidatesDb;
         }
-        InvalidationDetail::Some(VecRwLockWrapper(MappedReadGuard::map(r, |r| {
+        InvalidationDetail::Some(VecRwLockWrapper::new(MappedReadGuard::map(r, |r| {
             let InvalidationDetail::Some(vec) = r else {
                 unreachable!()
             };

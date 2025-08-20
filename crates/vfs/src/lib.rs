@@ -5,7 +5,6 @@ mod local_fs;
 mod normalized_path;
 mod path;
 mod tree;
-mod utils;
 mod vfs;
 mod workspaces;
 
