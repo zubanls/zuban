@@ -1,7 +1,6 @@
 use std::{
-    cell::RefCell,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use crossbeam_channel::{unbounded, Receiver};
@@ -18,8 +17,8 @@ const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "_
 pub type SimpleLocalFS = LocalFS<Box<dyn Fn(PathWithScheme)>>;
 
 pub struct LocalFS<T: Fn(PathWithScheme)> {
-    watcher: Option<(RefCell<RecommendedWatcher>, Receiver<NotifyEvent>)>,
-    already_watched_dirs: RefCell<FastHashSet<PathBuf>>,
+    watcher: Option<(RwLock<RecommendedWatcher>, Receiver<NotifyEvent>)>,
+    already_watched_dirs: RwLock<FastHashSet<PathBuf>>,
     on_invalidated_in_memory_file: Option<T>,
 }
 
@@ -213,7 +212,7 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
             }
         }));
         Self {
-            watcher: watcher.map(|w| (RefCell::new(w), watcher_receiver)),
+            watcher: watcher.map(|w| (RwLock::new(w), watcher_receiver)),
             already_watched_dirs: Default::default(),
             on_invalidated_in_memory_file: Some(on_invalidated_memory_file),
         }
@@ -236,7 +235,7 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
                 // Linux does not support recursive files.
                 match std::fs::canonicalize(path) {
                     Ok(canonicalized) => {
-                        let mut already_watched = self.already_watched_dirs.borrow_mut();
+                        let mut already_watched = self.already_watched_dirs.write().unwrap();
                         // General information:
                         // MacOS - FSEventStreamCreate: https://developer.apple.com/documentation/coreservices/1443980-fseventstreamcreate
                         // Windows - ReadDirectoryChangesW: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw
@@ -274,7 +273,8 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
                         } else {
                             log_notify_error(
                                 watcher
-                                    .borrow_mut()
+                                    .write()
+                                    .unwrap()
                                     .watch(&canonicalized, RecursiveMode::Recursive),
                             );
                             tracing::debug!("Added recursive watch for {canonicalized:?}");
@@ -290,7 +290,8 @@ impl<T: Fn(PathWithScheme)> LocalFS<T> {
             } else {
                 log_notify_error(
                     watcher
-                        .borrow_mut()
+                        .write()
+                        .unwrap()
                         .watch(path, RecursiveMode::NonRecursive),
                 );
                 tracing::debug!("Added watch for {path:?}");
