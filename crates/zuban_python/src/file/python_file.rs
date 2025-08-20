@@ -86,7 +86,6 @@ pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
     maybe_dunder_all: OnceLock<Option<Box<[DbString]>>>, // For __all__
-    //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
     pub complex_points: ComplexValues,
     pub file_index: FileIndex,

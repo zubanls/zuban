@@ -4,6 +4,7 @@ use std::{
     borrow::Cow,
     cell::UnsafeCell,
     fmt,
+    marker::PhantomData,
     ops::{Deref, DerefMut},
     path::PathBuf,
     pin::Pin,
@@ -19,27 +20,30 @@ pub fn config_dir_path() -> Option<PathBuf> {
     dirs::config_dir().map(|p| p.join("zuban"))
 }
 
-pub struct InsertOnlyVec<T: ?Sized> {
-    vec: UnsafeCell<Vec<Pin<Box<T>>>>,
+pub struct InsertOnlyVec<T: ?Sized, P = Box<T>> {
+    vec: UnsafeCell<Vec<Pin<P>>>,
+    _marker: PhantomData<T>,
 }
 
 impl<T: ?Sized> From<Vec<Pin<Box<T>>>> for InsertOnlyVec<T> {
     fn from(value: Vec<Pin<Box<T>>>) -> Self {
         Self {
             vec: UnsafeCell::new(value),
+            _marker: PhantomData::default(),
         }
     }
 }
 
-impl<T: ?Sized> Default for InsertOnlyVec<T> {
+impl<T: ?Sized, P> Default for InsertOnlyVec<T, P> {
     fn default() -> Self {
         Self {
             vec: UnsafeCell::new(vec![]),
+            _marker: PhantomData::default(),
         }
     }
 }
 
-impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
+impl<T: ?Sized + Unpin, P: DerefMut<Target = T>> InsertOnlyVec<T, P> {
     pub fn get(&self, index: usize) -> Option<&T> {
         unsafe { &*self.vec.get() }.get(index).map(|x| x as &T)
     }
@@ -51,7 +55,7 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
     }
     */
 
-    pub fn push(&self, element: Pin<Box<T>>) {
+    pub fn push(&self, element: Pin<P>) {
         unsafe { &mut *self.vec.get() }.push(element);
     }
 
@@ -84,26 +88,26 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
         (*self.vec.get()).iter().map(|x| x as &T)
     }
 
-    pub fn set(&mut self, index: usize, obj: Pin<Box<T>>) {
+    pub fn set(&mut self, index: usize, obj: Pin<P>) {
         self.vec.get_mut()[index] = obj;
     }
 
-    pub fn as_vec_mut(&mut self) -> &mut Vec<Pin<Box<T>>> {
+    pub fn as_vec_mut(&mut self) -> &mut Vec<Pin<P>> {
         self.vec.get_mut()
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = Pin<Box<T>>> {
+    pub fn into_iter(self) -> impl Iterator<Item = Pin<P>> {
         self.vec.into_inner().into_iter()
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for InsertOnlyVec<T> {
+impl<T: fmt::Debug, P: fmt::Debug> fmt::Debug for InsertOnlyVec<T, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe { &*self.vec.get() }.fmt(f)
     }
 }
 
-impl<T: ?Sized> std::ops::Index<usize> for InsertOnlyVec<T> {
+impl<T: ?Sized, P: Deref<Target = T>> std::ops::Index<usize> for InsertOnlyVec<T, P> {
     type Output = T;
 
     fn index(&self, index: usize) -> &T {
@@ -111,18 +115,19 @@ impl<T: ?Sized> std::ops::Index<usize> for InsertOnlyVec<T> {
     }
 }
 
-impl<T: ?Sized + Unpin> std::ops::IndexMut<usize> for InsertOnlyVec<T> {
+impl<T: ?Sized + Unpin, P: DerefMut<Target = T>> std::ops::IndexMut<usize> for InsertOnlyVec<T, P> {
     fn index_mut(&mut self, index: usize) -> &mut T {
         &mut self.vec.get_mut()[index]
     }
 }
-impl<T: ?Sized> Clone for InsertOnlyVec<T>
+impl<T: ?Sized, P: Clone> Clone for InsertOnlyVec<T, P>
 where
     Box<T>: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             vec: UnsafeCell::new(unsafe { &*self.vec.get() }.clone()),
+            _marker: PhantomData::default(),
         }
     }
 }
