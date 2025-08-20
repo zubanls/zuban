@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::atomic::AtomicI64;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use anyhow::bail;
 use config::ProjectOptions;
@@ -211,7 +211,7 @@ pub(crate) struct GlobalState<'sender> {
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub sent_diagnostic_count: usize,
-    changed_in_memory_files: Rc<RefCell<Vec<PathWithScheme>>>,
+    changed_in_memory_files: Arc<RwLock<Vec<PathWithScheme>>>,
     pub shutdown_requested: bool,
 }
 
@@ -274,7 +274,7 @@ impl<'sender> GlobalState<'sender> {
             let should_push = self.client_capabilities.should_push_diagnostics();
             let vfs_handler = LocalFS::with_watcher(move |path| {
                 if should_push {
-                    let mut changed_files = new_changed_files.as_ref().borrow_mut();
+                    let mut changed_files = new_changed_files.as_ref().write().unwrap();
                     // This is currently a not a set, because the order matters
                     if !changed_files.contains(&path) {
                         changed_files.push(path)
@@ -463,7 +463,11 @@ impl<'sender> GlobalState<'sender> {
     }
 
     fn recover_from_panic(&mut self) {
-        self.changed_in_memory_files.as_ref().borrow_mut().clear();
+        self.changed_in_memory_files
+            .as_ref()
+            .write()
+            .unwrap()
+            .clear();
         if let Some(project) = self.project.take() {
             self.panic_recovery = Some(project.into_panic_recovery());
         }
@@ -557,7 +561,7 @@ impl<'sender> GlobalState<'sender> {
 
     fn publish_diagnostics_if_necessary(&mut self) {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let files = std::mem::take(&mut *self.changed_in_memory_files.as_ref().borrow_mut());
+        let files = std::mem::take(&mut *self.changed_in_memory_files.as_ref().write().unwrap());
         if !files.is_empty() {
             tracing::info!(
                 "Needs to publish diagnostics for {} files start at #{}",
@@ -623,7 +627,7 @@ impl<'sender> GlobalState<'sender> {
             PathWithScheme::with_file_scheme(path)
         } else {
             let path = handler.unchecked_normalized_path(path);
-            PathWithScheme::new(Rc::new(scheme.to_lowercase().into_boxed_str()), path)
+            PathWithScheme::new(Arc::new(scheme.to_lowercase().into_boxed_str()), path)
         })
     }
 }
