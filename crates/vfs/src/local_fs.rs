@@ -14,15 +14,15 @@ use crate::{
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
 
-pub type SimpleLocalFS = LocalFS<Box<dyn Fn(PathWithScheme)>>;
+pub type SimpleLocalFS = LocalFS<Box<dyn Fn(PathWithScheme) + Sync + Send>>;
 
-pub struct LocalFS<T: Fn(PathWithScheme)> {
+pub struct LocalFS<T: Fn(PathWithScheme) + Sync + Send> {
     watcher: Option<(RwLock<RecommendedWatcher>, Receiver<NotifyEvent>)>,
     already_watched_dirs: RwLock<FastHashSet<PathBuf>>,
     on_invalidated_in_memory_file: Option<T>,
 }
 
-impl<T: Fn(PathWithScheme)> VfsHandler for LocalFS<T> {
+impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
     fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String> {
         tracing::debug!("Read from FS: {}", path.as_uri());
         if **path.scheme != *"file" {
@@ -199,7 +199,7 @@ impl SimpleLocalFS {
     }
 }
 
-impl<T: Fn(PathWithScheme)> LocalFS<T> {
+impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
     pub fn with_watcher(on_invalidated_memory_file: T) -> Self {
         let (watcher_sender, watcher_receiver) = unbounded();
         let watcher = log_notify_error(recommended_watcher(move |event| {

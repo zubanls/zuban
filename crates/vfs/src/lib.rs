@@ -23,7 +23,7 @@ pub use workspaces::{Workspace, WorkspaceKind};
 pub type NotifyEvent = notify::Result<notify::Event>;
 
 /// Interface for reading and watching files.                                  
-pub trait VfsHandler {
+pub trait VfsHandler: Sync + Send {
     /// Load the content of the given file, returning [`None`] if it does not  
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String>;
