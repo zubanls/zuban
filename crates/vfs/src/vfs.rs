@@ -681,14 +681,13 @@ impl<F: VfsFile> Vfs<F> {
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex) -> F,
     ) -> FileIndex {
-        let file_index = FileIndex(self.files.len() as u32);
-        let new_file = new_file(file_index);
-        self.files.push(Box::pin(FileState::new_parsed(
+        let (file_state, file_index) = self.files.push(Box::pin(FileState::new_uninitialized(
             file_entry,
             path,
-            new_file,
             invalidates_db,
         )));
+        let file_index = FileIndex(file_index as u32);
+        file_state.update(new_file(file_index));
         file_index
     }
 
@@ -793,6 +792,21 @@ impl<F: VfsFile> FileState<F> {
             file_entry,
             path,
             file: OnceCell::from(file),
+        }
+    }
+
+    fn new_uninitialized(
+        file_entry: Arc<FileEntry>,
+        path: PathWithScheme,
+        invalidates_db: bool,
+    ) -> Self {
+        if invalidates_db {
+            file_entry.invalidations.set_invalidates_db();
+        }
+        Self {
+            file_entry,
+            path,
+            file: OnceCell::new(),
         }
     }
 

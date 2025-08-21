@@ -53,8 +53,11 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
     }
     */
 
-    pub fn push(&self, element: Pin<Box<T>>) {
-        unsafe { &mut *self.vec.lock().unwrap().get() }.push(element);
+    pub fn push(&self, element: Pin<Box<T>>) -> (&T, usize) {
+        let guard = self.vec.lock().unwrap();
+        let vec = unsafe { &mut *guard.get() };
+        vec.push(element);
+        (vec.last().unwrap(), vec.len() - 1)
     }
 
     pub fn len(&self) -> usize {
