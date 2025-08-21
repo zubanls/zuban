@@ -379,6 +379,10 @@ impl fmt::Debug for Point {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Points(Vec<Cell<Point>>);
 
+// Points are guarded by specific logic and if they are overwritten by something that shouldn't it
+// should not be that tragic.
+unsafe impl Sync for Points {}
+
 impl Points {
     pub fn new(length: usize) -> Self {
         Self(vec![Default::default(); length])
