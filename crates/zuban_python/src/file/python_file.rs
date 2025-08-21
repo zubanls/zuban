@@ -95,7 +95,7 @@ pub(crate) struct PythonFile {
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
     flags: Option<TypeCheckerFlags>,
-    pub(super) delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
+    pub(super) delayed_diagnostics: RwLock<VecDeque<DelayedDiagnostic>>,
 
     newline_indices: NewlineIndices,
 }
@@ -116,7 +116,7 @@ impl Clone for PythonFile {
             stub_cache: self.stub_cache.clone(),
             ignore_type_errors: self.ignore_type_errors,
             flags: self.flags.clone(),
-            delayed_diagnostics: self.delayed_diagnostics.clone(),
+            delayed_diagnostics: RwLock::new(self.delayed_diagnostics.read().unwrap().clone()),
             newline_indices: self.newline_indices.clone(),
         }
     }
@@ -871,7 +871,7 @@ impl<'db> PythonFile {
     }
 
     pub fn process_delayed_diagnostics(&self, db: &Database) {
-        let delayed = self.delayed_diagnostics.take();
+        let delayed = std::mem::take(&mut *self.delayed_diagnostics.write().unwrap());
         if !delayed.is_empty() {
             FLOW_ANALYSIS.with(|fa| fa.process_delayed_diagnostics(db, delayed));
         }

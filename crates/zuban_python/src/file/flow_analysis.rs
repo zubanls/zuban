@@ -410,11 +410,12 @@ impl FlowAnalysis {
     ) -> T {
         self.with_new_empty(db, || {
             debug_assert!(self.delayed_diagnostics.borrow().is_empty());
-            *self.delayed_diagnostics.borrow_mut() = file.delayed_diagnostics.take();
+            *self.delayed_diagnostics.borrow_mut() =
+                std::mem::take(&mut file.delayed_diagnostics.write().unwrap());
             let result = callable();
             let delayed = self.delayed_diagnostics.take();
             if db.project.flags.local_partial_types {
-                *file.delayed_diagnostics.borrow_mut() = delayed;
+                *file.delayed_diagnostics.write().unwrap() = delayed;
             } else {
                 self.process_delayed_diagnostics(db, delayed)
             }
