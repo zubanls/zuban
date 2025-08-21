@@ -121,6 +121,10 @@ macro_rules! link_to_type_class_without_generic {
     };
 }
 
+// TODO are these really safe?
+unsafe impl Send for PythonState {}
+unsafe impl Sync for PythonState {}
+
 #[derive(Clone)]
 pub(crate) struct PythonState {
     pub builtins: *const PythonFile,

@@ -3,7 +3,7 @@ use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt,
-    sync::{Arc, OnceLock},
+    sync::{Arc, OnceLock, RwLock},
 };
 
 use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue};
@@ -81,7 +81,6 @@ impl SuperFile {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
@@ -91,7 +90,7 @@ pub(crate) struct PythonFile {
     pub file_index: FileIndex,
     pub issues: Diagnostics,
     pub star_imports: Box<[StarImport]>,
-    sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
+    sub_files: RwLock<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
@@ -99,6 +98,28 @@ pub(crate) struct PythonFile {
     pub(super) delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
 
     newline_indices: NewlineIndices,
+}
+
+impl Clone for PythonFile {
+    fn clone(&self) -> Self {
+        Self {
+            tree: self.tree.clone(),
+            symbol_table: self.symbol_table.clone(),
+            maybe_dunder_all: self.maybe_dunder_all.clone(),
+            points: self.points.clone(),
+            complex_points: self.complex_points.clone(),
+            file_index: self.file_index.clone(),
+            issues: self.issues.clone(),
+            star_imports: self.star_imports.clone(),
+            sub_files: RwLock::new(self.sub_files.read().unwrap().clone()),
+            super_file: self.super_file.clone(),
+            stub_cache: self.stub_cache.clone(),
+            ignore_type_errors: self.ignore_type_errors,
+            flags: self.flags.clone(),
+            delayed_diagnostics: self.delayed_diagnostics.clone(),
+            newline_indices: self.newline_indices.clone(),
+        }
+    }
 }
 
 impl File for PythonFile {
@@ -144,7 +165,7 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
-        for (_, file_index) in self.sub_files.borrow().iter() {
+        for (_, file_index) in self.sub_files.read().unwrap().iter() {
             let file = db.loaded_python_file(*file_index);
             vec.extend(file.diagnostics(db).into_vec().into_iter());
         }
@@ -482,7 +503,7 @@ impl<'db> PythonFile {
         start: CodeIndex,
         code: Cow<str>,
     ) -> &'db Self {
-        if let Some(&sub_file_index) = self.sub_files.borrow_mut().get(&start) {
+        if let Some(&sub_file_index) = self.sub_files.read().unwrap().get(&start) {
             return db.loaded_python_file(sub_file_index);
         }
         // TODO should probably not need a newline
@@ -507,7 +528,7 @@ impl<'db> PythonFile {
             file
         });
         // TODO just saving this in the cache and forgetting about it is a bad idea
-        self.sub_files.borrow_mut().insert(start, f.file_index);
+        self.sub_files.write().unwrap().insert(start, f.file_index);
         f
     }
     pub(super) fn ensure_forward_reference_file(

@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::sync::OnceLock;
 
 use parsa_python_cst::CodeIndex;
 use regex::Regex;
@@ -10,11 +10,11 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Clone)]
-pub(crate) struct NewlineIndices(OnceCell<Box<[u32]>>);
+pub(crate) struct NewlineIndices(OnceLock<Box<[u32]>>);
 
 impl NewlineIndices {
     pub fn new() -> Self {
-        Self(OnceCell::new())
+        Self(OnceLock::new())
     }
 
     fn lines(&self, code: &str) -> &[u32] {
