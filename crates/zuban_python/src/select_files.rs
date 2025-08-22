@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use config::TypeCheckerFlags;
+use rayon::prelude::*;
 use utils::FastHashSet;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, LocalFS,
@@ -41,7 +42,7 @@ fn should_skip(flags: &TypeCheckerFlags, path: &AbsPath) -> bool {
 struct FileSelector<'db> {
     db: &'db Database,
     to_be_loaded: Vec<(Arc<FileEntry>, PathWithScheme)>,
-    file_indexes: FastHashSet<FileIndex>,
+    file_indexes: RwLock<FastHashSet<FileIndex>>,
 }
 
 //vfs_handler: &'db dyn VfsHandler, , files: &[GlobAbsPath]
@@ -54,12 +55,17 @@ impl<'db> FileSelector<'db> {
             file_indexes: Default::default(),
         };
         selector.search_in_workspaces();
-        for (file, _) in selector.to_be_loaded {
+        selector.to_be_loaded.par_iter().for_each(|(file, _)| {
             if let Some(new_index) = db.load_file_from_workspace(&file, false) {
-                selector.file_indexes.insert(new_index);
+                selector.file_indexes.write().unwrap().insert(new_index);
             }
-        }
-        let mut vec: Vec<_> = selector.file_indexes.into_iter().collect();
+        });
+        let mut vec: Vec<_> = selector
+            .file_indexes
+            .into_inner()
+            .unwrap()
+            .into_iter()
+            .collect();
         // Sort to have at least somewhat of a deterministic order, it's probably easier to debug
         // it that way.
         vec.sort();
@@ -132,7 +138,7 @@ impl<'db> FileSelector<'db> {
 
     fn add_file(&mut self, file: Arc<FileEntry>) {
         if let Some(file_index) = file.get_file_index() {
-            self.file_indexes.insert(file_index);
+            self.file_indexes.write().unwrap().insert(file_index);
         } else {
             let path = file.absolute_path(&*self.db.vfs.handler);
             self.to_be_loaded.push((file, path));
