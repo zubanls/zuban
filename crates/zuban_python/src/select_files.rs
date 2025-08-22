@@ -12,26 +12,12 @@ use crate::{database::Database, diagnostics::Diagnostic, file::PythonFile};
 
 pub(crate) fn diagnostics_for_relevant_files<'db>(
     db: &'db Database,
-    mut on_file: impl FnMut(&'db PythonFile) -> Vec<Diagnostic<'db>>,
+    on_file: impl FnMut(&'db PythonFile) -> Vec<Diagnostic<'db>>,
 ) -> Vec<Diagnostic<'db>> {
-    let vfs_handler = &*db.vfs.handler;
     let files = FileSelector::find_files(db);
     files
         .into_iter()
-        .map(|file| {
-            let p = file.file_entry(&db).absolute_path(vfs_handler);
-            if let Some(more_specific_flags) = file.maybe_more_specific_flags(&db) {
-                // We need to recheck, because we might have more specific information now for this
-                // file now that it's parsed.
-                // This is not necessary in theory, but might it might be better to do it this way so
-                // we avoid things like checking for the homeassistant/core special cases for hundreds
-                // of folders.
-                if should_skip(more_specific_flags, p.path()) {
-                    return vec![];
-                }
-            }
-            on_file(file)
-        })
+        .map(on_file)
         .reduce(|mut vec1, vec2| {
             vec1.extend(vec2);
             vec1
@@ -67,12 +53,25 @@ impl<'db> FileSelector<'db> {
                 selector.file_indexes.write().unwrap().insert(new_index);
             }
         });
+        let vfs_handler = &*db.vfs.handler;
         let mut vec: Vec<_> = selector
             .file_indexes
             .into_inner()
             .unwrap()
             .into_iter()
             .map(|file_index| db.loaded_python_file(file_index))
+            // TODO shouldn't this be done before name binding?
+            .filter(|file| {
+                let p = file.file_entry(&db).absolute_path(vfs_handler);
+                if let Some(more_specific_flags) = file.maybe_more_specific_flags(&db) {
+                    // We need to recheck, because we might have more specific information now for this
+                    // file now that it's parsed.
+                    if should_skip(more_specific_flags, p.path()) {
+                        return false;
+                    }
+                }
+                true
+            })
             .collect();
         // Sort to have at least somewhat of a deterministic order, it's probably easier to debug
         // it that way.
