@@ -132,7 +132,7 @@ impl Project {
         let mut checked_files = 0;
         let mut files_with_errors = 0;
 
-        select_files::with_relevant_files(&self.db, |file| {
+        select_files::prepare_diagnostics_for_relevant_files(&self.db, |file| {
             checked_files += 1;
             let mut issues = file.diagnostics(&self.db).into_vec();
             issues.sort_by_key(|issue| issue.start_position().byte_position);

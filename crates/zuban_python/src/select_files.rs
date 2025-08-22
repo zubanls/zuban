@@ -10,7 +10,7 @@ use vfs::{
 
 use crate::{database::Database, file::PythonFile};
 
-pub(crate) fn with_relevant_files<'db>(
+pub(crate) fn prepare_diagnostics_for_relevant_files<'db>(
     db: &'db Database,
     mut on_file: impl FnMut(&'db PythonFile),
 ) {
