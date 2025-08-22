@@ -8,28 +8,36 @@ use vfs::{
     PathWithScheme,
 };
 
-use crate::{database::Database, file::PythonFile};
+use crate::{database::Database, diagnostics::Diagnostic, file::PythonFile};
 
-pub(crate) fn prepare_diagnostics_for_relevant_files<'db>(
+pub(crate) fn diagnostics_for_relevant_files<'db>(
     db: &'db Database,
-    mut on_file: impl FnMut(&'db PythonFile),
-) {
+    mut on_file: impl FnMut(&'db PythonFile) -> Vec<Diagnostic<'db>>,
+) -> Vec<Diagnostic<'db>> {
     let vfs_handler = &*db.vfs.handler;
-    for file_index in FileSelector::find_file_indexes(db) {
-        let python_file = db.loaded_python_file(file_index);
-        let p = python_file.file_entry(&db).absolute_path(vfs_handler);
-        if let Some(more_specific_flags) = python_file.maybe_more_specific_flags(&db) {
-            // We need to recheck, because we might have more specific information now for this
-            // file now that it's parsed.
-            // This is not necessary in theory, but might it might be better to do it this way so
-            // we avoid things like checking for the homeassistant/core special cases for hundreds
-            // of folders.
-            if should_skip(more_specific_flags, p.path()) {
-                continue;
+    let file_indexes = FileSelector::find_file_indexes(db);
+    file_indexes
+        .into_iter()
+        .map(|file_index| {
+            let python_file = db.loaded_python_file(file_index);
+            let p = python_file.file_entry(&db).absolute_path(vfs_handler);
+            if let Some(more_specific_flags) = python_file.maybe_more_specific_flags(&db) {
+                // We need to recheck, because we might have more specific information now for this
+                // file now that it's parsed.
+                // This is not necessary in theory, but might it might be better to do it this way so
+                // we avoid things like checking for the homeassistant/core special cases for hundreds
+                // of folders.
+                if should_skip(more_specific_flags, p.path()) {
+                    return vec![];
+                }
             }
-        }
-        on_file(python_file)
-    }
+            on_file(python_file)
+        })
+        .reduce(|mut vec1, vec2| {
+            vec1.extend(vec2);
+            vec1
+        })
+        .unwrap_or_default()
 }
 
 fn should_skip(flags: &TypeCheckerFlags, path: &AbsPath) -> bool {

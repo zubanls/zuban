@@ -128,18 +128,17 @@ impl Project {
                 .map(|g| g.as_str())
                 .collect::<Vec<_>>()
         );
-        let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         let mut checked_files = 0;
         let mut files_with_errors = 0;
 
-        select_files::prepare_diagnostics_for_relevant_files(&self.db, |file| {
+        let all_diagnostics = select_files::diagnostics_for_relevant_files(&self.db, |file| {
             checked_files += 1;
             let mut issues = file.diagnostics(&self.db).into_vec();
             issues.sort_by_key(|issue| issue.start_position().byte_position);
             if !issues.is_empty() {
                 files_with_errors += 1;
-                all_diagnostics.append(&mut issues)
             }
+            issues
         });
         tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
         invalidate_protocol_cache();
