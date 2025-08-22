@@ -90,6 +90,7 @@ pub(crate) struct PythonFile {
     pub file_index: FileIndex,
     pub issues: Diagnostics,
     pub star_imports: Box<[StarImport]>,
+    pub all_imports: Box<[NodeIndex]>,
     sub_files: RwLock<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
@@ -111,6 +112,7 @@ impl Clone for PythonFile {
             file_index: self.file_index.clone(),
             issues: self.issues.clone(),
             star_imports: self.star_imports.clone(),
+            all_imports: self.all_imports.clone(),
             sub_files: RwLock::new(self.sub_files.read().unwrap().clone()),
             super_file: self.super_file.clone(),
             stub_cache: self.stub_cache.clone(),
@@ -306,6 +308,7 @@ impl<'db> PythonFile {
     ) -> Self {
         let complex_points = Default::default();
         let star_imports: RefCell<Vec<StarImport>> = Default::default();
+        let all_imports: RefCell<Vec<NodeIndex>> = Default::default();
         let symbol_table = NameBinder::with_global_binder(
             DbInfos {
                 // TODO this does not use flags of the super file. Is this an issue?
@@ -316,6 +319,7 @@ impl<'db> PythonFile {
                 complex_points: &complex_points,
                 issues: &issues,
                 star_imports: &star_imports,
+                all_imports: &all_imports,
                 file_index,
                 is_stub,
             },
@@ -329,6 +333,7 @@ impl<'db> PythonFile {
             points,
             complex_points,
             star_imports: star_imports.into_inner().into_boxed_slice(),
+            all_imports: all_imports.into_inner().into_boxed_slice(),
             issues,
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),

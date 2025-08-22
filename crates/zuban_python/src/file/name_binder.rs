@@ -70,6 +70,7 @@ pub(crate) struct DbInfos<'db> {
     pub complex_points: &'db ComplexValues,
     pub issues: &'db Diagnostics,
     pub star_imports: &'db RefCell<Vec<StarImport>>,
+    pub all_imports: &'db RefCell<Vec<NodeIndex>>,
     pub file_index: FileIndex,
     pub is_stub: bool,
 }
@@ -485,6 +486,7 @@ impl<'db> NameBinder<'db> {
                     }
                 }
                 StmtLikeContent::ImportFrom(import) => {
+                    self.db_infos.all_imports.borrow_mut().push(import.index());
                     match import.unpack_targets() {
                         ImportFromTargets::Star(star) => {
                             self.following_nodes_need_flow_analysis = true;
@@ -502,6 +504,7 @@ impl<'db> NameBinder<'db> {
                     };
                 }
                 StmtLikeContent::ImportName(i) => {
+                    self.db_infos.all_imports.borrow_mut().push(i.index());
                     for dotted in i.iter_dotted_as_names() {
                         match dotted.unpack() {
                             DottedAsNameContent::Simple(name_def, _)
