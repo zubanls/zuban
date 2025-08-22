@@ -131,7 +131,7 @@ impl Project {
         let mut checked_files = 0;
         let mut files_with_errors = 0;
 
-        let all_diagnostics = select_files::diagnostics_for_relevant_files(&self.db, |file| {
+        let issues = select_files::diagnostics_for_relevant_files(&self.db, |file| {
             checked_files += 1;
             let mut issues = file.diagnostics(&self.db).into_vec();
             issues.sort_by_key(|issue| issue.start_position().byte_position);
@@ -145,7 +145,7 @@ impl Project {
         Diagnostics {
             checked_files,
             files_with_errors,
-            issues: all_diagnostics.into_boxed_slice(),
+            issues,
             error_count: Default::default(),
         }
     }
@@ -548,7 +548,7 @@ impl<'a> Script<'a> {
 pub struct Diagnostics<'a> {
     pub checked_files: usize,
     pub files_with_errors: usize,
-    pub issues: Box<[diagnostics::Diagnostic<'a>]>,
+    pub issues: Vec<diagnostics::Diagnostic<'a>>,
     error_count: OnceCell<usize>,
 }
 
