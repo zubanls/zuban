@@ -15,13 +15,12 @@ pub(crate) fn diagnostics_for_relevant_files<'db>(
     mut on_file: impl FnMut(&'db PythonFile) -> Vec<Diagnostic<'db>>,
 ) -> Vec<Diagnostic<'db>> {
     let vfs_handler = &*db.vfs.handler;
-    let file_indexes = FileSelector::find_file_indexes(db);
-    file_indexes
+    let files = FileSelector::find_files(db);
+    files
         .into_iter()
-        .map(|file_index| {
-            let python_file = db.loaded_python_file(file_index);
-            let p = python_file.file_entry(&db).absolute_path(vfs_handler);
-            if let Some(more_specific_flags) = python_file.maybe_more_specific_flags(&db) {
+        .map(|file| {
+            let p = file.file_entry(&db).absolute_path(vfs_handler);
+            if let Some(more_specific_flags) = file.maybe_more_specific_flags(&db) {
                 // We need to recheck, because we might have more specific information now for this
                 // file now that it's parsed.
                 // This is not necessary in theory, but might it might be better to do it this way so
@@ -31,7 +30,7 @@ pub(crate) fn diagnostics_for_relevant_files<'db>(
                     return vec![];
                 }
             }
-            on_file(python_file)
+            on_file(file)
         })
         .reduce(|mut vec1, vec2| {
             vec1.extend(vec2);
@@ -56,7 +55,7 @@ struct FileSelector<'db> {
 //vfs_handler: &'db dyn VfsHandler, , files: &[GlobAbsPath]
 //vfs_handler, &db.project.settings.files_or_directories_to_check
 impl<'db> FileSelector<'db> {
-    fn find_file_indexes(db: &'db Database) -> Vec<FileIndex> {
+    fn find_files(db: &'db Database) -> Vec<&'db PythonFile> {
         let mut selector = Self {
             db,
             to_be_loaded: vec![],
@@ -73,10 +72,11 @@ impl<'db> FileSelector<'db> {
             .into_inner()
             .unwrap()
             .into_iter()
+            .map(|file_index| db.loaded_python_file(file_index))
             .collect();
         // Sort to have at least somewhat of a deterministic order, it's probably easier to debug
         // it that way.
-        vec.sort();
+        vec.sort_by_key(|file| file.file_index);
         vec
     }
 
