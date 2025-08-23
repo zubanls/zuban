@@ -1,9 +1,12 @@
-use parsa_python_cst::Name;
+use parsa_python_cst::{DottedImportName, DottedImportNameContent, Name};
 
 use crate::{
-    database::Database,
+    database::{Database, Locality, Point, PointKind, Specific},
     debug,
-    imports::{global_import, ImportResult},
+    diagnostics::IssueKind,
+    imports::{global_import, namespace_import, ImportResult},
+    node_ref::NodeRef,
+    type_::Type,
 };
 
 use super::PythonFile;
@@ -19,5 +22,114 @@ impl PythonFile {
             );
         }
         result
+    }
+
+    pub fn cache_import_dotted_name(
+        &self,
+        db: &Database,
+        dotted: DottedImportName,
+        base: Option<ImportResult>,
+    ) -> Option<ImportResult> {
+        let node_ref = NodeRef::new(self, dotted.index());
+        let p = node_ref.point();
+        if p.calculated() {
+            return match p.kind() {
+                PointKind::FileReference => Some(ImportResult::File(p.file_index())),
+                PointKind::Specific => None,
+                PointKind::Complex => match node_ref.maybe_type().unwrap() {
+                    Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
+                    _ => unreachable!(),
+                },
+                _ => unreachable!(),
+            };
+        }
+        let infer_name = |import_result, name: Name| {
+            let mut in_stub_and_has_getattr = false;
+            let result = match &import_result {
+                ImportResult::File(file_index) => {
+                    let module = db.loaded_python_file(*file_index);
+                    let r = module.sub_module(db, name.as_str());
+
+                    // This is such weird logic. I don't understand at all why Mypy is doing this.
+                    // It seems to come from here:
+                    // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
+                    if r.is_none()
+                        && module.is_stub()
+                        && module.lookup_symbol("__getattr__").is_some()
+                    {
+                        in_stub_and_has_getattr = true
+                    }
+                    r
+                }
+                ImportResult::Namespace(namespace) => {
+                    namespace_import(db, self, namespace, name.as_str())
+                }
+                ImportResult::PyTypedMissing => Some(ImportResult::PyTypedMissing),
+            };
+            if let Some(imported) = &result {
+                debug!(
+                    "Imported {:?} for {:?}",
+                    imported.debug_info(db),
+                    dotted.as_code(),
+                );
+            } else if in_stub_and_has_getattr {
+                debug!(
+                    "Ignored import of {}, because of a __getattr__ in a stub file",
+                    name.as_str()
+                );
+            } else {
+                let module_name =
+                    format!("{}.{}", import_result.qualified_name(db), name.as_str()).into();
+                if !self.flags(db).ignore_missing_imports {
+                    NodeRef::new(self, name.index())
+                        .add_type_issue(db, IssueKind::ModuleNotFound { module_name });
+                }
+            }
+            result
+        };
+        let result = match dotted.unpack() {
+            DottedImportNameContent::Name(name) => {
+                if let Some(base) = base {
+                    infer_name(base, name)
+                } else {
+                    let result = self.global_import(db, name);
+                    if result.is_none() {
+                        self.add_module_not_found(db, name)
+                    }
+                    result
+                }
+            }
+            DottedImportNameContent::DottedName(dotted_name, name) => {
+                let result = self.cache_import_dotted_name(db, dotted_name, base)?;
+                infer_name(result, name)
+            }
+        };
+        // Cache
+        match &result {
+            Some(ImportResult::File(f)) => {
+                node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
+            }
+            Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
+            Some(ImportResult::PyTypedMissing) => node_ref.set_point(Point::new_specific(
+                Specific::AnyDueToError,
+                Locality::Complex,
+            )),
+            None => node_ref.set_point(Point::new_specific(
+                Specific::ModuleNotFound,
+                Locality::Complex,
+            )),
+        }
+        result
+    }
+
+    pub(super) fn add_module_not_found(&self, db: &Database, name: Name) {
+        if !self.flags(db).ignore_missing_imports {
+            NodeRef::new(self, name.index()).add_type_issue(
+                db,
+                IssueKind::ModuleNotFound {
+                    module_name: Box::from(name.as_str()),
+                },
+            );
+        }
     }
 }

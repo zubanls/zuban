@@ -161,9 +161,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                 let mut result = global_import(db, file, name_def.as_code());
                 if let Some(dotted) = rest_path {
                     self.infos.with_i_s(|i_s| {
-                        result = file
-                            .inference(i_s)
-                            .cache_import_dotted_name(*dotted, result.take())
+                        result = file.cache_import_dotted_name(i_s.db, *dotted, result.take())
                     });
                 }
                 self.add_import_result_completions(result)
@@ -174,8 +172,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                     self.add_import_result_completions(self.infos.with_i_s(|i_s| {
                         self.infos
                             .file
-                            .inference(i_s)
-                            .cache_import_dotted_name(*base, None)
+                            .cache_import_dotted_name(i_s.db, *base, None)
                     }))
                 } else {
                     self.add_global_import_completions()

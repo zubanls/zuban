@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DefiningStmt, DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent,
-    ImportFrom, ImportFromAsName, Name, NameDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    DefiningStmt, DottedAsName, DottedAsNameContent, ImportFrom, ImportFromAsName, Name, NameDef,
+    NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use utils::AlreadySeen;
 use vfs::FileIndex;
@@ -101,7 +101,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
                 if let Some(rest) = rest {
                     if result.is_some() {
-                        self.cache_import_dotted_name(rest, result);
+                        self.file
+                            .cache_import_dotted_name(self.i_s.db, rest, result);
                     }
                 }
                 if node_ref.point().calculating() {
@@ -116,7 +117,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
                 node_ref.set_point(Point::new_calculating());
 
-                let result = self.cache_import_dotted_name(dotted_name, None);
+                let result = self
+                    .file
+                    .cache_import_dotted_name(self.i_s.db, dotted_name, None);
                 let inf = match result {
                     Some(import_result) => import_result.as_inferred(),
                     None => Inferred::new_module_not_found(),
@@ -186,7 +189,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             None
         };
         match dotted_name {
-            Some(dotted_name) => self.cache_import_dotted_name(dotted_name, maybe_level_file),
+            Some(dotted_name) => {
+                self.file
+                    .cache_import_dotted_name(self.i_s.db, dotted_name, maybe_level_file)
+            }
             None => maybe_level_file,
         }
     }
@@ -269,7 +275,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             let write_name_def = self.is_allowed_to_assign_on_import_without_narrowing(name_def);
             let inf = inf.unwrap_or_else(|| {
                 if write_name_def {
-                    self.add_module_not_found(name_def.name())
+                    self.file.add_module_not_found(self.i_s.db, name_def.name())
                 }
                 Inferred::new_module_not_found()
             });
@@ -290,114 +296,6 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     #[inline]
     fn is_allowed_to_assign_on_import_without_narrowing(&self, name_def: NameDef) -> bool {
         !self.point(name_def.name_index()).can_be_redefined()
-    }
-
-    pub fn cache_import_dotted_name(
-        &self,
-        dotted: DottedImportName,
-        base: Option<ImportResult>,
-    ) -> Option<ImportResult> {
-        let node_ref = NodeRef::new(self.file, dotted.index());
-        let p = node_ref.point();
-        if p.calculated() {
-            return match p.kind() {
-                PointKind::FileReference => Some(ImportResult::File(p.file_index())),
-                PointKind::Specific => None,
-                PointKind::Complex => match node_ref.maybe_type().unwrap() {
-                    Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
-                    _ => unreachable!(),
-                },
-                _ => unreachable!(),
-            };
-        }
-        let infer_name = |self_: &Self, import_result, name: Name| {
-            let i_s = self_.i_s;
-            let mut in_stub_and_has_getattr = false;
-            let result = match &import_result {
-                ImportResult::File(file_index) => {
-                    let module = i_s.db.loaded_python_file(*file_index);
-                    let r = module.sub_module(i_s.db, name.as_str());
-
-                    // This is such weird logic. I don't understand at all why Mypy is doing this.
-                    // It seems to come from here:
-                    // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
-                    if r.is_none()
-                        && module.is_stub()
-                        && module.lookup_symbol("__getattr__").is_some()
-                    {
-                        in_stub_and_has_getattr = true
-                    }
-                    r
-                }
-                ImportResult::Namespace(namespace) => {
-                    namespace_import(i_s.db, self.file, namespace, name.as_str())
-                }
-                ImportResult::PyTypedMissing => Some(ImportResult::PyTypedMissing),
-            };
-            if let Some(imported) = &result {
-                debug!(
-                    "Imported {:?} for {:?}",
-                    imported.debug_info(i_s.db),
-                    dotted.as_code(),
-                );
-            } else if in_stub_and_has_getattr {
-                debug!(
-                    "Ignored import of {}, because of a __getattr__ in a stub file",
-                    name.as_str()
-                );
-            } else {
-                let module_name =
-                    format!("{}.{}", import_result.qualified_name(i_s.db), name.as_str()).into();
-                if !self.flags().ignore_missing_imports {
-                    self_.add_issue(name.index(), IssueKind::ModuleNotFound { module_name });
-                }
-            }
-            result
-        };
-        let result = match dotted.unpack() {
-            DottedImportNameContent::Name(name) => {
-                if let Some(base) = base {
-                    infer_name(self, base, name)
-                } else {
-                    let result = self.file.global_import(self.i_s.db, name);
-                    if result.is_none() {
-                        self.add_module_not_found(name)
-                    }
-                    result
-                }
-            }
-            DottedImportNameContent::DottedName(dotted_name, name) => {
-                let result = self.cache_import_dotted_name(dotted_name, base)?;
-                infer_name(self, result, name)
-            }
-        };
-        // Cache
-        match &result {
-            Some(ImportResult::File(f)) => {
-                node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
-            }
-            Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
-            Some(ImportResult::PyTypedMissing) => node_ref.set_point(Point::new_specific(
-                Specific::AnyDueToError,
-                Locality::Complex,
-            )),
-            None => node_ref.set_point(Point::new_specific(
-                Specific::ModuleNotFound,
-                Locality::Complex,
-            )),
-        }
-        result
-    }
-
-    pub(super) fn add_module_not_found(&self, name: Name) {
-        if !self.flags().ignore_missing_imports {
-            self.add_issue(
-                name.index(),
-                IssueKind::ModuleNotFound {
-                    module_name: Box::from(name.as_str()),
-                },
-            );
-        }
     }
 
     pub(super) fn cache_import_from_part(

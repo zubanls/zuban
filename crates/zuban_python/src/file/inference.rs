@@ -103,7 +103,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         for dotted_as_name in imp.iter_dotted_as_names() {
             self.assign_dotted_as_name(dotted_as_name, |as_name_def, inf| {
                 let inf = inf.unwrap_or_else(|| {
-                    self.add_module_not_found(as_name_def.name());
+                    self.file
+                        .add_module_not_found(self.i_s.db, as_name_def.name());
                     Inferred::new_module_not_found()
                 });
                 self.assign_to_name_def_simple(

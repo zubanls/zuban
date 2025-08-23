@@ -154,8 +154,7 @@ impl<'db, T> PositionalDocument<'db, T> {
         if let Some(dotted) = dotted {
             import_result = self.with_i_s(|i_s| {
                 self.file
-                    .inference(i_s)
-                    .cache_import_dotted_name(dotted, import_result)
+                    .cache_import_dotted_name(i_s.db, dotted, import_result)
             })
         }
         if let Some(import_result) = import_result {
