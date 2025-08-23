@@ -185,13 +185,16 @@ impl<F: VfsFile> Vfs<F> {
             let ensured =
                 self.workspaces
                     .ensure_file(&*self.handler, case_sensitive, &recoverable_file.path);
-            let file_index = self.with_added_file(
-                ensured.file_entry.clone(),
-                recoverable_file.path,
-                recoverable_file.invalidates_db,
-                |file_index| new_file(file_index, &ensured.file_entry, recoverable_file.artifacts),
-            );
-            ensured.set_file_index(file_index);
+            let file_index = ensured.with_set_file_index(|| {
+                self.with_added_file(
+                    ensured.file_entry.clone(),
+                    recoverable_file.path,
+                    recoverable_file.invalidates_db,
+                    |file_index| {
+                        new_file(file_index, &ensured.file_entry, recoverable_file.artifacts)
+                    },
+                )
+            });
             if recoverable_file.is_in_memory_file {
                 let fs = self.file_state(file_index);
                 self.in_memory_files.insert(fs.path.clone(), file_index);
@@ -325,14 +328,16 @@ impl<F: VfsFile> Vfs<F> {
             if !should_load(&code) {
                 return None;
             }
-            let file_index = self.with_added_file(
-                file_entry.clone(),
-                // The path was previously normalized, because it is created from a Directory
-                path,
-                invalidates_db,
-                |file_index| new_file(file_index, code.into()),
-            );
-            file_entry.set_file_index(file_index);
+
+            let file_index = file_entry.with_set_file_index(|| {
+                self.with_added_file(
+                    file_entry.clone(),
+                    // The path was previously normalized, because it is created from a Directory
+                    path,
+                    invalidates_db,
+                    |file_index| new_file(file_index, code.into()),
+                )
+            });
             Some(file_index)
         }
     }
@@ -396,15 +401,16 @@ impl<F: VfsFile> Vfs<F> {
             }
             file_index
         } else {
-            let file_index = self.with_added_file(
-                ensured.file_entry.clone(),
-                path.clone(),
-                false,
-                |file_index| new_file(file_index, &ensured.file_entry, code),
-            );
-            self.in_memory_files.insert(path, file_index);
-            ensured.set_file_index(file_index);
-            file_index
+            ensured.with_set_file_index(|| {
+                let file_index = self.with_added_file(
+                    ensured.file_entry.clone(),
+                    path.clone(),
+                    false,
+                    |file_index| new_file(file_index, &ensured.file_entry, code),
+                );
+                self.in_memory_files.insert(path, file_index);
+                file_index
+            })
         };
         if tracing::enabled!(Level::INFO) {
             if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
@@ -631,12 +637,14 @@ impl<F: VfsFile> Vfs<F> {
                 return InvalidationResult::InvalidatedDb;
             }
         }
+        // After unloading in memory files (especially it they are within unloaded directories need
+        // to be ensured).
         for (path, file_index) in ensure_unloaded_in_memory_paths {
             let ensured = self
                 .workspaces
                 .ensure_file(&*self.handler, case_sensitive, &path);
             debug_assert!(ensured.invalidations.is_empty());
-            ensured.file_entry.set_file_index(file_index);
+            ensured.file_entry.with_set_file_index(|| file_index);
             self.handler.on_invalidated_in_memory_file(path);
         }
         tracing::debug!("Caused {unload_len} unloads and {invalidation_len} direct invalidations");
