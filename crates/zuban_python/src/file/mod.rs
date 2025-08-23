@@ -1,6 +1,7 @@
 mod diagnostics;
 mod file_state;
 mod flow_analysis;
+mod imports;
 mod inference;
 mod isinstance;
 mod name_binder;

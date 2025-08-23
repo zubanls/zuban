@@ -11,9 +11,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::File,
-    imports::{
-        find_import_ancestor, global_import, namespace_import, ImportAncestor, ImportResult,
-    },
+    imports::{find_import_ancestor, namespace_import, ImportAncestor, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -99,7 +97,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 }
                 node_ref.set_point(Point::new_calculating());
 
-                let result = self.global_import(name_def.name());
+                let result = self.file.global_import(self.i_s.db, name_def.name());
                 assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
                 if let Some(rest) = rest {
                     if result.is_some() {
@@ -361,7 +359,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 if let Some(base) = base {
                     infer_name(self, base, name)
                 } else {
-                    let result = self.global_import(name);
+                    let result = self.file.global_import(self.i_s.db, name);
                     if result.is_none() {
                         self.add_module_not_found(name)
                     }
@@ -506,18 +504,6 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 None,
             ),
         })
-    }
-
-    fn global_import(&self, name: Name) -> Option<ImportResult> {
-        let result = global_import(self.i_s.db, self.file, name.as_str());
-        if let Some(result) = &result {
-            debug!(
-                "Global import '{}': {:?}",
-                name.as_code(),
-                result.debug_info(self.i_s.db),
-            );
-        }
-        result
     }
 
     pub(super) fn resolve_name_without_narrowing(&self, name: Name) -> PointResolution<'file> {
