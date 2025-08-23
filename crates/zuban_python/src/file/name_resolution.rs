@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DefiningStmt, DottedAsName, DottedAsNameContent, ImportFrom, ImportFromAsName, Name, NameDef,
-    NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE,
+    DefiningStmt, DottedAsName, ImportFrom, ImportFromAsName, Name, NameDef, NodeIndex,
+    NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use utils::AlreadySeen;
 use vfs::FileIndex;

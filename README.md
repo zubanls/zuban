@@ -109,6 +109,7 @@ For a patch release, simply run `./release.sh`, for a minor release `./release.s
 - 2025-04-23:  9272 / 10582 (1.62s ->  5723 tests/s b068ac600aff0dd46bf9e97c4889339ec99fc763) (note: tests cannot reuse Python versions sometimes)
 - 2025-05-23:  9400 / 10701 (1.71s ->  5497 tests/s 4827fc01e4052bfe9fbbd0535a84906ae9159b7d)
 - 2025-07-23:  9573 / 10859 (1.89s ->  5065 tests/s 5b5c3779cde57d943d8d0f06c3ef1e0142f49da3)
+- 2025-08-23:  9789 / 11063 (2.18s ->  4490 tests/s da3fd1393bc921d66ac143889505c239a30777b9) (note: most things are Sync now)
 
 # Jedi-Like Tests
 
