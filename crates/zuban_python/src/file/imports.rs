@@ -1,10 +1,13 @@
-use parsa_python_cst::{DottedImportName, DottedImportNameContent, Name};
+use parsa_python_cst::{
+    DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, Name, NameDef,
+};
 
 use crate::{
     database::{Database, Locality, Point, PointKind, Specific},
     debug,
     diagnostics::IssueKind,
     imports::{global_import, namespace_import, ImportResult},
+    inferred::Inferred,
     node_ref::NodeRef,
     type_::Type,
 };
@@ -120,6 +123,53 @@ impl PythonFile {
             )),
         }
         result
+    }
+
+    pub(super) fn assign_dotted_as_name(
+        &self,
+        db: &Database,
+        dotted_as_name: DottedAsName,
+        assign_to_name_def: impl FnOnce(NameDef, Option<Inferred>),
+    ) {
+        match dotted_as_name.unpack() {
+            DottedAsNameContent::Simple(name_def, rest) => {
+                let node_ref = NodeRef::new(self, name_def.index());
+                if node_ref.point().calculated() {
+                    // It was already assigned (probably during type computation)
+                    return;
+                }
+                node_ref.set_point(Point::new_calculating());
+
+                let result = self.global_import(db, name_def.name());
+                assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
+                if let Some(rest) = rest {
+                    if result.is_some() {
+                        self.cache_import_dotted_name(db, rest, result);
+                    }
+                }
+                if node_ref.point().calculating() {
+                    node_ref.set_point(Point::new_uncalculated())
+                }
+            }
+            DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
+                let node_ref = NodeRef::new(self, as_name_def.index());
+                if node_ref.point().calculated() {
+                    // It was already assigned (probably during type computation)
+                    return;
+                }
+                node_ref.set_point(Point::new_calculating());
+
+                let result = self.cache_import_dotted_name(db, dotted_name, None);
+                let inf = match result {
+                    Some(import_result) => import_result.as_inferred(),
+                    None => Inferred::new_module_not_found(),
+                };
+                assign_to_name_def(as_name_def, Some(inf));
+                if node_ref.point().calculating() {
+                    node_ref.set_point(Point::new_uncalculated())
+                }
+            }
+        }
     }
 
     pub(super) fn add_module_not_found(&self, db: &Database, name: Name) {

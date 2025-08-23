@@ -83,55 +83,6 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn assign_dotted_as_name(
-        &self,
-        dotted_as_name: DottedAsName,
-        assign_to_name_def: impl FnOnce(NameDef, Option<Inferred>),
-    ) {
-        match dotted_as_name.unpack() {
-            DottedAsNameContent::Simple(name_def, rest) => {
-                let node_ref = NodeRef::new(self.file, name_def.index());
-                if node_ref.point().calculated() {
-                    // It was already assigned (probably during type computation)
-                    return;
-                }
-                node_ref.set_point(Point::new_calculating());
-
-                let result = self.file.global_import(self.i_s.db, name_def.name());
-                assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
-                if let Some(rest) = rest {
-                    if result.is_some() {
-                        self.file
-                            .cache_import_dotted_name(self.i_s.db, rest, result);
-                    }
-                }
-                if node_ref.point().calculating() {
-                    node_ref.set_point(Point::new_uncalculated())
-                }
-            }
-            DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                let node_ref = NodeRef::new(self.file, as_name_def.index());
-                if node_ref.point().calculated() {
-                    // It was already assigned (probably during type computation)
-                    return;
-                }
-                node_ref.set_point(Point::new_calculating());
-
-                let result = self
-                    .file
-                    .cache_import_dotted_name(self.i_s.db, dotted_name, None);
-                let inf = match result {
-                    Some(import_result) => import_result.as_inferred(),
-                    None => Inferred::new_module_not_found(),
-                };
-                assign_to_name_def(as_name_def, Some(inf));
-                if node_ref.point().calculating() {
-                    node_ref.set_point(Point::new_uncalculated())
-                }
-            }
-        }
-    }
-
     #[inline]
     pub fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
         let point = self.point(star_import.star_node);
@@ -267,24 +218,26 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     ) -> PointResolution<'file> {
         // See comment in resolve_import_from_name_def_without_narrowing
         let mut found_inf = None;
-        self.assign_dotted_as_name(dotted_as_name, |name_def, inf| {
-            if cfg!(debug_assertions) {
-                let p = self.point(name_def.index());
-                debug_assert!(!p.calculated(), "{p:?}");
-            }
-            let write_name_def = self.is_allowed_to_assign_on_import_without_narrowing(name_def);
-            let inf = inf.unwrap_or_else(|| {
-                if write_name_def {
-                    self.file.add_module_not_found(self.i_s.db, name_def.name())
+        self.file
+            .assign_dotted_as_name(self.i_s.db, dotted_as_name, |name_def, inf| {
+                if cfg!(debug_assertions) {
+                    let p = self.point(name_def.index());
+                    debug_assert!(!p.calculated(), "{p:?}");
                 }
-                Inferred::new_module_not_found()
+                let write_name_def =
+                    self.is_allowed_to_assign_on_import_without_narrowing(name_def);
+                let inf = inf.unwrap_or_else(|| {
+                    if write_name_def {
+                        self.file.add_module_not_found(self.i_s.db, name_def.name())
+                    }
+                    Inferred::new_module_not_found()
+                });
+                if write_name_def {
+                    found_inf = Some(inf.save_redirect(self.i_s, self.file, name_def.index()))
+                } else {
+                    found_inf = Some(inf);
+                }
             });
-            if write_name_def {
-                found_inf = Some(inf.save_redirect(self.i_s, self.file, name_def.index()))
-            } else {
-                found_inf = Some(inf);
-            }
-        });
         match found_inf {
             Some(inf) => PointResolution::Inferred(inf),
             None => self
