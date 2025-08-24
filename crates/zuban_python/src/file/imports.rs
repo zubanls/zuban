@@ -38,9 +38,9 @@ impl PythonFile {
         if p.calculated() {
             return load_saved_results(node_ref, p);
         }
-        let infer_name = |import_result, name: Name| {
+        let infer_name = |base, name: Name| {
             let mut in_stub_and_has_getattr = false;
-            let result = match &import_result {
+            let result = match &base {
                 ImportResult::File(file_index) => {
                     let module = db.loaded_python_file(*file_index);
                     let r = module.sub_module(db, name.as_str());
@@ -73,8 +73,7 @@ impl PythonFile {
                     name.as_str()
                 );
             } else {
-                let module_name =
-                    format!("{}.{}", import_result.qualified_name(db), name.as_str()).into();
+                let module_name = format!("{}.{}", base.qualified_name(db), name.as_str()).into();
                 if !self.flags(db).ignore_missing_imports {
                     NodeRef::new(self, name.index())
                         .add_type_issue(db, IssueKind::ModuleNotFound { module_name });
