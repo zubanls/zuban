@@ -1,5 +1,5 @@
 use parsa_python_cst::{
-    DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, Name, NameDef,
+    DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, Name,
 };
 
 use crate::{
@@ -36,15 +36,7 @@ impl PythonFile {
         let node_ref = NodeRef::new(self, dotted.index());
         let p = node_ref.point();
         if p.calculated() {
-            return match p.kind() {
-                PointKind::FileReference => Some(ImportResult::File(p.file_index())),
-                PointKind::Specific => None,
-                PointKind::Complex => match node_ref.maybe_type().unwrap() {
-                    Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
-                    _ => unreachable!(),
-                },
-                _ => unreachable!(),
-            };
+            return load_saved_results(node_ref, p);
         }
         let infer_name = |import_result, name: Name| {
             let mut in_stub_and_has_getattr = false;
@@ -107,69 +99,50 @@ impl PythonFile {
                 infer_name(result, name)
             }
         };
-        // Cache
-        match &result {
-            Some(ImportResult::File(f)) => {
-                node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
-            }
-            Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
-            Some(ImportResult::PyTypedMissing) => node_ref.set_point(Point::new_specific(
-                Specific::AnyDueToError,
-                Locality::Complex,
-            )),
-            None => node_ref.set_point(Point::new_specific(
-                Specific::ModuleNotFound,
-                Locality::Complex,
-            )),
-        }
+        cache_import_results(node_ref, &result);
         result
     }
 
-    pub(super) fn assign_dotted_as_name(
+    pub(super) fn infer_dotted_as_name_import(
         &self,
         db: &Database,
         dotted_as_name: DottedAsName,
-        assign_to_name_def: impl FnOnce(NameDef, Option<Inferred>),
-    ) {
-        match dotted_as_name.unpack() {
-            DottedAsNameContent::Simple(name_def, rest) => {
-                let node_ref = NodeRef::new(self, name_def.index());
-                if node_ref.point().calculated() {
-                    // It was already assigned (probably during type computation)
-                    return;
-                }
-                node_ref.set_point(Point::new_calculating());
+    ) -> Inferred {
+        match self.cache_dotted_as_name_import(db, dotted_as_name) {
+            Some(import_result) => import_result.as_inferred(),
+            None => Inferred::new_module_not_found(),
+        }
+    }
 
+    pub(super) fn cache_dotted_as_name_import(
+        &self,
+        db: &Database,
+        dotted_as_name: DottedAsName,
+    ) -> Option<ImportResult> {
+        let saved_at = NodeRef::new(self, dotted_as_name.index());
+        let point = saved_at.point();
+        if point.calculated() {
+            return load_saved_results(saved_at, point);
+        }
+        let result = match dotted_as_name.unpack() {
+            DottedAsNameContent::Simple(name_def, rest) => {
                 let result = self.global_import(db, name_def.name());
-                assign_to_name_def(name_def, result.as_ref().map(|r| r.as_inferred()));
+                if result.is_none() {
+                    self.add_module_not_found(db, name_def.name())
+                }
                 if let Some(rest) = rest {
                     if result.is_some() {
-                        self.cache_import_dotted_name(db, rest, result);
+                        self.cache_import_dotted_name(db, rest, result.clone());
                     }
                 }
-                if node_ref.point().calculating() {
-                    node_ref.set_point(Point::new_uncalculated())
-                }
+                result
             }
-            DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                let node_ref = NodeRef::new(self, as_name_def.index());
-                if node_ref.point().calculated() {
-                    // It was already assigned (probably during type computation)
-                    return;
-                }
-                node_ref.set_point(Point::new_calculating());
-
-                let result = self.cache_import_dotted_name(db, dotted_name, None);
-                let inf = match result {
-                    Some(import_result) => import_result.as_inferred(),
-                    None => Inferred::new_module_not_found(),
-                };
-                assign_to_name_def(as_name_def, Some(inf));
-                if node_ref.point().calculating() {
-                    node_ref.set_point(Point::new_uncalculated())
-                }
+            DottedAsNameContent::WithAs(dotted_name, _) => {
+                self.cache_import_dotted_name(db, dotted_name, None)
             }
-        }
+        };
+        cache_import_results(saved_at, &result);
+        result
     }
 
     pub(super) fn add_module_not_found(&self, db: &Database, name: Name) {
@@ -181,5 +154,40 @@ impl PythonFile {
                 },
             );
         }
+    }
+}
+
+fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
+    match result {
+        Some(ImportResult::File(f)) => {
+            node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
+        }
+        Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
+        Some(ImportResult::PyTypedMissing) => node_ref.set_point(Point::new_specific(
+            Specific::AnyDueToError,
+            Locality::Complex,
+        )),
+        None => node_ref.set_point(Point::new_specific(
+            Specific::ModuleNotFound,
+            Locality::Complex,
+        )),
+    }
+}
+
+fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
+    match p.kind() {
+        PointKind::FileReference => Some(ImportResult::File(p.file_index())),
+        PointKind::Specific => {
+            debug_assert!(matches!(
+                p.specific(),
+                Specific::AnyDueToError | Specific::ModuleNotFound
+            ));
+            None
+        }
+        PointKind::Complex => match node_ref.maybe_type().unwrap() {
+            Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
+            _ => unreachable!(),
+        },
+        _ => unreachable!(),
     }
 }

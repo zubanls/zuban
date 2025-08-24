@@ -216,34 +216,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         dotted_as_name: DottedAsName,
     ) -> PointResolution<'file> {
-        // See comment in resolve_import_from_name_def_without_narrowing
-        let mut found_inf = None;
-        self.file
-            .assign_dotted_as_name(self.i_s.db, dotted_as_name, |name_def, inf| {
-                if cfg!(debug_assertions) {
-                    let p = self.point(name_def.index());
-                    debug_assert!(!p.calculated(), "{p:?}");
-                }
-                let write_name_def =
-                    self.is_allowed_to_assign_on_import_without_narrowing(name_def);
-                let inf = inf.unwrap_or_else(|| {
-                    if write_name_def {
-                        self.file.add_module_not_found(self.i_s.db, name_def.name())
-                    }
-                    Inferred::new_module_not_found()
-                });
-                if write_name_def {
-                    found_inf = Some(inf.save_redirect(self.i_s, self.file, name_def.index()))
-                } else {
-                    found_inf = Some(inf);
-                }
-            });
-        match found_inf {
-            Some(inf) => PointResolution::Inferred(inf),
-            None => self
-                .resolve_point_without_narrowing(dotted_as_name.name_def().index())
-                .expect("Resolving import"),
-        }
+        PointResolution::Inferred(
+            self.file
+                .infer_dotted_as_name_import(self.i_s.db, dotted_as_name),
+        )
     }
 
     #[inline]

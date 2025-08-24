@@ -14,7 +14,7 @@ pub const STUBS_SUFFIX: &str = "-stubs";
 const INIT_PY: &str = "__init__.py";
 const INIT_PYI: &str = "__init__.pyi";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum ImportResult {
     File(FileIndex),
     Namespace(Arc<Namespace>), // A Python Namespace package, i.e. a directory

@@ -101,20 +101,26 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             return;
         }
         for dotted_as_name in imp.iter_dotted_as_names() {
-            self.file
-                .assign_dotted_as_name(self.i_s.db, dotted_as_name, |as_name_def, inf| {
-                    let inf = inf.unwrap_or_else(|| {
-                        self.file
-                            .add_module_not_found(self.i_s.db, as_name_def.name());
-                        Inferred::new_module_not_found()
-                    });
-                    self.assign_to_name_def_simple(
-                        as_name_def,
-                        NodeRef::new(self.file, as_name_def.index()),
-                        &inf,
-                        AssignKind::Import,
-                    )
-                });
+            let inf = self
+                .file
+                .infer_dotted_as_name_import(self.i_s.db, dotted_as_name);
+            let name_def = dotted_as_name.name_def();
+            let node_ref = NodeRef::new(self.file, name_def.index());
+            if node_ref.point().calculated() {
+                // It was already assigned (probably during type computation)
+                return;
+            }
+            node_ref.set_point(Point::new_calculating());
+
+            self.assign_to_name_def_simple(
+                name_def,
+                NodeRef::new(self.file, name_def.index()),
+                &inf,
+                AssignKind::Import,
+            );
+            if node_ref.point().calculating() {
+                node_ref.set_point(Point::new_uncalculated())
+            }
         }
         self.set_point(
             imp.index(),
