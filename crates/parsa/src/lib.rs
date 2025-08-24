@@ -47,7 +47,6 @@ macro_rules! __create_type_set {
 
         impl $EnumName {
             pub fn map() -> &'static $Map {
-                #[macro_use]
                 $crate::lazy_static! {
                     static ref HASHMAP: $Map = {
                         let mut m = $crate::FastHashMap::default();
@@ -67,12 +66,11 @@ macro_rules! __create_type_set {
             }
 
             pub fn as_str(x: $EnumName) -> &'static str {
-                #[macro_use]
                 $crate::lazy_static! {
                     static ref HASHMAP: $crate::FastHashMap<u16, &'static str> = {
                         let mut m = $crate::FastHashMap::default();
                         m.insert($EnumName::$first_entry as u16, stringify!($first_entry));
-                        $(m.insert($EnumName::$entry as u16, stringify!($entry));)*;
+                        $(m.insert($EnumName::$entry as u16, stringify!($entry));)*
                         m
                     };
                 }
@@ -158,6 +156,7 @@ macro_rules! __create_node {
             internal_node: &'a $crate::InternalNode,
         }
 
+        #[allow(dead_code)]
         impl<'a> $Node<'a> {
             fn new(
                 internal_tree: &'a $crate::InternalTree,
@@ -449,6 +448,7 @@ macro_rules! __create_node {
             ended: bool,
         }
 
+        #[allow(dead_code)]
         impl<'a> SiblingIterator<'a> {
             pub fn new_empty(any_node: &$Node<'a>) -> Self {
                 Self {
@@ -695,6 +695,9 @@ macro_rules! __parse_rule {
 #[macro_export]
 macro_rules! __parse_soft_keywords {
     ($TerminalType:ident, $($terminal:ident : $($string:literal)|+)*) => {{
+        // There might not be any soft keywords in the parser definition and therefore this might
+        // not need to be mutable.
+        #[allow(unused_mut)]
         let mut soft_keywords = $crate::FastHashMap::default();
         $(
             let mut tokens = $crate::HashSet::new();
@@ -702,7 +705,7 @@ macro_rules! __parse_soft_keywords {
             soft_keywords.insert(
                 $crate::InternalTerminalType($TerminalType::$terminal as u16),
                 tokens);
-        )*;
+        )*
         soft_keywords
     }};
 }
@@ -718,10 +721,12 @@ macro_rules! create_grammar {
         $crate::__create_node!($Tree, struct $Node, enum $NodeType, enum $NonterminalType, $TerminalType,
                                [rules_to_nodes=$first_node $($rule)+]);
 
+        #[allow(dead_code)]
         pub struct $Grammar {
             internal_grammar: Grammar<$Token>,
         }
 
+        #[allow(dead_code)]
         impl $Grammar {
             fn new() -> Self {
                 let mut rules = $crate::FastHashMap::default();
@@ -757,6 +762,7 @@ macro_rules! create_grammar {
             internal_tree: $crate::InternalTree
         }
 
+        #[allow(dead_code)]
         impl $Tree {
             pub fn empty() -> Self {
                 Self {
@@ -838,7 +844,7 @@ mod tests {
 
     struct TestTokenizer {}
     impl Tokenizer<'_, TestTerminal> for TestTokenizer {
-        fn new(code: &str) -> Self {
+        fn new(_code: &str) -> Self {
             Self {}
         }
     }
@@ -863,7 +869,7 @@ mod tests {
         );
 
         #[allow(clippy::no_effect)]
-        &*GRAMMAR;
+        let _ = &*GRAMMAR;
     }
     #[test]
     #[should_panic(expected = "Indirect left recursion")]
@@ -879,7 +885,7 @@ mod tests {
         );
 
         #[allow(clippy::no_effect)]
-        &*GRAMMAR;
+        let _ = &*GRAMMAR;
     }
     #[test]
     #[should_panic(expected = "grammar contains left recursion")]
@@ -894,7 +900,7 @@ mod tests {
         );
 
         #[allow(clippy::no_effect)]
-        &*GRAMMAR;
+        let _ = &*GRAMMAR;
     }
     #[test]
     #[should_panic(expected = "Only terminal lookaheads are allowed")]
@@ -909,7 +915,7 @@ mod tests {
         );
 
         #[allow(clippy::no_effect)]
-        &*GRAMMAR;
+        let _ = &*GRAMMAR;
     }
     #[test]
     fn direct_left_recursion_with_alternative() {
@@ -923,6 +929,6 @@ mod tests {
         );
 
         #[allow(clippy::no_effect)]
-        &*GRAMMAR;
+        let _ = &*GRAMMAR;
     }
 }
