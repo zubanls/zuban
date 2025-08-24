@@ -133,9 +133,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             return;
         }
         match imp.unpack_targets() {
-            ImportFromTargets::Star(keyword) => self.assign_star_import(imp, keyword.index()),
+            ImportFromTargets::Star(keyword) => {
+                self.file
+                    .assign_star_import(self.i_s.db, imp, keyword.index())
+            }
             ImportFromTargets::Iterator(as_names) => {
-                let from_first_part = self.import_from_first_part(imp);
+                let from_first_part = self.file.import_from_first_part(self.i_s.db, imp);
                 for as_name in as_names {
                     self.cache_import_from_part(
                         imp,

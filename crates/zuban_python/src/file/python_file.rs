@@ -774,8 +774,7 @@ impl<'db> PythonFile {
         }) || self.star_imports.iter().any(|star_import| {
             star_import.in_module_scope()
                 && self
-                    .name_resolution_for_types(i_s)
-                    .star_import_file(&star_import)
+                    .star_import_file(db, &star_import)
                     .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }

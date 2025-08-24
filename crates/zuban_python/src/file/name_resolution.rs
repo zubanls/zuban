@@ -11,7 +11,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::File,
-    imports::{find_import_ancestor, namespace_import, ImportAncestor, ImportResult},
+    imports::{namespace_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -83,78 +83,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         }
     }
 
-    #[inline]
-    pub fn star_import_file(&self, star_import: &StarImport) -> Option<&'db PythonFile> {
-        let point = self.point(star_import.star_node);
-        if point.calculated() {
-            return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
-                None
-            } else {
-                Some(self.i_s.db.loaded_python_file(point.file_index()))
-            };
-        }
-        let import_from =
-            NodeRef::new(self.file, star_import.import_from_node).expect_import_from();
-        self.assign_star_import(import_from, star_import.star_node);
-        debug_assert!(self.point(star_import.star_node).calculated());
-        self.star_import_file(star_import)
-    }
-
-    pub(super) fn assign_star_import(&self, import_from: ImportFrom, star_index: NodeIndex) {
-        let from_first_part = self.import_from_first_part(import_from);
-        // Nothing to do here, was calculated earlier
-        let point = match from_first_part {
-            Some(ImportResult::File(file_index)) => {
-                Point::new_file_reference(file_index, Locality::Todo)
-            }
-            // Currently we don't support namespace star imports
-            Some(ImportResult::Namespace { .. }) => {
-                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
-            }
-            Some(ImportResult::PyTypedMissing) => {
-                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
-            }
-            None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
-        };
-        self.set_point(star_index, point);
-    }
-
-    pub(super) fn import_from_first_part(&self, import_from: ImportFrom) -> Option<ImportResult> {
-        let (level, dotted_name) = import_from.level_with_dotted_name();
-        let maybe_level_file = if level > 0 {
-            match find_import_ancestor(self.i_s.db, self.file, level) {
-                ImportAncestor::Found(import_result) => Some(import_result),
-                ImportAncestor::Workspace => {
-                    self.add_issue(import_from.index(), IssueKind::NoParentModule);
-                    // This is not correct in theory, we should simply abort here. However in
-                    // practice this can be useful, because if the sys path is wrong this still
-                    // provides some information, especially with completions/goto.
-                    None
-                }
-                ImportAncestor::NoParentModule => {
-                    self.add_issue(import_from.index(), IssueKind::NoParentModule);
-                    return None;
-                }
-            }
-        } else {
-            None
-        };
-        match dotted_name {
-            Some(dotted_name) => {
-                self.file
-                    .cache_import_dotted_name(self.i_s.db, dotted_name, maybe_level_file)
-            }
-            None => maybe_level_file,
-        }
-    }
-
     pub(super) fn assign_import_from_only_particular_name_def(
         &self,
         as_name: ImportFromAsName,
         assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<ModuleAccessDetail>),
     ) {
         if let Some(import_from) = as_name.import_from() {
-            let from_first_part = self.import_from_first_part(import_from);
+            let from_first_part = self.file.import_from_first_part(self.i_s.db, import_from);
             self.cache_import_from_part(import_from, &from_first_part, as_name, assign_to_name_def)
         } else {
             assign_to_name_def(
@@ -883,7 +818,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             // TODO we might want to add an issue in the future (not high-prio however)
             return None;
         }
-        let other_file = self.star_import_file(star_import)?;
+        let other_file = self.file.star_import_file(self.i_s.db, star_import)?;
 
         if let Some(name_ref) = other_file.lookup_symbol(name) {
             if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {

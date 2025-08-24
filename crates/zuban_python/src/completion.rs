@@ -282,10 +282,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
     ) {
         for star_import in file.star_imports.iter() {
             if star_import.scope == scope {
-                if let Some(f) = file
-                    .name_resolution_for_inference(&InferenceState::new(self.infos.db, file))
-                    .star_import_file(star_import)
-                {
+                if let Some(f) = file.star_import_file(self.infos.db, star_import) {
                     self.add_specific_module_completions(f, true, true, already_visited)
                 }
             }

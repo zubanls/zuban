@@ -1,6 +1,6 @@
 use parsa_python_cst::{
-    DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, Name,
-    NameImportParent,
+    DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom, Name,
+    NameImportParent, NodeIndex,
 };
 use vfs::{Directory, Parent};
 
@@ -8,14 +8,17 @@ use crate::{
     database::{Database, Locality, Point, PointKind, Specific},
     debug,
     diagnostics::IssueKind,
-    imports::{global_import, namespace_import, python_import_with_needs_exact_case, ImportResult},
+    imports::{
+        find_import_ancestor, global_import, namespace_import, python_import_with_needs_exact_case,
+        ImportAncestor, ImportResult,
+    },
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
 };
 
-use super::PythonFile;
+use super::{python_file::StarImport, PythonFile};
 
 impl PythonFile {
     pub(super) fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {
@@ -147,6 +150,82 @@ impl PythonFile {
         result
     }
 
+    pub(super) fn import_from_first_part(
+        &self,
+        db: &Database,
+        import_from: ImportFrom,
+    ) -> Option<ImportResult> {
+        let (level, dotted_name) = import_from.level_with_dotted_name();
+        let maybe_level_file = if level > 0 {
+            match find_import_ancestor(db, self, level) {
+                ImportAncestor::Found(import_result) => Some(import_result),
+                ImportAncestor::Workspace => {
+                    NodeRef::new(self, import_from.index())
+                        .add_type_issue(db, IssueKind::NoParentModule);
+                    // This is not correct in theory, we should simply abort here. However in
+                    // practice this can be useful, because if the sys path is wrong this still
+                    // provides some information, especially with completions/goto.
+                    None
+                }
+                ImportAncestor::NoParentModule => {
+                    NodeRef::new(self, import_from.index())
+                        .add_type_issue(db, IssueKind::NoParentModule);
+                    return None;
+                }
+            }
+        } else {
+            None
+        };
+        match dotted_name {
+            Some(dotted_name) => self.cache_import_dotted_name(db, dotted_name, maybe_level_file),
+            None => maybe_level_file,
+        }
+    }
+
+    pub(super) fn assign_star_import(
+        &self,
+        db: &Database,
+        import_from: ImportFrom,
+        star_index: NodeIndex,
+    ) {
+        let from_first_part = self.import_from_first_part(db, import_from);
+        // Nothing to do here, was calculated earlier
+        let point = match from_first_part {
+            Some(ImportResult::File(file_index)) => {
+                Point::new_file_reference(file_index, Locality::Todo)
+            }
+            // Currently we don't support namespace star imports
+            Some(ImportResult::Namespace { .. }) => {
+                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+            }
+            Some(ImportResult::PyTypedMissing) => {
+                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+            }
+            None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
+        };
+        self.points.set(star_index, point);
+    }
+
+    #[inline]
+    pub fn star_import_file<'db>(
+        &self,
+        db: &'db Database,
+        star_import: &StarImport,
+    ) -> Option<&'db PythonFile> {
+        let point = self.points.get(star_import.star_node);
+        if point.calculated() {
+            return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
+                None
+            } else {
+                Some(db.loaded_python_file(point.file_index()))
+            };
+        }
+        let import_from = NodeRef::new(self, star_import.import_from_node).expect_import_from();
+        self.assign_star_import(db, import_from, star_import.star_node);
+        debug_assert!(self.points.get(star_import.star_node).calculated());
+        self.star_import_file(db, star_import)
+    }
+
     pub(super) fn add_module_not_found(&self, db: &Database, name: Name) {
         if !self.flags(db).ignore_missing_imports {
             NodeRef::new(self, name.index()).add_type_issue(
@@ -221,10 +300,7 @@ impl PythonFile {
                 let import_from = imp.import_from()?;
                 // from . import x simply imports the module that exists in the same
                 // directory anyway and should not be considered a reexport.
-                submodule_reexport(
-                    self.name_resolution_for_types(i_s)
-                        .import_from_first_part(import_from),
-                )
+                submodule_reexport(self.import_from_first_part(i_s.db, import_from))
             }
             NameImportParent::DottedAsName(dotted) => {
                 if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
