@@ -128,8 +128,8 @@ impl Type {
         callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         let options = || {
-            let mut options = InstanceLookupOptions::new(add_issue).with_kind(kind);
-            /* TODO
+            let options = InstanceLookupOptions::new(add_issue).with_kind(kind);
+            /* TODO ?
             if avoid_inferring_return_types {
                 options = options.with_avoid_inferring_return_types();
             }
