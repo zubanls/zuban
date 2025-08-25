@@ -736,7 +736,7 @@ impl Clone for TypedDictDefinition {
             // the future.
             deferred_subclass_member_initializations: Box::new(RwLock::new(
                 self.deferred_subclass_member_initializations
-                    .try_read()
+                    .read()
                     .unwrap()
                     .clone()
                     .into(),

@@ -202,7 +202,7 @@ pub struct Entries(RwLock<Vec<DirectoryEntry>>);
 
 impl Clone for Entries {
     fn clone(&self) -> Self {
-        Self(RwLock::new(self.0.try_read().unwrap().clone()))
+        Self(RwLock::new(self.0.read().unwrap().clone()))
     }
 }
 
@@ -463,18 +463,15 @@ impl<T> InvalidationDetail<T> {
 
 impl Invalidations {
     pub(crate) fn set_invalidates_db(&self) {
-        *self.0.try_write().unwrap() = InvalidationDetail::InvalidatesDb;
+        *self.0.write().unwrap() = InvalidationDetail::InvalidatesDb;
     }
 
     pub(crate) fn invalidates_db(&self) -> bool {
-        matches!(
-            &*self.0.try_read().unwrap(),
-            InvalidationDetail::InvalidatesDb
-        )
+        matches!(&*self.0.read().unwrap(), InvalidationDetail::InvalidatesDb)
     }
 
     pub(crate) fn add(&self, element: FileIndex) {
-        if let InvalidationDetail::Some(invs) = &mut *self.0.try_write().unwrap() {
+        if let InvalidationDetail::Some(invs) = &mut *self.0.write().unwrap() {
             if !invs.contains(&element) {
                 invs.push(element);
             }
@@ -492,15 +489,13 @@ impl Invalidations {
         if self.invalidates_db() {
             return self.clone();
         }
-        Self(RwLock::new(std::mem::take(
-            &mut self.0.try_write().unwrap(),
-        )))
+        Self(RwLock::new(std::mem::take(&mut self.0.write().unwrap())))
     }
 
     pub(crate) fn iter(
         &self,
     ) -> InvalidationDetail<VecRwLockWrapper<InvalidationDetail<Vec<FileIndex>>, FileIndex>> {
-        let r = self.0.try_read().unwrap();
+        let r = self.0.read().unwrap();
         if let InvalidationDetail::InvalidatesDb = &*r {
             return InvalidationDetail::InvalidatesDb;
         }
@@ -517,7 +512,7 @@ impl Invalidations {
     }
 
     pub(crate) fn is_empty(&self) -> bool {
-        match &*self.0.try_read().unwrap() {
+        match &*self.0.read().unwrap() {
             InvalidationDetail::Some(file_indexes) => file_indexes.is_empty(),
             InvalidationDetail::InvalidatesDb => false,
         }
@@ -526,7 +521,7 @@ impl Invalidations {
 
 impl Clone for Invalidations {
     fn clone(&self) -> Self {
-        Self(RwLock::new(self.0.try_read().unwrap().clone()))
+        Self(RwLock::new(self.0.read().unwrap().clone()))
     }
 }
 
