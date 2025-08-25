@@ -262,11 +262,11 @@ impl Entries {
     }
 
     fn borrow(&self) -> RwLockReadGuard<Vec<DirectoryEntry>> {
-        self.0.try_read().unwrap()
+        self.0.read().unwrap()
     }
 
     pub(crate) fn borrow_mut(&self) -> RwLockWriteGuard<Vec<DirectoryEntry>> {
-        self.0.try_write().unwrap()
+        self.0.write().unwrap()
     }
 
     pub fn iter(&self) -> VecRwLockWrapper<Vec<DirectoryEntry>, DirectoryEntry> {

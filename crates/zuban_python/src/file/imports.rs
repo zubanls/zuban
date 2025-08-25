@@ -127,7 +127,7 @@ impl PythonFile {
         }
     }
 
-    fn cache_dotted_as_name_import(
+    pub fn cache_dotted_as_name_import(
         &self,
         db: &Database,
         dotted_as_name: DottedAsName,
@@ -313,6 +313,10 @@ impl PythonFile {
                 }
             }
         }
+    }
+
+    pub fn find_potential_import_from_files(&self, db: &Database, import_from: ImportFrom) {
+        self.import_from_first_part_without_loading_file(db, import_from);
     }
 }
 
