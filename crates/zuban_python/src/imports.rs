@@ -218,8 +218,8 @@ pub fn namespace_import(
     // Since we are in a namespace, we need to verify the case where a namespace within
     // site-packages has a py.typed in one of the subdirectories.
     if let Some(ImportResult::File(file_index)) = result {
-        let file = db.loaded_python_file(file_index);
-        let mut parent = file.file_entry(db).parent.clone();
+        let file_entry = db.vfs.file_entry(file_index);
+        let mut parent = file_entry.parent.clone();
         loop {
             match parent.maybe_dir() {
                 Ok(dir) => {
