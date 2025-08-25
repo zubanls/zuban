@@ -321,7 +321,13 @@ impl<F: VfsFile> Vfs<F> {
             |_| true,
             |_, code| new_file(&file_state.file_entry, code),
         ) {
-            Ok(file_state.file().unwrap())
+            loop {
+                if let Some(file) = file_state.file() {
+                    // This file is added in a parallel process and we need to wait until it's
+                    // completed.
+                    return Ok(file);
+                }
+            }
         } else {
             Err(())
         }
