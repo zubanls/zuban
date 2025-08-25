@@ -181,7 +181,7 @@ fn global_import_without_stubs_first<'a>(
     )
 }
 
-pub fn namespace_import(
+pub fn namespace_import_with_unloaded_file(
     db: &Database,
     from_file: &PythonFile,
     namespace: &Namespace,
@@ -246,6 +246,15 @@ pub fn namespace_import(
         }
     }
     result
+}
+
+pub fn namespace_import(
+    db: &Database,
+    from_file: &PythonFile,
+    namespace: &Namespace,
+    name: &str,
+) -> Option<ImportResult> {
+    namespace_import_with_unloaded_file(db, from_file, namespace, name)?.ensured_loaded_file(db)
 }
 
 fn python_import<'x>(

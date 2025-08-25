@@ -9,8 +9,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     imports::{
-        find_import_ancestor, global_import, namespace_import, python_import_with_needs_exact_case,
-        ImportAncestor, ImportResult,
+        find_import_ancestor, global_import, namespace_import_with_unloaded_file,
+        python_import_with_needs_exact_case, ImportAncestor, ImportResult,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -66,7 +66,7 @@ impl PythonFile {
                         })
                 }
                 ImportResult::Namespace(namespace) => {
-                    namespace_import(db, self, namespace, name.as_str())
+                    namespace_import_with_unloaded_file(db, self, namespace, name.as_str())
                 }
                 ImportResult::PyTypedMissing => Some(ImportResult::PyTypedMissing),
             };

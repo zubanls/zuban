@@ -12,7 +12,6 @@ docs_alias
 docs_property
 
 conjunction_partial_inference_combination_issue
-type_def_with_with_site_package_without_py_typed
 overload_overwrite
 # conformance tests: scoping
 type_var_syntax_nested_type_variables_not_reachable
