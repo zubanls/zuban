@@ -22,24 +22,21 @@ pub(crate) enum ImportResult {
 }
 
 impl ImportResult {
-    pub fn ensured_loaded_file(&self, db: &Database) -> Option<&Self> {
+    pub fn ensured_loaded_file(self, db: &Database) -> Option<Self> {
         if let Self::File(file_index) = self {
-            db.ensure_file_for_file_index(*file_index).ok()?;
+            db.ensure_file_for_file_index(file_index).ok()?;
         }
-        Some(&self)
+        Some(self)
     }
 
     pub fn import(
-        &self,
+        self,
         db: &Database,
         original_file: &PythonFile,
         name: &str,
     ) -> Option<ImportResult> {
-        match self {
-            Self::File(file_index) => {
-                self.ensured_loaded_file(db)?;
-                db.loaded_python_file(*file_index).sub_module(db, name)
-            }
+        match self.ensured_loaded_file(db)? {
+            Self::File(file_index) => db.loaded_python_file(file_index).sub_module(db, name),
             Self::Namespace(ns) => python_import(
                 db,
                 original_file,
@@ -109,13 +106,13 @@ impl ImportResult {
         }
     }
 
-    pub fn as_inferred(&self, db: &Database) -> Inferred {
-        match self {
-            ImportResult::File(file_index) => match self.ensured_loaded_file(db) {
-                Some(_) => Inferred::new_file_reference(*file_index),
-                // TODO this should probably cause an error (the file was not there anymore)
-                None => Inferred::new_module_not_found(),
-            },
+    pub fn into_inferred(self, db: &Database) -> Inferred {
+        let Some(result) = self.ensured_loaded_file(db) else {
+            // TODO this should probably cause an error (the file was not there anymore)
+            return Inferred::new_module_not_found();
+        };
+        match result {
+            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
             ImportResult::Namespace(namespace) => {
                 Inferred::from_type(Type::Namespace(namespace.clone()))
             }

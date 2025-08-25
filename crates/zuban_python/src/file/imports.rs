@@ -117,7 +117,7 @@ impl PythonFile {
         dotted_as_name: DottedAsName,
     ) -> Inferred {
         match self.cache_dotted_as_name_import(db, dotted_as_name) {
-            Some(import_result) => import_result.as_inferred(db),
+            Some(import_result) => import_result.into_inferred(db),
             None => Inferred::new_module_not_found(),
         }
     }
@@ -160,7 +160,6 @@ impl PythonFile {
     ) -> Option<ImportResult> {
         self.import_from_first_part_without_loading_file(db, import_from)?
             .ensured_loaded_file(db)
-            .cloned()
     }
 
     pub(super) fn import_from_first_part_without_loading_file(
@@ -280,7 +279,7 @@ impl PythonFile {
 
     pub fn sub_module_lookup(&self, db: &Database, name: &str) -> Option<LookupResult> {
         Some(match self.sub_module(db, name)?.ensured_loaded_file(db)? {
-            ImportResult::File(file_index) => LookupResult::FileReference(*file_index),
+            ImportResult::File(file_index) => LookupResult::FileReference(file_index),
             ImportResult::Namespace(ns) => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns.clone())))
             }
