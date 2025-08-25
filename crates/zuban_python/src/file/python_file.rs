@@ -14,6 +14,7 @@ use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, PathWithScheme};
 use super::{
     file_state::File,
     flow_analysis::DelayedDiagnostic,
+    imports::is_package_name,
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
     name_resolution::{ModuleAccessDetail, NameResolution},
@@ -398,10 +399,7 @@ impl<'db> PythonFile {
 
     pub fn file_entry_and_is_package(&self, db: &'db Database) -> (&'db Arc<FileEntry>, bool) {
         let entry = self.file_entry(db);
-        (
-            entry,
-            &*entry.name == "__init__.py" || &*entry.name == "__init__.pyi",
-        )
+        (entry, is_package_name(entry))
     }
 
     pub fn ensure_calculated_diagnostics(&self, db: &Database) -> Result<(), ()> {

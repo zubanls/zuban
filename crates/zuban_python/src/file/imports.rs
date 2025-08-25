@@ -2,7 +2,7 @@ use parsa_python_cst::{
     DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom, Name,
     NameImportParent, NodeIndex,
 };
-use vfs::{Directory, Parent};
+use vfs::{Directory, FileEntry, Parent};
 
 use crate::{
     database::{Database, Locality, Point, PointKind, Specific},
@@ -250,35 +250,12 @@ impl PythonFile {
     }
 
     pub fn sub_module(&self, db: &Database, name: &str) -> Option<ImportResult> {
-        let (entry, is_package) = self.file_entry_and_is_package(db);
-        if !is_package {
-            return None;
-        }
-        match &entry.parent {
-            Parent::Directory(dir) => python_import_with_needs_exact_case(
-                db,
-                self,
-                std::iter::once((
-                    Directory::entries(&*db.vfs.handler, &dir.upgrade().unwrap()),
-                    false,
-                )),
-                name,
-                true,
-                true,
-            )
-            .or_else(|| {
-                if self.in_partial_stubs(db) {
-                    self.normal_file_of_stub_file(db)?.sub_module(db, name)
-                } else {
-                    None
-                }
-            }),
-            Parent::Workspace(_) => None,
-        }
+        let (entry, _) = self.file_entry_and_is_package(db);
+        sub_module_import(db, self, entry, name)?.ensured_loaded_file(db)
     }
 
     pub fn sub_module_lookup(&self, db: &Database, name: &str) -> Option<LookupResult> {
-        Some(match self.sub_module(db, name)?.ensured_loaded_file(db)? {
+        Some(match self.sub_module(db, name)? {
             ImportResult::File(file_index) => LookupResult::FileReference(file_index),
             ImportResult::Namespace(ns) => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns.clone())))
@@ -329,6 +306,45 @@ impl PythonFile {
             }
         }
     }
+}
+
+fn sub_module_import(
+    db: &Database,
+    in_file: &PythonFile,
+    file_entry: &FileEntry,
+    name: &str,
+) -> Option<ImportResult> {
+    if !is_package_name(file_entry) {
+        return None;
+    }
+    match &file_entry.parent {
+        Parent::Directory(dir) => python_import_with_needs_exact_case(
+            db,
+            in_file,
+            std::iter::once((
+                Directory::entries(&*db.vfs.handler, &dir.upgrade().unwrap()),
+                false,
+            )),
+            name,
+            true,
+            true,
+        )
+        .or_else(|| {
+            let file = db
+                .ensure_file_for_file_index(file_entry.get_file_index()?)
+                .ok()?;
+            if file.in_partial_stubs(db) {
+                file.normal_file_of_stub_file(db)?.sub_module(db, name)
+            } else {
+                None
+            }
+        }),
+        Parent::Workspace(_) => None,
+    }
+}
+
+pub(super) fn is_package_name(file_entry: &FileEntry) -> bool {
+    &*file_entry.name == "__init__.py" || &*file_entry.name == "__init__.pyi"
 }
 
 fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
