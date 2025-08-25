@@ -1,6 +1,6 @@
 use parsa_python_cst::{
-    DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom, Name,
-    NameImportParent, NodeIndex,
+    DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom,
+    ImportFromTargets, Name, NameImportParent, NodeIndex,
 };
 use vfs::{Directory, FileEntry, Parent};
 
@@ -315,8 +315,45 @@ impl PythonFile {
         }
     }
 
-    pub fn find_potential_import_from_files(&self, db: &Database, import_from: ImportFrom) {
-        self.import_from_first_part_without_loading_file(db, import_from);
+    pub fn find_potential_import_from_files(
+        &self,
+        db: &Database,
+        import_from: ImportFrom,
+        on_potential_file: impl Fn(ImportResult),
+    ) {
+        let Some(imp) = self.import_from_first_part_without_loading_file(db, import_from) else {
+            return;
+        };
+        match import_from.unpack_targets() {
+            ImportFromTargets::Star(_) => on_potential_file(imp),
+            ImportFromTargets::Iterator(targets) => match imp {
+                ImportResult::File(file_index) => {
+                    let file_entry = db.vfs.file_entry(file_index);
+                    on_potential_file(imp);
+                    if is_package_name(file_entry) {
+                        for target in targets {
+                            let name = target.unpack().0;
+                            if let Some(imp) =
+                                sub_module_import(db, self, file_entry, name.as_code())
+                            {
+                                on_potential_file(imp)
+                            }
+                        }
+                    }
+                }
+                ImportResult::Namespace(namespace) => {
+                    for target in targets {
+                        let name = target.unpack().0;
+                        if let Some(imp) =
+                            namespace_import_with_unloaded_file(db, self, &namespace, name.as_str())
+                        {
+                            on_potential_file(imp)
+                        }
+                    }
+                }
+                ImportResult::PyTypedMissing => (),
+            },
+        }
     }
 }
 

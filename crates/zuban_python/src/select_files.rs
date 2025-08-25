@@ -56,7 +56,9 @@ impl<'db> FileSelector<'db> {
                 for node_index in &file.all_imports {
                     match ImportFrom::maybe_by_index(&file.tree, *node_index) {
                         Some(import_from) => {
-                            file.find_potential_import_from_files(db, import_from);
+                            file.find_potential_import_from_files(db, import_from, |on_file| {
+                                // TODO?
+                            });
                         }
                         None => {
                             for dotted in
