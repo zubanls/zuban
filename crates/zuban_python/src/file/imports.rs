@@ -48,19 +48,22 @@ impl PythonFile {
             let mut in_stub_and_has_getattr = false;
             let result = match &base {
                 ImportResult::File(file_index) => {
-                    let module = db.loaded_python_file(*file_index);
-                    let r = module.sub_module(db, name.as_str());
+                    db.ensure_file_for_file_index(*file_index)
+                        .ok()
+                        .and_then(|module| {
+                            let r = module.sub_module(db, name.as_str());
 
-                    // This is such weird logic. I don't understand at all why Mypy is doing this.
-                    // It seems to come from here:
-                    // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
-                    if r.is_none()
-                        && module.is_stub()
-                        && module.lookup_symbol("__getattr__").is_some()
-                    {
-                        in_stub_and_has_getattr = true
-                    }
-                    r
+                            // This is such weird logic. I don't understand at all why Mypy is doing this.
+                            // It seems to come from here:
+                            // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
+                            if r.is_none()
+                                && module.is_stub()
+                                && module.lookup_symbol("__getattr__").is_some()
+                            {
+                                in_stub_and_has_getattr = true
+                            }
+                            r
+                        })
                 }
                 ImportResult::Namespace(namespace) => {
                     namespace_import(db, self, namespace, name.as_str())
@@ -114,12 +117,12 @@ impl PythonFile {
         dotted_as_name: DottedAsName,
     ) -> Inferred {
         match self.cache_dotted_as_name_import(db, dotted_as_name) {
-            Some(import_result) => import_result.as_inferred(),
+            Some(import_result) => import_result.as_inferred(db),
             None => Inferred::new_module_not_found(),
         }
     }
 
-    pub(super) fn cache_dotted_as_name_import(
+    fn cache_dotted_as_name_import(
         &self,
         db: &Database,
         dotted_as_name: DottedAsName,
@@ -151,6 +154,16 @@ impl PythonFile {
     }
 
     pub(super) fn import_from_first_part(
+        &self,
+        db: &Database,
+        import_from: ImportFrom,
+    ) -> Option<ImportResult> {
+        self.import_from_first_part_without_loading_file(db, import_from)?
+            .ensured_loaded_file(db)
+            .cloned()
+    }
+
+    pub(super) fn import_from_first_part_without_loading_file(
         &self,
         db: &Database,
         import_from: ImportFrom,
@@ -266,10 +279,10 @@ impl PythonFile {
     }
 
     pub fn sub_module_lookup(&self, db: &Database, name: &str) -> Option<LookupResult> {
-        Some(match self.sub_module(db, name)? {
-            ImportResult::File(file_index) => LookupResult::FileReference(file_index),
+        Some(match self.sub_module(db, name)?.ensured_loaded_file(db)? {
+            ImportResult::File(file_index) => LookupResult::FileReference(*file_index),
             ImportResult::Namespace(ns) => {
-                LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns)))
+                LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns.clone())))
             }
             ImportResult::PyTypedMissing => unreachable!(),
         })

@@ -520,7 +520,7 @@ impl<'db> PythonFile {
                 ImportResult::PyTypedMissing => unreachable!(),
             }
         });
-        Some(db.loaded_python_file(file_index?))
+        db.ensure_file_for_file_index(file_index?).ok()
     }
 
     pub fn stub_file_of_normal_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
@@ -545,7 +545,7 @@ impl<'db> PythonFile {
                 ImportResult::PyTypedMissing => unreachable!(),
             }
         };
-        let loaded = db.loaded_python_file(file_index);
+        let loaded = db.ensure_file_for_file_index(file_index).ok()?;
         if !loaded.is_stub() {
             return None;
         }

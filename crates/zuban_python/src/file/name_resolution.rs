@@ -239,12 +239,12 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         };
         Some(match from_first_part {
             ImportResult::File(file_index) => {
-                let import_file = self.i_s.db.loaded_python_file(*file_index);
                 // Coming from an import we need to make sure that we do not create loops for imports
-                if self.file.file_index == import_file.file_index {
-                    let inf = convert_imp_result(import_file.sub_module(self.i_s.db, name)?);
+                if self.file.file_index == *file_index {
+                    let inf = convert_imp_result(self.file.sub_module(self.i_s.db, name)?);
                     (PointResolution::Inferred(inf), None)
                 } else {
+                    let import_file = self.i_s.db.loaded_python_file(*file_index);
                     return self
                         .with_new_file(import_file)
                         .resolve_module_access(name, |kind| {

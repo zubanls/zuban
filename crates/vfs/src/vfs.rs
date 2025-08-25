@@ -185,16 +185,12 @@ impl<F: VfsFile> Vfs<F> {
             let ensured =
                 self.workspaces
                     .ensure_file(&*self.handler, case_sensitive, &recoverable_file.path);
-            let file_index = ensured.with_set_file_index(|| {
-                self.with_added_file(
-                    ensured.file_entry.clone(),
-                    recoverable_file.path,
-                    recoverable_file.invalidates_db,
-                    |file_index| {
-                        new_file(file_index, &ensured.file_entry, recoverable_file.artifacts)
-                    },
-                )
-            });
+            let file_index = self.with_added_file(
+                ensured.file_entry.clone(),
+                recoverable_file.path,
+                recoverable_file.invalidates_db,
+                |file_index| new_file(file_index, &ensured.file_entry, recoverable_file.artifacts),
+            );
             if recoverable_file.is_in_memory_file {
                 let fs = self.file_state(file_index);
                 self.in_memory_files.insert(fs.path.clone(), file_index);
@@ -290,6 +286,14 @@ impl<F: VfsFile> Vfs<F> {
         &mut self.files[index.0 as usize]
     }
 
+    pub fn ensure_file_index(&self, file_entry: &Arc<FileEntry>) -> FileIndex {
+        file_entry.get_file_index().unwrap_or_else(|| {
+            let path = file_entry.absolute_path(&*self.handler);
+            self.add_uninitialized_file_state(file_entry.clone(), path, false)
+                .1
+        })
+    }
+
     pub fn ensure_file_for_file_entry(
         &self,
         file_entry: Arc<FileEntry>,
@@ -302,6 +306,25 @@ impl<F: VfsFile> Vfs<F> {
             |_| true,
             new_file,
         )
+    }
+
+    pub fn ensure_file_for_file_index(
+        &self,
+        file_index: FileIndex,
+        new_file: impl FnOnce(&FileEntry, Box<str>) -> F,
+    ) -> Result<&F, ()> {
+        let file_state = self.file_state(file_index);
+        debug_assert_eq!(file_state.file_entry.get_file_index(), Some(file_index));
+        if let Some(_) = self.ensure_file_for_file_entry_with_conditional(
+            file_state.file_entry.clone(),
+            false,
+            |_| true,
+            |_, code| new_file(&file_state.file_entry, code),
+        ) {
+            Ok(file_state.file().unwrap())
+        } else {
+            Err(())
+        }
     }
 
     pub fn ensure_file_for_file_entry_with_conditional(
@@ -329,15 +352,10 @@ impl<F: VfsFile> Vfs<F> {
                 return None;
             }
 
-            let file_index = file_entry.with_set_file_index(|| {
-                self.with_added_file(
-                    file_entry.clone(),
-                    // The path was previously normalized, because it is created from a Directory
-                    path,
-                    invalidates_db,
-                    |file_index| new_file(file_index, code.into()),
-                )
-            });
+            let file_index =
+                self.with_added_file(file_entry.clone(), path, invalidates_db, |file_index| {
+                    new_file(file_index, code.into())
+                });
             Some(file_index)
         }
     }
@@ -401,16 +419,14 @@ impl<F: VfsFile> Vfs<F> {
             }
             file_index
         } else {
-            ensured.with_set_file_index(|| {
-                let file_index = self.with_added_file(
-                    ensured.file_entry.clone(),
-                    path.clone(),
-                    false,
-                    |file_index| new_file(file_index, &ensured.file_entry, code),
-                );
-                self.in_memory_files.insert(path, file_index);
-                file_index
-            })
+            let file_index = self.with_added_file(
+                ensured.file_entry.clone(),
+                path.clone(),
+                false,
+                |file_index| new_file(file_index, &ensured.file_entry, code),
+            );
+            self.in_memory_files.insert(path, file_index);
+            file_index
         };
         if tracing::enabled!(Level::INFO) {
             if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
@@ -682,6 +698,40 @@ impl<F: VfsFile> Vfs<F> {
         result
     }
 
+    #[inline]
+    fn add_uninitialized_file_state(
+        &self,
+        file_entry: Arc<FileEntry>,
+        path: PathWithScheme,
+        invalidates_db: bool,
+    ) -> (&FileState<F>, FileIndex) {
+        let mut file_state = None;
+        let file_index = file_entry.with_set_file_index(|| {
+            let (fs, file_index) = self.add_uninitialized_file_state_without_setting_file_index(
+                file_entry.clone(),
+                path,
+                invalidates_db,
+            );
+            file_state = Some(fs);
+            file_index
+        });
+        (file_state.unwrap(), file_index)
+    }
+
+    fn add_uninitialized_file_state_without_setting_file_index(
+        &self,
+        file_entry: Arc<FileEntry>,
+        path: PathWithScheme,
+        invalidates_db: bool,
+    ) -> (&FileState<F>, FileIndex) {
+        let (file_state, file_index) = self.files.push(Box::pin(FileState::new_uninitialized(
+            file_entry,
+            path,
+            invalidates_db,
+        )));
+        (file_state, FileIndex(file_index as u32))
+    }
+
     fn with_added_file(
         &self,
         file_entry: Arc<FileEntry>,
@@ -689,12 +739,8 @@ impl<F: VfsFile> Vfs<F> {
         invalidates_db: bool,
         new_file: impl FnOnce(FileIndex) -> F,
     ) -> FileIndex {
-        let (file_state, file_index) = self.files.push(Box::pin(FileState::new_uninitialized(
-            file_entry,
-            path,
-            invalidates_db,
-        )));
-        let file_index = FileIndex(file_index as u32);
+        let (file_state, file_index) =
+            self.add_uninitialized_file_state(file_entry, path, invalidates_db);
         file_state.update(new_file(file_index));
         file_index
     }
@@ -706,12 +752,14 @@ impl<F: VfsFile> Vfs<F> {
     ) -> FileIndex {
         let file_entry = self.file_state(super_file_index).file_entry.clone();
         let invalidates_db = file_entry.invalidations.invalidates_db();
-        self.with_added_file(
-            file_entry,
-            PathWithScheme::new_sub_file(),
-            invalidates_db,
-            add,
-        )
+        let (file_state, file_index) = self
+            .add_uninitialized_file_state_without_setting_file_index(
+                file_entry,
+                PathWithScheme::new_sub_file(),
+                invalidates_db,
+            );
+        file_state.update(add(file_index));
+        file_index
     }
 }
 

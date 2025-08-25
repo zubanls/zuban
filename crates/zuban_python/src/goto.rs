@@ -158,7 +158,7 @@ impl<'db, T> PositionalDocument<'db, T> {
             })
         }
         if let Some(import_result) = import_result {
-            import_result.as_inferred()
+            import_result.as_inferred(self.db)
         } else {
             Inferred::new_any_from_error()
         }

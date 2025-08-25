@@ -141,11 +141,10 @@ impl FileEntry {
 
     pub(crate) fn with_set_file_index(&self, callback: impl FnOnce() -> FileIndex) -> FileIndex {
         let mut guard = self.file_index.lock().unwrap();
-        guard.unwrap_or_else(|| {
-            let file_index = callback();
-            *guard = Some(file_index);
-            file_index
-        })
+        let file_index = callback();
+        debug_assert_eq!(*guard, None);
+        *guard = Some(file_index);
+        file_index
     }
 }
 
@@ -218,15 +217,6 @@ pub struct Directory {
 pub(crate) struct AddedFile {
     pub(crate) invalidations: Invalidations,
     pub(crate) file_entry: Arc<FileEntry>,
-}
-
-impl AddedFile {
-    pub(crate) fn with_set_file_index(&self, set_index: impl FnOnce() -> FileIndex) -> FileIndex {
-        // Theoretically we could just search in the directory for the entry again, but I'm too
-        // lazy for that and it's faster this way.
-        debug_assert!(self.file_entry.get_file_index().is_none());
-        self.file_entry.with_set_file_index(set_index)
-    }
 }
 
 impl Directory {

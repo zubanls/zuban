@@ -1178,6 +1178,13 @@ impl Database {
         )
     }
 
+    pub fn ensure_file_for_file_index(&self, file_index: FileIndex) -> Result<&PythonFile, ()> {
+        self.vfs
+            .ensure_file_for_file_index(file_index, |file_entry, code| {
+                PythonFile::from_file_entry_and_code(&self.project, file_index, file_entry, code)
+            })
+    }
+
     pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) -> FileIndex {
         let (file_index, invalidation) = self.vfs.store_in_memory_file(
             self.project.flags.case_sensitive,
@@ -1290,9 +1297,12 @@ impl Database {
     }
 
     pub fn loaded_python_file(&self, index: FileIndex) -> &PythonFile {
-        self.vfs
-            .file(index)
-            .unwrap_or_else(|| panic!("file #{index}: {}", self.vfs.file_path(index).path()))
+        self.vfs.file(index).unwrap_or_else(|| {
+            panic!(
+                "Expected loaded file #{index}: {}",
+                self.vfs.file_path(index).path()
+            )
+        })
     }
 
     fn generate_python_state(&mut self) {

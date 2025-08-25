@@ -5,7 +5,7 @@ use vfs::{Directory, DirectoryEntry, Entries, FileIndex, WorkspaceKind};
 
 use crate::{
     database::Database,
-    file::{File, PythonFile},
+    file::PythonFile,
     inferred::Inferred,
     type_::{Namespace, Type},
 };
@@ -22,6 +22,13 @@ pub(crate) enum ImportResult {
 }
 
 impl ImportResult {
+    pub fn ensured_loaded_file(&self, db: &Database) -> Option<&Self> {
+        if let Self::File(file_index) = self {
+            db.ensure_file_for_file_index(*file_index).ok()?;
+        }
+        Some(&self)
+    }
+
     pub fn import(
         &self,
         db: &Database,
@@ -29,7 +36,10 @@ impl ImportResult {
         name: &str,
     ) -> Option<ImportResult> {
         match self {
-            Self::File(file_index) => db.loaded_python_file(*file_index).sub_module(db, name),
+            Self::File(file_index) => {
+                self.ensured_loaded_file(db)?;
+                db.loaded_python_file(*file_index).sub_module(db, name)
+            }
             Self::Namespace(ns) => python_import(
                 db,
                 original_file,
@@ -99,9 +109,13 @@ impl ImportResult {
         }
     }
 
-    pub fn as_inferred(&self) -> Inferred {
+    pub fn as_inferred(&self, db: &Database) -> Inferred {
         match self {
-            ImportResult::File(file_index) => Inferred::new_file_reference(*file_index),
+            ImportResult::File(file_index) => match self.ensured_loaded_file(db) {
+                Some(_) => Inferred::new_file_reference(*file_index),
+                // TODO this should probably cause an error (the file was not there anymore)
+                None => Inferred::new_module_not_found(),
+            },
             ImportResult::Namespace(namespace) => {
                 Inferred::from_type(Type::Namespace(namespace.clone()))
             }
@@ -119,7 +133,7 @@ impl ImportResult {
 
     pub fn debug_info<'x>(&'x self, db: &'x Database) -> String {
         match self {
-            Self::File(f) => format!("{} ({f})", db.loaded_python_file(*f).file_path(db)),
+            Self::File(f) => format!("{} ({f})", db.file_path(*f)),
             Self::Namespace(namespace) => {
                 format!("namespace {}", namespace.debug_path(db))
             }
@@ -292,16 +306,16 @@ pub fn python_import_with_needs_exact_case<'x>(
                             if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
                                 return Some(ImportResult::PyTypedMissing);
                             }
-                            let file_index = db.load_file_from_workspace(file, false);
+                            let file_index = db.vfs.ensure_file_index(file);
                             if is_py_file {
-                                python_file_index = file_index.map(|f| (file.clone(), f));
+                                python_file_index = Some((file.clone(), file_index));
                             } else {
-                                stub_file_index = file_index.map(|f| (file.clone(), f));
+                                stub_file_index = Some((file.clone(), file_index));
                             }
                         }
                     } else if is_py_file {
-                        let file_index = db.load_file_from_workspace(file, false);
-                        python_file_index = file_index.map(|f| (file.clone(), f));
+                        let file_index = db.vfs.ensure_file_index(file);
+                        python_file_index = Some((file.clone(), file_index));
                     }
                 }
                 DirectoryEntry::MissingEntry { .. } => (),
@@ -348,9 +362,9 @@ fn load_init_file(
     for child in &entries.iter() {
         if let DirectoryEntry::File(entry) = child {
             if match_c(db, &entry.name, INIT_PYI, false) {
-                let found_file_index = db.load_file_from_workspace(entry, false);
+                let found_file_index = db.vfs.ensure_file_index(entry);
                 entry.add_invalidation(from_file);
-                return found_file_index;
+                return Some(found_file_index);
             }
             if match_c(db, &entry.name, INIT_PY, false) {
                 found_py = Some(entry.clone());
@@ -359,9 +373,9 @@ fn load_init_file(
     }
     entries.add_missing_entry(INIT_PYI, from_file);
     if let Some(found_py) = found_py {
-        let found_file_index = db.load_file_from_workspace(&found_py, false);
+        let found_file_index = db.vfs.ensure_file_index(&found_py);
         found_py.add_invalidation(from_file);
-        return found_file_index;
+        return Some(found_file_index);
     } else {
         entries.add_missing_entry(INIT_PY, from_file);
         None
