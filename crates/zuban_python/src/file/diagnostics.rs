@@ -264,10 +264,12 @@ impl Inference<'_, '_, '_> {
         if class.is_some() && func.is_none() {
             match import_from.unpack_targets() {
                 ImportFromTargets::Star(_) => {
-                    if let Some(ImportResult::File(file)) =
-                        self.file.import_from_first_part(self.i_s.db, import_from)
+                    if let Some(ImportResult::File(file)) = self
+                        .file
+                        .import_from_first_part(self.i_s.db, import_from)
+                        .as_deref()
                     {
-                        let imported = self.i_s.db.loaded_python_file(file);
+                        let imported = self.i_s.db.loaded_python_file(*file);
                         if imported.has_unsupported_class_scoped_import(self.i_s.db) {
                             self.add_issue(
                                 import_from.index(),

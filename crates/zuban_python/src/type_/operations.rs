@@ -1189,15 +1189,14 @@ fn lookup_in_namespace(
     namespace: &Namespace,
     name: &str,
 ) -> LookupResult {
-    match namespace_import(db, from_file, namespace, name) {
-        Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
-        Some(ImportResult::Namespace(namespace)) => {
+    let Some(import) = namespace_import(db, from_file, namespace, name) else {
+        return LookupResult::None;
+    };
+    match import.into_import_result() {
+        ImportResult::File(file_index) => LookupResult::FileReference(file_index),
+        ImportResult::Namespace(namespace) => {
             LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
         }
-        Some(ImportResult::PyTypedMissing) => LookupResult::any(AnyCause::FromError),
-        None => {
-            debug!("TODO namespace basic lookups");
-            LookupResult::None
-        }
+        ImportResult::PyTypedMissing => LookupResult::any(AnyCause::FromError),
     }
 }

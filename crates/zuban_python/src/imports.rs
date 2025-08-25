@@ -22,11 +22,25 @@ pub(crate) enum ImportResult {
 }
 
 impl ImportResult {
-    pub fn ensured_loaded_file(self, db: &Database) -> Option<Self> {
+    pub fn ensured_loaded_file(self, db: &Database) -> Option<LoadedImportResult> {
         if let Self::File(file_index) = self {
             db.ensure_file_for_file_index(file_index).ok()?;
         }
-        Some(self)
+        Some(LoadedImportResult(self))
+    }
+
+    pub fn into_inferred(self, db: &Database) -> Inferred {
+        let Some(result) = self.ensured_loaded_file(db) else {
+            // TODO this should probably cause an error (the file was not there anymore)
+            return Inferred::new_module_not_found();
+        };
+        match result.0 {
+            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
+            ImportResult::Namespace(namespace) => {
+                Inferred::from_type(Type::Namespace(namespace.clone()))
+            }
+            Self::PyTypedMissing => Inferred::new_any_from_error(),
+        }
     }
 
     pub fn import(
@@ -35,8 +49,12 @@ impl ImportResult {
         original_file: &PythonFile,
         name: &str,
     ) -> Option<ImportResult> {
-        match self.ensured_loaded_file(db)? {
-            Self::File(file_index) => db.loaded_python_file(file_index).sub_module(db, name),
+        match self.ensured_loaded_file(db)?.0 {
+            Self::File(file_index) => Some(
+                db.loaded_python_file(file_index)
+                    .sub_module(db, name)?
+                    .into_import_result(),
+            ),
             Self::Namespace(ns) => python_import(
                 db,
                 original_file,
@@ -106,28 +124,6 @@ impl ImportResult {
         }
     }
 
-    pub fn into_inferred(self, db: &Database) -> Inferred {
-        let Some(result) = self.ensured_loaded_file(db) else {
-            // TODO this should probably cause an error (the file was not there anymore)
-            return Inferred::new_module_not_found();
-        };
-        match result {
-            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
-            ImportResult::Namespace(namespace) => {
-                Inferred::from_type(Type::Namespace(namespace.clone()))
-            }
-            Self::PyTypedMissing => Inferred::new_any_from_error(),
-        }
-    }
-
-    pub fn qualified_name(&self, db: &Database) -> String {
-        match self {
-            Self::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
-            Self::Namespace(ns) => ns.qualified_name(),
-            Self::PyTypedMissing => unreachable!(),
-        }
-    }
-
     pub fn debug_info<'x>(&'x self, db: &'x Database) -> String {
         match self {
             Self::File(f) => format!("{} ({f})", db.file_path(*f)),
@@ -136,6 +132,30 @@ impl ImportResult {
             }
             Self::PyTypedMissing => "<py.typed missing>".into(),
         }
+    }
+}
+
+impl<'a> std::ops::Deref for LoadedImportResult {
+    type Target = ImportResult;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub(crate) struct LoadedImportResult(ImportResult);
+
+impl LoadedImportResult {
+    pub fn qualified_name(&self, db: &Database) -> String {
+        match &self.0 {
+            ImportResult::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
+            ImportResult::Namespace(ns) => ns.qualified_name(),
+            ImportResult::PyTypedMissing => unreachable!(),
+        }
+    }
+
+    pub fn into_import_result(self) -> ImportResult {
+        self.0
     }
 }
 
@@ -253,7 +273,7 @@ pub fn namespace_import(
     from_file: &PythonFile,
     namespace: &Namespace,
     name: &str,
-) -> Option<ImportResult> {
+) -> Option<LoadedImportResult> {
     namespace_import_with_unloaded_file(db, from_file, namespace, name)?.ensured_loaded_file(db)
 }
 

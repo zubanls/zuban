@@ -11,7 +11,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::File,
-    imports::{namespace_import, ImportResult},
+    imports::{namespace_import, ImportResult, LoadedImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -165,7 +165,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub(super) fn cache_import_from_part(
         &self,
         import_from: ImportFrom,
-        from_first_part: &Option<ImportResult>,
+        from_first_part: &Option<LoadedImportResult>,
         as_name: ImportFromAsName,
         assign_to_name_def: impl FnOnce(NameDef, PointResolution<'file>, Option<ModuleAccessDetail>),
     ) {
@@ -232,11 +232,12 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         import_name: Name,
     ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let name = import_name.as_str();
-        let convert_imp_result = |imp_result| match imp_result {
-            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
-            ImportResult::Namespace(ns) => Inferred::from_type(Type::Namespace(ns)),
-            ImportResult::PyTypedMissing => Inferred::new_any_from_error(),
-        };
+        let convert_imp_result =
+            |imp_result: LoadedImportResult| match imp_result.into_import_result() {
+                ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
+                ImportResult::Namespace(ns) => Inferred::from_type(Type::Namespace(ns)),
+                ImportResult::PyTypedMissing => Inferred::new_any_from_error(),
+            };
         Some(match from_first_part {
             ImportResult::File(file_index) => {
                 // Coming from an import we need to make sure that we do not create loops for imports

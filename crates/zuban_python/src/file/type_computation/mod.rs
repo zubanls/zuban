@@ -1653,18 +1653,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::UNKNOWN_REPORTED
                 }
             }
-            TypeContent::Namespace(n) => match namespace_import(db, self.file, &n, name.as_str()) {
-                Some(ImportResult::File(file_index)) => {
-                    let file = db.loaded_python_file(file_index);
-                    TypeContent::Module(file)
-                }
-                Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
-                Some(ImportResult::PyTypedMissing) => TypeContent::UNKNOWN_REPORTED,
-                None => {
+            TypeContent::Namespace(n) => {
+                if let Some(import) = namespace_import(db, self.file, &n, name.as_str()) {
+                    match import.into_import_result() {
+                        ImportResult::File(file_index) => {
+                            let file = db.loaded_python_file(file_index);
+                            TypeContent::Module(file)
+                        }
+                        ImportResult::Namespace(ns) => TypeContent::Namespace(ns),
+                        ImportResult::PyTypedMissing => TypeContent::UNKNOWN_REPORTED,
+                    }
+                } else {
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
                     TypeContent::UNKNOWN_REPORTED
                 }
-            },
+            }
             TypeContent::Class { node_ref, .. } => {
                 let cls = ClassInitializer::from_node_ref(node_ref);
                 self.check_attribute_on_class(cls, primary, name)
@@ -3369,7 +3372,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 pr
             }
             Lookup::T(TypeContent::Namespace(ns)) => {
-                return match namespace_import(self.i_s.db, self.file, &ns, name.as_str())? {
+                return match namespace_import(self.i_s.db, self.file, &ns, name.as_str())?
+                    .into_import_result()
+                {
                     ImportResult::File(file_index) => Some(Lookup::T(TypeContent::Module(
                         self.i_s.db.loaded_python_file(file_index),
                     ))),

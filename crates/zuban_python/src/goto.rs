@@ -668,29 +668,15 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
         let in_name_regex = regex::Regex::new(&format!(r"\b{search_name}\b")).unwrap();
         let mut files = vec![];
         let mut maybe_check_file = |file_entry: &Arc<FileEntry>| {
-            if let Some(file_index) = file_entry.get_file_index() {
-                let file = db.loaded_python_file(file_index);
-                if in_name_regex.is_match(file.tree.code())
-                    || file_index == self.infos.file.file_index
-                {
-                    files.push(file);
-                }
-            } else {
-                if let Some(file_index) = db.vfs.ensure_file_for_file_entry_with_conditional(
-                    file_entry.clone(),
-                    false,
-                    |code| in_name_regex.is_match(code),
-                    |file_index, code| {
-                        PythonFile::from_file_entry_and_code(
-                            &db.project,
-                            file_index,
-                            file_entry,
-                            code,
-                        )
-                    },
-                ) {
-                    files.push(db.loaded_python_file(file_index));
-                }
+            if let Some(file_index) = db.vfs.ensure_file_for_file_entry_with_conditional(
+                file_entry.clone(),
+                false,
+                |code| in_name_regex.is_match(code),
+                |file_index, code| {
+                    PythonFile::from_file_entry_and_code(&db.project, file_index, file_entry, code)
+                },
+            ) {
+                files.push(db.loaded_python_file(file_index));
             }
         };
         for entries in workspaces_entries {

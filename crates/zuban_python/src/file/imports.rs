@@ -10,7 +10,7 @@ use crate::{
     diagnostics::IssueKind,
     imports::{
         find_import_ancestor, global_import, namespace_import_with_unloaded_file,
-        python_import_with_needs_exact_case, ImportAncestor, ImportResult,
+        python_import_with_needs_exact_case, ImportAncestor, ImportResult, LoadedImportResult,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -82,8 +82,13 @@ impl PythonFile {
                 );
             } else {
                 if !self.flags(db).ignore_missing_imports {
-                    let module_name =
-                        format!("{}.{}", base.qualified_name(db), name.as_str()).into();
+                    let module_name = if let Some(base_loaded) = base.ensured_loaded_file(db) {
+                        format!("{}.{}", base_loaded.qualified_name(db), name.as_str()).into()
+                    } else {
+                        // TODO this is not correct and weird, but it's probably pretty rare that a
+                        // file is deleted but still in the virtual filesystem.
+                        dotted.as_code().into()
+                    };
                     NodeRef::new(self, name.index())
                         .add_type_issue(db, IssueKind::ModuleNotFound { module_name });
                 }
@@ -157,7 +162,7 @@ impl PythonFile {
         &self,
         db: &Database,
         import_from: ImportFrom,
-    ) -> Option<ImportResult> {
+    ) -> Option<LoadedImportResult> {
         self.import_from_first_part_without_loading_file(db, import_from)?
             .ensured_loaded_file(db)
     }
@@ -202,9 +207,9 @@ impl PythonFile {
     ) {
         let from_first_part = self.import_from_first_part(db, import_from);
         // Nothing to do here, was calculated earlier
-        let point = match from_first_part {
+        let point = match from_first_part.as_deref() {
             Some(ImportResult::File(file_index)) => {
-                Point::new_file_reference(file_index, Locality::Todo)
+                Point::new_file_reference(*file_index, Locality::Todo)
             }
             // Currently we don't support namespace star imports
             Some(ImportResult::Namespace { .. }) => {
@@ -249,13 +254,13 @@ impl PythonFile {
         }
     }
 
-    pub fn sub_module(&self, db: &Database, name: &str) -> Option<ImportResult> {
+    pub fn sub_module(&self, db: &Database, name: &str) -> Option<LoadedImportResult> {
         let (entry, _) = self.file_entry_and_is_package(db);
         sub_module_import(db, self, entry, name)?.ensured_loaded_file(db)
     }
 
     pub fn sub_module_lookup(&self, db: &Database, name: &str) -> Option<LookupResult> {
-        Some(match self.sub_module(db, name)? {
+        Some(match self.sub_module(db, name)?.into_import_result() {
             ImportResult::File(file_index) => LookupResult::FileReference(file_index),
             ImportResult::Namespace(ns) => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns.clone())))
@@ -289,7 +294,10 @@ impl PythonFile {
                 let import_from = imp.import_from()?;
                 // from . import x simply imports the module that exists in the same
                 // directory anyway and should not be considered a reexport.
-                submodule_reexport(self.import_from_first_part(i_s.db, import_from))
+                submodule_reexport(
+                    self.import_from_first_part(i_s.db, import_from)
+                        .map(|i| i.into_import_result()),
+                )
             }
             NameImportParent::DottedAsName(dotted) => {
                 if let DottedAsNameContent::WithAs(dotted, _) = dotted.unpack() {
@@ -334,7 +342,11 @@ fn sub_module_import(
                 .ensure_file_for_file_index(file_entry.get_file_index()?)
                 .ok()?;
             if file.in_partial_stubs(db) {
-                file.normal_file_of_stub_file(db)?.sub_module(db, name)
+                Some(
+                    file.normal_file_of_stub_file(db)?
+                        .sub_module(db, name)?
+                        .into_import_result(),
+                )
             } else {
                 None
             }
