@@ -48,22 +48,21 @@ impl PythonFile {
             let mut in_stub_and_has_getattr = false;
             let result = match &base {
                 ImportResult::File(file_index) => {
-                    db.ensure_file_for_file_index(*file_index)
-                        .ok()
-                        .and_then(|module| {
-                            let r = module.sub_module(db, name.as_str());
+                    let file_entry = db.vfs.file_entry(*file_index);
+                    let r = sub_module_import(db, self, file_entry, name.as_code());
 
-                            // This is such weird logic. I don't understand at all why Mypy is doing this.
-                            // It seems to come from here:
-                            // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
-                            if r.is_none()
-                                && module.is_stub()
-                                && module.lookup_symbol("__getattr__").is_some()
-                            {
-                                in_stub_and_has_getattr = true
-                            }
-                            r
-                        })
+                    // This is such weird logic. I don't understand at all why Mypy is doing this.
+                    // It seems to come from here:
+                    // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
+                    if r.is_none()
+                        && db.file_path(*file_index).ends_with(".pyi")
+                        && db
+                            .ensure_file_for_file_index(*file_index)
+                            .is_ok_and(|module| module.lookup_symbol("__getattr__").is_some())
+                    {
+                        in_stub_and_has_getattr = true
+                    }
+                    r
                 }
                 ImportResult::Namespace(namespace) => {
                     namespace_import_with_unloaded_file(db, self, namespace, name.as_str())
@@ -82,8 +81,9 @@ impl PythonFile {
                     name.as_str()
                 );
             } else {
-                let module_name = format!("{}.{}", base.qualified_name(db), name.as_str()).into();
                 if !self.flags(db).ignore_missing_imports {
+                    let module_name =
+                        format!("{}.{}", base.qualified_name(db), name.as_str()).into();
                     NodeRef::new(self, name.index())
                         .add_type_issue(db, IssueKind::ModuleNotFound { module_name });
                 }
