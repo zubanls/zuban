@@ -4,6 +4,7 @@ use std::{
     borrow::Cow,
     cell::UnsafeCell,
     fmt,
+    marker::PhantomData,
     ops::{Deref, DerefMut},
     path::PathBuf,
     pin::Pin,
@@ -21,12 +22,16 @@ pub fn config_dir_path() -> Option<PathBuf> {
 
 pub struct InsertOnlyVec<T: ?Sized> {
     vec: Mutex<UnsafeCell<Vec<Pin<Box<T>>>>>,
+    // Mutex makes everything inside UnsafeCell sync, but we are handing out references to the
+    // inner parts that also need to be Sync/Send
+    _ensure_sync: PhantomData<T>,
 }
 
 impl<T: ?Sized> From<Vec<Pin<Box<T>>>> for InsertOnlyVec<T> {
     fn from(value: Vec<Pin<Box<T>>>) -> Self {
         Self {
             vec: Mutex::new(UnsafeCell::new(value)),
+            _ensure_sync: PhantomData::default(),
         }
     }
 }
@@ -35,6 +40,7 @@ impl<T: ?Sized> Default for InsertOnlyVec<T> {
     fn default() -> Self {
         Self {
             vec: Mutex::new(UnsafeCell::new(vec![])),
+            _ensure_sync: PhantomData::default(),
         }
     }
 }
@@ -137,6 +143,7 @@ where
             vec: Mutex::new(UnsafeCell::new(
                 unsafe { &*self.vec.lock().unwrap().get() }.clone(),
             )),
+            _ensure_sync: PhantomData::default(),
         }
     }
 }

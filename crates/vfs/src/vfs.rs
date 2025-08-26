@@ -1,4 +1,9 @@
-use std::{cell::OnceCell, collections::HashMap, ops::BitOrAssign, pin::Pin, sync::Arc};
+use std::{
+    collections::HashMap,
+    ops::BitOrAssign,
+    pin::Pin,
+    sync::{Arc, OnceLock},
+};
 
 use tracing::Level;
 use utils::{FastHashSet, InsertOnlyVec};
@@ -788,7 +793,7 @@ impl BitOrAssign for InvalidationResult {
 pub struct FileState<F> {
     path: PathWithScheme,
     file_entry: Arc<FileEntry>,
-    file: OnceCell<F>,
+    file: OnceLock<F>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -853,7 +858,7 @@ impl<F: VfsFile> FileState<F> {
         Self {
             file_entry,
             path,
-            file: OnceCell::from(file),
+            file: OnceLock::from(file),
         }
     }
 
@@ -868,7 +873,7 @@ impl<F: VfsFile> FileState<F> {
         Self {
             file_entry,
             path,
-            file: OnceCell::new(),
+            file: OnceLock::new(),
         }
     }
 
