@@ -319,7 +319,7 @@ impl PythonFile {
         &self,
         db: &Database,
         import_from: ImportFrom,
-        on_potential_file: impl Fn(ImportResult),
+        mut on_potential_file: impl FnMut(ImportResult),
     ) {
         let Some(imp) = self.import_from_first_part_without_loading_file(db, import_from) else {
             return;
@@ -360,7 +360,7 @@ impl PythonFile {
         &self,
         db: &Database,
         node_index: NodeIndex,
-        on_potential_file: impl Fn(ImportResult),
+        mut on_potential_file: impl FnMut(ImportResult),
     ) {
         match ImportFrom::maybe_by_index(&self.tree, node_index) {
             Some(import_from) => {
