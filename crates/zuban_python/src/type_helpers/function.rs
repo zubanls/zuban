@@ -10,7 +10,7 @@ use crate::{
     arguments::{Arg, Args, KnownArgs},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
-        PointKind, PointLink, Specific,
+        PointLink, Specific,
     },
     debug,
     diagnostics::IssueKind,
@@ -590,29 +590,30 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .next()
             .is_some_and(|p| p.annotation().is_some());
 
-        let recheck_decorators = || {
-            // We have a type, probably an instance and we need to recheck if it was mapped by
-            // a classmethod or not.
-            if let Some(decorated) = self.node().maybe_decorated() {
-                for dec in decorated.decorators().iter() {
-                    if let InferredDecorator::FunctionKind { kind, .. } = infer_decorator_details(
-                        i_s,
-                        self.node_ref.file,
-                        dec,
-                        had_first_self_or_class_annotation,
-                    ) {
-                        return kind;
-                    }
-                }
-            }
-            FunctionKind::Function {
-                had_first_self_or_class_annotation,
-            }
-        };
         match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind.clone(),
             Some(ComplexPoint::FunctionOverload(o)) => o.kind().clone(),
-            Some(_) => recheck_decorators(),
+            Some(_) => {
+                // We have a type, probably an instance and we need to recheck if it was mapped by
+                // a classmethod or not.
+                if let Some(decorated) = self.node().maybe_decorated() {
+                    for dec in decorated.decorators().iter() {
+                        if let InferredDecorator::FunctionKind { kind, .. } =
+                            infer_decorator_details(
+                                i_s,
+                                self.node_ref.file,
+                                dec,
+                                had_first_self_or_class_annotation,
+                            )
+                        {
+                            return kind;
+                        }
+                    }
+                }
+                FunctionKind::Function {
+                    had_first_self_or_class_annotation,
+                }
+            }
             _ => {
                 let is_ov_unreachable =
                     |p: Point| p.maybe_specific() == Some(Specific::OverloadUnreachable);
@@ -646,8 +647,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                     }
                     Function::new(original_func, self.class).kind(i_s)
-                } else if self.node_ref.point().kind() == PointKind::Redirect {
-                    recheck_decorators()
                 } else {
                     FunctionKind::Function {
                         had_first_self_or_class_annotation,

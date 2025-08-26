@@ -502,7 +502,6 @@ pub(crate) enum Specific {
     AnnotationTypeAlias,
     // A generic class where the generics are either SimpleGeneric or classes without generics
     SimpleGeneric, // primary: primary '[' slices ']'
-    NoTypeVarsForClass,
 
     BuiltinsType,
     BuiltinsSuper,

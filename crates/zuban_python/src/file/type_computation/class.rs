@@ -158,25 +158,6 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         self.0.add_to_node_index(CLASS_TO_TYPE_VARS_DIFFERENCE)
     }
 
-    pub fn non_generic_class_instance_link(db: &Database, point: PointLink) -> PointLink {
-        let link = PointLink {
-            file: point.file,
-            node_index: point.node_index + CLASS_TO_TYPE_VARS_DIFFERENCE as NodeIndex,
-        };
-        debug_assert_eq!(
-            NodeRef::from_link(db, link).point().specific(),
-            Specific::NoTypeVarsForClass
-        );
-        link
-    }
-
-    pub fn non_generic_class_instance_type(node_ref: NodeRef) -> Type {
-        debug_assert_eq!(node_ref.point().specific(), Specific::NoTypeVarsForClass);
-        let class_node_ref = node_ref.add_to_node_index(-CLASS_TO_TYPE_VARS_DIFFERENCE);
-        debug_assert!(class_node_ref.maybe_class().is_some());
-        Type::new_class(class_node_ref.as_link(), ClassGenerics::None)
-    }
-
     pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'file TypeVarLikes {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
@@ -211,10 +192,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         };
 
         if type_var_likes.is_empty() {
-            node_ref.set_point(Point::new_specific(
-                Specific::NoTypeVarsForClass,
-                Locality::Todo,
-            ));
+            node_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
         } else {
             node_ref.insert_complex(ComplexPoint::TypeVarLikes(type_var_likes), Locality::Todo);
         }
