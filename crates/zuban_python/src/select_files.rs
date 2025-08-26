@@ -48,11 +48,6 @@ impl<'db> FileSelector<'db> {
             file_indexes: Default::default(),
         };
         selector.search_in_workspaces();
-        #[derive(Hash, Eq, PartialEq)]
-        struct ArcPtrWrapper(*const FileEntry);
-        // We use this only for Pointer equality checks so it's fine
-        unsafe impl Sync for ArcPtrWrapper {}
-        unsafe impl Send for ArcPtrWrapper {}
         let loaded_file_entries: Mutex<FastHashSet<ArcPtrWrapper>> = Mutex::new(
             selector
                 .to_be_loaded
@@ -64,24 +59,7 @@ impl<'db> FileSelector<'db> {
             if let Some(new_index) = db.load_file_from_workspace(&file, false) {
                 selector.file_indexes.write().unwrap().insert(new_index);
                 let file = db.loaded_python_file(new_index);
-                let mut need_to_load_files = FastHashSet::default();
-                for node_index in &file.all_imports {
-                    file.find_potential_import_for_import_node_index(db, *node_index, |on_file| {
-                        match on_file {
-                            ImportResult::File(file_index) => {
-                                let ptr = ArcPtrWrapper(Arc::as_ptr(db.vfs.file_entry(file_index)));
-                                if loaded_file_entries.lock().unwrap().insert(ptr) {
-                                    need_to_load_files.insert(file_index);
-                                }
-                            }
-                            ImportResult::Namespace(_) => (),
-                            ImportResult::PyTypedMissing => (),
-                        }
-                    })
-                }
-                need_to_load_files.into_par_iter().for_each(|file_index| {
-                    let _ = db.ensure_file_for_file_index(file_index);
-                });
+                find_imports_and_preload_files(db, file, &loaded_file_entries)
             }
         });
         let vfs_handler = &*db.vfs.handler;
@@ -217,4 +195,35 @@ fn ignore_py_if_overwritten_by_pyi(parent_entries: &Entries, file: &FileEntry) -
     parent_entries
         .search(&format!("{}i", &file.name))
         .is_some_and(|e| matches!(*e, DirectoryEntry::File(_)))
+}
+
+#[derive(Hash, Eq, PartialEq)]
+struct ArcPtrWrapper(*const FileEntry);
+// We use this only for Pointer equality checks so it's fine
+unsafe impl Sync for ArcPtrWrapper {}
+unsafe impl Send for ArcPtrWrapper {}
+
+fn find_imports_and_preload_files(
+    db: &Database,
+    file: &PythonFile,
+    loaded_file_entries: &Mutex<FastHashSet<ArcPtrWrapper>>,
+) {
+    let mut need_to_load_files = FastHashSet::default();
+    for node_index in &file.all_imports {
+        file.find_potential_import_for_import_node_index(db, *node_index, |on_file| match on_file {
+            ImportResult::File(file_index) => {
+                let ptr = ArcPtrWrapper(Arc::as_ptr(db.vfs.file_entry(file_index)));
+                if loaded_file_entries.lock().unwrap().insert(ptr) {
+                    need_to_load_files.insert(file_index);
+                }
+            }
+            ImportResult::Namespace(_) => (),
+            ImportResult::PyTypedMissing => (),
+        })
+    }
+    need_to_load_files.into_par_iter().for_each(|file_index| {
+        if let Ok(file) = db.ensure_file_for_file_index(file_index) {
+            //find_imports_and_preload_files(db, file, loaded_file_entries)
+        }
+    });
 }
