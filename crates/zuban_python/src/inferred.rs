@@ -677,6 +677,16 @@ impl<'db: 'slf, 'slf> Inferred {
                 ComplexPoint::TypeInstance(Type::None) => {
                     Point::new_specific(Specific::None, Locality::Todo)
                 }
+                ComplexPoint::TypeInstance(Type::Class(c))
+                    if matches!(c.generics, ClassGenerics::None) =>
+                {
+                    let link = ClassNodeRef::non_generic_class_instance_link(i_s.db, c.link);
+                    file.points.set(
+                        index,
+                        Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                    );
+                    return Inferred::from_saved_link(link);
+                }
                 ComplexPoint::TypeInstance(Type::Any(AnyCause::FromError)) => {
                     Point::new_specific(Specific::AnyDueToError, Locality::Todo)
                 }
@@ -976,6 +986,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                     attr_kind,
                                 ))
                             };
+                        }
+                        Specific::NoTypeVarsForClass => {
+                            if let Some(inf) = Self::bind_instance_descriptors_for_type(
+                                i_s,
+                                for_name,
+                                instance,
+                                attribute_class,
+                                add_issue,
+                                &ClassNodeRef::non_generic_class_instance_type(node_ref),
+                                apply_descriptors_kind,
+                                avoid_inferring_return_types,
+                            ) {
+                                return inf;
+                            }
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
@@ -1430,6 +1454,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                 Inferred::from_type(Type::Callable(c)),
                                 AttributeKind::DefMethod { is_final: false },
                             ));
+                        }
+                        Specific::NoTypeVarsForClass => {
+                            if let Some(r) = Self::bind_class_descriptors_for_type(
+                                i_s,
+                                class,
+                                attribute_class,
+                                add_issue,
+                                apply_descriptors,
+                                &ClassNodeRef::non_generic_class_instance_type(node_ref),
+                                as_type_type,
+                                func_class_type,
+                            ) {
+                                return r.map(|inf| (inf, attr_kind));
+                            }
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar
@@ -2923,6 +2961,10 @@ pub fn specific_to_type<'db>(
         Specific::TypingTypeAliasType => Cow::Owned(Type::Type(Arc::new(
             i_s.db.python_state.type_alias_type_type(),
         ))),
+        Specific::NoTypeVarsForClass => {
+            // For type instances with generics this is an optimization
+            Cow::Owned(ClassNodeRef::non_generic_class_instance_type(definition))
+        }
         actual => unreachable!("{actual:?}"),
     }
 }
