@@ -1,6 +1,6 @@
 use parsa_python_cst::{
     DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom,
-    ImportFromTargets, Name, NameImportParent, NodeIndex,
+    ImportFromTargets, ImportName, Name, NameImportParent, NodeIndex,
 };
 use vfs::{Directory, FileEntry, Parent};
 
@@ -315,7 +315,7 @@ impl PythonFile {
         }
     }
 
-    pub fn find_potential_import_from_files(
+    fn find_potential_import_from_files(
         &self,
         db: &Database,
         import_from: ImportFrom,
@@ -353,6 +353,26 @@ impl PythonFile {
                 }
                 ImportResult::PyTypedMissing => (),
             },
+        }
+    }
+
+    pub fn find_potential_import_for_import_node_index(
+        &self,
+        db: &Database,
+        node_index: NodeIndex,
+        on_potential_file: impl Fn(ImportResult),
+    ) {
+        match ImportFrom::maybe_by_index(&self.tree, node_index) {
+            Some(import_from) => {
+                self.find_potential_import_from_files(db, import_from, on_potential_file)
+            }
+            None => {
+                for dotted in ImportName::by_index(&self.tree, node_index).iter_dotted_as_names() {
+                    if let Some(imp) = self.cache_dotted_as_name_import(db, dotted) {
+                        on_potential_file(imp)
+                    }
+                }
+            }
         }
     }
 }

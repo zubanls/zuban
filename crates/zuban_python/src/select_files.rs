@@ -1,7 +1,6 @@
 use std::sync::{Arc, RwLock};
 
 use config::TypeCheckerFlags;
-use parsa_python_cst::{ImportFrom, ImportName};
 use rayon::prelude::*;
 use utils::FastHashSet;
 use vfs::{
@@ -9,7 +8,7 @@ use vfs::{
     PathWithScheme,
 };
 
-use crate::{database::Database, diagnostics::Diagnostic, file::PythonFile};
+use crate::{database::Database, diagnostics::Diagnostic, file::PythonFile, imports::ImportResult};
 
 pub(crate) fn diagnostics_for_relevant_files<'db>(
     db: &'db Database,
@@ -54,20 +53,15 @@ impl<'db> FileSelector<'db> {
                 selector.file_indexes.write().unwrap().insert(new_index);
                 let file = db.loaded_python_file(new_index);
                 for node_index in &file.all_imports {
-                    match ImportFrom::maybe_by_index(&file.tree, *node_index) {
-                        Some(import_from) => {
-                            file.find_potential_import_from_files(db, import_from, |on_file| {
-                                // TODO?
-                            });
-                        }
-                        None => {
-                            for dotted in
-                                ImportName::by_index(&file.tree, *node_index).iter_dotted_as_names()
-                            {
-                                file.cache_dotted_as_name_import(db, dotted);
+                    file.find_potential_import_for_import_node_index(db, *node_index, |on_file| {
+                        match on_file {
+                            ImportResult::File(file_index) => {
+                                db.ensure_file_for_file_index(file_index).ok();
                             }
+                            ImportResult::Namespace(_) => (),
+                            ImportResult::PyTypedMissing => (),
                         }
-                    }
+                    })
                 }
             }
         });
