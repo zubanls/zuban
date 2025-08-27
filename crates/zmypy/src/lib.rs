@@ -520,12 +520,12 @@ mod tests {
         );
         let d = || diagnostics(Cli::parse_from(vec![""]), test_dir.path());
 
-        const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable";
+        const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable  [operator]";
         assert_eq!(
             d(),
             vec![
                 NOT_CALLABLE.to_string(),
-                "foo.py:2: error: Function is missing a type annotation for one or more arguments"
+                "foo.py:2: error: Function is missing a type annotation for one or more arguments  [no-untyped-def]"
                     .to_string()
             ]
         );
@@ -554,7 +554,7 @@ mod tests {
         );
         let d = || diagnostics(Cli::parse_from(vec![""]), test_dir.path());
 
-        const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable";
+        const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable  [operator]";
 
         assert!(d().is_empty());
 
@@ -580,8 +580,8 @@ mod tests {
         );
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
 
-        const NOT_CALLABLE_FOO: &str = "foo.py:1: error: \"int\" not callable";
-        const NOT_CALLABLE_BAR: &str = "bar.py:1: error: \"int\" not callable";
+        const NOT_CALLABLE_FOO: &str = "foo.py:1: error: \"int\" not callable  [operator]";
+        const NOT_CALLABLE_BAR: &str = "bar.py:1: error: \"int\" not callable  [operator]";
         // Relative paths
         assert_eq!(
             d(&["", "foo.py", "bar.py"]),
@@ -643,7 +643,7 @@ mod tests {
         let test_dir = test_utils::write_files_from_fixture(fixture, false);
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
 
-        let err = "error: Cannot find implementation or library stub for module named \"foo\"";
+        let err = "error: Cannot find implementation or library stub for module named \"foo\"  [import-not-found]";
         // No venv information should fail to import
         assert_eq!(
             d(&[""]),
@@ -686,14 +686,14 @@ mod tests {
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
 
         let err1 = format!(
-            "foo{sep}bar{sep}mod1.py:1: error: \"int\" not callable",
+            "foo{sep}bar{sep}mod1.py:1: error: \"int\" not callable  [operator]",
             sep = std::path::MAIN_SEPARATOR
         );
         let err2 = format!(
-            "foo{}mod2.py:1: error: \"int\" not callable",
+            "foo{}mod2.py:1: error: \"int\" not callable  [operator]",
             std::path::MAIN_SEPARATOR
         );
-        let err3 = "mod3.py:1: error: \"int\" not callable";
+        let err3 = "mod3.py:1: error: \"int\" not callable  [operator]";
 
         assert_eq!(d(&[""]), [&*err2]);
 
@@ -809,7 +809,7 @@ mod tests {
         assert_eq!(
             d(&["", "foo/no_py_ending"]),
             [format!(
-                "foo{}no_py_ending:1: error: \"int\" not callable",
+                "foo{}no_py_ending:1: error: \"int\" not callable  [operator]",
                 std::path::MAIN_SEPARATOR
             )]
         );
@@ -859,16 +859,16 @@ mod tests {
             assert_eq!(
                 d(),
                 [
-                    "hello_zuban\\__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
-                    "hello_zuban\\hello.py:3: error: \"int\" not callable"
+                    "hello_zuban\\__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"  [import-not-found]",
+                    "hello_zuban\\hello.py:3: error: \"int\" not callable  [operator]"
                 ]
             );
         } else {
             assert_eq!(
                 d(),
                 [
-                    "hello_zuban/__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"",
-                    "hello_zuban/hello.py:3: error: \"int\" not callable"
+                    "hello_zuban/__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"  [import-not-found]",
+                    "hello_zuban/hello.py:3: error: \"int\" not callable  [operator]"
                 ]
             );
         }
