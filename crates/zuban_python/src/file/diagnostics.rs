@@ -367,7 +367,10 @@ impl Inference<'_, '_, '_> {
                     continue;
                 } else {
                     let start = self.file.tree.node_start_position(stmt_like.parent_index);
-                    let end = self.file.tree.node_end_position(stmt_like.parent_index);
+                    let end = self
+                        .file
+                        .tree
+                        .node_end_position_without_whitespace(stmt_like.parent_index);
                     self.add_unreachable_error(start, end);
                     /*
                     if self.flags().mypy_compatible {

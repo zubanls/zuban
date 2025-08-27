@@ -1729,3 +1729,15 @@ def f2(x: int | None, default):
     if x is None:
         x = r2(default)
     reveal_type(x)  # N: Revealed type is "int | Any"
+
+[case unreachable_end_position]
+# flags: --warn-unreachable --show-error-end --show-column-numbers
+def x() -> None:
+    return
+    if str():
+        bool()
+
+    bool()
+
+[out]
+__main__:4:5:5:15: error: Statement is unreachable
