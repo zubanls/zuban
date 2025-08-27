@@ -128,7 +128,10 @@ impl TestCase<'_, '_> {
         mypy_compatible: bool,
         steps: &test_utils::Steps,
     ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
-        let mut diagnostic_config = DiagnosticConfig::default();
+        let mut diagnostic_config = DiagnosticConfig {
+            show_error_codes: false,
+            ..Default::default()
+        };
         let arg_after = |after_name| {
             let mut flag_iterator = steps.flags.iter();
             (flag_iterator.any(|x| *x == after_name))

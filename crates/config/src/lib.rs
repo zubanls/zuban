@@ -19,11 +19,20 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 4] = [
     "allow_empty_bodies",
 ];
 
-#[derive(Default)]
 pub struct DiagnosticConfig {
     pub show_error_codes: bool,
     pub show_error_end: bool,
     pub show_column_numbers: bool,
+}
+
+impl Default for DiagnosticConfig {
+    fn default() -> Self {
+        Self {
+            show_error_codes: true,
+            show_error_end: false,
+            show_column_numbers: false,
+        }
+    }
 }
 
 #[derive(Clone, Default, Debug)]
