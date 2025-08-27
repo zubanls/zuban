@@ -555,7 +555,7 @@ impl<F: VfsFile> Vfs<F> {
                                 self.handler.separator()
                             );
                             let normalized =
-                                NormalizedPath::new_rc(self.handler.unchecked_abs_path(&new));
+                                NormalizedPath::new_arc(self.handler.unchecked_abs_path(&new));
                             let non_canonicalized_path =
                                 PathWithScheme::with_file_scheme(normalized);
                             if self.in_memory_files.contains_key(&non_canonicalized_path) {
