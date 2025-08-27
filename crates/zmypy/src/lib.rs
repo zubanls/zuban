@@ -11,8 +11,19 @@ use zuban_python::{Mode, Project};
 use clap::Parser;
 
 #[derive(Parser)]
-#[command(version, about)]
 pub struct Cli {
+    // Additional options
+    /// Enable or disable mypy compatibility. By default disabled and enabled if a Mypy config is found (inverse: --no-mypy-compatible)
+    #[arg(long)]
+    pub mypy_compatible: bool,
+    #[arg(long)]
+    pub no_mypy_compatible: bool,
+    #[command(flatten)]
+    pub mypy_options: MypyCli,
+}
+
+#[derive(Parser, Clone)]
+pub struct MypyCli {
     // Running code:
     /// Regular expression to match file names, directory names or paths which mypy should ignore
     /// while recursively discovering files to check, e.g. --exclude '/setup\.py$'. May be
@@ -212,13 +223,6 @@ pub struct Cli {
     #[arg(long)]
     hide_error_codes: bool,
     // --show-absolute-path Show absolute paths to files (inverse: --hide-absolute-path)
-
-    // Additional options
-    /// Enable or disable mypy compatibility. By default disabled and enabled if a Mypy config is found (inverse: --no-mypy-compatible)
-    #[arg(long)]
-    mypy_compatible: bool,
-    #[arg(long)]
-    no_mypy_compatible: bool,
 }
 
 pub fn run(cli: Cli) -> ExitCode {
@@ -276,7 +280,7 @@ fn project_from_cli(
     let mut found = find_cli_config(
         &local_fs,
         &current_dir,
-        cli.config_file.as_deref(),
+        cli.mypy_options.config_file.as_deref(),
         // Set the default to not mypy compatible, at least for now
         cli.mypy_compatible && !cli.no_mypy_compatible,
     )
@@ -310,6 +314,30 @@ fn apply_flags(
     project_options: &mut ProjectOptions,
     diagnostic_config: &mut DiagnosticConfig,
     cli: Cli,
+    current_dir: Arc<AbsPath>,
+    config_path: Option<&AbsPath>,
+) {
+    if cli.mypy_compatible {
+        project_options.settings.mypy_compatible = true;
+    }
+    if cli.no_mypy_compatible {
+        project_options.settings.mypy_compatible = false;
+    }
+    apply_mypy_flags(
+        vfs_handler,
+        project_options,
+        diagnostic_config,
+        cli.mypy_options,
+        current_dir,
+        config_path,
+    )
+}
+
+fn apply_mypy_flags(
+    vfs_handler: &SimpleLocalFS,
+    project_options: &mut ProjectOptions,
+    diagnostic_config: &mut DiagnosticConfig,
+    cli: MypyCli,
     current_dir: Arc<AbsPath>,
     config_path: Option<&AbsPath>,
 ) {
@@ -361,13 +389,6 @@ fn apply_flags(
     apply!(diagnostic_config, show_column_numbers, hide_column_numbers);
     apply!(diagnostic_config, show_error_end, hide_error_end);
     apply!(diagnostic_config, show_error_codes, hide_error_codes);
-
-    if cli.mypy_compatible {
-        project_options.settings.mypy_compatible = true;
-    }
-    if cli.no_mypy_compatible {
-        project_options.settings.mypy_compatible = false;
-    }
 
     apply!(flags, allow_redefinition, disallow_redefinition);
     if cli.allow_redefinition_new {
@@ -692,7 +713,7 @@ mod tests {
         let local_fs = SimpleLocalFS::without_watcher();
         let current_dir = local_fs.unchecked_abs_path("/a/b".into());
         let mut cli = Cli::parse_from([""]);
-        cli.files = vec![
+        cli.mypy_options.files = vec![
             "/a/b/baz.py".to_string(),
             "bla.py".to_string(),
             "/other/".to_string(),

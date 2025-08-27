@@ -1,11 +1,18 @@
-use std::process::ExitCode;
+use std::env;
+use std::process::{exit, Command};
 
-use clap::Parser as _;
-
-fn main() -> ExitCode {
-    let parsed = zmypy::Cli::parse();
-    if let Err(err) = logging_config::setup_logging_without_printing_errors_by_default() {
-        panic!("{err}")
-    }
-    zmypy::run(parsed)
+fn main() {
+    // Collect args except the binary name
+    let args: Vec<String> = env::args().skip(1).collect();
+    // Get the directory of the current executable
+    let mut zuban_path = env::current_exe().expect("failed to get current exe path");
+    // replace "zmypy" with "zuban"
+    zuban_path.set_file_name("zuban");
+    // Run "./zuban mypy <args...>"
+    let status = Command::new(zuban_path)
+        .arg("mypy")
+        .args(args)
+        .status()
+        .expect("Failed to execute zuban");
+    exit(status.code().unwrap_or(1));
 }

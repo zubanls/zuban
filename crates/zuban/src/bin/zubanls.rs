@@ -1,48 +1,18 @@
-use anyhow::anyhow;
-use std::thread;
+use std::env;
+use std::process::{exit, Command};
 
-use clap::Parser;
-
-/// A fast language server for Python, written in Rust
-#[derive(Parser)]
-#[command(version, about)]
-pub struct Cli {
-    // Here we will add options in the future
-}
-
-fn main() -> anyhow::Result<()> {
-    let _cli = Cli::parse();
-    logging_config::setup_logging(None)?;
-
-    // Logging to stderr.
-    tracing::info!("Starting ZubanLS server");
-
-    event_loop_thread(move || {
-        zubanls::run_server()?;
-        Ok(())
-    })?;
-
-    // Shut down gracefully.
-    tracing::info!("Successfully shutting down server");
-    Ok(())
-}
-
-/// The event loop thread is actually a secondary thread that we spawn from the
-/// _actual_ main thread. This secondary thread has a larger stack size
-/// than some OS defaults (Windows, for example) and is also designated as
-/// high-priority.
-pub(crate) fn event_loop_thread(
-    func: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
-) -> anyhow::Result<()> {
-    // Override OS defaults to avoid stack overflows on platforms with low stack size defaults.
-    const MAIN_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024;
-    const MAIN_THREAD_NAME: &str = "zubanls:main";
-    let handle = thread::Builder::new()
-        .name(MAIN_THREAD_NAME.into())
-        .stack_size(MAIN_THREAD_STACK_SIZE)
-        .spawn(func)?;
-
-    handle
-        .join()
-        .map_err(|e| anyhow!("Error while joining the thread: {e:?}"))?
+fn main() {
+    // Collect args except the binary name
+    let args: Vec<String> = env::args().skip(1).collect();
+    // Get the directory of the current executable
+    let mut zuban_path = env::current_exe().expect("failed to get current exe path");
+    // replace "zubanls" with "zuban"
+    zuban_path.set_file_name("zuban");
+    // Run "./zuban server <args...>"
+    let status = Command::new(zuban_path)
+        .arg("server")
+        .args(args)
+        .status()
+        .expect("failed to execute zuban");
+    exit(status.code().unwrap_or(1));
 }
