@@ -8,6 +8,7 @@ use std::{
 
 use config::{OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
+use rayon::prelude::*;
 use vfs::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, InvalidationResult, LocalFS,
     NormalizedPath, PathWithScheme, Vfs, VfsHandler, Workspace, WorkspaceKind,
@@ -1325,41 +1326,57 @@ impl Database {
         let typeshed_dir = find_dir("_typeshed");
         drop(dirs);
 
-        let builtins = self.preload_typeshed_stub(stdlib_workspace, "builtins.pyi") as *const _;
-        let typing = self.preload_typeshed_stub(stdlib_workspace, "typing.pyi") as *const _;
-        let typeshed = self.preload_typeshed_stub_in_entries(
-            Directory::entries(&*self.vfs.handler, &typeshed_dir),
-            "__init__.pyi",
-            || {
-                typeshed_dir
-                    .absolute_path(&*self.vfs.handler)
-                    .path()
-                    .to_string()
-            },
-        ) as *const _;
-        let types = self.preload_typeshed_stub(stdlib_workspace, "types.pyi") as *const _;
-        let abc = self.preload_typeshed_stub(stdlib_workspace, "abc.pyi") as *const _;
-        let functools = self.preload_typeshed_stub(stdlib_workspace, "functools.pyi") as *const _;
-        let enum_file = self.preload_typeshed_stub(stdlib_workspace, "enum.pyi") as *const _;
-        let dataclasses_file =
-            self.preload_typeshed_stub(stdlib_workspace, "dataclasses.pyi") as *const _;
-        let typing_extensions =
-            self.preload_typeshed_stub(stdlib_workspace, "typing_extensions.pyi") as *const _;
-        let mypy_extensions =
-            self.preload_typeshed_stub(mypy_extensions_dir, "mypy_extensions.pyi") as *const _;
-
-        let collections = self.preload_typeshed_stub_in_entries(
-            Directory::entries(&*self.vfs.handler, &collections_dir),
-            "__init__.pyi",
-            || {
-                collections_dir
-                    .absolute_path(&*self.vfs.handler)
-                    .path()
-                    .to_string()
-            },
-        ) as *const _;
-        let _collections_abc =
-            self.preload_typeshed_stub(stdlib_workspace, "_collections_abc.pyi") as *const _;
+        let typeshed_dir_path: &(dyn (Fn() -> String) + Sync + Send) = &|| {
+            typeshed_dir
+                .absolute_path(&*self.vfs.handler)
+                .path()
+                .to_string()
+        };
+        let col_dir_path: &(dyn (Fn() -> String) + Sync + Send) = &|| {
+            collections_dir
+                .absolute_path(&*self.vfs.handler)
+                .path()
+                .to_string()
+        };
+        let mypy_extensions_path: &(dyn (Fn() -> String) + Sync + Send) =
+            &|| mypy_extensions_dir.root_path().to_string();
+        let [
+            builtins,
+            typing,
+            typeshed,
+            types,
+            abc,
+            functools,
+            enum_file,
+            dataclasses_file,
+            typing_extensions,
+            mypy_extensions,
+            collections,
+            _collections_abc
+        ]: [&PythonFile; 12] = [
+            (None, "builtins.pyi"),
+            (None, "typing.pyi"),
+            (Some((Directory::entries(&*self.vfs.handler, &typeshed_dir), typeshed_dir_path)), "__init__.pyi"),
+            (None, "types.pyi"),
+            (None, "abc.pyi"),
+            (None, "functools.pyi"),
+            (None, "enum.pyi"),
+            (None, "dataclasses.pyi"),
+            (None, "typing_extensions.pyi"),
+            (Some((&mypy_extensions_dir.entries, mypy_extensions_path)), "mypy_extensions.pyi"),
+            (Some((Directory::entries(&*self.vfs.handler, &collections_dir), col_dir_path)), "__init__.pyi"),
+            (None, "_collections_abc.pyi"),
+        ].into_par_iter().map(|(in_dir, name)| {
+            if let Some((entries, path_callback)) = in_dir {
+                self.preload_typeshed_stub_in_entries(
+                    entries,
+                    name,
+                    path_callback,
+                )
+            } else {
+                self.preload_typeshed_stub(stdlib_workspace, name)
+            }
+        }).collect::<Vec<_>>().try_into().unwrap();
 
         PythonState::initialize(
             self,
