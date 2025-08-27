@@ -141,6 +141,9 @@ impl FileEntry {
 
     pub(crate) fn with_set_file_index(&self, callback: impl FnOnce() -> FileIndex) -> FileIndex {
         let mut guard = self.file_index.lock().unwrap();
+        if let Some(file_index) = *guard {
+            return file_index;
+        }
         let file_index = callback();
         debug_assert_eq!(*guard, None);
         *guard = Some(file_index);

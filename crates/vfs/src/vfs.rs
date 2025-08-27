@@ -319,20 +319,15 @@ impl<F: VfsFile> Vfs<F> {
         new_file: impl FnOnce(&FileEntry, Box<str>) -> F,
     ) -> Result<&F, ()> {
         let file_state = self.file_state(file_index);
-        debug_assert_eq!(file_state.file_entry.get_file_index(), Some(file_index));
-        if let Some(_) = self.ensure_file_for_file_entry_with_conditional(
+        assert_eq!(file_state.file_entry.get_file_index(), Some(file_index));
+        if let Some(f) = self.ensure_file_for_file_entry_with_conditional(
             file_state.file_entry.clone(),
             false,
             |_| true,
             |_, code| new_file(&file_state.file_entry, code),
         ) {
-            loop {
-                if let Some(file) = file_state.file() {
-                    // This file is added in a parallel process and we need to wait until it's
-                    // completed.
-                    return Ok(file);
-                }
-            }
+            debug_assert_eq!(f, file_index);
+            Ok(file_state.file().unwrap())
         } else {
             Err(())
         }
@@ -347,7 +342,7 @@ impl<F: VfsFile> Vfs<F> {
     ) -> Option<FileIndex> {
         if let Some(file_index) = file_entry.get_file_index() {
             let file_state = self.file_state(file_index);
-            if file_state.file.get().is_some() {
+            if file_state.file().is_some() {
                 return Some(file_index);
             }
             let code = self.handler.read_and_watch_file(&file_state.path)?;
@@ -726,7 +721,13 @@ impl<F: VfsFile> Vfs<F> {
             file_state = Some(fs);
             file_index
         });
-        (file_state.unwrap(), file_index)
+        if let Some(file_state) = file_state {
+            (file_state, file_index)
+        } else {
+            // This is a race condition where with_set_file_index did enter concurrently and only
+            // one got to complete.
+            (self.file_state(file_index), file_index)
+        }
     }
 
     fn add_uninitialized_file_state_without_setting_file_index(

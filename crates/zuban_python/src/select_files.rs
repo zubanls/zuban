@@ -222,7 +222,8 @@ fn find_imports_and_preload_files(
         })
     }
     need_to_load_files.into_par_iter().for_each(|file_index| {
-        if let Ok(file) = db.ensure_file_for_file_index(file_index) {
+        if let Ok(_file) = db.ensure_file_for_file_index(file_index) {
+            // TODO should we preload all files? At the moment this seems not necessary
             //find_imports_and_preload_files(db, file, loaded_file_entries)
         }
     });
