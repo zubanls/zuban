@@ -3,13 +3,16 @@ use parsa_python_cst::CodeIndex;
 use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
-    database::Database, diagnostics::Diagnostic, lines::PositionInfos, InputPosition, PythonProject,
+    database::Database,
+    diagnostics::Diagnostic,
+    lines::{BytePositionInfos, PositionInfos},
+    InputPosition, PythonProject,
 };
 
 pub trait File: std::fmt::Debug {
     fn file_index(&self) -> FileIndex;
 
-    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<CodeIndex>;
+    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<BytePositionInfos>;
     fn byte_to_position_infos<'db>(
         &'db self,
         db: &'db Database,

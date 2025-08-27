@@ -28,7 +28,7 @@ use crate::{
     diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
     imports::{ImportResult, STUBS_SUFFIX},
     inference_state::InferenceState,
-    lines::{NewlineIndices, PositionInfos},
+    lines::{BytePositionInfos, NewlineIndices, PositionInfos},
     node_ref::NodeRef,
     type_::{DbString, LookupResult},
     utils::SymbolTable,
@@ -133,7 +133,7 @@ impl File for PythonFile {
         self.tree.code()
     }
 
-    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<CodeIndex> {
+    fn line_column_to_byte(&self, input: InputPosition) -> anyhow::Result<BytePositionInfos> {
         self.newline_indices
             .line_column_to_byte(self.tree.code(), input)
     }

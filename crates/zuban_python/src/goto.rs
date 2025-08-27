@@ -59,7 +59,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         pos: InputPosition,
     ) -> anyhow::Result<Self> {
         let position = file.line_column_to_byte(pos)?;
-        let (scope, node) = file.tree.goto_node(position);
+        let (scope, node) = file.tree.goto_node(position.byte);
         if std::cfg!(debug_assertions) && !matches!(pos, InputPosition::NthUTF8Byte(_)) {
             debug!(
                 "Position for goto-like operation {}->{pos:?} on leaf {node:?}",

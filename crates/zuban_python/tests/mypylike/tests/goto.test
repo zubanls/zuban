@@ -102,11 +102,16 @@ a = 2
 #? --codepoint-column 200 goto
 a
 str
+# out of scope and should not be on str on the next line
+#? --codepoint-column 3 goto
+a
+str
 
 [out]
 __main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
 __main__.py:7:goto -> __main__.py:2:0:__main__.a
 __main__.py:11:goto -> __main__.py:2:0:__main__.a
+__main__.py:15:goto -> __main__.py:2:0:__main__.a
 
 [case goto_on_stub_package_both]
 # pkgs: typedpkg, typedpkg-stubs

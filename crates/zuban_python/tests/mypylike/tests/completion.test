@@ -160,3 +160,66 @@ class module_nested_class: ...
 __main__.py:3:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]
 __main__.py:7:complete -> [module_:Module, module_nested_class:Class]
 __main__.py:9:complete -> [module_:Module, module_attr:Variable, module_class:Class, module_func:Function, module_nested_class:Class]
+
+[case completion_code_point_column_not_in_file]
+#? --codepoint-column 200 complete --filter NotImplementedError --filter object
+object
+
+#? --codepoint-column 8 complete --filter NotImplementedError --filter object
+object
+str
+
+#? --codepoint-column 6 complete --filter upper --filter object
+str.
+#? --codepoint-column 5 complete --filter upper --filter object
+str.
+
+[out]
+__main__:9: error: invalid syntax
+__main__:11: error: invalid syntax
+__main__.py:2:complete -> [NotImplementedError, object]
+__main__.py:5:complete -> [NotImplementedError, object]
+__main__.py:9:complete -> [upper]
+__main__.py:11:complete -> [upper]
+
+[case completion_utf8_bytes_column_not_in_file]
+#? --utf8-bytes-column 200 complete --filter NotImplementedError --filter object
+object
+
+#? --utf8-bytes-column 8 complete --filter NotImplementedError --filter object
+object
+str
+
+#? --utf8-bytes-column 6 complete --filter upper --filter object
+str.
+#? --utf8-bytes-column 5 complete --filter upper --filter object
+str.
+
+[out]
+__main__:9: error: invalid syntax
+__main__:11: error: invalid syntax
+__main__.py:2:complete -> [NotImplementedError, object]
+__main__.py:5:complete -> [NotImplementedError, object]
+__main__.py:9:complete -> [upper]
+__main__.py:11:complete -> [upper]
+
+[case completion_utf16_code_units_column_not_in_file]
+#? --utf16-code-units-column 200 complete --filter NotImplementedError --filter object
+object
+
+#? --utf16-code-units-column 8 complete --filter NotImplementedError --filter object
+object
+str
+
+#? --utf16-code-units-column 6 complete --filter upper --filter object
+str.
+#? --utf16-code-units-column 5 complete --filter upper --filter object
+str.
+
+[out]
+__main__:9: error: invalid syntax
+__main__:11: error: invalid syntax
+__main__.py:2:complete -> [NotImplementedError, object]
+__main__.py:5:complete -> [NotImplementedError, object]
+__main__.py:9:complete -> [upper]
+__main__.py:11:complete -> [upper]

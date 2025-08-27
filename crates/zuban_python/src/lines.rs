@@ -31,7 +31,7 @@ impl NewlineIndices {
         &self,
         code: &str,
         input: InputPosition,
-    ) -> anyhow::Result<CodeIndex> {
+    ) -> anyhow::Result<BytePositionInfos> {
         let line_infos = |line| {
             let lines = self.lines(code);
             let Some(next_line_start) = lines.get(line) else {
@@ -58,14 +58,16 @@ impl NewlineIndices {
             Ok((start, line_code))
         };
 
-        // TODO Also column can be bigger than the current line. Currently they are rounded down
         Ok(match input {
             InputPosition::NthUTF8Byte(pos) => {
                 let byte = pos.min(code.len());
                 if !code.is_char_boundary(byte) {
                     anyhow::bail!("{pos} is not a valid char boundary");
                 }
-                byte as CodeIndex
+                BytePositionInfos {
+                    byte: byte as CodeIndex,
+                    column_out_of_bounds: byte < pos,
+                }
             }
             InputPosition::Utf8Bytes { line, column } => {
                 let (start, rest_line) = line_infos(line)?;
@@ -76,21 +78,29 @@ impl NewlineIndices {
                         "Column {column} is not a valid char boundary on line {rest_line:?}"
                     );
                 }
-                //
-                start + out_column as CodeIndex
+                BytePositionInfos {
+                    byte: start + out_column as CodeIndex,
+                    column_out_of_bounds: out_column < column,
+                }
             }
             InputPosition::Utf16CodeUnits { line, column } => {
                 let (start, rest_line) = line_infos(line)?;
-                start + utf16_to_utf8_byte_offset(rest_line, column)? as CodeIndex
+                let mut infos = utf16_to_utf8_byte_offset(rest_line, column)?;
+                infos.byte += start;
+                infos
             }
             InputPosition::CodePoints { line, column } => {
                 let (start, rest_line) = line_infos(line)?;
-                start
+                let byte = start
                     + rest_line
                         .chars()
                         .take(column)
                         .map(|c| c.len_utf8() as CodeIndex)
-                        .sum::<CodeIndex>()
+                        .sum::<CodeIndex>();
+                BytePositionInfos {
+                    byte,
+                    column_out_of_bounds: rest_line.chars().take(column).count() < column,
+                }
             }
         })
     }
@@ -114,12 +124,17 @@ impl NewlineIndices {
     }
 }
 
-fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> anyhow::Result<usize> {
+fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> anyhow::Result<BytePositionInfos> {
     let mut utf16_count = 0;
 
+    let mut char_indices_counter = 0;
     for (utf8_idx, c) in s.char_indices() {
+        char_indices_counter += 1;
         if utf16_count == utf16_pos {
-            return Ok(utf8_idx);
+            return Ok(BytePositionInfos {
+                byte: utf8_idx as CodeIndex,
+                column_out_of_bounds: false,
+            });
         }
 
         let char_utf16_len = c.len_utf16();
@@ -130,7 +145,15 @@ fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> anyhow::Result<usize>
 
         utf16_count += char_utf16_len;
     }
-    Ok(s.len())
+    Ok(BytePositionInfos {
+        byte: s.len() as CodeIndex,
+        column_out_of_bounds: utf16_pos > char_indices_counter,
+    })
+}
+
+pub(crate) struct BytePositionInfos {
+    pub byte: CodeIndex,
+    pub column_out_of_bounds: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -184,13 +207,15 @@ mod tests {
         assert_eq!(
             indices
                 .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 2 })
-                .unwrap(),
+                .unwrap()
+                .byte,
             2
         );
         assert_eq!(
             indices
                 .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 3 })
-                .unwrap(),
+                .unwrap()
+                .byte,
             2
         );
         assert!(indices
@@ -205,13 +230,15 @@ mod tests {
         assert_eq!(
             indices
                 .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 2 })
-                .unwrap(),
+                .unwrap()
+                .byte,
             4
         );
         assert_eq!(
             indices
                 .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 3 })
-                .unwrap(),
+                .unwrap()
+                .byte,
             4
         );
         assert!(indices

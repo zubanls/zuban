@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashSet};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CodeIndex, CompletionNode, FunctionDef, NameDef, NodeIndex, RestNode, Scope,
+    ClassDef, CompletionNode, FunctionDef, NameDef, NodeIndex, RestNode, Scope,
     NAME_DEF_TO_NAME_DIFFERENCE,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
@@ -15,6 +15,7 @@ use crate::{
     imports::{global_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
+    lines::BytePositionInfos,
     name::Range,
     node_ref::NodeRef,
     recoverable_error,
@@ -26,9 +27,20 @@ use crate::{
 struct CompletionInfo<'db> {
     node: CompletionNode<'db>,
     rest: RestNode<'db>,
-    cursor_position: CodeIndex,
+    cursor_position: BytePositionInfos,
 }
 
+impl CompletionInfo<'_> {
+    fn fix_for_invalid_columns(mut self) -> Self {
+        if self.cursor_position.column_out_of_bounds {
+            if !self.rest.as_code().is_empty() {
+                self.node = CompletionNode::Global;
+                self.rest.ensure_no_rest();
+            }
+        }
+        self
+    }
+}
 impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
     pub fn for_completion(
         db: &'db Database,
@@ -36,7 +48,7 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
         pos: InputPosition,
     ) -> anyhow::Result<Self> {
         let cursor_position = file.line_column_to_byte(pos)?;
-        let (scope, node, rest) = file.tree.completion_node(cursor_position);
+        let (scope, node, rest) = file.tree.completion_node(cursor_position.byte);
         let result = file.ensure_calculated_diagnostics(db);
         debug!(
             "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
@@ -52,7 +64,8 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
                 node,
                 rest,
                 cursor_position,
-            },
+            }
+            .fix_for_invalid_columns(),
         })
     }
 }
@@ -81,7 +94,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
         let infos = PositionalDocument::for_completion(db, file, position)?;
         let replace_range = (
             file.byte_to_position_infos(db, infos.node.rest.start()),
-            file.byte_to_position_infos(db, infos.node.cursor_position),
+            file.byte_to_position_infos(db, infos.node.cursor_position.byte),
         );
         let mut slf = Self {
             infos,

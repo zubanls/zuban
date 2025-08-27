@@ -325,6 +325,10 @@ impl<'db> RestNode<'db> {
         }
         &self.tree.code()[self.node.start() as usize..self.position as usize]
     }
+
+    pub fn ensure_no_rest(&mut self) {
+        self.position = 0;
+    }
 }
 
 impl std::fmt::Debug for RestNode<'_> {
