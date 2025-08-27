@@ -807,20 +807,30 @@ macro_rules! create_grammar {
             pub fn leaf_by_position(&self, position: $crate::CodeIndex) -> $Node {
                 // Returns the leaf under the cursor. Start positions are higher prioritized than
                 // end positions. Also if the position is on the prefix, the leaf is returned.
-                let index = self.internal_tree.nodes.partition_point(
+                let nodes = &self.internal_tree.nodes;
+                let index = nodes.partition_point(
                     // Means return first start_index > position
                     |node| node.start_index <= position
                 );
-                for (i, node) in self.internal_tree.nodes[..index].iter().enumerate().rev() {
+                for (i, node) in nodes[..index].iter().enumerate().rev() {
                     if node.type_.is_leaf() {
                         let node = self.node(i as $crate::NodeIndex, node);
                         if node.end() < position {
-                            return node.next_leaf().unwrap()
+                            // If the position is bigger than maximum length of the document, we
+                            // fall back to the last leaf.
+                            if let Some(next) = node.next_leaf() {
+                                return next
+                            }
                         }
                         return node
                     }
                 }
-                unreachable!();
+                // This only ever happens if we have an empty file that only has one leaf.
+                let node = self.node(nodes.len() as $crate::NodeIndex - 1, &nodes.last().unwrap());
+                // This should be something like an Endmarker, otherwise the parser doesn't really
+                // work.
+                debug_assert!(node.is_leaf());
+                node
             }
         }
 

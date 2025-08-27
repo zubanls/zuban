@@ -333,3 +333,15 @@ parametrize_snapshots!(
     completion_on_func_call1: "f(3).\n";
     completion_on_func_call2: "f(1 for a in []).\n";
 );
+
+#[test]
+fn test_leaf_by_position_end_positions_on_empty_file() {
+    let tree = parse("".into());
+    // Within file, at the end
+    let x = tree.leaf_by_position(0);
+    debug_assert_eq!(x.type_(), PyNodeType::Terminal(TerminalType::Endmarker));
+
+    // "Too big" - falls back to the Endmarker
+    let y = tree.leaf_by_position(5);
+    debug_assert_eq!(y.type_(), PyNodeType::Terminal(TerminalType::Endmarker));
+}
