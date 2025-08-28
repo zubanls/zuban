@@ -7,6 +7,9 @@ publish = false
 homepage.workspace = true
 authors.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 licensing.workspace = true
 logging_config.workspace = true

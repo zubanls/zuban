@@ -59,3 +59,5 @@ pre-release-hook = [
 # Had debug = "line-tables-only" here, which is probably enough, but struggled
 # with test unwinding which has works on debug = <any number>. Use this for now
 debug = 1
+
+[workspace.lints.rust]
