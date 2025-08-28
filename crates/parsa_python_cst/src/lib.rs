@@ -4212,8 +4212,6 @@ impl<'db> NameDef<'db> {
             DefiningStmt::GlobalStmt(GlobalStmt::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
             DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
-        } else if stmt_node.is_type(Nonterminal(nonlocal_stmt)) {
-            DefiningStmt::NonlocalStmt(NonlocalStmt::new(stmt_node))
         } else if stmt_node.is_type(ErrorNonterminal(stmt)) {
             DefiningStmt::Error(Error::new(stmt_node))
         } else {
