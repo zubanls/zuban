@@ -4506,7 +4506,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     fn next_back(
         &mut self,
         type_computation: &mut TypeComputation,
-    ) -> Option<(NodeRef<'a>, Result<Type, SliceOrSimple>)> {
+    ) -> Option<(NodeRef<'a>, Result<Type, SliceOrSimple<'_>>)> {
         let cannot_split_type_var_tuple = |from: NodeRef| {
             type_computation.add_issue(from, IssueKind::TypeVarTupleCannotBeSplit);
             Type::ERROR
@@ -4812,7 +4812,7 @@ pub(crate) fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
         .use_cached_maybe_starred_annotation_type_internal(definition.node_index, maybe_starred)
 }
 
-pub(crate) fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
+pub(crate) fn maybe_saved_annotation(node_ref: NodeRef<'_>) -> Option<&Type> {
     if matches!(
         node_ref.point().maybe_specific(),
         Some(

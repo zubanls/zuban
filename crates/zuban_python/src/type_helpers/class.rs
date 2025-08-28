@@ -948,7 +948,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn generics(&self) -> Generics {
+    pub fn generics(&self) -> Generics<'_> {
         if let Some(type_var_remap) = self.type_var_remap {
             Generics::List(type_var_remap, Some(&self.generics))
         } else {
@@ -978,7 +978,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         db: &'db Database,
         usage: &ParamSpecUsage,
-    ) -> Cow<ParamSpecArg> {
+    ) -> Cow<'_, ParamSpecArg> {
         let generic = self
             .generics()
             .nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
@@ -1030,7 +1030,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .filter(|&b| b.is_direct_base)
             .map(move |b| apply_generics_to_base_class(db, &b.type_, generics))
     }
-    pub fn class_in_mro(&self, db: &'db Database, node_ref: ClassNodeRef) -> Option<Class> {
+    pub fn class_in_mro(&self, db: &'db Database, node_ref: ClassNodeRef) -> Option<Class<'_>> {
         for (_, type_or_cls) in self.mro(db) {
             if let TypeOrClass::Class(c) = type_or_cls {
                 if c.node_ref == node_ref {

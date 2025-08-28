@@ -47,7 +47,7 @@ enum DocumentKeeper<'project> {
 }
 
 impl<'project> DocumentKeeper<'project> {
-    fn get(&mut self) -> &Document {
+    fn get(&mut self) -> &Document<'_> {
         match self {
             Self::Uninitialized(..) => {
                 let Self::Uninitialized(project, path_with_scheme) =

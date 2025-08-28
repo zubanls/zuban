@@ -240,7 +240,7 @@ impl Intersection {
         }
     }
 
-    pub fn iter_entries(&self) -> std::slice::Iter<Type> {
+    pub fn iter_entries(&self) -> std::slice::Iter<'_, Type> {
         self.entries.iter()
     }
 

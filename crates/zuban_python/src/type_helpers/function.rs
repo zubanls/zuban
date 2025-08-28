@@ -1685,7 +1685,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             })
     }
 
-    pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<Type>> {
+    pub fn first_param_annotation_type(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Option<Cow<'_, Type>> {
         self.iter_params().next().and_then(|p| {
             let t = p.annotation(i_s.db);
             if let Some(t) = &t {
@@ -1864,7 +1867,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn expected_return_type_for_return_stmt(&self, i_s: &InferenceState<'db, '_>) -> Cow<Type> {
+    pub fn expected_return_type_for_return_stmt(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Cow<'_, Type> {
         let mut t = self.node_ref.return_type(i_s);
         if self.is_generator() {
             t = Cow::Owned(
@@ -2332,7 +2338,7 @@ impl FuncLike for Function<'_, '_> {
         FuncNodeRef::type_vars(self, db)
     }
 
-    fn class(&self) -> Option<Class> {
+    fn class(&self) -> Option<Class<'_>> {
         self.class
     }
 

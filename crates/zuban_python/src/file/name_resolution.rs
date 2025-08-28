@@ -859,7 +859,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         cls: ClassInitializer,
         name: Name,
-    ) -> Option<PointResolution> {
+    ) -> Option<PointResolution<'_>> {
         // This is needed to lookup names on a class and set the redirect there. It does not modify the
         // class at all.
         let name_node_ref = NodeRef::new(self.file, name.index());

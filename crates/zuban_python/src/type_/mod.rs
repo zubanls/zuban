@@ -259,7 +259,7 @@ impl GenericsList {
         self.0.get(index.0 as usize)
     }
 
-    pub fn iter(&self) -> std::slice::Iter<GenericItem> {
+    pub fn iter(&self) -> std::slice::Iter<'_, GenericItem> {
         self.0.iter()
     }
 
@@ -549,7 +549,7 @@ impl Type {
         }
     }
 
-    pub fn remove_none(&self, db: &Database) -> Cow<Type> {
+    pub fn remove_none(&self, db: &Database) -> Cow<'_, Type> {
         if self.is_none_or_none_in_union(db) {
             let might_have_defined_type_vars = match self {
                 Type::Union(u) => u.might_have_type_vars,
@@ -1256,7 +1256,7 @@ impl Type {
         self.maybe_avoid_implicit_literal(db).unwrap_or(self)
     }
 
-    pub fn avoid_implicit_literal_cow(&self, db: &Database) -> Cow<Self> {
+    pub fn avoid_implicit_literal_cow(&self, db: &Database) -> Cow<'_, Self> {
         if let Some(t) = self.maybe_avoid_implicit_literal(db) {
             Cow::Owned(t)
         } else {
@@ -1839,7 +1839,7 @@ impl Literal {
         }
     }
 
-    fn format_inner(&self, db: &Database) -> Cow<str> {
+    fn format_inner(&self, db: &Database) -> Cow<'_, str> {
         match self.value(db) {
             LiteralValue::String(s) => Cow::Owned(str_repr(s)),
             LiteralValue::Int(i) => Cow::Owned(format!("{i}")),
@@ -1900,10 +1900,20 @@ pub(crate) enum CustomBehaviorKind {
     Method { bound: Option<Arc<Type>> },
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Eq, Clone, Hash)]
 pub(crate) struct CustomBehavior {
     callback: CustomBehaviorCallback,
     kind: CustomBehaviorKind,
+}
+
+impl PartialEq for CustomBehavior {
+    fn eq(&self, _: &Self) -> bool {
+        // For now these simply don't match, I'm not sure it's important that they ever do.
+        // PartialEq is implemented more as a "quickly check if the types are exactly the same,
+        // otherwise simply fall back to normal type matching behavior, which is much more complex
+        // anyways".
+        false
+    }
 }
 
 impl CustomBehavior {

@@ -49,11 +49,11 @@ impl Tree {
         self.0.as_code()
     }
 
-    pub fn root(&self) -> File {
+    pub fn root(&self) -> File<'_> {
         File::new(self.0.root_node())
     }
 
-    pub fn maybe_star_expressions(&self) -> Option<StarExpressions> {
+    pub fn maybe_star_expressions(&self) -> Option<StarExpressions<'_>> {
         let mut node = self.0.root_node();
         for (nonterminal, expected_node_count) in [
             (stmt, 2),
@@ -72,7 +72,7 @@ impl Tree {
         Some(StarExpressions::new(node))
     }
 
-    pub fn node_parent_scope(&self, index: NodeIndex) -> Scope {
+    pub fn node_parent_scope(&self, index: NodeIndex) -> Scope<'_> {
         scope_for_node(self.0.node_by_index(index))
     }
 
@@ -167,7 +167,7 @@ impl Tree {
         node.as_code().get(..40).unwrap_or_else(|| node.as_code())
     }
 
-    pub fn goto_node(&self, position: CodeIndex) -> (Scope, GotoNode) {
+    pub fn goto_node(&self, position: CodeIndex) -> (Scope<'_>, GotoNode<'_>) {
         // First check the token left and right of the cursor
         let mut left = self.0.leaf_by_position(position);
         let mut right = left;
@@ -2392,7 +2392,7 @@ impl<'db> FunctionDef<'db> {
         self.body().iter_stmt_likes().next()?.node.maybe_string()
     }
 
-    pub fn trivial_body_state(&self) -> TrivialBodyState {
+    pub fn trivial_body_state(&self) -> TrivialBodyState<'_> {
         // In Mypy this is handled in "is_trivial_body"
         let mut stmts = self.body().iter_stmt_likes();
         let mut stmt_like = stmts.next().unwrap();
@@ -2872,7 +2872,7 @@ pub enum AssignmentRightSide<'db> {
     StarExpressions(StarExpressions<'db>),
 }
 
-impl AssignmentRightSide<'_> {
+impl<'db> AssignmentRightSide<'db> {
     pub fn index(&self) -> NodeIndex {
         match self {
             Self::YieldExpr(y) => y.index(),
@@ -2880,7 +2880,7 @@ impl AssignmentRightSide<'_> {
         }
     }
 
-    pub fn maybe_simple_expression(&self) -> Option<Expression> {
+    pub fn maybe_simple_expression(&self) -> Option<Expression<'db>> {
         match self {
             Self::YieldExpr(_) => None,
             Self::StarExpressions(star_exprs) => star_exprs.maybe_simple_expression(),
@@ -4116,7 +4116,7 @@ impl<'db> NameDef<'db> {
         }
     }
 
-    pub fn maybe_assignment_definition(&self) -> Option<Assignment> {
+    pub fn maybe_assignment_definition(&self) -> Option<Assignment<'db>> {
         let node = self
             .node
             .parent_until(&[
@@ -4511,8 +4511,8 @@ impl<'db> AtomContent<'db> {
     }
 }
 
-impl Bytes<'_> {
-    pub fn maybe_single_bytes_literal(&self) -> Option<BytesLiteral> {
+impl<'db> Bytes<'db> {
+    pub fn maybe_single_bytes_literal(&self) -> Option<BytesLiteral<'db>> {
         let mut iterator = self.node.iter_children();
         let first = iterator.next()?;
         iterator.next().is_none().then(|| BytesLiteral::new(first))

@@ -171,7 +171,7 @@ struct FileEntry<'x> {
     text: &'x str,
 }
 
-fn fixture_to_file_entry(fixture: &str) -> impl Iterator<Item = FileEntry> {
+fn fixture_to_file_entry(fixture: &str) -> impl Iterator<Item = FileEntry<'_>> {
     let steps = calculate_steps(None, fixture);
     assert!(
         steps.flags.is_empty(),

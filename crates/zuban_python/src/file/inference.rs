@@ -3056,7 +3056,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         &self,
         primary_method: Primary<'file>,
         maybe_defaultdict: bool,
-    ) -> Option<(NodeRef, PrimaryOrAtom<'file>, Option<Inferred>)> {
+    ) -> Option<(NodeRef<'_>, PrimaryOrAtom<'file>, Option<Inferred>)> {
         let primary_or_atom = primary_method.first();
         match primary_or_atom {
             PrimaryOrAtom::Primary(prim) => {

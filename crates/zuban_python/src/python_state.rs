@@ -30,7 +30,7 @@ pub const NAME_TO_FUNCTION_DIFF: u32 = 3;
 macro_rules! attribute_node_ref {
     ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
         #[inline]
-        $vis fn $name(&self) -> NodeRef {
+        $vis fn $name(&self) -> NodeRef<'_> {
             debug_assert!(self.$attr != 0);
             NodeRef::new(self.$module_name(), self.$attr)
         }
@@ -40,7 +40,7 @@ macro_rules! attribute_node_ref {
 macro_rules! class_node_ref {
     ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
         #[inline]
-        $vis fn $name(&self) -> ClassNodeRef {
+        $vis fn $name(&self) -> ClassNodeRef<'_> {
             debug_assert!(self.$attr != 0);
             ClassNodeRef::new(self.$module_name(), self.$attr)
         }
@@ -50,7 +50,7 @@ macro_rules! class_node_ref {
 macro_rules! optional_class_node_ref {
     ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
         #[inline]
-        $vis fn $name(&self) -> Option<ClassNodeRef> {
+        $vis fn $name(&self) -> Option<ClassNodeRef<'_>> {
             self.$attr.map(|attr| {
                 debug_assert!(attr != 0);
                 ClassNodeRef::new(self.$module_name(), attr)
@@ -62,7 +62,7 @@ macro_rules! optional_class_node_ref {
 macro_rules! optional_attribute_node_ref {
     ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
         #[inline]
-        $vis fn $name(&self) -> Option<NodeRef> {
+        $vis fn $name(&self) -> Option<NodeRef<'_>> {
             self.$attr.map(|attr| {
                 debug_assert!(attr != 0);
                 NodeRef::new(self.$module_name(), attr)
@@ -96,7 +96,7 @@ macro_rules! optional_attribute_link {
 macro_rules! node_ref_to_class {
     ($vis:vis $name:ident, $from_node_ref:ident) => {
         #[inline]
-        $vis fn $name(&self) -> Class {
+        $vis fn $name(&self) -> Class<'_> {
             Class::from_position(self.$from_node_ref(), Generics::None, None)
         }
     };
@@ -932,12 +932,12 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn tuple_class_with_generics_to_be_defined(&self) -> Class {
+    pub fn tuple_class_with_generics_to_be_defined(&self) -> Class<'_> {
         let class_ref = self.tuple_node_ref();
         Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
     }
 
-    pub fn memoryview_class_with_generics_to_be_defined(&self) -> Class {
+    pub fn memoryview_class_with_generics_to_be_defined(&self) -> Class<'_> {
         let class_ref = self.memoryview_node_ref();
         Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
     }
@@ -1110,7 +1110,7 @@ impl PythonState {
         )
     }
 
-    pub fn none_instance(&self) -> Instance {
+    pub fn none_instance(&self) -> Instance<'_> {
         let Some(none_node_ref) = self.none_type_node_ref() else {
             // TODO this might not be correct, but does it really matter?
             return self.object_class().instance();
@@ -1140,11 +1140,11 @@ impl PythonState {
         Class::with_self_generics(db, self.supports_keys_and_get_item_node_ref())
     }
 
-    pub(crate) fn collections_namedtuple_function(&self) -> Function {
+    pub(crate) fn collections_namedtuple_function(&self) -> Function<'_, '_> {
         Function::new(self.collections_named_tuple_node_ref(), None)
     }
 
-    pub(crate) fn dataclasses_replace(&self) -> Function {
+    pub(crate) fn dataclasses_replace(&self) -> Function<'_, '_> {
         debug_assert!(self.dataclasses_replace_index != 0);
         Function::new(
             NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
@@ -1167,7 +1167,7 @@ impl PythonState {
         Inferred::from_saved_node_ref(func.node_ref.into())
     }
 
-    pub fn module_instance(&self) -> Instance {
+    pub fn module_instance(&self) -> Instance<'_> {
         Instance::new(
             Class::from_non_generic_node_ref(self.module_node_ref()),
             None,

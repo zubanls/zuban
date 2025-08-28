@@ -159,7 +159,7 @@ impl Project {
         Project { db }
     }
 
-    pub fn document(&mut self, path: &PathWithScheme) -> Option<Document> {
+    pub fn document(&mut self, path: &PathWithScheme) -> Option<Document<'_>> {
         let DirOrFile::File(file_entry) = self
             .db
             .vfs
@@ -195,7 +195,7 @@ pub struct Document<'project> {
 }
 
 impl<'project> Document<'project> {
-    pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic]> {
+    pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic<'_>]> {
         let python_file = self.project.db.loaded_python_file(self.file_index);
         python_file.diagnostics(&self.project.db)
     }
@@ -326,7 +326,7 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         only_docstrings: bool,
-    ) -> anyhow::Result<Option<DocumentationResult>> {
+    ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
         let mut types = vec![];
         let mut resolver = GotoResolver::new(
             self.positional_document(position)?,
@@ -407,7 +407,7 @@ impl<'project> Document<'project> {
     pub fn is_valid_rename_location(
         &self,
         position: InputPosition,
-    ) -> anyhow::Result<Option<Range>> {
+    ) -> anyhow::Result<Option<Range<'_>>> {
         let document = self.positional_document(position)?;
         let file = document.file;
         let Some(name) = document.node.on_name() else {
@@ -490,7 +490,7 @@ impl<'db> RenameChanges<'db, '_> {
         !self.changes.is_empty() || !self.file_renames.is_empty()
     }
 
-    pub fn renames(&self) -> impl Iterator<Item = FileRename> {
+    pub fn renames(&self) -> impl Iterator<Item = FileRename<'db, '_>> {
         self.file_renames.iter().map(|from| FileRename {
             from,
             new_name: self.new_name,

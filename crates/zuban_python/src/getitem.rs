@@ -339,7 +339,7 @@ impl<'db> Args<'db> for SliceArguments<'db, '_> {
         self.slice_type.infer(&self.i_s);
     }
 
-    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>> {
         Some(self.slice_type.as_argument_node_ref())
     }
 

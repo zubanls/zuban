@@ -777,7 +777,7 @@ macro_rules! create_grammar {
                 &self.internal_tree.code
             }
 
-            pub fn root_node(&self) -> $Node {
+            pub fn root_node(&self) -> $Node<'_> {
                 self.node(0, &self.internal_tree.nodes[0])
             }
 
@@ -794,17 +794,17 @@ macro_rules! create_grammar {
                 self.internal_tree.nodes.len()
             }
 
-            pub fn nodes(&self) -> impl Iterator<Item=$Node> {
+            pub fn nodes(&self) -> impl Iterator<Item=$Node<'_>> {
                 self.internal_tree.nodes.iter().enumerate().map(
                     |(index, internal_node)| self.node(index as $crate::NodeIndex, internal_node)
                 )
             }
 
-            pub fn node_by_index(&self, index: $crate::NodeIndex) -> $Node {
+            pub fn node_by_index(&self, index: $crate::NodeIndex) -> $Node<'_> {
                 self.node(index, &self.internal_tree.nodes[index as usize])
             }
 
-            pub fn leaf_by_position(&self, position: $crate::CodeIndex) -> $Node {
+            pub fn leaf_by_position(&self, position: $crate::CodeIndex) -> $Node<'_> {
                 // Returns the leaf under the cursor. Start positions are higher prioritized than
                 // end positions. Also if the position is on the prefix, the leaf is returned.
                 let nodes = &self.internal_tree.nodes;

@@ -264,15 +264,15 @@ impl Entries {
         Self(RwLock::from(vec))
     }
 
-    fn borrow(&self) -> RwLockReadGuard<Vec<DirectoryEntry>> {
+    fn borrow(&self) -> RwLockReadGuard<'_, Vec<DirectoryEntry>> {
         self.0.read().unwrap()
     }
 
-    pub(crate) fn borrow_mut(&self) -> RwLockWriteGuard<Vec<DirectoryEntry>> {
+    pub(crate) fn borrow_mut(&self) -> RwLockWriteGuard<'_, Vec<DirectoryEntry>> {
         self.0.write().unwrap()
     }
 
-    pub fn iter(&self) -> VecRwLockWrapper<Vec<DirectoryEntry>, DirectoryEntry> {
+    pub fn iter(&self) -> VecRwLockWrapper<'_, Vec<DirectoryEntry>, DirectoryEntry> {
         VecRwLockWrapper::new(MappedReadGuard::map(self.borrow(), |x| x))
     }
 
@@ -285,7 +285,7 @@ impl Entries {
     pub fn search(
         &self,
         name: &str,
-    ) -> Option<MappedReadGuard<Vec<DirectoryEntry>, DirectoryEntry>> {
+    ) -> Option<MappedReadGuard<'_, Vec<DirectoryEntry>, DirectoryEntry>> {
         let borrow = self.borrow();
         // We need to do this indirectly, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
@@ -314,7 +314,7 @@ impl Entries {
     pub fn search_mut(
         &self,
         name: &str,
-    ) -> Option<MappedWriteGuard<Vec<DirectoryEntry>, DirectoryEntry>> {
+    ) -> Option<MappedWriteGuard<'_, Vec<DirectoryEntry>, DirectoryEntry>> {
         let borrow = self.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
@@ -497,7 +497,8 @@ impl Invalidations {
 
     pub(crate) fn iter(
         &self,
-    ) -> InvalidationDetail<VecRwLockWrapper<InvalidationDetail<Vec<FileIndex>>, FileIndex>> {
+    ) -> InvalidationDetail<VecRwLockWrapper<'_, InvalidationDetail<Vec<FileIndex>>, FileIndex>>
+    {
         let r = self.0.read().unwrap();
         if let InvalidationDetail::InvalidatesDb = &*r {
             return InvalidationDetail::InvalidatesDb;

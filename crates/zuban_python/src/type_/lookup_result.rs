@@ -40,7 +40,7 @@ impl LookupResult {
         }
     }
 
-    pub fn maybe_inferred(&self) -> Option<Cow<Inferred>> {
+    pub fn maybe_inferred(&self) -> Option<Cow<'_, Inferred>> {
         match self {
             Self::GotoName { inf, .. } | Self::UnknownName(inf) => Some(Cow::Borrowed(inf)),
             Self::FileReference(f) => Some(Cow::Owned(Inferred::new_file_reference(*f))),

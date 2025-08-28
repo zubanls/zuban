@@ -643,7 +643,7 @@ pub fn infer_dict_like(
     }
 }
 
-pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> FunctionDef {
+pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> FunctionDef<'_> {
     // This is due to the fact that the nodes before <name> in self.<name> are
     // name_definition, `.` and then finally `self`.
     let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;

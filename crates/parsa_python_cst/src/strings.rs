@@ -237,7 +237,7 @@ pub(crate) struct UnpackedLiteral<'x> {
     pub had_raw_modifier: bool,
 }
 
-pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral {
+pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral<'_> {
     let mut had_raw_modifier = false;
     let mut inner_start_offset = 0;
     let mut quote_len = 1;
@@ -289,7 +289,7 @@ fn trim_string_in_place(s: &mut String) {
 
 #[cfg(test)]
 mod tests {
-    fn expect_string_literal(tree: &crate::Tree) -> crate::StringLiteral {
+    fn expect_string_literal(tree: &crate::Tree) -> crate::StringLiteral<'_> {
         let stmt = tree.root().iter_stmt_likes().next().unwrap();
         stmt.node
             .maybe_simple_expr()

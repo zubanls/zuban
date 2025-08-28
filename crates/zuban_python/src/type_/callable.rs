@@ -96,7 +96,7 @@ impl ParamType {
         }
     }
 
-    pub fn details(&self) -> ParamTypeDetails {
+    pub fn details(&self) -> ParamTypeDetails<'_> {
         match self {
             Self::PositionalOnly(t)
             | Self::PositionalOrKeyword(t)

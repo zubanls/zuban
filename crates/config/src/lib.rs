@@ -640,7 +640,7 @@ pub enum IniOrTomlValue<'config> {
 }
 
 impl IniOrTomlValue<'_> {
-    fn as_repr(&self) -> Cow<str> {
+    fn as_repr(&self) -> Cow<'_, str> {
         match self {
             Self::Toml(v) => Cow::from(v.to_string()),
             Self::Ini(v) => Cow::Borrowed(v),
@@ -696,7 +696,7 @@ impl IniOrTomlValue<'_> {
     }
 }
 
-fn maybe_invert(name: &str) -> (bool, Cow<str>) {
+fn maybe_invert(name: &str) -> (bool, Cow<'_, str>) {
     if let Some(after_no_prefix) = name.strip_prefix("no_") {
         return (true, Cow::Borrowed(after_no_prefix));
     } else if name.starts_with("allow") && !OPTIONS_STARTING_WITH_ALLOW.contains(&name) {

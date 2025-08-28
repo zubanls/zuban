@@ -180,7 +180,7 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
     // Can e.g. be the full name
-    pub fn target_range(&self) -> Range {
+    pub fn target_range(&self) -> Range<'_> {
         match self {
             Name::TreeName(n) => {
                 if let Some(name_def) = n.cst_name.name_def() {
@@ -409,7 +409,7 @@ impl<'db> TreeName<'db> {
     }
 }
 
-fn parent_scope_to_scope(file: &PythonFile, parent_scope: ParentScope) -> Scope {
+fn parent_scope_to_scope(file: &PythonFile, parent_scope: ParentScope) -> Scope<'_> {
     match parent_scope {
         ParentScope::Module => Scope::Module,
         ParentScope::Function(f) => Scope::Function(FunctionDef::by_index(&file.tree, f)),

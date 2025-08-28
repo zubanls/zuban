@@ -330,7 +330,7 @@ impl NamedTuple {
         i_s: &InferenceState,
         name: &str,
         as_self: Option<&dyn Fn() -> Type>,
-    ) -> LookupDetails {
+    ) -> LookupDetails<'_> {
         // TODO use or_else like in lookups
         self.lookup_internal(i_s, name, true, as_self)
     }

@@ -21,7 +21,7 @@ impl<'db> MatchStmt<'db> {
 }
 
 impl<'db> SubjectExpr<'db> {
-    pub fn unpack(&self) -> SubjectExprContent {
+    pub fn unpack(&self) -> SubjectExprContent<'_> {
         let child = self.node.nth_child(0);
         if child.is_type(Nonterminal(named_expression)) {
             SubjectExprContent::NamedExpression(NamedExpression::new(child))

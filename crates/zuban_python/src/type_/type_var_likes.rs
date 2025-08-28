@@ -459,7 +459,7 @@ impl TypeVarLikes {
         )
     }
 
-    pub fn iter(&self) -> std::slice::Iter<TypeVarLike> {
+    pub fn iter(&self) -> std::slice::Iter<'_, TypeVarLike> {
         self.0.iter()
     }
 

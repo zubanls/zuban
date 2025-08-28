@@ -64,11 +64,11 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         FunctionDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn return_annotation(&self) -> Option<ReturnAnnotation> {
+    pub fn return_annotation(&self) -> Option<ReturnAnnotation<'_>> {
         self.node().return_annotation()
     }
 
-    pub fn expect_return_annotation_node_ref(&self) -> NodeRef {
+    pub fn expect_return_annotation_node_ref(&self) -> NodeRef<'_> {
         NodeRef::new(
             self.file,
             self.return_annotation().unwrap().expression().index(),
@@ -189,7 +189,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         &self,
         i_s: &InferenceState<'db, '_>,
         class: Option<ClassNodeRef>,
-    ) -> Option<(Option<TypeGuardInfo>, Option<ParamAnnotation>)> {
+    ) -> Option<(Option<TypeGuardInfo>, Option<ParamAnnotation<'_>>)> {
         let type_var_reference = self.type_var_reference();
         if type_var_reference.point().calculated() {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
@@ -226,8 +226,12 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     fn cache_type_vars(
         &self,
         i_s: &InferenceState<'db, '_>,
-        class: Option<ClassNodeRef>,
-    ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
+        class: Option<ClassNodeRef<'_>>,
+    ) -> (
+        TypeVarLikes,
+        Option<TypeGuardInfo>,
+        Option<ParamAnnotation<'_>>,
+    ) {
         let func_node = self.node();
         let type_params = func_node.type_params();
         let mut known_type_vars = None;

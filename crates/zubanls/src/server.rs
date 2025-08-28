@@ -842,7 +842,7 @@ fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
     }
 }
 
-fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<str>)> {
+fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<'_, str>)> {
     let Some(scheme) = uri.scheme() else {
         bail!("No scheme found in uri {}", uri.as_str())
     };

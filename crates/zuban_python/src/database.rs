@@ -901,7 +901,7 @@ impl TypeAlias {
         db: &Database,
         remove_recursive_wrapper: bool,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> Cow<Type> {
+    ) -> Cow<'_, Type> {
         if self.is_recursive() && !remove_recursive_wrapper {
             return Cow::Owned(Type::RecursiveType(Arc::new(RecursiveType::new(
                 self.location,

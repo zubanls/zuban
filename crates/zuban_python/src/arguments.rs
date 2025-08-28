@@ -24,7 +24,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     // This is not the case in the grammar, but here we want that.
     fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x>;
     fn calculate_diagnostics_for_any_callable(&self);
-    fn as_node_ref_internal(&self) -> Option<NodeRef>;
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>>;
     fn in_file(&self) -> Option<&PythonFile> {
         Some(self.as_node_ref_internal()?.file)
     }
@@ -101,7 +101,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         first.maybe_positional_arg(i_s, context)
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
         None
     }
 }
@@ -181,7 +181,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         }
     }
 
-    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>> {
         Some(NodeRef::new(self.file, self.primary_node_index))
     }
 
@@ -200,7 +200,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         self.file.points.reset_from_backup(backup.as_ref().unwrap());
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
         Some(self)
     }
 }
@@ -250,7 +250,7 @@ impl<'db> Args<'db> for KnownArgs<'_> {
 
     fn calculate_diagnostics_for_any_callable(&self) {}
 
-    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>> {
         Some(self.node_ref)
     }
 }
@@ -289,7 +289,7 @@ impl<'db> Args<'db> for KnownArgsWithCustomAddIssue<'_> {
         self.add_issue.0(issue)
     }
 
-    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>> {
         None
     }
 }
@@ -313,7 +313,7 @@ impl<'db> Args<'db> for CombinedArgs<'db, '_> {
         self.args2.calculate_diagnostics_for_any_callable();
     }
 
-    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>> {
         self.args2.as_node_ref_internal()
     }
 
@@ -501,7 +501,7 @@ impl<'db> Arg<'db, '_> {
         }
     }
 
-    pub fn infer(&self, result_context: &mut ResultContext) -> InferredArg {
+    pub fn infer(&self, result_context: &mut ResultContext) -> InferredArg<'_> {
         InferredArg::Inferred(match &self.kind {
             ArgKind::Inferred { inferred, .. }
             | ArgKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
@@ -522,7 +522,7 @@ impl<'db> Arg<'db, '_> {
         })
     }
 
-    fn as_node_ref(&self) -> Result<NodeRef, CustomAddIssue> {
+    fn as_node_ref(&self) -> Result<NodeRef<'_>, CustomAddIssue<'_>> {
         match &self.kind {
             ArgKind::Positional(PositionalArg { node_ref, .. })
             | ArgKind::Keyword(KeywordArg { node_ref, .. })
@@ -1275,7 +1275,7 @@ impl<'db> Args<'db> for NoArgs<'_> {
 
     fn calculate_diagnostics_for_any_callable(&self) {}
 
-    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>> {
         Some(self.node_ref)
     }
 }
@@ -1307,7 +1307,7 @@ impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
         self.0.calculate_diagnostics_for_any_callable()
     }
 
-    fn as_node_ref_internal(&self) -> Option<NodeRef> {
+    fn as_node_ref_internal(&self) -> Option<NodeRef<'_>> {
         self.0.as_node_ref_internal()
     }
 
@@ -1319,7 +1319,7 @@ impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
         self.0.reset_points_from_backup(backup)
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
         None
     }
 }

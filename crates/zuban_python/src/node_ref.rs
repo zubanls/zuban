@@ -51,7 +51,7 @@ impl<'file> NodeRef<'file> {
     }
 
     #[inline]
-    pub fn to_db_lifetime(self, _: &Database) -> NodeRef {
+    pub fn to_db_lifetime(self, _: &Database) -> NodeRef<'_> {
         // This should be safe, because all files are added to the database.
         unsafe { std::mem::transmute(self) }
     }

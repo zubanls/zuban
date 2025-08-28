@@ -121,7 +121,7 @@ pub(crate) trait FuncLike: std::fmt::Debug {
     fn diagnostic_string(&self, db: &Database) -> Option<String>;
     fn defined_at(&self) -> PointLink;
     fn type_vars<'a>(&'a self, db: &'a Database) -> &'a TypeVarLikes;
-    fn class(&self) -> Option<Class>;
+    fn class(&self) -> Option<Class<'_>>;
     fn first_self_or_class_annotation<'a>(
         &'a self,
         i_s: &'a InferenceState,
@@ -153,11 +153,11 @@ impl FuncLike for Callable<'_> {
         &self.content.type_vars
     }
 
-    fn class(&self) -> Option<Class> {
+    fn class(&self) -> Option<Class<'_>> {
         self.defined_in
     }
 
-    fn first_self_or_class_annotation(&self, _: &InferenceState) -> Option<Cow<Type>> {
+    fn first_self_or_class_annotation(&self, _: &InferenceState) -> Option<Cow<'_, Type>> {
         self.content
             .kind
             .had_first_self_or_class_annotation()

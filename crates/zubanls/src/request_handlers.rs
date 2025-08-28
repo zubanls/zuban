@@ -96,7 +96,7 @@ impl GlobalState<'_> {
             .collect()
     }
 
-    fn document(&mut self, text_document: TextDocumentIdentifier) -> anyhow::Result<Document> {
+    fn document(&mut self, text_document: TextDocumentIdentifier) -> anyhow::Result<Document<'_>> {
         let project = self.project();
         let path = Self::uri_to_path(project, text_document.uri)?;
         let Some(document) = project.document(&path) else {
@@ -256,7 +256,7 @@ impl GlobalState<'_> {
     fn document_with_pos(
         &mut self,
         position: TextDocumentPositionParams,
-    ) -> anyhow::Result<(Document, InputPosition)> {
+    ) -> anyhow::Result<(Document<'_>, InputPosition)> {
         let line = position.position.line as usize;
         let column = position.position.character as usize;
         let pos = match self.client_capabilities.negotiated_encoding() {

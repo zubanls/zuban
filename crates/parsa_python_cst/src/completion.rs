@@ -11,7 +11,10 @@ use crate::{
 };
 
 impl Tree {
-    pub fn completion_node(&self, position: CodeIndex) -> (Scope, CompletionNode, RestNode) {
+    pub fn completion_node(
+        &self,
+        position: CodeIndex,
+    ) -> (Scope<'_>, CompletionNode<'_>, RestNode<'_>) {
         let mut leaf = self.0.leaf_by_position(position);
         if leaf.start() == position {
             if let Some(n) = leaf.previous_leaf() {

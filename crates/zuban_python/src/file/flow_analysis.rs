@@ -547,7 +547,7 @@ impl FlowAnalysis {
     }
 
     #[inline]
-    fn tos_frame(&self) -> RefMut<Frame> {
+    fn tos_frame(&self) -> RefMut<'_, Frame> {
         // tos = top of the stack
         RefMut::map(self.frames.borrow_mut(), |frames| {
             frames.last_mut().unwrap()
@@ -555,7 +555,7 @@ impl FlowAnalysis {
     }
 
     #[inline]
-    fn maybe_tos_frame(&self) -> Option<RefMut<Frame>> {
+    fn maybe_tos_frame(&self) -> Option<RefMut<'_, Frame>> {
         // tos = top of the stack
         let frames = self.frames.borrow_mut();
         (!frames.is_empty()).then(|| RefMut::map(frames, |frames| frames.last_mut().unwrap()))
