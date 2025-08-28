@@ -63,22 +63,7 @@ impl Connection {
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
     ) -> InitializeResult {
-        let mut initialize_params = lsp_types::InitializeParams::default();
-        initialize_params.workspace_folders = Some(
-            roots
-                .iter()
-                .map(|root| WorkspaceFolder {
-                    uri: path_to_uri(root),
-                    name: Path::new(root)
-                        .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .to_owned(),
-                })
-                .collect(),
-        );
-        initialize_params.capabilities = lsp_types::ClientCapabilities {
+        let capabilities = lsp_types::ClientCapabilities {
             workspace: Some(lsp_types::WorkspaceClientCapabilities {
                 did_change_watched_files: Some(
                     lsp_types::DidChangeWatchedFilesClientCapabilities {
@@ -101,9 +86,27 @@ impl Connection {
                 ..Default::default()
             }),
             text_document: Some(TextDocumentClientCapabilities {
-                diagnostic: pull_diagnostics.then(|| DiagnosticClientCapabilities::default()),
+                diagnostic: pull_diagnostics.then(DiagnosticClientCapabilities::default),
                 ..Default::default()
             }),
+            ..Default::default()
+        };
+        let initialize_params = lsp_types::InitializeParams {
+            workspace_folders: Some(
+                roots
+                    .iter()
+                    .map(|root| WorkspaceFolder {
+                        uri: path_to_uri(root),
+                        name: Path::new(root)
+                            .file_name()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_owned(),
+                    })
+                    .collect(),
+            ),
+            capabilities,
             ..Default::default()
         };
         let response = self.request::<lsp_types::request::Initialize>(initialize_params);

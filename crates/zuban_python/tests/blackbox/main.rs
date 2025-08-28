@@ -155,7 +155,7 @@ fn main() -> ExitCode {
 
         if let Some(&expected) = EXPECTED_TEST_FAILURES.get(file_name) {
             if expected != errors && ran > 0 {
-                unexpected_error_count += errors.checked_sub(expected).unwrap_or(0);
+                unexpected_error_count += errors.saturating_sub(expected);
                 end_messages.push(format!(
                     "Expected {expected} errors for {file_name}, but had {errors}"
                 ));

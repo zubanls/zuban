@@ -327,10 +327,10 @@ impl TestCase<'_, '_> {
             while let Some(flag) = flag_iterator.next() {
                 if flag == &wanted_flag {
                     push_to.push(flag_iterator.next().unwrap().to_string());
-                } else if let Some(rest) = flag.strip_prefix(wanted_flag) {
-                    if let Some(name) = rest.strip_prefix('=') {
-                        push_to.push(name.to_string())
-                    }
+                } else if let Some(rest) = flag.strip_prefix(wanted_flag)
+                    && let Some(name) = rest.strip_prefix('=')
+                {
+                    push_to.push(name.to_string())
                 }
             }
         };
@@ -930,7 +930,7 @@ impl<'a, T> OwnedOrMut<'a, T> {
     pub fn as_mut(&mut self) -> &mut T {
         match self {
             OwnedOrMut::Owned(t) => t,
-            OwnedOrMut::Mut(t) => *t,
+            OwnedOrMut::Mut(t) => t,
         }
     }
 }
@@ -980,14 +980,14 @@ fn run(
     let mut error_summary = String::new();
     let mut allowed_to_run_when_start_at = false;
     for (from_mypy_test_suite, file) in files {
-        let code = read_to_string(&file).unwrap();
+        let code = read_to_string(file).unwrap();
         let code = REPLACE_COMMENTS.replace_all(&code, "");
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
         for case in mypy_style_cases(file_name, &code, *from_mypy_test_suite) {
             if !filters.is_empty()
                 && !filters.contains(&&*case.name)
-                && !filters.iter().any(|s| *s == file_name)
+                && !filters.contains(&file_name)
             {
                 continue;
             }
@@ -1143,10 +1143,10 @@ struct Skipped {
 
 impl Skipped {
     fn is_skip(&self, file_name: &str, name: &str) -> bool {
-        if let Some(only_for_file) = self.only_for_file.as_ref() {
-            if file_name != only_for_file {
-                return false;
-            }
+        if let Some(only_for_file) = self.only_for_file.as_ref()
+            && file_name != only_for_file
+        {
+            return false;
         }
         if self.start_star && self.end_star {
             name.contains(&self.name)

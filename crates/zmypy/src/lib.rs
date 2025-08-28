@@ -657,7 +657,7 @@ mod tests {
         assert_eq!(d(&["", "--python-executable", "venv/bin/python"]), empty);
 
         // venv information via $VIRTUAL_ENV
-        let ds = diagnostics_with_env_lookup(Cli::parse_from(&[""]), test_dir.path(), |name| {
+        let ds = diagnostics_with_env_lookup(Cli::parse_from([""]), test_dir.path(), |name| {
             (name == "VIRTUAL_ENV").then(|| "venv".to_string())
         });
         assert_eq!(ds, empty);
@@ -711,7 +711,7 @@ mod tests {
         logging_config::setup_logging_for_tests();
         let mut project_options = ProjectOptions::mypy_default();
         let local_fs = SimpleLocalFS::without_watcher();
-        let current_dir = local_fs.unchecked_abs_path("/a/b".into());
+        let current_dir = local_fs.unchecked_abs_path("/a/b");
         let mut cli = Cli::parse_from([""]);
         cli.mypy_options.files = vec![
             "/a/b/baz.py".to_string(),

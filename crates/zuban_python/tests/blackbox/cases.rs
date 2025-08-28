@@ -259,7 +259,7 @@ impl TestFile<'_> {
                 let mut goal = GotoGoal::PreferNonStubs;
                 let mut contains_not = vec![];
                 loop {
-                    match names.get(0) {
+                    match names.first() {
                         Some(&"--add-lines") => {
                             names.remove(0);
                             line_nr += names.remove(1).parse::<usize>().unwrap();

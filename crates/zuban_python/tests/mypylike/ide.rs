@@ -187,11 +187,10 @@ pub(crate) fn find_and_check_ide_tests(
                             name.label().to_owned()
                         }
                     });
-                    if let Some(filter) = complete_args.filter {
-                        if let Ok(r) = result {
-                            result =
-                                Ok(r.into_iter().filter(|item| filter.contains(item)).collect());
-                        }
+                    if let Some(filter) = complete_args.filter
+                        && let Ok(r) = result
+                    {
+                        result = Ok(r.into_iter().filter(|item| filter.contains(item)).collect());
                     }
                     ("complete", result)
                 }
@@ -266,7 +265,7 @@ pub(crate) fn find_and_check_ide_tests(
                                 result
                                     .changes
                                     .iter()
-                                    .map(|c| {
+                                    .flat_map(|c| {
                                         std::iter::once(format!(
                                             "{}:",
                                             cleanup_rename_uri(c.path.as_uri())
@@ -283,7 +282,6 @@ pub(crate) fn find_and_check_ide_tests(
                                             }),
                                         )
                                     })
-                                    .flatten()
                                     .chain(result.renames().map(|r| {
                                         format!(
                                             "Rename: {} -> {}",
@@ -305,12 +303,10 @@ pub(crate) fn find_and_check_ide_tests(
                 Ok(out) => {
                     let result = if kind == "complete" {
                         format!("[{}]", out.join(", "))
+                    } else if out.is_empty() {
+                        "()".to_string()
                     } else {
-                        if out.is_empty() {
-                            "()".to_string()
-                        } else {
-                            out.join("; ")
-                        }
+                        out.join("; ")
                     };
                     format!("{path}:{}:{kind} -> {}", test_on_line_nr, result)
                 }
