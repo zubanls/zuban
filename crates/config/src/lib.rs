@@ -292,7 +292,7 @@ impl ProjectOptions {
     }
 }
 
-fn order_overrides_for_priority(overrides: &mut Vec<OverrideConfig>) {
+fn order_overrides_for_priority(overrides: &mut [OverrideConfig]) {
     // The overrides with the highest priorities should be last, because they overwrite the flags
     // for a file at the end
     overrides.sort_by_key(|o| o.module.kind);
@@ -848,6 +848,7 @@ fn split_and_trim<'a>(s: &'a str, pattern: &'a [char]) -> impl Iterator<Item = &
     s.split(pattern).map(|s| s.trim())
 }
 
+#[expect(clippy::too_many_arguments)]
 fn apply_from_base_config(
     vfs: &dyn VfsHandler,
     current_dir: &AbsPath,

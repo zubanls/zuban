@@ -292,7 +292,7 @@ impl Tree {
         self.0
             .nodes()
             .filter(|&n| n.is_type(Terminal(TerminalType::Name)))
-            .map(|n| Name::new(n))
+            .map(Name::new)
     }
 }
 

@@ -264,7 +264,7 @@ impl<F: VfsFile> Vfs<F> {
             return InvalidationResult::InvalidatedDb;
         }
         let file = self.file_state(invalid_index);
-        if self.in_memory_files.get(&file.path).is_some() {
+        if self.in_memory_files.contains_key(&file.path) {
             self.handler
                 .on_invalidated_in_memory_file(file.path.clone());
         }
@@ -317,7 +317,7 @@ impl<F: VfsFile> Vfs<F> {
         &self,
         file_index: FileIndex,
         new_file: impl FnOnce(&FileEntry, Box<str>) -> F,
-    ) -> Result<&F, ()> {
+    ) -> Result<&F, &'static str> {
         let file_state = self.file_state(file_index);
         assert_eq!(file_state.file_entry.get_file_index(), Some(file_index));
         if let Some(f) = self.ensure_file_for_file_entry_with_conditional(
@@ -329,7 +329,7 @@ impl<F: VfsFile> Vfs<F> {
             debug_assert_eq!(f, file_index);
             Ok(file_state.file().unwrap())
         } else {
-            Err(())
+            Err("File was not found in file system")
         }
     }
 

@@ -1179,7 +1179,10 @@ impl Database {
         )
     }
 
-    pub fn ensure_file_for_file_index(&self, file_index: FileIndex) -> Result<&PythonFile, ()> {
+    pub fn ensure_file_for_file_index(
+        &self,
+        file_index: FileIndex,
+    ) -> Result<&PythonFile, &'static str> {
         self.vfs
             .ensure_file_for_file_index(file_index, |file_entry, code| {
                 PythonFile::from_file_entry_and_code(&self.project, file_index, file_entry, code)

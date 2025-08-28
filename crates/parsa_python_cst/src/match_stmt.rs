@@ -15,7 +15,7 @@ impl<'db> MatchStmt<'db> {
             iterator
                 .skip(3)
                 .filter(|&n| n.is_type(Nonterminal(case_block)))
-                .map(|n| CaseBlock::new(n)),
+                .map(CaseBlock::new),
         )
     }
 }
