@@ -9,10 +9,11 @@ use config::TypeCheckerFlags;
 use parsa_python_cst::*;
 
 use super::{
-    first_defined_name, flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error,
-    ClassNodeRef, FuncNodeRef, OtherDefinitionIterator,
+    ClassNodeRef, FuncNodeRef, OtherDefinitionIterator, first_defined_name,
+    flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error,
 };
 use crate::{
+    Mode,
     arguments::{CombinedArgs, InitSubclassArgs, KnownArgs, NoArgs, SimpleArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation,
@@ -20,32 +21,30 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
-    file::{inference::AssignKind, File, Inference},
+    file::{File, Inference, inference::AssignKind},
     format_data::FormatData,
     imports::ImportResult,
     inference_state::InferenceState,
-    inferred::{infer_class_method, AttributeKind, Inferred},
+    inferred::{AttributeKind, Inferred, infer_class_method},
     matching::{
         ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, OnTypeError,
         ReplaceSelfInMatcher, ResultContext,
     },
     node_ref::NodeRef,
-    params::{matches_params, Param, WrappedParamType, WrappedStar},
+    params::{Param, WrappedParamType, WrappedStar, matches_params},
     recoverable_error,
     type_::{
-        dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
-        merge_class_type_vars, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
-        FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
-        TypeVarVariance, Variance,
+        AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
+        FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
+        NeverCause, ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
+        TypeVarVariance, Variance, dataclass_post_init_func, ensure_calculated_dataclass,
+        format_callable_params, merge_class_type_vars,
     },
     type_helpers::{
-        cache_class_name, is_private, Callable, Class, ClassLookupOptions, FirstParamKind,
-        FirstParamProperties, Function, Instance, InstanceLookupOptions, LookupDetails,
-        TypeOrClass,
+        Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
+        Instance, InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,
     },
     utils::debug_indent,
-    Mode,
 };
 
 const IGNORED_INHERITANCE_NAMES: [&str; 5] = [
@@ -713,10 +712,10 @@ impl Inference<'_, '_, '_> {
                                 | Specific::IfBranchAlwaysReachableInNameBinder,
                             ) => self.calc_untyped_block_diagnostics(block, from_type_var_value),
                             Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
-                                continue 'outer
+                                continue 'outer;
                             }
                             Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
-                                continue 'outer
+                                continue 'outer;
                             }
                             _ => self.calc_untyped_block_diagnostics(block, from_type_var_value),
                         }

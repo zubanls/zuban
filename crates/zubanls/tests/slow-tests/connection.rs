@@ -6,7 +6,7 @@ use lsp_types::{
     DiagnosticClientCapabilities, InitializeResult, TextDocumentClientCapabilities, Uri,
     WorkspaceFolder,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
 pub(crate) fn path_to_uri(path: &str) -> Uri {

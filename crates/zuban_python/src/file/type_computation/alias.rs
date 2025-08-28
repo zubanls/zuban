@@ -21,13 +21,13 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
+        PythonFile, TypeVarCallbackReturn,
         name_resolution::PointResolution,
         type_computation::{
+            TypeCommentState, TypeComputation, TypeComputationOrigin,
             named_tuple::new_typing_named_tuple_internal,
-            typed_dict::new_typed_dict_with_execution_syntax, TypeCommentState, TypeComputation,
-            TypeComputationOrigin,
+            typed_dict::new_typed_dict_with_execution_syntax,
         },
-        PythonFile, TypeVarCallbackReturn,
     },
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
@@ -38,7 +38,7 @@ use crate::{
         AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
         TypeVarManager, TypedDict,
     },
-    type_helpers::{cache_class_name, Class},
+    type_helpers::{Class, cache_class_name},
     utils::debug_indent,
 };
 
@@ -645,7 +645,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
                             NodeRef::new(self.file, name_def.index()),
                         )))
-                    })
+                    });
             }
         };
         self.check_for_alias_second_step(
@@ -996,7 +996,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match atom.unpack() {
             AtomContent::Name(n) => {
                 return self
-                    .pre_calc_classes_point_resolution(self.resolve_name_without_narrowing(n))
+                    .pre_calc_classes_point_resolution(self.resolve_name_without_narrowing(n));
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(start, s) => compute_forward_reference(start, Cow::Borrowed(s)),

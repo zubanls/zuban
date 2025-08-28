@@ -9,8 +9,8 @@ use utils::AlreadySeen;
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
-    calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
-    calc_func_type_vars, calc_untyped_func_type_vars, CalculatedTypeArgs,
+    CalculatedTypeArgs, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+    calc_class_dunder_init_type_vars, calc_func_type_vars, calc_untyped_func_type_vars,
 };
 
 use self::{
@@ -28,16 +28,16 @@ use crate::{
     inference_state::InferenceState,
     matching::Generic,
     params::{
-        matches_params, InferrableParamIterator, Param, WrappedParamType, WrappedStar,
-        WrappedStarStar,
+        InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
+        matches_params,
     },
     type_::{
-        add_param_spec_to_params, match_tuple_type_arguments, AnyCause, CallableContent,
-        CallableParam, CallableParams, DbString, GenericItem, NeverCause, ParamSpecArg,
-        ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType, StarStarParamType, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
-        WithUnpack,
+        AnyCause, CallableContent, CallableParam, CallableParams, DbString, GenericItem,
+        NeverCause, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,
+        StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypedDictGenerics, Variance, WithUnpack, add_param_spec_to_params,
+        match_tuple_type_arguments,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
     utils::join_with_commas,
@@ -716,10 +716,12 @@ impl<'a> Matcher<'a> {
             &param_spec_usage.params
         } else {
             return match args.as_ref() {
-                [arg @ Arg {
-                    kind: ArgKind::ParamSpec { usage: u2, .. },
-                    ..
-                }] => {
+                [
+                    arg @ Arg {
+                        kind: ArgKind::ParamSpec { usage: u2, .. },
+                        ..
+                    },
+                ] => {
                     let matches = usage == u2;
                     if !matches {
                         let expected_name = usage.param_spec.name(i_s.db);
@@ -1572,13 +1574,14 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn into_type_arg_iterator_or_any(self, db: &Database) -> impl Iterator<Item = Type> + '_ {
-        debug_assert!(self
-            .type_var_matchers
-            .first()
-            .unwrap()
-            .type_var_likes
-            .iter()
-            .all(|tvl| matches!(tvl, TypeVarLike::TypeVar(_))));
+        debug_assert!(
+            self.type_var_matchers
+                .first()
+                .unwrap()
+                .type_var_likes
+                .iter()
+                .all(|tvl| matches!(tvl, TypeVarLike::TypeVar(_)))
+        );
         self.type_var_matchers
             .into_iter()
             .next()

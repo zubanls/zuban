@@ -11,9 +11,9 @@ pub(crate) use generic::Generic;
 pub(crate) use generics::Generics;
 pub(crate) use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
+    CalculatedTypeArgs, CheckedTypeRecursion, Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
     calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
-    calc_func_type_vars, calc_untyped_func_type_vars, CalculatedTypeArgs, CheckedTypeRecursion,
-    Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
+    calc_func_type_vars, calc_untyped_func_type_vars,
 };
 pub(crate) use result_context::{CouldBeALiteral, ResultContext};
 pub(crate) use utils::{
@@ -27,7 +27,7 @@ use crate::{
     database::Database,
     debug,
     diagnostics::IssueKind,
-    format_data::{find_similar_types, FormatData},
+    format_data::{FormatData, find_similar_types},
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},

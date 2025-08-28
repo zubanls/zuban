@@ -4,7 +4,7 @@ use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ed25519_dalek::{
-    ed25519::signature::SignerMut as _, Signature, SigningKey, VerifyingKey, PUBLIC_KEY_LENGTH,
+    PUBLIC_KEY_LENGTH, Signature, SigningKey, VerifyingKey, ed25519::signature::SignerMut as _,
 };
 
 const VALID_PUBLIC_KEYS: [[u8; PUBLIC_KEY_LENGTH]; 10] = [

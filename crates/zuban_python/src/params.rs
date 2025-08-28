@@ -10,10 +10,10 @@ use crate::{
     inference_state::InferenceState,
     matching::{Match, Matcher},
     type_::{
-        empty_types, match_arbitrary_len_vs_unpack, match_tuple_type_arguments, AnyCause,
-        CallableParam, CallableParams, MaybeUnpackGatherer, ParamSpecUsage, ParamType,
+        AnyCause, CallableParam, CallableParams, MaybeUnpackGatherer, ParamSpecUsage, ParamType,
         StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type,
-        TypedDict, TypedDictMember, Variance, WithUnpack,
+        TypedDict, TypedDictMember, Variance, WithUnpack, empty_types,
+        match_arbitrary_len_vs_unpack, match_tuple_type_arguments,
     },
 };
 
@@ -264,7 +264,9 @@ pub fn matches_simple_params<
                                             matches &= match_(i_s, matcher, t1, d2);
                                             continue 'p1_iter;
                                         } else {
-                                            debug!("Params mismatch because keyword param is not default");
+                                            debug!(
+                                                "Params mismatch because keyword param is not default"
+                                            );
                                             return Match::new_false();
                                         }
                                     }
@@ -509,7 +511,7 @@ pub fn matches_simple_params<
                             }
                         }
                         (WrappedStarStar::ValueType(_), WrappedStarStar::UnpackTypedDict(_)) => {
-                            return Match::new_false()
+                            return Match::new_false();
                         }
                         (_, WrappedStarStar::ParamSpecKwargs(_))
                         | (WrappedStarStar::ParamSpecKwargs(_), _) => {
@@ -525,7 +527,7 @@ pub fn matches_simple_params<
                                 td1.members(i_s.db).iter().map(TypedDictMemberParam),
                                 params2,
                                 variance,
-                            )
+                            );
                         }
                         WrappedStarStar::ValueType(t1)
                             if param2.has_default()

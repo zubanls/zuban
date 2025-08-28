@@ -9,8 +9,8 @@ mod type_var_likes;
 mod typed_dict;
 
 pub(crate) use class::{
-    linearize_mro_and_return_linearizable, ClassInitializer, ClassNodeRef,
-    CLASS_TO_CLASS_INFO_DIFFERENCE, ORDERING_METHODS,
+    CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, ORDERING_METHODS,
+    linearize_mro_and_return_linearizable,
 };
 pub(crate) use function::{FuncNodeRef, FuncParent};
 
@@ -20,9 +20,9 @@ use named_tuple::{new_collections_named_tuple, new_typing_named_tuple};
 use parsa_python_cst::{SliceType as CSTSliceType, *};
 
 use super::{
+    TypeVarFinder,
     name_resolution::{NameResolution, PointResolution},
     utils::func_of_self_symbol,
-    TypeVarFinder,
 };
 use crate::{
     arguments::SimpleArgs,
@@ -35,7 +35,7 @@ use crate::{
     file::PythonFile,
     format_data::FormatData,
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
-    imports::{namespace_import, ImportResult},
+    imports::{ImportResult, namespace_import},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Generics, ResultContext},
@@ -43,19 +43,18 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        add_param_spec_to_params, AnyCause, CallableContent, CallableParam, CallableParams,
-        CallableWithParent, ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember,
-        GenericClass, GenericItem, GenericsList, Literal, LiteralKind, MaybeUnpackGatherer,
-        NamedTuple, Namespace, NeverCause, ParamSpec, ParamSpecArg, ParamSpecUsage, ParamType,
-        RecursiveType, RecursiveTypeOrigin, ReplaceTypeVarLikes, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo,
-        TypeLikeInTypeVar, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTuple, TypeVarTupleUsage,
-        TypeVarUsage, TypeVarVariance, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
-        WithUnpack,
+        AnyCause, CallableContent, CallableParam, CallableParams, CallableWithParent,
+        ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember, GenericClass, GenericItem,
+        GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
+        ParamSpec, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, RecursiveTypeOrigin,
+        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
+        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind,
+        TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes,
+        TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, TypedDict,
+        TypedDictGenerics, UnionEntry, UnionType, WithUnpack, add_param_spec_to_params,
     },
-    type_helpers::{cache_class_name, Class, Function},
-    utils::{arc_slice_into_vec, EitherIterator},
+    type_helpers::{Class, Function, cache_class_name},
+    utils::{EitherIterator, arc_slice_into_vec},
 };
 
 pub(crate) const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
@@ -147,9 +146,9 @@ impl InvalidVariableType<'_> {
                     )
                     .into(),
                 ));
-                IssueKind::Note(
-                    Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
-                )
+                IssueKind::Note(Box::from(
+                    "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases",
+                ))
             }
             Self::NameError { name } => IssueKind::NameError {
                 name: (*name).into(),
@@ -1051,7 +1050,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Some(Type::TypedDict(td.with_any_generics(db)))
                     }
                     TypedDictGenerics::Generics(_) => unreachable!(),
-                }
+                };
             }
             TypeContent::Module(file) => {
                 self.add_module_issue(node_ref, &file.qualified_name(db));
@@ -1172,7 +1171,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     },
                 ),
                 Specific::TypingNamedTuple => {
-                    return Some(db.python_state.typing_named_tuple_type())
+                    return Some(db.python_state.typing_named_tuple_type());
                 }
                 Specific::TypingOptional => {
                     self.add_issue(
@@ -1814,7 +1813,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 generics,
             },
             ClassGetItemResult::Invalid => {
-                return TypeContent::InvalidVariable(InvalidVariableType::Other)
+                return TypeContent::InvalidVariable(InvalidVariableType::Other);
             }
         };
         TypeContent::Type(Type::Dataclass(Dataclass::new(
@@ -2339,12 +2338,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 ParamKind::PositionalOrKeyword => {
                     if previous.has_default && !p.has_default {
-                        Some("Required positional args may not appear after default, named or var args")
+                        Some(
+                            "Required positional args may not appear after default, named or var args",
+                        )
                     } else if current_kind < prev_kind {
                         if p.has_default {
                             Some("Positional default args may not appear after named or var args")
                         } else {
-                            Some("Required positional args may not appear after default, named or var args")
+                            Some(
+                                "Required positional args may not appear after default, named or var args",
+                            )
                         }
                     } else {
                         None
@@ -3379,7 +3382,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     ))),
                     ImportResult::Namespace(new) => Some(Lookup::T(TypeContent::Namespace(new))),
                     _ => None,
-                }
+                };
             }
             Lookup::T(TypeContent::Class { node_ref, .. }) => {
                 node_ref.ensure_cached_class_infos(self.i_s);
@@ -4535,7 +4538,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             let from = self.reverse_already_analyzed.unwrap();
             match unpack {
                 TypeCompTupleUnpack::TypeVarTuple(_) => {
-                    return Some((from, Ok(cannot_split_type_var_tuple(from))))
+                    return Some((from, Ok(cannot_split_type_var_tuple(from))));
                 }
                 TypeCompTupleUnpack::WithUnpack(with_unpack) => {
                     let with_unpack = with_unpack.clone();
@@ -4569,7 +4572,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             if let Some((from, unpack)) = self.current_unpack.as_mut() {
                 match unpack {
                     TypeCompTupleUnpack::TypeVarTuple(_) => {
-                        return Some((*from, Ok(cannot_split_type_var_tuple(*from))))
+                        return Some((*from, Ok(cannot_split_type_var_tuple(*from))));
                     }
                     TypeCompTupleUnpack::WithUnpack(with_unpack) => {
                         let with_unpack = with_unpack.clone();
@@ -4590,7 +4593,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                         }
                     }
                     TypeCompTupleUnpack::ArbitraryLen(t) => {
-                        return Some((*from, Ok((**t).clone())))
+                        return Some((*from, Ok((**t).clone())));
                     }
                 }
             }

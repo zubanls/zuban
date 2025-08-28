@@ -24,8 +24,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calc_callable_type_vars, maybe_class_usage, replace_class_type_vars, Generics, LookupKind,
-        OnTypeError, ResultContext,
+        Generics, LookupKind, OnTypeError, ResultContext, calc_callable_type_vars,
+        maybe_class_usage, replace_class_type_vars,
     },
     new_class,
     node_ref::NodeRef,

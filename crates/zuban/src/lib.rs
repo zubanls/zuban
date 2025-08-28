@@ -1,5 +1,5 @@
 use std::env;
-use std::process::{exit, Command};
+use std::process::{Command, exit};
 
 pub fn execute_zuban_executable_with_subcommand(mut subcommand: &str) {
     // Collect args except the binary name

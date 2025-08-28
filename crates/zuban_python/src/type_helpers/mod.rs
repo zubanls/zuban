@@ -9,14 +9,14 @@ mod typing;
 pub(crate) use bound_method::{BoundMethod, BoundMethodFunction};
 pub(crate) use callable::{Callable, FuncLike};
 pub(crate) use class::{
-    cache_class_name, Class, ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass,
+    Class, ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass, cache_class_name,
 };
 pub(crate) use function::{
-    is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType,
+    FirstParamKind, FirstParamProperties, Function, GeneratorType, is_private,
 };
 pub(crate) use instance::{
-    execute_isinstance, execute_issubclass, execute_super, Instance, InstanceLookupOptions,
-    LookupDetails,
+    Instance, InstanceLookupOptions, LookupDetails, execute_isinstance, execute_issubclass,
+    execute_super,
 };
 pub(crate) use overload::{OverloadResult, OverloadedFunction};
 pub(crate) use typing::{execute_assert_type, execute_cast, execute_reveal_type};

@@ -7,7 +7,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     type_::{
-        simplified_union_from_iterators, ClassGenerics, NeverCause, TupleArgs, TupleUnpack, Type,
+        ClassGenerics, NeverCause, TupleArgs, TupleUnpack, Type, simplified_union_from_iterators,
     },
     utils::join_with_commas,
 };

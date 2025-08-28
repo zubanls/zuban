@@ -15,7 +15,7 @@ use clap::Parser;
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
-use test_utils::{calculate_steps, Step};
+use test_utils::{Step, calculate_steps};
 use utils::FastHashSet;
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::{Mode, Project};

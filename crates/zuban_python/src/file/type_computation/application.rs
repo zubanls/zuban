@@ -190,7 +190,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     slice_type,
                     result_context,
                     compute_type_get_item_on_tuple(slice_type)
-                )
+                );
             }
             Specific::TypingCallable => {
                 compute_type_application!(

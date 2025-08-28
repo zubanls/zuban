@@ -3,10 +3,6 @@ use std::str::FromStr;
 use anyhow::bail;
 use lsp_server::ErrorCode;
 use lsp_types::{
-    request::{
-        GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
-        GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
-    },
     CompletionItem, CompletionParams, CompletionResponse, CompletionTextEdit, Diagnostic,
     DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlight,
@@ -16,6 +12,10 @@ use lsp_types::{
     Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
     RenameFile, RenameParams, ResourceOp, ResourceOperationKind, TextDocumentEdit,
     TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri, WorkspaceEdit,
+    request::{
+        GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
+        GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
+    },
 };
 use zuban_python::{
     Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,

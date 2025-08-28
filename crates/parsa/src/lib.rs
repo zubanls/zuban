@@ -6,7 +6,7 @@ pub use std::{collections::HashSet, io::Bytes, marker::PhantomData, mem};
 
 pub use automaton::{
     InternalNonterminalType, InternalSquashedType, InternalStrToNode, InternalStrToToken,
-    InternalTerminalType, Keywords, Rule, NODE_START,
+    InternalTerminalType, Keywords, NODE_START, Rule,
 };
 pub use grammar::{
     CodeIndex, CodeLength, Grammar, InternalNode, InternalTree, NodeIndex, Token, Tokenizer,

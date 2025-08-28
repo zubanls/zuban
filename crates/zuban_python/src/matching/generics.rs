@@ -3,7 +3,7 @@ use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 use super::Generic;
 use crate::{
     database::{Database, PointLink},
-    file::{use_cached_simple_generic_type, ClassNodeRef, PythonFile},
+    file::{ClassNodeRef, PythonFile, use_cached_simple_generic_type},
     node_ref::NodeRef,
     type_::{
         ClassGenerics, GenericItem, GenericsList, ReplaceTypeVarLikes, TypeVarLike,

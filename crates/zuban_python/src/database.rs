@@ -15,7 +15,7 @@ use vfs::{
 };
 
 use crate::{
-    debug,
+    ProjectOptions, TypeCheckerFlags, debug,
     file::{ClassNodeRef, File, PythonFile},
     node_ref::NodeRef,
     python_state::PythonState,
@@ -28,7 +28,6 @@ use crate::{
     },
     type_helpers::{Class, Function},
     utils::SymbolTable,
-    ProjectOptions, TypeCheckerFlags,
 };
 
 // Most significant bits
@@ -49,8 +48,8 @@ const KIND_BIT_INDEX: usize = 23; // Uses 3 bits
 const REST_MASK: u32 = (1 << KIND_BIT_INDEX) - 1;
 const SPECIFIC_BIT_LEN: u32 = 8;
 const SPECIFIC_MASK: u32 = (1 << SPECIFIC_BIT_LEN) - 1; // 8 bits
-                                                        // const MAX_KIND_VAR: u32 = 0xFF; // 256
-                                                        // const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
+// const MAX_KIND_VAR: u32 = 0xFF; // 256
+// const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const IN_GLOBAL_SCOPE_MASK: u32 = 1 << IN_GLOBAL_SCOPE_INDEX;
 const NEEDS_FLOW_ANALYSIS_MASK: u32 = 1 << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
@@ -1354,31 +1353,47 @@ impl Database {
             typing_extensions,
             mypy_extensions,
             collections,
-            _collections_abc
+            _collections_abc,
         ]: [&PythonFile; 12] = [
             (None, "builtins.pyi"),
             (None, "typing.pyi"),
-            (Some((Directory::entries(&*self.vfs.handler, &typeshed_dir), typeshed_dir_path)), "__init__.pyi"),
+            (
+                Some((
+                    Directory::entries(&*self.vfs.handler, &typeshed_dir),
+                    typeshed_dir_path,
+                )),
+                "__init__.pyi",
+            ),
             (None, "types.pyi"),
             (None, "abc.pyi"),
             (None, "functools.pyi"),
             (None, "enum.pyi"),
             (None, "dataclasses.pyi"),
             (None, "typing_extensions.pyi"),
-            (Some((&mypy_extensions_dir.entries, mypy_extensions_path)), "mypy_extensions.pyi"),
-            (Some((Directory::entries(&*self.vfs.handler, &collections_dir), col_dir_path)), "__init__.pyi"),
+            (
+                Some((&mypy_extensions_dir.entries, mypy_extensions_path)),
+                "mypy_extensions.pyi",
+            ),
+            (
+                Some((
+                    Directory::entries(&*self.vfs.handler, &collections_dir),
+                    col_dir_path,
+                )),
+                "__init__.pyi",
+            ),
             (None, "_collections_abc.pyi"),
-        ].into_par_iter().map(|(in_dir, name)| {
+        ]
+        .into_par_iter()
+        .map(|(in_dir, name)| {
             if let Some((entries, path_callback)) = in_dir {
-                self.preload_typeshed_stub_in_entries(
-                    entries,
-                    name,
-                    path_callback,
-                )
+                self.preload_typeshed_stub_in_entries(entries, name, path_callback)
             } else {
                 self.preload_typeshed_stub(stdlib_workspace, name)
             }
-        }).collect::<Vec<_>>().try_into().unwrap();
+        })
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
 
         PythonState::initialize(
             self,

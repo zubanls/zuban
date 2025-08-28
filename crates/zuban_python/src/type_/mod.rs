@@ -31,27 +31,28 @@ use vfs::{Directory, FileIndex};
 
 pub(crate) use self::{
     callable::{
-        add_param_spec_to_params, format_callable_params, format_params_as_param_spec,
-        merge_class_type_vars, CallableContent, CallableParam, CallableParams, ParamType,
-        ParamTypeDetails, StarParamType, StarStarParamType, TypeGuardInfo, WrongPositionalCount,
+        CallableContent, CallableParam, CallableParams, ParamType, ParamTypeDetails, StarParamType,
+        StarStarParamType, TypeGuardInfo, WrongPositionalCount, add_param_spec_to_params,
+        format_callable_params, format_params_as_param_spec, merge_class_type_vars,
     },
     dataclass::{
-        dataclass_init_func, dataclass_initialize, dataclass_post_init_func, dataclasses_replace,
+        Dataclass, DataclassOptions, DataclassTransformObj, dataclass_init_func,
+        dataclass_initialize, dataclass_post_init_func, dataclasses_replace,
         ensure_calculated_dataclass, lookup_dataclass_symbol, lookup_on_dataclass,
-        lookup_on_dataclass_type, Dataclass, DataclassOptions, DataclassTransformObj,
+        lookup_on_dataclass_type,
     },
     enum_::{
-        lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance, Enum,
-        EnumKind, EnumMember, EnumMemberDefinition,
+        Enum, EnumKind, EnumMember, EnumMemberDefinition, lookup_on_enum_class,
+        lookup_on_enum_instance, lookup_on_enum_member_instance,
     },
     intersection::Intersection,
     lookup_result::LookupResult,
     matching::{match_arbitrary_len_vs_unpack, match_tuple_type_arguments, match_unpack},
     named_tuple::NamedTuple,
-    operations::{execute_type_of_type, IterCause, IterInfos},
+    operations::{IterCause, IterInfos, execute_type_of_type},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
-    replace::{replace_param_spec, ReplaceSelf, ReplaceTypeVarLikes},
-    tuple::{execute_tuple_class, MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack},
+    replace::{ReplaceSelf, ReplaceTypeVarLikes, replace_param_spec},
+    tuple::{MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack, execute_tuple_class},
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,
         TypeLikeInTypeVar, TypeVar, TypeVarIndex, TypeVarKind, TypeVarKindInfos, TypeVarLike,
@@ -59,12 +60,12 @@ pub(crate) use self::{
         TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, Variance,
     },
     typed_dict::{
-        check_typed_dict_call, infer_typed_dict_arg, initialize_typed_dict, lookup_on_typed_dict,
-        maybe_add_extra_keys_issue, TypedDict, TypedDictGenerics, TypedDictMember,
+        TypedDict, TypedDictGenerics, TypedDictMember, check_typed_dict_call, infer_typed_dict_arg,
+        initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue,
     },
     union::{
-        simplified_union_from_iterators, simplified_union_from_iterators_with_format_index,
-        UnionEntry, UnionType,
+        UnionEntry, UnionType, simplified_union_from_iterators,
+        simplified_union_from_iterators_with_format_index,
     },
 };
 use crate::{
@@ -72,8 +73,8 @@ use crate::{
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::{dotted_path_from_dir, ClassNodeRef},
-    format_data::{find_similar_types, AvoidRecursionFor, FormatData},
+    file::{ClassNodeRef, dotted_path_from_dir},
+    format_data::{AvoidRecursionFor, FormatData, find_similar_types},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
@@ -1879,7 +1880,7 @@ impl Literal {
         let question_mark = match format_data.style {
             FormatStyle::MypyRevealType if self.implicit => "?",
             _ if self.implicit && format_data.hide_implicit_literals => {
-                return self.fallback_type(format_data.db).format(format_data)
+                return self.fallback_type(format_data.db).format(format_data);
             }
             _ => "",
         };

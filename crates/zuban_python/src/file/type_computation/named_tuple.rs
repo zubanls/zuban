@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use parsa_python_cst::{
-    keywords_contain, AtomContent, CodeIndex, Name, StarLikeExpression, StarLikeExpressionIterator,
+    AtomContent, CodeIndex, Name, StarLikeExpression, StarLikeExpressionIterator, keywords_contain,
 };
 
 use crate::{

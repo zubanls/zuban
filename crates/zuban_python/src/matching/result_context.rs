@@ -2,11 +2,11 @@ use core::fmt;
 
 use super::Matcher;
 use crate::{
+    InferenceState,
     database::PointLink,
     file::ClassNodeRef,
     type_::{AnyCause, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
-    InferenceState,
 };
 
 pub(crate) enum ResultContext<'a, 'b> {
@@ -160,7 +160,7 @@ impl<'a> ResultContext<'a, '_> {
                                     callable(TupleContextIterator::ArbitraryLen(t))
                                 }
                                 TupleArgs::WithUnpack(_) => callable(TupleContextIterator::Unknown),
-                            })
+                            });
                         }
                         // Case x: Iterable[int] = (1, 1)
                         Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {

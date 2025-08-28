@@ -1,10 +1,11 @@
 use std::{ptr::null, sync::Arc};
 
 use config::PythonVersion;
-use parsa_python_cst::{FunctionDef, Name, NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
+use parsa_python_cst::{FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name, NodeIndex, TypeLike};
 use vfs::FileIndex;
 
 use crate::{
+    InferenceState,
     database::{BaseClass, Database, Locality, Point, PointLink, Specific},
     file::{ClassInitializer, ClassNodeRef, PythonFile},
     inferred::Inferred,
@@ -12,11 +13,10 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     type_::{
-        dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
-        ClassGenerics, CustomBehavior, NeverCause, ParamType, Tuple, Type, TypeArgs, TypeVarLikes,
+        AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, CustomBehavior,
+        NeverCause, ParamType, Tuple, Type, TypeArgs, TypeVarLikes, dataclasses_replace,
     },
-    type_helpers::{cache_class_name, Class, FirstParamProperties, Function, Instance},
-    InferenceState,
+    type_helpers::{Class, FirstParamProperties, Function, Instance, cache_class_name},
 };
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is

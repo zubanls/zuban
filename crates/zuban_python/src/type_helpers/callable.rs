@@ -8,7 +8,7 @@ use crate::{
     file::FLOW_ANALYSIS,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{calc_callable_type_vars, OnTypeError, ResultContext},
+    matching::{OnTypeError, ResultContext, calc_callable_type_vars},
     type_::{
         CallableContent, CallableParams, NeverCause, ParamType, ReplaceSelf, Type, TypeVarLikes,
     },

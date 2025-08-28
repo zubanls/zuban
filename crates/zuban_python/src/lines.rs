@@ -218,9 +218,11 @@ mod tests {
                 .byte,
             2
         );
-        assert!(indices
-            .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 1 })
-            .is_err());
+        assert!(
+            indices
+                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 1 })
+                .is_err()
+        );
     }
 
     #[test]
@@ -241,8 +243,10 @@ mod tests {
                 .byte,
             4
         );
-        assert!(indices
-            .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 1 })
-            .is_err());
+        assert!(
+            indices
+                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 1 })
+                .is_err()
+        );
     }
 }

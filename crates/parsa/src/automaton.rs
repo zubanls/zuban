@@ -267,8 +267,10 @@ impl RuleAutomaton {
                 } else if let Some(&t) = nonterminal_map.get(string) {
                     self.add_transition(start, end, Some(TransitionType::Nonterminal(t)));
                 } else {
-                    panic!("No terminal / nonterminal found for {:?}; token_map = {:?}; node_map ={:?}",
-                           string, terminal_map, nonterminal_map);
+                    panic!(
+                        "No terminal / nonterminal found for {:?}; token_map = {:?}; node_map ={:?}",
+                        string, terminal_map, nonterminal_map
+                    );
                 }
                 (start, end)
             }
@@ -1103,8 +1105,10 @@ fn create_left_recursion_plans(
                             if node_id == automaton.type_ {
                                 for (t, p) in transition.next_dfa().transition_to_plan.iter() {
                                     if plans.contains_key(&t) {
-                                        panic!("ambigous: {} contains left recursion with alternatives!",
-                                               dfa_state.from_rule);
+                                        panic!(
+                                            "ambigous: {} contains left recursion with alternatives!",
+                                            dfa_state.from_rule
+                                        );
                                     }
                                     plans.insert(
                                         t,

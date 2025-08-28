@@ -3,10 +3,10 @@ use std::sync::Arc;
 use utils::match_case;
 
 use crate::{
-    tree::{AddedFile, Entries},
-    vfs::Scheme,
     AbsPath, DirOrFile, Directory, DirectoryEntry, NormalizedPath, Parent, PathWithScheme,
     VfsHandler,
+    tree::{AddedFile, Entries},
+    vfs::Scheme,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -382,7 +382,7 @@ fn ensure_dirs_and_file(
                         Directory::entries(vfs, arc),
                         vfs,
                         rest,
-                    )
+                    );
                 }
                 DirectoryEntry::MissingEntry(missing) => {
                     invs = missing.invalidations.take();

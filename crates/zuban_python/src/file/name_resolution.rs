@@ -1,7 +1,7 @@
 use config::TypeCheckerFlags;
 use parsa_python_cst::{
-    DefiningStmt, DottedAsName, ImportFrom, ImportFromAsName, Name, NameDef, NodeIndex,
-    NAME_DEF_TO_NAME_DIFFERENCE,
+    DefiningStmt, DottedAsName, ImportFrom, ImportFromAsName, NAME_DEF_TO_NAME_DIFFERENCE, Name,
+    NameDef, NodeIndex,
 };
 use utils::AlreadySeen;
 use vfs::FileIndex;
@@ -11,7 +11,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::File,
-    imports::{namespace_import, ImportResult, LoadedImportResult},
+    imports::{ImportResult, LoadedImportResult, namespace_import},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -19,7 +19,7 @@ use crate::{
     utils::is_magic_method,
 };
 
-use super::{inference::StarImportResult, python_file::StarImport, ClassInitializer, PythonFile};
+use super::{ClassInitializer, PythonFile, inference::StarImportResult, python_file::StarImport};
 
 #[derive(Copy, Clone)]
 pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {
@@ -317,7 +317,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         self.file,
                         save_to_index,
                     ),
-                )
+                );
             }
             _ => {
                 if let Some(name_ref) = builtins.lookup_symbol(name_str).filter(|name_ref| {

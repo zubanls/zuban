@@ -2,17 +2,17 @@ use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::Name;
 
-use super::{class::TypeOrClass, Class, ClassLookupOptions, FirstParamKind, Function, MroIterator};
+use super::{Class, ClassLookupOptions, FirstParamKind, Function, MroIterator, class::TypeOrClass};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{ComplexPoint, Database, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::{on_argument_type_error, ORDERING_METHODS},
+    file::{ORDERING_METHODS, on_argument_type_error},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{
-        add_attribute_error, ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex,
+        ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex, add_attribute_error,
     },
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
     node_ref::NodeRef,
@@ -193,7 +193,7 @@ impl<'a> Instance<'a> {
                         }
                     },
                     _ => unreachable!(),
-                }
+                };
             }
             Type::Callable(c) => {
                 if !matches!(&c.params, CallableParams::Any(_)) {
@@ -382,7 +382,7 @@ impl<'a> Instance<'a> {
                         attr_kind,
                         lookup: LookupResult::None,
                         mro_index: Some(mro_index),
-                    }
+                    };
                 }
                 Some(lookup) => {
                     return LookupDetails {
@@ -390,7 +390,7 @@ impl<'a> Instance<'a> {
                         attr_kind,
                         lookup,
                         mro_index: Some(mro_index),
-                    }
+                    };
                 }
             }
             if options.kind == LookupKind::Normal && !(options.skip_first_self && mro_index.0 == 0)
@@ -809,7 +809,7 @@ fn execute_super_internal<'db>(
                             | Type::NamedTuple(_) => "a non-type instance".into(),
                             _ => format!("\"{}\"", t.format_short(i_s.db)).into(),
                         },
-                    })
+                    });
                 }
             }
         }
@@ -847,7 +847,7 @@ fn execute_super_internal<'db>(
             return match fallback(true) {
                 ok @ Ok(_) => ok,
                 Err(_) => Ok(Inferred::new_any(*cause)),
-            }
+            };
         }
         full @ Type::Type(t) => match t.as_ref() {
             Type::Self_ => {

@@ -20,28 +20,28 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
+        OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
         name_resolution::NameResolution,
-        type_computation::{typed_dict::TypedDictMemberGatherer, InvalidVariableType, TypeContent},
-        use_cached_annotation_type, OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn,
-        TypeVarFinder,
+        type_computation::{InvalidVariableType, TypeContent, typed_dict::TypedDictMemberGatherer},
+        use_cached_annotation_type,
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
-        dataclass_init_func, AnyCause, CallableContent, CallableParam, CallableParams,
-        ClassGenerics, Dataclass, DataclassOptions, DataclassTransformObj, DbString, Enum,
-        EnumMemberDefinition, FunctionKind, GenericClass, NamedTuple, ParamType,
-        ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance,
-        TypedDict, TypedDictMember, Variance,
+        AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass,
+        DataclassOptions, DataclassTransformObj, DbString, Enum, EnumMemberDefinition,
+        FunctionKind, GenericClass, NamedTuple, ParamType, ReplaceTypeVarLikes, StringSlice, Tuple,
+        Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict, TypedDictMember, Variance,
+        dataclass_init_func,
     },
     type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
 };
 
 use super::{
-    named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument,
     CalculatedBaseClass, FuncNodeRef, Lookup, TypeComputation, TypeComputationOrigin,
+    named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument,
 };
 
 // Save the ClassInfos on the class keyword
@@ -422,9 +422,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
     fn insert_class_infos(&self, i_s: &InferenceState) {
         let node_ref = self.node_ref.class_info_node_ref();
-        debug_assert!(NodeRef::new(node_ref.file, self.node().name_def().index())
-            .point()
-            .calculated());
+        debug_assert!(
+            NodeRef::new(node_ref.file, self.node().name_def().index())
+                .point()
+                .calculated()
+        );
 
         node_ref.set_point(Point::new_calculating());
         let db = i_s.db;
@@ -2051,7 +2053,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                     InvalidVariableType::Function { node_ref },
                                 ))) => return Ok(node_ref.as_link()),
                                 Some(Lookup::T(TypeContent::Class { node_ref, .. })) => {
-                                    return Ok(node_ref.as_link())
+                                    return Ok(node_ref.as_link());
                                 }
                                 _ => (),
                             }

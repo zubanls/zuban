@@ -9,7 +9,7 @@ use utils::FastHashSet;
 use crate::{
     database::{ComplexPoint, Database, Locality, ParentScope, Point, PointLink, Specific},
     diagnostics::{Issue, IssueKind},
-    file::{func_parent_scope, PythonFile, FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF},
+    file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, PythonFile, func_parent_scope},
     inference_state::InferenceState,
     node_ref::NodeRef,
     recoverable_error,
@@ -21,8 +21,8 @@ use crate::{
 };
 
 use super::{
-    use_cached_param_annotation_type, ClassNodeRef, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn,
+    ClassNodeRef, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
+    use_cached_param_annotation_type,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]

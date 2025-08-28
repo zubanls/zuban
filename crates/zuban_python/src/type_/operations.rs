@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use super::{
-    dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
-    lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
-    lookup_on_enum_member_instance, lookup_on_typed_dict,
+    AnyCause, LookupResult, Namespace, NewType, Type, TypeVarKind, dataclass_initialize,
+    initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type,
+    lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance,
+    lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, LookupResult, Namespace, NewType, Type, TypeVarKind,
 };
 use crate::{
     arguments::{Args, NoArgs},
@@ -14,12 +14,12 @@ use crate::{
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::SliceType,
-    imports::{namespace_import, ImportResult},
+    imports::{ImportResult, namespace_import},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calc_callable_type_vars, ErrorTypes, GotType, IteratorContent, LookupKind, Match,
-        OnLookupError, OnTypeError, ResultContext,
+        ErrorTypes, GotType, IteratorContent, LookupKind, Match, OnLookupError, OnTypeError,
+        ResultContext, calc_callable_type_vars,
     },
     node_ref::NodeRef,
     recoverable_error,
@@ -883,7 +883,7 @@ pub(crate) fn attribute_access_of_type(
                         result_context,
                         callable,
                         Arc::new(t.clone()),
-                    )
+                    );
                 }
             },
             _ => LookupDetails::none(),

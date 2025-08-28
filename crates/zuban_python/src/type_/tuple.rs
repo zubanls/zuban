@@ -5,9 +5,9 @@ use std::{
 };
 
 use super::{
-    simplified_union_from_iterators, utils::method_with_fallback, ClassGenerics, CustomBehavior,
-    FormatStyle, GenericItem, GenericsList, LookupResult, RecursiveType, TypeVarLikeUsage,
-    TypeVarTupleUsage,
+    ClassGenerics, CustomBehavior, FormatStyle, GenericItem, GenericsList, LookupResult,
+    RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage, simplified_union_from_iterators,
+    utils::method_with_fallback,
 };
 use crate::{
     arguments::Args,

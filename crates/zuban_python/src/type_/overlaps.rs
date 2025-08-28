@@ -35,7 +35,7 @@ impl Type {
 
         match other {
             Type::Union(union_type2) => {
-                return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t))
+                return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t));
             }
             Type::Any(_) => return true, // This is a fallback
             Type::TypedDict(td) => return td.overlaps(i_s, matcher, other, self),
@@ -43,7 +43,7 @@ impl Type {
                 return match self {
                     Type::Literal(literal1) => literal1.value(i_s.db) == literal2.value(i_s.db),
                     _ => self.overlaps(i_s, matcher, &literal2.fallback_type(i_s.db)),
-                }
+                };
             }
             Type::TypeVar(tv) => {
                 if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
@@ -71,7 +71,7 @@ impl Type {
                 }
             }
             Type::Literal(literal1) => {
-                return literal1.fallback_type(i_s.db).overlaps(i_s, matcher, other)
+                return literal1.fallback_type(i_s.db).overlaps(i_s, matcher, other);
             }
             Type::Tuple(t1) => {
                 if let Type::Tuple(t2) = other {

@@ -11,16 +11,16 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    request::{
-        Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration,
-        GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest,
-        References, Rename,
-    },
     CompletionItemKind, CompletionParams, DiagnosticServerCapabilities, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
     DocumentHighlightParams, GotoDefinitionParams, HoverParams, NumberOrString,
     PartialResultParams, Position, PositionEncodingKind, ReferenceContext, ReferenceParams,
     RenameParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
+    request::{
+        Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration,
+        GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest,
+        References, Rename,
+    },
 };
 
 mod connection;
@@ -563,9 +563,11 @@ fn files_outside_of_root_with_push_diagnostics() {
         "Cannot find implementation or library stub for module named \"outside_workdir\"";
 
     server.open_in_memory_file("outside_in_mem.py", "import foo");
-    assert!(server
-        .expect_publish_diagnostics_for_file("outside_in_mem.py")
-        .is_empty());
+    assert!(
+        server
+            .expect_publish_diagnostics_for_file("outside_in_mem.py")
+            .is_empty()
+    );
 
     server.open_in_memory_file("base/m.py", "import outside_workdir\nimport foo");
     assert_eq!(
@@ -764,9 +766,11 @@ fn check_panic_recovery_with_push_diagnostics() {
 
     // Check that in memory files can be changed after a panic
     server.change_in_memory_file("in_mem.py", "");
-    assert!(server
-        .expect_publish_diagnostics_for_file("in_mem.py")
-        .is_empty());
+    assert!(
+        server
+            .expect_publish_diagnostics_for_file("in_mem.py")
+            .is_empty()
+    );
 }
 
 #[cfg(target_os = "windows")]

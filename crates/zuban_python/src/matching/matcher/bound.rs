@@ -8,9 +8,9 @@ use crate::{
     inference_state::InferenceState,
     params::matches_params_with_variance,
     type_::{
-        match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
-        ParamSpecArg, ParamType, ReplaceTypeVarLikes, StarStarParamType, TupleArgs, TupleUnpack,
-        Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
+        AnyCause, CallableParams, GenericItem, NeverCause, ParamSpecArg, ParamType,
+        ReplaceTypeVarLikes, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance, match_tuple_type_arguments,
     },
     type_helpers::Class,
 };

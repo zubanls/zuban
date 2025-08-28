@@ -76,7 +76,7 @@ impl Intersection {
         match (t1, t2) {
             (Type::Type(t1), Type::Type(t2)) => {
                 return Self::new_instance_intersection(i_s, t1.as_ref(), t2.as_ref(), add_issue)
-                    .map(|out| Type::Type(Arc::new(out)))
+                    .map(|out| Type::Type(Arc::new(out)));
             }
             (Type::Union(u), _) => return handle_union(u, t2),
             (_, Type::Union(u)) => return handle_union(u, t1),
@@ -86,7 +86,7 @@ impl Intersection {
                     &i_s.current_class().unwrap().as_type(i_s.db),
                     t2,
                     add_issue,
-                )
+                );
             }
             (_, Type::Self_) => {
                 return Intersection::new_instance_intersection(
@@ -94,7 +94,7 @@ impl Intersection {
                     t1,
                     &i_s.current_class().unwrap().as_type(i_s.db),
                     add_issue,
-                )
+                );
             }
             _ => (),
         }

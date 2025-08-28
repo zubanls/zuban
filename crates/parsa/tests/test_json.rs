@@ -4,7 +4,7 @@ extern crate regex;
 
 use std::str;
 
-use parsa::{create_grammar, create_terminals, Grammar};
+use parsa::{Grammar, create_grammar, create_terminals};
 use regex::Regex;
 
 lazy_static::lazy_static! {

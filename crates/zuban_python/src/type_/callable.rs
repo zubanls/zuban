@@ -12,10 +12,10 @@ use crate::{
     database::{Database, PointLink},
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::{maybe_class_usage, Generics},
+    matching::{Generics, maybe_class_usage},
     node_ref::NodeRef,
     params::{
-        params_have_self_type_after_self, Param, WrappedParamType, WrappedStar, WrappedStarStar,
+        Param, WrappedParamType, WrappedStar, WrappedStarStar, params_have_self_type_after_self,
     },
     type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
     type_helpers::{Class, TypeOrClass},

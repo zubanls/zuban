@@ -4,8 +4,8 @@
 #![recursion_limit = "2048"]
 mod tokenizer;
 
-use parsa::{create_grammar, Grammar};
 pub use parsa::{CodeIndex, NodeIndex};
+use parsa::{Grammar, create_grammar};
 
 pub use crate::tokenizer::TerminalType;
 use crate::tokenizer::{PyTerminal, PythonTokenizer};

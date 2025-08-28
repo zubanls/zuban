@@ -11,9 +11,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
-        replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArgs, Generics,
-        OnTypeError, ResultContext, SignatureMatch,
+        ArgumentIndexWithParam, CalculatedTypeArgs, Generics, OnTypeError, ResultContext,
+        SignatureMatch, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        replace_class_type_vars_in_callable,
     },
     type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
     utils::debug_indent,

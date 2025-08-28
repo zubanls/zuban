@@ -2,9 +2,9 @@ use std::fmt;
 
 use parsa_python_cst::{
     Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
-    Int, Name, NameDef, NameDefParent, NameImportParent, NamedExpression, NodeIndex, Primary,
-    PrimaryTarget, Scope, Slices, StarExpression, StarStarExpression, StarredExpression,
-    StringLiteral, NAME_DEF_TO_NAME_DIFFERENCE,
+    Int, NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NameDefParent, NameImportParent,
+    NamedExpression, NodeIndex, Primary, PrimaryTarget, Scope, Slices, StarExpression,
+    StarStarExpression, StarredExpression, StringLiteral,
 };
 use vfs::FileIndex;
 
@@ -14,8 +14,8 @@ use crate::{
     },
     diagnostics::{Diagnostic, Issue, IssueKind},
     file::{
-        ClassInitializer, ClassNodeRef, File, OtherDefinitionIterator, PythonFile,
-        CLASS_TO_CLASS_INFO_DIFFERENCE, GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+        CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, File,
+        GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, OtherDefinitionIterator, PythonFile,
     },
     inference_state::InferenceState,
     inferred::Inferred,

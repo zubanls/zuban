@@ -2,17 +2,18 @@ use std::{borrow::Cow, collections::HashSet};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CompletionNode, FunctionDef, NameDef, NodeIndex, RestNode, Scope,
-    NAME_DEF_TO_NAME_DIFFERENCE,
+    ClassDef, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, NameDef, NodeIndex,
+    RestNode, Scope,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
+    InputPosition,
     database::{ClassKind, Database, ParentScope, PointKind},
     debug,
-    file::{is_reexport_issue, ClassNodeRef, File as _, FuncNodeRef, PythonFile},
-    goto::{unpack_union_types, with_i_s_non_self, PositionalDocument},
-    imports::{global_import, ImportResult},
+    file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile, is_reexport_issue},
+    goto::{PositionalDocument, unpack_union_types, with_i_s_non_self},
+    imports::{ImportResult, global_import},
     inference_state::InferenceState,
     inferred::Inferred,
     lines::BytePositionInfos,
@@ -20,8 +21,7 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{CallableParam, Enum, EnumMemberDefinition, FunctionKind, Namespace, Type},
-    type_helpers::{is_private, Class, Function, TypeOrClass},
-    InputPosition,
+    type_helpers::{Class, Function, TypeOrClass, is_private},
 };
 
 struct CompletionInfo<'db> {

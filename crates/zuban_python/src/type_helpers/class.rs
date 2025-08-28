@@ -7,7 +7,7 @@ use std::{
 
 use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Name, TypeLike};
 
-use super::{overload::OverloadResult, Callable, Instance, InstanceLookupOptions, LookupDetails};
+use super::{Callable, Instance, InstanceLookupOptions, LookupDetails, overload::OverloadResult};
 use crate::{
     arguments::Args,
     database::{
@@ -16,7 +16,7 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassInitializer, ClassNodeRef, TypeVarCallbackReturn, FLOW_ANALYSIS},
+    file::{ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, TypeVarCallbackReturn},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -24,9 +24,9 @@ use crate::{
         ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, Inferred, MroIndex,
     },
     matching::{
-        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
-        calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage, ErrorStrs,
-        Generic, Generics, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+        ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, MismatchReason, OnTypeError,
+        ResultContext, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage,
     },
     node_ref::NodeRef,
     type_::{

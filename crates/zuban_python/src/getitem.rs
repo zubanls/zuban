@@ -7,7 +7,7 @@ use crate::{
     arguments::{ArgIterator, Args},
     database::{Database, PointsBackup},
     diagnostics::IssueKind,
-    file::{infer_index, PythonFile},
+    file::{PythonFile, infer_index},
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::ResultContext,

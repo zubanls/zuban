@@ -5,16 +5,16 @@ use parsa_python_cst::*;
 use vfs::FileIndex;
 
 use crate::{
+    TypeCheckerFlags,
     database::{
         ClassStorage, ComplexPoint, Locality, ParentScope, Point, PointKind, Points, Specific,
     },
     debug,
     diagnostics::{Diagnostics, Issue, IssueKind},
-    file::{python_file::StarImport, ComplexValues},
+    file::{ComplexValues, python_file::StarImport},
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::StringSlice,
     utils::SymbolTable,
-    TypeCheckerFlags,
 };
 
 // We set global/nonlocal redirects on the points of "global" or "," literals.
@@ -2066,7 +2066,7 @@ pub fn is_expr_part_reachable_for_name_binder(
                 }
             }
             AtomContent::NamedExpression(named_expr) => {
-                return is_expr_reachable_for_name_binder(settings, flags, named_expr.expression())
+                return is_expr_reachable_for_name_binder(settings, flags, named_expr.expression());
             }
             _ => (),
         },
@@ -2092,7 +2092,7 @@ pub fn is_expr_part_reachable_for_name_binder(
         },
         ExpressionPart::Inversion(inv) => {
             return is_expr_part_reachable_for_name_binder(settings, flags, inv.expression())
-                .invert()
+                .invert();
         }
         ExpressionPart::Comparisons(comps) => {
             let mut iterator = comps.iter();

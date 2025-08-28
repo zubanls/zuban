@@ -334,14 +334,13 @@ impl Entries {
                     name,
                 }) => {
                     invalidations = inv.take();
-                    let file_entry = FileEntry::new(
-                        parent,
-                        std::mem::take(name),
-                    );
+                    let file_entry = FileEntry::new(parent, std::mem::take(name));
                     *entry = DirectoryEntry::File(file_entry.clone());
                     file_entry
                 }
-                DirectoryEntry::Directory(..) => unimplemented!("What happens when we want to write a file on top of a directory? When does this happen?"),
+                DirectoryEntry::Directory(..) => unimplemented!(
+                    "What happens when we want to write a file on top of a directory? When does this happen?"
+                ),
             }
         } else {
             let mut borrow = self.borrow_mut();

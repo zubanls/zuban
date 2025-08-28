@@ -11,31 +11,31 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
-        ClassNodeRef, PythonFile, ANNOTATION_TO_EXPR_DIFFERENCE,
+        ANNOTATION_TO_EXPR_DIFFERENCE, ClassNodeRef, PythonFile, maybe_saved_annotation,
+        on_argument_type_error, use_cached_annotation_or_type_comment,
     },
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     matching::{
-        calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-        maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars, ErrorStrs,
-        Generics, IteratorContent, LookupKind, Matcher, OnLookupError, OnTypeError, ResultContext,
+        ErrorStrs, Generics, IteratorContent, LookupKind, Matcher, OnLookupError, OnTypeError,
+        ResultContext, calculate_property_return, create_signature_without_self_for_callable,
+        match_self_type, maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,
     },
     new_class,
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        execute_tuple_class, execute_type_of_type, merge_class_type_vars, AnyCause,
-        CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
+        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
         IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
         PropertySetter, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        execute_tuple_class, execute_type_of_type, merge_class_type_vars,
     },
     type_helpers::{
-        execute_assert_type, execute_cast, execute_isinstance, execute_issubclass,
-        execute_reveal_type, execute_super, BoundMethod, BoundMethodFunction, Callable, Class,
-        FirstParamProperties, Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass,
+        BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function,
+        Instance, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
+        execute_cast, execute_isinstance, execute_issubclass, execute_reveal_type, execute_super,
     },
 };
 
@@ -772,7 +772,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::MaybeSelfParam => {
                             return Inferred::from_type(
                                 i_s.current_class().unwrap().as_type(i_s.db),
-                            )
+                            );
                         }
                         Specific::IntLiteral
                         | Specific::StringLiteral
@@ -1039,7 +1039,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             AttributeKind::Staticmethod {
                                                 is_final: o.is_final,
                                             },
-                                        ))
+                                        ));
                                     }
                                     FunctionKind::Function { .. } => AttributeKind::DefMethod {
                                         is_final: o.is_final,
@@ -1362,7 +1362,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 return Some(Some((
                     Inferred::from_type(Type::CustomBehavior(custom.bind(Arc::new(instance)))),
                     AttributeKind::DefMethod { is_final: false },
-                )))
+                )));
             }
             _ => (),
         }
@@ -1487,7 +1487,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         ),
                                     )),
                                     AttributeKind::Attribute,
-                                ))
+                                ));
                             }
                             FunctionKind::Property { .. } => unreachable!(),
                             FunctionKind::Classmethod { .. } => {
@@ -1627,7 +1627,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Function { .. } => {
                     return Some(Some(Inferred::from_type(Type::Callable(Arc::new(
                         merge_class_type_vars(i_s.db, c, *class, attribute_class, func_class_type),
-                    )))))
+                    )))));
                 }
                 FunctionKind::Property { .. } => {
                     if apply_descriptors.should_apply() {
@@ -2040,7 +2040,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     args,
                                     result_context,
                                     on_type_error,
-                                )
+                                );
                             }
                             Specific::BuiltinsSuper => return execute_super(i_s, args),
                             Specific::BuiltinsIsinstance => return execute_isinstance(i_s, args),
@@ -2095,14 +2095,14 @@ impl<'db: 'slf, 'slf> Inferred {
                                     args,
                                     result_context,
                                     on_type_error,
-                                )
+                                );
                             }
                             Specific::TypingCast => return execute_cast(i_s, args),
                             Specific::RevealTypeFunction => {
-                                return execute_reveal_type(i_s, args, result_context)
+                                return execute_reveal_type(i_s, args, result_context);
                             }
                             Specific::AssertTypeFunction => {
-                                return execute_assert_type(i_s, args, result_context)
+                                return execute_assert_type(i_s, args, result_context);
                             }
                             Specific::TypingTypeAliasType => {
                                 if let ResultContext::AssignmentNewDefinition {
@@ -2137,7 +2137,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .db
                                     .python_state
                                     .mypy_extensions_arg_func(i_s.db, specific)
-                                    .execute_with_details(i_s, args, result_context, on_type_error)
+                                    .execute_with_details(
+                                        i_s,
+                                        args,
+                                        result_context,
+                                        on_type_error,
+                                    );
                             }
                             Specific::TypingProtocol
                             | Specific::TypingGeneric
@@ -2155,7 +2160,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_any_from_error();
                             }
                             Specific::TypingDataclassTransform => {
-                                return Inferred::new_object(i_s.db)
+                                return Inferred::new_object(i_s.db);
                             }
                             _ => (),
                         }
@@ -2413,10 +2418,11 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(link) = self.state {
             let n = NodeRef::from_link(i_s.db, link);
             if n.point().maybe_specific() == Some(Specific::AnnotationOrTypeCommentFinal) {
-                debug_assert!(n
-                    .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
-                    .point()
-                    .calculated());
+                debug_assert!(
+                    n.add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
+                        .point()
+                        .calculated()
+                );
                 return Some(Self::from_saved_link(PointLink::new(
                     link.file,
                     link.node_index + ANNOTATION_TO_EXPR_DIFFERENCE,

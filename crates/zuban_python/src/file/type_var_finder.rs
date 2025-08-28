@@ -4,8 +4,8 @@ use parsa_python_cst::*;
 use vfs::FileIndex;
 
 use super::{
-    name_resolution::{NameResolution, PointResolution},
     ClassInitializer, ClassNodeRef,
+    name_resolution::{NameResolution, PointResolution},
 };
 use crate::{
     database::{ComplexPoint, PointKind, PointLink, Specific},
@@ -411,7 +411,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let name_def = node_ref.expect_name_def();
                 match name_def.expect_type() {
                     TypeLike::ClassDef(c) => {
-                        return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
+                        return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()));
                     }
                     TypeLike::Assignment(assignment) => {
                         if node_ref.point().calculated() {
@@ -457,12 +457,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     TypeLike::ImportFromAsName(from_as_name) => {
                         return self.point_resolution_to_base_lookup(
                             self.resolve_import_from_name_def_without_narrowing(from_as_name),
-                        )
+                        );
                     }
                     TypeLike::DottedAsName(dotted_as_name) => {
                         return self.point_resolution_to_base_lookup(
                             self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
-                        )
+                        );
                     }
                     _ => (),
                 }
@@ -482,10 +482,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 } else if let Some(complex) = inferred.maybe_complex_point(self.i_s.db) {
                     match complex {
                         ComplexPoint::TypeVarLike(tvl) => {
-                            return BaseLookup::TypeVarLike(tvl.clone())
+                            return BaseLookup::TypeVarLike(tvl.clone());
                         }
                         ComplexPoint::Class(_) => {
-                            return BaseLookup::Class(inferred.maybe_saved_link().unwrap())
+                            return BaseLookup::Class(inferred.maybe_saved_link().unwrap());
                         }
                         _ => (),
                     }

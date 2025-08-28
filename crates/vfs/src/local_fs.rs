@@ -3,8 +3,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crossbeam_channel::{unbounded, Receiver};
-use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use crossbeam_channel::{Receiver, unbounded};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, recommended_watcher};
 use utils::FastHashSet;
 
 use crate::{

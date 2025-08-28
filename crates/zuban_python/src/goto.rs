@@ -14,10 +14,11 @@ use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
 
 use crate::{
+    InputPosition, ValueName,
     completion::ScopesIterator,
     database::{Database, ParentScope, PointKind, Specific},
     debug,
-    file::{first_defined_name, ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile},
+    file::{ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile, first_defined_name},
     format_data::FormatData,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
@@ -27,7 +28,6 @@ use crate::{
     recoverable_error,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::TypeOrClass,
-    InputPosition, ValueName,
 };
 
 pub(crate) struct PositionalDocument<'db, T> {
@@ -195,7 +195,7 @@ pub(crate) fn with_i_s_non_self<'db, R>(
         Scope::Function(f) => ParentScope::Function(f.index()),
         Scope::Class(c) => ParentScope::Class(c.index()),
         Scope::Lambda(lambda) => {
-            return with_i_s_non_self(db, file, lambda.parent_scope(), callback)
+            return with_i_s_non_self(db, file, lambda.parent_scope(), callback);
         }
     };
     InferenceState::run_with_parent_scope(db, file, parent_scope, |i_s| {
@@ -394,7 +394,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                         return Some(vec![self.calculate_return(Name::ModuleName(ModuleName {
                             db,
                             file: db.loaded_python_file(p.file_index()),
-                        }))])
+                        }))]);
                     }
                     _ => (),
                 }

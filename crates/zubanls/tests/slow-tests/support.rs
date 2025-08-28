@@ -4,23 +4,23 @@ use std::{
     ops::Deref,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::{atomic::Ordering, Mutex},
+    sync::{Mutex, atomic::Ordering},
 };
 
 use lsp_types::{
-    notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument},
-    request::DocumentDiagnosticRequest,
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
     DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
     PartialResultParams, TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
     Uri, VersionedTextDocumentIdentifier, WorkDoneProgressParams,
+    notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument},
+    request::DocumentDiagnosticRequest,
 };
 use serde::Serialize;
-use serde_json::{to_string_pretty, Value};
-use test_utils::{write_files_from_fixture, TestDir};
+use serde_json::{Value, to_string_pretty};
+use test_utils::{TestDir, write_files_from_fixture};
 use zubanls::GLOBAL_NOTIFY_EVENT_COUNTER;
 
-use crate::connection::{path_to_uri, Connection};
+use crate::connection::{Connection, path_to_uri};
 
 lazy_static::lazy_static! {
     static ref FILE_SYSTEM_LOCK: Mutex<()> = Mutex::default();

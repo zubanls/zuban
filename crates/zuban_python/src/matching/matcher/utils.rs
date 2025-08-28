@@ -8,8 +8,8 @@ use super::{
         ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
         ResultContext, SignatureMatch,
     },
-    type_var_matcher::TypeVarMatcher,
     ReplaceSelfInMatcher,
+    type_var_matcher::TypeVarMatcher,
 };
 use crate::{
     arguments::{Arg, InferredArg},
@@ -18,17 +18,17 @@ use crate::{
     diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{maybe_class_usage, ErrorTypes, GotType},
+    matching::{ErrorTypes, GotType, maybe_class_usage},
     node_ref::NodeRef,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
     },
     type_::{
-        match_arbitrary_len_vs_unpack, match_unpack, CallableContent, CallableParams,
-        CallableWithParent, ClassGenerics, GenericItem, GenericsList, MaybeUnpackGatherer,
-        NeverCause, ParamSpecTypeVars, ReplaceSelf, ReplaceTypeVarLikes, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance,
+        CallableContent, CallableParams, CallableWithParent, ClassGenerics, GenericItem,
+        GenericsList, MaybeUnpackGatherer, NeverCause, ParamSpecTypeVars, ReplaceSelf,
+        ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
+        TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
 };

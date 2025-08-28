@@ -67,7 +67,7 @@ impl EnumMember {
         let question_mark = match format_data.style {
             FormatStyle::MypyRevealType if self.implicit => "?",
             _ if self.implicit && format_data.hide_implicit_literals => {
-                return self.enum_.format(format_data)
+                return self.enum_.format(format_data);
             }
             _ => "",
         };
@@ -347,7 +347,7 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
                         kind: LiteralKind::String(DbString::ArcStr(member.name(i_s.db).into())),
                     }))),
                     AttributeKind::Attribute,
-                )
+                );
             }
             "value" | "_value_" => {
                 let value = member.value();

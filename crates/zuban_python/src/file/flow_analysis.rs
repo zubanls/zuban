@@ -28,15 +28,15 @@ use crate::{
     file::{ClassNodeRef, OtherDefinitionIterator},
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::{add_attribute_error, Inferred, UnionValue},
+    inferred::{Inferred, UnionValue, add_attribute_error},
     matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        lookup_on_enum_instance, AnyCause, CallableContent, CallableLike, CallableParams, DbBytes,
-        DbString, EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult,
-        NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind,
-        UnionType, WithUnpack,
+        AnyCause, CallableContent, CallableLike, CallableParams, DbBytes, DbString, EnumKind,
+        EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
@@ -46,12 +46,11 @@ use crate::{
 };
 
 use super::{
-    first_defined_name,
-    inference::{instantiate_except, AssignKind, Inference},
-    name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
+    FuncNodeRef, PythonFile, first_defined_name,
+    inference::{AssignKind, Inference, instantiate_except},
+    name_binder::{Truthiness, is_expr_part_reachable_for_name_binder},
     on_argument_type_error,
     utils::func_of_self_symbol,
-    FuncNodeRef, PythonFile,
 };
 
 type Entries = Vec<Entry>;
@@ -2719,7 +2718,7 @@ impl Inference<'_, '_, '_> {
                 // TODO
             }
             PatternKind::GroupPattern(group_pattern) => {
-                return self.find_guards_in_pattern(inf, group_pattern.inner())
+                return self.find_guards_in_pattern(inf, group_pattern.inner());
             }
             PatternKind::OrPattern(or_pattern) => {
                 for pat in or_pattern.iter() {
@@ -2728,7 +2727,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
             PatternKind::SequencePattern(sequence_pattern) => {
-                return self.find_guards_in_sequence_pattern(sequence_pattern.iter())
+                return self.find_guards_in_sequence_pattern(sequence_pattern.iter());
             }
             PatternKind::MappingPattern(mapping_pattern) => {
                 for item in mapping_pattern.iter() {
@@ -3602,7 +3601,7 @@ impl Inference<'_, '_, '_> {
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
         match atom.unpack() {
             AtomContent::Name(name) => {
-                return Some(FlowKey::Name(name_def_link(self.i_s.db, self.file, name)?))
+                return Some(FlowKey::Name(name_def_link(self.i_s.db, self.file, name)?));
             }
             AtomContent::NamedExpression(named_expr) => {
                 if let NamedExpressionContent::Walrus(walrus) = named_expr.unpack() {
@@ -4023,7 +4022,7 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
         }
         Type::Tuple(tup) => tup.fallback_type(db).clone(),
         Type::NamedTuple(named_tup) => {
-            return stdlib_container_item(db, &Type::Tuple(named_tup.as_tuple()))
+            return stdlib_container_item(db, &Type::Tuple(named_tup.as_tuple()));
         }
         Type::TypedDict(_) => db.python_state.str_type(),
         _ => return None,

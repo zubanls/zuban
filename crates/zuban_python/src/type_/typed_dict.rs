@@ -4,9 +4,9 @@ use std::{
 };
 
 use super::{
-    utils::method_with_fallback, CallableContent, CallableParam, CallableParams, CustomBehavior,
-    DbString, FormatStyle, GenericsList, LookupResult, NeverCause, ParamType, RecursiveType,
-    ReplaceTypeVarLikes, StringSlice, Type, TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParam, CallableParams, CustomBehavior, DbString, FormatStyle,
+    GenericsList, LookupResult, NeverCause, ParamType, RecursiveType, ReplaceTypeVarLikes,
+    StringSlice, Type, TypeVarLikeUsage, TypeVarLikes, utils::method_with_fallback,
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
@@ -930,7 +930,7 @@ pub(crate) fn lookup_on_typed_dict<'a>(
                 InstanceLookupOptions::new(add_issue)
                     .with_kind(kind)
                     .with_as_self_instance(&|| Type::TypedDict(typed_dict.clone())),
-            )
+            );
         }
     })));
     LookupDetails::new(

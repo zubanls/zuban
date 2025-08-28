@@ -10,8 +10,8 @@ use crate::{
     file::ClassNodeRef,
     inference_state::InferenceState,
     matching::{
-        avoid_protocol_mismatch, format_got_expected, ErrorStrs, ErrorTypes, GotType, Match,
-        Matcher, MismatchReason,
+        ErrorStrs, ErrorTypes, GotType, Match, Matcher, MismatchReason, avoid_protocol_mismatch,
+        format_got_expected,
     },
     params::matches_params,
     recoverable_error,

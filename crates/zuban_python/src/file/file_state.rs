@@ -3,10 +3,10 @@ use parsa_python_cst::CodeIndex;
 use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
+    InputPosition, PythonProject,
     database::Database,
     diagnostics::Diagnostic,
     lines::{BytePositionInfos, PositionInfos},
-    InputPosition, PythonProject,
 };
 
 pub trait File: std::fmt::Debug {

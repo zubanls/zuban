@@ -40,11 +40,11 @@ use std::{
 };
 
 use tracing::{
+    Event, Id, Level, Subscriber,
     field::{Field, Visit},
     span::Attributes,
-    Event, Id, Level, Subscriber,
 };
-use tracing_subscriber::{filter, layer::Context, registry::LookupSpan, Layer};
+use tracing_subscriber::{Layer, filter, layer::Context, registry::LookupSpan};
 
 #[derive(Debug)]
 pub(crate) struct SpanTree<S> {

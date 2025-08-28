@@ -3,13 +3,13 @@ use std::{borrow::Cow, cell::Cell, sync::Arc};
 use parsa_python_cst::*;
 
 use super::{
+    ClassNodeRef, FLOW_ANALYSIS, File, PythonFile,
     diagnostics::{await_aiter_and_next, check_override},
     flow_analysis::has_custom_special_method,
     name_resolution::{ModuleAccessDetail, NameResolution},
     on_argument_type_error, process_unfinished_partials,
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
-    ClassNodeRef, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
@@ -24,12 +24,12 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{
-        add_attribute_error, specific_to_type, ApplyClassDescriptorsOrigin, AttributeKind,
-        Inferred, MroIndex, UnionValue, NAME_DEF_TO_DEFAULTDICT_DIFF,
+        ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex,
+        NAME_DEF_TO_DEFAULTDICT_DIFF, UnionValue, add_attribute_error, specific_to_type,
     },
     matching::{
-        format_got_expected, CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent,
-        LookupKind, Matcher, OnTypeError, ResultContext, TupleLenInfos,
+        CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher,
+        OnTypeError, ResultContext, TupleLenInfos, format_got_expected,
     },
     new_class,
     node_ref::NodeRef,
@@ -42,8 +42,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        cache_class_name, is_private, Class, ClassLookupOptions, FirstParamKind, Function,
-        GeneratorType, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
+        Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
+        InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,
     },
     utils::debug_indent,
 };
@@ -3470,14 +3470,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Tuple(tuple) => {
                 return self
                     .infer_tuple_iterator(tuple.iter(), result_context)
-                    .save_redirect(i_s, self.file, atom.index())
+                    .save_redirect(i_s, self.file, atom.index());
             }
             GeneratorComprehension(comp) => {
-                return self.infer_generator_comprehension(comp, result_context)
+                return self.infer_generator_comprehension(comp, result_context);
             }
             YieldExpr(yield_expr) => return self.infer_yield_expr(yield_expr, result_context),
             NamedExpression(named_expression) => {
-                return self.infer_named_expression_with_context(named_expression, result_context)
+                return self.infer_named_expression_with_context(named_expression, result_context);
             }
         };
         let point = Point::new_specific(specific, Locality::Todo);

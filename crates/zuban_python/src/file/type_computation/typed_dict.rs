@@ -16,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    type_computation_for_variable_annotation, TypeComputation, TypeComputationOrigin, TypeContent,
-    TypedDictFieldModifier, TypedDictFieldModifiers, UnknownCause,
+    TypeComputation, TypeComputationOrigin, TypeContent, TypedDictFieldModifier,
+    TypedDictFieldModifiers, UnknownCause, type_computation_for_variable_annotation,
 };
 
 impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {

@@ -9,8 +9,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     imports::{
-        find_import_ancestor, global_import, namespace_import_with_unloaded_file,
-        python_import_with_needs_exact_case, ImportAncestor, ImportResult, LoadedImportResult,
+        ImportAncestor, ImportResult, LoadedImportResult, find_import_ancestor, global_import,
+        namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -18,7 +18,7 @@ use crate::{
     type_::{LookupResult, Type},
 };
 
-use super::{python_file::StarImport, PythonFile};
+use super::{PythonFile, python_file::StarImport};
 
 impl PythonFile {
     pub(super) fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {

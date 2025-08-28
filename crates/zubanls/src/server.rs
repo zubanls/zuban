@@ -11,17 +11,17 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::bail;
 use config::ProjectOptions;
-use crossbeam_channel::{never, select, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, never, select};
 use fluent_uri::Scheme;
 use lsp_server::{Connection, ExtractError, Message, Request};
-use lsp_types::notification::Notification as _;
 use lsp_types::Uri;
+use lsp_types::notification::Notification as _;
 use notify::EventKind;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
 use zuban_python::{Mode, PanicRecovery, Project};
 
-use crate::capabilities::{server_capabilities, ClientCapabilities};
+use crate::capabilities::{ClientCapabilities, server_capabilities};
 use crate::notification_handlers::TestPanic;
 use crate::panic_hooks;
 
@@ -156,21 +156,21 @@ pub fn run_server_with_custom_connection(
                 .as_ref()
                 .unwrap()
                 .send(lsp_server::Message::Notification(
-                    lsp_server::Notification {
-                        method: lsp_types::notification::ShowMessage::METHOD.into(),
-                        params: serde_json::to_value(lsp_types::ShowMessageParams {
-                            typ: lsp_types::MessageType::ERROR,
-                            message: format!(
+                lsp_server::Notification {
+                    method: lsp_types::notification::ShowMessage::METHOD.into(),
+                    params: serde_json::to_value(lsp_types::ShowMessageParams {
+                        typ: lsp_types::MessageType::ERROR,
+                        message: format!(
                             "ZubanLS paniced, please open an issue on GitHub with the details:\n\
                                 Version:{}\n\
                                 {panic_info}\n\n\
                                 {backtrace}",
-                                env!("CARGO_PKG_VERSION")
-                            ),
-                        })
-                        .unwrap(),
-                    },
-                ))
+                            env!("CARGO_PKG_VERSION")
+                        ),
+                    })
+                    .unwrap(),
+                },
+            ))
         }) {
             tracing::warn!("Wanted to send panic information to the client, but got {err}");
         }
@@ -313,8 +313,8 @@ impl<'sender> GlobalState<'sender> {
             })
             .unwrap_or_else(|err| {
                 use lsp_types::{
-                    notification::{Notification, ShowMessage},
                     MessageType, ShowMessageParams,
+                    notification::{Notification, ShowMessage},
                 };
                 tracing::warn!("Error while loading config: {}", err.to_string());
                 let not = lsp_server::Notification::new(
@@ -514,7 +514,9 @@ impl<'sender> GlobalState<'sender> {
                                     // recovery and reused. Currently this is not handled
                                     // correctly. If the VFS rechecks files, then it could be fine,
                                     // BUT we should document that here.
-                                    tracing::info!("Reindex because a file was changed that invalidates the whole project: {path:?}");
+                                    tracing::info!(
+                                        "Reindex because a file was changed that invalidates the whole project: {path:?}"
+                                    );
                                     self.recover_from_panic();
                                     return;
                                 }

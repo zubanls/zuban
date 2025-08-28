@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use parsa_python_cst::{
-    Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef, Int, NodeIndex,
-    StarLikeExpression, StarLikeExpressionIterator, NAME_DEF_TO_NAME_DIFFERENCE,
+    Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef, Int,
+    NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
 };
 
 use crate::{
-    arguments::{unpack_star_star, Arg, Args},
+    Inferred,
+    arguments::{Arg, Args, unpack_star_star},
     database::{Database, PointKind, Specific},
     debug,
     diagnostics::IssueKind,
@@ -19,11 +20,10 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     type_::{
-        check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue, AnyCause,
-        IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes, Type,
-        TypedDict, TypedDictGenerics, UniqueInUnpackedUnionError,
+        AnyCause, IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes,
+        Type, TypedDict, TypedDictGenerics, UniqueInUnpackedUnionError, check_typed_dict_call,
+        infer_typed_dict_arg, maybe_add_extra_keys_issue,
     },
-    Inferred,
 };
 
 use super::ClassNodeRef;

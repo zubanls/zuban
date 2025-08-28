@@ -249,7 +249,7 @@ fn common_base_type_for_non_class(
 ) -> Option<Type> {
     match type1 {
         Type::Tuple(tup1) => {
-            return common_base_for_tuple_against_type(i_s, tup1, type2, checked_recursions)
+            return common_base_for_tuple_against_type(i_s, tup1, type2, checked_recursions);
         }
         Type::NamedTuple(nt1) => {
             if let Type::NamedTuple(nt2) = type2 {

@@ -4,7 +4,7 @@ use std::{path::PathBuf, sync::Arc};
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
-use config::{find_cli_config, ExcludeRegex, ProjectOptions, PythonVersion};
+use config::{ExcludeRegex, ProjectOptions, PythonVersion, find_cli_config};
 use vfs::{AbsPath, NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::{Mode, Project};
 

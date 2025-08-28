@@ -4,6 +4,7 @@ use parsa_python_cst::{ClassDef, DefiningStmt, FunctionDef, Name as CSTName, Nam
 use vfs::NormalizedPath;
 
 use crate::{
+    PositionInfos,
     completion::ScopesIterator,
     database::{Database, ParentScope},
     file::{ClassNodeRef, File, FuncNodeRef, PythonFile},
@@ -12,7 +13,6 @@ use crate::{
     node_ref::NodeRef,
     type_::{LookupResult, Type},
     type_helpers::Class,
-    PositionInfos,
 };
 
 pub type Range<'a> = (PositionInfos<'a>, PositionInfos<'a>);
@@ -116,7 +116,7 @@ impl<'db, 'x> Name<'db, 'x> {
                             n.db,
                             NodeRef::new(n.file, n.cst_name.index()),
                             n.cst_name.as_code(),
-                        )
+                        );
                     }
                 };
                 parent_scope.qualified_name(

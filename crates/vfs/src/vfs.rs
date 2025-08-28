@@ -9,10 +9,10 @@ use tracing::Level;
 use utils::{FastHashSet, InsertOnlyVec};
 
 use crate::{
-    tree::{InvalidationDetail, Invalidations},
-    workspaces::Workspaces,
     AbsPath, DirOrFile, Directory, DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent,
     VfsHandler, WorkspaceKind,
+    tree::{InvalidationDetail, Invalidations},
+    workspaces::Workspaces,
 };
 
 thread_local! {
@@ -559,7 +559,9 @@ impl<F: VfsFile> Vfs<F> {
                             let non_canonicalized_path =
                                 PathWithScheme::with_file_scheme(normalized);
                             if self.in_memory_files.contains_key(&non_canonicalized_path) {
-                                tracing::debug!("Ignored invalidation, because the file is in-memory (via canonicalized path)");
+                                tracing::debug!(
+                                    "Ignored invalidation, because the file is in-memory (via canonicalized path)"
+                                );
                                 return InvalidationResult::InvalidatedFiles;
                             }
                         }
@@ -600,18 +602,25 @@ impl<F: VfsFile> Vfs<F> {
                 });
             };
             parent.with_dir(&*self.handler, |in_dir| {
-                if self.handler.is_unnecessary_invalidation(path, in_dir.search(replace_name).as_deref()) {
-                    tracing::debug!("Ignored invalidation for {path}, because it is an unnecessary invalidation");
+                if self
+                    .handler
+                    .is_unnecessary_invalidation(path, in_dir.search(replace_name).as_deref())
+                {
+                    tracing::debug!(
+                        "Ignored invalidation for {path}, because it is an unnecessary invalidation"
+                    );
                     return;
                 }
-                let new_entry = self
-                    .handler
-                    .read_and_watch_entry(path, parent.clone(), replace_name);
+                let new_entry =
+                    self.handler
+                        .read_and_watch_entry(path, parent.clone(), replace_name);
                 match new_entry {
                     Some(new_entry) => {
                         if let Some(mut to_replace) = in_dir.search_mut(replace_name) {
                             if self.matches_current_dir_entry(&to_replace, &new_entry) {
-                                tracing::debug!("Decided to replace nothing in VFS, because nothing changed");
+                                tracing::debug!(
+                                    "Decided to replace nothing in VFS, because nothing changed"
+                                );
                             } else {
                                 tracing::debug!("Decided to replace {replace_name} in VFS");
                                 to_replace.walk_entries(&*self.handler, &mut |e| {

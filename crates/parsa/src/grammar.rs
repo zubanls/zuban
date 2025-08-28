@@ -4,9 +4,9 @@ use utils::FastHashMap;
 
 use crate::{
     automaton::{
-        generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
-        InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode,
-        RuleMap, SoftKeywords, Squashable, StackMode,
+        Automatons, DFAState, InternalNonterminalType, InternalSquashedType, InternalStrToNode,
+        InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode, RuleMap, SoftKeywords,
+        Squashable, StackMode, generate_automatons,
     },
     backtracking::BacktrackingTokenizer,
 };

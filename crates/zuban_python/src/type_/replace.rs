@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use super::{
-    callable::add_param_spec_to_params, simplified_union_from_iterators_with_format_index,
-    type_var_likes::CallableId, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    Dataclass, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-    Intersection, NamedTuple, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType,
-    PropertySetter, RecursiveType, StarParamType, StarStarParamType, Tuple, TupleArgs, Type,
-    TypeArgs, TypeGuardInfo, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, FunctionKind,
+    FunctionOverload, GenericClass, GenericItem, GenericsList, Intersection, NamedTuple,
+    ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType, PropertySetter, RecursiveType,
+    StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypedDict,
+    TypedDictGenerics, UnionEntry, UnionType, callable::add_param_spec_to_params,
+    simplified_union_from_iterators_with_format_index, type_var_likes::CallableId,
 };
 use crate::{
     database::{Database, PointLink},
@@ -722,7 +722,7 @@ impl TupleArgs {
                                         .map(|v| v.into())
                                         .unwrap_or_else(|| unpack.after.clone()),
                                 ),
-                            )
+                            );
                         }
                         None => None,
                     },

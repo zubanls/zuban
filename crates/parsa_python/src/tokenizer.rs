@@ -3,7 +3,7 @@
  */
 use std::{collections::HashSet, str};
 
-use parsa::{create_terminals, CodeIndex};
+use parsa::{CodeIndex, create_terminals};
 use regex::Regex;
 
 const FORM_FEED: char = '\x0C';
@@ -593,8 +593,8 @@ fn code_from_start(code: &str, index: usize) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use parsa::Tokenizer;
     use TerminalType::*;
+    use parsa::Tokenizer;
 
     use super::*;
     #[allow(non_upper_case_globals)]

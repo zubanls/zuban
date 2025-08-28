@@ -6,9 +6,9 @@ use std::{
 use vfs::FileIndex;
 
 use super::{
-    tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, Literal, LiteralKind, LookupResult, ParamType,
-    ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeVarLikes,
+    AnyCause, CallableContent, CallableParam, CallableParams, DbString, FormatStyle, FunctionKind,
+    Literal, LiteralKind, LookupResult, ParamType, ReplaceTypeVarLikes, StringSlice, Tuple, Type,
+    TypeVarLikes, tuple::lookup_tuple_magic_methods,
 };
 use crate::{
     database::{Database, PointLink},
@@ -282,7 +282,7 @@ impl NamedTuple {
             ),
             "_source" => i_s.db.python_state.str_type(),
             "__mul__" | "__rmul__" | "__add__" => {
-                return lookup_tuple_magic_methods(self.as_tuple(), name)
+                return lookup_tuple_magic_methods(self.as_tuple(), name);
             }
             "__match_args__"
                 if i_s

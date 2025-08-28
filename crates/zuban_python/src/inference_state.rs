@@ -1,12 +1,12 @@
 use std::cell::Cell;
 
 use crate::{
+    TypeCheckerFlags,
     database::{Database, ParentScope},
     file::{ClassNodeRef, PythonFile, TypeVarCallbackReturn},
     node_ref::NodeRef,
     type_::{CallableContent, TypeVarLike},
     type_helpers::{Class, Function},
-    TypeCheckerFlags,
 };
 
 #[derive(Debug, Copy, Clone)]
