@@ -133,7 +133,7 @@ impl ImportResult {
     }
 }
 
-impl<'a> std::ops::Deref for LoadedImportResult {
+impl std::ops::Deref for LoadedImportResult {
     type Target = ImportResult;
 
     fn deref(&self) -> &Self::Target {

@@ -245,7 +245,9 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let implicit_optional = self.file.flags(i_s.db).implicit_optional;
         let in_result_type = Cell::new(false);
         let mut unbound_in_params = vec![];
+        #[allow(clippy::mutable_key_type)]
         let mut unbound_type_vars = FastHashSet::default();
+        #[allow(clippy::mutable_key_type)]
         let mut unbound_param_specs: FastHashSet<TypeVarLike> = FastHashSet::default();
         let mut on_type_var = |i_s: &InferenceState,
                                manager: &TypeVarManager<PointLink>,

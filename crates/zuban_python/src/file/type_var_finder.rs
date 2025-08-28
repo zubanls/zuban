@@ -108,32 +108,28 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     ) -> TypeVarLikes {
         if let ArgumentsDetails::Node(n) = args {
             // Skip the name
-            if let Some(arg) = n.iter().nth(1) {
-                if let Argument::Positional(pos) = arg {
-                    let expr = pos.expression();
-                    return TypeVarFinder::find_alias_type_vars_with(i_s, file, expr, |slf| {
-                        match expr.maybe_unpacked_atom() {
-                            Some(AtomContent::List(list)) => {
-                                slf.find_in_named_tuple_fields(list.unpack())
-                            }
-                            Some(AtomContent::Tuple(tup)) => {
-                                slf.find_in_named_tuple_fields(tup.iter())
-                            }
-                            Some(AtomContent::Dict(dict)) => {
-                                // For TypedDicts
-                                for element in dict.iter_elements() {
-                                    match element {
-                                        DictElement::KeyValue(dict_key_value) => {
-                                            slf.find_in_expr(dict_key_value.value())
-                                        }
-                                        DictElement::Star(_) => (),
+            if let Some(Argument::Positional(pos)) = n.iter().nth(1) {
+                let expr = pos.expression();
+                return TypeVarFinder::find_alias_type_vars_with(i_s, file, expr, |slf| {
+                    match expr.maybe_unpacked_atom() {
+                        Some(AtomContent::List(list)) => {
+                            slf.find_in_named_tuple_fields(list.unpack())
+                        }
+                        Some(AtomContent::Tuple(tup)) => slf.find_in_named_tuple_fields(tup.iter()),
+                        Some(AtomContent::Dict(dict)) => {
+                            // For TypedDicts
+                            for element in dict.iter_elements() {
+                                match element {
+                                    DictElement::KeyValue(dict_key_value) => {
+                                        slf.find_in_expr(dict_key_value.value())
                                     }
+                                    DictElement::Star(_) => (),
                                 }
                             }
-                            _ => (),
                         }
-                    });
-                }
+                        _ => (),
+                    }
+                });
             }
         }
         i_s.db.python_state.empty_type_var_likes.clone()
@@ -319,7 +315,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     }
 
     fn handle_type_var_like(&mut self, mut tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
-        if let Some(_) = self.i_s.find_parent_type_var(&tvl) {
+        if self.i_s.find_parent_type_var(&tvl).is_some() {
             debug!(
                 "Found bound TypeVar {} in parent scope",
                 tvl.name(self.i_s.db)

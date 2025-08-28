@@ -232,7 +232,7 @@ impl Enum {
         EnumKind::Normal
     }
 
-    pub fn from_functional_definition(&self, db: &Database) -> bool {
+    pub fn is_from_functional_definition(&self, db: &Database) -> bool {
         self.class.file == db.python_state.enum_file().file_index()
     }
 }

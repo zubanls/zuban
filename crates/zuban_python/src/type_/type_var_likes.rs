@@ -899,7 +899,7 @@ impl PartialEq for TypeVar {
 
 impl PartialOrd for TypeVar {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.name.cmp(&other.name))
+        Some(self.cmp(other))
     }
 }
 impl Ord for TypeVar {
@@ -986,7 +986,7 @@ impl TypeVar {
         }
     }
 
-    fn from_type_var_syntax(&self) -> bool {
+    fn is_from_type_var_syntax(&self) -> bool {
         matches!(
             &self.name,
             TypeVarName::Name(TypeVarLikeName::SyntaxNode(_))
@@ -1007,7 +1007,7 @@ impl TypeVar {
                             .name_resolution_for_types(i_s)
                             .compute_type_var_bound(
                                 node_ref.expect_expression(),
-                                self.from_type_var_syntax(),
+                                self.is_from_type_var_syntax(),
                             )
                     })
                     // TODO add an error here
@@ -1021,7 +1021,7 @@ impl TypeVar {
                             .name_resolution_for_types(i_s)
                             .compute_type_var_value(
                                 node_ref.expect_expression(),
-                                self.from_type_var_syntax(),
+                                self.is_from_type_var_syntax(),
                             )
                             .unwrap_or(Type::ERROR)
                     })
@@ -1216,7 +1216,7 @@ impl PartialEq for TypeVarTuple {
 
 impl PartialOrd for TypeVarTuple {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.name.cmp(&other.name))
+        Some(self.cmp(other))
     }
 }
 impl Ord for TypeVarTuple {
@@ -1292,7 +1292,7 @@ impl Ord for ParamSpec {
 
 impl PartialOrd for ParamSpec {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.name.cmp(&other.name))
+        Some(self.cmp(other))
     }
 }
 impl Eq for ParamSpec {}

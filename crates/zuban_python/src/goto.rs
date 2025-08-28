@@ -891,7 +891,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             nt.name(db),
         ))),
         Type::Enum(enum_) => {
-            if enum_.from_functional_definition(db) {
+            if enum_.is_from_functional_definition(db) {
                 add(Name::NodeName(NodeName::new(
                     db,
                     NodeRef::from_link(db, enum_.defined_at),

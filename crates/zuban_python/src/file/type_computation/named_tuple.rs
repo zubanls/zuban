@@ -32,7 +32,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 }
 
-impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
+impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn compute_named_tuple_initializer(
         &mut self,
         list: StarLikeExpressionIterator,

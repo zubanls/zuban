@@ -116,16 +116,17 @@ impl GlobalState<'_> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let (document, pos) = self.document_with_pos(params.text_document_position)?;
         let mut completions = document.complete(pos, false, |replace_range, completion| {
-            let mut item = CompletionItem::default();
-            item.label = completion.label().to_string();
-            item.kind = Some(completion.kind());
-            item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
-                range: Self::to_range(encoding, replace_range),
-                new_text: completion.insert_text(),
-            }));
-            // TODO
-            // item.documentation = Some(Documentation::String(completion.documentation().unwrap_or_else()));
-            item
+            CompletionItem {
+                label: completion.label().to_string(),
+                kind: Some(completion.kind()),
+                text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                    range: Self::to_range(encoding, replace_range),
+                    new_text: completion.insert_text(),
+                })),
+                // TODO
+                // documentation: Some(Documentation::String(completion.documentation().unwrap_or_else())),
+                ..Default::default()
+            }
         })?;
         if completions.is_empty() {
             return Ok(None);

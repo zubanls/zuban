@@ -273,9 +273,7 @@ impl PythonFile {
         name_ref: NodeRef,
         name: &str,
     ) -> Option<LookupResult> {
-        let Some(import) = name_ref.maybe_import_of_name_in_symbol_table() else {
-            return None;
-        };
+        let import = name_ref.maybe_import_of_name_in_symbol_table()?;
         let submodule_reexport = |import_result| {
             if let Some(ImportResult::File(f)) = import_result {
                 if f == self.file_index {

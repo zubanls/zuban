@@ -679,6 +679,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             unreachable!()
         };
 
+        #[allow(clippy::mutable_key_type)]
         let mut unbound_type_vars = FastHashSet::default();
         let mut type_var_callback =
             |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _, _: Name| {

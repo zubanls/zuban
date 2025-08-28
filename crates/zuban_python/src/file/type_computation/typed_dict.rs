@@ -20,7 +20,7 @@ use super::{
     TypedDictFieldModifier, TypedDictFieldModifiers, UnknownCause,
 };
 
-impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
+impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn compute_typed_dict_member(
         &mut self,
         name: StringSlice,

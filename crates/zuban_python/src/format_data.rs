@@ -177,6 +177,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
 
 pub fn find_similar_types(db: &Database, types: &[&Type]) -> Vec<PointLink> {
     // Mypy calls this `mypy.messages.find_type_overlaps`
+    #[allow(clippy::mutable_key_type)]
     let mut seen_types = FastHashSet::default();
     let mut types_with_same_names = vec![];
     for t in types {

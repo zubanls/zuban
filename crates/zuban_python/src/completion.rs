@@ -511,7 +511,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
             self.items
                 .push((CompletionSortPriority::EnumMember, result))
         }
-        if !enum_.from_functional_definition(self.infos.db) {
+        if !enum_.is_from_functional_definition(self.infos.db) {
             self.add_class_symbols(enum_.class(self.infos.db), is_instance)
         }
     }

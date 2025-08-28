@@ -1276,7 +1276,7 @@ impl Database {
         })
     }
 
-    fn preload_typeshed_stub_in_entries<'x>(
+    fn preload_typeshed_stub_in_entries(
         &self,
         entries: &Entries,
         file_name: &'static str,

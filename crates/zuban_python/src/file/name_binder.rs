@@ -1396,10 +1396,8 @@ impl<'db> NameBinder<'db> {
         if let Some(type_params) = maybe_type_params {
             for type_param in type_params.iter() {
                 let (_, kind) = type_param.unpack();
-                if let TypeParamKind::TypeVar(bound, _) = kind {
-                    if let Some(bound) = bound {
-                        self.index_annotation_expr(&bound, None)
-                    }
+                if let TypeParamKind::TypeVar(Some(bound), _) = kind {
+                    self.index_annotation_expr(&bound, None)
                 }
             }
             // TypeVar defaults can access the other type vars, while bounds cannot

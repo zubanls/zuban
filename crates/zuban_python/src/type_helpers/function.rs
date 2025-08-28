@@ -270,7 +270,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let result = result
             .unwrap_or_else(Inferred::new_none)
-            .to_proper_type(i_s);
+            .into_proper_type(i_s);
         result.save_redirect(i_s, reference.file, reference.node_index)
     }
 
@@ -403,12 +403,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<CallableContent> {
-        let Some((type_guard, star_annotation)) = self
+        let (type_guard, star_annotation) = self
             .node_ref
-            .ensure_cached_type_vars(i_s, self.class.map(|c| c.node_ref))
-        else {
-            return None;
-        };
+            .ensure_cached_type_vars(i_s, self.class.map(|c| c.node_ref))?;
         let mut needs_callable = false;
         if let Some(annotation) = star_annotation {
             let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);

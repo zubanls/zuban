@@ -742,6 +742,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             let has_type_params = self.node().type_params().is_some();
             // Check metaclass before checking all the arguments, because it has a preference over
             // the metaclasses of the subclasses.
+            #[allow(clippy::mutable_key_type)]
             let mut unbound_type_vars = FastHashSet::default();
             for argument in arguments.iter() {
                 if let Argument::Keyword(kwarg) = argument {
@@ -1906,7 +1907,7 @@ fn check_dataclass_options(
 }
 
 impl DataclassOptions {
-    fn assign_keyword_arg_to_dataclass_options<'db>(
+    fn assign_keyword_arg_to_dataclass_options(
         &mut self,
         db: &Database,
         file: &PythonFile,
