@@ -144,7 +144,7 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
                     .collect(),
             )),
             ClassGenerics::None => None,
-            ClassGenerics::NotDefinedYet { .. } => unreachable!(),
+            ClassGenerics::NotDefinedYet => unreachable!(),
         };
     }
     type_arguments
@@ -524,10 +524,10 @@ fn calc_type_vars_for_func_internal<'db: 'a, 'a>(
         match_in_definition,
         result_context,
         on_type_error,
-        |mut matcher| {
+        |matcher| {
             match_arguments_against_params(
                 i_s,
-                &mut matcher,
+                matcher,
                 function,
                 &add_issue,
                 on_type_error,
@@ -558,10 +558,10 @@ fn calc_type_vars_for_callable_internal<'db: 'a, 'a>(
         match_in_definition,
         result_context,
         on_type_error,
-        |mut matcher| match &callable.content.params {
+        |matcher| match &callable.content.params {
             CallableParams::Simple(params) => match_arguments_against_params(
                 i_s,
-                &mut matcher,
+                matcher,
                 callable,
                 &add_issue,
                 on_type_error,
@@ -635,7 +635,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
             result_context,
             return_class,
             func_like,
-            |matcher, return_class| add_init_generics(matcher, return_class),
+            add_init_generics,
         )
     }
     let matches = check_params(&mut matcher);
@@ -987,7 +987,7 @@ pub(crate) fn match_arguments_against_params<
                                     return;
                                 };
                                 let argument = if index >= 0 {
-                                    if args.len() == 0 {
+                                    if args.is_empty() {
                                         too_few_arguments();
                                         return;
                                     }

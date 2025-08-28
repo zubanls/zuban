@@ -118,7 +118,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
         let members =
             gather_functional_enum_members(self.i_s, class, &name, fields_infos.0, fields_infos.1)?;
-        if members.len() == 0 {
+        if members.is_empty() {
             fields_infos.0.add_issue(
                 self.i_s,
                 IssueKind::EnumNeedsAtLeastOneItem {

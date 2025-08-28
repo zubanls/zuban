@@ -32,11 +32,9 @@ struct CompletionInfo<'db> {
 
 impl CompletionInfo<'_> {
     fn fix_for_invalid_columns(mut self) -> Self {
-        if self.cursor_position.column_out_of_bounds {
-            if !self.rest.as_code().is_empty() {
-                self.node = CompletionNode::Global;
-                self.rest.ensure_no_rest();
-            }
+        if self.cursor_position.column_out_of_bounds && !self.rest.as_code().is_empty() {
+            self.node = CompletionNode::Global;
+            self.rest.ensure_no_rest();
         }
         self
     }
@@ -52,7 +50,7 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
         let result = file.ensure_calculated_diagnostics(db);
         debug!(
             "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
-            file.file_path(&db),
+            file.file_path(db),
             rest.as_code()
         );
         debug_assert!(result.is_ok());
@@ -237,10 +235,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
 
     fn add_namespace_completions(&mut self, namespace: &Namespace) {
         for dir in namespace.directories.iter() {
-            self.directory_entries_completions(Directory::entries(
-                &*self.infos.db.vfs.handler,
-                &dir,
-            ))
+            self.directory_entries_completions(Directory::entries(&*self.infos.db.vfs.handler, dir))
         }
     }
 
@@ -509,7 +504,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                 self.replace_range,
                 &EnumMemberCompletion {
                     db: self.infos.db,
-                    enum_: &enum_,
+                    enum_,
                     member,
                 },
             );
@@ -594,10 +589,11 @@ fn find_kind_and_try_to_follow_imports(
                 }
             }
             PointKind::FileReference => return CompletionItemKind::MODULE,
-            PointKind::Complex => match ref_.maybe_type() {
-                Some(Type::Namespace(_)) => return CompletionItemKind::FOLDER,
-                _ => (),
-            },
+            PointKind::Complex => {
+                if let Some(Type::Namespace(_)) = ref_.maybe_type() {
+                    return CompletionItemKind::FOLDER;
+                }
+            }
             _ => (),
         }
     }
@@ -803,7 +799,7 @@ impl Completion for EnumMemberCompletion<'_> {
     }
 
     fn file_path(&self) -> Option<&str> {
-        Some(&self.db.file_path(self.enum_.defined_at.file))
+        Some(self.db.file_path(self.enum_.defined_at.file))
     }
 }
 
@@ -823,7 +819,7 @@ impl Completion for NamedTupleMemberCompletion<'_> {
     }
 
     fn file_path(&self) -> Option<&str> {
-        Some(&self.db.file_path(self.file))
+        Some(self.db.file_path(self.file))
     }
 }
 

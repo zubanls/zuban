@@ -725,11 +725,7 @@ impl TypeVarLike {
             let mut had_issue = false;
             let replaced = default.replace_type_var_likes(db, &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
-                if previous_type_vars
-                    .clone()
-                    .position(|tvl| tvl == &tvl_found)
-                    .is_some()
-                {
+                if previous_type_vars.clone().any(|tvl| tvl == &tvl_found) {
                     None
                 } else {
                     had_issue = true;
@@ -778,7 +774,7 @@ pub(crate) enum TypeVarName {
 }
 
 impl TypeVarLikeName {
-    fn file<'db>(self, db: &'db Database) -> &'db PythonFile {
+    fn file(self, db: &Database) -> &PythonFile {
         match self {
             Self::InString {
                 string_node: link, ..
@@ -787,7 +783,7 @@ impl TypeVarLikeName {
         }
     }
 
-    fn as_str<'db>(self, db: &'db Database) -> &'db str {
+    fn as_str(self, db: &Database) -> &str {
         match self {
             Self::InString { string_node, .. } => NodeRef::from_link(db, string_node)
                 .maybe_str()
@@ -808,7 +804,7 @@ pub(crate) struct TypeLikeInTypeVar<T> {
 impl<T: Clone> Clone for TypeLikeInTypeVar<T> {
     fn clone(&self) -> Self {
         Self {
-            node: self.node.clone(),
+            node: self.node,
             calculating: Mutex::new(*self.calculating.lock().unwrap()),
             t: self.t.clone(),
         }

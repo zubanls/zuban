@@ -81,23 +81,21 @@ impl ImportResult {
                 &parent_dir.name,
             )?
             .import(db, original_file, name)
+        } else if let Some(suffix) = name.strip_suffix(STUBS_SUFFIX) {
+            global_import_without_stubs_first(db, original_file, suffix)
         } else {
-            if let Some(suffix) = name.strip_suffix(STUBS_SUFFIX) {
-                global_import_without_stubs_first(db, original_file, suffix)
-            } else {
-                python_import_with_needs_exact_case(
-                    db,
-                    original_file,
-                    db.vfs
-                        .workspaces
-                        .iter()
-                        .filter(|w| !matches!(w.kind, WorkspaceKind::Typeshed))
-                        .map(|w| (&w.entries, false)),
-                    name,
-                    false,
-                    false,
-                )
-            }
+            python_import_with_needs_exact_case(
+                db,
+                original_file,
+                db.vfs
+                    .workspaces
+                    .iter()
+                    .filter(|w| !matches!(w.kind, WorkspaceKind::Typeshed))
+                    .map(|w| (&w.entries, false)),
+                name,
+                false,
+                false,
+            )
         };
         match result {
             Some(ImportResult::File(f)) if f == original_file.file_index => None,
@@ -401,7 +399,7 @@ fn load_init_file(
     if let Some(found_py) = found_py {
         let found_file_index = db.vfs.ensure_file_index(&found_py);
         found_py.add_invalidation(from_file);
-        return Some(found_file_index);
+        Some(found_file_index)
     } else {
         entries.add_missing_entry(INIT_PY, from_file);
         None

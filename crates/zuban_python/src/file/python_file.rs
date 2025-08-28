@@ -109,12 +109,12 @@ impl Clone for PythonFile {
             maybe_dunder_all: self.maybe_dunder_all.clone(),
             points: self.points.clone(),
             complex_points: self.complex_points.clone(),
-            file_index: self.file_index.clone(),
+            file_index: self.file_index,
             issues: self.issues.clone(),
             star_imports: self.star_imports.clone(),
             all_imports: self.all_imports.clone(),
             sub_files: RwLock::new(self.sub_files.read().unwrap().clone()),
-            super_file: self.super_file.clone(),
+            super_file: self.super_file,
             stub_cache: self.stub_cache.clone(),
             ignore_type_errors: self.ignore_type_errors,
             flags: self.flags.clone(),
@@ -772,7 +772,7 @@ impl<'db> PythonFile {
         }) || self.star_imports.iter().any(|star_import| {
             star_import.in_module_scope()
                 && self
-                    .star_import_file(db, &star_import)
+                    .star_import_file(db, star_import)
                     .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }

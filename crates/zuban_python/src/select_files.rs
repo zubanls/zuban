@@ -56,7 +56,7 @@ impl<'db> FileSelector<'db> {
                 .collect(),
         );
         selector.to_be_loaded.par_iter().for_each(|(file, _)| {
-            if let Some(new_index) = db.load_file_from_workspace(&file, false) {
+            if let Some(new_index) = db.load_file_from_workspace(file, false) {
                 selector.file_indexes.write().unwrap().insert(new_index);
                 let file = db.loaded_python_file(new_index);
                 find_imports_and_preload_files(db, file, &loaded_file_entries)
@@ -71,8 +71,8 @@ impl<'db> FileSelector<'db> {
             .map(|file_index| db.loaded_python_file(file_index))
             // TODO shouldn't this be done before name binding?
             .filter(|file| {
-                let p = file.file_entry(&db).absolute_path(vfs_handler);
-                if let Some(more_specific_flags) = file.maybe_more_specific_flags(&db) {
+                let p = file.file_entry(db).absolute_path(vfs_handler);
+                if let Some(more_specific_flags) = file.maybe_more_specific_flags(db) {
                     // We need to recheck, because we might have more specific information now for this
                     // file now that it's parsed.
                     if should_skip(more_specific_flags, p.path()) {

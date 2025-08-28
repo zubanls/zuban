@@ -667,7 +667,7 @@ fn params1_matches_unpacked_dict<'db: 'x, 'x>(
                 .collect::<Vec<_>>()
         );
     }
-    return required_members.is_empty().into();
+    required_members.is_empty().into()
 }
 
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(

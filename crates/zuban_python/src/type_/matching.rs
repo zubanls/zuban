@@ -755,7 +755,7 @@ impl Type {
                     &Type::Callable(Arc::new(c1.clone())),
                     AnyCause::Todo,
                 );
-                return Match::new_true();
+                Match::new_true()
             }
             Type::Any(_) => {
                 // Return false, because this case is handled in check_protocol_and_other_side.

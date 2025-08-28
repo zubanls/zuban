@@ -80,18 +80,16 @@ impl PythonFile {
                     "Ignored import of {}, because of a __getattr__ in a stub file",
                     name.as_str()
                 );
-            } else {
-                if !self.flags(db).ignore_missing_imports {
-                    let module_name = if let Some(base_loaded) = base.ensured_loaded_file(db) {
-                        format!("{}.{}", base_loaded.qualified_name(db), name.as_str()).into()
-                    } else {
-                        // TODO this is not correct and weird, but it's probably pretty rare that a
-                        // file is deleted but still in the virtual filesystem.
-                        dotted.as_code().into()
-                    };
-                    NodeRef::new(self, name.index())
-                        .add_type_issue(db, IssueKind::ModuleNotFound { module_name });
-                }
+            } else if !self.flags(db).ignore_missing_imports {
+                let module_name = if let Some(base_loaded) = base.ensured_loaded_file(db) {
+                    format!("{}.{}", base_loaded.qualified_name(db), name.as_str()).into()
+                } else {
+                    // TODO this is not correct and weird, but it's probably pretty rare that a
+                    // file is deleted but still in the virtual filesystem.
+                    dotted.as_code().into()
+                };
+                NodeRef::new(self, name.index())
+                    .add_type_issue(db, IssueKind::ModuleNotFound { module_name });
             }
             result
         };

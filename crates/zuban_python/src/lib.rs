@@ -221,8 +221,8 @@ impl<'project> Document<'project> {
         )
     }
 
-    pub fn infer_definition<'slf, T>(
-        &'slf self,
+    pub fn infer_definition<T>(
+        &self,
         position: InputPosition,
         goal: GotoGoal,
         on_name: impl for<'a> FnMut(ValueName) -> T,
@@ -233,8 +233,8 @@ impl<'project> Document<'project> {
         )
     }
 
-    pub fn references<'slf, T>(
-        &'slf self,
+    pub fn references<T>(
+        &self,
         position: InputPosition,
         goal: ReferencesGoal,
         include_declarations: bool,
@@ -274,7 +274,7 @@ impl<'project> Document<'project> {
                 let file_index = tree_name.file.file_index;
                 file_changes
                     .entry(file_index)
-                    .or_insert_with(|| vec![])
+                    .or_insert_with(std::vec::Vec::new)
                     .push(name.name_range());
             }
             Name::ModuleName(module_name) => {

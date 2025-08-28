@@ -1461,7 +1461,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if !base_t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
                     co = false
                 }
-                if !with_object_t.is_simple_sub_type_of(i_s, &base_t).bool() {
+                if !with_object_t.is_simple_sub_type_of(i_s, base_t).bool() {
                     contra = false;
                 }
                 if !co && !contra {
@@ -1543,9 +1543,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 }
-                Some(Type::TypedDict(td)) => match &td.generics {
-                    _ => (), // TODO
-                },
+                Some(Type::TypedDict(_)) => (), // TODO
                 _ => (),
             }
             Some((inf, attr_kind))

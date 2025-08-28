@@ -674,7 +674,7 @@ impl ComplexPoint {
         match self {
             Self::TypeInstance(t) => Some(t),
             Self::WidenedType(w) => w.original.maybe_instance(),
-            Self::IndirectFinal(t) => Some(&t),
+            Self::IndirectFinal(t) => Some(t),
             _ => None,
         }
     }
@@ -739,8 +739,7 @@ impl Clone for TypedDictDefinition {
                 self.deferred_subclass_member_initializations
                     .read()
                     .unwrap()
-                    .clone()
-                    .into(),
+                    .clone(),
             )),
             total: self.total,
         }
@@ -1515,8 +1514,8 @@ impl Clone for ClassInfos {
     fn clone(&self) -> Self {
         Self {
             mro: self.mro.clone(),
-            metaclass: self.metaclass.clone(),
-            class_kind: self.class_kind.clone(),
+            metaclass: self.metaclass,
+            class_kind: self.class_kind,
             incomplete_mro: self.incomplete_mro,
             protocol_members: self.protocol_members.clone(),
             has_slots: self.has_slots,
@@ -1525,7 +1524,7 @@ impl Clone for ClassInfos {
             is_runtime_checkable: self.is_runtime_checkable,
             abstract_attributes: self.abstract_attributes.clone(),
             dataclass_transform: self.dataclass_transform.clone(),
-            promote_to: Mutex::new(self.promote_to.lock().unwrap().clone()),
+            promote_to: Mutex::new(*self.promote_to.lock().unwrap()),
             variance_map: self.variance_map.clone(),
             undefined_generics_type: self.undefined_generics_type.clone(),
         }

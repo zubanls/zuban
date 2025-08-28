@@ -79,7 +79,7 @@ impl TupleArgs {
                     TupleUnpack::TypeVarTuple(_) => return None,
                     TupleUnpack::ArbitraryLen(t) => t,
                 };
-                let between = std::iter::repeat(middle_t).take(fetch_in_between);
+                let between = std::iter::repeat_n(middle_t, fetch_in_between);
                 for (t1, t2) in ts
                     .iter()
                     .zip(w_u.before.iter().chain(between).chain(w_u.after.iter()))

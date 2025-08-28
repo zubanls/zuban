@@ -269,7 +269,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }));
         }
         let result = result
-            .unwrap_or_else(|| Inferred::new_none())
+            .unwrap_or_else(Inferred::new_none)
             .to_proper_type(i_s);
         result.save_redirect(i_s, reference.file, reference.node_index)
     }
@@ -453,17 +453,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 let inference = name_def.file.inference(i_s);
                 if inference.in_conditional() {
                     self.check_conditional_function_definition(i_s)
+                } else if first_defined_name_of_multi_def(
+                    self.node_ref.file,
+                    name_def.name_ref_of_name_def().node_index,
+                )
+                .is_some()
+                {
+                    inference.check_for_redefinition(name_def, |issue| {
+                        self.add_issue_onto_start_including_decorator(i_s, issue)
+                    });
                 } else {
-                    if let Some(_) = first_defined_name_of_multi_def(
-                        self.node_ref.file,
-                        name_def.name_ref_of_name_def().node_index,
-                    ) {
-                        inference.check_for_redefinition(name_def, |issue| {
-                            self.add_issue_onto_start_including_decorator(i_s, issue)
-                        });
-                    } else {
-                        inference.add_initial_name_definition(name_def.expect_name_def())
-                    }
+                    inference.add_initial_name_definition(name_def.expect_name_def())
                 }
             }
         }
@@ -1219,7 +1219,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if let Some(kind) = inconsistent_function_kind {
             let kind = match kind {
                 FunctionKind::Classmethod { .. } => "classmethod",
-                FunctionKind::Staticmethod { .. } => "staticmethod",
+                FunctionKind::Staticmethod => "staticmethod",
                 FunctionKind::Property { .. } => "property",
                 FunctionKind::Function { .. } => unreachable!(),
             };
@@ -1500,15 +1500,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
                                     if needs_self_type {
                                         Type::Self_
+                                    } else if let Some(cls) = self.class {
+                                        cls.as_type(i_s.db)
                                     } else {
-                                        if let Some(cls) = self.class {
-                                            cls.as_type(i_s.db)
-                                        } else {
-                                            recoverable_error!(
-                                                "Tried to access Self in InferenceState"
-                                            );
-                                            Type::ERROR
-                                        }
+                                        recoverable_error!(
+                                            "Tried to access Self in InferenceState"
+                                        );
+                                        Type::ERROR
                                     }
                                 }
                                 FunctionKind::Classmethod { .. } => {

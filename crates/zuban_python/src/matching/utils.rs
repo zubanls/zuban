@@ -13,9 +13,9 @@ use crate::{
     type_helpers::{Callable, Class},
 };
 
-pub fn maybe_replace_class_type_vars<'x>(
+pub fn maybe_replace_class_type_vars(
     db: &Database,
-    t: &'x Type,
+    t: &Type,
     attribute_class: &Class,
     self_instance: ReplaceSelf,
 ) -> Option<Type> {

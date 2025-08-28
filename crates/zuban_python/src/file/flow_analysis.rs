@@ -696,10 +696,10 @@ impl FlowAnalysis {
         if cfg!(debug_assertions) {
             for entries in self.try_frames.borrow().iter() {
                 for entry in entries.iter() {
-                    if entry.key.equals(db, &new_entry.key) {
-                        if entry.type_ != EntryKind::OriginalDeclaration {
-                            unreachable!();
-                        }
+                    if entry.key.equals(db, &new_entry.key)
+                        && entry.type_ != EntryKind::OriginalDeclaration
+                    {
+                        unreachable!();
                     }
                 }
             }
@@ -984,7 +984,7 @@ impl FlowAnalysis {
                         debug_assert!(result.is_ok());
                     };
                     if delayed_func.in_type_checking_only_block {
-                        self.with_in_type_checking_only_block(|| run())
+                        self.with_in_type_checking_only_block(run)
                     } else {
                         run()
                     }
@@ -2453,7 +2453,7 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let (case_pattern, guard, block) = case_block.unpack();
-        let (true_frame, false_frame) = self.find_guards_in_case_pattern(&subject, case_pattern);
+        let (true_frame, false_frame) = self.find_guards_in_case_pattern(subject, case_pattern);
         if let Some(guard) = guard {
             self.infer_named_expression(guard.named_expr());
         }
@@ -2463,7 +2463,7 @@ impl Inference<'_, '_, '_> {
                 self.calc_block_diagnostics(block, class, func)
             });
             let false_frame = fa.with_frame(false_frame, || {
-                self.process_match_cases(&subject, case_blocks, class, func)
+                self.process_match_cases(subject, case_blocks, class, func)
             });
             fa.merge_conditional(self.i_s, true_frame, false_frame);
         });

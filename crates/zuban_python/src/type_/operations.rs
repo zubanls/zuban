@@ -1119,25 +1119,20 @@ pub(crate) fn execute_type_of_type<'db>(
 
 fn set_is_abstract_from_super(i_s: &InferenceState, l: &mut LookupDetails) {
     if let Some(inf) = l.lookup.maybe_inferred() {
-        match inf.as_cow_type(i_s).as_ref() {
-            Type::Callable(c) => {
-                if (c.is_abstract || l.class.is_protocol(i_s.db)) && {
-                    let from = NodeRef::from_link(i_s.db, c.defined_at);
-                    !from.file.is_stub()
-                        && from.maybe_function().is_some_and(|_| {
-                            let func = Function::new_with_unknown_parent(i_s.db, from);
-                            func.has_trivial_body(&i_s.with_func_context(&func))
-                        })
-                } {
-                    let mut new_callable = c.as_ref().clone();
-                    new_callable.is_abstract_from_super = true;
-                    l.lookup
-                        .update_inferred(Inferred::from_type(Type::Callable(Arc::new(
-                            new_callable,
-                        ))))
-                }
+        if let Type::Callable(c) = inf.as_cow_type(i_s).as_ref() {
+            if (c.is_abstract || l.class.is_protocol(i_s.db)) && {
+                let from = NodeRef::from_link(i_s.db, c.defined_at);
+                !from.file.is_stub()
+                    && from.maybe_function().is_some_and(|_| {
+                        let func = Function::new_with_unknown_parent(i_s.db, from);
+                        func.has_trivial_body(&i_s.with_func_context(&func))
+                    })
+            } {
+                let mut new_callable = c.as_ref().clone();
+                new_callable.is_abstract_from_super = true;
+                l.lookup
+                    .update_inferred(Inferred::from_type(Type::Callable(Arc::new(new_callable))))
             }
-            _ => (),
         }
     }
 }

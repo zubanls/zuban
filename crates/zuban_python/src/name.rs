@@ -331,7 +331,7 @@ fn lookup_parent_scope_in_other_file<'db>(
                 ClassNodeRef::new(file, cls.index()),
             )))
         }
-        Scope::Function(_) | Scope::Lambda(_) => return None,
+        Scope::Function(_) | Scope::Lambda(_) => None,
     }
 }
 

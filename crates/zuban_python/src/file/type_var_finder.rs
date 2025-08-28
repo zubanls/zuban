@@ -299,9 +299,8 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             }
         };
         for element in iterator {
-            match element {
-                StarLikeExpression::NamedExpression(ne) => check_expr(ne.expression()),
-                _ => (),
+            if let StarLikeExpression::NamedExpression(ne) = element {
+                check_expr(ne.expression())
             }
         }
     }
@@ -340,15 +339,13 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     self.infos.type_var_manager.iter(),
                     &add_issue,
                 )
-            } else {
-                if let Some(previous) = self.infos.type_var_manager.last() {
-                    if previous.has_default() {
-                        tvl = tvl.set_any_default();
-                        add_issue(IssueKind::TypeVarDefaultWrongOrder {
-                            type_var1: tvl.name(self.i_s.db).into(),
-                            type_var2: previous.name(self.i_s.db).into(),
-                        });
-                    }
+            } else if let Some(previous) = self.infos.type_var_manager.last() {
+                if previous.has_default() {
+                    tvl = tvl.set_any_default();
+                    add_issue(IssueKind::TypeVarDefaultWrongOrder {
+                        type_var1: tvl.name(self.i_s.db).into(),
+                        type_var2: previous.name(self.i_s.db).into(),
+                    });
                 }
             }
             debug!("Found unbound TypeVar {}", tvl.name(self.i_s.db));

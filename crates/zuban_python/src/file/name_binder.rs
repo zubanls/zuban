@@ -337,7 +337,7 @@ impl<'db> NameBinder<'db> {
                 }
                 let needs_flow_analysis = self.following_nodes_need_flow_analysis && {
                     NameDef::by_index(
-                        &self.db_infos.tree,
+                        self.db_infos.tree,
                         first_index - NAME_DEF_TO_NAME_DIFFERENCE,
                     )
                     .name_can_be_overwritten()
@@ -905,9 +905,8 @@ impl<'db> NameBinder<'db> {
                     let name_index = name.index();
                     let mut needs_flow_analysis = true;
                     if let Some(assignment) = name.maybe_self_assignment_name_on_self_like() {
-                        match assignment.unpack() {
-                            AssignmentContent::WithAnnotation(..) => needs_flow_analysis = false,
-                            _ => (),
+                        if let AssignmentContent::WithAnnotation(..) = assignment.unpack() {
+                            needs_flow_analysis = false
                         }
                     }
                     self.db_infos.points.set(
@@ -1378,7 +1377,7 @@ impl<'db> NameBinder<'db> {
 
     fn is_nonlocal_type_param(&self, pointing_to_name: NodeIndex) -> bool {
         matches!(
-            Name::by_index(&self.db_infos.tree, pointing_to_name).expect_type(),
+            Name::by_index(self.db_infos.tree, pointing_to_name).expect_type(),
             TypeLike::TypeParam(_)
         ) && self.db_infos.points.get(pointing_to_name).node_index() == pointing_to_name
     }

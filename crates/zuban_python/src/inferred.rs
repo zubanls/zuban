@@ -448,7 +448,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     _ => (),
                 }
             } else if let Some(t) = definition.maybe_type() {
-                if let Some(d) = maybe_replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                if let Some(d) = maybe_replace_class_type_vars(i_s.db, t, attribute_class, &|| {
                     Some(class.as_type(i_s.db))
                 }) {
                     return Inferred::from_type(d);
@@ -1626,7 +1626,7 @@ impl<'db: 'slf, 'slf> Inferred {
             match c.kind {
                 FunctionKind::Function { .. } => {
                     return Some(Some(Inferred::from_type(Type::Callable(Arc::new(
-                        merge_class_type_vars(i_s.db, &c, *class, attribute_class, func_class_type),
+                        merge_class_type_vars(i_s.db, c, *class, attribute_class, func_class_type),
                     )))))
                 }
                 FunctionKind::Property { .. } => {
@@ -2435,9 +2435,8 @@ impl<'db: 'slf, 'slf> Inferred {
         // In inferred return types of functions we don't want to return functions as such, because
         // they might refer to themselves and therefore recurse.
         if let Some(node_ref) = self.maybe_saved_node_ref(i_s.db) {
-            match node_ref.point().maybe_specific() {
-                Some(Specific::Function) => return Inferred::from_type(self.as_type(i_s)),
-                _ => (),
+            if let Some(Specific::Function) = node_ref.point().maybe_specific() {
+                return Inferred::from_type(self.as_type(i_s));
             }
         }
         self

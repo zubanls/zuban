@@ -190,7 +190,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
             let result = self
                 .compute_special_assignments(assignment, name_def, expr)
-                .unwrap_or_else(|origin| check_for_alias(origin));
+                .unwrap_or_else(check_for_alias);
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
@@ -307,7 +307,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             name_def.index(),
             Locality::Todo,
         ));
-        return Ok(self.compute_type_assignment_internal(assignment, AliasCause::Implicit));
+        Ok(self.compute_type_assignment_internal(assignment, AliasCause::Implicit))
     }
 
     pub(super) fn check_special_type_definition(node_ref: NodeRef) -> Option<Lookup> {

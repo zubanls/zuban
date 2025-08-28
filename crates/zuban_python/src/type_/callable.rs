@@ -562,7 +562,7 @@ impl CallableContent {
         let mut c = self.clone();
         c.params = match &self.params {
             CallableParams::Simple(params) => {
-                if params.len() == 0 {
+                if params.is_empty() {
                     return None;
                 }
                 match &params[0].type_ {

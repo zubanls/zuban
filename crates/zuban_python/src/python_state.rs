@@ -496,7 +496,7 @@ impl PythonState {
                 let func_index = name_index - NAME_TO_FUNCTION_DIFF;
                 let file = module(db);
                 let node_ref = NodeRef::new(file, func_index);
-                if let Some(_) = node_ref.maybe_function() {
+                if node_ref.maybe_function().is_some() {
                     if !is_func {
                         panic!(
                             "Expected a class for {}.{name}",
@@ -840,22 +840,22 @@ impl PythonState {
         // Set promotions
         let s = &db.python_state;
         s.int()
-            .use_cached_class_infos(&db)
+            .use_cached_class_infos(db)
             .set_promote_to(Some(s.float_node_ref().as_link()));
         s.bool()
-            .use_cached_class_infos(&db)
+            .use_cached_class_infos(db)
             .set_promote_to(Some(s.float_node_ref().as_link()));
         s.float()
-            .use_cached_class_infos(&db)
+            .use_cached_class_infos(db)
             .set_promote_to(Some(s.complex_node_ref().as_link()));
         if !db.project.flags.disable_memoryview_promotion {
             s.memoryview_class_with_generics_to_be_defined()
-                .use_cached_class_infos(&db)
+                .use_cached_class_infos(db)
                 .set_promote_to(Some(s.bytes_node_ref().as_link()));
         }
         if !db.project.flags.disable_bytearray_promotion {
             s.bytearray()
-                .use_cached_class_infos(&db)
+                .use_cached_class_infos(db)
                 .set_promote_to(Some(s.bytes_node_ref().as_link()));
         }
     }

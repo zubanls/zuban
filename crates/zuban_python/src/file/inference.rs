@@ -3790,7 +3790,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             PointResolution::ModuleGetattrName(node_ref) => {
                 let i_s = &InferenceState::new(self.i_s.db, node_ref.file);
                 let inf = node_ref.infer_name_of_definition_by_index(i_s);
-                return inf.execute(
+                inf.execute(
                     i_s,
                     &KnownArgsWithCustomAddIssue::new(
                         &Inferred::new_any_from_error(),
@@ -3798,7 +3798,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         // one positional argument)
                         &|_| (),
                     ),
-                );
+                )
             }
         }
     }
@@ -4296,8 +4296,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         .replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
                         .into_owned()
                 })
-                .map(|result| result.ok())
-                .flatten()
+                .and_then(|result| result.ok())
                 .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
                 .avoid_implicit_literal(i_s.db)
         })

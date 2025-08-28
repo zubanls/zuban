@@ -268,9 +268,7 @@ impl NamedTuple {
                 })
             }),
             "_fields" => Type::Tuple(Tuple::new_fixed_length(
-                std::iter::repeat(i_s.db.python_state.str_type())
-                    .take(self.params().len())
-                    .collect(),
+                std::iter::repeat_n(i_s.db.python_state.str_type(), self.params().len()).collect(),
             )),
             "_field_defaults" => new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),

@@ -2505,7 +2505,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             defined_at,
             parent_callable: self.current_callable,
         });
-        let old = std::mem::replace(&mut self.current_callable, Some(defined_at));
+        let old = self.current_callable.replace(defined_at);
 
         let db = self.i_s.db;
         let content = if slice_type.iter().count() == 2 {
@@ -2761,7 +2761,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Type(Type::Union(UnionType::new(
                 slice_type
                     .iter()
-                    .map(|s| {
+                    .flat_map(|s| {
                         let t = self.compute_get_item_on_literal_item(s, format_index.get() + 1);
                         let type_ = self.as_type(t, s.as_node_ref());
                         match type_ {
@@ -2787,7 +2787,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             }
                         }
                     })
-                    .flatten()
                     .collect(),
                 false,
             )))
@@ -3544,7 +3543,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     fn handle_name_def(i_s: &InferenceState<'db, '_>, node_ref: NodeRef) -> Lookup<'db, 'db> {
         let node_ref = node_ref.to_db_lifetime(i_s.db);
         let name_def = node_ref.expect_name_def();
-        return match name_def.expect_type() {
+        match name_def.expect_type() {
             TypeLike::ClassDef(c) => {
                 cache_class_name(node_ref, c);
                 Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c.index()))
@@ -3611,7 +3610,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     node_ref,
                 )))
             }
-        };
+        }
     }
 
     fn lookup_special_primary_or_atom_type(&self, p: PrimaryOrAtom) -> Option<Lookup<'db, 'db>> {

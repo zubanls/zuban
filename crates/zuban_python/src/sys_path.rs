@@ -93,11 +93,9 @@ fn add_editable_src_packages(
     let Ok(entries) = env.as_ref().join("src").read_dir() else {
         return;
     };
-    for entry in entries {
-        if let Ok(entry) = entry {
-            if let Some(path) = entry.path().to_str() {
-                sys_path.push(handler.normalize_rc_path(handler.unchecked_abs_path(path)))
-            }
+    for entry in entries.flatten() {
+        if let Some(path) = entry.path().to_str() {
+            sys_path.push(handler.normalize_rc_path(handler.unchecked_abs_path(path)))
         }
     }
 }
@@ -283,7 +281,7 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
         if let Some(p) = maybe_has_zuban(&env_folder.join("Lib")) {
             return p;
         }
-        if let Some(p) = maybe_has_zuban(&env_folder) {
+        if let Some(p) = maybe_has_zuban(env_folder) {
             return p;
         }
         // TODO uv simply copies the executable to ~/.local/bin/ and we do not know the actual venv

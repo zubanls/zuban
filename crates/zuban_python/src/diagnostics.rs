@@ -538,7 +538,7 @@ impl IssueKind {
             SetItemMismatch { .. } => "arg-type", // This has no error code in Mypy currently.
             DictMemberMismatch { .. } | UnpackedDictMemberMismatch { .. } => "dict-item",
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
-            OverloadImplementationNeeded { .. } => "no-overload-impl",
+            OverloadImplementationNeeded => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
             OverloadIncompatibleReturnTypes { .. } => "overload-overlap",
             OverloadUnmatchable { .. } => "overload-cannot-match",
@@ -736,9 +736,9 @@ impl<'db> Diagnostic<'db> {
                 | AttributeError { .. }
                 | OverloadUnmatchable { .. }
                 | OverloadImplementationParamsNotBroadEnough { .. }
-                | TypeVarInReturnButNotArgument { .. }
-                | OnlyClassTypeApplication { .. }
-                | UnsupportedClassScopedImport { .. }
+                | TypeVarInReturnButNotArgument
+                | OnlyClassTypeApplication
+                | UnsupportedClassScopedImport
                 | CannotInheritFromFinalClass { .. }
                 | InvalidAssertType { .. }
                 | BaseExceptionExpected
@@ -1224,7 +1224,7 @@ impl<'db> Diagnostic<'db> {
             NonlocalBindingDisallowedForTypeParams { name } => format!(
                 r#"nonlocal binding not allowed for type parameter "{name}""#
             ),
-            GlobalAtModuleLevel => format!(r#"Global at module level is unnecessary"#),
+            GlobalAtModuleLevel => r#"Global at module level is unnecessary"#.to_string(),
             NonlocalAndGlobal { name } => format!(r#"Name "{name}" is nonlocal and global"#),
             NameAssignedBeforeGlobalDeclaration { name } => format!(
                 r#"SyntaxError: name '{name}' is assigned to before global declaration"#
@@ -1760,9 +1760,7 @@ impl<'db> Diagnostic<'db> {
             NamedTupleFirstArgumentMismatch { should, is } => format!(
                 r#"First argument to namedtuple() should be "{should}", not "{is}""#
             ),
-            NamedTupleExpectedBoolForRenameArgument => format!(
-                r#"Boolean literal expected as the "rename" argument to namedtuple()"#
-            ),
+            NamedTupleExpectedBoolForRenameArgument => r#"Boolean literal expected as the "rename" argument to namedtuple()"#.to_string(),
             NamedTupleUnexpectedKeywordArgument { keyword_name } => format!(
                 r#"Unexpected keyword argument "{keyword_name}" for "namedtuple""#
             ),

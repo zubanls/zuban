@@ -63,7 +63,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         if std::cfg!(debug_assertions) && !matches!(pos, InputPosition::NthUTF8Byte(_)) {
             debug!(
                 "Position for goto-like operation {}->{pos:?} on leaf {node:?}",
-                file.file_path(&db),
+                file.file_path(db),
             );
         }
         let result = file.ensure_calculated_diagnostics(db);
@@ -438,7 +438,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 let ref_ = NodeRef::new(file, name_def.index()).global_or_nonlocal_ref();
                 if let Some(result) = self.try_to_follow(ref_, follow_imports).flatten() {
-                    return Some(vec![result]);
+                    Some(vec![result])
                 } else {
                     // This essentially just returns the name of the global definition, because we
                     // could not goto the original.
@@ -543,7 +543,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 is_globally_reachable |= match &name {
                     Name::TreeName(tree_name) => {
                         let mut scopes = ScopesIterator {
-                            file: &name.file(),
+                            file: name.file(),
                             only_reachable: true,
                             current: Some(tree_name.parent_scope),
                         };
@@ -764,7 +764,7 @@ impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     "Part of inferring type definition: {:?}",
                     type_.format_short(db)
                 );
-                type_to_name(i_s, &type_, &mut |name| {
+                type_to_name(i_s, type_, &mut |name| {
                     let name = goto_with_goal(name, self.goal);
                     let callback = &mut self.on_result;
                     result.push(callback(ValueName { name, type_ }))
@@ -831,7 +831,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
         Type::Any(_) => (),
         Type::Intersection(intersection) => {
             for t in intersection.iter_entries() {
-                type_to_name(i_s, &t, add);
+                type_to_name(i_s, t, add);
             }
         }
         Type::FunctionOverload(overload) => {
@@ -842,7 +842,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             TypeVarName::Name(tvl_name) => add(from_type_var_like_name(tvl_name)),
             TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => (),
         },
-        Type::Type(t) => return type_to_name(i_s, &t, add),
+        Type::Type(t) => type_to_name(i_s, t, add),
         Type::Callable(callable) => {
             let node_ref = NodeRef::from_link(db, callable.defined_at);
             if let Some(func) = node_ref.maybe_function() {
@@ -875,7 +875,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
         Type::DataclassTransformObj(_) => (),
         Type::TypedDict(td) => {
             let node_ref = NodeRef::from_link(db, td.defined_at);
-            if let Some(_) = node_ref.maybe_class() {
+            if node_ref.maybe_class().is_some() {
                 add(from_class_node_ref(ClassNodeRef::from_node_ref(node_ref)))
             } else {
                 add(Name::NodeName(NodeName::new(
@@ -951,7 +951,7 @@ pub(crate) fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a,
     {
         return Cow::Owned(Type::Union(UnionType::from_types(
             t.iter_with_unpacked_unions(db)
-                .map(|t| {
+                .flat_map(|t| {
                     let mut unpacked = None;
                     let mut non_unpacked = None;
                     match t {
@@ -963,12 +963,8 @@ pub(crate) fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a,
                         }
                         _ => non_unpacked = Some(t.clone()),
                     };
-                    unpacked
-                        .into_iter()
-                        .flatten()
-                        .chain(non_unpacked.into_iter())
+                    unpacked.into_iter().flatten().chain(non_unpacked)
                 })
-                .flatten()
                 .collect(),
             true,
         )));

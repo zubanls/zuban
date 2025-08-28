@@ -170,11 +170,8 @@ impl Inference<'_, '_, '_> {
             // points.
             for complex_point in unsafe { self.file.complex_points.iter() } {
                 // Make sure types are calculated and the errors are generated.
-                match complex_point {
-                    ComplexPoint::TypeVarLike(tvl) => {
-                        tvl.ensure_calculated_types(self.i_s.db);
-                    }
-                    _ => (),
+                if let ComplexPoint::TypeVarLike(tvl) = complex_point {
+                    tvl.ensure_calculated_types(self.i_s.db);
                 }
             }
 
@@ -902,7 +899,7 @@ impl Inference<'_, '_, '_> {
                         // calculation will do it for us, which will infer different values.
                         for member in enum_.members.iter() {
                             if member.value.is_some() {
-                                member.infer_value(self.i_s, &enum_);
+                                member.infer_value(self.i_s, enum_);
                             }
                         }
                     }
@@ -922,7 +919,6 @@ impl Inference<'_, '_, '_> {
                 class_node_ref.line_one_based(i_s.db),
                 self.file_path()
             );
-            return;
         }
     }
 
@@ -2296,9 +2292,7 @@ fn try_pretty_format(
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
         let add_kind_info = |notes: &mut Vec<Box<str>>, kind: &_| match kind {
             FunctionKind::Classmethod { .. } => notes.push(format!("{prefix}@classmethod").into()),
-            FunctionKind::Staticmethod { .. } => {
-                notes.push(format!("{prefix}@staticmethod").into())
-            }
+            FunctionKind::Staticmethod => notes.push(format!("{prefix}@staticmethod").into()),
             _ => (),
         };
         match inf.as_cow_type(i_s).as_ref() {

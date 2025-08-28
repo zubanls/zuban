@@ -475,7 +475,7 @@ impl<'a> Matcher<'a> {
                 before,
                 unpack: TupleUnpack::TypeVarTuple(tvt2),
                 after,
-            }) if before.len() == 0 && after.len() == 0 => self.match_reverse(|matcher| {
+            }) if before.is_empty() && after.is_empty() => self.match_reverse(|matcher| {
                 matcher.match_or_add_type_var_tuple_internal(
                     i_s,
                     tvt2,
