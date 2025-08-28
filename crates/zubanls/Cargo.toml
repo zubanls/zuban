@@ -27,7 +27,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 shellexpand.workspace = true
 serial_test = "*"
-fluent-uri = "*"
+fluent-uri = "0.1.4"
 urlencoding = "*"
 
 [dev-dependencies]
