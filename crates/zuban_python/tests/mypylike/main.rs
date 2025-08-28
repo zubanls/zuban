@@ -647,7 +647,7 @@ fn initialize_and_return_wanted_output(
 
     let mut sorted_files: Vec<_> = step.files.iter().collect();
     sorted_files.sort();
-    for (&path, &code) in &sorted_files {
+    for &(&path, &code) in &sorted_files {
         // ../ files are usually Mypy internals
         if ["mypy.ini", "pyproject.toml"].contains(&path) || path.starts_with("../") {
             continue;
@@ -929,8 +929,8 @@ enum OwnedOrMut<'a, T> {
 impl<'a, T> OwnedOrMut<'a, T> {
     pub fn as_mut(&mut self) -> &mut T {
         match self {
-            OwnedOrMut::Owned(ref mut t) => t,
-            OwnedOrMut::Mut(ref mut t) => *t,
+            OwnedOrMut::Owned(t) => t,
+            OwnedOrMut::Mut(t) => *t,
         }
     }
 }

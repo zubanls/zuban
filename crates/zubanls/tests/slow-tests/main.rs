@@ -1030,9 +1030,9 @@ fn test_virtual_environment() {
     };
 
     tracing::info!("set venv information via $VIRTUAL_ENV");
-    std::env::set_var("VIRTUAL_ENV", "venv");
+    unsafe { std::env::set_var("VIRTUAL_ENV", "venv") };
     run(&[], Some(&[import_err("foo")]));
-    std::env::remove_var("VIRTUAL_ENV");
+    unsafe { std::env::remove_var("VIRTUAL_ENV") };
 
     tracing::info!("test_virtual_environment - After unsetting it, there should just be errors");
     run(&[import_err("foo"), import_err("bar")], None);
