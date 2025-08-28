@@ -280,7 +280,7 @@ impl<'a> Instance<'a> {
             return tup.iter();
         }
         let mro_iterator = self.class.mro(i_s.db);
-        let finder = ClassMroFinder {
+        let mut finder = ClassMroFinder {
             i_s,
             instance: self,
             mro_iterator,
@@ -288,11 +288,11 @@ impl<'a> Instance<'a> {
             name: "__iter__",
             as_instance: None,
         };
-        for found_on_class in finder {
-            match found_on_class {
+        if let Some(found_on_class) = finder.next() {
+            return match found_on_class {
                 FoundOnClass::Attribute(inf) => {
                     let dunder_next = "__next__";
-                    return IteratorContent::Inferred(
+                    IteratorContent::Inferred(
                         inf.execute(i_s, &infos.as_no_args())
                             .type_lookup_and_execute(
                                 i_s,
@@ -306,10 +306,10 @@ impl<'a> Instance<'a> {
                                     })
                                 },
                             ),
-                    );
+                    )
                 }
-                FoundOnClass::UnresolvedType(t) => return t.iter(i_s, infos),
-            }
+                FoundOnClass::UnresolvedType(t) => t.iter(i_s, infos),
+            };
         }
         if !self.class.incomplete_mro(i_s.db) {
             infos.add_not_iterable_issue(i_s.db, original_t);
