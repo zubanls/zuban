@@ -61,3 +61,5 @@ pre-release-hook = [
 debug = 1
 
 [workspace.lints.rust]
+explicit_outlives_requirements = "warn"
+unused_extern_crates = "warn"

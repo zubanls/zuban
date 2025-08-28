@@ -1,9 +1,6 @@
 /*
  *  A lot of this module is inspired by parso's tokenizer.
  */
-extern crate lazy_static;
-extern crate regex;
-
 use std::{collections::HashSet, str};
 
 use parsa::{create_terminals, CodeIndex};

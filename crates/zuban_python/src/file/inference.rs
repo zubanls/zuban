@@ -50,7 +50,7 @@ use crate::{
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 
-pub(crate) struct Inference<'db: 'file, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
+pub(crate) struct Inference<'db, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
 
 impl<'db: 'file, 'file, 'i_s> std::ops::Deref for Inference<'db, 'file, 'i_s> {
     type Target = NameResolution<'db, 'file, 'i_s>;

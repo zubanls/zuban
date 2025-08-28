@@ -1,5 +1,3 @@
-extern crate lazy_static;
-
 mod automaton;
 mod backtracking;
 mod grammar;
