@@ -949,15 +949,15 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
             };
         let mut opened_quotation_mark = false;
         let mut had_quotation_marks = false;
-        for (i, n) in self.rest.chars().enumerate() {
+        for (i, n) in self.rest.bytes().enumerate() {
             if opened_quotation_mark {
-                if n == '"' {
+                if n == b'"' {
                     opened_quotation_mark = false;
                 }
-            } else if n == '"' {
+            } else if n == b'"' {
                 opened_quotation_mark = true;
                 had_quotation_marks = true;
-            } else if n == ',' {
+            } else if n == b',' {
                 self.start_position += i as CodeIndex;
                 let result = &self.rest[..i];
                 self.rest = &self.rest[i + 1..];
