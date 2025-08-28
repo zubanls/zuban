@@ -1727,7 +1727,7 @@ impl FunctionKind {
     }
 }
 
-#[derive(Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Eq)]
 pub(crate) struct NewType {
     pub name_node: PointLink,
     pub name_string: PointLink,
@@ -1773,6 +1773,12 @@ impl NewType {
 impl PartialEq for NewType {
     fn eq(&self, other: &Self) -> bool {
         self.name_string == other.name_string
+    }
+}
+
+impl Hash for NewType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name_string.hash(state);
     }
 }
 
@@ -1900,7 +1906,8 @@ pub(crate) enum CustomBehaviorKind {
     Method { bound: Option<Arc<Type>> },
 }
 
-#[derive(Debug, Eq, Clone, Hash)]
+#[allow(clippy::derived_hash_with_manual_eq)]
+#[derive(Debug, Eq, Hash, Clone)]
 pub(crate) struct CustomBehavior {
     callback: CustomBehaviorCallback,
     kind: CustomBehaviorKind,
