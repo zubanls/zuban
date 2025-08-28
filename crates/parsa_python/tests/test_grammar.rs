@@ -1,5 +1,3 @@
-extern crate insta;
-
 use parsa_python::*;
 use utils::dedent;
 

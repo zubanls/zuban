@@ -1,6 +1,4 @@
 #![recursion_limit = "1024"]
-extern crate lazy_static;
-extern crate regex;
 
 use std::str;
 
