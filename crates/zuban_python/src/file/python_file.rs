@@ -6,21 +6,22 @@ use std::{
     sync::{Arc, OnceLock, RwLock},
 };
 
-use config::{set_flag_and_return_ignore_errors, DiagnosticConfig, IniOrTomlValue};
+use config::{DiagnosticConfig, IniOrTomlValue, set_flag_and_return_ignore_errors};
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
 use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, PathWithScheme};
 
 use super::{
+    FLOW_ANALYSIS,
     file_state::File,
     flow_analysis::DelayedDiagnostic,
     imports::is_package_name,
     inference::Inference,
     name_binder::{DbInfos, NameBinder},
     name_resolution::{ModuleAccessDetail, NameResolution},
-    FLOW_ANALYSIS,
 };
 use crate::{
+    InputPosition, TypeCheckerFlags,
     database::{
         ComplexPoint, Database, Locality, Point, PointLink, Points, PythonProject, Specific,
     },
@@ -32,7 +33,6 @@ use crate::{
     node_ref::NodeRef,
     type_::{DbString, LookupResult},
     utils::SymbolTable,
-    InputPosition, TypeCheckerFlags,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -59,7 +59,7 @@ impl ComplexValues {
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &ComplexPoint> {
-        self.0.iter()
+        unsafe { self.0.iter() }
     }
 
     #[expect(dead_code)]
@@ -650,7 +650,7 @@ impl<'db> PythonFile {
                                         dunder_all,
                                         file_index,
                                         maybe_single?.expression(),
-                                    )
+                                    );
                                 }
                                 "remove" => {
                                     let s = maybe_single?

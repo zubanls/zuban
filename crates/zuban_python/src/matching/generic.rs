@@ -7,8 +7,8 @@ use crate::{
     inference_state::InferenceState,
     params::matches_params_with_variance,
     type_::{
-        format_callable_params, format_params_as_param_spec, match_tuple_type_arguments, AnyCause,
-        CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, Variance,
+        AnyCause, CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, Variance,
+        format_callable_params, format_params_as_param_spec, match_tuple_type_arguments,
     },
 };
 
@@ -76,11 +76,11 @@ impl<'a> Generic<'a> {
         }
         match self {
             Self::TypeArg(t1) => match other {
-                Self::TypeArg(ref t2) => t1.matches(i_s, matcher, t2, variance),
+                Self::TypeArg(t2) => t1.matches(i_s, matcher, t2, variance),
                 _ => unreachable!(),
             },
             Self::TypeArgs(ts1) => match other {
-                Self::TypeArgs(ref ts2) => {
+                Self::TypeArgs(ts2) => {
                     match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
                 }
                 _ => unreachable!(),

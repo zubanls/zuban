@@ -9,10 +9,10 @@ use std::{env, fs, path::PathBuf, sync::Once};
 use anyhow::Context;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{
-    filter::Targets,
-    fmt::{time, writer::BoxMakeWriter, MakeWriter, TestWriter},
-    layer::SubscriberExt,
     Layer, Registry,
+    filter::Targets,
+    fmt::{MakeWriter, TestWriter, time, writer::BoxMakeWriter},
+    layer::SubscriberExt,
 };
 
 pub fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
@@ -32,7 +32,7 @@ fn setup_logging_internal(log_file_flag: Option<PathBuf>, show_errors: bool) -> 
         // https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nf-dbghelp-syminitialize
         if let Ok(path) = env::current_exe() {
             if let Some(path) = path.parent() {
-                env::set_var("_NT_SYMBOL_PATH", path);
+                unsafe { env::set_var("_NT_SYMBOL_PATH", path) };
             }
         }
     }

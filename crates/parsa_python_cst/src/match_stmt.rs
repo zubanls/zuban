@@ -164,7 +164,7 @@ impl<'db> SequencePattern<'db> {
 }
 
 impl<'db> OpenSequencePattern<'db> {
-    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> {
+    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> + use<'db> {
         self.node.iter_children().step_by(2).map(|n| {
             if n.is_type(Nonterminal(pattern)) {
                 SequencePatternItem::Entry(Pattern::new(n))

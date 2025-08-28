@@ -6,6 +6,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
+    InferenceState,
     database::{Database, PointsBackup},
     debug,
     diagnostics::IssueKind,
@@ -16,7 +17,6 @@ use crate::{
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
     type_::{IterCause, ParamSpecUsage, StringSlice, Type, TypedDict, WithUnpack},
-    InferenceState,
 };
 
 pub(crate) trait Args<'db>: std::fmt::Debug {
@@ -516,7 +516,7 @@ impl<'db> Arg<'db, '_> {
                 .infer_generator_comprehension(*comprehension, result_context),
             ArgKind::ParamSpec { usage, .. } => return InferredArg::ParamSpec { usage },
             ArgKind::StarredWithUnpack { with_unpack, .. } => {
-                return InferredArg::StarredWithUnpack(with_unpack.clone())
+                return InferredArg::StarredWithUnpack(with_unpack.clone());
             }
             ArgKind::Overridden { inferred, .. } => inferred.clone(),
         })
@@ -755,10 +755,11 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
                 })
                 .collect(),
             Self::Comprehension(i_s, file, comprehension) => {
-                vec![file
-                    .inference(&i_s)
-                    .infer_generator_comprehension(comprehension, &mut ResultContext::Unknown)
-                    .format_short(&i_s)]
+                vec![
+                    file.inference(&i_s)
+                        .infer_generator_comprehension(comprehension, &mut ResultContext::Unknown)
+                        .format_short(&i_s),
+                ]
             }
             Self::Finished => vec![],
             Self::SliceType(i_s, slice_type) => {
@@ -801,7 +802,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                 i + 1,
                                 file,
                                 named_expr,
-                            ))
+                            ));
                         }
                         CSTArgument::Keyword(kwarg) => {
                             let (name, expression) = kwarg.unpack();
@@ -1292,7 +1293,7 @@ impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
             }
         }
         if let ArgIteratorBase::Iterator {
-            ref mut ignore_metaclass_keyword,
+            ignore_metaclass_keyword,
             ..
         } = &mut iterator.current
         {

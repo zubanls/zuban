@@ -99,7 +99,7 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
     pub unsafe fn iter(&self) -> impl Iterator<Item = &T> {
         // Because the size of the vec can grow and shrink at any point, this is an unsafe
         // operation.
-        (*self.vec.lock().unwrap().get()).iter().map(|x| x as &T)
+        unsafe { (*self.vec.lock().unwrap().get()).iter().map(|x| x as &T) }
     }
 
     pub fn set(&mut self, index: usize, obj: Pin<Box<T>>) {

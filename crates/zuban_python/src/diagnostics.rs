@@ -5,13 +5,13 @@ use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 use utils::InsertOnlyVec;
 
 use crate::{
+    PythonVersion, TypeCheckerFlags,
     database::{Database, PointLink},
-    file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
+    file::{File, GenericCounts, OVERLAPPING_REVERSE_TO_NORMAL_METHODS, PythonFile},
     lines::PositionInfos,
     node_ref::NodeRef,
     type_::{TypeVarLike, Variance},
     utils::join_with_commas,
-    PythonVersion, TypeCheckerFlags,
 };
 
 // Ord/PartialOrd are not important, but we ideally have something to support by IssueKind entry to
@@ -2049,7 +2049,7 @@ impl Diagnostics {
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {
-        self.0.iter()
+        unsafe { self.0.iter() }
     }
 
     pub fn invalidate_non_name_binder_issues(&mut self) {
