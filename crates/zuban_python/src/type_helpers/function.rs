@@ -1657,7 +1657,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         )
     }
 
-    pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> {
+    pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> + use<'a> {
         let file = self.node_ref.file;
         self.node()
             .params()
