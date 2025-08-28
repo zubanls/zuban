@@ -1354,7 +1354,7 @@ impl Database {
             mypy_extensions,
             collections,
             _collections_abc,
-        ]: [&PythonFile; 12] = [
+        ]: [&PythonFile; _] = [
             (None, "builtins.pyi"),
             (None, "typing.pyi"),
             (

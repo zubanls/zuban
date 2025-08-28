@@ -653,7 +653,7 @@ mod tests {
             ]
         );
         // venv information via --python-executable should work
-        let empty: [&str; 0] = [];
+        let empty: [&str; _] = [];
         assert_eq!(d(&["", "--python-executable", "venv/bin/python"]), empty);
 
         // venv information via $VIRTUAL_ENV
