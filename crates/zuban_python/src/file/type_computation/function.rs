@@ -199,14 +199,12 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             let node = self.node();
             if !node.is_typed() && !["__init__", "__new__"].contains(&node.name().as_code()) {
                 let mut skip_first = class.is_some();
-                if skip_first {
-                    if let Some(decorated) = node.maybe_decorated() {
-                        for decorator in decorated.decorators().iter() {
-                            if decorator.as_code().contains("staticmethod") {
-                                // TODO this is not proper type inference, but should probably
-                                // suffice for now.
-                                skip_first = false;
-                            }
+                if skip_first && let Some(decorated) = node.maybe_decorated() {
+                    for decorator in decorated.decorators().iter() {
+                        if decorator.as_code().contains("staticmethod") {
+                            // TODO this is not proper type inference, but should probably
+                            // suffice for now.
+                            skip_first = false;
                         }
                     }
                 }
@@ -277,12 +275,11 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                         } else if let TypeVarLike::ParamSpec(_) = &type_var_like {
                             unbound_param_specs.remove(&type_var_like);
                         }
-                    } else if let TypeVarLike::ParamSpec(_) = &type_var_like {
-                        if manager.position(&type_var_like).is_none()
-                            && on_name.is_part_of_primary_ancestors()
-                        {
-                            unbound_param_specs.insert(type_var_like);
-                        }
+                    } else if let TypeVarLike::ParamSpec(_) = &type_var_like
+                        && manager.position(&type_var_like).is_none()
+                        && on_name.is_part_of_primary_ancestors()
+                    {
+                        unbound_param_specs.insert(type_var_like);
                     }
                     TypeVarCallbackReturn::NotFound {
                         allow_late_bound_callables: in_result_type.get(),
@@ -301,12 +298,11 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
                 let mut is_implicit_optional = false;
-                if implicit_optional {
-                    if let Some(default) = param.default() {
-                        if default.as_code() == "None" {
-                            is_implicit_optional = true;
-                        }
-                    }
+                if implicit_optional
+                    && let Some(default) = param.default()
+                    && default.as_code() == "None"
+                {
+                    is_implicit_optional = true;
                 }
                 let param_kind = param.kind();
                 type_computation.cache_param_annotation(
@@ -362,24 +358,23 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         } else {
             type_vars
         };
-        if !unbound_in_params.is_empty() {
-            if let Type::TypeVar(usage) = self.return_type(i_s).as_ref() {
-                if unbound_in_params.contains(&TypeVarLike::TypeVar(usage.type_var.clone())) {
-                    let node_ref = self.expect_return_annotation_node_ref();
-                    node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
-                    if let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db) {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::Note(
-                                format!(
-                                    "Consider using the upper bound \"{}\" instead",
-                                    bound.format_short(i_s.db)
-                                )
-                                .into(),
-                            ),
-                        );
-                    }
-                }
+        if !unbound_in_params.is_empty()
+            && let Type::TypeVar(usage) = self.return_type(i_s).as_ref()
+            && unbound_in_params.contains(&TypeVarLike::TypeVar(usage.type_var.clone()))
+        {
+            let node_ref = self.expect_return_annotation_node_ref();
+            node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
+            if let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db) {
+                node_ref.add_issue(
+                    i_s,
+                    IssueKind::Note(
+                        format!(
+                            "Consider using the upper bound \"{}\" instead",
+                            bound.format_short(i_s.db)
+                        )
+                        .into(),
+                    ),
+                );
             }
         }
         for type_var_like in unbound_type_vars.into_iter() {

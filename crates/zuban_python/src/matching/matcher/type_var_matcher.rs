@@ -120,11 +120,11 @@ impl CalculatingTypeArg {
                     Bound::Upper(_) => matches,
                     Bound::UpperAndLower(upper, lower) => {
                         let m = lower.is_simple_super_type_of(i_s, &other);
-                        if let Some(new) = lower.common_base_type(i_s, &other) {
-                            if upper.is_simple_super_type_of(i_s, &new).bool() {
-                                *lower = new;
-                                return Match::new_true();
-                            }
+                        if let Some(new) = lower.common_base_type(i_s, &other)
+                            && upper.is_simple_super_type_of(i_s, &new).bool()
+                        {
+                            *lower = new;
+                            return Match::new_true();
                         }
                         m
                     }
@@ -143,11 +143,11 @@ impl CalculatingTypeArg {
                     Bound::Invariant(t) => t.is_simple_sub_type_of(i_s, &other),
                     Bound::UpperAndLower(upper, lower) => {
                         let m = upper.is_simple_sub_type_of(i_s, &other);
-                        if let Some(new) = upper.common_sub_type(i_s, &other) {
-                            if lower.is_simple_sub_type_of(i_s, &new).bool() {
-                                *upper = new;
-                                return Match::new_true();
-                            }
+                        if let Some(new) = upper.common_sub_type(i_s, &other)
+                            && lower.is_simple_sub_type_of(i_s, &new).bool()
+                        {
+                            *upper = new;
+                            return Match::new_true();
                         }
                         m
                     }
@@ -394,17 +394,17 @@ fn check_constraints<'x>(
     value_type: &Type,
     variance: Variance,
 ) -> Result<Bound, ()> {
-    if let Type::TypeVar(t2) = value_type {
-        if let TypeVarKind::Constraints(mut constraints2) = t2.type_var.kind(i_s.db) {
-            if constraints2.all(|r2| {
-                constraints
-                    .clone()
-                    .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
-            }) {
-                return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
-            } else {
-                return Err(());
-            }
+    if let Type::TypeVar(t2) = value_type
+        && let TypeVarKind::Constraints(mut constraints2) = t2.type_var.kind(i_s.db)
+    {
+        if constraints2.all(|r2| {
+            constraints
+                .clone()
+                .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
+        }) {
+            return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
+        } else {
+            return Err(());
         }
     }
     let mut matched_constraint = None;

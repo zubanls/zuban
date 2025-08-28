@@ -173,18 +173,17 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             let mut found = TypeVarFinder::find_class_type_vars(i_s, self);
             if found.is_empty() && self.file.should_infer_untyped_returns(i_s.db) {
                 let storage = self.class_storage();
-                if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__") {
-                    if let Some(func) = NodeRef::new(self.file, name_index)
+                if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__")
+                    && let Some(func) = NodeRef::new(self.file, name_index)
                         .expect_name()
                         .name_def()
                         .unwrap()
                         .maybe_name_of_func()
-                    {
-                        // Only generate type vars for classes that are not typed at all and have
-                        // initialization params.
-                        if !func.is_typed() && func.params().iter().nth(1).is_some() {
-                            found = TypeVarLikes::new_untyped_params(func, true)
-                        }
+                {
+                    // Only generate type vars for classes that are not typed at all and have
+                    // initialization params.
+                    if !func.is_typed() && func.params().iter().nth(1).is_some() {
+                        found = TypeVarLikes::new_untyped_params(func, true)
                     }
                 }
             }
@@ -389,15 +388,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 return true;
             }
             for b in mro {
-                if let Type::Class(c) = &b.type_ {
-                    if c.class(db)
+                if let Type::Class(c) = &b.type_
+                    && c.class(db)
                         .class_storage
                         .class_symbol_table
                         .lookup_symbol(n)
                         .is_some()
-                    {
-                        return true;
-                    }
+                {
+                    return true;
                 }
             }
         }
@@ -445,45 +443,38 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 let expr = decorator.named_expression().expression();
                 if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
                     expr.unpack()
+                    && let PrimaryContent::Execution(exec) = primary.second()
                 {
-                    if let PrimaryContent::Execution(exec) = primary.second() {
-                        match name_resolution
-                            .lookup_type_primary_or_atom_if_only_names(primary.first())
-                        {
-                            Some(Lookup::T(TypeContent::InvalidVariable(
-                                InvalidVariableType::Function { node_ref },
-                            ))) => {
-                                if node_ref.is_name_defined_in_module(
+                    match name_resolution.lookup_type_primary_or_atom_if_only_names(primary.first())
+                    {
+                        Some(Lookup::T(TypeContent::InvalidVariable(
+                            InvalidVariableType::Function { node_ref },
+                        ))) => {
+                            if node_ref.is_name_defined_in_module(db, "dataclasses", "dataclass") {
+                                dataclass_options = Some(check_dataclass_options(
                                     db,
-                                    "dataclasses",
-                                    "dataclass",
-                                ) {
-                                    dataclass_options = Some(check_dataclass_options(
-                                        db,
-                                        self.node_ref.file,
-                                        exec,
-                                        DataclassOptions::default(),
-                                    ));
-                                } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref)
-                                {
-                                    dataclass_options = Some(check_dataclass_options(
-                                        db,
-                                        self.node_ref.file,
-                                        exec,
-                                        d.as_dataclass_options(),
-                                    ));
-                                }
+                                    self.node_ref.file,
+                                    exec,
+                                    DataclassOptions::default(),
+                                ));
+                            } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref) {
+                                dataclass_options = Some(check_dataclass_options(
+                                    db,
+                                    self.node_ref.file,
+                                    exec,
+                                    d.as_dataclass_options(),
+                                ));
                             }
-                            Some(Lookup::T(TypeContent::SpecialCase(
-                                Specific::TypingDataclassTransform,
-                            ))) => {
-                                let d = name_resolution.insert_dataclass_transform(primary, exec);
-                                dataclass_transform = Some(Box::new(d.clone()));
-                            }
-                            _ => (),
                         }
-                        continue;
+                        Some(Lookup::T(TypeContent::SpecialCase(
+                            Specific::TypingDataclassTransform,
+                        ))) => {
+                            let d = name_resolution.insert_dataclass_transform(primary, exec);
+                            dataclass_transform = Some(Box::new(d.clone()));
+                        }
+                        _ => (),
                     }
+                    continue;
                 }
                 if let Some(Lookup::T(TypeContent::InvalidVariable(
                     InvalidVariableType::Function { node_ref },
@@ -570,28 +561,27 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             );
         }
 
-        if let MetaclassState::Some(link) = class_infos.metaclass {
-            if Class::from_non_generic_link(db, link)
+        if let MetaclassState::Some(link) = class_infos.metaclass
+            && Class::from_non_generic_link(db, link)
                 .class_link_in_mro(db, db.python_state.enum_meta_link())
-            {
-                if !self.use_cached_type_vars(db).is_empty_or_untyped() {
-                    self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
-                }
-                class_infos.class_kind = ClassKind::Enum;
-                let members = self.enum_members(db);
-                if !members.is_empty() {
-                    let enum_ = Enum::new(
-                        DbString::StringSlice(self.name_string_slice()),
-                        self.node_ref.as_link(),
-                        self.node_ref.as_link(),
-                        self.class_storage.parent_scope,
-                        members,
-                        OnceLock::new(),
-                    );
-                    let enum_type = Arc::new(Type::Enum(enum_.clone()));
-                    // In case enum is combined with dataclass, just let the dataclass win
-                    let _ = class_infos.undefined_generics_type.set(enum_type.clone());
-                }
+        {
+            if !self.use_cached_type_vars(db).is_empty_or_untyped() {
+                self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
+            }
+            class_infos.class_kind = ClassKind::Enum;
+            let members = self.enum_members(db);
+            if !members.is_empty() {
+                let enum_ = Enum::new(
+                    DbString::StringSlice(self.name_string_slice()),
+                    self.node_ref.as_link(),
+                    self.node_ref.as_link(),
+                    self.class_storage.parent_scope,
+                    members,
+                    OnceLock::new(),
+                );
+                let enum_type = Arc::new(Type::Enum(enum_.clone()));
+                // In case enum is combined with dataclass, just let the dataclass win
+                let _ = class_infos.undefined_generics_type.set(enum_type.clone());
             }
         }
         let mut was_typed_dict = None;
@@ -620,20 +610,20 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             // it's kind of hard to unite these pieces, because of different layers of
             // abstractions.
             for base in class_infos.mro.iter_mut() {
-                if base.is_direct_base {
-                    if let Type::Class(c) = &mut base.type_ {
-                        let base_class = c.class(db);
-                        let base_type_vars = base_class.type_vars(i_s);
-                        if base_type_vars.has_from_untyped_params() {
-                            self.type_vars_node_ref().insert_complex(
-                                ComplexPoint::TypeVarLikes(base_type_vars.clone()),
-                                Locality::Todo,
-                            );
-                            c.generics = ClassGenerics::List(
-                                base_type_vars.as_self_generic_list(self.as_link()),
-                            );
-                            break;
-                        }
+                if base.is_direct_base
+                    && let Type::Class(c) = &mut base.type_
+                {
+                    let base_class = c.class(db);
+                    let base_type_vars = base_class.type_vars(i_s);
+                    if base_type_vars.has_from_untyped_params() {
+                        self.type_vars_node_ref().insert_complex(
+                            ComplexPoint::TypeVarLikes(base_type_vars.clone()),
+                            Locality::Todo,
+                        );
+                        c.generics = ClassGenerics::List(
+                            base_type_vars.as_self_generic_list(self.as_link()),
+                        );
+                        break;
                     }
                 }
             }
@@ -674,12 +664,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 .enumerate()
                                 .map(|(i, p)| {
                                     let mut p = p.clone();
-                                    if let Some(t) = p.type_.maybe_positional_type() {
-                                        if i == 0 {
-                                            p.type_ = ParamType::PositionalOnly(Type::Type(
-                                                Arc::new(t.clone()),
-                                            ));
-                                        }
+                                    if let Some(t) = p.type_.maybe_positional_type()
+                                        && i == 0
+                                    {
+                                        p.type_ = ParamType::PositionalOnly(Type::Type(Arc::new(
+                                            t.clone(),
+                                        )));
                                     }
                                     p
                                 })
@@ -795,11 +785,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         &mut metaclass,
                                         MetaclassState::Some(link),
                                     );
-                                    if let Some(infos) = c.maybe_cached_class_infos(db) {
-                                        if let Some(dt) = &infos.dataclass_transform {
-                                            set_type_to_dataclass(dt, true);
-                                            dataclass_transform = infos.dataclass_transform.clone();
-                                        }
+                                    if let Some(infos) = c.maybe_cached_class_infos(db)
+                                        && let Some(dt) = &infos.dataclass_transform
+                                    {
+                                        set_type_to_dataclass(dt, true);
+                                        dataclass_transform = infos.dataclass_transform.clone();
                                     }
                                 } else {
                                     node_ref.add_type_issue(
@@ -1236,20 +1226,19 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     )
                 }
                 let name = name_node_ref.expect_name();
-                if let Some(assignment) = name.maybe_assignment_definition_name() {
-                    if let AssignmentContent::WithAnnotation(_, annotation, Some(_)) =
+                if let Some(assignment) = name.maybe_assignment_definition_name()
+                    && let AssignmentContent::WithAnnotation(_, annotation, Some(_)) =
                         assignment.unpack()
-                    {
-                        // TODO this check is wrong and should do name resolution correctly.
-                        // However it is not that easy to do name resolution correctly, because the
-                        // class is not ready to do name resolution. We probably have to move this
-                        // check into EnumMemberDefinition calculation.
-                        // Mypy allows this, so we should probably as well (and enum members are
-                        // final anyway, so this is just redundance.
-                        if annotation.expression().as_code() != "Final" {
-                            NodeRef::new(self.node_ref.file, point.node_index())
-                                .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
-                        }
+                {
+                    // TODO this check is wrong and should do name resolution correctly.
+                    // However it is not that easy to do name resolution correctly, because the
+                    // class is not ready to do name resolution. We probably have to move this
+                    // check into EnumMemberDefinition calculation.
+                    // Mypy allows this, so we should probably as well (and enum members are
+                    // final anyway, so this is just redundance.
+                    if annotation.expression().as_code() != "Final" {
+                        NodeRef::new(self.node_ref.file, point.node_index())
+                            .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
                     }
                 }
                 if name.is_assignment_annotation_without_definition()

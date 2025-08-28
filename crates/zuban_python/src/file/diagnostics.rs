@@ -889,19 +889,17 @@ impl Inference<'_, '_, '_> {
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
         }
-        if let MetaclassState::Some(link) = class_infos.metaclass {
-            if link == db.python_state.enum_meta_link() {
-                if let Some(t) = class_infos.undefined_generics_type.get() {
-                    if let Type::Enum(enum_) = t.as_ref() {
-                        // Precalculate the enum values here.
-                        // We need to calculate here, because otherwise the normal class
-                        // calculation will do it for us, which will infer different values.
-                        for member in enum_.members.iter() {
-                            if member.value.is_some() {
-                                member.infer_value(self.i_s, enum_);
-                            }
-                        }
-                    }
+        if let MetaclassState::Some(link) = class_infos.metaclass
+            && link == db.python_state.enum_meta_link()
+            && let Some(t) = class_infos.undefined_generics_type.get()
+            && let Type::Enum(enum_) = t.as_ref()
+        {
+            // Precalculate the enum values here.
+            // We need to calculate here, because otherwise the normal class
+            // calculation will do it for us, which will infer different values.
+            for member in enum_.members.iter() {
+                if member.value.is_some() {
+                    member.infer_value(self.i_s, enum_);
                 }
             }
         }
@@ -927,66 +925,66 @@ impl Inference<'_, '_, '_> {
         let (type_params, arguments, _) = class.unpack();
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = class_node_ref.use_cached_class_infos(db);
-        if let Some(t) = class_infos.undefined_generics_type.get() {
-            if let Type::Dataclass(d) = t.as_ref() {
-                ensure_calculated_dataclass(d, db);
-                if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
-                    c.add_issue_on_name(
-                        db,
-                        IssueKind::DataclassPlusExplicitSlots {
-                            class_name: c.name().into(),
-                        },
-                    )
-                }
+        if let Some(t) = class_infos.undefined_generics_type.get()
+            && let Type::Dataclass(d) = t.as_ref()
+        {
+            ensure_calculated_dataclass(d, db);
+            if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
+                c.add_issue_on_name(
+                    db,
+                    IssueKind::DataclassPlusExplicitSlots {
+                        class_name: c.name().into(),
+                    },
+                )
             }
         }
 
-        if let MetaclassState::Some(link) = class_infos.metaclass {
-            if link == db.python_state.enum_meta_link() {
-                // Check if __new__ was correctly used in combination with enums (1)
-                // Also check if mixins appear after enums (2)
-                let mut had_new = 0;
-                let mut enum_spotted: Option<Class> = None;
-                for base in c.bases(db) {
-                    if let TypeOrClass::Class(c) = &base {
-                        let is_enum = c.use_cached_class_infos(db).class_kind == ClassKind::Enum;
-                        let has_mixin_enum_new = if is_enum {
-                            c.bases(db).any(|inner| match inner {
-                                TypeOrClass::Class(inner) => {
-                                    inner.use_cached_class_infos(db).class_kind != ClassKind::Enum
-                                        && inner.has_customized_enum_new(self.i_s)
-                                }
-                                TypeOrClass::Type(_) => false,
-                            })
-                        } else {
-                            c.has_customized_enum_new(self.i_s)
-                        };
-                        // (1)
-                        if has_mixin_enum_new {
-                            had_new += 1;
-                            if had_new > 1 {
-                                class_node_ref.add_issue_on_name(
-                                    db,
-                                    IssueKind::EnumMultipleMixinNew {
-                                        extra: c.qualified_name(db).into(),
-                                    },
-                                );
+        if let MetaclassState::Some(link) = class_infos.metaclass
+            && link == db.python_state.enum_meta_link()
+        {
+            // Check if __new__ was correctly used in combination with enums (1)
+            // Also check if mixins appear after enums (2)
+            let mut had_new = 0;
+            let mut enum_spotted: Option<Class> = None;
+            for base in c.bases(db) {
+                if let TypeOrClass::Class(c) = &base {
+                    let is_enum = c.use_cached_class_infos(db).class_kind == ClassKind::Enum;
+                    let has_mixin_enum_new = if is_enum {
+                        c.bases(db).any(|inner| match inner {
+                            TypeOrClass::Class(inner) => {
+                                inner.use_cached_class_infos(db).class_kind != ClassKind::Enum
+                                    && inner.has_customized_enum_new(self.i_s)
                             }
+                            TypeOrClass::Type(_) => false,
+                        })
+                    } else {
+                        c.has_customized_enum_new(self.i_s)
+                    };
+                    // (1)
+                    if has_mixin_enum_new {
+                        had_new += 1;
+                        if had_new > 1 {
+                            class_node_ref.add_issue_on_name(
+                                db,
+                                IssueKind::EnumMultipleMixinNew {
+                                    extra: c.qualified_name(db).into(),
+                                },
+                            );
                         }
-                        // (2)
-                        match enum_spotted {
-                            Some(after) if !is_enum => {
-                                class_node_ref.add_issue_on_name(
-                                    db,
-                                    IssueKind::EnumMixinNotAllowedAfterEnum {
-                                        after: after.qualified_name(db).into(),
-                                    },
-                                );
-                            }
-                            _ => {
-                                if is_enum {
-                                    enum_spotted = Some(*c);
-                                }
+                    }
+                    // (2)
+                    match enum_spotted {
+                        Some(after) if !is_enum => {
+                            class_node_ref.add_issue_on_name(
+                                db,
+                                IssueKind::EnumMixinNotAllowedAfterEnum {
+                                    after: after.qualified_name(db).into(),
+                                },
+                            );
+                        }
+                        _ => {
+                            if is_enum {
+                                enum_spotted = Some(*c);
                             }
                         }
                     }
@@ -1077,21 +1075,20 @@ impl Inference<'_, '_, '_> {
                     || m == db.python_state.abc_meta_link()
             })
             && !c.incomplete_mro(db)
+            && let Some(init_subclass) = lookup_details.lookup.into_maybe_inferred()
         {
-            if let Some(init_subclass) = lookup_details.lookup.into_maybe_inferred() {
-                let details = match arguments {
-                    Some(args) => ArgumentsDetails::Node(args),
-                    None => ArgumentsDetails::None,
-                };
-                let args = SimpleArgs::new(*self.i_s, self.file, c.node_index, details);
-                init_subclass.execute_with_details(
-                    self.i_s,
-                    &InitSubclassArgs(args),
-                    &mut ResultContext::ExpectUnused,
-                    OnTypeError::new(&on_argument_type_error),
-                );
-                checked_keywords = true;
-            }
+            let details = match arguments {
+                Some(args) => ArgumentsDetails::Node(args),
+                None => ArgumentsDetails::None,
+            };
+            let args = SimpleArgs::new(*self.i_s, self.file, c.node_index, details);
+            init_subclass.execute_with_details(
+                self.i_s,
+                &InitSubclassArgs(args),
+                &mut ResultContext::ExpectUnused,
+                OnTypeError::new(&on_argument_type_error),
+            );
+            checked_keywords = true;
         }
 
         if let Some(arguments) = arguments {
@@ -1142,48 +1139,48 @@ impl Inference<'_, '_, '_> {
         }
         let from = NodeRef::new(self.file, index);
 
-        if name == "__post_init__" {
-            if let Some(dataclass) = c.maybe_dataclass(i_s.db) {
-                if dataclass.is_dataclass_transform() {
-                    // For now don't skip dataclass transform. It is a very special case and I
-                    // don't know how that would look like. If we want to do it well, we would need
-                    // to test it well.
-                    return;
-                }
-                let override_details = Instance::new(c, None).lookup_on_self(
-                    self.i_s,
-                    &|issue| from.add_issue(i_s, issue),
-                    name,
-                    LookupKind::OnlyType,
-                );
-                let __post_init__ = dataclass_post_init_func(&dataclass, i_s.db);
-                let original_details = LookupDetails {
-                    class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
-                    lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(
-                        Arc::new(__post_init__.clone()),
-                    ))),
-                    attr_kind: AttributeKind::DefMethod { is_final: false },
-                    mro_index: None,
-                };
-                check_override(
-                    i_s,
-                    from,
-                    original_details,
-                    &override_details,
-                    name,
-                    |_, _| "dataclass",
-                    Some(&|| {
-                        let params = format_callable_params(
-                            &FormatData::new_short(i_s.db),
-                            false,
-                            __post_init__.expect_simple_params().iter(),
-                            false,
-                        );
-                        format!("def __post_init__(self, {params}) -> None")
-                    }),
-                );
+        if name == "__post_init__"
+            && let Some(dataclass) = c.maybe_dataclass(i_s.db)
+        {
+            if dataclass.is_dataclass_transform() {
+                // For now don't skip dataclass transform. It is a very special case and I
+                // don't know how that would look like. If we want to do it well, we would need
+                // to test it well.
                 return;
             }
+            let override_details = Instance::new(c, None).lookup_on_self(
+                self.i_s,
+                &|issue| from.add_issue(i_s, issue),
+                name,
+                LookupKind::OnlyType,
+            );
+            let __post_init__ = dataclass_post_init_func(&dataclass, i_s.db);
+            let original_details = LookupDetails {
+                class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
+                lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
+                    __post_init__.clone(),
+                )))),
+                attr_kind: AttributeKind::DefMethod { is_final: false },
+                mro_index: None,
+            };
+            check_override(
+                i_s,
+                from,
+                original_details,
+                &override_details,
+                name,
+                |_, _| "dataclass",
+                Some(&|| {
+                    let params = format_callable_params(
+                        &FormatData::new_short(i_s.db),
+                        false,
+                        __post_init__.expect_simple_params().iter(),
+                        false,
+                    );
+                    format!("def __post_init__(self, {params}) -> None")
+                }),
+            );
+            return;
         }
 
         let should_check_func_override = || {
@@ -1215,10 +1212,9 @@ impl Inference<'_, '_, '_> {
             for decorator in decorators.iter() {
                 if let Some(redirect) =
                     NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
+                    && Some(redirect) == i_s.db.python_state.typing_override()
                 {
-                    if Some(redirect) == i_s.db.python_state.typing_override() {
-                        has_override_decorator = true;
-                    }
+                    has_override_decorator = true;
                 }
             }
         }
@@ -1277,12 +1273,11 @@ impl Inference<'_, '_, '_> {
         function.cache_func(self.i_s);
         let func_node = function.node();
         let from = NodeRef::new(self.file, func_node.body().index());
-        if let Some(decorated) = func_node.maybe_decorated() {
-            if function.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable)
-                && self.is_no_type_check(decorated)
-            {
-                return Ok(());
-            }
+        if let Some(decorated) = func_node.maybe_decorated()
+            && function.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable)
+            && self.is_no_type_check(decorated)
+        {
+            return Ok(());
         }
 
         diagnostics_for_scope(from, || {
@@ -1416,34 +1411,32 @@ impl Inference<'_, '_, '_> {
         if !is_overload_member {
             // Check defaults here.
             for param in params.iter() {
-                if let Some(annotation) = param.annotation() {
-                    if let Some(default) = param.default() {
-                        let t = self.use_cached_param_annotation_type(annotation);
-                        let inf = self.infer_expression_with_context(
-                            default,
-                            &mut ResultContext::new_known(&t),
-                        );
-                        t.error_if_not_matches(
-                            i_s,
-                            &inf,
-                            |issue| self.add_issue(default.index(), issue),
-                            |error_types| {
-                                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
-                                if default.is_ellipsis_literal()
-                                    && (self.file.is_stub() || function.has_trivial_body(i_s))
-                                {
-                                    // In stubs it is allowed to do stuff like:
-                                    // def foo(x: int = ...) -> int: ...
-                                    return None;
-                                }
-                                Some(IssueKind::IncompatibleDefaultArgument {
-                                    argument_name: Box::from(param.name_def().as_code()),
-                                    got,
-                                    expected,
-                                })
-                            },
-                        );
-                    }
+                if let Some(annotation) = param.annotation()
+                    && let Some(default) = param.default()
+                {
+                    let t = self.use_cached_param_annotation_type(annotation);
+                    let inf = self
+                        .infer_expression_with_context(default, &mut ResultContext::new_known(&t));
+                    t.error_if_not_matches(
+                        i_s,
+                        &inf,
+                        |issue| self.add_issue(default.index(), issue),
+                        |error_types| {
+                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
+                            if default.is_ellipsis_literal()
+                                && (self.file.is_stub() || function.has_trivial_body(i_s))
+                            {
+                                // In stubs it is allowed to do stuff like:
+                                // def foo(x: int = ...) -> int: ...
+                                return None;
+                            }
+                            Some(IssueKind::IncompatibleDefaultArgument {
+                                argument_name: Box::from(param.name_def().as_code()),
+                                got,
+                                expected,
+                            })
+                        },
+                    );
                 }
             }
         }
@@ -1521,87 +1514,86 @@ impl Inference<'_, '_, '_> {
         }
 
         let mut params_iterator = params.iter().peekable();
-        if let Some(class) = function.class {
-            if function.kind(i_s) != FunctionKind::Staticmethod || function.is_dunder_new() {
-                let mut was_star = false;
-                let first_param = params_iterator
-                    .peek()
-                    .copied()
-                    .and_then(|p| match p.kind() {
-                        ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
-                            params_iterator.next();
-                            Some(p)
-                        }
-                        ParamKind::KeywordOnly | ParamKind::StarStar => None,
-                        ParamKind::Star => {
-                            was_star = true;
-                            None
-                        }
-                    });
-                if let Some(first_param) = first_param {
-                    if let Some(annotation) = first_param.annotation() {
-                        let undefined_generics_class =
-                            Class::with_undefined_generics(class.node_ref);
-                        let mut class_t = undefined_generics_class.as_type(i_s.db);
-                        let mut original = self.use_cached_param_annotation_type(annotation);
-                        let mut new = None;
-                        match original.as_ref() {
-                            Type::TypeVar(tv) => {
-                                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
-                                    new = Some(b.clone());
-                                }
+        if let Some(class) = function.class
+            && (function.kind(i_s) != FunctionKind::Staticmethod || function.is_dunder_new())
+        {
+            let mut was_star = false;
+            let first_param = params_iterator
+                .peek()
+                .copied()
+                .and_then(|p| match p.kind() {
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
+                        params_iterator.next();
+                        Some(p)
+                    }
+                    ParamKind::KeywordOnly | ParamKind::StarStar => None,
+                    ParamKind::Star => {
+                        was_star = true;
+                        None
+                    }
+                });
+            if let Some(first_param) = first_param {
+                if let Some(annotation) = first_param.annotation() {
+                    let undefined_generics_class = Class::with_undefined_generics(class.node_ref);
+                    let mut class_t = undefined_generics_class.as_type(i_s.db);
+                    let mut original = self.use_cached_param_annotation_type(annotation);
+                    let mut new = None;
+                    match original.as_ref() {
+                        Type::TypeVar(tv) => {
+                            if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
+                                new = Some(b.clone());
                             }
-                            Type::Type(t) => {
-                                if let Type::TypeVar(tv) = t.as_ref() {
-                                    if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
-                                        new = Some(Type::Type(Arc::new(b.clone())));
-                                    }
-                                }
+                        }
+                        Type::Type(t) => {
+                            if let Type::TypeVar(tv) = t.as_ref()
+                                && let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db)
+                            {
+                                new = Some(Type::Type(Arc::new(b.clone())));
                             }
-                            _ => (),
+                        }
+                        _ => (),
+                    };
+                    if let Some(new) = new {
+                        original = Cow::Owned(new)
+                    }
+                    let erased = original
+                        .replace_type_var_likes_and_self(
+                            i_s.db,
+                            &mut |u| Some(u.as_any_generic_item()),
+                            &|| Some(class_t.clone()),
+                        )
+                        .map(Cow::Owned)
+                        .unwrap_or(original);
+                    let erased_is_protocol = match erased.as_ref() {
+                        Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
+                        Type::Type(t) => {
+                            t.maybe_class(i_s.db).is_some_and(|c| c.is_protocol(i_s.db))
+                        }
+                        _ => false,
+                    };
+                    if !erased_is_protocol {
+                        if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
+                            class_t = Type::Type(Arc::new(class_t));
                         };
-                        if let Some(new) = new {
-                            original = Cow::Owned(new)
-                        }
-                        let erased = original
-                            .replace_type_var_likes_and_self(
-                                i_s.db,
-                                &mut |u| Some(u.as_any_generic_item()),
-                                &|| Some(class_t.clone()),
-                            )
-                            .map(Cow::Owned)
-                            .unwrap_or(original);
-                        let erased_is_protocol = match erased.as_ref() {
-                            Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
-                            Type::Type(t) => {
-                                t.maybe_class(i_s.db).is_some_and(|c| c.is_protocol(i_s.db))
-                            }
-                            _ => false,
-                        };
-                        if !erased_is_protocol {
-                            if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
-                                class_t = Type::Type(Arc::new(class_t));
+                        if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
+                            let param_name = first_param.name_def().as_code();
+                            let issue = if ["self", "cls"].contains(&param_name) {
+                                let format_data = &FormatData::new_reveal_type(i_s.db);
+                                IssueKind::TypeOfSelfIsNotASupertypeOfItsClass {
+                                    self_type: erased.format(format_data),
+                                    class: class_t.format(format_data),
+                                }
+                            } else {
+                                IssueKind::SelfArgumentMissing
                             };
-                            if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
-                                let param_name = first_param.name_def().as_code();
-                                let issue = if ["self", "cls"].contains(&param_name) {
-                                    let format_data = &FormatData::new_reveal_type(i_s.db);
-                                    IssueKind::TypeOfSelfIsNotASupertypeOfItsClass {
-                                        self_type: erased.format(format_data),
-                                        class: class_t.format(format_data),
-                                    }
-                                } else {
-                                    IssueKind::SelfArgumentMissing
-                                };
-                                self.add_issue(annotation.index(), issue);
-                            }
+                            self.add_issue(annotation.index(), issue);
                         }
                     }
-                } else if !was_star {
-                    function
-                        .node_ref
-                        .add_issue(i_s, IssueKind::MethodWithoutArguments)
                 }
+            } else if !was_star {
+                function
+                    .node_ref
+                    .add_issue(i_s, IssueKind::MethodWithoutArguments)
             }
         }
 
@@ -1618,30 +1610,30 @@ impl Inference<'_, '_, '_> {
                         .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
                 }
 
-                if param.kind() == ParamKind::StarStar {
-                    if let Type::TypedDict(td) = t.as_ref() {
-                        let mut overlapping_names = vec![];
-                        for member in td.members(i_s.db) {
-                            for p in params.iter() {
-                                let name = member.name.as_str(i_s.db);
-                                if matches!(
-                                    p.kind(),
-                                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                                ) && name == p.name_def().as_code()
-                                {
-                                    overlapping_names.push(format!("\"{name}\""));
-                                    break;
-                                }
+                if param.kind() == ParamKind::StarStar
+                    && let Type::TypedDict(td) = t.as_ref()
+                {
+                    let mut overlapping_names = vec![];
+                    for member in td.members(i_s.db) {
+                        for p in params.iter() {
+                            let name = member.name.as_str(i_s.db);
+                            if matches!(
+                                p.kind(),
+                                ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                            ) && name == p.name_def().as_code()
+                            {
+                                overlapping_names.push(format!("\"{name}\""));
+                                break;
                             }
                         }
-                        if !overlapping_names.is_empty() {
-                            function.add_issue_for_declaration(
-                                i_s,
-                                IssueKind::TypedDictArgumentNameOverlapWithUnpack {
-                                    names: overlapping_names.join(", ").into(),
-                                },
-                            );
-                        }
+                    }
+                    if !overlapping_names.is_empty() {
+                        function.add_issue_for_declaration(
+                            i_s,
+                            IssueKind::TypedDictArgumentNameOverlapWithUnpack {
+                                names: overlapping_names.join(", ").into(),
+                            },
+                        );
                     }
                 }
             }
@@ -1722,42 +1714,42 @@ impl Inference<'_, '_, '_> {
             return;
         }
 
-        if let Some(return_annotation) = function.return_annotation() {
-            if function.is_dunder_new() {
-                let mut class = function.class.unwrap();
-                // Here we do not want self generics, we actually want Any generics.
-                class.generics = Generics::NotDefinedYet {
-                    class_ref: class.node_ref,
-                };
-                if let Some(callable) = infer_class_method(
-                    i_s,
-                    class,
-                    class,
-                    &function.as_callable(i_s, FirstParamProperties::None),
-                    None,
-                ) {
-                    match &callable.return_type {
-                        Type::Class(_) => {
-                            let t = &callable.return_type;
-                            if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
-                                self.add_issue(
-                                    return_annotation.index(),
-                                    IssueKind::NewIncompatibleReturnType {
-                                        returns: t.format_short(i_s.db),
-                                        must_return: class.format_short(i_s.db),
-                                    },
-                                )
-                            }
+        if let Some(return_annotation) = function.return_annotation()
+            && function.is_dunder_new()
+        {
+            let mut class = function.class.unwrap();
+            // Here we do not want self generics, we actually want Any generics.
+            class.generics = Generics::NotDefinedYet {
+                class_ref: class.node_ref,
+            };
+            if let Some(callable) = infer_class_method(
+                i_s,
+                class,
+                class,
+                &function.as_callable(i_s, FirstParamProperties::None),
+                None,
+            ) {
+                match &callable.return_type {
+                    Type::Class(_) => {
+                        let t = &callable.return_type;
+                        if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
+                            self.add_issue(
+                                return_annotation.index(),
+                                IssueKind::NewIncompatibleReturnType {
+                                    returns: t.format_short(i_s.db),
+                                    must_return: class.format_short(i_s.db),
+                                },
+                            )
                         }
-                        Type::Type(_) | Type::Any(_) | Type::Never(_) => (),
-                        Type::Enum(e) if e.class == class.node_ref.as_link() => (),
-                        t => self.add_issue(
-                            return_annotation.index(),
-                            IssueKind::NewMustReturnAnInstance {
-                                got: t.format_short(i_s.db),
-                            },
-                        ),
                     }
+                    Type::Type(_) | Type::Any(_) | Type::Never(_) => (),
+                    Type::Enum(e) if e.class == class.node_ref.as_link() => (),
+                    t => self.add_issue(
+                        return_annotation.index(),
+                        IssueKind::NewMustReturnAnInstance {
+                            got: t.format_short(i_s.db),
+                        },
+                    ),
                 }
             }
         }
@@ -1766,55 +1758,53 @@ impl Inference<'_, '_, '_> {
             .as_code()
             .strip_prefix("__")
             .and_then(|n| n.strip_suffix("__"))
+            && function.class.is_some()
         {
-            if function.class.is_some() {
-                match magic_name {
-                    "init" | "init_subclass" => {
-                        if let Some(return_annotation) = function.return_annotation() {
-                            if !matches!(
-                                function.return_type(i_s).as_ref(),
-                                Type::None | Type::Never(_)
-                            ) {
-                                // __init__ and __init_subclass__ must return None
-                                NodeRef::new(self.file, return_annotation.expression().index())
-                                    .add_issue(
-                                        i_s,
-                                        IssueKind::MustReturnNone {
-                                            function_name: function.name().into(),
-                                        },
-                                    )
-                            }
-                        }
+            match magic_name {
+                "init" | "init_subclass" => {
+                    if let Some(return_annotation) = function.return_annotation()
+                        && !matches!(
+                            function.return_type(i_s).as_ref(),
+                            Type::None | Type::Never(_)
+                        )
+                    {
+                        // __init__ and __init_subclass__ must return None
+                        NodeRef::new(self.file, return_annotation.expression().index()).add_issue(
+                            i_s,
+                            IssueKind::MustReturnNone {
+                                function_name: function.name().into(),
+                            },
+                        )
                     }
-                    "exit" => {
-                        // Check the return type of __exit__
-                        self.check_magic_exit(function)
+                }
+                "exit" => {
+                    // Check the return type of __exit__
+                    self.check_magic_exit(function)
+                }
+                "getattr" => {
+                    let func_type = function.as_type(i_s, FirstParamProperties::None);
+                    if !self
+                        .i_s
+                        .db
+                        .python_state
+                        .valid_getattr_supertype
+                        .clone()
+                        .is_simple_super_type_of(i_s, &func_type)
+                        .bool()
+                    {
+                        function.add_issue_for_declaration(
+                            self.i_s,
+                            IssueKind::InvalidSpecialMethodSignature {
+                                type_: func_type.format_short(self.i_s.db),
+                                special_method: "__getattr__",
+                            },
+                        )
                     }
-                    "getattr" => {
-                        let func_type = function.as_type(i_s, FirstParamProperties::None);
-                        if !self
-                            .i_s
-                            .db
-                            .python_state
-                            .valid_getattr_supertype
-                            .clone()
-                            .is_simple_super_type_of(i_s, &func_type)
-                            .bool()
-                        {
-                            function.add_issue_for_declaration(
-                                self.i_s,
-                                IssueKind::InvalidSpecialMethodSignature {
-                                    type_: func_type.format_short(self.i_s.db),
-                                    special_method: "__getattr__",
-                                },
-                            )
-                        }
-                    }
-                    _ => {
-                        // Check reverse magic methods like __rmul__
-                        self.check_overlapping_op_methods(function, magic_name);
-                        self.check_inplace_methods(function, magic_name);
-                    }
+                }
+                _ => {
+                    // Check reverse magic methods like __rmul__
+                    self.check_overlapping_op_methods(function, magic_name);
+                    self.check_inplace_methods(function, magic_name);
                 }
             }
         }
@@ -2502,16 +2492,15 @@ pub(super) fn check_override(
     }
 
     let mut op_method_wider_note = false;
-    if let Type::FunctionOverload(override_overload) = override_t {
-        if match_.bool()
-            && FORWARD_OP_METHODS.contains(name)
-            && operator_domain_is_widened(i_s, override_overload, &original_t)
-        {
-            // Reverse operators lead to weird behavior when overloads widen. If you want to
-            // understand why this is an issue, please look at testUnsafeDunderOverlapInSubclass.
-            op_method_wider_note = true;
-            match_ = Match::new_false();
-        }
+    if let Type::FunctionOverload(override_overload) = override_t
+        && match_.bool()
+        && FORWARD_OP_METHODS.contains(name)
+        && operator_domain_is_widened(i_s, override_overload, &original_t)
+    {
+        // Reverse operators lead to weird behavior when overloads widen. If you want to
+        // understand why this is an issue, please look at testUnsafeDunderOverlapInSubclass.
+        op_method_wider_note = true;
+        match_ = Match::new_false();
     }
     use AttributeKind::*;
     match (
@@ -2981,20 +2970,18 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
             .iter()
             .zip(cls1.generics().iter(i_s.db))
         {
-            if let Generic::TypeArg(t) = arg {
-                if let Type::TypeVar(tv) = t.as_ref() {
-                    if let TypeVarLike::TypeVar(tv_def) = type_var_like {
-                        if matches!(
-                            tv.type_var.variance,
-                            TypeVarVariance::Known(Variance::Covariant | Variance::Contravariant)
-                        ) && tv.type_var.variance != tv_def.variance
-                        {
-                            add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
-                                type_var_name: tv.type_var.name(db).into(),
-                            });
-                        }
-                    }
-                }
+            if let Generic::TypeArg(t) = arg
+                && let Type::TypeVar(tv) = t.as_ref()
+                && let TypeVarLike::TypeVar(tv_def) = type_var_like
+                && matches!(
+                    tv.type_var.variance,
+                    TypeVarVariance::Known(Variance::Covariant | Variance::Contravariant)
+                )
+                && tv.type_var.variance != tv_def.variance
+            {
+                add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
+                    type_var_name: tv.type_var.name(db).into(),
+                });
             }
         }
         let instance1 = Instance::new(cls1, None);

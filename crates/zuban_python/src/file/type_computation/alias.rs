@@ -156,14 +156,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 // definition like:
                 //
                 //     Foo = 1  # type: Any
-                if let TypeCommentState::Type(t) = &type_comment.type_ {
-                    if let Type::Any(_) = t.as_ref() {
-                        cached_type_node_ref.set_point(Point::new_specific(
-                            Specific::AnyDueToError,
-                            Locality::Todo,
-                        ));
-                        return self.compute_type_assignment_internal(assignment, cause);
-                    }
+                if let TypeCommentState::Type(t) = &type_comment.type_
+                    && let Type::Any(_) = t.as_ref()
+                {
+                    cached_type_node_ref
+                        .set_point(Point::new_specific(Specific::AnyDueToError, Locality::Todo));
+                    return self.compute_type_assignment_internal(assignment, cause);
                 }
             }
             if matches!(cause, AliasCause::Implicit)
@@ -216,10 +214,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         Specific::AnnotationOrTypeCommentFinal
                             | Specific::AnnotationOrTypeCommentClassVar,
                     )
-                ) {
-                    if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
-                        return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
-                    }
+                ) && let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref()
+                {
+                    return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
                 }
             }
             Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other))
@@ -274,12 +271,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 SpecialAssignmentKind::TypeOf(args) => {
                     if let Some(ArgOrComprehension::Arg(Argument::Positional(arg))) =
                         args.details.iter().next()
+                        && arg.expression().is_none_literal()
                     {
-                        if arg.expression().is_none_literal() {
-                            return Ok(Lookup::T(TypeContent::Type(Type::Type(Arc::new(
-                                Type::None,
-                            )))));
-                        }
+                        return Ok(Lookup::T(TypeContent::Type(Type::Type(Arc::new(
+                            Type::None,
+                        )))));
                     }
                     return Ok(Lookup::T(TypeContent::InvalidVariable(
                         InvalidVariableType::Variable(NodeRef::new(self.file, name_def.index())),
@@ -684,14 +680,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let mut type_var_callback =
             |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _, _: Name| {
                 if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
-                    if let TypeVarCallbackReturn::TypeVarLike(_) = &result {
-                        if matches!(origin, CalculatingAliasType::Normal) {
-                            return TypeVarCallbackReturn::AddIssue(
-                                IssueKind::BoundTypeVarInAlias {
-                                    name: Box::from(type_var_like.name(i_s.db)),
-                                },
-                            );
-                        }
+                    if let TypeVarCallbackReturn::TypeVarLike(_) = &result
+                        && matches!(origin, CalculatingAliasType::Normal)
+                    {
+                        return TypeVarCallbackReturn::AddIssue(IssueKind::BoundTypeVarInAlias {
+                            name: Box::from(type_var_like.name(i_s.db)),
+                        });
                     }
                     return result;
                 }
@@ -1160,15 +1154,15 @@ type SeenRecursiveAliases<'a> = AlreadySeen<'a, PointLink>;
 fn is_invalid_recursive_alias(db: &Database, seen: &SeenRecursiveAliases, t: &Type) -> bool {
     t.iter_with_unpacked_unions_without_unpacking_recursive_types()
         .any(|t| {
-            if let Type::RecursiveType(rec) = t {
-                if rec.has_alias_origin(db) {
-                    let new_seen = seen.append(rec.link);
-                    return if rec.calculating(db) {
-                        new_seen.is_cycle()
-                    } else {
-                        is_invalid_recursive_alias(db, &new_seen, rec.calculated_type(db))
-                    };
-                }
+            if let Type::RecursiveType(rec) = t
+                && rec.has_alias_origin(db)
+            {
+                let new_seen = seen.append(rec.link);
+                return if rec.calculating(db) {
+                    new_seen.is_cycle()
+                } else {
+                    is_invalid_recursive_alias(db, &new_seen, rec.calculated_type(db))
+                };
             }
             false
         })

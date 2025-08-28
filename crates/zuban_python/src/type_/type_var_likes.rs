@@ -469,12 +469,11 @@ impl TypeVarLikes {
         param_index: usize,
     ) -> Option<TypeVarUsage> {
         for (index, x) in self.iter().enumerate() {
-            if let TypeVarLike::TypeVar(tv) = x {
-                if let TypeVarName::UntypedParam { nth } = &tv.name {
-                    if *nth == param_index {
-                        return Some(TypeVarUsage::new(tv.clone(), in_definition, index.into()));
-                    }
-                }
+            if let TypeVarLike::TypeVar(tv) = x
+                && let TypeVarName::UntypedParam { nth } = &tv.name
+                && *nth == param_index
+            {
+                return Some(TypeVarUsage::new(tv.clone(), in_definition, index.into()));
             }
         }
         None

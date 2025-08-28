@@ -435,24 +435,23 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::AnnotationOrTypeCommentWithTypeVars
                     | Specific::AnnotationOrTypeCommentFinal => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
-                        if attribute_class.needs_generic_remapping_for_attributes(i_s, &t) {
-                            if let Some(d) =
+                        if attribute_class.needs_generic_remapping_for_attributes(i_s, &t)
+                            && let Some(d) =
                                 maybe_replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
                                     Some(class.as_type(i_s.db))
                                 })
-                            {
-                                return Inferred::from_type(d);
-                            }
+                        {
+                            return Inferred::from_type(d);
                         }
                     }
                     _ => (),
                 }
-            } else if let Some(t) = definition.maybe_type() {
-                if let Some(d) = maybe_replace_class_type_vars(i_s.db, t, attribute_class, &|| {
+            } else if let Some(t) = definition.maybe_type()
+                && let Some(d) = maybe_replace_class_type_vars(i_s.db, t, attribute_class, &|| {
                     Some(class.as_type(i_s.db))
-                }) {
-                    return Inferred::from_type(d);
-                }
+                })
+            {
+                return Inferred::from_type(d);
             }
         }
         self
@@ -1186,8 +1185,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
             InferredState::UnsavedComplex(complex) => {
-                if let ComplexPoint::TypeInstance(t) = complex {
-                    if let Some(inf) = Self::bind_instance_descriptors_for_type(
+                if let ComplexPoint::TypeInstance(t) = complex
+                    && let Some(inf) = Self::bind_instance_descriptors_for_type(
                         i_s,
                         for_name,
                         instance,
@@ -1196,9 +1195,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         t,
                         apply_descriptors_kind,
                         avoid_inferring_return_types,
-                    ) {
-                        return inf;
-                    }
+                    )
+                {
+                    return inf;
                 }
             }
             InferredState::UnsavedFileReference(_)
@@ -1250,14 +1249,13 @@ impl<'db: 'slf, 'slf> Inferred {
                             add_invalid_self_arg(c);
                             i_s.db.python_state.any_callable_from_error.clone()
                         });
-                        if avoid_inferring_return_types {
-                            if let Some(func) = new_c.maybe_original_function(i_s.db) {
-                                if func.return_annotation().is_none() {
-                                    let mut new = new_c.as_ref().clone();
-                                    new.return_type = Type::Any(AnyCause::Unannotated);
-                                    new_c = Arc::new(new)
-                                }
-                            }
+                        if avoid_inferring_return_types
+                            && let Some(func) = new_c.maybe_original_function(i_s.db)
+                            && func.return_annotation().is_none()
+                        {
+                            let mut new = new_c.as_ref().clone();
+                            new.return_type = Type::Any(AnyCause::Unannotated);
+                            new_c = Arc::new(new)
                         }
                         return Some(Some((
                             Inferred::from_type(Type::Callable(new_c)),
@@ -1324,12 +1322,11 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     let is_final = c.is_final;
                     return Some(result.map(|mut c| {
-                        if avoid_inferring_return_types {
-                            if let Some(func) = c.maybe_original_function(i_s.db) {
-                                if func.return_annotation().is_none() {
-                                    c.return_type = Type::Any(AnyCause::Unannotated);
-                                }
-                            }
+                        if avoid_inferring_return_types
+                            && let Some(func) = c.maybe_original_function(i_s.db)
+                            && func.return_annotation().is_none()
+                        {
+                            c.return_type = Type::Any(AnyCause::Unannotated);
                         }
                         (
                             callable_into_inferred(c),
@@ -1339,16 +1336,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 FunctionKind::Staticmethod => {
                     let mut t = t.clone();
-                    if avoid_inferring_return_types {
-                        if let Some(func) = c.maybe_original_function(i_s.db) {
-                            if func.return_annotation().is_none() {
-                                if let Type::Callable(c) = &t {
-                                    let mut new_c = c.as_ref().clone();
-                                    new_c.return_type = Type::Any(AnyCause::Unannotated);
-                                    t = Type::Callable(Arc::new(new_c));
-                                }
-                            }
-                        }
+                    if avoid_inferring_return_types
+                        && let Some(func) = c.maybe_original_function(i_s.db)
+                        && func.return_annotation().is_none()
+                        && let Type::Callable(c) = &t
+                    {
+                        let mut new_c = c.as_ref().clone();
+                        new_c.return_type = Type::Any(AnyCause::Unannotated);
+                        t = Type::Callable(Arc::new(new_c));
                     }
                     return Some(Some((
                         Inferred::from_type(t),
@@ -1589,8 +1584,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
             InferredState::UnsavedComplex(complex) => {
-                if let ComplexPoint::TypeInstance(t) = complex {
-                    if let Some(inf) = Self::bind_class_descriptors_for_type(
+                if let ComplexPoint::TypeInstance(t) = complex
+                    && let Some(inf) = Self::bind_class_descriptors_for_type(
                         i_s,
                         class,
                         attribute_class,
@@ -1599,9 +1594,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         t,
                         as_type_type,
                         func_class_type,
-                    ) {
-                        return inf.map(|inf| (inf, AttributeKind::Attribute));
-                    }
+                    )
+                {
+                    return inf.map(|inf| (inf, AttributeKind::Attribute));
                 }
             }
             InferredState::UnsavedFileReference(_)
@@ -1674,27 +1669,27 @@ impl<'db: 'slf, 'slf> Inferred {
             t = new.as_ref().unwrap();
         }
 
-        if let Type::Class(c) = t {
-            if apply_descriptors.should_apply() {
-                let class_ref = ClassNodeRef::from_link(i_s.db, c.link);
-                let inst = use_instance_with_ref(
-                    class_ref,
-                    Generics::from_class_generics(i_s.db, class_ref, &c.generics),
-                    None,
-                );
-                if let Some(inf) = inst
-                    .type_lookup(i_s, &add_issue, "__get__")
-                    .into_maybe_inferred()
-                {
-                    let class_as_inferred = class.as_inferred(i_s);
-                    return Some(Some(inf.execute(
-                        i_s,
-                        &CombinedArgs::new(
-                            &KnownArgsWithCustomAddIssue::new(&Inferred::new_none(), &add_issue),
-                            &KnownArgsWithCustomAddIssue::new(&class_as_inferred, &add_issue),
-                        ),
-                    )));
-                }
+        if let Type::Class(c) = t
+            && apply_descriptors.should_apply()
+        {
+            let class_ref = ClassNodeRef::from_link(i_s.db, c.link);
+            let inst = use_instance_with_ref(
+                class_ref,
+                Generics::from_class_generics(i_s.db, class_ref, &c.generics),
+                None,
+            );
+            if let Some(inf) = inst
+                .type_lookup(i_s, &add_issue, "__get__")
+                .into_maybe_inferred()
+            {
+                let class_as_inferred = class.as_inferred(i_s);
+                return Some(Some(inf.execute(
+                    i_s,
+                    &CombinedArgs::new(
+                        &KnownArgsWithCustomAddIssue::new(&Inferred::new_none(), &add_issue),
+                        &KnownArgsWithCustomAddIssue::new(&class_as_inferred, &add_issue),
+                    ),
+                )));
             }
         }
         // TODO this clone should not be necessary, but there appears to be a bug in the compiler.
@@ -2207,17 +2202,16 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::TypeAlias(alias) if !alias.from_type_syntax => {
                                 if !alias.is_annotated() {
-                                    if !alias.type_vars.is_empty() {
-                                        if let Some(file) = args.in_file() {
-                                            if file.flags(i_s.db).disallow_any_generics {
-                                                node_ref.add_issue(
-                                                    i_s,
-                                                    IssueKind::MissingTypeParameters {
-                                                        name: alias.name(i_s.db).into(),
-                                                    },
-                                                );
-                                            }
-                                        }
+                                    if !alias.type_vars.is_empty()
+                                        && let Some(file) = args.in_file()
+                                        && file.flags(i_s.db).disallow_any_generics
+                                    {
+                                        node_ref.add_issue(
+                                            i_s,
+                                            IssueKind::MissingTypeParameters {
+                                                name: alias.name(i_s.db).into(),
+                                            },
+                                        );
                                     }
                                     if alias.application_allowed(i_s.db) {
                                         return execute_type_of_type(
@@ -2440,10 +2434,10 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn into_proper_type(self, i_s: &InferenceState) -> Self {
         // In inferred return types of functions we don't want to return functions as such, because
         // they might refer to themselves and therefore recurse.
-        if let Some(node_ref) = self.maybe_saved_node_ref(i_s.db) {
-            if let Some(Specific::Function) = node_ref.point().maybe_specific() {
-                return Inferred::from_type(self.as_type(i_s));
-            }
+        if let Some(node_ref) = self.maybe_saved_node_ref(i_s.db)
+            && let Some(Specific::Function) = node_ref.point().maybe_specific()
+        {
+            return Inferred::from_type(self.as_type(i_s));
         }
         self
     }
@@ -2484,8 +2478,8 @@ fn prepare_func<'db, 'class>(
     func_class: Class<'class>,
 ) -> Function<'db, 'class> {
     let node_ref = NodeRef::from_link(i_s.db, definition);
-    let func = Function::new(node_ref, Some(func_class));
-    func
+
+    Function::new(node_ref, Some(func_class))
 }
 
 pub(crate) enum UnionValue<T, I: Iterator<Item = T>> {
@@ -2599,11 +2593,11 @@ fn proper_classmethod_callable(
                 {
                     return None;
                 }
-                if let Type::Type(t) = t.as_ref() {
-                    if let Type::TypeVar(usage) = t.as_ref() {
-                        class_method_type_var_usage = Some(usage.clone());
-                        type_vars.remove(0);
-                    }
+                if let Type::Type(t) = t.as_ref()
+                    && let Type::TypeVar(usage) = t.as_ref()
+                {
+                    class_method_type_var_usage = Some(usage.clone());
+                    type_vars.remove(0);
                 }
                 if matcher.has_type_var_matcher() && class_method_type_var_usage.is_none() {
                     callable = callable.replace_type_var_likes_and_self_inplace(
@@ -2972,20 +2966,19 @@ pub fn add_attribute_error(
         _ => format!("\"{}\"", t.format_short(i_s.db)).into(),
     };
     let name = Box::from(name);
-    if let Type::TypeVar(usage) = full_type {
-        if let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db) {
-            if bound.is_union_like(i_s.db) {
-                let bound = bound.format_short(i_s.db);
-                let type_var_name = usage.type_var.name(i_s.db);
-                node_ref.add_issue(
+    if let Type::TypeVar(usage) = full_type
+        && let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db)
+        && bound.is_union_like(i_s.db)
+    {
+        let bound = bound.format_short(i_s.db);
+        let type_var_name = usage.type_var.name(i_s.db);
+        node_ref.add_issue(
                     i_s,
                     IssueKind::UnionAttributeErrorOfUpperBound(format!(
                         r#"Item {object} of the upper bound "{bound}" of type variable "{type_var_name}" has no attribute "{name}""#
                     ).into())
                 );
-                return;
-            }
-        }
+        return;
     }
     node_ref.add_issue(
         i_s,

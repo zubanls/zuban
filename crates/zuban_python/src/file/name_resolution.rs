@@ -355,30 +355,23 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             | "__spec__"
                             | "__doc__"
                             | "__annotations__"
-                    ) {
-                        if let Some(mut inf) = i_s
-                            .db
-                            .python_state
-                            .module_instance()
-                            .type_lookup(
-                                i_s,
-                                |issue| self.add_issue(save_to_index, issue),
-                                name_str,
-                            )
-                            .into_maybe_inferred()
+                    ) && let Some(mut inf) = i_s
+                        .db
+                        .python_state
+                        .module_instance()
+                        .type_lookup(i_s, |issue| self.add_issue(save_to_index, issue), name_str)
+                        .into_maybe_inferred()
+                    {
+                        if matches!(name_str, "__package__" | "__file__")
+                            || name_str == "__doc__" && self.file.tree.root().docstring().is_some()
                         {
-                            if matches!(name_str, "__package__" | "__file__")
-                                || name_str == "__doc__"
-                                    && self.file.tree.root().docstring().is_some()
-                            {
-                                inf = inf.remove_none(i_s);
-                            }
-                            return PointResolution::Inferred(inf.save_redirect(
-                                i_s,
-                                self.file,
-                                save_to_index,
-                            ));
+                            inf = inf.remove_none(i_s);
                         }
+                        return PointResolution::Inferred(inf.save_redirect(
+                            i_s,
+                            self.file,
+                            save_to_index,
+                        ));
                     }
                     self.add_issue(
                         save_to_index,
@@ -786,13 +779,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             }
             if let Some(_func) = self.i_s.current_function() {
                 debug!("TODO lookup in func of sub file")
-            } else if let Some(class) = self.i_s.current_class() {
-                if let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name) {
-                    return Some(StarImportResult::Link(PointLink::new(
-                        class.node_ref.file_index(),
-                        index,
-                    )));
-                }
+            } else if let Some(class) = self.i_s.current_class()
+                && let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name)
+            {
+                return Some(StarImportResult::Link(PointLink::new(
+                    class.node_ref.file_index(),
+                    index,
+                )));
             }
             self.with_new_file(super_file)
                 .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)

@@ -298,17 +298,17 @@ fn gather_functional_enum_members(
         }
         _ => {
             let inf = node_ref.file.inference(i_s).infer_expression(expression);
-            if let Type::Literal(literal) = inf.as_cow_type(i_s).as_ref() {
-                if let LiteralKind::String(s) = &literal.kind {
-                    split_enum_members(
-                        i_s,
-                        enum_name,
-                        NodeRef::new(node_ref.file, expression.index()),
-                        &mut members,
-                        s,
-                    );
-                    return Some(members.into_boxed_slice());
-                }
+            if let Type::Literal(literal) = inf.as_cow_type(i_s).as_ref()
+                && let LiteralKind::String(s) = &literal.kind
+            {
+                split_enum_members(
+                    i_s,
+                    enum_name,
+                    NodeRef::new(node_ref.file, expression.index()),
+                    &mut members,
+                    s,
+                );
+                return Some(members.into_boxed_slice());
             }
             node_ref.add_issue(
                 i_s,

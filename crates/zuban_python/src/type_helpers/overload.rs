@@ -342,13 +342,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         ..
                     }
                     | UnionMathResult::FirstSimilarIndex(first_similar_index) = r
-                    {
-                        if first_similar
+                        && first_similar
                             .map(|f| f > first_similar_index)
                             .unwrap_or(true)
-                        {
-                            first_similar = Some(first_similar_index);
-                        }
+                    {
+                        first_similar = Some(first_similar_index);
                     }
                     match r {
                         UnionMathResult::Match { result, .. } if !mismatch => {

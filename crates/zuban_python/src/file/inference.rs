@@ -286,12 +286,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if self.file.is_stub() {
                 // Right side always exists, because it was compared and there was an error because
                 // of it.
-                if let AssignmentRightSide::StarExpressions(star_exprs) = right_side {
-                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        if expr.is_ellipsis_literal() {
-                            return None;
-                        }
-                    }
+                if let AssignmentRightSide::StarExpressions(star_exprs) = right_side
+                    && let StarExpressionContent::Expression(expr) = star_exprs.unpack()
+                    && expr.is_ellipsis_literal()
+                {
+                    return None;
                 }
             }
             let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
@@ -479,11 +478,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     )
                 }
                 self.assign_for_annotation(annotation, target, assignment_node_ref);
-                if let Some(right_side) = right_side {
-                    if !checked {
-                        let t = self.use_cached_annotation_type(annotation);
-                        self.check_right_side_against_annotation(&t, right_side);
-                    }
+                if let Some(right_side) = right_side
+                    && !checked
+                {
+                    let t = self.use_cached_annotation_type(annotation);
+                    self.check_right_side_against_annotation(&t, right_side);
                 }
             }
         }
@@ -523,14 +522,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 &result,
                 AssignKind::AugAssign,
                 |index, inf| {
-                    if let Target::NameExpression(_, n) = target {
-                        if !self.point(n.index()).calculated()
-                            && first_defined_name_of_multi_def(self.file, n.name_index()).is_none()
-                        {
-                            // In some cases where we have a self.foo += 1 where foo is defined
-                            // in the super class we need to save.
-                            inf.clone().save_redirect(self.i_s, self.file, index);
-                        }
+                    if let Target::NameExpression(_, n) = target
+                        && !self.point(n.index()).calculated()
+                        && first_defined_name_of_multi_def(self.file, n.name_index()).is_none()
+                    {
+                        // In some cases where we have a self.foo += 1 where foo is defined
+                        // in the super class we need to save.
+                        inf.clone().save_redirect(self.i_s, self.file, index);
                     }
                     // There is no need to save this in other cases, because it's never used
                 },
@@ -754,21 +752,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 return if let Some(other) =
                     GeneratorType::from_type(i_s.db, iter_result.as_cow_type(i_s))
                 {
-                    if let Some(expected_send_type) = &generator.send_type {
-                        if let Some(got_send_type) = &other.send_type {
-                            if !expected_send_type
-                                .is_simple_sub_type_of(i_s, got_send_type)
-                                .bool()
-                            {
-                                from.add_issue(
-                                    i_s,
-                                    IssueKind::YieldFromIncompatibleSendTypes {
-                                        got: got_send_type.format_short(i_s.db),
-                                        expected: expected_send_type.format_short(i_s.db),
-                                    },
-                                );
-                            }
-                        }
+                    if let Some(expected_send_type) = &generator.send_type
+                        && let Some(got_send_type) = &other.send_type
+                        && !expected_send_type
+                            .is_simple_sub_type_of(i_s, got_send_type)
+                            .bool()
+                    {
+                        from.add_issue(
+                            i_s,
+                            IssueKind::YieldFromIncompatibleSendTypes {
+                                got: got_send_type.format_short(i_s.db),
+                                expected: expected_send_type.format_short(i_s.db),
+                            },
+                        );
                     }
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)
@@ -906,13 +902,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 {
                     return None;
                 }
-                if narrow {
-                    if let Some(result) = self.maybe_lookup_narrowed_name(
+                if narrow
+                    && let Some(result) = self.maybe_lookup_narrowed_name(
                         name_index,
                         PointLink::new(self.file.file_index, first_index),
-                    ) {
-                        return Some(result);
-                    }
+                    )
+                {
+                    return Some(result);
                 }
                 // TODO check base class!
                 Some(self.infer_name_of_definition_by_index(first_index))
@@ -1000,21 +996,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     value.clone()
                 };
                 let override_class_infos = override_class.use_cached_class_infos(i_s.db);
-                if let Some(t) = override_class_infos.undefined_generics_type.get() {
-                    if let Type::Enum(e) = t.as_ref() {
-                        if e.members
-                            .iter()
-                            .any(|member| member.name(i_s.db) == name_str)
-                            && !ENUM_NAMES_OVERRIDABLE.contains(&name_str)
-                        {
-                            from.add_issue(
-                                i_s,
-                                IssueKind::CannotOverrideWritableWithFinalAttribute {
-                                    name: name_str.into(),
-                                },
-                            )
-                        }
-                    }
+                if let Some(t) = override_class_infos.undefined_generics_type.get()
+                    && let Type::Enum(e) = t.as_ref()
+                    && e.members
+                        .iter()
+                        .any(|member| member.name(i_s.db) == name_str)
+                    && !ENUM_NAMES_OVERRIDABLE.contains(&name_str)
+                {
+                    from.add_issue(
+                        i_s,
+                        IssueKind::CannotOverrideWritableWithFinalAttribute {
+                            name: name_str.into(),
+                        },
+                    )
                 }
                 let matched = check_override(
                     i_s,
@@ -1752,10 +1746,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     })
                     .with_origin(ApplyClassDescriptorsOrigin::AssignToClass),
                 );
-                if let Some(inf) = lookup_details.lookup.maybe_inferred() {
-                    if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
-                        from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
-                    }
+                if let Some(inf) = lookup_details.lookup.maybe_inferred()
+                    && inf.as_cow_type(i_s).is_func_or_overload_not_any_callable()
+                {
+                    from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
                 }
                 lookup = lookup_details.lookup;
                 attr_kind = lookup_details.attr_kind;
@@ -2246,10 +2240,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     ) {
         let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
         debug_assert_eq!(name_def.file_index(), self.file.file_index);
-        if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
-            if name_def.as_code() != "_" {
-                self.add_redefinition_issue(first, name_def.as_code(), false, add_issue)
-            }
+        if let Some(first) = first_defined_name_of_multi_def(self.file, name_index)
+            && name_def.as_code() != "_"
+        {
+            self.add_redefinition_issue(first, name_def.as_code(), false, add_issue)
         }
     }
 
@@ -2371,21 +2365,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let op = term.as_operation();
                 // Mypy special cases the case [...] * n where n is an int (see check_list_multiply
                 // in mypy)
-                if op.infos.operand == "*" {
-                    if let ExpressionPart::Atom(atom) = op.left {
-                        if matches!(atom.unpack(), AtomContent::List(_))
-                            && self
-                                .infer_expression_part(op.right)
-                                .as_cow_type(self.i_s)
-                                .is_simple_sub_type_of(
-                                    self.i_s,
-                                    &self.i_s.db.python_state.int_type(),
-                                )
-                                .bool()
-                        {
-                            return self.infer_atom(atom, result_context);
-                        }
-                    }
+                if op.infos.operand == "*"
+                    && let ExpressionPart::Atom(atom) = op.left
+                    && matches!(atom.unpack(), AtomContent::List(_))
+                    && self
+                        .infer_expression_part(op.right)
+                        .as_cow_type(self.i_s)
+                        .is_simple_sub_type_of(self.i_s, &self.i_s.db.python_state.int_type())
+                        .bool()
+                {
+                    return self.infer_atom(atom, result_context);
                 }
                 self.infer_operation(op)
             }
@@ -2395,19 +2384,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 if let ResultContext::AssignmentNewDefinition {
                     assignment_definition,
                 } = result_context
+                    && let Some(union_type) = self.i_s.db.python_state.union_type()
+                    && self.bitwise_or_might_be_a_type(or)
                 {
-                    if let Some(union_type) = self.i_s.db.python_state.union_type() {
-                        if self.bitwise_or_might_be_a_type(or) {
-                            debug!("Found a BitwiseOr expression that looks like a type alias");
-                            let node_ref = NodeRef::from_link(self.i_s.db, *assignment_definition);
-                            let assignment = node_ref.expect_assignment();
-                            if let Some((_, None, _)) =
-                                assignment.maybe_simple_type_expression_assignment()
-                            {
-                                self.compute_explicit_type_assignment(assignment);
-                                return Inferred::from_type(union_type);
-                            }
-                        }
+                    debug!("Found a BitwiseOr expression that looks like a type alias");
+                    let node_ref = NodeRef::from_link(self.i_s.db, *assignment_definition);
+                    let assignment = node_ref.expect_assignment();
+                    if let Some((_, None, _)) = assignment.maybe_simple_type_expression_assignment()
+                    {
+                        self.compute_explicit_type_assignment(assignment);
+                        return Inferred::from_type(union_type);
                     }
                 }
                 self.infer_operation(or.as_operation())
@@ -2596,24 +2582,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // b'a' == bytesarray(b'a') is fine.
                     if !(overlaps_bytes_or_bytearray(&element_t)
                         && overlaps_bytes_or_bytearray(&right_t))
+                        && let Some(container_t) = right_t.container_types(self.i_s.db)
+                        && !self.is_strict_equality_comparison(&element_t, &container_t)
                     {
-                        if let Some(container_t) = right_t.container_types(self.i_s.db) {
-                            if !self.is_strict_equality_comparison(&element_t, &container_t) {
-                                let formatted =
-                                    format_got_expected(self.i_s.db, &element_t, &container_t);
-                                self.file.add_issue(
-                                    self.i_s,
-                                    Issue::from_start_stop(
-                                        l.start(),
-                                        r.end(),
-                                        IssueKind::NonOverlappingContainsCheck {
-                                            element_type: formatted.got,
-                                            container_type: formatted.expected,
-                                        },
-                                    ),
-                                )
-                            }
-                        }
+                        let formatted = format_got_expected(self.i_s.db, &element_t, &container_t);
+                        self.file.add_issue(
+                            self.i_s,
+                            Issue::from_start_stop(
+                                l.start(),
+                                r.end(),
+                                IssueKind::NonOverlappingContainsCheck {
+                                    element_type: formatted.got,
+                                    container_type: formatted.expected,
+                                },
+                            ),
+                        )
                     }
                 }
                 self.infer_in_operator(from, &left_inf, right_inf)
@@ -2656,26 +2639,24 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 return true;
             }
             let mapping_node_ref = db.python_state.mapping_node_ref();
-            if let Some(map1) = c1.class_in_mro(db, mapping_node_ref) {
-                if let Some(map2) = c2.class_in_mro(db, mapping_node_ref) {
-                    return self.is_strict_equality_comparison(
-                        &map1.nth_type_argument(db, 0),
-                        &map2.nth_type_argument(db, 0),
-                    ) && self.is_strict_equality_comparison(
-                        &map1.nth_type_argument(db, 1),
-                        &map2.nth_type_argument(db, 1),
-                    );
-                }
+            if let Some(map1) = c1.class_in_mro(db, mapping_node_ref)
+                && let Some(map2) = c2.class_in_mro(db, mapping_node_ref)
+            {
+                return self.is_strict_equality_comparison(
+                    &map1.nth_type_argument(db, 0),
+                    &map2.nth_type_argument(db, 0),
+                ) && self.is_strict_equality_comparison(
+                    &map1.nth_type_argument(db, 1),
+                    &map2.nth_type_argument(db, 1),
+                );
             }
         }
-        if let Type::Tuple(tup1) = left_t.as_ref() {
-            if let Type::Tuple(tup2) = right_t.as_ref() {
-                if let TupleArgs::ArbitraryLen(inner1) = &tup1.args {
-                    if let TupleArgs::ArbitraryLen(inner2) = &tup2.args {
-                        return self.is_strict_equality_comparison(inner1, inner2);
-                    }
-                }
-            }
+        if let Type::Tuple(tup1) = left_t.as_ref()
+            && let Type::Tuple(tup2) = right_t.as_ref()
+            && let TupleArgs::ArbitraryLen(inner1) = &tup1.args
+            && let TupleArgs::ArbitraryLen(inner2) = &tup2.args
+        {
+            return self.is_strict_equality_comparison(inner1, inner2);
         }
         left_t.simple_overlaps(self.i_s, &right_t)
     }
@@ -2934,24 +2915,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         let get_strategy = || {
                             // Check for shortcuts first (in Mypy it's called
                             // `op_methods_that_shortcut`)
-                            if op_infos.shortcut_when_same_type {
-                                if let Some(left_instance) = l_type.maybe_class(i_s.db) {
-                                    if let Some(right_instance) = r_type.maybe_class(i_s.db) {
-                                        if left_instance.node_ref == right_instance.node_ref {
-                                            return LookupStrategy::ShortCircuit;
-                                        }
-                                    }
-                                }
+                            if op_infos.shortcut_when_same_type
+                                && let Some(left_instance) = l_type.maybe_class(i_s.db)
+                                && let Some(right_instance) = r_type.maybe_class(i_s.db)
+                                && left_instance.node_ref == right_instance.node_ref
+                            {
+                                return LookupStrategy::ShortCircuit;
                             }
                             // If right is a sub type of left, Python and Mypy execute right first
-                            if r_type.is_simple_sub_type_of(i_s, l_type).bool() {
-                                if let Some(TypeOrClass::Class(l_class)) = l_defined_in {
-                                    if let Some(TypeOrClass::Class(r_class)) = r_defined_in {
-                                        if l_class.node_ref != r_class.node_ref {
-                                            return LookupStrategy::ReverseThenNormal;
-                                        }
-                                    }
-                                }
+                            if r_type.is_simple_sub_type_of(i_s, l_type).bool()
+                                && let Some(TypeOrClass::Class(l_class)) = l_defined_in
+                                && let Some(TypeOrClass::Class(r_class)) = r_defined_in
+                                && l_class.node_ref != r_class.node_ref
+                            {
+                                return LookupStrategy::ReverseThenNormal;
                             }
                             LookupStrategy::NormalThenReverse
                         };
@@ -3165,10 +3142,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let mut t = first_arg_as_t()?;
             if unwrap_from_iterable && !t.is_any() {
                 t = t.mro(i_s.db).find_map(|(_, type_or_class)| {
-                    if let TypeOrClass::Class(maybe_iterable_cls) = type_or_class {
-                        if maybe_iterable_cls.node_ref == i_s.db.python_state.iterable_node_ref() {
-                            return Some(maybe_iterable_cls.nth_type_argument(i_s.db, 0));
-                        }
+                    if let TypeOrClass::Class(maybe_iterable_cls) = type_or_class
+                        && maybe_iterable_cls.node_ref == i_s.db.python_state.iterable_node_ref()
+                    {
+                        return Some(maybe_iterable_cls.nth_type_argument(i_s.db, 0));
                     }
                     None
                 })?;
@@ -3254,13 +3231,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Some(t) => return Inferred::from_type(t),
             None => self.infer_primary_or_atom(primary.first()),
         };
-        let result = self.infer_primary_or_primary_t_content(
-            &base,
-            primary.index(),
-            primary.second(),
-            false,
-            result_context,
-        );
+
         /*
          * TODO reenable this? see test testNewAnalyzerAliasToNotReadyNestedClass2
         debug!(
@@ -3269,7 +3240,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             result.format_short(self.i_s)
         );
         */
-        result
+        self.infer_primary_or_primary_t_content(
+            &base,
+            primary.index(),
+            primary.second(),
+            false,
+            result_context,
+        )
     }
 
     pub(super) fn infer_primary_or_primary_t_content(
@@ -3639,47 +3616,45 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if let Some(inferred) = self.check_point_cache(primary_target.index()) {
             return Some(inferred);
         }
-        if use_narrows {
-            if let Some(inf) = self.maybe_lookup_narrowed_primary_target(primary_target) {
-                return Some(inf);
-            }
+        if use_narrows && let Some(inf) = self.maybe_lookup_narrowed_primary_target(primary_target)
+        {
+            return Some(inf);
         }
         let second = primary_target.second();
-        if self.is_self(primary_target.first()) {
-            if let PrimaryContent::Attribute(attr) = second {
-                let i = attr.index();
-                if self.point(i).calculated() {
-                    if let Some(first) = first_defined_name_of_multi_def(self.file, i) {
-                        let point = self.point(first - NAME_DEF_TO_NAME_DIFFERENCE);
-                        if point.calculated()
-                            && point.maybe_specific().is_some_and(|s| s.is_partial())
-                        {
-                            return None;
-                        }
+        if self.is_self(primary_target.first())
+            && let PrimaryContent::Attribute(attr) = second
+        {
+            let i = attr.index();
+            if self.point(i).calculated() {
+                if let Some(first) = first_defined_name_of_multi_def(self.file, i) {
+                    let point = self.point(first - NAME_DEF_TO_NAME_DIFFERENCE);
+                    if point.calculated() && point.maybe_specific().is_some_and(|s| s.is_partial())
+                    {
+                        return None;
+                    }
+                } else {
+                    // This is the initial definition of self. The definition is not defined at
+                    // this point is probably just inferred to know its context (which is not
+                    // known, because this is going to be the definition).
+                    let had_issue = Cell::new(false);
+                    let lookup = self
+                        .i_s
+                        .current_class()
+                        .unwrap()
+                        .instance()
+                        .lookup(
+                            self.i_s,
+                            attr.as_code(),
+                            InstanceLookupOptions::new(&|_| had_issue.set(true))
+                                .without_object()
+                                .with_skip_first_self_variables()
+                                .with_avoid_inferring_return_types(),
+                        )
+                        .lookup;
+                    if had_issue.get() {
+                        return None;
                     } else {
-                        // This is the initial definition of self. The definition is not defined at
-                        // this point is probably just inferred to know its context (which is not
-                        // known, because this is going to be the definition).
-                        let had_issue = Cell::new(false);
-                        let lookup = self
-                            .i_s
-                            .current_class()
-                            .unwrap()
-                            .instance()
-                            .lookup(
-                                self.i_s,
-                                attr.as_code(),
-                                InstanceLookupOptions::new(&|_| had_issue.set(true))
-                                    .without_object()
-                                    .with_skip_first_self_variables()
-                                    .with_avoid_inferring_return_types(),
-                            )
-                            .lookup;
-                        if had_issue.get() {
-                            return None;
-                        } else {
-                            return lookup.into_maybe_inferred();
-                        }
+                        return lookup.into_maybe_inferred();
                     }
                 }
             }
@@ -3826,10 +3801,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         None
                     };
                     let p = node_ref.name_ref_of_name_def().point();
-                    if p.calculated() && p.needs_flow_analysis() {
-                        if let Some(result) = ensure_flow_analysis() {
-                            return result;
-                        }
+                    if p.calculated()
+                        && p.needs_flow_analysis()
+                        && let Some(result) = ensure_flow_analysis()
+                    {
+                        return result;
                     }
                     let r = FLOW_ANALYSIS.with(|fa| {
                         fa.with_new_empty_without_unfinished_partial_checking(|| {
@@ -3939,13 +3915,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         {
                             return Type::TypeVar(usage);
                         }
-                        if let Some(cls) = func.class {
-                            if let Some(usage) = cls
+                        if let Some(cls) = func.class
+                            && let Some(usage) = cls
                                 .type_vars(self.i_s)
                                 .find_untyped_param_type_var(cls.as_link(), param_index)
-                            {
-                                return Type::TypeVar(usage);
-                            }
+                        {
+                            return Type::TypeVar(usage);
                         }
                         Type::Any(AnyCause::Unannotated)
                     };
@@ -3985,10 +3960,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     pub fn infer_name_of_definition(&self, name: Name) -> Inferred {
         let point = self.point(name.index());
-        if point.calculated() && !point.is_name_of_name_def_like() {
-            if let Some(inf) = self.check_point_cache(name.index()) {
-                return inf;
-            }
+        if point.calculated()
+            && !point.is_name_of_name_def_like()
+            && let Some(inf) = self.check_point_cache(name.index())
+        {
+            return inf;
         }
         self.infer_name_def(name.name_def().unwrap())
     }
@@ -4002,13 +3978,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     fn cache_defining_stmt(&self, defining_stmt: DefiningStmt, name_def: NodeRef) {
-        if std::cfg!(debug_assertions) {
-            if let Some(class) = self.i_s.current_class() {
-                debug_assert!(
-                    matches!(class.generics(), Generics::Self_ { .. } | Generics::None,),
-                    "{defining_stmt:?} {class:?}",
-                )
-            }
+        if std::cfg!(debug_assertions)
+            && let Some(class) = self.i_s.current_class()
+        {
+            debug_assert!(
+                matches!(class.generics(), Generics::Self_ { .. } | Generics::None,),
+                "{defining_stmt:?} {class:?}",
+            )
         }
         debug!(
             "Infer name {} of stmt ({}:#{})",
@@ -4399,31 +4375,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             });
         }
         let expr = decorator.named_expression().expression();
-        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack() {
-            if let PrimaryContent::Execution(exec) = primary.second() {
-                if !self.point(primary.index()).calculated() {
-                    // Try to find dataclass_transform and if there isn't one use the normal inference
-                    let base = self.infer_primary_or_atom(primary.first());
-                    if base.maybe_saved_specific(self.i_s.db)
-                        == Some(Specific::TypingDataclassTransform)
-                    {
-                        self.insert_dataclass_transform(primary, exec);
-                    } else {
-                        self.primary_execute(
-                            &base,
-                            primary.index(),
-                            exec,
-                            &mut ResultContext::Unknown,
-                        )
-                        .save_redirect(
-                            self.i_s,
-                            self.file,
-                            primary.index(),
-                        );
-                    };
-                    debug_assert!(self.point(primary.index()).calculated());
-                }
-            }
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
+            && let PrimaryContent::Execution(exec) = primary.second()
+            && !self.point(primary.index()).calculated()
+        {
+            // Try to find dataclass_transform and if there isn't one use the normal inference
+            let base = self.infer_primary_or_atom(primary.first());
+            if base.maybe_saved_specific(self.i_s.db) == Some(Specific::TypingDataclassTransform) {
+                self.insert_dataclass_transform(primary, exec);
+            } else {
+                self.primary_execute(&base, primary.index(), exec, &mut ResultContext::Unknown)
+                    .save_redirect(self.i_s, self.file, primary.index());
+            };
+            debug_assert!(self.point(primary.index()).calculated());
         }
         let i = self.infer_named_expression(decorator.named_expression());
         if self.file.points.get(decorator.index()).calculated() {
@@ -4753,20 +4717,18 @@ fn lookup_lambda_param(
                 return match &current_callable.params {
                     CallableParams::Simple(c_params) => {
                         for p2 in c_params.iter() {
-                            if let Some(n) = &p2.name {
-                                if n.as_str(i_s.db) == p.name_def().as_code() {
-                                    if let Some(t) = p2.type_.maybe_type() {
-                                        return Inferred::from_type(t.clone());
-                                    }
-                                }
+                            if let Some(n) = &p2.name
+                                && n.as_str(i_s.db) == p.name_def().as_code()
+                                && let Some(t) = p2.type_.maybe_type()
+                            {
+                                return Inferred::from_type(t.clone());
                             }
                         }
-                        if p.kind() == ParamKind::PositionalOrKeyword {
-                            if let Some(p2) = c_params.get(i) {
-                                if let ParamType::PositionalOnly(t) = &p2.type_ {
-                                    return Inferred::from_type(t.clone());
-                                }
-                            }
+                        if p.kind() == ParamKind::PositionalOrKeyword
+                            && let Some(p2) = c_params.get(i)
+                            && let ParamType::PositionalOnly(t) = &p2.type_
+                        {
+                            return Inferred::from_type(t.clone());
                         }
                         // TODO here we should do proper matching for lambda params.
                         Inferred::new_any(AnyCause::FromError)

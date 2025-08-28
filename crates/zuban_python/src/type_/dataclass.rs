@@ -219,67 +219,65 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
 
     let class_symbol_table = &cls.class_storage.class_symbol_table;
     for (_, c) in cls.mro(db).rev() {
-        if let TypeOrClass::Type(t) = c {
-            if let Type::Dataclass(super_dataclass) = t.as_ref() {
-                if let Some((frozen1, frozen2)) =
-                    dataclass.options.frozen.zip(super_dataclass.options.frozen)
-                {
-                    if frozen1 != frozen2 {
-                        let arguments = cls.node().arguments().unwrap();
-                        NodeRef::new(file, arguments.index()).add_issue(
+        if let TypeOrClass::Type(t) = c
+            && let Type::Dataclass(super_dataclass) = t.as_ref()
+        {
+            if let Some((frozen1, frozen2)) =
+                dataclass.options.frozen.zip(super_dataclass.options.frozen)
+                && frozen1 != frozen2
+            {
+                let arguments = cls.node().arguments().unwrap();
+                NodeRef::new(file, arguments.index()).add_issue(
+                    i_s,
+                    match frozen1 {
+                        false => IssueKind::DataclassCannotInheritNonFrozenFromFrozen,
+                        true => IssueKind::DataclassCannotInheritFrozenFromNonFrozen,
+                    },
+                );
+            }
+            let cls = super_dataclass.class(db);
+            let init = dataclass_init_func(super_dataclass, db);
+            let post_init = &super_dataclass.expect_calculated_post_init();
+            for param in init.expect_simple_params().iter() {
+                let mut new_param = param.clone();
+                let t = match &mut new_param.type_ {
+                    ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => t,
+                    // Comes from an incomplete_mro
+                    ParamType::Star(_) | ParamType::StarStar(_) => continue,
+                    _ => unreachable!(),
+                };
+                *t = replace_class_type_vars(db, t, &cls, &|| {
+                    Some(Type::Dataclass(dataclass.clone()))
+                })
+                .into_owned();
+                let cloned_name = new_param.name.clone().unwrap();
+                let param_name = cloned_name.as_str(db);
+                if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {
+                    let mut n = NodeRef::new(file, in_current_class);
+                    if n.expect_name()
+                        .name_def()
+                        .unwrap()
+                        .maybe_assignment_definition()
+                        .is_none()
+                    {
+                        if let Some(funcdef) =
+                            NodeRef::new(file, in_current_class - NAME_TO_FUNCTION_DIFF)
+                                .maybe_function()
+                            && let Some(decorated) = funcdef.maybe_decorated()
+                        {
+                            n = NodeRef::new(file, decorated.index());
+                        }
+                        n.add_issue(
                             i_s,
-                            match frozen1 {
-                                false => IssueKind::DataclassCannotInheritNonFrozenFromFrozen,
-                                true => IssueKind::DataclassCannotInheritFrozenFromNonFrozen,
-                            },
+                            IssueKind::DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
                         );
                     }
                 }
-                let cls = super_dataclass.class(db);
-                let init = dataclass_init_func(super_dataclass, db);
-                let post_init = &super_dataclass.expect_calculated_post_init();
-                for param in init.expect_simple_params().iter() {
-                    let mut new_param = param.clone();
-                    let t = match &mut new_param.type_ {
-                        ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => t,
-                        // Comes from an incomplete_mro
-                        ParamType::Star(_) | ParamType::StarStar(_) => continue,
-                        _ => unreachable!(),
-                    };
-                    *t = replace_class_type_vars(db, t, &cls, &|| {
-                        Some(Type::Dataclass(dataclass.clone()))
-                    })
-                    .into_owned();
-                    let cloned_name = new_param.name.clone().unwrap();
-                    let param_name = cloned_name.as_str(db);
-                    if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {
-                        let mut n = NodeRef::new(file, in_current_class);
-                        if n.expect_name()
-                            .name_def()
-                            .unwrap()
-                            .maybe_assignment_definition()
-                            .is_none()
-                        {
-                            if let Some(funcdef) =
-                                NodeRef::new(file, in_current_class - NAME_TO_FUNCTION_DIFF)
-                                    .maybe_function()
-                            {
-                                if let Some(decorated) = funcdef.maybe_decorated() {
-                                    n = NodeRef::new(file, decorated.index());
-                                }
-                            }
-                            n.add_issue(
-                                i_s,
-                                IssueKind::DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
-                            );
-                        }
-                    }
-                    if add_param(&mut params, new_param) {
-                        for p in post_init.expect_simple_params() {
-                            if p.name.as_ref().unwrap().as_str(db) == param_name {
-                                post_init_params.push(p.clone());
-                                break;
-                            }
+                if add_param(&mut params, new_param) {
+                    for p in post_init.expect_simple_params() {
+                        if p.name.as_ref().unwrap().as_str(db) == param_name {
+                            post_init_params.push(p.clone());
+                            break;
                         }
                     }
                 }
@@ -297,90 +295,87 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
 
     for (_, name_index) in class_symbol_table.iter() {
         let name = NodeRef::new(file, *name_index).expect_name();
-        if let Some(assignment) = name.maybe_assignment_definition_name() {
-            if let AssignmentContent::WithAnnotation(target, annotation, right_side) =
+        if let Some(assignment) = name.maybe_assignment_definition_name()
+            && let AssignmentContent::WithAnnotation(target, annotation, right_side) =
                 assignment.unpack()
-            {
-                inference.ensure_cached_annotation(annotation, right_side.is_some());
-                let field_options = calculate_field_arg(i_s, file, right_side, &dataclass.options);
-                let point = file.points.get(annotation.index());
-                match point.maybe_specific() {
-                    Some(Specific::AnnotationOrTypeCommentClassVar) => {
-                        // ClassVar[] are not part of the dataclass.
-                        continue;
-                    }
-                    Some(Specific::AnnotationTypeAlias) => {
-                        NodeRef::new(file, assignment.index())
-                            .add_issue(i_s, IssueKind::DataclassContainsTypeAlias);
-                        continue;
-                    }
-                    Some(Specific::AnnotationOrTypeCommentFinal) => {
-                        if !file
-                            .points
-                            .get(annotation.expression().index())
-                            .calculated()
-                        {
-                            let annotation_ref = NodeRef::new(file, annotation.index());
-                            inference.fill_potentially_unfinished_final_or_class_var(
-                                annotation_ref,
-                                right_side,
-                            );
-                            if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {
-                                annotation_ref
-                                    .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass)
-                            }
+        {
+            inference.ensure_cached_annotation(annotation, right_side.is_some());
+            let field_options = calculate_field_arg(i_s, file, right_side, &dataclass.options);
+            let point = file.points.get(annotation.index());
+            match point.maybe_specific() {
+                Some(Specific::AnnotationOrTypeCommentClassVar) => {
+                    // ClassVar[] are not part of the dataclass.
+                    continue;
+                }
+                Some(Specific::AnnotationTypeAlias) => {
+                    NodeRef::new(file, assignment.index())
+                        .add_issue(i_s, IssueKind::DataclassContainsTypeAlias);
+                    continue;
+                }
+                Some(Specific::AnnotationOrTypeCommentFinal) => {
+                    if !file
+                        .points
+                        .get(annotation.expression().index())
+                        .calculated()
+                    {
+                        let annotation_ref = NodeRef::new(file, annotation.index());
+                        inference.fill_potentially_unfinished_final_or_class_var(
+                            annotation_ref,
+                            right_side,
+                        );
+                        if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {
+                            annotation_ref
+                                .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass)
                         }
                     }
-                    _ => (),
                 }
-                let mut t = inference
-                    .use_cached_annotation_type(annotation)
-                    .into_owned();
-                let mut is_init_var = false;
-                if let Type::Class(c) = &t {
-                    if c.class(i_s.db).node_ref.is_name_defined_in_module(
-                        i_s.db,
-                        "dataclasses",
-                        "InitVar",
-                    ) {
-                        t = c.class(db).nth_type_argument(db, 0);
-                        is_init_var = true;
-                    }
-                }
-                /*
-                TODO?
-                if !matches!(dataclass.class.generics, ClassGenerics::NotDefinedYet | ClassGenerics::None) {
-                    t = replace_class_type_vars(db, &t, &cls, &|| );
-                }
-                */
-                if is_init_var {
-                    if let Some(right_side) = right_side {
-                        // Since an InitVar is special and actually not checked against defaults, we
-                        // need to check for this separately and tell the inference that this was
-                        // already done.
-                        inference.check_right_side_against_annotation(&t, right_side);
-                        inference.assign_for_annotation(
-                            annotation,
-                            target,
-                            NodeRef::new(file, right_side.index()),
-                        );
-                        file.points.set(
-                            assignment.index(),
-                            Point::new_specific(Specific::Analyzed, Locality::Todo),
-                        );
-                    }
-                }
-                let name = field_options.alias_name.clone().unwrap_or_else(|| {
-                    DbString::StringSlice(StringSlice::from_name(cls.node_ref.file_index(), name))
-                });
-                with_indexes.push(Annotated {
-                    name_index: *name_index,
-                    t,
-                    name,
-                    field_options,
-                    is_init_var,
-                });
+                _ => (),
             }
+            let mut t = inference
+                .use_cached_annotation_type(annotation)
+                .into_owned();
+            let mut is_init_var = false;
+            if let Type::Class(c) = &t
+                && c.class(i_s.db).node_ref.is_name_defined_in_module(
+                    i_s.db,
+                    "dataclasses",
+                    "InitVar",
+                )
+            {
+                t = c.class(db).nth_type_argument(db, 0);
+                is_init_var = true;
+            }
+            /*
+            TODO?
+            if !matches!(dataclass.class.generics, ClassGenerics::NotDefinedYet | ClassGenerics::None) {
+                t = replace_class_type_vars(db, &t, &cls, &|| );
+            }
+            */
+            if is_init_var && let Some(right_side) = right_side {
+                // Since an InitVar is special and actually not checked against defaults, we
+                // need to check for this separately and tell the inference that this was
+                // already done.
+                inference.check_right_side_against_annotation(&t, right_side);
+                inference.assign_for_annotation(
+                    annotation,
+                    target,
+                    NodeRef::new(file, right_side.index()),
+                );
+                file.points.set(
+                    assignment.index(),
+                    Point::new_specific(Specific::Analyzed, Locality::Todo),
+                );
+            }
+            let name = field_options.alias_name.clone().unwrap_or_else(|| {
+                DbString::StringSlice(StringSlice::from_name(cls.node_ref.file_index(), name))
+            });
+            with_indexes.push(Annotated {
+                name_index: *name_index,
+                t,
+                name,
+                field_options,
+                is_init_var,
+            });
         }
     }
 
@@ -533,17 +528,14 @@ fn set_descriptor_update_for_init(i_s: &InferenceState, t: &mut Type) {
     };
     // TODO Currently overloads arg ignored, but theoretically we should
     // support this as well.
-    if let Some(CallableLike::Callable(c)) = inf.as_cow_type(i_s).maybe_callable(i_s) {
-        if let CallableParams::Simple(s) = &c.params {
-            if let Some(third_param) = s.get(2) {
-                if let ParamType::PositionalOnly(new) | ParamType::PositionalOrKeyword(new) =
-                    &third_param.type_
-                {
-                    *t = new.clone();
-                    return;
-                }
-            }
-        }
+    if let Some(CallableLike::Callable(c)) = inf.as_cow_type(i_s).maybe_callable(i_s)
+        && let CallableParams::Simple(s) = &c.params
+        && let Some(third_param) = s.get(2)
+        && let ParamType::PositionalOnly(new) | ParamType::PositionalOrKeyword(new) =
+            &third_param.type_
+    {
+        *t = new.clone();
+        return;
     }
     *t = Type::Any(AnyCause::Internal);
 }
@@ -573,45 +565,41 @@ fn calculate_field_arg(
     right_side: Option<AssignmentRightSide>,
     options: &DataclassOptions,
 ) -> FieldOptions {
-    if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right_side {
-        if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
-                expr.unpack()
-            {
-                if let PrimaryContent::Execution(details) = primary.second() {
-                    let left = file.inference(i_s).infer_primary_or_atom(primary.first());
-                    if let Some(specifiers) = &options.transform_field_specifiers {
-                        for specifier in specifiers.iter() {
-                            if left.maybe_saved_link() == Some(*specifier) {
-                                let mut options = FieldOptions::default();
-                                apply_default_options_from_dataclass_transform_field(
-                                    i_s,
-                                    left,
-                                    &mut options,
-                                    &SimpleArgs::from_primary(*i_s, file, primary),
-                                );
-                                return field_options_from_args(
-                                    i_s,
-                                    file,
-                                    primary.index(),
-                                    details,
-                                    true,
-                                    options,
-                                );
-                            }
-                        }
-                    } else if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
-                        return field_options_from_args(
-                            i_s,
-                            file,
-                            primary.index(),
-                            details,
-                            false,
-                            FieldOptions::default(),
-                        );
-                    }
+    if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right_side
+        && let StarExpressionContent::Expression(expr) = star_exprs.unpack()
+        && let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
+        && let PrimaryContent::Execution(details) = primary.second()
+    {
+        let left = file.inference(i_s).infer_primary_or_atom(primary.first());
+        if let Some(specifiers) = &options.transform_field_specifiers {
+            for specifier in specifiers.iter() {
+                if left.maybe_saved_link() == Some(*specifier) {
+                    let mut options = FieldOptions::default();
+                    apply_default_options_from_dataclass_transform_field(
+                        i_s,
+                        left,
+                        &mut options,
+                        &SimpleArgs::from_primary(*i_s, file, primary),
+                    );
+                    return field_options_from_args(
+                        i_s,
+                        file,
+                        primary.index(),
+                        details,
+                        true,
+                        options,
+                    );
                 }
             }
+        } else if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
+            return field_options_from_args(
+                i_s,
+                file,
+                primary.index(),
+                details,
+                false,
+                FieldOptions::default(),
+            );
         }
     }
     FieldOptions {
@@ -688,12 +676,11 @@ fn apply_default_options_from_dataclass_transform_field<'db>(
         if let Some(func) = NodeRef::from_link(i_s.db, c.defined_at).maybe_function() {
             for p in func.params().iter() {
                 // Currently this is only applied for init in Mypy.
-                if p.name_def().as_code() == "init" {
-                    if let Some(default) = p.default() {
-                        if let Some(b) = default.maybe_simple_bool() {
-                            options.init = b;
-                        }
-                    }
+                if p.name_def().as_code() == "init"
+                    && let Some(default) = p.default()
+                    && let Some(b) = default.maybe_simple_bool()
+                {
+                    options.init = b;
                 }
             }
         }
@@ -731,66 +718,66 @@ pub(crate) fn dataclasses_replace<'db>(
     debug_assert!(bound.is_none());
 
     let mut arg_iterator = args.iter(i_s.mode);
-    if let Some(first) = arg_iterator.next() {
-        if let ArgKind::Positional(positional) = &first.kind {
-            let inferred = positional.infer(&mut ResultContext::Unknown);
-            let successful = run_on_dataclass(
-                i_s,
-                Some(positional.node_ref),
-                &inferred.as_cow_type(i_s),
-                &mut |dataclass| {
-                    let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
-                    let mut params: Vec<_> = replace_func.expect_simple_params().into();
-                    for param in params.iter_mut() {
-                        let t = param.type_.maybe_type().unwrap();
-                        param.type_ = ParamType::KeywordOnly(t.clone());
-                        // All normal dataclass arguments are optional, because they can be
-                        // overridden or just be left in place. However this is different for
-                        // InitVars, which always need to be there. To check if something is an
-                        // InitVar, we use this hack and check if the attribute exists on the
-                        // dataclass. If not, it's an InitVar.
-                        if lookup_on_dataclass(
-                            dataclass,
-                            i_s,
-                            |issue| args.add_issue(i_s, issue),
-                            param.name.as_ref().unwrap().as_str(i_s.db),
-                        )
-                        .lookup
-                        .is_some()
-                        {
-                            param.has_default = true;
-                        }
-                    }
-                    params.insert(
-                        0,
-                        CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
-                            AnyCause::Todo,
-                        ))),
-                    );
-                    replace_func.params = CallableParams::new_simple(params.into());
-                    Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
+    if let Some(first) = arg_iterator.next()
+        && let ArgKind::Positional(positional) = &first.kind
+    {
+        let inferred = positional.infer(&mut ResultContext::Unknown);
+        let successful = run_on_dataclass(
+            i_s,
+            Some(positional.node_ref),
+            &inferred.as_cow_type(i_s),
+            &mut |dataclass| {
+                let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
+                let mut params: Vec<_> = replace_func.expect_simple_params().into();
+                for param in params.iter_mut() {
+                    let t = param.type_.maybe_type().unwrap();
+                    param.type_ = ParamType::KeywordOnly(t.clone());
+                    // All normal dataclass arguments are optional, because they can be
+                    // overridden or just be left in place. However this is different for
+                    // InitVars, which always need to be there. To check if something is an
+                    // InitVar, we use this hack and check if the attribute exists on the
+                    // dataclass. If not, it's an InitVar.
+                    if lookup_on_dataclass(
+                        dataclass,
                         i_s,
-                        args,
-                        false,
-                        on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
-                            Some(format!(
-                                r#""replace" of "{}""#,
-                                dataclass.class(i_s.db).format_short(i_s.db)
-                            ))
-                        }),
-                        &mut ResultContext::Unknown,
-                        None,
-                    );
-                },
-            );
-            if successful {
-                return inferred;
-            } else {
-                // Error is raised by the type checker
-                return Inferred::new_any_from_error();
-            }
-            // All other cases are checked by the type checker that uses the typeshed stubs.
+                        |issue| args.add_issue(i_s, issue),
+                        param.name.as_ref().unwrap().as_str(i_s.db),
+                    )
+                    .lookup
+                    .is_some()
+                    {
+                        param.has_default = true;
+                    }
+                }
+                params.insert(
+                    0,
+                    CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
+                        AnyCause::Todo,
+                    ))),
+                );
+                replace_func.params = CallableParams::new_simple(params.into());
+                Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
+                    i_s,
+                    args,
+                    false,
+                    on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
+                        Some(format!(
+                            r#""replace" of "{}""#,
+                            dataclass.class(i_s.db).format_short(i_s.db)
+                        ))
+                    }),
+                    &mut ResultContext::Unknown,
+                    None,
+                );
+            },
+        );
+        if successful {
+            return inferred;
+        } else {
+            // Error is raised by the type checker
+            return Inferred::new_any_from_error();
         }
+        // All other cases are checked by the type checker that uses the typeshed stubs.
     }
     // Execute the original function (in typeshed).
     i_s.db
@@ -1079,24 +1066,23 @@ pub(crate) fn lookup_on_dataclass<'a>(
     add_issue: impl Fn(IssueKind),
     name: &str,
 ) -> LookupDetails<'a> {
-    if self_.options.frozen == Some(true) {
-        if let Some(param) = dataclass_init_func(self_, i_s.db)
+    if self_.options.frozen == Some(true)
+        && let Some(param) = dataclass_init_func(self_, i_s.db)
             .expect_simple_params()
             .iter()
             .find(|p| p.name.as_ref().is_some_and(|n| n.as_str(i_s.db) == name))
-        {
-            return LookupDetails::new(
-                Type::Dataclass(self_.clone()),
-                LookupResult::UnknownName(Inferred::from_type(
-                    param.type_.maybe_type().unwrap().clone(),
-                )),
-                AttributeKind::Property {
-                    setter_type: None,
-                    is_final: false,
-                    is_abstract: true,
-                },
-            );
-        }
+    {
+        return LookupDetails::new(
+            Type::Dataclass(self_.clone()),
+            LookupResult::UnknownName(Inferred::from_type(
+                param.type_.maybe_type().unwrap().clone(),
+            )),
+            AttributeKind::Property {
+                setter_type: None,
+                is_final: false,
+                is_abstract: true,
+            },
+        );
     }
     let (result, attr_kind) = lookup_symbol_internal(self_.clone(), i_s, name);
     if result.is_some() {

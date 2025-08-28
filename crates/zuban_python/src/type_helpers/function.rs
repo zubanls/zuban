@@ -339,24 +339,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 callable.guard = None;
                 return;
             }
-            if guard.from_type_is {
-                if let Some(param) = first_param {
-                    if let Some(annotation) = param.annotation() {
-                        let annotation_t = use_cached_param_annotation_type(
-                            i_s.db,
-                            self.node_ref.file,
-                            annotation,
-                        );
-                        if !guard.type_.is_simple_sub_type_of(i_s, &annotation_t).bool() {
-                            self.add_issue_for_declaration(
-                                i_s,
-                                IssueKind::TypeIsNarrowedTypeIsNotSubtypeOfInput {
-                                    narrowed_t: guard.type_.format_short(i_s.db),
-                                    input_t: annotation_t.format_short(i_s.db),
-                                },
-                            );
-                        }
-                    }
+            if guard.from_type_is
+                && let Some(param) = first_param
+                && let Some(annotation) = param.annotation()
+            {
+                let annotation_t =
+                    use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
+                if !guard.type_.is_simple_sub_type_of(i_s, &annotation_t).bool() {
+                    self.add_issue_for_declaration(
+                        i_s,
+                        IssueKind::TypeIsNarrowedTypeIsNotSubtypeOfInput {
+                            narrowed_t: guard.type_.format_short(i_s.db),
+                            input_t: annotation_t.format_short(i_s.db),
+                        },
+                    );
                 }
             }
         }
@@ -555,17 +551,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else {
             // When inferring params while inferring the return type, the function might not yet
             // be defined. In that case simply check for static/classmethods
-            if self.class.is_some() {
-                if let Some(decorated) = self.node().maybe_decorated() {
-                    for decorator in decorated.decorators().iter() {
-                        let inf = self.file.inference(i_s).infer_decorator(decorator);
-                        if let Some(saved_link) = inf.maybe_saved_link() {
-                            if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
-                                return FirstParamKind::ClassOfSelf;
-                            }
-                            if saved_link == i_s.db.python_state.staticmethod_node_ref().as_link() {
-                                return FirstParamKind::InStaticmethod;
-                            }
+            if self.class.is_some()
+                && let Some(decorated) = self.node().maybe_decorated()
+            {
+                for decorator in decorated.decorators().iter() {
+                    let inf = self.file.inference(i_s).infer_decorator(decorator);
+                    if let Some(saved_link) = inf.maybe_saved_link() {
+                        if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
+                            return FirstParamKind::ClassOfSelf;
+                        }
+                        if saved_link == i_s.db.python_state.staticmethod_node_ref().as_link() {
+                            return FirstParamKind::InStaticmethod;
                         }
                     }
                 }
@@ -637,10 +633,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 return c.kind.clone();
                             }
                         }
-                        if let Some(implementation) = &o.implementation {
-                            if implementation.callable.defined_at == self.node_ref.as_link() {
-                                return implementation.callable.kind.clone();
-                            }
+                        if let Some(implementation) = &o.implementation
+                            && implementation.callable.defined_at == self.node_ref.as_link()
+                        {
+                            return implementation.callable.kind.clone();
                         }
                     }
                     Function::new(original_func, self.class).kind(i_s)
@@ -1245,11 +1241,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
             }
         }
-        if let Some(implementation) = &implementation {
-            if in_stub {
-                name_def_node_ref(implementation.function_link)
-                    .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
-            }
+        if let Some(implementation) = &implementation
+            && in_stub
+        {
+            name_def_node_ref(implementation.function_link)
+                .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
         }
 
         if has_non_abstract && has_abstract {
@@ -1286,18 +1282,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     fn maybe_part_of_unreachable_overload(&self) -> Option<&OverloadDefinition> {
         let file = self.node_ref.file;
-        if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable) {
-            if let Some(first_index) =
+        if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
+            && let Some(first_index) =
                 first_defined_name_of_multi_def(file, self.node().name().index())
-            {
-                if let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function() {
-                    if let Some(ComplexPoint::FunctionOverload(o)) =
-                        NodeRef::new(self.node_ref.file, func.index()).maybe_complex()
-                    {
-                        return Some(o);
-                    }
-                }
-            }
+            && let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function()
+            && let Some(ComplexPoint::FunctionOverload(o)) =
+                NodeRef::new(self.node_ref.file, func.index()).maybe_complex()
+        {
+            return Some(o);
         }
         None
     }
@@ -1468,22 +1460,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut new_params = vec![];
         let file_index = self.node_ref.file_index();
         for (i, p) in params.enumerate() {
-            if p.param.kind() == ParamKind::Star {
-                if let Some(ts) = p
+            if p.param.kind() == ParamKind::Star
+                && let Some(ts) = p
                     .annotation(i_s.db)
                     .as_ref()
                     .and_then(|t| t.maybe_fixed_len_tuple())
-                {
-                    // e.g. `*foo: *tuple[int, str]`, needs to be treated separtely, because this
-                    // implies two mandatory positional only arguments. But this is not part of the
-                    // type system.
-                    for t in ts {
-                        new_params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
-                            t.clone(),
-                        )));
-                    }
-                    continue;
+            {
+                // e.g. `*foo: *tuple[int, str]`, needs to be treated separtely, because this
+                // implies two mandatory positional only arguments. But this is not part of the
+                // type system.
+                for t in ts {
+                    new_params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
+                        t.clone(),
+                    )));
                 }
+                continue;
             }
             let specific = p.specific(i_s.db);
             let mut as_t = |t: Option<Cow<_>>| {
@@ -1551,24 +1542,24 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     })
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
-                    if let Some(c) = self.class {
-                        if c.node_ref.as_link() == u1.in_definition {
-                            let new = replace_param_spec(
-                                i_s.db,
-                                &mut |usage| {
-                                    Some(c.generics().nth_usage(i_s.db, &usage).into_generic_item())
-                                },
-                                u1,
-                            );
-                            return return_result(match new {
-                                CallableParams::Simple(params) => {
-                                    new_params.extend_from_slice(&params);
-                                    CallableParams::Simple(new_params.into())
-                                }
-                                CallableParams::Any(cause) => CallableParams::Any(cause),
-                                CallableParams::Never(cause) => CallableParams::Never(cause),
-                            });
-                        }
+                    if let Some(c) = self.class
+                        && c.node_ref.as_link() == u1.in_definition
+                    {
+                        let new = replace_param_spec(
+                            i_s.db,
+                            &mut |usage| {
+                                Some(c.generics().nth_usage(i_s.db, &usage).into_generic_item())
+                            },
+                            u1,
+                        );
+                        return return_result(match new {
+                            CallableParams::Simple(params) => {
+                                new_params.extend_from_slice(&params);
+                                CallableParams::Simple(new_params.into())
+                            }
+                            CallableParams::Any(cause) => CallableParams::Any(cause),
+                            CallableParams::Never(cause) => CallableParams::Never(cause),
+                        });
                     }
                     ParamType::Star(StarParamType::ParamSpecArgs(u1.clone()))
                 }
@@ -1735,7 +1726,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 )
             } else {
                 let type_vars = self.type_vars(i_s.db);
-                let result = calc_untyped_func_type_vars(
+
+                calc_untyped_func_type_vars(
                     i_s,
                     self,
                     args.iter(i_s.mode),
@@ -1746,8 +1738,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     replace_self_type,
                     result_context,
                     on_type_error,
-                );
-                result
+                )
             };
 
         let result = if let Some(return_annotation) = return_annotation {

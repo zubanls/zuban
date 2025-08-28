@@ -163,13 +163,11 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         if type_var_usage
             .name_definition()
             .is_some_and(|link| self.should_format_qualified(link))
-        {
-            if let Some(func) =
+            && let Some(func) =
                 NodeRef::from_link(self.db, type_var_usage.in_definition()).maybe_function()
-            {
-                s += "@";
-                s += func.name().as_code();
-            }
+        {
+            s += "@";
+            s += func.name().as_code();
         }
         MatcherFormatResult::Str(s.into())
     }

@@ -49,10 +49,10 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 
     fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
         for arg in self.iter(i_s.mode) {
-            if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown) {
-                if inf.is_union_like(i_s) {
-                    return true;
-                }
+            if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown)
+                && inf.is_union_like(i_s)
+            {
+                return true;
             }
         }
         false
@@ -911,21 +911,21 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                         }
                     }
                 }
-                if let Some(kwargs_before_star_args) = kwargs_before_star_args {
-                    if let Some(kwarg_before_star_args) = kwargs_before_star_args.pop() {
-                        match kwarg_before_star_args {
-                            CSTArgument::Keyword(kwarg) => {
-                                let (name, expression) = kwarg.unpack();
-                                return Some(ArgKind::new_keyword_return(
-                                    *i_s,
-                                    file,
-                                    name.as_code(),
-                                    kwarg.index(),
-                                    expression,
-                                ));
-                            }
-                            _ => unreachable!(),
+                if let Some(kwargs_before_star_args) = kwargs_before_star_args
+                    && let Some(kwarg_before_star_args) = kwargs_before_star_args.pop()
+                {
+                    match kwarg_before_star_args {
+                        CSTArgument::Keyword(kwarg) => {
+                            let (name, expression) = kwarg.unpack();
+                            return Some(ArgKind::new_keyword_return(
+                                *i_s,
+                                file,
+                                name.as_code(),
+                                kwarg.index(),
+                                expression,
+                            ));
                         }
+                        _ => unreachable!(),
                     }
                 }
                 None

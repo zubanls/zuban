@@ -510,14 +510,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 CalculatedBaseClass::Unknown
             }
             Type::RecursiveType(r) => {
-                if let RecursiveTypeOrigin::TypeAlias(alias) = r.origin(self.i_s.db) {
-                    if alias.calculating() {
-                        self.add_issue_for_index(
-                            expr.index(),
-                            IssueKind::CurrentlyUnsupportedBaseClassCycle,
-                        );
-                        return CalculatedBaseClass::Unknown;
-                    }
+                if let RecursiveTypeOrigin::TypeAlias(alias) = r.origin(self.i_s.db)
+                    && alias.calculating()
+                {
+                    self.add_issue_for_index(
+                        expr.index(),
+                        IssueKind::CurrentlyUnsupportedBaseClassCycle,
+                    );
+                    return CalculatedBaseClass::Unknown;
                 }
                 self.compute_base_class_for_type(expr, r.calculated_type(self.i_s.db).clone())
             }
@@ -688,15 +688,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 )
             }
             TypeContent::ParamSpecAttr { usage, name } => {
-                if let Some(previous_param) = previous_param {
-                    if previous_param.kind() == ParamKind::KeywordOnly {
-                        // Things like *args: P.args, x: int, **kwargs: P.kwargs
-                        self.add_issue(
-                            NodeRef::new(self.file, previous_param.name_def().index()),
-                            IssueKind::ParamSpecKwParamNotAllowed,
-                        );
-                        return new_dct(Type::ERROR);
-                    }
+                if let Some(previous_param) = previous_param
+                    && previous_param.kind() == ParamKind::KeywordOnly
+                {
+                    // Things like *args: P.args, x: int, **kwargs: P.kwargs
+                    self.add_issue(
+                        NodeRef::new(self.file, previous_param.name_def().index()),
+                        IssueKind::ParamSpecKwParamNotAllowed,
+                    );
+                    return new_dct(Type::ERROR);
                 }
                 param_spec_error(&usage, name)
             }
@@ -1455,10 +1455,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             node_ref_b.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
                         }
                     }
-                    if let Some(first) = self.as_type_or_error(first, node_ref_a) {
-                        if let Some(second) = self.as_type_or_error(second, node_ref_b) {
-                            return TypeContent::Type(first.union(second));
-                        }
+                    if let Some(first) = self.as_type_or_error(first, node_ref_a)
+                        && let Some(second) = self.as_type_or_error(second, node_ref_b)
+                    {
+                        return TypeContent::Type(first.union(second));
                     }
                     // We need to somehow track that it was an invalid union for checking aliases.
                     return TypeContent::InvalidVariable(InvalidVariableType::Other);
@@ -1768,18 +1768,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeVarKind::Constraints(mut constraints) => {
                 let t2 = as_type(self);
-                if let Type::TypeVar(usage) = &t2 {
-                    if let TypeVarKind::Constraints(mut constraints2) = usage.type_var.kind(i_s.db)
-                    {
-                        if constraints2.all(|t2| {
-                            constraints
-                                .clone()
-                                .any(|t| t.is_simple_super_type_of(i_s, t2).bool())
-                        }) {
-                            // The provided type_var2 is a subset of the type_var constraints.
-                            return;
-                        }
-                    }
+                if let Type::TypeVar(usage) = &t2
+                    && let TypeVarKind::Constraints(mut constraints2) = usage.type_var.kind(i_s.db)
+                    && constraints2.all(|t2| {
+                        constraints
+                            .clone()
+                            .any(|t| t.is_simple_super_type_of(i_s, t2).bool())
+                    })
+                {
+                    // The provided type_var2 is a subset of the type_var constraints.
+                    return;
                 }
                 if !constraints.any(|t| t.is_simple_same_type(i_s, &t2).bool()) {
                     node_ref.add_issue(
@@ -2183,11 +2181,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        if let Some(SliceOrSimple::Simple(s)) = iterator.next() {
-            if s.named_expr.is_ellipsis_literal() && iterator.next().is_none() {
-                let t = self.compute_slice_type(first);
-                return TypeContent::Type(Type::Tuple(Tuple::new_arbitrary_length(t)));
-            }
+        if let Some(SliceOrSimple::Simple(s)) = iterator.next()
+            && s.named_expr.is_ellipsis_literal()
+            && iterator.next().is_none()
+        {
+            let t = self.compute_slice_type(first);
+            return TypeContent::Type(Type::Tuple(Tuple::new_arbitrary_length(t)));
         }
         TypeContent::Type(Type::Tuple(Tuple::new(
             TypeArgIterator::new(slice_type.iter())
@@ -2643,13 +2642,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         let generics = self.compute_generics_for_alias(slice_type, alias);
         let type_ = alias.type_if_valid();
-        if let Type::TypedDict(td) = type_ {
-            if let TypedDictGenerics::NotDefinedYet(_) = &td.generics {
-                let generics = GenericsList::generics_from_vec(generics);
-                return TypeContent::Type(Type::TypedDict(
-                    td.apply_generics(self.i_s.db, TypedDictGenerics::Generics(generics)),
-                ));
-            }
+        if let Type::TypedDict(td) = type_
+            && let TypedDictGenerics::NotDefinedYet(_) = &td.generics
+        {
+            let generics = GenericsList::generics_from_vec(generics);
+            return TypeContent::Type(Type::TypedDict(
+                td.apply_generics(self.i_s.db, TypedDictGenerics::Generics(generics)),
+            ));
         }
 
         self.is_recursive_alias |= alias.is_recursive();
@@ -2883,21 +2882,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ExpressionContent::ExpressionPart(ExpressionPart::Factor(f)) => {
                     let (sign, e) = f.unpack();
                     let s = sign.as_code();
-                    if matches!(s, "-" | "+") {
-                        if let ExpressionPart::Atom(atom) = e {
-                            if let AtomContent::Int(i) = atom.unpack() {
-                                if let Some(mut i) = i.parse() {
-                                    if s == "-" {
-                                        i = -i;
-                                    }
-                                    return TypeContent::Type(Type::Literal(Literal {
-                                        kind: LiteralKind::Int(i),
-                                        implicit: false,
-                                    }));
-                                } else {
-                                    unimplemented!()
-                                }
+                    if matches!(s, "-" | "+")
+                        && let ExpressionPart::Atom(atom) = e
+                        && let AtomContent::Int(i) = atom.unpack()
+                    {
+                        if let Some(mut i) = i.parse() {
+                            if s == "-" {
+                                i = -i;
                             }
+                            return TypeContent::Type(Type::Literal(Literal {
+                                kind: LiteralKind::Int(i),
+                                implicit: false,
+                            }));
+                        } else {
+                            unimplemented!()
                         }
                     }
                     return expr_not_allowed(self);
@@ -3446,10 +3444,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             .points
             .get(func.node().name_def().index())
             .maybe_calculated_and_specific()
+            && let Some(tc) = check_special_case(specific)
         {
-            if let Some(tc) = check_special_case(specific) {
-                return Lookup::T(tc);
-            }
+            return Lookup::T(tc);
         }
 
         Lookup::T(TypeContent::InvalidVariable(
@@ -4298,19 +4295,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             let mut type_var_like = type_var_like.clone();
-            if !type_var_like.has_default() {
-                if let Some(previous) = type_var_likes.last() {
-                    if previous.has_default() {
-                        type_var_like = type_var_like.set_any_default();
-                        name_def_ref.add_issue(
-                            self.i_s,
-                            IssueKind::TypeVarDefaultWrongOrder {
-                                type_var1: type_var_like.name(self.i_s.db).into(),
-                                type_var2: previous.name(self.i_s.db).into(),
-                            },
-                        );
-                    }
-                }
+            if !type_var_like.has_default()
+                && let Some(previous) = type_var_likes.last()
+                && previous.has_default()
+            {
+                type_var_like = type_var_like.set_any_default();
+                name_def_ref.add_issue(
+                    self.i_s,
+                    IssueKind::TypeVarDefaultWrongOrder {
+                        type_var1: type_var_like.name(self.i_s.db).into(),
+                        type_var2: previous.name(self.i_s.db).into(),
+                    },
+                );
             }
             type_var_like = type_var_like.replace_type_var_like_defaults_that_are_out_of_scope(
                 self.i_s.db,
@@ -4358,20 +4354,20 @@ fn check_for_invalid_outer_type_vars(
     node_ref: NodeRef,
     found: Option<TypeVarCallbackReturn>,
 ) -> Option<TypeVarCallbackReturn> {
-    if let Some(TypeVarCallbackReturn::TypeVarLike(tvl)) = &found {
-        if let Scope::Class(c) = node_ref.node_parent_scope() {
-            let in_definition = tvl.in_definition();
-            if in_definition.node_index != c.index()
-                && NodeRef::from_link(db, in_definition)
-                    .maybe_class()
-                    .is_some()
-            {
-                return Some(TypeVarCallbackReturn::AddIssue(
-                    IssueKind::InvalidTypeVarOfOuterClass {
-                        name: tvl.as_type_var_like().name(db).into(),
-                    },
-                ));
-            }
+    if let Some(TypeVarCallbackReturn::TypeVarLike(tvl)) = &found
+        && let Scope::Class(c) = node_ref.node_parent_scope()
+    {
+        let in_definition = tvl.in_definition();
+        if in_definition.node_index != c.index()
+            && NodeRef::from_link(db, in_definition)
+                .maybe_class()
+                .is_some()
+        {
+            return Some(TypeVarCallbackReturn::AddIssue(
+                IssueKind::InvalidTypeVarOfOuterClass {
+                    name: tvl.as_type_var_like().name(db).into(),
+                },
+            ));
         }
     }
     found
@@ -4561,10 +4557,10 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         // slices are not reversible, becuase of how the CST is structured. This is not used often,
         // just clone the iterator.
         for s in self.slices.clone() {
-            if let Some(already_analyzed) = self.reverse_already_analyzed {
-                if s.as_node_ref() == already_analyzed {
-                    break;
-                }
+            if let Some(already_analyzed) = self.reverse_already_analyzed
+                && s.as_node_ref() == already_analyzed
+            {
+                break;
             }
             current = Some(s);
         }
@@ -4664,10 +4660,10 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         }
         for s in self.slices.by_ref() {
             empty_not_explicit.set(false);
-            if let Some(already_analyzed) = self.reverse_already_analyzed {
-                if already_analyzed == s.as_node_ref() {
-                    break;
-                }
+            if let Some(already_analyzed) = self.reverse_already_analyzed
+                && already_analyzed == s.as_node_ref()
+            {
+                break;
             }
             let t = type_computation
                 .compute_slice_type_content(s)

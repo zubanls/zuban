@@ -124,14 +124,14 @@ impl Intersection {
                 .into()
         };
         for t in intersection.iter_entries() {
-            if let Some(cls) = t.maybe_class(i_s.db) {
-                if cls.use_cached_class_infos(i_s.db).is_final {
-                    add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
-                        intersection: fmt_intersection(&intersection),
-                        final_class: cls.name().into(),
-                    });
-                    had_issue = true;
-                }
+            if let Some(cls) = t.maybe_class(i_s.db)
+                && cls.use_cached_class_infos(i_s.db).is_final
+            {
+                add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
+                    intersection: fmt_intersection(&intersection),
+                    final_class: cls.name().into(),
+                });
+                had_issue = true;
             }
         }
         if had_issue {

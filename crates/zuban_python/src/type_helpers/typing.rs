@@ -65,18 +65,17 @@ pub(crate) fn execute_cast<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'
     if args
         .in_file()
         .is_some_and(|file| file.flags(i_s.db).warn_redundant_casts)
+        && let Some(actual) = actual
     {
-        if let Some(actual) = actual {
-            let t_in = actual.as_cow_type(i_s);
-            let t_out = result.as_type(i_s);
-            if t_in.is_simple_same_type(i_s, &t_out).non_any_match() && !(t_in.is_any()) {
-                args.add_issue(
-                    i_s,
-                    IssueKind::RedundantCast {
-                        to: result.format_short(i_s),
-                    },
-                );
-            }
+        let t_in = actual.as_cow_type(i_s);
+        let t_out = result.as_type(i_s);
+        if t_in.is_simple_same_type(i_s, &t_out).non_any_match() && !(t_in.is_any()) {
+            args.add_issue(
+                i_s,
+                IssueKind::RedundantCast {
+                    to: result.format_short(i_s),
+                },
+            );
         }
     }
     result

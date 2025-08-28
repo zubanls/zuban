@@ -284,11 +284,12 @@ impl<'db, 'x> Name<'db, 'x> {
             Name::ModuleName(n) => n.file.tree.root().clean_docstring(),
             Name::NodeName(_) => Cow::Borrowed(""),
         };
-        if result.is_empty() && self.file().is_stub() {
-            if let Some(name) = self.goto_non_stub() {
-                debug_assert!(!name.file().is_stub());
-                return name.documentation();
-            }
+        if result.is_empty()
+            && self.file().is_stub()
+            && let Some(name) = self.goto_non_stub()
+        {
+            debug_assert!(!name.file().is_stub());
+            return name.documentation();
         }
         result
     }

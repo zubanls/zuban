@@ -128,13 +128,12 @@ impl Type {
         callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         let options = || {
-            let options = InstanceLookupOptions::new(add_issue).with_kind(kind);
             /* TODO ?
             if avoid_inferring_return_types {
                 options = options.with_avoid_inferring_return_types();
             }
             */
-            options
+            InstanceLookupOptions::new(add_issue).with_kind(kind)
         };
         match self {
             Type::Class(c) => {
@@ -247,12 +246,11 @@ impl Type {
                     .loaded_python_file(*file_index)
                     .lookup(i_s.db, add_issue, name);
                 let mut attr_kind = AttributeKind::Attribute;
-                if let Some(inf) = lookup.maybe_inferred() {
-                    if inf.maybe_saved_specific(i_s.db)
+                if let Some(inf) = lookup.maybe_inferred()
+                    && inf.maybe_saved_specific(i_s.db)
                         == Some(Specific::AnnotationOrTypeCommentFinal)
-                    {
-                        attr_kind = AttributeKind::Final
-                    }
+                {
+                    attr_kind = AttributeKind::Final
                 }
                 callable(self, LookupDetails::new(self.clone(), lookup, attr_kind))
             }
@@ -280,20 +278,20 @@ impl Type {
                     return;
                 };
                 let class_infos = current_class.use_cached_class_infos(i_s.db);
-                if let Some(t) = class_infos.undefined_generics_type.get() {
-                    if matches!(t.as_ref(), Type::Enum(_)) {
-                        t.run_after_lookup_on_each_union_member(
-                            i_s,
-                            None,
-                            from_file,
-                            name,
-                            kind,
-                            result_context,
-                            add_issue,
-                            callable,
-                        );
-                        return;
-                    }
+                if let Some(t) = class_infos.undefined_generics_type.get()
+                    && matches!(t.as_ref(), Type::Enum(_))
+                {
+                    t.run_after_lookup_on_each_union_member(
+                        i_s,
+                        None,
+                        from_file,
+                        name,
+                        kind,
+                        result_context,
+                        add_issue,
+                        callable,
+                    );
+                    return;
                 }
                 let inst = Instance::new(
                     Class::with_self_generics(
@@ -1118,22 +1116,22 @@ pub(crate) fn execute_type_of_type<'db>(
 }
 
 fn set_is_abstract_from_super(i_s: &InferenceState, l: &mut LookupDetails) {
-    if let Some(inf) = l.lookup.maybe_inferred() {
-        if let Type::Callable(c) = inf.as_cow_type(i_s).as_ref() {
-            if (c.is_abstract || l.class.is_protocol(i_s.db)) && {
-                let from = NodeRef::from_link(i_s.db, c.defined_at);
-                !from.file.is_stub()
-                    && from.maybe_function().is_some_and(|_| {
-                        let func = Function::new_with_unknown_parent(i_s.db, from);
-                        func.has_trivial_body(&i_s.with_func_context(&func))
-                    })
-            } {
-                let mut new_callable = c.as_ref().clone();
-                new_callable.is_abstract_from_super = true;
-                l.lookup
-                    .update_inferred(Inferred::from_type(Type::Callable(Arc::new(new_callable))))
-            }
+    if let Some(inf) = l.lookup.maybe_inferred()
+        && let Type::Callable(c) = inf.as_cow_type(i_s).as_ref()
+        && (c.is_abstract || l.class.is_protocol(i_s.db))
+        && {
+            let from = NodeRef::from_link(i_s.db, c.defined_at);
+            !from.file.is_stub()
+                && from.maybe_function().is_some_and(|_| {
+                    let func = Function::new_with_unknown_parent(i_s.db, from);
+                    func.has_trivial_body(&i_s.with_func_context(&func))
+                })
         }
+    {
+        let mut new_callable = c.as_ref().clone();
+        new_callable.is_abstract_from_super = true;
+        l.lookup
+            .update_inferred(Inferred::from_type(Type::Callable(Arc::new(new_callable))))
     }
 }
 

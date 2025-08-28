@@ -608,12 +608,11 @@ impl IssueKind {
     pub(crate) fn should_be_reported(&self, flags: &TypeCheckerFlags) -> bool {
         if !flags.disabled_error_codes.is_empty() {
             let should_not_report = |code| {
-                if let Some(code) = code {
-                    if flags.disabled_error_codes.iter().any(|c| c == code)
-                        && !flags.enabled_error_codes.iter().any(|c| c == code)
-                    {
-                        return true;
-                    }
+                if let Some(code) = code
+                    && flags.disabled_error_codes.iter().any(|c| c == code)
+                    && !flags.enabled_error_codes.iter().any(|c| c == code)
+                {
+                    return true;
                 }
                 false
             };
@@ -1965,10 +1964,10 @@ impl<'db> Diagnostic<'db> {
         let mut additional_notes = vec![];
         let error = self.message_with_notes(&mut additional_notes);
         let mut result = fmt_line(config, path, start, end, kind, &error);
-        if config.show_error_codes {
-            if let Some(mypy_error_code) = self.issue.kind.mypy_error_code() {
-                result += &format!("  [{mypy_error_code}]");
-            }
+        if config.show_error_codes
+            && let Some(mypy_error_code) = self.issue.kind.mypy_error_code()
+        {
+            result += &format!("  [{mypy_error_code}]");
         }
         for note in additional_notes {
             result += "\n";

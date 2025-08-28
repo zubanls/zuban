@@ -289,10 +289,10 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
         already_visited: &mut HashSet<FileIndex>,
     ) {
         for star_import in file.star_imports.iter() {
-            if star_import.scope == scope {
-                if let Some(f) = file.star_import_file(self.infos.db, star_import) {
-                    self.add_specific_module_completions(f, true, true, already_visited)
-                }
+            if star_import.scope == scope
+                && let Some(f) = file.star_import_file(self.infos.db, star_import)
+            {
+                self.add_specific_module_completions(f, true, true, already_visited)
             }
         }
     }
@@ -306,11 +306,9 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
     fn add_submodule_completions(&mut self, file: &'db PythonFile) {
         let db = self.infos.db;
         let (file_entry, is_package) = file.file_entry_and_is_package(db);
-        if is_package {
-            if let Parent::Directory(dir) = &file_entry.parent {
-                let dir = dir.upgrade().unwrap();
-                self.directory_entries_completions(Directory::entries(&*db.vfs.handler, &dir))
-            }
+        if is_package && let Parent::Directory(dir) = &file_entry.parent {
+            let dir = dir.upgrade().unwrap();
+            self.directory_entries_completions(Directory::entries(&*db.vfs.handler, &dir))
         }
     }
 
@@ -521,14 +519,13 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
     }
 
     fn maybe_add_cow(&mut self, symbol: Cow<'db, str>) -> bool {
-        if let Some(starts_with) = &self.should_start_with_lowercase {
-            if symbol
+        if let Some(starts_with) = &self.should_start_with_lowercase
+            && symbol
                 .get(..starts_with.len())
                 .map(|s| s.eq_ignore_ascii_case(starts_with))
                 != Some(true)
-            {
-                return false;
-            }
+        {
+            return false;
         }
         self.added_names.insert(symbol)
     }
@@ -576,16 +573,16 @@ fn find_kind_and_try_to_follow_imports(
         match p.kind() {
             PointKind::Redirect => {
                 let node_ref = p.as_redirected_node_ref(db);
-                if let Some(name) = node_ref.maybe_name() {
-                    if let Some(n) = name.name_def() {
-                        return find_kind_and_try_to_follow_imports(
-                            db,
-                            node_ref.file,
-                            Scope::Module,
-                            n,
-                            in_class,
-                        );
-                    }
+                if let Some(name) = node_ref.maybe_name()
+                    && let Some(n) = name.name_def()
+                {
+                    return find_kind_and_try_to_follow_imports(
+                        db,
+                        node_ref.file,
+                        Scope::Module,
+                        n,
+                        in_class,
+                    );
                 }
             }
             PointKind::FileReference => return CompletionItemKind::MODULE,
@@ -638,10 +635,9 @@ fn find_kind_for_name_def(
         kind = CompletionItemKind::CLASS;
         if let Some(class_infos) =
             ClassNodeRef::new(file, class.index()).maybe_cached_class_infos(db)
+            && matches!(class_infos.class_kind, ClassKind::Enum)
         {
-            if matches!(class_infos.class_kind, ClassKind::Enum) {
-                kind = CompletionItemKind::ENUM
-            }
+            kind = CompletionItemKind::ENUM
         }
     }
     kind

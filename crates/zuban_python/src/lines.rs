@@ -50,10 +50,10 @@ impl NewlineIndices {
             };
             let start = if line == 0 { 0 } else { lines[line - 1] };
             let mut line_code = &code[start as usize..*next_line_start as usize - 1];
-            if cfg!(windows) {
-                if let Some(l) = line_code.strip_suffix('\r') {
-                    line_code = l
-                }
+            if cfg!(windows)
+                && let Some(l) = line_code.strip_suffix('\r')
+            {
+                line_code = l
             }
             Ok((start, line_code))
         };

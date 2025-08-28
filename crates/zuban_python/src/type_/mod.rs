@@ -704,10 +704,10 @@ impl Type {
 
     #[inline]
     pub fn maybe_type_of_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
-        if let Type::Type(t) = self {
-            if let Type::Class(c) = t.as_ref() {
-                return Some(c.class(db));
-            }
+        if let Type::Type(t) = self
+            && let Type::Class(c) = t.as_ref()
+        {
+            return Some(c.class(db));
         }
         None
     }
@@ -931,15 +931,15 @@ impl Type {
             Self::Literal(literal) => literal.format(format_data),
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveType(rec) => {
-                if let Some(generics) = &rec.generics {
-                    if format_data.style != FormatStyle::MypyRevealType {
-                        return format!(
-                            "{}[{}]",
-                            rec.name(format_data.db),
-                            generics.format(format_data)
-                        )
-                        .into();
-                    }
+                if let Some(generics) = &rec.generics
+                    && format_data.style != FormatStyle::MypyRevealType
+                {
+                    return format!(
+                        "{}[{}]",
+                        rec.name(format_data.db),
+                        generics.format(format_data)
+                    )
+                    .into();
                 }
 
                 if rec.calculating(format_data.db) {
@@ -1098,10 +1098,10 @@ impl Type {
             Self::Any(_) => true,
             Self::NewType(n) => n.type_.has_any_internal(i_s, already_checked),
             Self::RecursiveType(recursive_alias) => {
-                if let Some(generics) = &recursive_alias.generics {
-                    if generics.has_any_internal(i_s, already_checked) {
-                        return true;
-                    }
+                if let Some(generics) = &recursive_alias.generics
+                    && generics.has_any_internal(i_s, already_checked)
+                {
+                    return true;
                 }
                 if already_checked.contains(recursive_alias) {
                     false
@@ -1574,10 +1574,10 @@ impl Type {
     }
 
     pub fn maybe_fixed_len_tuple(&self) -> Option<&[Type]> {
-        if let Type::Tuple(tup) = self {
-            if let TupleArgs::FixedLen(ts) = &tup.args {
-                return Some(ts);
-            }
+        if let Type::Tuple(tup) = self
+            && let TupleArgs::FixedLen(ts) = &tup.args
+        {
+            return Some(ts);
         }
         None
     }
@@ -1592,10 +1592,10 @@ impl Type {
                 }
                 _ => {
                     for (_, base) in t.mro(db) {
-                        if let Some(cls) = base.as_maybe_class() {
-                            if cls.node_ref == db.python_state.container_node_ref() {
-                                result.union_in_place(cls.nth_type_argument(db, 0));
-                            }
+                        if let Some(cls) = base.as_maybe_class()
+                            && cls.node_ref == db.python_state.container_node_ref()
+                        {
+                            result.union_in_place(cls.nth_type_argument(db, 0));
                         }
                     }
                 }
@@ -1613,20 +1613,15 @@ impl Type {
         i_s: &InferenceState,
         value: &Inferred,
     ) -> bool {
-        if let Type::Type(type_) = self {
-            if let Some(cls) = type_.maybe_class(i_s.db) {
-                if cls.is_protocol(i_s.db) {
-                    if let Some(node_ref) = value.maybe_saved_node_ref(i_s.db) {
-                        if node_ref.maybe_class().is_some() {
-                            let cls2 = Class::from_non_generic_node_ref(
-                                ClassNodeRef::from_node_ref(node_ref),
-                            );
-                            node_ref.ensure_cached_class_infos(i_s);
-                            return cls2.is_protocol(i_s.db);
-                        }
-                    }
-                }
-            }
+        if let Type::Type(type_) = self
+            && let Some(cls) = type_.maybe_class(i_s.db)
+            && cls.is_protocol(i_s.db)
+            && let Some(node_ref) = value.maybe_saved_node_ref(i_s.db)
+            && node_ref.maybe_class().is_some()
+        {
+            let cls2 = Class::from_non_generic_node_ref(ClassNodeRef::from_node_ref(node_ref));
+            node_ref.ensure_cached_class_infos(i_s);
+            return cls2.is_protocol(i_s.db);
         }
         false
     }
@@ -1644,20 +1639,19 @@ impl FromIterator<Type> for Type {
 
 impl Tuple {
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Arc<Self>> {
-        if let TupleArgs::FixedLen(ts) = &self.args {
-            if ts
+        if let TupleArgs::FixedLen(ts) = &self.args
+            && ts
                 .iter()
                 .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
-            {
-                let mut gathered = vec![];
-                for t in ts.iter() {
-                    gathered.push(
-                        t.maybe_avoid_implicit_literal(db)
-                            .unwrap_or_else(|| t.clone()),
-                    )
-                }
-                return Some(Tuple::new_fixed_length(gathered.into()));
+        {
+            let mut gathered = vec![];
+            for t in ts.iter() {
+                gathered.push(
+                    t.maybe_avoid_implicit_literal(db)
+                        .unwrap_or_else(|| t.clone()),
+                )
             }
+            return Some(Tuple::new_fixed_length(gathered.into()));
         }
         None
     }

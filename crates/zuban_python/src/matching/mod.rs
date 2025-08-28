@@ -94,16 +94,15 @@ pub fn avoid_protocol_mismatch(
                 }
             }
             let new_t = (t1.clone(), t2.clone());
-            if !had_type_var_matcher {
-                if let Some(already_known) = cache.cached.borrow().get(&new_t) {
-                    debug!(
-                        r#"Used protocol cache "{}" against "{}": {:?}"#,
-                        t1.format_short(db),
-                        t2.format_short(db),
-                        already_known,
-                    );
-                    return already_known.clone();
-                }
+            if !had_type_var_matcher && let Some(already_known) = cache.cached.borrow().get(&new_t)
+            {
+                debug!(
+                    r#"Used protocol cache "{}" against "{}": {:?}"#,
+                    t1.format_short(db),
+                    t2.format_short(db),
+                    already_known,
+                );
+                return already_known.clone();
             }
             current.push(new_t);
             drop(current);

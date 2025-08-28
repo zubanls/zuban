@@ -591,8 +591,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                 }
                             }
-                            if lookup_details.attr_kind == AttributeKind::AnnotatedAttribute {
-                                if let Type::Type(t) = other {
+                            if lookup_details.attr_kind == AttributeKind::AnnotatedAttribute
+                                && let Type::Type(t) = other {
                                     mismatch = true;
                                     if mismatches < SHOW_MAX_MISMATCHES {
                                         notes.push(
@@ -605,7 +605,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                         );
                                     }
                                 }
-                            }
                             if is_final_mismatch {
                                 mismatch = true;
                                 if mismatches < SHOW_MAX_MISMATCHES {
@@ -736,10 +735,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 let node_ref = NodeRef::new(self.node_ref.file, node_index);
                 if node_ref.point().needs_flow_analysis()
                     && !node_ref.name_def_ref_of_name().point().calculated()
+                    && let Err(()) = self.ensure_calculated_diagnostics_for_class(i_s.db)
                 {
-                    if let Err(()) = self.ensure_calculated_diagnostics_for_class(i_s.db) {
-                        return LookupResult::None;
-                    }
+                    return LookupResult::None;
                 }
                 let inf = node_ref.infer_name_of_definition_by_index(i_s);
                 LookupResult::GotoName {
@@ -995,18 +993,18 @@ impl<'db: 'a, 'a> Class<'a> {
         without_object: bool,
     ) -> MroIterator<'db, 'a> {
         let class_infos = self.use_cached_class_infos(db);
-        if let Some(type_var_remap) = self.type_var_remap {
-            if matches!(self.generics, Generics::Self_ { .. } | Generics::None) {
-                return Class::new(
-                    self.node_ref,
-                    self.class_storage,
-                    Generics::List(type_var_remap, None),
-                    None,
-                )
-                .mro_maybe_without_object(db, without_object);
-            }
-            // TODO Do something similar for generics, because otherwise we lose type_var_remap
+        if let Some(type_var_remap) = self.type_var_remap
+            && matches!(self.generics, Generics::Self_ { .. } | Generics::None)
+        {
+            return Class::new(
+                self.node_ref,
+                self.class_storage,
+                Generics::List(type_var_remap, None),
+                None,
+            )
+            .mro_maybe_without_object(db, without_object);
         }
+        // TODO Do something similar for generics, because otherwise we lose type_var_remap
         MroIterator::new(
             db,
             TypeOrClass::Class(*self),
@@ -1032,10 +1030,10 @@ impl<'db: 'a, 'a> Class<'a> {
     }
     pub fn class_in_mro(&self, db: &'db Database, node_ref: ClassNodeRef) -> Option<Class<'_>> {
         for (_, type_or_cls) in self.mro(db) {
-            if let TypeOrClass::Class(c) = type_or_cls {
-                if c.node_ref == node_ref {
-                    return Some(c);
-                }
+            if let TypeOrClass::Class(c) = type_or_cls
+                && c.node_ref == node_ref
+            {
+                return Some(c);
             }
         }
         None
@@ -1079,18 +1077,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
                 ClassKind::Tuple if format_data.style == FormatStyle::MypyRevealType => {
                     for (_, type_or_class) in self.mro(format_data.db) {
-                        if let TypeOrClass::Type(t) = type_or_class {
-                            if let Type::Tuple(tup) = t.as_ref() {
-                                if matches!(
-                                    tup.args,
-                                    TupleArgs::FixedLen(_) | TupleArgs::WithUnpack(_)
-                                ) {
-                                    return tup.format_with_fallback(
-                                        format_data,
-                                        &format!(", fallback={result}"),
-                                    );
-                                }
-                            }
+                        if let TypeOrClass::Type(t) = type_or_class
+                            && let Type::Tuple(tup) = t.as_ref()
+                            && matches!(tup.args, TupleArgs::FixedLen(_) | TupleArgs::WithUnpack(_))
+                        {
+                            return tup.format_with_fallback(
+                                format_data,
+                                &format!(", fallback={result}"),
+                            );
                         }
                     }
                 }
@@ -1237,13 +1231,12 @@ impl<'db: 'a, 'a> Class<'a> {
         if self.node_ref == i_s.db.python_state.dict_node_ref() {
             // This is a special case where we intercept the call to dict(..) when used with
             // TypedDict.
-            if let Some(file) = args.in_file() {
-                if let Some(inf) = file
+            if let Some(file) = args.in_file()
+                && let Some(inf) = file
                     .inference(i_s)
                     .infer_dict_call_from_context(args, result_context)
-                {
-                    return inf;
-                }
+            {
+                return inf;
             }
         }
         match self.execute_and_return_generics(
@@ -1259,12 +1252,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     generics,
                 }));
                 debug!("Class execute: {}", result.format_short(i_s));
-                if self.node_ref == i_s.db.python_state.bare_type_node_ref() {
-                    if let Some(first_arg) =
+                if self.node_ref == i_s.db.python_state.bare_type_node_ref()
+                    && let Some(first_arg) =
                         args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)
-                    {
-                        return execute_bare_type(i_s, first_arg);
-                    }
+                {
+                    return execute_bare_type(i_s, first_arg);
                 }
                 result
             }
@@ -1533,14 +1525,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 .map(|t| t.as_ref())
             {
                 Some(Type::Dataclass(d)) => {
-                    if let AttributeKind::AnnotatedAttribute = attr_kind {
-                        if d.options.frozen == Some(true) {
-                            attr_kind = AttributeKind::Property {
-                                setter_type: None,
-                                is_final: false,
-                                is_abstract: true,
-                            };
-                        }
+                    if let AttributeKind::AnnotatedAttribute = attr_kind
+                        && d.options.frozen == Some(true)
+                    {
+                        attr_kind = AttributeKind::Property {
+                            setter_type: None,
+                            is_final: false,
+                            is_abstract: true,
+                        };
                     }
                 }
                 Some(Type::TypedDict(_)) => (), // TODO
@@ -1682,13 +1674,13 @@ impl<'db: 'a, 'a> Class<'a> {
             match type_or_class {
                 TypeOrClass::Type(_) => (),
                 TypeOrClass::Class(class) => {
-                    if let Some(slots) = &class.class_storage.slots {
-                        if slots.iter().any(|slot| {
+                    if let Some(slots) = &class.class_storage.slots
+                        && slots.iter().any(|slot| {
                             let s = slot.as_str(db);
                             s == name
-                        }) {
-                            return true;
-                        }
+                        })
+                    {
+                        return true;
                     }
                 }
             }
@@ -1718,14 +1710,13 @@ impl<'db: 'a, 'a> Class<'a> {
                     }) {
                         return;
                     }
-                    if let Some(on_class) = class.lookup_symbol(i_s, name).into_maybe_inferred() {
-                        if on_class
+                    if let Some(on_class) = class.lookup_symbol(i_s, name).into_maybe_inferred()
+                        && on_class
                             .as_cow_type(&i_s.with_class_context(&class))
                             .is_func_or_overload()
-                        {
-                            // Adds IssueType::CannotAssignToAMethod in other places.
-                            return;
-                        }
+                    {
+                        // Adds IssueType::CannotAssignToAMethod in other places.
+                        return;
                     }
                 }
             }
@@ -1761,10 +1752,10 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn maybe_named_tuple_base(&self, db: &'a Database) -> Option<Arc<NamedTuple>> {
         if self.use_cached_class_infos(db).class_kind == ClassKind::NamedTuple {
             for (_, base) in self.mro(db) {
-                if let TypeOrClass::Type(base) = base {
-                    if let Type::NamedTuple(named_tuple) = base.as_ref() {
-                        return Some(named_tuple.clone());
-                    }
+                if let TypeOrClass::Type(base) = base
+                    && let Type::NamedTuple(named_tuple) = base.as_ref()
+                {
+                    return Some(named_tuple.clone());
                 }
             }
             unreachable!()
@@ -2183,13 +2174,11 @@ fn init_as_callable(
                 c = c.replace_type_var_likes_and_self_inplace(
                     i_s.db,
                     &mut |usage| {
-                        if needs_type_var_remap {
-                            if let Some(func_class) = init_class {
-                                if let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage)
-                                {
-                                    return Some(result);
-                                }
-                            }
+                        if needs_type_var_remap
+                            && let Some(func_class) = init_class
+                            && let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage)
+                        {
+                            return Some(result);
                         }
                         None
                     },

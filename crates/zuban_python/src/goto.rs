@@ -314,31 +314,29 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     ) -> Option<T> {
         let n = node_ref.maybe_name()?;
         let db = self.infos.db;
-        if follow_imports {
-            if let Some(name_def) = n.name_def() {
-                match name_def.maybe_import() {
-                    Some(NameImportParent::ImportFromAsName(_)) => {
-                        let ref_ = NodeRef::new(node_ref.file, name_def.index());
+        if follow_imports && let Some(name_def) = n.name_def() {
+            match name_def.maybe_import() {
+                Some(NameImportParent::ImportFromAsName(_)) => {
+                    let ref_ = NodeRef::new(node_ref.file, name_def.index());
+                    if let Some(result) = self.try_to_follow(ref_, follow_imports) {
+                        return result;
+                    }
+                }
+                Some(NameImportParent::DottedAsName(_)) => {
+                    let p = NodeRef::new(node_ref.file, name_def.index()).point();
+                    if p.kind() == PointKind::FileReference {
+                        return Some(self.goto_on_file(p.file_index()));
+                    }
+                }
+                None => {
+                    if matches!(
+                        name_def.parent(),
+                        NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt
+                    ) {
+                        let ref_ = NodeRef::new(self.infos.file, name_def.index())
+                            .global_or_nonlocal_ref();
                         if let Some(result) = self.try_to_follow(ref_, follow_imports) {
                             return result;
-                        }
-                    }
-                    Some(NameImportParent::DottedAsName(_)) => {
-                        let p = NodeRef::new(node_ref.file, name_def.index()).point();
-                        if p.kind() == PointKind::FileReference {
-                            return Some(self.goto_on_file(p.file_index()));
-                        }
-                    }
-                    None => {
-                        if matches!(
-                            name_def.parent(),
-                            NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt
-                        ) {
-                            let ref_ = NodeRef::new(self.infos.file, name_def.index())
-                                .global_or_nonlocal_ref();
-                            if let Some(result) = self.try_to_follow(ref_, follow_imports) {
-                                return result;
-                            }
                         }
                     }
                 }
@@ -489,14 +487,12 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     }
                     _ => (),
                 }
-                if check_inferred_attrs {
-                    if let Some(inf) = lookup.into_maybe_inferred() {
-                        let t = inf.as_cow_type(i_s);
-                        type_to_name(i_s, &t, &mut |name| {
-                            let name = goto_with_goal(name, self.goal);
-                            results.push((self.on_result)(name))
-                        })
-                    }
+                if check_inferred_attrs && let Some(inf) = lookup.into_maybe_inferred() {
+                    let t = inf.as_cow_type(i_s);
+                    type_to_name(i_s, &t, &mut |name| {
+                        let name = goto_with_goal(name, self.goal);
+                        results.push((self.on_result)(name))
+                    })
                 }
             }
         });
@@ -711,39 +707,37 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
         )
         .goto_name(false, false);
     };
-    if let Name::TreeName(tree_name) = &name {
-        if let Some(name_def) = tree_name.cst_name.name_def() {
-            match name_def.maybe_import() {
-                Some(NameImportParent::ImportFromAsName(as_name)) => {
-                    // Follow only if it is a
-                    //
-                    //     from ... import foo as foo
-                    //     or
-                    //     from ... import foo
-                    //
-                    let (name, name_def) = as_name.unpack();
-                    if name_def.as_code() == name.as_code() {
+    if let Name::TreeName(tree_name) = &name
+        && let Some(name_def) = tree_name.cst_name.name_def()
+    {
+        match name_def.maybe_import() {
+            Some(NameImportParent::ImportFromAsName(as_name)) => {
+                // Follow only if it is a
+                //
+                //     from ... import foo as foo
+                //     or
+                //     from ... import foo
+                //
+                let (name, name_def) = as_name.unpack();
+                if name_def.as_code() == name.as_code() {
+                    check_name(tree_name, name_def.start())
+                }
+            }
+            Some(NameImportParent::DottedAsName(dotted)) => match dotted.unpack() {
+                DottedAsNameContent::Simple(name_def, _) => check_name(tree_name, name_def.start()),
+                DottedAsNameContent::WithAs(dotted_import_name, name_def) => {
+                    // Follow only if it is import foo as foo (maybe used in stubs to reexport)
+                    if name_def.as_code() == dotted_import_name.as_code() {
                         check_name(tree_name, name_def.start())
                     }
                 }
-                Some(NameImportParent::DottedAsName(dotted)) => match dotted.unpack() {
-                    DottedAsNameContent::Simple(name_def, _) => {
-                        check_name(tree_name, name_def.start())
-                    }
-                    DottedAsNameContent::WithAs(dotted_import_name, name_def) => {
-                        // Follow only if it is import foo as foo (maybe used in stubs to reexport)
-                        if name_def.as_code() == dotted_import_name.as_code() {
-                            check_name(tree_name, name_def.start())
-                        }
-                    }
-                },
-                None => match name_def.parent() {
-                    NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt => {
-                        check_name(tree_name, name_def.start());
-                    }
-                    _ => (),
-                },
-            }
+            },
+            None => match name_def.parent() {
+                NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt => {
+                    check_name(tree_name, name_def.start());
+                }
+                _ => (),
+            },
         }
     }
     on_name(name)

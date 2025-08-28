@@ -698,16 +698,16 @@ impl PythonState {
         cache_optional_index!(types_none_type_index, types, "NoneType");
         cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
         cache_optional_index!(types_union_type_index, types, "UnionType");
-        if let Some(ellipsis) = db.python_state.builtins().lookup_symbol("ellipsis") {
-            if matches!(
+        if let Some(ellipsis) = db.python_state.builtins().lookup_symbol("ellipsis")
+            && matches!(
                 ellipsis
                     .name_def_ref_of_name()
                     .expect_name_def()
                     .expect_type(),
                 TypeLike::ClassDef(_)
-            ) {
-                cache_optional_index!(builtins_ellipsis_fallback_index, builtins, "ellipsis");
-            }
+            )
+        {
+            cache_optional_index!(builtins_ellipsis_fallback_index, builtins, "ellipsis");
         }
         cache_index!(abc_abstractproperty_index, abc, "abstractproperty");
         cache_index!(

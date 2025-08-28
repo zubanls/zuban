@@ -141,10 +141,10 @@ impl PythonFile {
                 if result.is_none() {
                     self.add_module_not_found(db, name_def.name())
                 }
-                if let Some(rest) = rest {
-                    if result.is_some() {
-                        self.cache_import_dotted_name(db, rest, result.clone());
-                    }
+                if let Some(rest) = rest
+                    && result.is_some()
+                {
+                    self.cache_import_dotted_name(db, rest, result.clone());
                 }
                 result
             }
@@ -275,13 +275,13 @@ impl PythonFile {
     ) -> Option<LookupResult> {
         let import = name_ref.maybe_import_of_name_in_symbol_table()?;
         let submodule_reexport = |import_result| {
-            if let Some(ImportResult::File(f)) = import_result {
-                if f == self.file_index {
-                    return Some(
-                        self.sub_module_lookup(i_s.db, name)
-                            .unwrap_or(LookupResult::None),
-                    );
-                }
+            if let Some(ImportResult::File(f)) = import_result
+                && f == self.file_index
+            {
+                return Some(
+                    self.sub_module_lookup(i_s.db, name)
+                        .unwrap_or(LookupResult::None),
+                );
             }
             None
         };

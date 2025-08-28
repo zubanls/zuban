@@ -607,10 +607,10 @@ impl CallableContent {
         match &self.params {
             CallableParams::Simple(params) => {
                 let mut iterator = params.iter();
-                if let Some(first) = iterator.next() {
-                    if let ParamType::Star(StarParamType::ArbitraryLen(t)) = &first.type_ {
-                        return Some(t.clone());
-                    }
+                if let Some(first) = iterator.next()
+                    && let ParamType::Star(StarParamType::ArbitraryLen(t)) = &first.type_
+                {
+                    return Some(t.clone());
                 }
                 iterator.next().and_then(|second| match &second.type_ {
                     ParamType::PositionalOnly(t)

@@ -111,23 +111,21 @@ impl Type {
                 }
             }
         }
-        if let Some(first) = self.maybe_class(i_s.db) {
-            if first.is_protocol(i_s.db)
-                && first
-                    .check_protocol_match(i_s, &mut Matcher::default(), other)
-                    .bool()
-            {
-                return self.clone();
-            }
+        if let Some(first) = self.maybe_class(i_s.db)
+            && first.is_protocol(i_s.db)
+            && first
+                .check_protocol_match(i_s, &mut Matcher::default(), other)
+                .bool()
+        {
+            return self.clone();
         }
-        if let Some(second) = other.maybe_class(i_s.db) {
-            if second.is_protocol(i_s.db)
-                && second
-                    .check_protocol_match(i_s, &mut Matcher::default(), self)
-                    .bool()
-            {
-                return other.clone();
-            }
+        if let Some(second) = other.maybe_class(i_s.db)
+            && second.is_protocol(i_s.db)
+            && second
+                .check_protocol_match(i_s, &mut Matcher::default(), self)
+                .bool()
+        {
+            return other.clone();
         }
         // Needed for protocols, because they don't inherit from object.
         i_s.db.python_state.object_type()
@@ -252,10 +250,10 @@ fn common_base_type_for_non_class(
             return common_base_for_tuple_against_type(i_s, tup1, type2, checked_recursions);
         }
         Type::NamedTuple(nt1) => {
-            if let Type::NamedTuple(nt2) = type2 {
-                if nt1.__new__.defined_at == nt2.__new__.defined_at {
-                    return Some(Type::NamedTuple(nt1.clone()));
-                }
+            if let Type::NamedTuple(nt2) = type2
+                && nt1.__new__.defined_at == nt2.__new__.defined_at
+            {
+                return Some(Type::NamedTuple(nt1.clone()));
             }
             return common_base_for_tuple_against_type(
                 i_s,
@@ -374,28 +372,27 @@ fn common_params<'x>(
         params: &'y [CallableParam],
         td_params: &'z mut Vec<CallableParam>,
     ) -> Option<(usize, impl Iterator<Item = &'z CallableParam>)> {
-        if let Some(p) = params.last() {
-            if let ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) = &p.type_ {
-                let mut params = params.iter();
-                params.next_back();
-                *td_params = td
-                    .members(i_s.db)
-                    .iter()
-                    .map(|m| m.as_keyword_param())
-                    .collect();
-                return Some((
-                    params.len() + td_params.len(),
-                    params.chain(td_params.iter()),
-                ));
-            }
+        if let Some(p) = params.last()
+            && let ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) = &p.type_
+        {
+            let mut params = params.iter();
+            params.next_back();
+            *td_params = td
+                .members(i_s.db)
+                .iter()
+                .map(|m| m.as_keyword_param())
+                .collect();
+            return Some((
+                params.len() + td_params.len(),
+                params.chain(td_params.iter()),
+            ));
         }
         None
     }
     let mut new1 = vec![];
     let mut new2 = vec![];
-    let result = if let Some((len_p1, new_p1)) =
-        maybe_unpack_typed_dict_params(i_s, params1, &mut new1)
-    {
+
+    if let Some((len_p1, new_p1)) = maybe_unpack_typed_dict_params(i_s, params1, &mut new1) {
         if let Some((len_p2, new_p2)) = maybe_unpack_typed_dict_params(i_s, params2, &mut new2) {
             common_params_by_iterable(i_s, len_p1, len_p2, new_p1, new_p2, checked_recursions)
         } else {
@@ -426,8 +423,7 @@ fn common_params<'x>(
             params2.iter(),
             checked_recursions,
         )
-    };
-    result
+    }
 }
 
 fn common_params_by_iterable<'x>(

@@ -469,11 +469,11 @@ impl<'db> FileRename<'db, '_> {
         let old_name = path.file_stem().unwrap().to_str().unwrap();
         let extension = path.extension().unwrap().to_str().unwrap().to_string();
         let mut maybe_init = "".to_string();
-        if old_name == "__init__" {
-            if let Some(par_parent) = parent.parent() {
-                parent = par_parent;
-                maybe_init = format!("{old_name}/")
-            }
+        if old_name == "__init__"
+            && let Some(par_parent) = parent.parent()
+        {
+            parent = par_parent;
+            maybe_init = format!("{old_name}/")
         }
         uri.truncate(parent.as_os_str().len());
         uri.push('/');

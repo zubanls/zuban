@@ -79,10 +79,10 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 }
             }
         }
-        if let Some(slice_type) = finder.infos.generic_or_protocol_slice {
-            if !finder.infos.had_generic_or_protocol_issue {
-                finder.check_generic_or_protocol_length(slice_type)
-            }
+        if let Some(slice_type) = finder.infos.generic_or_protocol_slice
+            && !finder.infos.had_generic_or_protocol_issue
+        {
+            finder.check_generic_or_protocol_length(slice_type)
         }
         let type_vars = infos.type_var_manager.into_type_vars();
         debug!(
@@ -288,10 +288,10 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
 
     fn find_in_named_tuple_fields(&mut self, iterator: StarLikeExpressionIterator<'d>) {
         let mut check_expr = |e: Expression<'d>| {
-            if let Some(AtomContent::Tuple(name_and_type)) = e.maybe_unpacked_atom() {
-                if let Some(StarLikeExpression::NamedExpression(n)) = name_and_type.iter().nth(1) {
-                    self.find_in_expr(n.expression());
-                }
+            if let Some(AtomContent::Tuple(name_and_type)) = e.maybe_unpacked_atom()
+                && let Some(StarLikeExpression::NamedExpression(n)) = name_and_type.iter().nth(1)
+            {
+                self.find_in_expr(n.expression());
             }
         };
         for element in iterator {
@@ -335,14 +335,14 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     self.infos.type_var_manager.iter(),
                     &add_issue,
                 )
-            } else if let Some(previous) = self.infos.type_var_manager.last() {
-                if previous.has_default() {
-                    tvl = tvl.set_any_default();
-                    add_issue(IssueKind::TypeVarDefaultWrongOrder {
-                        type_var1: tvl.name(self.i_s.db).into(),
-                        type_var2: previous.name(self.i_s.db).into(),
-                    });
-                }
+            } else if let Some(previous) = self.infos.type_var_manager.last()
+                && previous.has_default()
+            {
+                tvl = tvl.set_any_default();
+                add_issue(IssueKind::TypeVarDefaultWrongOrder {
+                    type_var1: tvl.name(self.i_s.db).into(),
+                    type_var2: previous.name(self.i_s.db).into(),
+                });
             }
             debug!("Found unbound TypeVar {}", tvl.name(self.i_s.db));
             let old_index = self.infos.type_var_manager.add(tvl, None);
@@ -438,19 +438,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         }
                         if let Some((_, None, expr)) =
                             assignment.maybe_simple_type_expression_assignment()
+                            && self.is_type_var_like_execution(expr)
                         {
-                            if self.is_type_var_like_execution(expr) {
-                                // Now that we know that we have a Typevar-like execution, we can
-                                // simply infer the statement and won't cause problems with cycles.
-                                let inference = node_ref.file.inference(self.i_s);
-                                let inf = inference.infer_name_of_definition(name_def.name());
-                                if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db) {
-                                    if let Some(ComplexPoint::TypeVarLike(tvl)) =
-                                        node_ref.maybe_complex()
-                                    {
-                                        return BaseLookup::TypeVarLike(tvl.clone());
-                                    }
-                                }
+                            // Now that we know that we have a Typevar-like execution, we can
+                            // simply infer the statement and won't cause problems with cycles.
+                            let inference = node_ref.file.inference(self.i_s);
+                            let inf = inference.infer_name_of_definition(name_def.name());
+                            if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db)
+                                && let Some(ComplexPoint::TypeVarLike(tvl)) =
+                                    node_ref.maybe_complex()
+                            {
+                                return BaseLookup::TypeVarLike(tvl.clone());
                             }
                         }
                     }

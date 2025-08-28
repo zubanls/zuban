@@ -56,12 +56,11 @@ impl Type {
 
         match self {
             Type::Class(c1) => {
-                if let Type::Class(c2) = other {
-                    if let Some(result) =
+                if let Type::Class(c2) = other
+                    && let Some(result) =
                         overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
-                    {
-                        return result;
-                    }
+                {
+                    return result;
                 }
             }
             Type::Type(t1) => return t1.overlaps_type_of_type_against_other(i_s, matcher, other),
@@ -246,17 +245,17 @@ fn overlaps_class(
     };
 
     for (_, c1) in class1.mro(i_s.db) {
-        if let TypeOrClass::Class(c1) = c1 {
-            if let result @ Some(_) = check(i_s, c1, class2) {
-                return result;
-            }
+        if let TypeOrClass::Class(c1) = c1
+            && let result @ Some(_) = check(i_s, c1, class2)
+        {
+            return result;
         }
     }
     for (_, c2) in class2.mro(i_s.db) {
-        if let TypeOrClass::Class(c2) = c2 {
-            if let result @ Some(_) = check(i_s, class1, c2) {
-                return result;
-            }
+        if let TypeOrClass::Class(c2) = c2
+            && let result @ Some(_) = check(i_s, class1, c2)
+        {
+            return result;
         }
     }
     None

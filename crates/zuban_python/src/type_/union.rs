@@ -184,13 +184,13 @@ fn merge_simplified_union_type(
                     match &current.type_ {
                         Type::RecursiveType(r) if r.generics.is_some() => (),
                         t => {
-                            if let Type::Class(c) = t {
-                                if c.class(i_s.db).is_calculating_class_infos() {
-                                    if additional_t == t {
-                                        continue 'outer;
-                                    } else {
-                                        continue;
-                                    }
+                            if let Type::Class(c) = t
+                                && c.class(i_s.db).is_calculating_class_infos()
+                            {
+                                if additional_t == t {
+                                    continue 'outer;
+                                } else {
+                                    continue;
                                 }
                             }
                             if additional_t
@@ -285,14 +285,14 @@ fn try_contracting_enum_members(entries: &mut Vec<UnionEntry>) {
 fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
     let mut first = true;
     entries.retain_mut(|entry| {
-        if let Type::Literal(literal) = &entry.type_ {
-            if matches!(&literal.kind, LiteralKind::Bool(_)) {
-                if first {
-                    first = false;
-                    entry.type_ = db.python_state.bool_type();
-                } else {
-                    return false;
-                }
+        if let Type::Literal(literal) = &entry.type_
+            && matches!(&literal.kind, LiteralKind::Bool(_))
+        {
+            if first {
+                first = false;
+                entry.type_ = db.python_state.bool_type();
+            } else {
+                return false;
             }
         }
         true

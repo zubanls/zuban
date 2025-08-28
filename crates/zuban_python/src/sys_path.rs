@@ -288,12 +288,10 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
         // path anymore. I'm not sure what to do here other than hardcoding it.
         if let Some(user_home) =
             std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))
-        {
-            if let Some(p) =
+            && let Some(p) =
                 maybe_has_zuban(&Path::new(&user_home).join("AppData/Roaming/uv/tools/zuban/Lib/"))
-            {
-                return p;
-            }
+        {
+            return p;
         }
     } else {
         let lib_folder = env_folder.join("lib");

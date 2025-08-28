@@ -288,13 +288,12 @@ impl Type {
                     reason: reason @ MismatchReason::ConstraintMismatch { .. },
                     ..
                 } = &mut m
+                    && i.0 != 0
                 {
-                    if i.0 != 0 {
-                        // If the constraint matched previously, but doesn't anymore, because we
-                        // have a non-matching super class, the constraint was actually fine, but
-                        // there were other issues.
-                        *reason = MismatchReason::None;
-                    }
+                    // If the constraint matched previously, but doesn't anymore, because we
+                    // have a non-matching super class, the constraint was actually fine, but
+                    // there were other issues.
+                    *reason = MismatchReason::None;
                 }
                 debug_message_for_result(&m);
                 return m;
@@ -316,14 +315,10 @@ impl Type {
                     if !matcher.ignore_promotions() {
                         return self.check_promotion(i_s, matcher, class2.node_ref);
                     }
-                } else if let Type::Literal(literal) = value_type {
-                    if !matcher.ignore_promotions() {
-                        return self.check_promotion(
-                            i_s,
-                            matcher,
-                            literal.fallback_node_ref(i_s.db),
-                        );
-                    }
+                } else if let Type::Literal(literal) = value_type
+                    && !matcher.ignore_promotions()
+                {
+                    return self.check_promotion(i_s, matcher, literal.fallback_node_ref(i_s.db));
                 }
                 Match::new_false()
             });
@@ -409,18 +404,19 @@ impl Type {
     ) -> Match {
         let mut m = Match::new_false();
         // 2. Check if it is a class with a protocol
-        if let Some(class1) = self.maybe_class(i_s.db) {
-            if class1.is_protocol(i_s.db) && variance == Variance::Covariant {
-                m = avoid_protocol_mismatch(
-                    i_s.db,
-                    self,
-                    value_type,
-                    matcher.has_type_var_matcher(),
-                    || class1.check_protocol_match(i_s, matcher, value_type),
-                );
-                if m.bool() {
-                    return m;
-                }
+        if let Some(class1) = self.maybe_class(i_s.db)
+            && class1.is_protocol(i_s.db)
+            && variance == Variance::Covariant
+        {
+            m = avoid_protocol_mismatch(
+                i_s.db,
+                self,
+                value_type,
+                matcher.has_type_var_matcher(),
+                || class1.check_protocol_match(i_s, matcher, value_type),
+            );
+            if m.bool() {
+                return m;
             }
         }
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
@@ -480,8 +476,8 @@ impl Type {
                     return Match::new_false()
                 }
                 if matcher.is_matching_reverse() {
-                    if let Some(func_like) = matcher.func_like {
-                        if let Some(func_class) = func_like.class() {
+                    if let Some(func_like) = matcher.func_like
+                        && let Some(func_class) = func_like.class() {
                             return self.matches(
                                 i_s,
                                 matcher,
@@ -489,7 +485,6 @@ impl Type {
                                 variance,
                             );
                         }
-                    }
                 } else if let Some(cls) = i_s.current_class() {
                     return self.matches(i_s, matcher, &cls.as_type(i_s.db), variance);
                 }
@@ -954,39 +949,36 @@ fn match_unpack_internal(
 
     let check_type = |matcher: &mut _, t1: &Type, t2, index| {
         let match_ = t1.matches(i_s, matcher, t2, variance);
-        if let Match::False { reason, .. } = &match_ {
-            if let Some(on_mismatch) = on_mismatch {
-                on_mismatch(
-                    ErrorTypes {
-                        matcher: Some(matcher),
-                        reason,
-                        expected: t1,
-                        got: GotType::Type(t2),
-                    },
-                    index,
-                );
-            }
+        if let Match::False { reason, .. } = &match_
+            && let Some(on_mismatch) = on_mismatch
+        {
+            on_mismatch(
+                ErrorTypes {
+                    matcher: Some(matcher),
+                    reason,
+                    expected: t1,
+                    got: GotType::Type(t2),
+                },
+                index,
+            );
         }
         match_
     };
     let check_type_var_tuple = |matcher: &mut Matcher, tvt, args: TupleArgs| {
         let m = matcher.match_or_add_type_var_tuple(i_s, tvt, args.clone(), variance);
-        if !m.bool() {
-            if let Match::False { reason, .. } = &m {
-                if let Some(on_mismatch) = on_mismatch {
-                    on_mismatch(
-                        ErrorTypes {
-                            matcher: Some(matcher),
-                            reason,
-                            expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
-                                with_unpack1.clone(),
-                            ))),
-                            got: GotType::Type(&Type::Tuple(Tuple::new(args))),
-                        },
-                        with_unpack1.before.len() as isize,
-                    );
-                }
-            }
+        if !m.bool()
+            && let Match::False { reason, .. } = &m
+            && let Some(on_mismatch) = on_mismatch
+        {
+            on_mismatch(
+                ErrorTypes {
+                    matcher: Some(matcher),
+                    reason,
+                    expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(with_unpack1.clone()))),
+                    got: GotType::Type(&Type::Tuple(Tuple::new(args))),
+                },
+                with_unpack1.before.len() as isize,
+            );
         }
         m
     };

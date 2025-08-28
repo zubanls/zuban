@@ -207,19 +207,17 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         &self,
         searched: &TypeVarLike,
     ) -> Option<TypeVarCallbackReturn> {
-        if let Some(func) = self.current_function() {
-            if let Some(usage) =
+        if let Some(func) = self.current_function()
+            && let Some(usage) =
                 func.find_type_var_like_including_ancestors(self.db, searched, false)
-            {
-                return Some(usage);
-            }
+        {
+            return Some(usage);
         }
-        if let Some(class) = self.in_class_scope() {
-            if let Some(usage) =
+        if let Some(class) = self.in_class_scope()
+            && let Some(usage) =
                 class.find_type_var_like_including_ancestors(self.db, searched, false)
-            {
-                return Some(usage);
-            }
+        {
+            return Some(usage);
         }
         None
     }

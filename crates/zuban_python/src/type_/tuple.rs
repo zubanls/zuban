@@ -387,13 +387,14 @@ impl Tuple {
                             } else {
                                 return ambiguous();
                             };
-                            if out.before.is_empty() && out.after.is_empty() {
-                                if let TupleUnpack::ArbitraryLen(t) = out.unpack {
-                                    // We can simplify
-                                    return Inferred::from_type(Type::Tuple(Tuple::new(
-                                        TupleArgs::ArbitraryLen(Arc::new(t)),
-                                    )));
-                                }
+                            if out.before.is_empty()
+                                && out.after.is_empty()
+                                && let TupleUnpack::ArbitraryLen(t) = out.unpack
+                            {
+                                // We can simplify
+                                return Inferred::from_type(Type::Tuple(Tuple::new(
+                                    TupleArgs::ArbitraryLen(Arc::new(t)),
+                                )));
                             }
                             Inferred::from_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(out))))
                         }

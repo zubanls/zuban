@@ -165,22 +165,22 @@ fn common_sub_type_for_callables(
         debug!("TODO when a callable kind does not match should there still be a subtype?");
         return i_s.db.python_state.any_callable_from_error.clone();
     }
-    if let Some(return_type) = c1.return_type.common_sub_type(i_s, &c2.return_type) {
-        if let Some(params) = c1.params.common_sub_type(i_s, &c2.params) {
-            return Arc::new(CallableContent {
-                name: None,
-                class_name: None,
-                defined_at: c1.defined_at,
-                kind: c1.kind.clone(),
-                type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                guard: common_sub_type_for_guard(i_s, &c1.guard, &c2.guard),
-                is_abstract: c1.is_abstract && c2.is_abstract,
-                is_abstract_from_super: c1.is_abstract_from_super && c2.is_abstract_from_super,
-                is_final: c1.is_final && c2.is_final,
-                params,
-                return_type,
-            });
-        }
+    if let Some(return_type) = c1.return_type.common_sub_type(i_s, &c2.return_type)
+        && let Some(params) = c1.params.common_sub_type(i_s, &c2.params)
+    {
+        return Arc::new(CallableContent {
+            name: None,
+            class_name: None,
+            defined_at: c1.defined_at,
+            kind: c1.kind.clone(),
+            type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+            guard: common_sub_type_for_guard(i_s, &c1.guard, &c2.guard),
+            is_abstract: c1.is_abstract && c2.is_abstract,
+            is_abstract_from_super: c1.is_abstract_from_super && c2.is_abstract_from_super,
+            is_final: c1.is_final && c2.is_final,
+            params,
+            return_type,
+        });
     }
     Arc::new(CallableContent::new_any(
         i_s.db.python_state.empty_type_var_likes.clone(),

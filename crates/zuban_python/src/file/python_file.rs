@@ -497,17 +497,16 @@ impl<'db> PythonFile {
         let file_index = *stub_cache.non_stub.get_or_init(|| {
             let file_entry = self.file_entry(db);
             let (name, parent_dir) = name_and_parent_dir(file_entry, false);
-            if let Some(py_name) = file_entry.name.strip_suffix("i") {
-                if let Some(file_entry) =
+            if let Some(py_name) = file_entry.name.strip_suffix("i")
+                && let Some(file_entry) =
                     file_entry.parent.with_entries(&*db.vfs.handler, |entries| {
                         match &*entries.search(py_name)? {
                             DirectoryEntry::File(f) => Some(f.clone()),
                             _ => None,
                         }
                     })
-                {
-                    return db.load_file_from_workspace(&file_entry, false);
-                }
+            {
+                return db.load_file_from_workspace(&file_entry, false);
             }
             match ImportResult::import_non_stub_for_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => {
@@ -632,38 +631,36 @@ impl<'db> PythonFile {
         };
 
         let check_ref = |mut dunder_all: Vec<DbString>, name: Name| -> Option<Vec<DbString>> {
-            if let Some(primary) = name.maybe_atom_of_primary() {
-                if let PrimaryParent::Primary(maybe_call) = primary.parent() {
-                    if let PrimaryContent::Execution(arg_details) = maybe_call.second() {
-                        if let PrimaryContent::Attribute(attr) = primary.second() {
-                            let maybe_single = arg_details.maybe_single_named_expr();
-                            match attr.as_code() {
-                                "append" => dunder_all.push(DbString::from_python_string(
-                                    file_index,
-                                    maybe_single?
-                                        .expression()
-                                        .maybe_single_string_literal()?
-                                        .as_python_string(),
-                                )?),
-                                "extend" => {
-                                    return maybe_dunder_all_names(
-                                        dunder_all,
-                                        file_index,
-                                        maybe_single?.expression(),
-                                    );
-                                }
-                                "remove" => {
-                                    let s = maybe_single?
-                                        .expression()
-                                        .maybe_single_string_literal()?
-                                        .as_python_string();
-                                    let to_remove = s.as_str()?;
-                                    dunder_all.retain(|x| x.as_str(db) != to_remove)
-                                }
-                                _ => (),
-                            }
-                        }
+            if let Some(primary) = name.maybe_atom_of_primary()
+                && let PrimaryParent::Primary(maybe_call) = primary.parent()
+                && let PrimaryContent::Execution(arg_details) = maybe_call.second()
+                && let PrimaryContent::Attribute(attr) = primary.second()
+            {
+                let maybe_single = arg_details.maybe_single_named_expr();
+                match attr.as_code() {
+                    "append" => dunder_all.push(DbString::from_python_string(
+                        file_index,
+                        maybe_single?
+                            .expression()
+                            .maybe_single_string_literal()?
+                            .as_python_string(),
+                    )?),
+                    "extend" => {
+                        return maybe_dunder_all_names(
+                            dunder_all,
+                            file_index,
+                            maybe_single?.expression(),
+                        );
                     }
+                    "remove" => {
+                        let s = maybe_single?
+                            .expression()
+                            .maybe_single_string_literal()?
+                            .as_python_string();
+                        let to_remove = s.as_str()?;
+                        dunder_all.retain(|x| x.as_str(db) != to_remove)
+                    }
+                    _ => (),
                 }
             }
             Some(dunder_all)
@@ -676,10 +673,10 @@ impl<'db> PythonFile {
             }
         }
         for (index, point) in self.points.iter().enumerate() {
-            if point.maybe_redirect_to(PointLink::new(file_index, dunder_all_index)) {
-                if let Some(name) = NodeRef::new(self, index as NodeIndex).maybe_name() {
-                    dunder_all = check_ref(dunder_all, name)?
-                }
+            if point.maybe_redirect_to(PointLink::new(file_index, dunder_all_index))
+                && let Some(name) = NodeRef::new(self, index as NodeIndex).maybe_name()
+            {
+                dunder_all = check_ref(dunder_all, name)?
             }
         }
         Some(dunder_all.into())
@@ -807,16 +804,16 @@ fn name_and_parent_dir(entry: &FileEntry, skip_stubs: bool) -> (&str, Option<Arc
         .strip_suffix(".py")
         .or_else(|| name.strip_suffix(".pyi"))
         .unwrap_or(name);
-    if name == "__init__" {
-        if let Ok(dir) = entry.parent.maybe_dir() {
-            // It's ok to transmute here, because dir.name will exist as the database is
-            // non-mutable, which should be fine.
-            let mut dir_name = unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) };
-            if skip_stubs {
-                dir_name = dir_name.strip_suffix("-stubs").unwrap_or(dir_name);
-            }
-            return (dir_name, dir.parent.maybe_dir().ok());
+    if name == "__init__"
+        && let Ok(dir) = entry.parent.maybe_dir()
+    {
+        // It's ok to transmute here, because dir.name will exist as the database is
+        // non-mutable, which should be fine.
+        let mut dir_name = unsafe { std::mem::transmute::<&str, &str>(dir.name.as_ref()) };
+        if skip_stubs {
+            dir_name = dir_name.strip_suffix("-stubs").unwrap_or(dir_name);
         }
+        return (dir_name, dir.parent.maybe_dir().ok());
     }
     (name, entry.parent.maybe_dir().ok())
 }

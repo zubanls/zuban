@@ -276,14 +276,12 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         match value_type {
             Type::Self_ => {
-                if let Some(func_like) = self.func_like {
-                    if let Some(class) = func_like.class() {
-                        if let Some(other_class) = i_s.current_class() {
-                            if !other_class.class_link_in_mro(i_s.db, class.node_ref.as_link()) {
-                                return Match::new_false();
-                            }
-                        }
-                    }
+                if let Some(func_like) = self.func_like
+                    && let Some(class) = func_like.class()
+                    && let Some(other_class) = i_s.current_class()
+                    && !other_class.class_link_in_mro(i_s.db, class.node_ref.as_link())
+                {
+                    return Match::new_false();
                 }
                 Match::new_true()
             }
@@ -296,14 +294,12 @@ impl<'a> Matcher<'a> {
                     }
                     if self.func_like.is_none_or(|c| c.is_callable()) {
                         // In case we are working within a function, Self is bound already.
-                        if let Some(class) = value_type.maybe_class(i_s.db) {
-                            if class.use_cached_class_infos(i_s.db).is_final {
-                                if let Some(current) = i_s.current_class() {
-                                    if current.node_ref == class.node_ref {
-                                        return Match::new_true();
-                                    }
-                                }
-                            }
+                        if let Some(class) = value_type.maybe_class(i_s.db)
+                            && class.use_cached_class_infos(i_s.db).is_final
+                            && let Some(current) = i_s.current_class()
+                            && current.node_ref == class.node_ref
+                        {
+                            return Match::new_true();
                         }
                     }
                     Match::new_false()
@@ -351,14 +347,14 @@ impl<'a> Matcher<'a> {
             return Some(tv_matcher.match_or_add_type_var(i_s, t1, value_type, variance));
         }
         if !self.match_reverse {
-            if let Some(class) = self.class {
-                if class.node_ref.as_link() == t1.in_definition {
-                    let g = class
-                        .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
-                        .expect_type_argument();
-                    return Some(g.simple_matches(i_s, value_type, variance));
-                }
+            if let Some(class) = self.class
+                && class.node_ref.as_link() == t1.in_definition
+            {
+                let g = class
+                    .generics()
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
+                    .expect_type_argument();
+                return Some(g.simple_matches(i_s, value_type, variance));
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) =
@@ -518,20 +514,20 @@ impl<'a> Matcher<'a> {
 
         if !self.match_reverse {
             let usage = TypeVarLikeUsage::TypeVarTuple(tvt.clone());
-            if let Some(class) = self.class {
-                if class.node_ref.as_link() == tvt.in_definition {
-                    let ts1 = class
-                        .generics()
-                        .nth_usage(i_s.db, &usage)
-                        .expect_type_arguments();
-                    return match_tuple_type_arguments(
-                        i_s,
-                        &mut Matcher::default(),
-                        &ts1.args,
-                        &args2,
-                        variance,
-                    );
-                }
+            if let Some(class) = self.class
+                && class.node_ref.as_link() == tvt.in_definition
+            {
+                let ts1 = class
+                    .generics()
+                    .nth_usage(i_s.db, &usage)
+                    .expect_type_arguments();
+                return match_tuple_type_arguments(
+                    i_s,
+                    &mut Matcher::default(),
+                    &ts1.args,
+                    &args2,
+                    variance,
+                );
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
@@ -583,16 +579,11 @@ impl<'a> Matcher<'a> {
             );
         }
         if !self.match_reverse {
-            if let Some(class) = self.class {
-                if class.node_ref.as_link() == p1.in_definition {
-                    let usage = class.nth_param_spec_usage(i_s.db, p1);
-                    return matches_params(
-                        i_s,
-                        &mut Matcher::default(),
-                        &usage.params,
-                        &new_params(),
-                    );
-                }
+            if let Some(class) = self.class
+                && class.node_ref.as_link() == p1.in_definition
+            {
+                let usage = class.nth_param_spec_usage(i_s.db, p1);
+                return matches_params(i_s, &mut Matcher::default(), &usage.params, &new_params());
             }
             let usage = &TypeVarLikeUsage::ParamSpec(p1.clone());
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
@@ -816,16 +807,16 @@ impl<'a> Matcher<'a> {
                 .format(usage, &format_data.remove_matcher(), params_style);
         }
         if !self.match_reverse {
-            if let Some(class) = self.class {
-                if class.node_ref.as_link() == usage.in_definition() {
-                    return MatcherFormatResult::Str(
-                        class
-                            .generics()
-                            .nth_usage(format_data.db, usage)
-                            .format(&format_data.remove_matcher())
-                            .unwrap_or("()".into()),
-                    );
-                }
+            if let Some(class) = self.class
+                && class.node_ref.as_link() == usage.in_definition()
+            {
+                return MatcherFormatResult::Str(
+                    class
+                        .generics()
+                        .nth_usage(format_data.db, usage)
+                        .format(&format_data.remove_matcher())
+                        .unwrap_or("()".into()),
+                );
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 let generic = func_class.generics().nth_usage(format_data.db, usage);
@@ -986,10 +977,10 @@ impl<'a> Matcher<'a> {
                     .clone()
                     .into_maybe_generic_item(db, |_| on_uncalculated(usage));
             }
-            if let Some(c) = self.class {
-                if c.node_ref.as_link() == usage.in_definition() {
-                    return Some(c.generics().nth_usage(db, &usage).into_generic_item());
-                }
+            if let Some(c) = self.class
+                && c.node_ref.as_link() == usage.in_definition()
+            {
+                return Some(c.generics().nth_usage(db, &usage).into_generic_item());
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
                 let g = func_class
@@ -1451,30 +1442,30 @@ impl<'a> Matcher<'a> {
         let mut preferred_bound: Option<&_> = None;
         for tv_index in &lst {
             let type_var_like = as_type_var_like(*tv_index);
-            if let TypeVarLike::TypeVar(new) = type_var_like {
-                if !new.is_unrestricted() {
-                    if let Some(current) = preferred_bound {
-                        let TypeVarLike::TypeVar(current_tv) = current else {
-                            unreachable!()
-                        };
-                        match (&current_tv.kind(db), &new.kind(db)) {
-                            (TypeVarKind::Bound(t1), TypeVarKind::Bound(t2)) => {
-                                let i_s = &InferenceState::new_in_unknown_file(db);
-                                if t1.is_simple_sub_type_of(i_s, t2).bool() {
-                                    // Nothing left to do here.
-                                } else if t2.is_simple_sub_type_of(i_s, t1).bool() {
-                                    preferred_bound = Some(type_var_like)
-                                } else {
-                                    return Err(Match::new_false());
-                                }
+            if let TypeVarLike::TypeVar(new) = type_var_like
+                && !new.is_unrestricted()
+            {
+                if let Some(current) = preferred_bound {
+                    let TypeVarLike::TypeVar(current_tv) = current else {
+                        unreachable!()
+                    };
+                    match (&current_tv.kind(db), &new.kind(db)) {
+                        (TypeVarKind::Bound(t1), TypeVarKind::Bound(t2)) => {
+                            let i_s = &InferenceState::new_in_unknown_file(db);
+                            if t1.is_simple_sub_type_of(i_s, t2).bool() {
+                                // Nothing left to do here.
+                            } else if t2.is_simple_sub_type_of(i_s, t1).bool() {
+                                preferred_bound = Some(type_var_like)
+                            } else {
+                                return Err(Match::new_false());
                             }
-                            _ => return Err(Match::new_false()),
                         }
-                    } else {
-                        preferred_bound = Some(type_var_like)
+                        _ => return Err(Match::new_false()),
                     }
-                    continue;
+                } else {
+                    preferred_bound = Some(type_var_like)
                 }
+                continue;
             }
         }
         if let Some(preferred_bound) = preferred_bound {
@@ -1804,10 +1795,11 @@ fn infer_params_from_args<'db>(
                         }),
                     )
                     .collect();
-                if let Some(next) = iterator.peek() {
-                    if !next.is_keyword_argument() && next.in_args_or_kwargs_and_arbitrary_len() {
-                        after = Err(())
-                    }
+                if let Some(next) = iterator.peek()
+                    && !next.is_keyword_argument()
+                    && next.in_args_or_kwargs_and_arbitrary_len()
+                {
+                    after = Err(())
                 }
                 match after {
                     Ok(after) => u.after = after,

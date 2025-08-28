@@ -167,29 +167,29 @@ impl CalculatedTypeArgs {
     }
 
     pub fn type_arguments_into_generics(mut self, db: &Database) -> Option<GenericsList> {
-        if let Some(type_var_likes) = &self.type_var_likes {
-            if let Some(type_args) = self.type_arguments.take() {
-                self.type_arguments = Some(if type_args.has_param_spec() {
-                    let mut type_args = type_args.into_vec();
-                    for type_arg in &mut type_args {
-                        if let GenericItem::ParamSpecArg(param_spec_arg) = type_arg {
-                            param_spec_arg.type_vars = Some(ParamSpecTypeVars {
-                                type_vars: type_var_likes.clone(),
-                                in_definition: self.in_definition,
-                            });
-                        }
+        if let Some(type_var_likes) = &self.type_var_likes
+            && let Some(type_args) = self.type_arguments.take()
+        {
+            self.type_arguments = Some(if type_args.has_param_spec() {
+                let mut type_args = type_args.into_vec();
+                for type_arg in &mut type_args {
+                    if let GenericItem::ParamSpecArg(param_spec_arg) = type_arg {
+                        param_spec_arg.type_vars = Some(ParamSpecTypeVars {
+                            type_vars: type_var_likes.clone(),
+                            in_definition: self.in_definition,
+                        });
                     }
-                    GenericsList::generics_from_vec(type_args)
-                } else {
-                    type_args.replace_type_var_likes(db, &mut |usage| {
-                        let found = usage.as_type_var_like();
-                        type_var_likes
-                            .iter()
-                            .any(|tvl| tvl == &found)
-                            .then(|| found.as_never_generic_item(db, NeverCause::Inference))
-                    })
+                }
+                GenericsList::generics_from_vec(type_args)
+            } else {
+                type_args.replace_type_var_likes(db, &mut |usage| {
+                    let found = usage.as_type_var_like();
+                    type_var_likes
+                        .iter()
+                        .any(|tvl| tvl == &found)
+                        .then(|| found.as_never_generic_item(db, NeverCause::Inference))
                 })
-            }
+            })
         }
         self.type_arguments
     }
@@ -201,28 +201,28 @@ impl CalculatedTypeArgs {
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
-        if self.type_var_likes.is_some() {
-            if let Type::Class(c) = &return_type {
-                let cls = c.class(i_s.db);
-                if cls.is_protocol(i_s.db) {
-                    let members = &cls.use_cached_class_infos(i_s.db).protocol_members;
-                    if members.len() == 1
-                        && NodeRef::new(cls.node_ref.file, members[0].name_index).as_code()
-                            == "__call__"
-                    {
-                        let had_error = Cell::new(false);
-                        let inf = cls
-                            .instance()
-                            .type_lookup(i_s, |_| had_error.set(true), "__call__")
-                            .into_inferred();
-                        if !had_error.get() {
-                            return self.into_return_type(
-                                i_s,
-                                &inf.as_cow_type(i_s),
-                                None,
-                                replace_self_type,
-                            );
-                        }
+        if self.type_var_likes.is_some()
+            && let Type::Class(c) = &return_type
+        {
+            let cls = c.class(i_s.db);
+            if cls.is_protocol(i_s.db) {
+                let members = &cls.use_cached_class_infos(i_s.db).protocol_members;
+                if members.len() == 1
+                    && NodeRef::new(cls.node_ref.file, members[0].name_index).as_code()
+                        == "__call__"
+                {
+                    let had_error = Cell::new(false);
+                    let inf = cls
+                        .instance()
+                        .type_lookup(i_s, |_| had_error.set(true), "__call__")
+                        .into_inferred();
+                    if !had_error.get() {
+                        return self.into_return_type(
+                            i_s,
+                            &inf.as_cow_type(i_s),
+                            None,
+                            replace_self_type,
+                        );
                     }
                 }
             }
@@ -232,10 +232,10 @@ impl CalculatedTypeArgs {
             .replace_type_var_likes_and_self(
                 i_s.db,
                 &mut |usage| {
-                    if let Some(c) = class {
-                        if let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage) {
-                            return Some(generic_item);
-                        }
+                    if let Some(c) = class
+                        && let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage)
+                    {
+                        return Some(generic_item);
                     }
                     if self.in_definition == usage.in_definition() {
                         return Some(self.type_arguments.as_ref().unwrap()[usage.index()].clone());
@@ -590,39 +590,39 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
     let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
         let mut add_init_generics = |matcher: &mut Matcher, return_class: &Class| {
-            if let Some(t) = func_like.first_self_or_class_annotation(i_s) {
-                if let Some(func_class) = func_like.class() {
-                    // When an __init__ has a self annotation, it's a bit special, because it influences
-                    // the generics.
-                    let m = Class::with_self_generics(i_s.db, return_class.node_ref)
-                        .as_type(i_s.db)
-                        .is_sub_type_of(i_s, matcher, &t);
-                    for entry in &mut matcher
+            if let Some(t) = func_like.first_self_or_class_annotation(i_s)
+                && let Some(func_class) = func_like.class()
+            {
+                // When an __init__ has a self annotation, it's a bit special, because it influences
+                // the generics.
+                let m = Class::with_self_generics(i_s.db, return_class.node_ref)
+                    .as_type(i_s.db)
+                    .is_sub_type_of(i_s, matcher, &t);
+                for entry in &mut matcher
+                    .type_var_matchers
+                    .first_mut()
+                    .unwrap()
+                    .calculating_type_args
+                {
+                    entry
+                        .type_
+                        .avoid_type_vars_from_class_self_arguments(func_class);
+                }
+                if !m.bool() {
+                    had_wrong_init_type_var = true;
+                    if on_type_error.is_some() {
+                        add_issue(IssueKind::ArgumentIssue(
+                            "Invalid self type in __init__".into(),
+                        ))
+                    }
+                }
+                if cfg!(debug_assertions) {
+                    let args = &matcher
                         .type_var_matchers
-                        .first_mut()
+                        .first()
                         .unwrap()
-                        .calculating_type_args
-                    {
-                        entry
-                            .type_
-                            .avoid_type_vars_from_class_self_arguments(func_class);
-                    }
-                    if !m.bool() {
-                        had_wrong_init_type_var = true;
-                        if on_type_error.is_some() {
-                            add_issue(IssueKind::ArgumentIssue(
-                                "Invalid self type in __init__".into(),
-                            ))
-                        }
-                    }
-                    if cfg!(debug_assertions) {
-                        let args = &matcher
-                            .type_var_matchers
-                            .first()
-                            .unwrap()
-                            .debug_format(i_s.db);
-                        debug!("Added __init__ generics as [{args}]");
-                    }
+                        .debug_format(i_s.db);
+                    debug!("Added __init__ generics as [{args}]");
                 }
             }
         };
@@ -653,17 +653,17 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
     if had_wrong_init_type_var {
         result.matches = SignatureMatch::False { similar: false };
     }
-    if cfg!(feature = "zuban_debug") {
-        if let Some(type_arguments) = &result.type_arguments {
-            debug!(
-                "Calculated type vars for {}: [{}]",
-                func_like
-                    .diagnostic_string(i_s.db)
-                    .as_deref()
-                    .unwrap_or("function"),
-                type_arguments.format(&FormatData::new_short(i_s.db)),
-            );
-        }
+    if cfg!(feature = "zuban_debug")
+        && let Some(type_arguments) = &result.type_arguments
+    {
+        debug!(
+            "Calculated type vars for {}: [{}]",
+            func_like
+                .diagnostic_string(i_s.db)
+                .as_deref()
+                .unwrap_or("function"),
+            type_arguments.format(&FormatData::new_short(i_s.db)),
+        );
     }
     result
 }
@@ -776,19 +776,19 @@ pub(crate) fn match_arguments_against_params<
                         &with_unpack,
                         Variance::Covariant,
                     );
-                    if let Match::False { reason, .. } = &m {
-                        if let Some(on_type_error) = on_type_error {
-                            let got = GotType::Starred(Type::Tuple(Tuple::new(
-                                TupleArgs::WithUnpack(with_unpack),
-                            )));
-                            let error_types = ErrorTypes {
-                                matcher: Some(matcher),
-                                reason,
-                                got,
-                                expected: &expected,
-                            };
-                            (on_type_error.callback)(i_s, &diagnostic_string, arg, error_types)
-                        }
+                    if let Match::False { reason, .. } = &m
+                        && let Some(on_type_error) = on_type_error
+                    {
+                        let got = GotType::Starred(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
+                            with_unpack,
+                        ))));
+                        let error_types = ErrorTypes {
+                            matcher: Some(matcher),
+                            reason,
+                            got,
+                            expected: &expected,
+                        };
+                        (on_type_error.callback)(i_s, &diagnostic_string, arg, error_types)
                     }
                     matches &= m;
                     return;

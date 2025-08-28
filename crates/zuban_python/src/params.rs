@@ -120,10 +120,10 @@ pub fn matches_simple_params<
 ) -> Match {
     let match_with_variance =
         |i_s: &_, matcher: &mut _, a: &Option<Cow<Type>>, b: &Option<Cow<Type>>, variance| {
-            if let Some(a) = a {
-                if let Some(b) = b {
-                    return a.matches(i_s, matcher, b, variance);
-                }
+            if let Some(a) = a
+                && let Some(b) = b
+            {
+                return a.matches(i_s, matcher, b, variance);
             }
             Match::new_true()
         };
@@ -715,26 +715,24 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
     variance: Variance,
     as_params: impl FnOnce() -> Peekable<IT>,
 ) -> Option<Match> {
-    if let WrappedParamType::Star(WrappedStar::UnpackedTuple(unpacked2)) = specific2 {
-        if let TupleArgs::WithUnpack(WithUnpack {
+    if let WrappedParamType::Star(WrappedStar::UnpackedTuple(unpacked2)) = specific2
+        && let TupleArgs::WithUnpack(WithUnpack {
             unpack: TupleUnpack::TypeVarTuple(tvt2),
             ..
         }) = &unpacked2.args
-        {
-            if matcher.has_responsible_type_var_tuple_matcher(tvt2) {
-                // TODO making params1 peekable is not possible in this way and will always
-                // fetch a param too much.
-                let mut params1 = as_params();
-                let tup1_args = gather_unpack_args(i_s.db, &mut params1)?;
-                return Some(match_tuple_type_arguments(
-                    i_s,
-                    matcher,
-                    &tup1_args,
-                    &unpacked2.args,
-                    variance,
-                ));
-            }
-        }
+        && matcher.has_responsible_type_var_tuple_matcher(tvt2)
+    {
+        // TODO making params1 peekable is not possible in this way and will always
+        // fetch a param too much.
+        let mut params1 = as_params();
+        let tup1_args = gather_unpack_args(i_s.db, &mut params1)?;
+        return Some(match_tuple_type_arguments(
+            i_s,
+            matcher,
+            &tup1_args,
+            &unpacked2.args,
+            variance,
+        ));
     }
     None
 }
@@ -807,10 +805,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_u)) => unimplemented!(),
     };
     let mut check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
-        if let Some(t1) = t1 {
-            if let Some(t2) = to_type(i_s.db, p2) {
-                return t1.overlaps(i_s, matcher, &t2);
-            }
+        if let Some(t1) = t1
+            && let Some(t2) = to_type(i_s.db, p2)
+        {
+            return t1.overlaps(i_s, matcher, &t2);
         }
         true
     };
@@ -823,10 +821,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             if has_default {
                 // TODO it's weird that we are creating a new InferenceState, because of borrowing
                 // issues in this closure
-                if let Some(t) = to_type(db, *p) {
-                    if t.is_any() {
-                        had_any_fallback_with_default = true;
-                    }
+                if let Some(t) = to_type(db, *p)
+                    && t.is_any()
+                {
+                    had_any_fallback_with_default = true;
                 }
             }
             !has_default
@@ -853,10 +851,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 }
             }
             WrappedParamType::KeywordOnly(t1) => {
-                if let Some(param2) = params2.peek() {
-                    if param2.kind(db) == ParamKind::Star {
-                        params2.next();
-                    }
+                if let Some(param2) = params2.peek()
+                    && param2.kind(db) == ParamKind::Star
+                {
+                    params2.next();
                 }
                 if let Some(mut param2) = params2
                     .peek()
@@ -906,10 +904,10 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     Some(p) => !matches!(p.kind(db), ParamKind::KeywordOnly | ParamKind::StarStar),
                     None => false,
                 } {
-                    if let Some(param2) = params2.next() {
-                        if !check_type(i_s, t1.as_deref(), param2) {
-                            return false;
-                        }
+                    if let Some(param2) = params2.next()
+                        && !check_type(i_s, t1.as_deref(), param2)
+                    {
+                        return false;
                     }
                 }
             }
@@ -1140,19 +1138,19 @@ where
             {
                 if !matches!(self.unused_unpack_typed_dict, UnpackTypedDictState::Used) {
                     for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-                        if let Some(key) = unused.keyword_name(self.db) {
-                            if let Some(member) = td.find_member(self.db, key) {
-                                self.unused_unpack_typed_dict =
-                                    UnpackTypedDictState::CheckingUnusedKwArgs;
-                                return Some(InferrableParam {
-                                    param,
-                                    argument: ParamArgument::MatchedUnpackedTypedDictMember {
-                                        argument: self.unused_keyword_arguments.remove(i),
-                                        type_: member.type_.clone(),
-                                        name: member.name,
-                                    },
-                                });
-                            }
+                        if let Some(key) = unused.keyword_name(self.db)
+                            && let Some(member) = td.find_member(self.db, key)
+                        {
+                            self.unused_unpack_typed_dict =
+                                UnpackTypedDictState::CheckingUnusedKwArgs;
+                            return Some(InferrableParam {
+                                param,
+                                argument: ParamArgument::MatchedUnpackedTypedDictMember {
+                                    argument: self.unused_keyword_arguments.remove(i),
+                                    type_: member.type_.clone(),
+                                    name: member.name,
+                                },
+                            });
                         }
                     }
                 }
@@ -1221,19 +1219,19 @@ where
                             self.unused_keyword_arguments.push(arg);
                         }
                     } else {
-                        if arg.is_arbitrary_kwargs() {
-                            if let Some(p) = check_unused(self, param) {
-                                return Some(p);
-                            }
+                        if arg.is_arbitrary_kwargs()
+                            && let Some(p) = check_unused(self, param)
+                        {
+                            return Some(p);
                         }
                         argument_with_index = Some(arg);
                         break;
                     }
                 }
-                if argument_with_index.is_none() {
-                    if let Some(p) = check_unused(self, param) {
-                        return Some(p);
-                    }
+                if argument_with_index.is_none()
+                    && let Some(p) = check_unused(self, param)
+                {
+                    return Some(p);
                 }
             }
             ParamKind::KeywordOnly => {
@@ -1257,10 +1255,10 @@ where
                         self.too_many_positional_arguments = true;
                     }
                 }
-                if argument_with_index.is_none() {
-                    if let Some(p) = check_unused(self, param) {
-                        return Some(p);
-                    }
+                if argument_with_index.is_none()
+                    && let Some(p) = check_unused(self, param)
+                {
+                    return Some(p);
                 }
             }
             ParamKind::PositionalOnly => {

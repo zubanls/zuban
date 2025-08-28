@@ -117,12 +117,11 @@ pub fn calculate_property_return(
         return None;
     }
 
-    if avoid_inferring_return_types {
-        if let Some(func) = callable.maybe_original_function(i_s.db) {
-            if func.return_annotation().is_none() {
-                return Some(Type::Any(AnyCause::Unannotated));
-            }
-        }
+    if avoid_inferring_return_types
+        && let Some(func) = callable.maybe_original_function(i_s.db)
+        && func.return_annotation().is_none()
+    {
+        return Some(Type::Any(AnyCause::Unannotated));
     }
     let t = replace_class_type_vars(i_s.db, &callable.return_type, func_class, &|| {
         Some(instance.clone())

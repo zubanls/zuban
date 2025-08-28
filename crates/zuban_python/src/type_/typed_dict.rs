@@ -129,10 +129,10 @@ impl TypedDict {
 
     pub fn apply_generics(&self, db: &Database, generics: TypedDictGenerics) -> Arc<Self> {
         let mut members = OnceLock::new();
-        if let TypedDictGenerics::Generics(generics) = &generics {
-            if let Some(ms) = self.members.get() {
-                members = OnceLock::from(Self::remap_members_with_generics(db, ms, generics))
-            }
+        if let TypedDictGenerics::Generics(generics) = &generics
+            && let Some(ms) = self.members.get()
+        {
+            members = OnceLock::from(Self::remap_members_with_generics(db, ms, generics))
         }
         Arc::new(TypedDict {
             name: self.name,

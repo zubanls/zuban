@@ -549,10 +549,10 @@ impl<'sender> GlobalState<'sender> {
     }
 
     fn respond(&mut self, response: lsp_server::Response) {
-        if let Some(err) = &response.error {
-            if err.message.starts_with("server panicked") {
-                //self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
-            }
+        if let Some(err) = &response.error
+            && err.message.starts_with("server panicked")
+        {
+            //self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
         }
         self.sender.send(response.into()).unwrap()
     }
@@ -680,10 +680,10 @@ impl<'sender> NotificationDispatcher<'_, 'sender> {
     }
 
     fn finish(&mut self) {
-        if let Some(not) = &self.not {
-            if !not.method.starts_with("$/") {
-                tracing::error!("unhandled notification: {:?}", not);
-            }
+        if let Some(not) = &self.not
+            && !not.method.starts_with("$/")
+        {
+            tracing::error!("unhandled notification: {:?}", not);
         }
     }
 }
@@ -856,10 +856,10 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<'_, str>)> {
         // + 1 for the colon in file:/
         uri.as_str().get(scheme_end.get() as usize + 1..).unwrap()
     };
-    if cfg!(windows) {
-        if let Some(new_p) = p.strip_prefix('/') {
-            p = new_p;
-        }
+    if cfg!(windows)
+        && let Some(new_p) = p.strip_prefix('/')
+    {
+        p = new_p;
     }
 
     let decoded = urlencoding::decode(p)?;

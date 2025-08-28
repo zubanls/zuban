@@ -60,10 +60,10 @@ impl<'a> Instance<'a> {
             });
             false
         };
-        if let Some(nt) = self.class.maybe_named_tuple_base(i_s.db) {
-            if nt.search_param(i_s.db, name_str).is_some() {
-                return property_is_read_only(nt.name(i_s.db).into());
-            }
+        if let Some(nt) = self.class.maybe_named_tuple_base(i_s.db)
+            && nt.search_param(i_s.db, name_str).is_some()
+        {
+            return property_is_read_only(nt.name(i_s.db).into());
         }
         let check_compatible = |t: &Type, value: &_| {
             let mut had_errors = false;
@@ -333,19 +333,18 @@ impl<'a> Instance<'a> {
             // First check class infos
             let result = lookup.and_then(|inf| {
                 if let Some(c) = class_of_lookup {
-                    if c.node_ref == self.class.node_ref {
-                        if let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db) {
-                            if let Some(param) = named_tuple.search_param(i_s.db, name) {
-                                attr_kind = AttributeKind::Property {
-                                    setter_type: None,
-                                    is_final: false,
-                                    is_abstract: true,
-                                };
-                                return Some(Inferred::from_type(
-                                    param.type_.expect_positional_type().clone(),
-                                ));
-                            }
-                        }
+                    if c.node_ref == self.class.node_ref
+                        && let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db)
+                        && let Some(param) = named_tuple.search_param(i_s.db, name)
+                    {
+                        attr_kind = AttributeKind::Property {
+                            setter_type: None,
+                            is_final: false,
+                            is_abstract: true,
+                        };
+                        return Some(Inferred::from_type(
+                            param.type_.expect_positional_type().clone(),
+                        ));
                     }
                     let i_s = i_s.with_class_context(&self.class);
                     let instance = if let Some(as_self_instance) = options.as_self_instance {
@@ -399,36 +398,31 @@ impl<'a> Instance<'a> {
                 // This is intentionally done in the same loop. Usually calculating the mro isn't
                 // expensive, but in some cases it is. It therefore makes sense to avoid using it
                 // twice.
-                if let TypeOrClass::Class(c) = class {
-                    if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
+                if let TypeOrClass::Class(c) = class
+                    && let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
+                {
+                    let i_s = i_s.with_class_context(&c);
+                    let inference = c.node_ref.file.inference(&i_s);
+                    let Ok(inf) =
+                        inference.self_lookup_with_flow_analysis(c, self_symbol, options.add_issue)
+                    else {
+                        (options.add_issue)(IssueKind::CannotDetermineType { for_: name.into() });
+                        return LookupDetails::any(AnyCause::FromError);
+                    };
+                    if inf.maybe_saved_specific(i_s.db)
+                        == Some(Specific::AnnotationOrTypeCommentFinal)
                     {
-                        let i_s = i_s.with_class_context(&c);
-                        let inference = c.node_ref.file.inference(&i_s);
-                        let Ok(inf) = inference.self_lookup_with_flow_analysis(
-                            c,
-                            self_symbol,
-                            options.add_issue,
-                        ) else {
-                            (options.add_issue)(IssueKind::CannotDetermineType {
-                                for_: name.into(),
-                            });
-                            return LookupDetails::any(AnyCause::FromError);
-                        };
-                        if inf.maybe_saved_specific(i_s.db)
-                            == Some(Specific::AnnotationOrTypeCommentFinal)
-                        {
-                            attr_kind = AttributeKind::Final
-                        }
-                        return LookupDetails {
-                            class: TypeOrClass::Class(c),
-                            attr_kind,
-                            lookup: LookupResult::GotoName {
-                                name: PointLink::new(c.node_ref.file.file_index, self_symbol),
-                                inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
-                            },
-                            mro_index: Some(mro_index),
-                        };
+                        attr_kind = AttributeKind::Final
                     }
+                    return LookupDetails {
+                        class: TypeOrClass::Class(c),
+                        attr_kind,
+                        lookup: LookupResult::GotoName {
+                            name: PointLink::new(c.node_ref.file.file_index, self_symbol),
+                            inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
+                        },
+                        mro_index: Some(mro_index),
+                    };
                 }
             }
         }
@@ -916,15 +910,14 @@ fn execute_isinstance_or_issubclass<'db>(
     args: &dyn Args<'db>,
     issubclass: bool,
 ) -> Inferred {
-    if let Some((_, node_ref2)) = args.maybe_two_positional_args(i_s) {
-        if node_ref2
+    if let Some((_, node_ref2)) = args.maybe_two_positional_args(i_s)
+        && node_ref2
             .file
             .inference(i_s)
             .check_isinstance_or_issubclass_type(node_ref2.expect_named_expression(), issubclass)
             .is_some()
-        {
-            return Inferred::from_type(i_s.db.python_state.bool_type());
-        }
+    {
+        return Inferred::from_type(i_s.db.python_state.bool_type());
     };
     let original_func_ref = match issubclass {
         false => i_s.db.python_state.isinstance_node_ref(),

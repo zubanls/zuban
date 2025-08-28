@@ -805,41 +805,41 @@ impl FlowAnalysis {
     ) -> T {
         let (frame, result) = self.with_frame_and_result(Frame::new_base_scope(), callable);
         for entry in frame.entries {
-            if entry.widens {
-                if let EntryKind::Type(widened) = entry.type_ {
-                    let name_def_ref = match &entry.key {
-                        FlowKey::Name(link) => {
-                            let name_ref = NodeRef::from_link(i_s.db, *link);
-                            if !name_ref.point().can_be_redefined() {
-                                // The name is only narrowed from e.g. x: int | str and should not
-                                // be saved as a widened name
-                                continue;
-                            }
-                            name_ref.name_def_ref_of_name()
-                        }
-                        _ => {
-                            recoverable_error!("Widening is not supported for key {:?}", entry.key);
+            if entry.widens
+                && let EntryKind::Type(widened) = entry.type_
+            {
+                let name_def_ref = match &entry.key {
+                    FlowKey::Name(link) => {
+                        let name_ref = NodeRef::from_link(i_s.db, *link);
+                        if !name_ref.point().can_be_redefined() {
+                            // The name is only narrowed from e.g. x: int | str and should not
+                            // be saved as a widened name
                             continue;
                         }
-                    };
-                    let declaration_t = entry.key.declaration_t(i_s);
-                    if !declaration_t
-                        .is_simple_super_type_of(i_s, &widened)
-                        .non_any_match()
-                    {
-                        debug!(
-                            "Save widened type {:?} to {}",
-                            widened.format_short(i_s.db),
-                            name_def_ref.as_code()
-                        );
-                        name_def_ref.insert_complex(
-                            ComplexPoint::WidenedType(Arc::new(WidenedType {
-                                original: ComplexPoint::TypeInstance(declaration_t),
-                                widened,
-                            })),
-                            Locality::Todo,
-                        )
+                        name_ref.name_def_ref_of_name()
                     }
+                    _ => {
+                        recoverable_error!("Widening is not supported for key {:?}", entry.key);
+                        continue;
+                    }
+                };
+                let declaration_t = entry.key.declaration_t(i_s);
+                if !declaration_t
+                    .is_simple_super_type_of(i_s, &widened)
+                    .non_any_match()
+                {
+                    debug!(
+                        "Save widened type {:?} to {}",
+                        widened.format_short(i_s.db),
+                        name_def_ref.as_code()
+                    );
+                    name_def_ref.insert_complex(
+                        ComplexPoint::WidenedType(Arc::new(WidenedType {
+                            original: ComplexPoint::TypeInstance(declaration_t),
+                            widened,
+                        })),
+                        Locality::Todo,
+                    )
                 }
             }
         }
@@ -1210,10 +1210,10 @@ fn split_off_enum_member(
             }
             // Also abort on a subclass of IntEnum/StrEnum, because they can match any
             // str/int. (see also is_ambiguous_mix_of_enums)
-            if let Type::Enum(e) = sub_t {
-                if matches!(e.kind(i_s), EnumKind::IntEnum | EnumKind::StrEnum) {
-                    return None;
-                }
+            if let Type::Enum(e) = sub_t
+                && matches!(e.kind(i_s), EnumKind::IntEnum | EnumKind::StrEnum)
+            {
+                return None;
             }
         }
         add(sub_t.clone())
@@ -1384,15 +1384,14 @@ fn maybe_split_bool_from_literal(
     t: &Type,
     literal: &LiteralKind,
 ) -> Option<(Type, Type)> {
-    if let Type::Class(class) = t {
-        if let LiteralKind::Bool(b) = literal {
-            if class.link == db.python_state.bool_node_ref().as_link() {
-                return Some((
-                    Type::Literal(Literal::new(LiteralKind::Bool(*b))),
-                    Type::Literal(Literal::new(LiteralKind::Bool(!*b))),
-                ));
-            }
-        }
+    if let Type::Class(class) = t
+        && let LiteralKind::Bool(b) = literal
+        && class.link == db.python_state.bool_node_ref().as_link()
+    {
+        return Some((
+            Type::Literal(Literal::new(LiteralKind::Bool(*b))),
+            Type::Literal(Literal::new(LiteralKind::Bool(!*b))),
+        ));
     }
     None
 }
@@ -2201,10 +2200,10 @@ impl Inference<'_, '_, '_> {
                                     IssueKind::NamedTupleAttributeCannotBeDeleted,
                                 )
                             };
-                            if let Some(cls) = on_t.maybe_class(self.i_s.db) {
-                                if cls.maybe_named_tuple_base(self.i_s.db).is_some() {
-                                    named_tuple_attr_cannot_be_deleted()
-                                }
+                            if let Some(cls) = on_t.maybe_class(self.i_s.db)
+                                && cls.maybe_named_tuple_base(self.i_s.db).is_some()
+                            {
+                                named_tuple_attr_cannot_be_deleted()
                             }
                             if let Type::NamedTuple(_) = on_t {
                                 named_tuple_attr_cannot_be_deleted()
@@ -2640,11 +2639,11 @@ impl Inference<'_, '_, '_> {
                 else {
                     continue;
                 };
-                if key.equals(self.i_s.db, base_key) {
-                    if let Some(type_) = self.maybe_propagate_parent_union(parent_union, entry) {
-                        frame.add_entry(self.i_s, Entry::new(key.clone(), type_));
-                        break;
-                    }
+                if key.equals(self.i_s.db, base_key)
+                    && let Some(type_) = self.maybe_propagate_parent_union(parent_union, entry)
+                {
+                    frame.add_entry(self.i_s, Entry::new(key.clone(), type_));
+                    break;
                 }
             }
         }
@@ -2908,23 +2907,23 @@ impl Inference<'_, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Result<(Inferred, FramesWithParentUnions), Inferred> {
         let narrow_from_key = |key: Option<FlowKey>, inf: Inferred, parent_unions| {
-            if let Some(key) = key {
-                if let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf) {
-                    debug!(
-                        "Narrowed {} to true: {} and false: {}",
-                        part.as_code(),
-                        truthy.format_short(self.i_s.db),
-                        falsey.format_short(self.i_s.db)
-                    );
-                    return Ok((
-                        inf,
-                        FramesWithParentUnions {
-                            truthy: Frame::from_type(key.clone(), truthy),
-                            falsey: Frame::from_type(key, falsey),
-                            parent_unions,
-                        },
-                    ));
-                }
+            if let Some(key) = key
+                && let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf)
+            {
+                debug!(
+                    "Narrowed {} to true: {} and false: {}",
+                    part.as_code(),
+                    truthy.format_short(self.i_s.db),
+                    falsey.format_short(self.i_s.db)
+                );
+                return Ok((
+                    inf,
+                    FramesWithParentUnions {
+                        truthy: Frame::from_type(key.clone(), truthy),
+                        falsey: Frame::from_type(key, falsey),
+                        parent_unions,
+                    },
+                ));
             }
             Err(inf)
         };
@@ -3011,10 +3010,9 @@ impl Inference<'_, '_, '_> {
                                     }
                                 } else if saved
                                     == self.i_s.db.python_state.hasattr_node_ref().as_link()
+                                    && let Some(frames) = self.guard_hasattr(args)
                                 {
-                                    if let Some(frames) = self.guard_hasattr(args) {
-                                        return Ok((Inferred::new_bool(self.i_s.db), frames));
-                                    }
+                                    return Ok((Inferred::new_bool(self.i_s.db), frames));
                                 }
                             }
                             if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
@@ -3509,22 +3507,21 @@ impl Inference<'_, '_, '_> {
             }
         };
         let db = self.i_s.db;
-        if let Some(container_item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
-            if let Some(ComparisonKey::Normal(left_key)) = &left.key {
-                let left_t = left.inf.as_cow_type(self.i_s);
-                if !container_item
-                    .iter_with_unpacked_unions(db)
-                    .any(|t| t == &Type::None)
-                    && left_t.simple_overlaps(self.i_s, &container_item)
-                {
-                    if let Some(t) = removed_optional(db, &left_t) {
-                        return maybe_invert(
-                            Frame::from_type(left_key.clone(), t),
-                            Frame::new_conditional(),
-                            left.parent_unions.take(),
-                        );
-                    }
-                }
+        if let Some(container_item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s))
+            && let Some(ComparisonKey::Normal(left_key)) = &left.key
+        {
+            let left_t = left.inf.as_cow_type(self.i_s);
+            if !container_item
+                .iter_with_unpacked_unions(db)
+                .any(|t| t == &Type::None)
+                && left_t.simple_overlaps(self.i_s, &container_item)
+                && let Some(t) = removed_optional(db, &left_t)
+            {
+                return maybe_invert(
+                    Frame::from_type(left_key.clone(), t),
+                    Frame::new_conditional(),
+                    left.parent_unions.take(),
+                );
             }
         }
         // The right side can currently only be narrowed with TypedDicts
@@ -3532,59 +3529,58 @@ impl Inference<'_, '_, '_> {
         if right_t
             .iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::TypedDict(_)))
+            && let Some(ComparisonKey::Normal(right_key)) = &right.key
         {
-            if let Some(ComparisonKey::Normal(right_key)) = &right.key {
-                let left_t = left.inf.as_cow_type(self.i_s);
-                let str_literals: Vec<_> = left_t
-                    .iter_with_unpacked_unions(db)
-                    .filter_map(|t| match t {
-                        Type::Literal(Literal {
-                            kind: LiteralKind::String(s),
-                            ..
-                        }) => Some(s.as_str(db)),
-                        _ => None,
-                    })
-                    .collect();
-                if !str_literals.is_empty() {
-                    let mut true_types = Type::Never(NeverCause::Other);
-                    let false_types = right_t.retain_in_union(|t| match t {
-                        Type::TypedDict(td) => {
-                            let mut true_only_count = 0;
-                            let mut false_only_count = 0;
-                            for str_literal in &str_literals {
-                                if let Some(m) = td
-                                    .members(db)
-                                    .iter()
-                                    .find(|m| m.name.as_str(db) == *str_literal)
-                                {
-                                    if m.required {
-                                        true_only_count += 1;
-                                    }
-                                } else {
-                                    false_only_count += 1;
+            let left_t = left.inf.as_cow_type(self.i_s);
+            let str_literals: Vec<_> = left_t
+                .iter_with_unpacked_unions(db)
+                .filter_map(|t| match t {
+                    Type::Literal(Literal {
+                        kind: LiteralKind::String(s),
+                        ..
+                    }) => Some(s.as_str(db)),
+                    _ => None,
+                })
+                .collect();
+            if !str_literals.is_empty() {
+                let mut true_types = Type::Never(NeverCause::Other);
+                let false_types = right_t.retain_in_union(|t| match t {
+                    Type::TypedDict(td) => {
+                        let mut true_only_count = 0;
+                        let mut false_only_count = 0;
+                        for str_literal in &str_literals {
+                            if let Some(m) = td
+                                .members(db)
+                                .iter()
+                                .find(|m| m.name.as_str(db) == *str_literal)
+                            {
+                                if m.required {
+                                    true_only_count += 1;
                                 }
+                            } else {
+                                false_only_count += 1;
                             }
-                            if true_only_count == str_literals.len() {
-                                true_types.union_in_place(t.clone());
-                                return false;
-                            } else if !td.is_final || false_only_count != str_literals.len() {
-                                true_types.union_in_place(t.clone());
-                            }
-                            true
                         }
-                        _ => {
+                        if true_only_count == str_literals.len() {
                             true_types.union_in_place(t.clone());
-                            true
+                            return false;
+                        } else if !td.is_final || false_only_count != str_literals.len() {
+                            true_types.union_in_place(t.clone());
                         }
-                    });
-                    return maybe_invert(
-                        Frame::from_type(right_key.clone(), true_types),
-                        Frame::from_type(right_key.clone(), false_types),
-                        // Taking it here is fine, because we don't want these to be duplicated
-                        // entries from different comparisons
-                        std::mem::take(&mut right.parent_unions.borrow_mut()),
-                    );
-                }
+                        true
+                    }
+                    _ => {
+                        true_types.union_in_place(t.clone());
+                        true
+                    }
+                });
+                return maybe_invert(
+                    Frame::from_type(right_key.clone(), true_types),
+                    Frame::from_type(right_key.clone(), false_types),
+                    // Taking it here is fine, because we don't want these to be duplicated
+                    // entries from different comparisons
+                    std::mem::take(&mut right.parent_unions.borrow_mut()),
+                );
             }
         }
         None
@@ -3664,24 +3660,24 @@ impl Inference<'_, '_, '_> {
                 }
             }
             PrimaryContent::GetItem(slice_type) => {
-                if let Some(index_key) = self.key_from_slice_type(slice_type) {
-                    if let Some(base_key) = &old_base_key {
-                        base.key = Some(FlowKey::Index {
-                            base_key: Rc::new(base_key.clone()),
-                            match_index: index_key,
-                            node_index: slice_type.index(),
-                        });
-                    }
+                if let Some(index_key) = self.key_from_slice_type(slice_type)
+                    && let Some(base_key) = &old_base_key
+                {
+                    base.key = Some(FlowKey::Index {
+                        base_key: Rc::new(base_key.clone()),
+                        match_index: index_key,
+                        node_index: slice_type.index(),
+                    });
                 }
             }
             PrimaryContent::Execution(_) => unreachable!(),
         }
         if let Some(base_key) = old_base_key {
             // Only in case of valid keys we want to add the unions.
-            if base.key.is_some() {
-                if let Some(union_type) = maybe_union() {
-                    base.parent_unions.push((base_key.clone(), union_type))
-                }
+            if base.key.is_some()
+                && let Some(union_type) = maybe_union()
+            {
+                base.parent_unions.push((base_key.clone(), union_type))
             }
         }
         base
@@ -3799,10 +3795,10 @@ impl Inference<'_, '_, '_> {
 
     fn matches_ancestor(&self, p: Primary, key: &FlowKey) -> bool {
         let first = p.first();
-        if let PrimaryOrAtom::Primary(earlier) = first {
-            if self.matches_ancestor(earlier, key) {
-                return true;
-            }
+        if let PrimaryOrAtom::Primary(earlier) = first
+            && self.matches_ancestor(earlier, key)
+        {
+            return true;
         }
         self.match_primary_first_part(first, key)
     }
@@ -4201,46 +4197,45 @@ fn narrow_len(
         kind: LiteralKind::Int(n),
         ..
     }) = other_inf.as_cow_type(i_s).as_ref()
+        && let Ok(n) = (*n).try_into()
     {
-        if let Ok(n) = (*n).try_into() {
-            let inf_t = inferred_type_param.as_cow_type(i_s);
-            let retain = |full: &Type, negative| {
-                let mut out = Type::Never(NeverCause::Other);
-                for part_t in full.iter_with_unpacked_unions(i_s.db) {
-                    match part_t {
-                        Type::Tuple(tup) => {
-                            if narrow_len_for_tuples(n, &tup.args, negative, kind, |t| {
-                                out.union_in_place(t)
-                            }) {
-                                continue;
-                            }
+        let inf_t = inferred_type_param.as_cow_type(i_s);
+        let retain = |full: &Type, negative| {
+            let mut out = Type::Never(NeverCause::Other);
+            for part_t in full.iter_with_unpacked_unions(i_s.db) {
+                match part_t {
+                    Type::Tuple(tup) => {
+                        if narrow_len_for_tuples(n, &tup.args, negative, kind, |t| {
+                            out.union_in_place(t)
+                        }) {
+                            continue;
                         }
-                        Type::NamedTuple(nt) => {
-                            if matches_fixed_len_namedtuple_len(nt, n, kind) == negative {
-                                continue;
-                            }
-                        }
-                        Type::Class(c) => {
-                            if let Some(nt) = c.class(i_s.db).maybe_named_tuple_base(i_s.db) {
-                                if matches_fixed_len_namedtuple_len(&nt, n, kind) == negative {
-                                    continue;
-                                }
-                            }
-                        }
-                        _ => (),
                     }
-                    out.union_in_place(part_t.clone())
+                    Type::NamedTuple(nt) => {
+                        if matches_fixed_len_namedtuple_len(nt, n, kind) == negative {
+                            continue;
+                        }
+                    }
+                    Type::Class(c) => {
+                        if let Some(nt) = c.class(i_s.db).maybe_named_tuple_base(i_s.db)
+                            && matches_fixed_len_namedtuple_len(&nt, n, kind) == negative
+                        {
+                            continue;
+                        }
+                    }
+                    _ => (),
                 }
-                out
-            };
-            let truthy = retain(&inf_t, false);
-            let falsey = retain(&inf_t, true);
-            return Some(FramesWithParentUnions {
-                truthy: Frame::from_type(key.clone(), truthy),
-                falsey: Frame::from_type(key.clone(), falsey),
-                parent_unions: std::mem::take(&mut parent_unions.borrow_mut()),
-            });
-        }
+                out.union_in_place(part_t.clone())
+            }
+            out
+        };
+        let truthy = retain(&inf_t, false);
+        let falsey = retain(&inf_t, true);
+        return Some(FramesWithParentUnions {
+            truthy: Frame::from_type(key.clone(), truthy),
+            falsey: Frame::from_type(key.clone(), falsey),
+            parent_unions: std::mem::take(&mut parent_unions.borrow_mut()),
+        });
     }
     None
 }
@@ -4553,10 +4548,10 @@ pub fn process_unfinished_partials(db: &Database, partials: impl IntoIterator<It
     for partial in partials.into_iter() {
         let node_ref = NodeRef::from_link(db, partial);
         let point = node_ref.point();
-        if let Some(specific) = point.maybe_specific() {
-            if specific.is_partial() {
-                node_ref.finish_partial_with_annotation_needed(db);
-            }
+        if let Some(specific) = point.maybe_specific()
+            && specific.is_partial()
+        {
+            node_ref.finish_partial_with_annotation_needed(db);
         }
     }
 }

@@ -130,12 +130,10 @@ impl<'db> NameBinder<'db> {
             if let Some(slots_index) = unresolved_class
                 .class_symbol_table
                 .lookup_symbol("__slots__")
-            {
-                if let Some(assignment) =
+                && let Some(assignment) =
                     Name::by_index(db_infos.tree, slots_index).maybe_assignment_definition_name()
-                {
-                    slots = gather_slots(db_infos.file_index, assignment);
-                }
+            {
+                slots = gather_slots(db_infos.file_index, assignment);
             }
             binder.db_infos.complex_points.insert(
                 binder.db_infos.points,
@@ -619,13 +617,13 @@ impl<'db> NameBinder<'db> {
             last_was_an_error = false;
         }
         if let Some(stmt_like) = stmts.clone().next() {
-            if let StmtLikeContent::Error(error) = stmt_like.node {
-                if error.is_dedent() {
-                    // If we encounter an invalid dedent in the statement list, we don't want to
-                    // abort after a return or break. We have broken code that needs to be fixed
-                    // first. Otherwise names will not be accessible from other modules.
-                    return self.index_stmts(stmts, ordered);
-                }
+            if let StmtLikeContent::Error(error) = stmt_like.node
+                && error.is_dedent()
+            {
+                // If we encounter an invalid dedent in the statement list, we don't want to
+                // abort after a return or break. We have broken code that needs to be fixed
+                // first. Otherwise names will not be accessible from other modules.
+                return self.index_stmts(stmts, ordered);
             }
             let mut latest = self.latest_return_or_yield;
             // Index the other statements even though they aren't actually reachable. We want to
@@ -904,10 +902,10 @@ impl<'db> NameBinder<'db> {
                     symbol_table.add_or_replace_symbol(name);
                     let name_index = name.index();
                     let mut needs_flow_analysis = true;
-                    if let Some(assignment) = name.maybe_self_assignment_name_on_self_like() {
-                        if let AssignmentContent::WithAnnotation(..) = assignment.unpack() {
-                            needs_flow_analysis = false
-                        }
+                    if let Some(assignment) = name.maybe_self_assignment_name_on_self_like()
+                        && let AssignmentContent::WithAnnotation(..) = assignment.unpack()
+                    {
+                        needs_flow_analysis = false
                     }
                     self.db_infos.points.set(
                         name_index,
@@ -955,23 +953,23 @@ impl<'db> NameBinder<'db> {
         let mut result = vec![];
         for (name, &node_index) in class_symbol_table.iter() {
             let function_index = node_index - NAME_TO_FUNCTION_DIFF;
-            if let Some(func) = FunctionDef::maybe_by_index(self.db_infos.tree, function_index) {
-                if let Some(decorated) = func.maybe_decorated() {
-                    // We could use a more sophisticated logic for abstracmethod/abstractproperty,
-                    // but it also seems kind of fine for now.
-                    if decorated.decorators().iter().any(|d| {
-                        matches!(
-                            d.named_expression().as_code(),
-                            "abstractmethod" | "abstractproperty"
-                        )
-                    }) {
-                        // Check if it's already in the list
-                        if !result
-                            .iter()
-                            .any(|&i| self.db_infos.tree.code_of_index(i) == name)
-                        {
-                            result.push(node_index)
-                        }
+            if let Some(func) = FunctionDef::maybe_by_index(self.db_infos.tree, function_index)
+                && let Some(decorated) = func.maybe_decorated()
+            {
+                // We could use a more sophisticated logic for abstracmethod/abstractproperty,
+                // but it also seems kind of fine for now.
+                if decorated.decorators().iter().any(|d| {
+                    matches!(
+                        d.named_expression().as_code(),
+                        "abstractmethod" | "abstractproperty"
+                    )
+                }) {
+                    // Check if it's already in the list
+                    if !result
+                        .iter()
+                        .any(|&i| self.db_infos.tree.code_of_index(i) == name)
+                    {
+                        result.push(node_index)
                     }
                 }
             }
@@ -1031,10 +1029,10 @@ impl<'db> NameBinder<'db> {
             };
             match n {
                 InterestingNode::Name(name) => {
-                    if let Some(type_params) = self.latest_type_params {
-                        if self.try_to_process_type_params(type_params, name) {
-                            continue;
-                        }
+                    if let Some(type_params) = self.latest_type_params
+                        && self.try_to_process_type_params(type_params, name)
+                    {
+                        continue;
                     }
                     match name.simple_parent() {
                         SimpleNameParent::Atom => {
@@ -1526,16 +1524,14 @@ impl<'db> NameBinder<'db> {
         mut names: impl Iterator<Item = NameDef<'db>>,
         is_method: bool,
     ) {
-        if is_method {
-            if let Some(name_def) = names.next() {
-                self.add_point_definition(
-                    name_def,
-                    Specific::MaybeSelfParam,
-                    // Params cause no flow analysis, because they are always the first name to
-                    // bind to.
-                    IndexingCause::NonFlowAnalysisName,
-                );
-            }
+        if is_method && let Some(name_def) = names.next() {
+            self.add_point_definition(
+                name_def,
+                Specific::MaybeSelfParam,
+                // Params cause no flow analysis, because they are always the first name to
+                // bind to.
+                IndexingCause::NonFlowAnalysisName,
+            );
         }
         for name_def in names {
             self.add_point_definition(
@@ -1850,35 +1846,31 @@ fn check_comparison_reachability(
                 comp,
                 ComparisonContent::Equals(..) | ComparisonContent::NotEquals(..)
             )
+            && let ExpressionPart::Atom(a) = other
+            && let Some(s) = a.unpack().maybe_single_string_literal()
+            && let Some(to_compare) = s.as_python_string().as_str()
         {
-            if let ExpressionPart::Atom(a) = other {
-                if let Some(s) = a.unpack().maybe_single_string_literal() {
-                    if let Some(to_compare) = s.as_python_string().as_str() {
-                        let mut result = to_compare == settings.computed_platform();
-                        if matches!(comp, ComparisonContent::NotEquals(..)) {
-                            result = !result;
-                        }
-                        if result {
-                            return Truthiness::True {
-                                in_type_checking_block: false,
-                            };
-                        } else {
-                            return Truthiness::False;
-                        }
-                    }
-                }
+            let mut result = to_compare == settings.computed_platform();
+            if matches!(comp, ComparisonContent::NotEquals(..)) {
+                result = !result;
+            }
+            if result {
+                return Truthiness::True {
+                    in_type_checking_block: false,
+                };
+            } else {
+                return Truthiness::False;
             }
         }
 
         if maybe_sys_name(primary, "version_info") {
             return python_version_matches_tuple(settings, comp, other, 0);
         }
-        if let PrimaryContent::GetItem(slice_type) = primary.second() {
-            if let PrimaryOrAtom::Primary(first) = primary.first() {
-                if maybe_sys_name(first, "version_info") {
-                    return python_version_matches_slice(settings, comp, slice_type, other);
-                }
-            }
+        if let PrimaryContent::GetItem(slice_type) = primary.second()
+            && let PrimaryOrAtom::Primary(first) = primary.first()
+            && maybe_sys_name(first, "version_info")
+        {
+            return python_version_matches_slice(settings, comp, slice_type, other);
         }
     }
     Truthiness::Unknown
@@ -1958,19 +1950,17 @@ fn python_version_matches_slice(
             }
         }
         SliceType::NamedExpression(ne) => {
-            if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom() {
-                if let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom() {
-                    if nth.parse() == Some(0) {
-                        if let Some(result) = wanted.parse_as_usize().and_then(|x| {
-                            check_operand_against_total_order(
-                                comp,
-                                settings.python_version_or_default().major.cmp(&x),
-                            )
-                        }) {
-                            return result.into();
-                        }
-                    }
-                }
+            if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom()
+                && let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom()
+                && nth.parse() == Some(0)
+                && let Some(result) = wanted.parse_as_usize().and_then(|x| {
+                    check_operand_against_total_order(
+                        comp,
+                        settings.python_version_or_default().major.cmp(&x),
+                    )
+                })
+            {
+                return result.into();
             }
         }
         _ => (),
@@ -2009,23 +1999,20 @@ fn maybe_sys_platform_startswith(
     before: Primary,
     arguments: ArgumentsDetails,
 ) -> Truthiness {
-    if let PrimaryContent::Attribute(attr) = before.second() {
-        if let PrimaryOrAtom::Primary(prim) = before.first() {
-            if attr.as_code() == "startswith" && maybe_sys_name(prim, "platform") {
-                if let Some(named_expr) = arguments.maybe_single_named_expr() {
-                    if let Some(s) = named_expr.maybe_single_string_literal() {
-                        if let Some(to_compare) = s.as_python_string().as_str() {
-                            if settings.computed_platform().starts_with(to_compare) {
-                                return Truthiness::True {
-                                    in_type_checking_block: false,
-                                };
-                            } else {
-                                return Truthiness::False;
-                            }
-                        }
-                    }
-                }
-            }
+    if let PrimaryContent::Attribute(attr) = before.second()
+        && let PrimaryOrAtom::Primary(prim) = before.first()
+        && attr.as_code() == "startswith"
+        && maybe_sys_name(prim, "platform")
+        && let Some(named_expr) = arguments.maybe_single_named_expr()
+        && let Some(s) = named_expr.maybe_single_string_literal()
+        && let Some(to_compare) = s.as_python_string().as_str()
+    {
+        if settings.computed_platform().starts_with(to_compare) {
+            return Truthiness::True {
+                in_type_checking_block: false,
+            };
+        } else {
+            return Truthiness::False;
         }
     }
     Truthiness::Unknown
@@ -2073,14 +2060,13 @@ pub fn is_expr_part_reachable_for_name_binder(
         ExpressionPart::Primary(primary) => match primary.second() {
             PrimaryContent::Attribute(second) => {
                 let second = second.as_code();
-                if second == "TYPE_CHECKING" {
-                    if let PrimaryOrAtom::Atom(atom) = primary.first() {
-                        if atom.as_code() == "typing" {
-                            return Truthiness::True {
-                                in_type_checking_block: true,
-                            };
-                        }
-                    }
+                if second == "TYPE_CHECKING"
+                    && let PrimaryOrAtom::Atom(atom) = primary.first()
+                    && atom.as_code() == "typing"
+                {
+                    return Truthiness::True {
+                        in_type_checking_block: true,
+                    };
                 }
             }
             PrimaryContent::Execution(execution) => {
