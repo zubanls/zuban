@@ -287,7 +287,7 @@ impl GlobalState<'_> {
         if result.is_empty() {
             return Ok(None);
         }
-        Ok(Some(result.into()))
+        Ok(Some(result))
     }
 
     pub fn handle_document_highlight(

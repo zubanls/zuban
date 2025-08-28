@@ -45,7 +45,8 @@ impl GlobalState<'_> {
         let project = self.project();
         let path = Self::uri_to_path(project, uri)?;
         tracing::info!("Loading {}", path.as_uri());
-        Ok(project.store_in_memory_file(path, code))
+        project.store_in_memory_file(path, code);
+        Ok(())
     }
 
     pub(crate) fn handle_did_close_text_document(

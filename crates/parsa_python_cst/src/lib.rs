@@ -289,10 +289,10 @@ impl Tree {
     }
 
     pub fn filter_all_names<'x>(&'x self) -> impl Iterator<Item = Name<'x>> {
-        self.0.nodes().filter_map(|n| {
-            n.is_type(Terminal(TerminalType::Name))
-                .then(|| Name::new(n))
-        })
+        self.0
+            .nodes()
+            .filter(|&n| n.is_type(Terminal(TerminalType::Name)))
+            .map(|n| Name::new(n))
     }
 }
 
@@ -777,7 +777,7 @@ impl<'db> Name<'db> {
             };
             strings::clean_docstring(strings_?)
         };
-        docstr(self).unwrap_or_else(|| Cow::Borrowed(""))
+        docstr(self).unwrap_or(Cow::Borrowed(""))
     }
 }
 
@@ -930,7 +930,7 @@ impl<'db> File<'db> {
     pub fn clean_docstring(&self) -> Cow<'db, str> {
         self.docstring()
             .and_then(|d| strings::clean_docstring(d))
-            .unwrap_or_else(|| Cow::Borrowed(""))
+            .unwrap_or(Cow::Borrowed(""))
     }
 }
 
@@ -3126,8 +3126,7 @@ impl<'db> DottedAsName<'db> {
         NameDef::new(
             self.node
                 .iter_children()
-                .filter(|n| n.is_type(Nonterminal(name_def)))
-                .next()
+                .find(|n| n.is_type(Nonterminal(name_def)))
                 .unwrap(),
         )
     }

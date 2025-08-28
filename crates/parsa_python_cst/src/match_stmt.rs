@@ -12,10 +12,10 @@ impl<'db> MatchStmt<'db> {
         let subject = SubjectExpr::new(iterator.next().unwrap());
         (
             subject,
-            iterator.skip(3).filter_map(|n| {
-                n.is_type(Nonterminal(case_block))
-                    .then(|| CaseBlock::new(n))
-            }),
+            iterator
+                .skip(3)
+                .filter(|&n| n.is_type(Nonterminal(case_block)))
+                .map(|n| CaseBlock::new(n)),
         )
     }
 }
@@ -82,7 +82,7 @@ impl<'db> Pattern<'db> {
         let first = iterator.next().unwrap();
         (
             pattern_node_to_kind(first),
-            iterator.skip(1).next().map(NameDef::new),
+            iterator.nth(1).map(NameDef::new),
         )
     }
 }

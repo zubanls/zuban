@@ -511,7 +511,7 @@ impl RuleAutomaton {
         // purposes, I don't care too much. ~dave
         let format_index = |id: usize, dfa: Option<&Pin<Box<DFAState>>>| {
             id.to_string()
-                + (if dfa.map_or(false, |d| d.is_final) {
+                + (if dfa.is_some_and(|d| d.is_final) {
                     " (final)"
                 } else {
                     ""
@@ -521,8 +521,7 @@ impl RuleAutomaton {
         let mut transition_list = vec![];
         let mut first_line = vec![format_index(0, Some(&self.dfa_states[0])), "#".to_owned()];
         first_line.extend(
-            repeat("o".to_owned())
-                .take(self.dfa_states[0].transitions.len())
+            std::iter::repeat_n("o".to_owned(), self.dfa_states[0].transitions.len())
                 .collect::<Vec<_>>(),
         );
         out_strings.push(first_line);
@@ -660,7 +659,7 @@ impl DFAState {
 
 impl NFATransition {
     fn is_terminal_nonterminal_or_keyword(&self) -> bool {
-        self.type_.map_or(false, |t| {
+        self.type_.is_some_and(|t| {
             matches!(
                 t,
                 TransitionType::Nonterminal(_)
@@ -1339,7 +1338,7 @@ impl FastLookupTransitions {
 
     fn from_plans(terminal_count: usize, transitions: SquashedTransitions) -> Self {
         debug_assert_ne!(terminal_count, 0);
-        let mut slf = Self(std::iter::repeat(None).take(terminal_count).collect());
+        let mut slf = Self(std::iter::repeat_n(None, terminal_count).collect());
         slf.extend(transitions);
         slf
     }

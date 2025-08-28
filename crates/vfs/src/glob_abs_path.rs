@@ -15,7 +15,7 @@ impl GlobAbsPath {
     pub fn matches(&self, vfs: &dyn VfsHandler, path: &AbsPath) -> bool {
         // TODO this does not correctly use VFS's separator
         self.pattern.matches_with(
-            &path,
+            path,
             glob::MatchOptions {
                 case_sensitive: vfs.is_case_sensitive(),
                 require_literal_separator: true,

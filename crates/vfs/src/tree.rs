@@ -192,7 +192,7 @@ impl DirectoryEntry {
         if let DirectoryEntry::Directory(dir) = self {
             let entries = Directory::entries(vfs, dir);
             for entry in entries.borrow().iter() {
-                if callable(&*entries, entry) {
+                if callable(entries, entry) {
                     entry.walk_internal(vfs, callable);
                 };
             }

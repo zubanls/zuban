@@ -227,7 +227,7 @@ impl ProjectOptions {
             }
         }
         order_overrides_for_priority(&mut result.overrides);
-        Ok(had_relevant_section.then(|| result))
+        Ok(had_relevant_section.then_some(result))
     }
 
     pub fn from_pyproject_toml(

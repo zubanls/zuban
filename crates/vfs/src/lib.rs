@@ -78,7 +78,7 @@ pub trait VfsHandler: Sync + Send {
         if p.is_absolute() {
             self.unchecked_abs_path(path)
         } else {
-            self.join(current_dir, &path)
+            self.join(current_dir, path)
         }
     }
 
@@ -94,11 +94,11 @@ pub trait VfsHandler: Sync + Send {
     }
 
     fn unchecked_abs_path_from_uri(&self, path: Arc<str>) -> Arc<AbsPath> {
-        AbsPath::new_arc(path.into())
+        AbsPath::new_arc(path)
     }
 
     fn unchecked_normalized_path(&self, path: Arc<AbsPath>) -> Arc<NormalizedPath> {
-        NormalizedPath::new_arc(path.into())
+        NormalizedPath::new_arc(path)
     }
 
     fn join(&self, path: &AbsPath, name: &str) -> Arc<AbsPath> {

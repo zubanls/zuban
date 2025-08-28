@@ -31,7 +31,7 @@ impl<T: ?Sized> From<Vec<Pin<Box<T>>>> for InsertOnlyVec<T> {
     fn from(value: Vec<Pin<Box<T>>>) -> Self {
         Self {
             vec: Mutex::new(UnsafeCell::new(value)),
-            _ensure_sync: PhantomData::default(),
+            _ensure_sync: PhantomData,
         }
     }
 }
@@ -40,7 +40,7 @@ impl<T: ?Sized> Default for InsertOnlyVec<T> {
     fn default() -> Self {
         Self {
             vec: Mutex::new(UnsafeCell::new(vec![])),
-            _ensure_sync: PhantomData::default(),
+            _ensure_sync: PhantomData,
         }
     }
 }
@@ -143,7 +143,7 @@ where
             vec: Mutex::new(UnsafeCell::new(
                 unsafe { &*self.vec.lock().unwrap().get() }.clone(),
             )),
-            _ensure_sync: PhantomData::default(),
+            _ensure_sync: PhantomData,
         }
     }
 }

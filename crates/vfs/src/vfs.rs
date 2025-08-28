@@ -471,8 +471,8 @@ impl<F: VfsFile> Vfs<F> {
         path: &PathWithScheme,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> Result<InvalidationResult, &'static str> {
-        if let Some(file_index) = self.in_memory_files.remove(&path) {
-            if let Some(on_file_system_code) = self.handler.read_and_watch_file(&path) {
+        if let Some(file_index) = self.in_memory_files.remove(path) {
+            if let Some(on_file_system_code) = self.handler.read_and_watch_file(path) {
                 let file_state = &self.files[file_index.0 as usize];
                 // In case the code matches the one already in the file, we don't have to do anything.
                 // This is the very typical case of closing a buffer after saving it and therefore

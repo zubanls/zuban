@@ -266,8 +266,6 @@ impl Workspace {
         kind: WorkspaceKind,
     ) -> Arc<Self> {
         tracing::debug!("Add workspace {root_path}");
-        let root_path = Arc::<NormalizedPath>::from(root_path);
-
         let workspace;
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {

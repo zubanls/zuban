@@ -118,7 +118,7 @@ pub fn run_server_with_custom_connection(
     }
 
     thread_local! {
-        static LOCAL_SENDER: RefCell<Option<Sender<Message>>> = RefCell::new(None);
+        static LOCAL_SENDER: RefCell<Option<Sender<Message>>> = const { RefCell::new(None) };
     }
 
     // We need to use a thread local for the sender, because the hook is global and can therefore
