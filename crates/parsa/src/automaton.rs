@@ -1072,14 +1072,14 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
     if conflict_tokens.contains(&token) {
         conflict_transitions.insert(transition.type_);
     } else {
-        if let Some(&(t_x, _)) = plans.get(&token) {
-            if t_x.type_ != transition.type_ {
-                plans.remove(&token);
-                conflict_tokens.insert(token);
-                conflict_transitions.insert(transition.type_);
-                conflict_transitions.insert(t_x.type_);
-                return;
-            }
+        if let Some(&(t_x, _)) = plans.get(&token)
+            && t_x.type_ != transition.type_
+        {
+            plans.remove(&token);
+            conflict_tokens.insert(token);
+            conflict_transitions.insert(transition.type_);
+            conflict_transitions.insert(t_x.type_);
+            return;
         }
         plans.insert(token, (transition, create_plan()));
     }
@@ -1101,26 +1101,26 @@ fn create_left_recursion_plans(
             FirstPlan::Calculated(_, is_left_recursive) => {
                 if is_left_recursive {
                     for transition in &automaton.dfa_states[0].transitions {
-                        if let TransitionType::Nonterminal(node_id) = transition.type_ {
-                            if node_id == automaton.type_ {
-                                for (t, p) in transition.next_dfa().transition_to_plan.iter() {
-                                    if plans.contains_key(&t) {
-                                        panic!(
-                                            "ambigous: {} contains left recursion with alternatives!",
-                                            dfa_state.from_rule
-                                        );
-                                    }
-                                    plans.insert(
-                                        t,
-                                        Plan {
-                                            pushes: p.pushes.clone(),
-                                            next_dfa: p.next_dfa,
-                                            type_: t,
-                                            debug_text: p.debug_text,
-                                            mode: PlanMode::LeftRecursive,
-                                        },
+                        if let TransitionType::Nonterminal(node_id) = transition.type_
+                            && node_id == automaton.type_
+                        {
+                            for (t, p) in transition.next_dfa().transition_to_plan.iter() {
+                                if plans.contains_key(&t) {
+                                    panic!(
+                                        "ambigous: {} contains left recursion with alternatives!",
+                                        dfa_state.from_rule
                                     );
                                 }
+                                plans.insert(
+                                    t,
+                                    Plan {
+                                        pushes: p.pushes.clone(),
+                                        next_dfa: p.next_dfa,
+                                        type_: t,
+                                        debug_text: p.debug_text,
+                                        mode: PlanMode::LeftRecursive,
+                                    },
+                                );
                             }
                         }
                     }
@@ -1222,13 +1222,13 @@ fn split_tokens(
     for &nfa_id in &nfas {
         let nfa = &automaton.nfa_states[nfa_id.0];
         for transition in &nfa.transitions {
-            if let Some(t) = transition.type_ {
-                if conflict_transitions.contains(&t) {
-                    if let Some(list) = transition_to_nfas.get_mut(&t) {
-                        list.push(nfa_id);
-                    } else {
-                        transition_to_nfas.insert(t, vec![nfa_id]);
-                    }
+            if let Some(t) = transition.type_
+                && conflict_transitions.contains(&t)
+            {
+                if let Some(list) = transition_to_nfas.get_mut(&t) {
+                    list.push(nfa_id);
+                } else {
+                    transition_to_nfas.insert(t, vec![nfa_id]);
                 }
             }
         }

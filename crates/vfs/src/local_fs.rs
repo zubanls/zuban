@@ -144,10 +144,10 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
         let mut found = path.find(self.separator());
         if cfg!(target_os = "windows") {
             // Windows allows path with mixed separators
-            if let Some(found_slash) = path.find('/') {
-                if found.is_none_or(|found| found <= found_slash) {
-                    found = Some(found_slash)
-                }
+            if let Some(found_slash) = path.find('/')
+                && found.is_none_or(|found| found <= found_slash)
+            {
+                found = Some(found_slash)
             }
         }
         if let Some(pos) = found {
@@ -168,22 +168,22 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
         path: &AbsPath,
         current_entry: Option<&DirectoryEntry>,
     ) -> bool {
-        if current_entry.is_some_and(|entry| matches!(entry, DirectoryEntry::Directory(_))) {
-            if let Ok(metadata) = std::fs::metadata(path) {
-                // The directory might have been created, but is not watched (relevant on Linux,
-                // respectively on all operating systems that don't support recursive file
-                // watchers).
-                self.watch(path);
+        if current_entry.is_some_and(|entry| matches!(entry, DirectoryEntry::Directory(_)))
+            && let Ok(metadata) = std::fs::metadata(path)
+        {
+            // The directory might have been created, but is not watched (relevant on Linux,
+            // respectively on all operating systems that don't support recursive file
+            // watchers).
+            self.watch(path);
 
-                // If it is still a directory, so we don't have to invalidate.
-                //
-                // Metadata changes do not affect our caches and file changes should lead to
-                // separate notify events. This is really important on Windows where creating
-                // a file leads to a directory change event + a file creation event. On Linux
-                // an event is also generated, but for the path of the newly created file
-                // (which is what we are intersted in).
-                return metadata.is_dir();
-            }
+            // If it is still a directory, so we don't have to invalidate.
+            //
+            // Metadata changes do not affect our caches and file changes should lead to
+            // separate notify events. This is really important on Windows where creating
+            // a file leads to a directory change event + a file creation event. On Linux
+            // an event is also generated, but for the path of the newly created file
+            // (which is what we are intersted in).
+            return metadata.is_dir();
         }
         false
     }
@@ -331,10 +331,10 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
             let target_handle =
                 same_file::Handle::from_path(&target_path).map_err(|e| format!("{e}"))?;
             for p in origin_path.ancestors() {
-                if let Ok(ancestor_handle) = same_file::Handle::from_path(p) {
-                    if target_handle == ancestor_handle {
-                        return Err(format!("Detected cycle in {target_path:?}"));
-                    }
+                if let Ok(ancestor_handle) = same_file::Handle::from_path(p)
+                    && target_handle == ancestor_handle
+                {
+                    return Err(format!("Detected cycle in {target_path:?}"));
                 }
             }
             Ok(ResolvedFileType::Directory)

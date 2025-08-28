@@ -92,8 +92,8 @@ impl<F: VfsFile> Vfs<F> {
                             .entries
                     }
                 };
-                let x = parent_entries.search(name).unwrap().clone();
-                x
+
+                parent_entries.search(name).unwrap().clone()
             }
             fn replace_from_new_workspace(
                 vfs_handler: &dyn VfsHandler,
@@ -434,13 +434,13 @@ impl<F: VfsFile> Vfs<F> {
             self.in_memory_files.insert(path, file_index);
             file_index
         };
-        if tracing::enabled!(Level::INFO) {
-            if let InvalidationDetail::Some(invs) = ensured.invalidations.iter() {
-                for invalidation in &invs {
-                    let p = &self.file_state(*invalidation).path.path;
-                    let path = &self.file_state(file_index).path.path;
-                    tracing::info!("Invalidate {p} because we're loading {path}");
-                }
+        if tracing::enabled!(Level::INFO)
+            && let InvalidationDetail::Some(invs) = ensured.invalidations.iter()
+        {
+            for invalidation in &invs {
+                let p = &self.file_state(*invalidation).path.path;
+                let path = &self.file_state(file_index).path.path;
+                tracing::info!("Invalidate {p} because we're loading {path}");
             }
         }
         result |= self.invalidate_files(Some(file_index), ensured.invalidations);
@@ -687,10 +687,10 @@ impl<F: VfsFile> Vfs<F> {
             (DirectoryEntry::File(old), DirectoryEntry::File(_)) => {
                 if let Some(file_index) = old.get_file_index() {
                     let file_state = self.file_state(file_index);
-                    if let Some(old_code) = file_state.code() {
-                        if let Some(new_code) = self.handler.read_and_watch_file(&file_state.path) {
-                            return old_code == new_code;
-                        }
+                    if let Some(old_code) = file_state.code()
+                        && let Some(new_code) = self.handler.read_and_watch_file(&file_state.path)
+                    {
+                        return old_code == new_code;
                     }
                 }
                 false

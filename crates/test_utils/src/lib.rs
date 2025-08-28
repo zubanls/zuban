@@ -87,10 +87,10 @@ pub fn calculate_steps<'code>(file_name: Option<&str>, code: &'code str) -> Step
         } else {
             process_step_part2(step_index, type_, in_between, rest)
         }
-        if rest == "__main__.py" {
-            if let Some(flags_str) = find_flags(in_between) {
-                flags = flags_str.split(' ').collect();
-            }
+        if rest == "__main__.py"
+            && let Some(flags_str) = find_flags(in_between)
+        {
+            flags = flags_str.split(' ').collect();
         }
     };
 
@@ -114,11 +114,12 @@ pub fn calculate_steps<'code>(file_name: Option<&str>, code: &'code str) -> Step
                 current_step_index = digit as usize;
                 current_rest = &current_rest[..current_rest.len() - 2];
             }
-        } else if current_type.starts_with("out") && current_type.len() > 3 {
-            if let Some(digit) = current_type.chars().nth(3).unwrap().to_digit(10) {
-                current_step_index = digit as usize;
-                current_type = "out";
-            }
+        } else if current_type.starts_with("out")
+            && current_type.len() > 3
+            && let Some(digit) = current_type.chars().nth(3).unwrap().to_digit(10)
+        {
+            current_step_index = digit as usize;
+            current_type = "out";
         }
     }
     process_step(

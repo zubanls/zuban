@@ -150,15 +150,14 @@ fn to_normalized_path(
 
 fn replace_env_vars<'x>(config_file_path: Option<&AbsPath>, s: &'x str) -> Cow<'x, str> {
     // Replace only $MYPY_CONFIG_FILE_DIR for now.
-    if s.contains('$') {
-        if let Some(config_file_path) = config_file_path {
-            if let Some(mypy_config_file_dir) = config_file_path.as_ref().parent() {
-                return Cow::Owned(s.replace(
-                    "$MYPY_CONFIG_FILE_DIR",
-                    mypy_config_file_dir.to_str().unwrap(),
-                ));
-            }
-        }
+    if s.contains('$')
+        && let Some(config_file_path) = config_file_path
+        && let Some(mypy_config_file_dir) = config_file_path.as_ref().parent()
+    {
+        return Cow::Owned(s.replace(
+            "$MYPY_CONFIG_FILE_DIR",
+            mypy_config_file_dir.to_str().unwrap(),
+        ));
     }
     Cow::Borrowed(s)
 }
@@ -701,10 +700,10 @@ fn maybe_invert(name: &str) -> (bool, Cow<'_, str>) {
         return (true, Cow::Borrowed(after_no_prefix));
     } else if name.starts_with("allow") && !OPTIONS_STARTING_WITH_ALLOW.contains(&name) {
         return (true, Cow::Owned(format!("dis{name}")));
-    } else if let Some(after_dis_prefix) = name.strip_prefix("dis") {
-        if OPTIONS_STARTING_WITH_ALLOW.contains(&after_dis_prefix) {
-            return (true, Cow::Borrowed(after_dis_prefix));
-        }
+    } else if let Some(after_dis_prefix) = name.strip_prefix("dis")
+        && OPTIONS_STARTING_WITH_ALLOW.contains(&after_dis_prefix)
+    {
+        return (true, Cow::Borrowed(after_dis_prefix));
     }
     (false, Cow::Borrowed(name))
 }

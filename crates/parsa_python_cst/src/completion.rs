@@ -16,15 +16,15 @@ impl Tree {
         position: CodeIndex,
     ) -> (Scope<'_>, CompletionNode<'_>, RestNode<'_>) {
         let mut leaf = self.0.leaf_by_position(position);
-        if leaf.start() == position {
-            if let Some(n) = leaf.previous_leaf() {
-                // Only use the previous leaf if we are not on a control character.
-                if n.end() == position && {
-                    let next_char = n.as_code().chars().next().unwrap();
-                    next_char.is_alphanumeric() || next_char == '_'
-                } {
-                    leaf = n;
-                }
+        if leaf.start() == position
+            && let Some(n) = leaf.previous_leaf()
+        {
+            // Only use the previous leaf if we are not on a control character.
+            if n.end() == position && {
+                let next_char = n.as_code().chars().next().unwrap();
+                next_char.is_alphanumeric() || next_char == '_'
+            } {
+                leaf = n;
             }
         }
         if leaf.end() == position && leaf.as_code() == "." {
@@ -149,10 +149,10 @@ impl Tree {
             let parent = previous.parent().unwrap();
             match parent.type_() {
                 Nonterminal(dotted_import_name) => {
-                    if let Some(before) = parent.previous_sibling() {
-                        if before.as_code() == "from" {
-                            return (scope, CompletionNode::NecessaryKeyword("import"), rest);
-                        }
+                    if let Some(before) = parent.previous_sibling()
+                        && before.as_code() == "from"
+                    {
+                        return (scope, CompletionNode::NecessaryKeyword("import"), rest);
                     }
                 }
                 Nonterminal(import_from_targets) | ErrorNonterminal(import_from_targets) => {

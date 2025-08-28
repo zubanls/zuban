@@ -30,10 +30,10 @@ fn setup_logging_internal(log_file_flag: Option<PathBuf>, show_errors: bool) -> 
         // directory which we set to the project workspace.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/general-environment-variables
         // https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nf-dbghelp-syminitialize
-        if let Ok(path) = env::current_exe() {
-            if let Some(path) = path.parent() {
-                unsafe { env::set_var("_NT_SYMBOL_PATH", path) };
-            }
+        if let Ok(path) = env::current_exe()
+            && let Some(path) = path.parent()
+        {
+            unsafe { env::set_var("_NT_SYMBOL_PATH", path) };
         }
     }
 

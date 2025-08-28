@@ -72,14 +72,14 @@ impl Workspaces {
             })
             .or_else(|| {
                 self.iter().find_map(|workspace| {
-                    if workspace.kind == WorkspaceKind::Fallback {
-                        if let Some(entry) = workspace.entries.search(&path.path) {
-                            let DirectoryEntry::File(f) = &*entry else {
-                                unreachable!("Why would this ever be {entry:?} as a fallback?");
-                            };
-                            return Some(DirOrFile::File(f.clone()));
+                    if workspace.kind == WorkspaceKind::Fallback
+                        && let Some(entry) = workspace.entries.search(&path.path)
+                    {
+                        let DirectoryEntry::File(f) = &*entry else {
+                            unreachable!("Why would this ever be {entry:?} as a fallback?");
                         };
-                    }
+                        return Some(DirOrFile::File(f.clone()));
+                    };
                     None
                 })
             })

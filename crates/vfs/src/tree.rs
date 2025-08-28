@@ -473,10 +473,10 @@ impl Invalidations {
     }
 
     pub(crate) fn add(&self, element: FileIndex) {
-        if let InvalidationDetail::Some(invs) = &mut *self.0.write().unwrap() {
-            if !invs.contains(&element) {
-                invs.push(element);
-            }
+        if let InvalidationDetail::Some(invs) = &mut *self.0.write().unwrap()
+            && !invs.contains(&element)
+        {
+            invs.push(element);
         }
     }
 

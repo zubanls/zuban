@@ -171,17 +171,16 @@ impl Tree {
         let mut left = self.0.leaf_by_position(position);
         let mut right = left;
         if left.start() == position {
-            if let Some(n) = left.previous_leaf() {
-                if n.end() == position {
-                    left = n;
-                }
+            if let Some(n) = left.previous_leaf()
+                && n.end() == position
+            {
+                left = n;
             }
-        } else if left.end() == position {
-            if let Some(n) = left.next_leaf() {
-                if n.start() == position {
-                    right = n;
-                }
-            }
+        } else if left.end() == position
+            && let Some(n) = left.next_leaf()
+            && n.start() == position
+        {
+            right = n;
         }
         // From now on left is the node we're passing.
         if left.index != right.index {
@@ -301,12 +300,11 @@ pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
         if after.is_empty() {
             return Some(None);
         }
-        if let Some(after) = after.strip_prefix('[') {
-            if let Some(after) = after.strip_suffix(']') {
-                if !after.is_empty() {
-                    return Some(Some(after));
-                }
-            }
+        if let Some(after) = after.strip_prefix('[')
+            && let Some(after) = after.strip_suffix(']')
+            && !after.is_empty()
+        {
+            return Some(Some(after));
         }
     }
     None
@@ -2341,10 +2339,10 @@ impl<'db> FunctionDef<'db> {
         };
         match first.node {
             StmtLikeContent::ReturnStmt(r) => {
-                if let Some(star_exprs) = r.star_expressions() {
-                    if !star_exprs.is_none_literal() {
-                        return false;
-                    }
+                if let Some(star_exprs) = r.star_expressions()
+                    && !star_exprs.is_none_literal()
+                {
+                    return false;
                 }
             }
             _ => return false,
@@ -2791,10 +2789,10 @@ impl<'db> Assignment<'db> {
                         return None;
                     }
                 }
-                if let AssignmentRightSide::StarExpressions(star_exprs) = right {
-                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((SimpleNameIterator::Targets(targets_), None, expr));
-                    }
+                if let AssignmentRightSide::StarExpressions(star_exprs) = right
+                    && let StarExpressionContent::Expression(expr) = star_exprs.unpack()
+                {
+                    return Some((SimpleNameIterator::Targets(targets_), None, expr));
                 }
                 None
             }
@@ -2804,14 +2802,14 @@ impl<'db> Assignment<'db> {
                 } else {
                     return None;
                 };
-                if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right {
-                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((
-                            SimpleNameIterator::AnnotationName(name_d),
-                            Some(annotation_),
-                            expr,
-                        ));
-                    }
+                if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right
+                    && let StarExpressionContent::Expression(expr) = star_exprs.unpack()
+                {
+                    return Some((
+                        SimpleNameIterator::AnnotationName(name_d),
+                        Some(annotation_),
+                        expr,
+                    ));
                 }
                 None
             }
@@ -2914,10 +2912,10 @@ impl<'db> Iterator for StarTargetsIterator<'db> {
     type Item = StarTargets<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.0.next() {
-            if node.is_type(Nonterminal(star_targets)) {
-                return Some(StarTargets::new(node));
-            }
+        if let Some(node) = self.0.next()
+            && node.is_type(Nonterminal(star_targets))
+        {
+            return Some(StarTargets::new(node));
         }
         None
     }
@@ -2930,10 +2928,10 @@ impl<'db> Iterator for AssignmentTargetIterator<'db> {
     type Item = Target<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.0.next() {
-            if node.is_type(Nonterminal(star_targets)) {
-                return Some(Target::new(node));
-            }
+        if let Some(node) = self.0.next()
+            && node.is_type(Nonterminal(star_targets))
+        {
+            return Some(Target::new(node));
         }
         None
     }
@@ -3727,18 +3725,18 @@ impl<'db> Slice<'db> {
         let first = iterator
             .next()
             .filter(|y| y.is_type(Nonterminal(expression)));
-        if first.is_some() {
-            if let Some(next) = iterator.next() {
-                debug_assert_eq!(next.as_code(), ":");
-            }
+        if first.is_some()
+            && let Some(next) = iterator.next()
+        {
+            debug_assert_eq!(next.as_code(), ":");
         };
         let second = iterator
             .next()
             .filter(|y| y.is_type(Nonterminal(expression)));
-        if second.is_some() {
-            if let Some(next) = iterator.next() {
-                debug_assert_eq!(next.as_code(), ":");
-            }
+        if second.is_some()
+            && let Some(next) = iterator.next()
+        {
+            debug_assert_eq!(next.as_code(), ":");
         };
         let third = iterator.next();
         debug_assert!(iterator.next().is_none());
@@ -4005,16 +4003,16 @@ impl<'db> TypeParam<'db> {
             let mut bound = None;
             let mut default = None;
             let mut maybe_next = iterator.next();
-            if let Some(next) = maybe_next {
-                if next.is_type(Nonterminal(type_param_bound)) {
-                    bound = Some(TypeParamBound::new(next));
-                    maybe_next = iterator.next();
-                }
+            if let Some(next) = maybe_next
+                && next.is_type(Nonterminal(type_param_bound))
+            {
+                bound = Some(TypeParamBound::new(next));
+                maybe_next = iterator.next();
             }
-            if let Some(next) = maybe_next {
-                if next.is_type(Nonterminal(type_param_default)) {
-                    default = Some(TypeParamDefault::new(next));
-                }
+            if let Some(next) = maybe_next
+                && next.is_type(Nonterminal(type_param_default))
+            {
+                default = Some(TypeParamDefault::new(next));
             }
             debug_assert!(iterator.next().is_none());
             (NameDef::new(first), TypeParamKind::TypeVar(bound, default))

@@ -528,10 +528,10 @@ impl<'a> Stack<'a> {
         let next = self.tree_nodes.len();
 
         // The first node (root node) does not need to be updated.
-        if index != 0 {
-            if let Some(n) = self.tree_nodes.get_mut(index) {
-                n.next_node_offset = (next - index) as u32;
-            }
+        if index != 0
+            && let Some(n) = self.tree_nodes.get_mut(index)
+        {
+            n.next_node_offset = (next - index) as u32;
         }
         tos.latest_child_node_index = next;
     }

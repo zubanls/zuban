@@ -1963,7 +1963,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             ParamKind::PositionalOrKeyword => WrappedParamType::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamType::KeywordOnly(t),
             ParamKind::Star => WrappedParamType::Star(match dbt(t.as_ref()) {
-                Some(Type::ParamSpecArgs(ref param_spec_usage)) => {
+                Some(Type::ParamSpecArgs(param_spec_usage)) => {
                     WrappedStar::ParamSpecArgs(param_spec_usage)
                 }
                 _ => match t {
