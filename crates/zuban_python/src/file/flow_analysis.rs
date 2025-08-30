@@ -1400,7 +1400,34 @@ fn split_truthy_and_falsey(i_s: &InferenceState, inf: &TruthyInferred) -> Option
     if inf.has_partial_container(i_s.db) {
         None // Do not narrow here for now. The truthy side could be narrowed to Never.
     } else {
-        split_truthy_and_falsey_t(i_s, &inf.as_cow_type(i_s))
+        match inf {
+            TruthyInferred::Simple {
+                inf,
+                truthiness: None,
+            } => split_truthy_and_falsey_t(i_s, &inf.as_cow_type(i_s)),
+            TruthyInferred::Simple {
+                inf,
+                truthiness: Some(true),
+            } => Some((inf.as_type(i_s), Type::Never(NeverCause::Other))),
+            TruthyInferred::Simple {
+                inf,
+                truthiness: Some(false),
+            } => Some((Type::Never(NeverCause::Other), inf.as_type(i_s))),
+            TruthyInferred::Union(infs) => {
+                let mut truthy = Type::Never(NeverCause::Other);
+                let mut falsey = Type::Never(NeverCause::Other);
+                for inf in infs {
+                    if let Some((t, f)) = split_truthy_and_falsey(i_s, inf) {
+                        truthy.union_in_place(t);
+                        falsey.union_in_place(f);
+                    } else {
+                        truthy.union_in_place(inf.as_cow_type(i_s).into_owned());
+                        falsey.union_in_place(inf.as_cow_type(i_s).into_owned());
+                    }
+                }
+                Some((truthy, falsey))
+            }
+        }
     }
 }
 

@@ -154,10 +154,8 @@ testTypeGuardNestedRestrictionAny
 testTypeIsNestedRestrictionAny
 # Inferred assignments are valid for Any, see also Mypy commit b50f3a1a44
 testSubtypingWithAny
-# or/and boolean logic over multiple terms
-testAndOr
+# or/and boolean logic over multiple terms with assignment in between
 testRestrictedBoolAndOrWithGenerics
-narrowing_or_with_bools
 # isinstance intersections lead sometimes to never?
 testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
