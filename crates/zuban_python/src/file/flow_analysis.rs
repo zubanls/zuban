@@ -36,13 +36,13 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParams, DbBytes, DbString, EnumKind,
         EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause,
         StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
-        lookup_on_enum_instance,
+        lookup_on_enum_instance, simplified_union_from_iterators,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
         OverloadResult, OverloadedFunction,
     },
-    utils::debug_indent,
+    utils::{EitherIterator, debug_indent},
 };
 
 use super::{
@@ -1396,11 +1396,8 @@ fn maybe_split_bool_from_literal(
     None
 }
 
-fn split_truthy_and_falsey(i_s: &InferenceState, inf: &Inferred) -> Option<(Type, Type)> {
-    if inf
-        .maybe_saved_specific(i_s.db)
-        .is_some_and(|specific| specific.is_partial_container())
-    {
+fn split_truthy_and_falsey(i_s: &InferenceState, inf: &TruthyInferred) -> Option<(Type, Type)> {
+    if inf.has_partial_container(i_s.db) {
         None // Do not narrow here for now. The truthy side could be narrowed to Never.
     } else {
         split_truthy_and_falsey_t(i_s, &inf.as_cow_type(i_s))
@@ -2120,7 +2117,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn flow_analysis_for_conjunction(&self, and: Conjunction) -> Inferred {
-        self.check_conjunction(and).0
+        self.check_conjunction(and).0.into_inferred(self.i_s)
     }
 
     pub fn flow_analysis_for_del_stmt(&self, del_targets: DelTargets) {
@@ -2469,7 +2466,11 @@ impl Inference<'_, '_, '_> {
     fn check_conjunction(
         &self,
         and: Conjunction,
-    ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
+    ) -> (
+        TruthyInferred,
+        FramesWithParentUnions,
+        FramesWithParentUnions,
+    ) {
         let (left, right) = and.unpack();
         match is_expr_part_reachable_for_name_binder(
             &self.i_s.db.project.settings,
@@ -2504,15 +2505,15 @@ impl Inference<'_, '_, '_> {
             });
         }
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
-            (
-                Inferred::from_type(
-                    split_truthy_and_falsey(self.i_s, &left_inf)
-                        .map(|(_, falsey)| falsey)
-                        .unwrap_or_else(|| left_inf.as_type(self.i_s)),
-                )
-                .simplified_union(self.i_s, right_inf),
-                right_frames,
-            )
+            let falsey = TruthyInferred::Simple {
+                inf: if let Some((_, falsey)) = split_truthy_and_falsey(self.i_s, &left_inf) {
+                    Inferred::from_type(falsey)
+                } else {
+                    left_inf.into_inferred(self.i_s)
+                },
+                truthiness: Some(false),
+            };
+            (falsey.combine(right_inf), right_frames)
         } else {
             (left_inf, FramesWithParentUnions::default())
         };
@@ -2524,14 +2525,20 @@ impl Inference<'_, '_, '_> {
         or: Disjunction,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        self.check_disjunction(or, result_context).0
+        self.check_disjunction(or, result_context)
+            .0
+            .into_inferred(self.i_s)
     }
 
     fn check_disjunction(
         &self,
         or: Disjunction,
         result_context: &mut ResultContext,
-    ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
+    ) -> (
+        TruthyInferred,
+        FramesWithParentUnions,
+        FramesWithParentUnions,
+    ) {
         let (left, right) = or.unpack();
         match is_expr_part_reachable_for_name_binder(
             &self.i_s.db.project.settings,
@@ -2551,7 +2558,6 @@ impl Inference<'_, '_, '_> {
 
         let (left_inf, mut left_frames) =
             self.find_guards_in_expression_parts_with_context(left, result_context);
-        let left_t = left_inf.as_cow_type(self.i_s);
         let mut right_infos = None;
         if left_frames.falsey.unreachable {
             if self.flags().warn_unreachable {
@@ -2562,6 +2568,7 @@ impl Inference<'_, '_, '_> {
             }
         } else {
             left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
+                let left_t = left_inf.as_cow_type(self.i_s);
                 fa.with_frame(left_frames.falsey, || {
                     right_infos = Some(self.find_guards_in_expression_parts_with_context(
                         right,
@@ -2572,15 +2579,15 @@ impl Inference<'_, '_, '_> {
         }
 
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
-            (
-                Inferred::from_type(
-                    split_truthy_and_falsey(self.i_s, &left_inf)
-                        .map(|(truthy, _)| truthy)
-                        .unwrap_or_else(|| left_inf.as_type(self.i_s)),
-                )
-                .simplified_union(self.i_s, right_inf),
-                right_frames,
-            )
+            let truthy = TruthyInferred::Simple {
+                inf: if let Some((truthy, _)) = split_truthy_and_falsey(self.i_s, &left_inf) {
+                    Inferred::from_type(truthy)
+                } else {
+                    left_inf.into_inferred(self.i_s)
+                },
+                truthiness: Some(true),
+            };
+            (truthy.combine(right_inf), right_frames)
         } else {
             (left_inf, FramesWithParentUnions::default())
         };
@@ -2784,7 +2791,10 @@ impl Inference<'_, '_, '_> {
         (Frame::new_conditional(), Frame::new_conditional())
     }
 
-    fn find_guards_in_named_expr(&self, named_expr: NamedExpression) -> (Inferred, Frame, Frame) {
+    fn find_guards_in_named_expr(
+        &self,
+        named_expr: NamedExpression,
+    ) -> (TruthyInferred, Frame, Frame) {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
             NamedExpressionContent::Walrus(walrus) => {
@@ -2806,7 +2816,8 @@ impl Inference<'_, '_, '_> {
                             if self.point(name_def.index()).calculated() {
                                 return inf;
                             }
-                            self.save_walrus(name_def, inf)
+                            self.save_walrus(name_def, inf.into_inferred(self.i_s))
+                                .into()
                         });
                     if let Some((walrus_truthy, walrus_falsey)) =
                         split_truthy_and_falsey(self.i_s, &inf)
@@ -2831,7 +2842,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn find_guards_in_expr(&self, expr: Expression) -> (Inferred, Frame, Frame) {
+    fn find_guards_in_expr(&self, expr: Expression) -> (TruthyInferred, Frame, Frame) {
         self.find_guards_in_expr_with_context(expr, &mut ResultContext::Unknown)
     }
 
@@ -2839,13 +2850,13 @@ impl Inference<'_, '_, '_> {
         &self,
         expr: Expression,
         result_context: &mut ResultContext,
-    ) -> (Inferred, Frame, Frame) {
+    ) -> (TruthyInferred, Frame, Frame) {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(part) => {
                 self.find_guards_in_expr_part(part, result_context)
             }
             _ => (
-                self.infer_expression(expr),
+                self.infer_expression(expr).into(),
                 Frame::new_conditional(),
                 Frame::new_conditional(),
             ),
@@ -2856,7 +2867,7 @@ impl Inference<'_, '_, '_> {
         &self,
         part: ExpressionPart,
         result_context: &mut ResultContext,
-    ) -> (Inferred, Frame, Frame) {
+    ) -> (TruthyInferred, Frame, Frame) {
         let (inf, mut result) =
             self.find_guards_in_expression_parts_with_context(part, result_context);
         self.propagate_parent_unions(&mut result.truthy, &result.parent_unions);
@@ -2867,7 +2878,7 @@ impl Inference<'_, '_, '_> {
     fn find_guards_in_expression_parts(
         &self,
         part: ExpressionPart,
-    ) -> (Inferred, FramesWithParentUnions) {
+    ) -> (TruthyInferred, FramesWithParentUnions) {
         self.find_guards_in_expression_parts_with_context(part, &mut ResultContext::Unknown)
     }
 
@@ -2875,9 +2886,10 @@ impl Inference<'_, '_, '_> {
         &self,
         part: ExpressionPart,
         result_context: &mut ResultContext,
-    ) -> (Inferred, FramesWithParentUnions) {
+    ) -> (TruthyInferred, FramesWithParentUnions) {
         self.find_guards_in_expression_parts_inner(part, result_context)
             .unwrap_or_else(|inf| {
+                let inf = inf.into();
                 if let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf) {
                     let frames = FramesWithParentUnions {
                         truthy: Frame::from_type_without_entry(truthy),
@@ -2905,8 +2917,9 @@ impl Inference<'_, '_, '_> {
         &self,
         part: ExpressionPart,
         result_context: &mut ResultContext,
-    ) -> Result<(Inferred, FramesWithParentUnions), Inferred> {
+    ) -> Result<(TruthyInferred, FramesWithParentUnions), Inferred> {
         let narrow_from_key = |key: Option<FlowKey>, inf: Inferred, parent_unions| {
+            let inf = inf.into();
             if let Some(key) = key
                 && let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf)
             {
@@ -2925,7 +2938,7 @@ impl Inference<'_, '_, '_> {
                     },
                 ));
             }
-            Err(inf)
+            Err(inf.into_inferred(self.i_s))
         };
         match part {
             ExpressionPart::Atom(atom) => {
@@ -2945,12 +2958,9 @@ impl Inference<'_, '_, '_> {
             }
             ExpressionPart::Comparisons(comps) => {
                 if let Some(frames) = self.find_guards_in_comparisons(comps) {
-                    return Ok((Inferred::new_bool(self.i_s.db), frames));
+                    return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
                 }
-                return Ok((
-                    Inferred::new_bool(self.i_s.db),
-                    FramesWithParentUnions::default(),
-                ));
+                return Ok((Inferred::new_bool(self.i_s.db).into(), Default::default()));
             }
             ExpressionPart::Conjunction(and) => {
                 let (inf, left, right) = self.check_conjunction(and);
@@ -2979,10 +2989,7 @@ impl Inference<'_, '_, '_> {
             ExpressionPart::Inversion(inv) => {
                 let (_, mut frames) = self.find_guards_in_expression_parts(inv.expression());
                 (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
-                return Ok((
-                    Inferred::from_type(self.i_s.db.python_state.bool_type()),
-                    frames,
-                ));
+                return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
             }
             ExpressionPart::Primary(primary) => match primary.second() {
                 PrimaryContent::Execution(arg_details @ ArgumentsDetails::Node(args)) => {
@@ -2992,27 +2999,30 @@ impl Inference<'_, '_, '_> {
                             if let Some(frames) =
                                 self.find_isinstance_or_issubclass_frames(args, false)
                             {
-                                return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
                             }
                         }
                         Some(Specific::BuiltinsIssubclass) => {
                             if let Some(frames) =
                                 self.find_isinstance_or_issubclass_frames(args, true)
                             {
-                                return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
                             }
                         }
                         _ => {
                             if let Some(saved) = first.maybe_saved_link() {
                                 if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
                                     if let Some(frames) = self.guard_callable(args) {
-                                        return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                        return Ok((
+                                            Inferred::new_bool(self.i_s.db).into(),
+                                            frames,
+                                        ));
                                     }
                                 } else if saved
                                     == self.i_s.db.python_state.hasattr_node_ref().as_link()
                                     && let Some(frames) = self.guard_hasattr(args)
                                 {
-                                    return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                    return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
                                 }
                             }
                             if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
@@ -3023,7 +3033,7 @@ impl Inference<'_, '_, '_> {
                                     arg_details,
                                 );
                                 if let Some(frames) = self.guard_type_guard(simple_args, args, c) {
-                                    return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                    return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
                                 }
                             }
                         }
@@ -3915,6 +3925,65 @@ impl Inference<'_, '_, '_> {
 
     pub fn has_frames(&self) -> bool {
         !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
+    }
+}
+
+enum TruthyInferred {
+    Simple {
+        inf: Inferred,
+        truthiness: Option<bool>,
+    },
+    Union(Vec<Self>),
+}
+
+impl TruthyInferred {
+    fn has_partial_container(&self, db: &Database) -> bool {
+        match self {
+            Self::Simple { inf, .. } => inf
+                .maybe_saved_specific(db)
+                .is_some_and(|specific| specific.is_partial_container()),
+            Self::Union(infs) => infs.iter().any(|inf| inf.has_partial_container(db)),
+        }
+    }
+
+    fn as_cow_type<'slf>(&'slf self, i_s: &InferenceState<'slf, '_>) -> Cow<'slf, Type> {
+        match self {
+            Self::Simple { inf, .. } => inf.as_cow_type(i_s),
+            Self::Union(infs) => Cow::Owned(simplified_union_from_iterators(
+                i_s,
+                infs.iter().map(|inf| inf.as_cow_type(i_s)),
+            )),
+        }
+    }
+
+    fn combine(self, other: Self) -> Self {
+        let other_iterator = match other {
+            Self::Union(infs) => EitherIterator::Left(infs.into_iter()),
+            inf => EitherIterator::Right(std::iter::once(inf)),
+        };
+        match self {
+            Self::Union(mut infs) => {
+                infs.extend(other_iterator);
+                Self::Union(infs)
+            }
+            inf => Self::Union(std::iter::once(inf).chain(other_iterator).collect()),
+        }
+    }
+
+    fn into_inferred<'slf>(self, i_s: &InferenceState<'slf, '_>) -> Inferred {
+        match self {
+            Self::Simple { inf, .. } => inf,
+            Self::Union { .. } => Inferred::from_type(self.as_cow_type(i_s).into_owned()),
+        }
+    }
+}
+
+impl From<Inferred> for TruthyInferred {
+    fn from(inf: Inferred) -> Self {
+        Self::Simple {
+            inf,
+            truthiness: None,
+        }
     }
 }
 

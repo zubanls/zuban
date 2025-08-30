@@ -1564,6 +1564,12 @@ class Foo:
 def foo(z: str, w: bool, u: bool) -> bool:
     return z and w or u
 
+def bar(z: str, w: bool, u: bool) -> bool:
+    return (z and w) or u
+
+def baz(z: str, w: bool, u: bool) -> bool:
+    return (z or w) and u
+
 [case issubclass_intersection_attributes]
 class A:
     a = 1
