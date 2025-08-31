@@ -2,15 +2,15 @@ use parsa_python_cst::{
     DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom,
     ImportFromTargets, ImportName, Name, NameImportParent, NodeIndex,
 };
-use vfs::{Directory, FileEntry, Parent};
+use vfs::{Directory, DirectoryEntry, FileEntry, Parent};
 
 use crate::{
     database::{Database, Locality, Point, PointKind, Specific},
     debug,
     diagnostics::IssueKind,
     imports::{
-        ImportAncestor, ImportResult, LoadedImportResult, find_import_ancestor, global_import,
-        namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
+        ImportAncestor, ImportResult, LoadedImportResult, STUBS_SUFFIX, find_import_ancestor,
+        global_import, namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -395,10 +395,10 @@ fn sub_module_import(
             true,
         )
         .or_else(|| {
-            let file = db
-                .ensure_file_for_file_index(file_entry.get_file_index()?)
-                .ok()?;
-            if file.in_partial_stubs(db) {
+            if in_partial_stubs(db, file_entry) {
+                let file = db
+                    .ensure_file_for_file_index(file_entry.get_file_index()?)
+                    .ok()?;
                 Some(
                     file.normal_file_of_stub_file(db)?
                         .sub_module(db, name)?
@@ -410,6 +410,27 @@ fn sub_module_import(
         }),
         Parent::Workspace(_) => None,
     }
+}
+
+fn in_partial_stubs(db: &Database, file_entry: &FileEntry) -> bool {
+    let Some(dir) = file_entry.parent.most_outer_dir() else {
+        return false;
+    };
+    if !dir.name.ends_with(STUBS_SUFFIX) {
+        // partial is only relevant for -stubs, otherwise we don't really care.
+        return false;
+    }
+    Directory::entries(&*db.vfs.handler, &dir)
+        .search("py.typed")
+        .is_some_and(|entry| match &*entry {
+            // TODO we are currently never invalidating this file, when it changes
+            DirectoryEntry::File(entry) => db
+                .vfs
+                .handler
+                .read_and_watch_file(&entry.absolute_path(&*db.vfs.handler))
+                .is_some_and(|code| code.contains("partial")),
+            _ => false,
+        })
 }
 
 pub(super) fn is_package_name(file_entry: &FileEntry) -> bool {

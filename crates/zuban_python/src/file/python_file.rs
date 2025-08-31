@@ -467,31 +467,6 @@ impl<'db> PythonFile {
         self.stub_cache.is_some()
     }
 
-    pub fn in_partial_stubs(&self, db: &Database) -> bool {
-        self.stub_cache.as_ref().is_some_and(|cache| {
-            *cache.partial.get_or_init(|| {
-                let Some(dir) = self.file_entry(db).parent.most_outer_dir() else {
-                    return false;
-                };
-                if !dir.name.ends_with(STUBS_SUFFIX) {
-                    // partial is only relevant for -stubs, otherwise we don't really care.
-                    return false;
-                }
-                Directory::entries(&*db.vfs.handler, &dir)
-                    .search("py.typed")
-                    .is_some_and(|entry| match &*entry {
-                        // TODO we are currently never invalidating this file, when it changes
-                        DirectoryEntry::File(entry) => db
-                            .vfs
-                            .handler
-                            .read_and_watch_file(&entry.absolute_path(&*db.vfs.handler))
-                            .is_some_and(|code| code.contains("partial")),
-                        _ => false,
-                    })
-            })
-        })
-    }
-
     pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {
@@ -1051,6 +1026,5 @@ impl Iterator for OtherDefinitionIterator<'_> {
 
 #[derive(Clone, Default)]
 struct StubCache {
-    partial: OnceLock<bool>,
     non_stub: OnceLock<Option<FileIndex>>,
 }

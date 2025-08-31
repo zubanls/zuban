@@ -888,14 +888,10 @@ impl<F: VfsFile> FileState<F> {
     }
 
     fn update(&self, file: F) {
-        let _maybe_err = self.file.set(file);
-        /*
-         * TODO in the future we want to ensure this again, but for now it's known that this is an
-         * issue
+        let maybe_err = self.file.set(file);
         if std::cfg!(debug_assertions) {
             debug_assert!(maybe_err.is_ok());
         }
-        */
     }
 
     pub fn file(&self) -> Option<&F> {

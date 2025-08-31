@@ -38,8 +38,6 @@ struct FileSelector<'db> {
     file_indexes: RwLock<FastHashSet<FileIndex>>,
 }
 
-//vfs_handler: &'db dyn VfsHandler, , files: &[GlobAbsPath]
-//vfs_handler, &db.project.settings.files_or_directories_to_check
 impl<'db> FileSelector<'db> {
     fn find_files(db: &'db Database) -> Vec<&'db PythonFile> {
         let mut selector = Self {
