@@ -1944,3 +1944,16 @@ class Meta1(type):
     # Ignore possible errors related to incompatible override
     def __call__(cls: type[T], x: int, y: str) -> T:  # type: ignore
         return type.__call__(cls)
+
+[case __class__call_with_type_vars]
+from typing import Self
+
+class D[T]:
+    def __init__[S](self, t: T, y: S):
+        self.t = t
+
+    def foo(self) -> Self:
+        if bool():
+            return self.__class__(1, '')  # E: Argument 1 to "D" has incompatible type "int"; expected "T"
+        else:
+            return self.__class__(self.t, '')

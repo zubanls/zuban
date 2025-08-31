@@ -469,11 +469,9 @@ fn apply_result_context(
             // This is kind of a special case. Since __init__ has no return annotation, we simply
             // check if the classes match and then push the generics there.
             let type_var_likes = return_class.type_vars(i_s);
-            if !type_var_likes.is_empty() {
-                debug_assert!(matches!(
-                    return_class.generics,
-                    Generics::NotDefinedYet { .. }
-                ));
+            if !type_var_likes.is_empty()
+                && matches!(return_class.generics, Generics::NotDefinedYet { .. })
+            {
                 if Class::with_self_generics(i_s.db, return_class.node_ref)
                     .as_type(i_s.db)
                     .is_sub_type_of(i_s, matcher, expected)
