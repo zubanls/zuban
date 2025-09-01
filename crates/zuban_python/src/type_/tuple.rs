@@ -482,7 +482,7 @@ impl WithUnpack {
         join_with_commas(
             self.before
                 .iter()
-                .map(|t| t.format(format_data).into())
+                .map(|t| t.format(format_data))
                 .chain(self.unpack.format(format_data).map(|s| s.into()))
                 .chain(self.after.iter().map(|t| t.format(format_data).into())),
         )
@@ -559,9 +559,7 @@ impl TupleArgs {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::FixedLen(ts) if ts.is_empty() => Box::from("()"),
-            Self::FixedLen(ts) => {
-                join_with_commas(ts.iter().map(|g| g.format(format_data).into())).into()
-            }
+            Self::FixedLen(ts) => join_with_commas(ts.iter().map(|g| g.format(format_data))).into(),
             Self::ArbitraryLen(t) => format!("{}, ...", t.format(format_data)).into(),
             Self::WithUnpack(unpack) => unpack.format(format_data),
         }

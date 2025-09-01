@@ -1114,7 +1114,7 @@ impl TypeVar {
                 }
                 s += &format!(
                     "({})",
-                    join_with_commas(constraints.map(|t| t.format(format_data).into()))
+                    join_with_commas(constraints.map(|t| t.format(format_data)))
                 );
             }
         }

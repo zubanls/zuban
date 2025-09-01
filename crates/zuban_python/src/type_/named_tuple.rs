@@ -145,7 +145,6 @@ impl NamedTuple {
                                 }
                             }
                         }
-                        .into()
                     })),
                 };
                 format!("tuple[{types}, fallback={name}]",).into()

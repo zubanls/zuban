@@ -948,7 +948,7 @@ pub fn format_params_as_param_spec(
     } else {
         let name = format_data.format_param_spec(p, ParamsStyle::CallableParamsInner);
         let ps = join_with_commas(
-            params_iter.map(|p| p.type_.expect_positional_type().format(format_data).into()),
+            params_iter.map(|p| p.type_.expect_positional_type().format(format_data)),
         );
         if name.is_empty() {
             format!("[{ps}]").into()

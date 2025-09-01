@@ -1,5 +1,5 @@
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::Cell,
     collections::HashMap,
     fmt,
@@ -177,8 +177,12 @@ pub fn str_repr(content: &str) -> String {
     format!("'{repr}'")
 }
 
-pub fn join_with_commas(input: impl Iterator<Item = String>) -> String {
-    input.collect::<Vec<_>>().join(", ")
+pub fn join_with_commas<I, S>(input: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: Borrow<str>,
+{
+    input.into_iter().collect::<Vec<S>>().as_slice().join(", ")
 }
 
 pub fn arc_slice_into_vec<T: Clone>(this: Arc<[T]>) -> Vec<T> {

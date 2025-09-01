@@ -268,7 +268,7 @@ impl GenericsList {
         join_with_commas(
             self.0
                 .iter()
-                .filter_map(|g| Generic::new(g).format(format_data).map(|s| s.into())),
+                .filter_map(|g| Generic::new(g).format(format_data)),
         )
         .into()
     }

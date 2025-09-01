@@ -367,7 +367,7 @@ impl TypeVarMatcher {
             let MatcherFormatResult::Str(s) = formatted else {
                 unreachable!()
             };
-            s.into()
+            s
         }))
     }
 
