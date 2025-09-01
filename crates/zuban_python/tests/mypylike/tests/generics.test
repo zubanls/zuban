@@ -1433,6 +1433,15 @@ class OrderedSet(Generic[T]):
 
     def __ior__(self, other: Iterable[T]) -> OrderedSet[T]: ...
 
+[case self_generics_with_unions_no_crash]
+class X[T](list[T]):
+    def update(self, x: T) -> None: ...
+
+    def f[S](self: X[T | S], iterable: S) -> X[T | S]:
+        self.update(iterable)
+        # TODO This should not error, but at the moment I'm just happy it does not crash
+        return self # E: Incompatible return value type (got "X[T | S]", expected "X[T | S]")
+
 [case own_generics_inversion_should_not_panic]
 from typing import TypeVar, Generic, Any
 KT = TypeVar("KT")

@@ -364,14 +364,11 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
-                if let Type::TypeVar(other_usage) = g.as_ref() {
-                    // Needed to avoid recursions when matching against the same potential TypeVar
-                    // again.
-                    if other_usage.in_definition == func_class.node_ref.as_link() {
-                        return Some((g.as_ref() == value_type).into());
-                    }
-                }
-                return Some(g.matches(i_s, self, value_type, variance));
+                // Avoid matching the function again to avoid recursions
+                let taken_func_like = self.func_like.take();
+                let result = Some(g.matches(i_s, self, value_type, variance));
+                self.func_like = taken_func_like;
+                return result;
             }
             // The case that the if does not hit happens e.g. for
             // testInvalidNumberOfTypeArgs:
