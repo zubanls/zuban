@@ -504,6 +504,12 @@ mod tests {
         diagnostics_with_env_lookup(cli, directory, |_| None).unwrap()
     }
 
+    fn expect_diagnostics_error(cli: Cli, directory: &str) -> String {
+        diagnostics_with_env_lookup(cli, directory, |_| None)
+            .unwrap_err()
+            .to_string()
+    }
+
     #[test]
     fn test_diagnostics() {
         logging_config::setup_logging_for_tests();
@@ -553,6 +559,7 @@ mod tests {
             [file foo.py]
             1()
             def foo(x) -> int: return 1
+            [file bar.py]
             "#,
             false,
         );
@@ -689,9 +696,7 @@ mod tests {
         );
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
         let expect_not_found = |cli_args: &[&str]| {
-            diagnostics_with_env_lookup(Cli::parse_from(cli_args), test_dir.path().into(), |_| None)
-                .unwrap_err()
-                .to_string()
+            expect_diagnostics_error(Cli::parse_from(cli_args), test_dir.path().into())
         };
 
         let err1 = format!(
@@ -828,6 +833,9 @@ mod tests {
             false,
         );
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+        let err = |cli_args: &[&str]| {
+            expect_diagnostics_error(Cli::parse_from(cli_args), test_dir.path())
+        };
 
         assert_eq!(
             d(&["", "foo/no_py_ending"]),
@@ -836,8 +844,8 @@ mod tests {
                 std::path::MAIN_SEPARATOR
             )]
         );
-        assert!(d(&["", "foo/"]).is_empty());
-        assert!(d(&[""]).is_empty());
+        assert!(err(&["", "foo/"]).starts_with("No Python files found to check for"));
+        assert_eq!(err(&[""]), "No Python files found to check");
     }
 
     #[test]

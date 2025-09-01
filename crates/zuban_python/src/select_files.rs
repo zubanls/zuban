@@ -39,6 +39,7 @@ struct FileSelector<'db> {
     db: &'db Database,
     to_be_loaded: Vec<(Arc<FileEntry>, PathWithScheme)>,
     file_indexes: RwLock<FastHashSet<FileIndex>>,
+    added_file: bool,
 }
 
 impl<'db> FileSelector<'db> {
@@ -47,6 +48,7 @@ impl<'db> FileSelector<'db> {
             db,
             to_be_loaded: vec![],
             file_indexes: Default::default(),
+            added_file: false,
         };
         selector.search_in_workspaces()?;
         let loaded_file_entries: Mutex<FastHashSet<ArcPtrWrapper>> = Mutex::new(
@@ -98,6 +100,9 @@ impl<'db> FileSelector<'db> {
             for entries in self.db.vfs.workspaces.entries_to_type_check() {
                 self.handle_entries(entries)
             }
+            if !self.added_file {
+                anyhow::bail!("No Python files found to check")
+            }
         } else {
             // First try to remove the "obvious" parts. This is the much faster code path that does
             // not need to walk the whole tree and simply tries to search for the relevant files.
@@ -107,7 +112,7 @@ impl<'db> FileSelector<'db> {
                 .iter()
                 .filter_map(|pattern| {
                     if let Some(path) = pattern.maybe_simple_path() {
-                        let before_file_count = self.to_be_loaded.len();
+                        self.added_file = false;
                         let normalized =
                             LocalFS::without_watcher().normalized_path_from_current_dir(path);
                         match self.db.vfs.search_path(
@@ -124,7 +129,7 @@ impl<'db> FileSelector<'db> {
                                 }
                             }
                         }
-                        if before_file_count == self.to_be_loaded.len() {
+                        if !self.added_file {
                             Some(Err(anyhow::anyhow!(
                                 "No Python files found to check for {path}"
                             )))
@@ -138,7 +143,7 @@ impl<'db> FileSelector<'db> {
                 .collect::<anyhow::Result<Vec<_>>>()?;
 
             if !not_yet_checked_globs.is_empty() {
-                let before_file_count = self.to_be_loaded.len();
+                self.added_file = false;
                 for entries in self.db.vfs.workspaces.entries_to_type_check() {
                     entries.walk_entries(vfs_handler, &mut |in_dir, entry| {
                         let path = match entry {
@@ -157,7 +162,7 @@ impl<'db> FileSelector<'db> {
                         }
                     });
                 }
-                if before_file_count == self.to_be_loaded.len() {
+                if !self.added_file {
                     let paths = join_with_commas(not_yet_checked_globs.iter().map(|g| g.as_str()));
                     anyhow::bail!("No Python files found to check in {paths}");
                 }
@@ -167,6 +172,7 @@ impl<'db> FileSelector<'db> {
     }
 
     fn add_file(&mut self, file: Arc<FileEntry>) {
+        self.added_file = true;
         if let Some(file_index) = file.get_file_index() {
             self.file_indexes.write().unwrap().insert(file_index);
         } else {
