@@ -1831,7 +1831,10 @@ pub fn linearize_mro_and_return_linearizable(
                 });
                 if !conflicts {
                     for base_bases in base_iterators.iter_mut() {
-                        base_bases.next_if(|(_, next)| {
+                        base_bases.next_if(|(i, next)| {
+                            if *i == 0 {
+                                allowed_to_use += 1;
+                            }
                             to_base_kind(&candidate.t) == to_base_kind(&next.t)
                         });
                     }
