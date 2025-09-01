@@ -713,6 +713,8 @@ mod tests {
         assert_eq!(d(&["", "**/mod?.py"]), [&*err1, &*err2, err3]);
         assert_eq!(d(&["", "*.py"]), [err3]);
         assert_eq!(d(&["", "foo"]), [&*err1, &*err2]);
+        assert_eq!(d(&["", "./foo"]), [&*err1, &*err2]);
+        assert_eq!(d(&["", "does-not-exist/../foo"]), [&*err1, &*err2]);
         // Same file twice
         assert_eq!(d(&["", "foo", "foo/mod2.py"]), [&*err1, &*err2]);
 

@@ -59,11 +59,7 @@ pub trait VfsHandler: Sync + Send {
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>);
 
     fn normalize_path<'s>(&self, path: &'s AbsPath) -> Cow<'s, NormalizedPath> {
-        if cfg!(target_os = "windows") && path.contains("/") {
-            let p = AbsPath::new_arc(path.replace('/', "\\").into());
-            return Cow::Owned(NormalizedPath::new_arc(p));
-        }
-        Cow::Borrowed(NormalizedPath::new(path))
+        NormalizedPath::normalize(path)
     }
     fn normalize_rc_path(&self, path: Arc<AbsPath>) -> Arc<NormalizedPath> {
         match self.normalize_path(&path) {
