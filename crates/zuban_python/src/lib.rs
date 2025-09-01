@@ -139,7 +139,7 @@ impl Project {
                 files_with_errors += 1;
             }
             issues
-        });
+        })?;
         tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
         invalidate_protocol_cache();
         Ok(Diagnostics {

@@ -688,6 +688,11 @@ mod tests {
             false,
         );
         let d = |cli_args: &[&str]| diagnostics(Cli::parse_from(cli_args), test_dir.path());
+        let expect_not_found = |cli_args: &[&str]| {
+            diagnostics_with_env_lookup(Cli::parse_from(cli_args), test_dir.path().into(), |_| None)
+                .unwrap_err()
+                .to_string()
+        };
 
         let err1 = format!(
             "foo{sep}bar{sep}mod1.py:1: error: \"int\" not callable  [operator]",
@@ -708,6 +713,18 @@ mod tests {
         assert_eq!(d(&["", "**/mod?.py"]), [&*err1, &*err2, err3]);
         assert_eq!(d(&["", "*.py"]), [err3]);
         assert_eq!(d(&["", "foo"]), [&*err1, &*err2]);
+        // Same file twice
+        assert_eq!(d(&["", "foo", "foo/mod2.py"]), [&*err1, &*err2]);
+
+        assert_eq!(
+            expect_not_found(&["", "/foo/zuban/undefined-path"]),
+            "No Python files found to check for /foo/zuban/undefined-path"
+        );
+        expect_not_found(&["", "foo", "undefined-path"]);
+        assert_eq!(
+            expect_not_found(&["", "/foo/zuban/undefined-path/*/baz/*"]),
+            "No Python files found to check in /foo/zuban/undefined-path/*/baz/*"
+        );
     }
 
     #[test]
