@@ -111,7 +111,7 @@ impl Project {
         self.db.close_in_memory_file(path)
     }
 
-    pub fn diagnostics(&mut self) -> Diagnostics<'_> {
+    pub fn diagnostics(&mut self) -> anyhow::Result<Diagnostics<'_>> {
         if self.db.project.settings.mypy_path.len() > 1 {
             debug!(
                 "Has complex mypy path: {:?}",
@@ -142,12 +142,12 @@ impl Project {
         });
         tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
         invalidate_protocol_cache();
-        Diagnostics {
+        Ok(Diagnostics {
             checked_files,
             files_with_errors,
             issues,
             error_count: Default::default(),
-        }
+        })
     }
 
     /// This function is mostly for tests and should therefore not be used for something

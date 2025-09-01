@@ -1996,6 +1996,7 @@ checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 name = "zmypy"
 version = "0.0.20"
 dependencies = [
+ "anyhow",
  "clap",
  "config",
  "licensing",

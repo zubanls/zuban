@@ -252,6 +252,10 @@ fn with_exit_code(
         println!("{}", diagnostics.summary());
         ExitCode::from((diagnostics.error_count() > 0) as u8)
     })
+    .unwrap_or_else(|err| {
+        eprintln!("{err}");
+        ExitCode::from(2)
+    })
 }
 
 pub fn with_diagnostics_from_cli<T>(
@@ -259,14 +263,14 @@ pub fn with_diagnostics_from_cli<T>(
     current_dir: String,
     typeshed_path: Option<Arc<NormalizedPath>>,
     callback: impl FnOnce(Diagnostics, &DiagnosticConfig) -> T,
-) -> T {
+) -> anyhow::Result<T> {
     tracing::info!("Checking in {current_dir}");
     let (mut project, diagnostic_config) =
         project_from_cli(cli, &current_dir, typeshed_path, |name| {
             std::env::var(name).ok()
         });
     let diagnostics = project.diagnostics();
-    callback(diagnostics, &diagnostic_config)
+    Ok(callback(diagnostics?, &diagnostic_config))
 }
 
 fn project_from_cli(
@@ -479,7 +483,7 @@ mod tests {
         cli: Cli,
         directory: &str,
         lookup_env_var: impl Fn(&str) -> Option<String>,
-    ) -> Vec<String> {
+    ) -> anyhow::Result<Vec<String>> {
         let (mut project, diagnostic_config) = project_from_cli(
             cli,
             directory,
@@ -487,17 +491,17 @@ mod tests {
             lookup_env_var,
         );
         let diagnostics = project.diagnostics();
-        let mut diagnostics = diagnostics
+        let mut diagnostics = diagnostics?
             .issues
             .iter()
             .map(|d| d.as_string(&diagnostic_config))
             .collect::<Vec<_>>();
         diagnostics.sort();
-        diagnostics
+        Ok(diagnostics)
     }
 
     fn diagnostics(cli: Cli, directory: &str) -> Vec<String> {
-        diagnostics_with_env_lookup(cli, directory, |_| None)
+        diagnostics_with_env_lookup(cli, directory, |_| None).unwrap()
     }
 
     #[test]
@@ -660,7 +664,7 @@ mod tests {
         let ds = diagnostics_with_env_lookup(Cli::parse_from([""]), test_dir.path(), |name| {
             (name == "VIRTUAL_ENV").then(|| "venv".to_string())
         });
-        assert_eq!(ds, empty);
+        assert_eq!(ds.unwrap(), empty);
     }
 
     #[test]

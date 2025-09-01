@@ -430,6 +430,7 @@ impl TestCase<'_, '_> {
 
             let diagnostics: Vec<_> = project
                 .diagnostics()
+                .unwrap()
                 .issues
                 .iter()
                 .filter_map(|d| {

@@ -80,7 +80,7 @@ fn main() -> ExitCode {
         let mut v = vec!["".into(), "--python-executable".into(), executable];
         v.extend_from_slice(&cli.mypy_args);
         let cli = zmypy::Cli::parse_from(v);
-        zmypy::with_diagnostics_from_cli(
+        let result = zmypy::with_diagnostics_from_cli(
             cli,
             pth,
             Some(test_utils::typeshed_path()),
@@ -99,6 +99,9 @@ fn main() -> ExitCode {
                 }
             },
         );
+        if let Err(err) = result {
+            eprintln!("Checking diagnostics caused error: {err}");
+        }
 
         println!(
             "Time taken for project {dir}: {:?}",

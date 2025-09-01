@@ -16,6 +16,7 @@ licensing.workspace = true
 vfs.workspace = true
 zuban_python.workspace = true
 
+anyhow.workspace = true
 clap.workspace = true
 tracing.workspace = true
 
