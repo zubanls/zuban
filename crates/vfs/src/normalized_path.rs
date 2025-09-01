@@ -12,7 +12,7 @@ pub struct NormalizedPath(AbsPath);
 
 impl NormalizedPath {
     pub(crate) fn normalize(path: &AbsPath) -> Cow<'_, Self> {
-        if cfg!(target_os = "windows") && path.contains("/") {
+        if cfg!(windows) && path.contains("/") {
             let mut p = AbsPath::new_arc(path.replace('/', "\\").into());
             if let Some(result) = normalize(path) {
                 p = result;
@@ -82,7 +82,7 @@ fn normalize(path: &AbsPath) -> Option<Arc<AbsPath>> {
         }
     }
     let s = normalized.to_str().unwrap();
-    if s.len() == path.len() {
+    if s == &**path {
         return None;
     }
     Some(AbsPath::new_arc(s.into()))
@@ -94,11 +94,23 @@ mod tests {
     #[test]
     fn test_normalization() {
         let n = |p: &str| normalize(&AbsPath::new_arc(p.into())).map(|p| p.to_string());
-        assert_eq!(n("/foo/./bar/../baz"), Some("/foo/baz".into()));
-        assert_eq!(n("/foo/./bar"), Some("/foo/bar".into()));
-        assert_eq!(n("/foo/../bar"), Some("/bar".into()));
-        assert_eq!(n("/foo/./bar"), Some("/foo/bar".into()));
+        if cfg!(windows) {
+            assert_eq!(n("/foo/./bar/../baz"), Some(r"\foo\baz".into()));
+            assert_eq!(n("/foo/./bar"), Some(r"\foo\bar".into()));
+            assert_eq!(n("/foo/../bar"), Some(r"\bar".into()));
+            assert_eq!(n("/foo/./bar"), Some(r"\foo\bar".into()));
 
-        assert_eq!(n("/foo/bar/baz"), None);
+            assert_eq!(n("/foo/bar/baz"), Some(r"\foo\bar\baz".into()));
+            assert_eq!(n(r"\foo\bar\baz"), None);
+            assert_eq!(n(r"\foo\.\bar"), Some(r"\foo\bar".into()));
+            assert_eq!(n(r"\foo\..\bar"), Some(r"\bar".into()));
+        } else {
+            assert_eq!(n("/foo/./bar/../baz"), Some("/foo/baz".into()));
+            assert_eq!(n("/foo/./bar"), Some("/foo/bar".into()));
+            assert_eq!(n("/foo/../bar"), Some("/bar".into()));
+            assert_eq!(n("/foo/./bar"), Some("/foo/bar".into()));
+
+            assert_eq!(n("/foo/bar/baz"), None);
+        }
     }
 }

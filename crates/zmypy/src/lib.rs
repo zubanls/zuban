@@ -723,15 +723,26 @@ mod tests {
         // Same file twice
         assert_eq!(d(&["", "foo", "foo/mod2.py"]), [&*err1, &*err2]);
 
-        assert_eq!(
-            expect_not_found(&["", "/foo/zuban/undefined-path"]),
-            "No Python files found to check for /foo/zuban/undefined-path"
-        );
         expect_not_found(&["", "foo", "undefined-path"]);
-        assert_eq!(
-            expect_not_found(&["", "/foo/zuban/undefined-path/*/baz/*"]),
-            "No Python files found to check in /foo/zuban/undefined-path/*/baz/*"
-        );
+        if cfg!(windows) {
+            assert_eq!(
+                expect_not_found(&["", "/foo/zuban/undefined-path"]),
+                r"No Python files found to check for C:\foo\zuban\undefined-path"
+            );
+            assert_eq!(
+                expect_not_found(&["", "/foo/zuban/undefined-path/*/baz/*"]),
+                r"No Python files found to check in C:\foo\zuban\undefined-path\*\baz\*"
+            );
+        } else {
+            assert_eq!(
+                expect_not_found(&["", "/foo/zuban/undefined-path"]),
+                "No Python files found to check for /foo/zuban/undefined-path"
+            );
+            assert_eq!(
+                expect_not_found(&["", "/foo/zuban/undefined-path/*/baz/*"]),
+                "No Python files found to check in /foo/zuban/undefined-path/*/baz/*"
+            );
+        }
     }
 
     #[test]
@@ -748,7 +759,7 @@ mod tests {
             "/another".to_string(),
             "blub/bla/".to_string(),
             "blub/baz".to_string(),
-            //"blub/../not_in_blub".to_string(),
+            "blub/../not_in_blub".to_string(),
         ];
         apply_flags(
             &local_fs,
@@ -765,18 +776,16 @@ mod tests {
             .map(|p| p.as_str())
             .collect();
         if cfg!(target_os = "windows") {
-            // TODO it might be questionable that this replaces some slashes, but not others on
-            // Windows
             assert_eq!(
                 files,
                 vec![
-                    "/a/b/baz.py",
-                    "/a/b\\bla.py",
-                    "/other",
-                    "/another",
-                    "/a/b\\blub/bla",
-                    "/a/b\\blub/baz",
-                    //"/foo/bar/not_in_blub",
+                    r"\a\b\baz.py",
+                    r"\a\b\bla.py",
+                    r"\other",
+                    r"\another",
+                    r"\a\b\blub\bla",
+                    r"\a\b\blub\baz",
+                    r"\a\b\not_in_blub",
                 ]
             )
         } else {
@@ -789,7 +798,7 @@ mod tests {
                     "/another",
                     "/a/b/blub/bla",
                     "/a/b/blub/baz",
-                    //"/foo/bar/not_in_blub",
+                    "/a/b/not_in_blub",
                 ]
             )
         }
