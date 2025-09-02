@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
     // mypy/test-data/unit:
     // find . | grep check | xargs cat | grep '^\[' | grep -Ev '\[(out|case|file)'
     static ref CASE_PART: Regex = Regex::new(concat!(
-        r"(?m)^\[(file|out\d*|builtins|typing|stale\d*|rechecked|targets\d?|delete|triggered|fixture)",
+        r"(?m)^\[(file|out\d*|out\.windows|builtins|typing|stale\d*|rechecked|targets\d?|delete|triggered|fixture)",
         r"(?: ([^\]]*))?\][ \t]*\r?\n"
     )).unwrap();
     static ref SPLIT_OUT: Regex = Regex::new(r"(\n|^)==").unwrap();
@@ -83,6 +83,12 @@ pub fn calculate_steps<'code>(file_name: Option<&str>, code: &'code str) -> Step
             }
             for (i, part) in SPLIT_OUT.split(in_between).enumerate() {
                 process_step_part2(i + 1, "out", part, rest)
+            }
+        } else if type_ == "out.windows" {
+            if cfg!(windows) {
+                for (i, part) in SPLIT_OUT.split(in_between).enumerate() {
+                    process_step_part2(i + 1, "out", part, rest)
+                }
             }
         } else {
             process_step_part2(step_index, type_, in_between, rest)
