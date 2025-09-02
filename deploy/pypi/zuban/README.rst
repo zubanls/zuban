@@ -14,4 +14,4 @@ https://docs.zubanls.com
 License
 =======
 
-AGPL, https://github.com/zubanls/zubanls/blob/master/README.md
+AGPL, https://github.com/zubanls/zuban/blob/master/LICENSE
