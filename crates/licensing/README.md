@@ -15,6 +15,12 @@ To create a license use a command like
 ZUBAN_SIGNING_KEY=`cat` cargo run -p licensing create --name Dave --email info@zubanls.com --company Squirrels
 ```
 
+and store it at:
+
+- Linux: `/home/<user>/.config/zuban/license.json`
+- Windows: `C:\Users\<User>\AppData\Roaming\zuban\license.json`
+- Mac: `/Users/<User>/Library/Application Support/zuban/license.json`
+
 Make sure to **never** leak the private key. It should **never** be part of the **shell history** or somehow be provided **as an argument to a process** (which would leak it when looking at processes).
 
 ## Initializing Private/Public Keys
