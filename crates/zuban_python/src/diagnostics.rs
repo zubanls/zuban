@@ -265,6 +265,7 @@ pub(crate) enum IssueKind {
     DuplicateTypeVarInTypeAliasType { name: Box<str> },
     MultipleTypeVarTupleDisallowedInTypeParams { in_type_alias_type: bool },
     InvalidTypeVarOfOuterClass { name: Box<str> },
+    TypeVarInferVarianceCannotSpecifyVariance { specified: &'static str },
 
     CannotUseIsinstanceWith { func: &'static str, with: &'static str },
     CannotUseIsinstanceWithParametrizedGenerics,
@@ -1539,6 +1540,9 @@ impl<'db> Diagnostic<'db> {
             }
             InvalidTypeVarOfOuterClass { name } => format!(
                 "\"{name}\" may not be used, because it's defined in an outer class"
+            ),
+            TypeVarInferVarianceCannotSpecifyVariance { specified } => format!(
+                "Cannot use {specified} with infer_variance"
             ),
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),

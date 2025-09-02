@@ -89,6 +89,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
         let mut default = None;
         let mut covariant = false;
         let mut contravariant = false;
+        let mut infer_variance = false;
         for arg in iterator {
             match arg.kind {
                 ArgKind::Positional(pos) => {
@@ -140,6 +141,22 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
                         }
                         bound = Some(expression.index());
                     }
+                    "infer_variance" => {
+                        let code = expression.as_code();
+                        match code {
+                            "True" => infer_variance = true,
+                            "False" => (),
+                            _ => {
+                                node_ref.add_issue(
+                                    i_s,
+                                    IssueKind::TypeVarVarianceMustBeBool {
+                                        argument: "infer_variance",
+                                    },
+                                );
+                                return None;
+                            }
+                        }
+                    }
                     "default" => default = Some(expression.index()),
                     _ => {
                         node_ref.add_issue(
@@ -185,15 +202,35 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
             i_s.as_parent_scope(),
             kind,
             default,
-            TypeVarVariance::Known(match (covariant, contravariant) {
-                (false, false) => Variance::Invariant,
-                (true, false) => Variance::Covariant,
-                (false, true) => Variance::Contravariant,
-                (true, true) => {
-                    args.add_issue(i_s, IssueKind::TypeVarCoAndContravariant);
-                    return None;
+            if infer_variance {
+                if covariant {
+                    args.add_issue(
+                        i_s,
+                        IssueKind::TypeVarInferVarianceCannotSpecifyVariance {
+                            specified: "covariant",
+                        },
+                    );
                 }
-            }),
+                if contravariant {
+                    args.add_issue(
+                        i_s,
+                        IssueKind::TypeVarInferVarianceCannotSpecifyVariance {
+                            specified: "contravariant",
+                        },
+                    );
+                }
+                TypeVarVariance::Inferred
+            } else {
+                TypeVarVariance::Known(match (covariant, contravariant) {
+                    (false, false) => Variance::Invariant,
+                    (true, false) => Variance::Covariant,
+                    (false, true) => Variance::Contravariant,
+                    (true, true) => {
+                        args.add_issue(i_s, IssueKind::TypeVarCoAndContravariant);
+                        return None;
+                    }
+                })
+            },
         ))))
     } else {
         args.add_issue(

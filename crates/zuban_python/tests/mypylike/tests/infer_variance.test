@@ -1,0 +1,14 @@
+[case infer_variance_basic_errors]
+# Copied partially from conformance tests (generics_syntax_infer_variance.py)
+from typing import TypeVar
+
+
+T = TypeVar("T", infer_variance=True)
+S1 = TypeVar("S1", covariant=True, infer_variance=True)  # E: Cannot use covariant with infer_variance
+S2 = TypeVar("S2", contravariant=True, infer_variance=True)  # E: Cannot use contravariant with infer_variance
+S3 = TypeVar("S3", infer_variance=True, covariant=True)  # E: Cannot use covariant with infer_variance
+S4 = TypeVar("S4", infer_variance=True, contravariant=True)  # E: Cannot use contravariant with infer_variance
+
+S5 = TypeVar("S5", infer_variance="")  # E: TypeVar "infer_variance" may only be a literal bool
+S6 = TypeVar("S6", infer_variance=False, covariant=True)
+S7 = TypeVar("S7", covariant=True, infer_variance=False)
