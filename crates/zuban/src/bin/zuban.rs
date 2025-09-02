@@ -49,7 +49,7 @@ fn run_server() -> anyhow::Result<()> {
     logging_config::setup_logging(None)?;
 
     // Logging to stderr.
-    tracing::info!("Starting ZubanLS server");
+    tracing::info!("Starting the Zuban Language Server");
 
     event_loop_thread(move || {
         zubanls::run_server()?;

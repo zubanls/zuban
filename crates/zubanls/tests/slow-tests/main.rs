@@ -1,4 +1,4 @@
-//! The most high-level integrated tests for ZubanLS (copied from rust-analyzer).
+//! The most high-level integrated tests for Zuban (copied from rust-analyzer).
 //!
 //! This tests run a full LSP event loop. For this reason, the tests here are very slow, and should
 //! be avoided unless absolutely necessary.

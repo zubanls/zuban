@@ -10,7 +10,7 @@ readme = open('README.rst').read()
 setup(
     name='zubanls',
     version='0.0.2',
-    description='Alias for ZubanLS - use pip install zuban instead',
+    description='Alias for Zuban - use pip install zuban instead',
     author=__AUTHOR__,
     author_email=__AUTHOR_EMAIL__,
     include_package_data=True,

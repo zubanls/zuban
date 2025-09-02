@@ -156,21 +156,21 @@ pub fn run_server_with_custom_connection(
                 .as_ref()
                 .unwrap()
                 .send(lsp_server::Message::Notification(
-                lsp_server::Notification {
-                    method: lsp_types::notification::ShowMessage::METHOD.into(),
-                    params: serde_json::to_value(lsp_types::ShowMessageParams {
-                        typ: lsp_types::MessageType::ERROR,
-                        message: format!(
-                            "ZubanLS paniced, please open an issue on GitHub with the details:\n\
+                    lsp_server::Notification {
+                        method: lsp_types::notification::ShowMessage::METHOD.into(),
+                        params: serde_json::to_value(lsp_types::ShowMessageParams {
+                            typ: lsp_types::MessageType::ERROR,
+                            message: format!(
+                                "Zuban paniced, please open an issue on GitHub with the details:\n\
                                 Version:{}\n\
                                 {panic_info}\n\n\
                                 {backtrace}",
-                            env!("CARGO_PKG_VERSION")
-                        ),
-                    })
-                    .unwrap(),
-                },
-            ))
+                                env!("CARGO_PKG_VERSION")
+                            ),
+                        })
+                        .unwrap(),
+                    },
+                ))
         }) {
             tracing::warn!("Wanted to send panic information to the client, but got {err}");
         }
