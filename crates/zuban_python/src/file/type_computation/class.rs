@@ -1241,9 +1241,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
                     }
                 }
-                if name.is_assignment_annotation_without_definition()
-                    && !self.node_ref.file.is_stub()
-                {
+                if name.is_assignment_annotation_without_definition() {
                     continue;
                 }
 

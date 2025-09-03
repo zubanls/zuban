@@ -283,3 +283,18 @@ class Color11(CustomEnum2):
 
 assert_type(Color11.RED, Literal[Color11.RED])
 reveal_type(Color11.GREEN)  # N: Revealed type is "Literal[__main__.Color11.GREEN]?"
+
+[case enum_annotations_are_not_members_in_stubs]
+import m
+
+class MyEnum(m.GEnum):
+    ONE = 1
+
+def my_enum_func(enum: MyEnum) -> None: ...
+my_enum_func(MyEnum.ONE)
+
+[file m.pyi]
+from enum import Enum
+
+class GEnum(Enum):
+    value_nick: str
