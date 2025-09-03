@@ -546,6 +546,27 @@ class C(Enum):  # E: An Enum cannot be a dataclass
 
 C()  # E: Missing positional argument "y" in call to "C"
 
+[case dataclasses_isinstance_narrowing_no_crash]
+from dataclasses import dataclass
+
+class A:
+    z: str
+
+@dataclass
+class X[T]:
+    x: T
+
+@dataclass
+class Y[T](X[T]):
+    y: T
+
+def test(x: Y[int]) -> None:
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "<subclass of "__main__.Y[int]" and "__main__.A">"
+        reveal_type(x.x)  # N: Revealed type is "int"
+        reveal_type(x.y)  # N: Revealed type is "int"
+        reveal_type(x.z)  # N: Revealed type is "str"
+
 [case dataclass_typeddict_combination]
 from typing import TypedDict
 from dataclasses import dataclass

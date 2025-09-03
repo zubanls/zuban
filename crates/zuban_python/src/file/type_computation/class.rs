@@ -1759,7 +1759,11 @@ pub fn linearize_mro_and_return_linearizable(
                                     ClassGenerics::List(generics) => {
                                         generics[usage.index()].clone()
                                     }
-                                    _ => unreachable!(),
+                                    _ => d
+                                        .class(db)
+                                        .generics
+                                        .nth_usage(db, &usage)
+                                        .into_generic_item(),
                                 },
                                 // If we expect class generics and tuples are involved, the tuple was already
                                 // calculated.
