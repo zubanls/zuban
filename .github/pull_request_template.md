@@ -1,8 +1,6 @@
 <!--
-Thank you for your change! Note that this is not Free Software. Not free as in
-beer and not free as in freedom of speech. Thank you anyway for contributing.
-
-By contributing you do not grant yourself a license. The default license applies. 
+Zuban is licensed under the AGPL. To allow Zuban to be re-licensed
+commercially, contributors must grant full rights to their contributions.
 -->
 
 - [ ] I (<Your Name>) own the content in this Pull Request. Neither my employer
