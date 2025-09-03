@@ -25,6 +25,7 @@ zuban check   # PyRight-like checking
 zuban mypy    # Mypy compatibility mode
 zmypy         # An alias for zuban mypy
 zuban server  # An LSP server
+```
 
 ## License
 
