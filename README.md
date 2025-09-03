@@ -27,6 +27,8 @@ zmypy         # An alias for zuban mypy
 zuban server  # An LSP server
 ```
 
+If you want Zuban to pick up your dependencies, please activate the virtual env first.
+
 ## License
 
 This project is dual licensed:
