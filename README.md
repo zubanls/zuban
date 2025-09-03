@@ -1,10 +1,30 @@
 # Zuban
 
-Zuban is a Python Language Server and type checker.
+Zuban is a high-performance Python Language Server and type checker implemented
+in Rust, by the author of [Jedi](https://github.com/davidhalter/jedi).
+Zuban is 20–200× faster than Mypy, while using roughly half the memory and CPU
+compared to Ty and Pyrefly. It offers both a PyRight-like mode and a
+Mypy-compatible mode, which behaves just like Mypy; supporting the same config
+files, command-line flags, and error messages.
 
-## Installation
+Most important LSP features are supported. Features include diagnostics,
+completions, goto, references, rename, hover and document highlights.
 
-Use `pip install zuban` to install it.
+Zuban passes over 95% of Mypy’s relevant test suite and offers comprehensive
+support for Python's [type system](https://htmlpreview.github.io/?https://github.com/python/typing/blob/main/conformance/results/results.html).
+
+[Documentation](https://docs.zubanls.com)
+[Website](https://zubanls.com)
+
+## Installation / Usage
+
+```
+pip install zuban  # Installation
+
+zuban check   # PyRight-like checking
+zuban mypy    # Mypy compatibility mode
+zmypy         # An alias for zuban mypy
+zuban server  # An LSP server
 
 ## License
 
