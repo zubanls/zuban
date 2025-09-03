@@ -629,3 +629,10 @@ def h() -> None:
 def i() -> None:
     from .... import inner  # E: No parent module -- cannot perform relative import
     from .... import outer  # E: No parent module -- cannot perform relative import
+
+[case name_on_import_correct_error_code]
+# flags: --show-error-codes
+import pathlib
+
+test: pathlib.NonExistentType  # E: Name "pathlib.NonExistentType" is not defined  [name-defined]
+_  # E: Name "_" is not defined  [name-defined]

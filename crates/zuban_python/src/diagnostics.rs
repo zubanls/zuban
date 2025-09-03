@@ -494,7 +494,7 @@ impl IssueKind {
             | ImportStubNoExplicitReexport { .. }
             | AsyncNotIterable { .. }
             | NotIterableMissingIter { .. } => "attr-defined",
-            NameError { .. } => "name-defined",
+            NameError { .. } | TypeNotFound => "name-defined",
             Redefinition { .. } => "no-redef",
             NameUsedBeforeDefinition { .. } => "used-before-def",
             UnionAttributeError { .. }
