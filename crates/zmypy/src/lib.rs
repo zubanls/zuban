@@ -558,7 +558,7 @@ mod tests {
 
             [file foo.py]
             1()
-            def foo(x) -> int: return 1
+            def foo(x: str) -> int: return 1
             [file bar.py]
             def bar(x) -> None: ...
             "#,
@@ -573,7 +573,7 @@ mod tests {
 
         test_dir.write_file("pyproject.toml", "[tool.mypy]");
 
-        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+        assert_eq!(d(), [NOT_CALLABLE]);
 
         test_dir.write_file("pyproject.toml", "[tool.zuban]");
         assert_eq!(d(), empty);
@@ -583,12 +583,20 @@ mod tests {
             "pyproject.toml",
             "[tool.zuban]\ndisallow_untyped_defs = true",
         );
-        assert_eq!(
-            d(),
-            [
-                "bar.py:1: error: Function is missing a type annotation for one or more arguments  [no-untyped-def]"
-            ]
+        const MISSING_ANNOTATION: &str = "bar.py:1: error: Function is missing a type \
+                                          annotation for one or more arguments  [no-untyped-def]";
+        assert_eq!(d(), [MISSING_ANNOTATION]);
+        // If both the zuban config and the mypy section are available in pyproject.toml, that file
+        // overwrites everything else.
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.zuban]\ndisallow_untyped_defs = true\n[tool.mypy]",
         );
+        assert_eq!(d(), [MISSING_ANNOTATION, NOT_CALLABLE]);
+
+        // mypy.ini doesn't change that.
+        test_dir.write_file("mypy.ini", "[mypy]\nexclude = \"foo.py\"");
+        assert_eq!(d(), [MISSING_ANNOTATION, NOT_CALLABLE]);
     }
 
     #[test]
