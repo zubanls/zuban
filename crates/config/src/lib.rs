@@ -235,13 +235,36 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
+        mypy_compatible_default: bool,
     ) -> anyhow::Result<Option<Self>> {
-        Self::apply_pyproject_toml_mypy_part(
+        let document = code.parse()?;
+        let result = Self::apply_pyproject_toml_mypy_part(
             vfs,
             current_dir,
             config_file_path,
-            &code.parse()?,
+            &document,
             diagnostic_config,
+        )?;
+        Ok(
+            if let Some(config) = document.get("tool").and_then(|item| item.get("zuban")) {
+                let mut result = result.unwrap_or_else(|| {
+                    if mypy_compatible_default {
+                        Self::mypy_default()
+                    } else {
+                        Self::default()
+                    }
+                });
+                result.apply_pyproject_table(
+                    vfs,
+                    current_dir,
+                    config_file_path,
+                    diagnostic_config,
+                    config,
+                )?;
+                Some(result)
+            } else {
+                result
+            },
         )
     }
 
@@ -1008,6 +1031,7 @@ mod tests {
                 &current_dir,
                 code,
                 &mut DiagnosticConfig::default(),
+                false,
             )
         }
     }

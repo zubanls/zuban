@@ -178,6 +178,7 @@ impl TestCase<'_, '_> {
                     base_path,
                     &ini,
                     &mut diagnostic_config,
+                    mypy_compatible,
                 )
                 .expect("Expected there to be no errors in the pyproject.toml")
                 .unwrap_or_else(|| {

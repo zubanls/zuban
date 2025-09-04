@@ -586,6 +586,17 @@ mod tests {
         const MISSING_ANNOTATION: &str = "bar.py:1: error: Function is missing a type \
                                           annotation for one or more arguments  [no-untyped-def]";
         assert_eq!(d(), [MISSING_ANNOTATION]);
+
+        // Using --config-file should disable all other config files and only use the one
+        // specified.
+        assert_eq!(
+            diagnostics(
+                Cli::parse_from(vec!["", "--config-file", "pyproject.toml"]),
+                test_dir.path()
+            ),
+            [MISSING_ANNOTATION, NOT_CALLABLE]
+        );
+
         // If both the zuban config and the mypy section are available in pyproject.toml, that file
         // overwrites everything else.
         test_dir.write_file(

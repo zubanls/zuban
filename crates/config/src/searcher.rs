@@ -42,14 +42,16 @@ pub fn find_cli_config(
         let Some(config_path) = config_file.as_os_str().to_str() else {
             anyhow::bail!("Expected a valid UTF-8 encoded config path")
         };
-        let s = std::fs::read_to_string(config_path)
+        let config_path = vfs.absolute_path(current_dir, config_path);
+        let s = std::fs::read_to_string(config_path.as_ref())
             .map_err(|err| anyhow::anyhow!("Issue while reading {config_path}: {err}"))?;
 
-        let result = initialize_config(vfs, current_dir, config_path, s)?;
+        let result = initialize_config(vfs, current_dir, config_path, s, mypy_compatible_default)?;
+        let project_options = result.0.unwrap_or_else(ProjectOptions::mypy_default);
         Ok(FoundConfig {
-            project_options: result.0.unwrap_or_else(ProjectOptions::mypy_default),
+            project_options,
             diagnostic_config: result.1,
-            config_path: Some(vfs.absolute_path(current_dir, config_path)),
+            config_path: Some(result.2),
         })
     } else {
         find_mypy_config_file_in_dir(vfs, current_dir, mypy_compatible_default, |_| ())
@@ -59,19 +61,20 @@ pub fn find_cli_config(
 fn initialize_config(
     vfs: &dyn VfsHandler,
     current_dir: &AbsPath,
-    path: &str,
+    config_path: Arc<AbsPath>,
     content: String,
+    mypy_compatible_default: bool,
 ) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Arc<AbsPath>)> {
     let _p = tracing::info_span!("config_finder").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
-    let config_path = vfs.absolute_path(current_dir, path);
-    let options = if path.ends_with(".toml") {
+    let options = if config_path.ends_with(".toml") {
         ProjectOptions::from_pyproject_toml_only(
             vfs,
             current_dir,
             &config_path,
             &content,
             &mut diagnostic_config,
+            mypy_compatible_default,
         )?
     } else {
         ProjectOptions::from_mypy_ini(
@@ -93,17 +96,17 @@ fn find_mypy_config_file_in_dir(
 ) -> anyhow::Result<FoundConfig> {
     let mut end_result = None;
     let mut pyproject_toml: Option<DocumentMut> = None;
-    for config_path in CONFIG_PATHS.iter() {
-        let path = vfs.join(dir, config_path);
+    for config_name in CONFIG_PATHS.iter() {
+        let path = vfs.join(dir, config_name);
         on_check_path(&path);
         if let Ok(mut file) = std::fs::File::open(path.as_ref()) {
             let mut content = String::new();
             if let Err(err) = file.read_to_string(&mut content) {
                 anyhow::bail!("Issue while reading {path}: {err}");
             }
+            let config_path = vfs.absolute_path(dir, config_name);
             tracing::info!("Potential config found: {config_path}");
-            if *config_path == PYPROJECT_TOML_NAME {
-                let config_path = vfs.absolute_path(dir, config_path);
+            if *config_name == PYPROJECT_TOML_NAME {
                 let mut diagnostic_config = DiagnosticConfig::default();
                 pyproject_toml = Some(content.parse()?);
                 let project_options = ProjectOptions::apply_pyproject_toml_mypy_part(
@@ -122,9 +125,10 @@ fn find_mypy_config_file_in_dir(
                     break;
                 }
             } else {
-                let result = initialize_config(vfs, dir, config_path, content)?;
+                let result =
+                    initialize_config(vfs, dir, config_path, content, mypy_compatible_default)?;
                 if let Some(project_options) = result.0.or_else(|| {
-                    ["mypy.ini", ".mypy.ini"].contains(config_path).then(|| {
+                    ["mypy.ini", ".mypy.ini"].contains(config_name).then(|| {
                         // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
                         // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
                         ProjectOptions::mypy_default()
@@ -166,7 +170,7 @@ fn find_mypy_config_file_in_dir(
                 found.config_path.as_ref().unwrap(),
                 &mut found.diagnostic_config,
                 config,
-            )?;
+            )?
         }
     }
     Ok(end_result.unwrap_or_else(|| {
