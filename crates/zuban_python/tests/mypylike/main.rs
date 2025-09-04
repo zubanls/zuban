@@ -172,7 +172,7 @@ impl TestCase<'_, '_> {
             );
             let ini = cleanup_mypy_issues(pyproject_toml).unwrap();
             let mut new = BASE_PATH.with(|base_path| {
-                ProjectOptions::from_pyproject_toml(
+                ProjectOptions::from_pyproject_toml_only(
                     local_fs,
                     base_path,
                     base_path,

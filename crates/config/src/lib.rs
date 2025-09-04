@@ -229,22 +229,36 @@ impl ProjectOptions {
         Ok(had_relevant_section.then_some(result))
     }
 
-    pub fn from_pyproject_toml(
+    pub fn from_pyproject_toml_only(
         vfs: &dyn VfsHandler,
         current_dir: &AbsPath,
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Option<Self>> {
-        let document = code.parse::<DocumentMut>()?;
+        Self::apply_pyproject_toml_mypy_part(
+            vfs,
+            current_dir,
+            config_file_path,
+            &code.parse()?,
+            diagnostic_config,
+        )
+    }
+
+    pub fn apply_pyproject_toml_mypy_part(
+        vfs: &dyn VfsHandler,
+        current_dir: &AbsPath,
+        config_file_path: &AbsPath,
+        document: &DocumentMut,
+        diagnostic_config: &mut DiagnosticConfig,
+    ) -> anyhow::Result<Option<Self>> {
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             let mut result = ProjectOptions::mypy_default();
-            Self::check_pyproject_table(
+            result.apply_pyproject_table(
                 vfs,
                 current_dir,
                 config_file_path,
                 diagnostic_config,
-                &mut result,
                 config,
             )?;
             Ok(Some(result))
@@ -253,12 +267,12 @@ impl ProjectOptions {
         }
     }
 
-    fn check_pyproject_table(
+    fn apply_pyproject_table(
+        &mut self,
         vfs: &dyn VfsHandler,
         current_dir: &AbsPath,
         config_file_path: &AbsPath,
         diagnostic_config: &mut DiagnosticConfig,
-        result: &mut ProjectOptions,
         config: &Item,
     ) -> anyhow::Result<()> {
         let Item::Table(table) = config else {
@@ -272,8 +286,8 @@ impl ProjectOptions {
                         vfs,
                         current_dir,
                         Some(config_file_path),
-                        &mut result.settings,
-                        &mut result.flags,
+                        &mut self.settings,
+                        &mut self.flags,
                         diagnostic_config,
                         key,
                         IniOrTomlValue::Toml(value),
@@ -296,7 +310,7 @@ impl ProjectOptions {
                                     }
                                 }
                             }
-                            result.overrides.push(OverrideConfig { module, config })
+                            self.overrides.push(OverrideConfig { module, config })
                         }
                     }
                 }
@@ -305,7 +319,7 @@ impl ProjectOptions {
                 }
             }
         }
-        order_overrides_for_priority(&mut result.overrides);
+        order_overrides_for_priority(&mut self.overrides);
         Ok(())
     }
 }
@@ -988,7 +1002,7 @@ mod tests {
                 &mut DiagnosticConfig::default(),
             )
         } else {
-            ProjectOptions::from_pyproject_toml(
+            ProjectOptions::from_pyproject_toml_only(
                 &local_fs,
                 &current_dir,
                 &current_dir,

@@ -560,6 +560,7 @@ mod tests {
             1()
             def foo(x) -> int: return 1
             [file bar.py]
+            def bar(x) -> None: ...
             "#,
             false,
         );
@@ -567,21 +568,27 @@ mod tests {
 
         const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable  [operator]";
 
-        assert!(d().is_empty());
+        let empty: [&str; _] = [];
+        assert_eq!(d(), empty);
 
         test_dir.write_file("pyproject.toml", "[tool.mypy]");
 
         assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
 
         test_dir.write_file("pyproject.toml", "[tool.zuban]");
-        assert!(d().is_empty());
+        assert_eq!(d(), empty);
 
         // The Zuban config can overwrite mypy settings.
         test_dir.write_file(
             "pyproject.toml",
-            "[tool.zuban]\nexclude = \"\"\nstrict = true",
+            "[tool.zuban]\ndisallow_untyped_defs = true",
         );
-        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+        assert_eq!(
+            d(),
+            [
+                "bar.py:1: error: Function is missing a type annotation for one or more arguments  [no-untyped-def]"
+            ]
+        );
     }
 
     #[test]
