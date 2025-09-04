@@ -29,6 +29,16 @@
         };
       };
       doCheck = false;
+      
+      postInstall = ''
+        mkdir -p $out/lib
+        cp -r ${pkgs.fetchFromGitHub {
+          owner = "python";
+          repo = "typeshed";
+          rev = "1b267b25f2c726291e4e6627b7567f2c8dc04b60";
+          sha256 = "sha256-SQJypewNYLfNSIc+Myd9l+nypdMdOx+Fyymmg/YpFW4=";
+        }}/* $out/lib/
+      '';
     };
   };
 }
