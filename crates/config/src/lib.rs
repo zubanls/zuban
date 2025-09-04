@@ -239,55 +239,74 @@ impl ProjectOptions {
         let document = code.parse::<DocumentMut>()?;
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             let mut result = ProjectOptions::mypy_default();
-            let Item::Table(table) = config else {
-                bail!("Expected tool.mypy to be a table in pyproject.toml");
-            };
-
-            for (key, item) in table.iter() {
-                match item {
-                    Item::Value(value) => {
-                        apply_from_base_config(
-                            vfs,
-                            current_dir,
-                            Some(config_file_path),
-                            &mut result.settings,
-                            &mut result.flags,
-                            diagnostic_config,
-                            key,
-                            IniOrTomlValue::Toml(value),
-                        )?;
-                    }
-                    Item::ArrayOfTables(override_tables) if key == "overrides" => {
-                        for override_table in override_tables.iter() {
-                            for module in pyproject_toml_override_module_names(override_table)? {
-                                let mut config = vec![];
-                                for (key, part) in override_table.iter() {
-                                    if key != "module" {
-                                        match part {
-                                            Item::Value(v) => config.push((
-                                                key.into(),
-                                                OverrideIniOrTomlValue::Toml(v.clone()),
-                                            )),
-                                            _ => {
-                                                bail!("Found unexpected value in override in pyproject.toml".to_string())
-                                            }
-                                        }
-                                    }
-                                }
-                                result.overrides.push(OverrideConfig { module, config })
-                            }
-                        }
-                    }
-                    Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
-                        bail!("Expected tool.mypy to be simple table in pyproject.toml");
-                    }
-                }
-            }
-            order_overrides_for_priority(&mut result.overrides);
+            Self::check_pyproject_table(
+                vfs,
+                current_dir,
+                config_file_path,
+                diagnostic_config,
+                &mut result,
+                config,
+            )?;
             Ok(Some(result))
         } else {
             Ok(None)
         }
+    }
+
+    fn check_pyproject_table(
+        vfs: &dyn VfsHandler,
+        current_dir: &AbsPath,
+        config_file_path: &AbsPath,
+        diagnostic_config: &mut DiagnosticConfig,
+        result: &mut ProjectOptions,
+        config: &Item,
+    ) -> anyhow::Result<()> {
+        let Item::Table(table) = config else {
+            bail!("Expected tool.mypy to be a table in pyproject.toml");
+        };
+
+        for (key, item) in table.iter() {
+            match item {
+                Item::Value(value) => {
+                    apply_from_base_config(
+                        vfs,
+                        current_dir,
+                        Some(config_file_path),
+                        &mut result.settings,
+                        &mut result.flags,
+                        diagnostic_config,
+                        key,
+                        IniOrTomlValue::Toml(value),
+                    )?;
+                }
+                Item::ArrayOfTables(override_tables) if key == "overrides" => {
+                    for override_table in override_tables.iter() {
+                        for module in pyproject_toml_override_module_names(override_table)? {
+                            let mut config = vec![];
+                            for (key, part) in override_table.iter() {
+                                if key != "module" {
+                                    match part {
+                                        Item::Value(v) => config.push((
+                                            key.into(),
+                                            OverrideIniOrTomlValue::Toml(v.clone()),
+                                        )),
+                                        _ => {
+                                            bail!("Found unexpected value in override in pyproject.toml".to_string())
+                                        }
+                                    }
+                                }
+                            }
+                            result.overrides.push(OverrideConfig { module, config })
+                        }
+                    }
+                }
+                Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
+                    bail!("Expected tool.mypy to be simple table in pyproject.toml");
+                }
+            }
+        }
+        order_overrides_for_priority(&mut result.overrides);
+        Ok(())
     }
 }
 
