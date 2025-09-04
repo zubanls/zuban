@@ -622,7 +622,7 @@ fn files_outside_of_root_with_push_diagnostics() {
 
 #[test]
 #[parallel]
-fn symlink_dir_loop() {
+fn symlinks_with_dir_loop() {
     if !symlink_creation_allowed() {
         return;
     }
@@ -631,38 +631,43 @@ fn symlink_dir_loop() {
         [file foo.py]
         from nested import foo
         from nested.nested import foo as bar
+        from typing import Any, assert_type
+        import simple_symlink
+        import simple_symlink_dir
 
-        reveal_type(foo.x)
+        assert_type(foo.x, Any)
+        assert_type(simple_symlink.x, str)
+        assert_type(simple_symlink_dir.x, bytes)
 
         x = 3
+
+        [file simple_file.py]
+        x = ""
+        [file simple_symlink_dir/file.py]
+        x = b''
         "#,
     )
     .into_server();
+
+    server.tmp_dir.create_symlink(
+        "simple_symlink_dir/file.py",
+        "simple_symlink_dir/__init__.py",
+    );
+    server
+        .tmp_dir
+        .create_symlink("simple_file.py", "simple_symlink.py");
 
     let cannot_find =
         |name| format!(r#"Cannot find implementation or library stub for module named "{name}""#);
 
     let d = || server.diagnostics_for_file("foo.py");
 
-    assert_eq!(
-        d(),
-        vec![
-            cannot_find("nested"),
-            cannot_find("nested"),
-            "Revealed type is \"Any\"".to_string()
-        ]
-    );
+    assert_eq!(d(), vec![cannot_find("nested"), cannot_find("nested"),]);
 
+    // Create a loop
     server.create_symlink_dir_and_wait(".", "nested");
 
-    assert_eq!(
-        d(),
-        vec![
-            cannot_find("nested"),
-            cannot_find("nested"),
-            "Revealed type is \"Any\"".to_string()
-        ]
-    );
+    assert_eq!(d(), vec![cannot_find("nested"), cannot_find("nested"),]);
 }
 
 #[test]

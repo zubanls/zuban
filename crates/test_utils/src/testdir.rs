@@ -109,6 +109,17 @@ impl TestDir {
         let link = Path::new(&self.path).join(rel_link);
         create_symlink_dir(original, link).unwrap();
     }
+
+    pub fn create_symlink(&self, rel_original: &str, rel_link: &str) {
+        let original = Path::new(&self.path).join(rel_original);
+        let link = Path::new(&self.path).join(rel_link);
+
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        return std::os::unix::fs::symlink(original, link).unwrap();
+
+        #[cfg(target_os = "windows")]
+        return std::os::windows::fs::symlink_file(original, link).unwrap();
+    }
 }
 
 fn create_symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
