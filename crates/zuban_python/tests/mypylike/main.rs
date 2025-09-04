@@ -180,6 +180,7 @@ impl TestCase<'_, '_> {
                     &mut diagnostic_config,
                 )
                 .expect("Expected there to be no errors in the pyproject.toml")
+                .map(|result| result.options)
                 .unwrap_or_else(|| {
                     if mypy_compatible {
                         ProjectOptions::mypy_default()

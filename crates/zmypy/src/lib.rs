@@ -572,6 +572,16 @@ mod tests {
         test_dir.write_file("pyproject.toml", "[tool.mypy]");
 
         assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+
+        test_dir.write_file("pyproject.toml", "[tool.zuban]");
+        assert!(d().is_empty());
+
+        // The Zuban config can overwrite mypy settings.
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.zuban]\nexclude = \"\"\nstrict = true",
+        );
+        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
     }
 
     #[test]
