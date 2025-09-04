@@ -634,10 +634,12 @@ fn symlinks_with_dir_loop() {
         from typing import Any, assert_type
         import simple_symlink
         import simple_symlink_dir
+        import simple_symlink_dir2
 
         assert_type(foo.x, Any)
         assert_type(simple_symlink.x, str)
         assert_type(simple_symlink_dir.x, bytes)
+        assert_type(simple_symlink_dir2.x, float)
 
         x = 3
 
@@ -645,17 +647,23 @@ fn symlinks_with_dir_loop() {
         x = ""
         [file simple_symlink_dir/file.py]
         x = b''
+        [file simple_symlink_dir2/__init__.py.indirect]
+        x = 1.0
         "#,
     )
     .into_server();
 
-    server.tmp_dir.create_symlink(
+    server.tmp_dir.create_symlink_file(
         "simple_symlink_dir/file.py",
         "simple_symlink_dir/__init__.py",
     );
+    // It is important to test that links can also be relative paths and not just absolute paths.
     server
         .tmp_dir
-        .create_symlink("simple_file.py", "simple_symlink.py");
+        .create_relative_symlink_file("__init__.py.indirect", "simple_symlink_dir2/__init__.py");
+    server
+        .tmp_dir
+        .create_symlink_file("simple_file.py", "simple_symlink.py");
 
     let cannot_find =
         |name| format!(r#"Cannot find implementation or library stub for module named "{name}""#);

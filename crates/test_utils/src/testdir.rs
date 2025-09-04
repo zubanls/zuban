@@ -110,15 +110,14 @@ impl TestDir {
         create_symlink_dir(original, link).unwrap();
     }
 
-    pub fn create_symlink(&self, rel_original: &str, rel_link: &str) {
+    pub fn create_symlink_file(&self, rel_original: &str, rel_link: &str) {
         let original = Path::new(&self.path).join(rel_original);
         let link = Path::new(&self.path).join(rel_link);
-
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
-        return std::os::unix::fs::symlink(original, link).unwrap();
-
-        #[cfg(target_os = "windows")]
-        return std::os::windows::fs::symlink_file(original, link).unwrap();
+        create_symlink(original, link).unwrap()
+    }
+    pub fn create_relative_symlink_file(&self, point_to: &str, rel_link: &str) {
+        let link = Path::new(&self.path).join(rel_link);
+        create_symlink(point_to, link).unwrap()
     }
 }
 
@@ -128,6 +127,14 @@ fn create_symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> i
 
     #[cfg(target_os = "windows")]
     return std::os::windows::fs::symlink_dir(original, link);
+}
+
+fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    return std::os::unix::fs::symlink(original, link);
+
+    #[cfg(target_os = "windows")]
+    return std::os::windows::fs::symlink_file(original, link);
 }
 
 impl Drop for TestDir {

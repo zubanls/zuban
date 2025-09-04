@@ -75,10 +75,11 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                             let new = if file_type.is_dir() {
                                 ResolvedFileType::Directory
                             } else if file_type.is_symlink() {
-                                match self.follow_and_watch_symlink(dir_entry.path()) {
+                                let p = dir_entry.path();
+                                match self.follow_and_watch_symlink(&p) {
                                     Ok(resolved) => resolved,
                                     Err(err) => {
-                                        tracing::warn!("Follow symlink error, path={path}: {err}");
+                                        tracing::warn!("Follow symlink error, path={p:?}: {err}");
                                         continue;
                                     }
                                 }
@@ -320,7 +321,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
         path: &Path,
     ) -> Result<ResolvedFileType, String> {
         self.watch(path);
-        let target_path = std::fs::read_link(path).map_err(|e| format!("{e}"))?;
+        let target_path = resolve_link(path)?;
         let metadata = std::fs::symlink_metadata(&target_path).map_err(|e| format!("{e}"))?;
         let file_type = metadata.file_type();
         if file_type.is_dir() {
@@ -344,6 +345,18 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
             debug_assert!(file_type.is_file());
             Ok(ResolvedFileType::File)
         }
+    }
+}
+
+fn resolve_link(path: &Path) -> Result<PathBuf, String> {
+    let target = std::fs::read_link(path).map_err(|e| format!("{e}"))?;
+    if target.is_absolute() {
+        Ok(target)
+    } else {
+        let Some(parent) = path.parent() else {
+            return Err("The link has no parent".to_string());
+        };
+        Ok(parent.join(target))
     }
 }
 
