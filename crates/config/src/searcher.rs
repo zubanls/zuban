@@ -1,15 +1,12 @@
 use std::{io::Read, path::Path, sync::Arc};
 
-use crate::{DiagnosticConfig, ProjectOptions, PyProjectResult};
+use crate::{DiagnosticConfig, ProjectOptions};
 use vfs::{AbsPath, VfsHandler};
 
 const CONFIG_PATHS: [&str; 4] = [
-    // Mypy prioritizes mypy.ini. But since we allow [tool.zuban] entries as well it makes sense
-    // to check that first. I doubt many people have both mypy.ini and pyproject.toml configs for
-    // Mypy.
-    "pyproject.toml",
     "mypy.ini",
     ".mypy.ini",
+    "pyproject.toml",
     "setup.cfg",
     // TODO this is currently not implemented
     //"~/.config/mypy/config",
@@ -43,13 +40,10 @@ pub fn find_cli_config(
         let s = std::fs::read_to_string(config_path)
             .map_err(|err| anyhow::anyhow!("Issue while reading {config_path}: {err}"))?;
 
-        let (options, diagnostic_config, _) = initialize_config(vfs, current_dir, config_path, s)?;
+        let result = initialize_config(vfs, current_dir, config_path, s)?;
         Ok(FoundConfig {
-            project_options: options
-                .map(|r| r.options)
-                .unwrap_or_else(ProjectOptions::mypy_default),
-            diagnostic_config,
-            // TODO couldn't we use the config variable
+            project_options: result.0.unwrap_or_else(ProjectOptions::mypy_default),
+            diagnostic_config: result.1,
             config_path: Some(vfs.absolute_path(current_dir, config_path)),
         })
     } else {
@@ -62,7 +56,7 @@ fn initialize_config(
     current_dir: &AbsPath,
     path: &str,
     content: String,
-) -> anyhow::Result<(Option<PyProjectResult>, DiagnosticConfig, Arc<AbsPath>)> {
+) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Arc<AbsPath>)> {
     let _p = tracing::info_span!("config_finder").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
     let config_path = vfs.absolute_path(current_dir, path);
@@ -82,10 +76,6 @@ fn initialize_config(
             &content,
             &mut diagnostic_config,
         )?
-        .map(|options| PyProjectResult {
-            options,
-            has_mypy_section: true,
-        })
     };
     Ok((options, diagnostic_config, config_path))
 }
@@ -105,14 +95,13 @@ fn find_mypy_config_file_in_dir(
                 anyhow::bail!("Issue while reading {path}: {err}");
             }
             tracing::info!("Potential config found: {config_path}");
-            let result = initialize_config(vfs, dir, config_path, content)?;
-            if let Some(project_options) = result.0.map(|r| r.options).or_else(|| {
-                ["mypy.ini", ".mypy.ini"].contains(config_path).then(|| {
-                    // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
-                    // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
-                    ProjectOptions::mypy_default()
-                })
-            }) {
+            let mut result = initialize_config(vfs, dir, config_path, content)?;
+            if result.0.is_none() && ["mypy.ini", ".mypy.ini"].contains(config_path) {
+                // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
+                // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
+                result.0 = Some(ProjectOptions::mypy_default())
+            }
+            if let Some(project_options) = result.0 {
                 return Ok(FoundConfig {
                     project_options,
                     diagnostic_config: result.1,
