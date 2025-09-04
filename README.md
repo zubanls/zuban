@@ -29,6 +29,24 @@ zuban server  # An LSP server
 
 If you want Zuban to pick up your dependencies, please activate the virtual env first.
 
+You can also install the Zuban rust binary using [Nix flakes](https://nix.dev/concepts/flakes.html)
+by adding it as an input to your flake.nix:
+
+```nix
+{
+  inputs.zuban.url = "github:zubanls/zuban";
+
+  outputs = { nixpkgs, zuban, ... }: {
+    home.packages = [ zuban.packages.${system}.default ];
+  };
+}
+```
+
+Or install directly via `nix profile`:
+```bash
+nix profile install github:zubanls/zuban
+```
+
 ## License
 
 This project is dual licensed:
