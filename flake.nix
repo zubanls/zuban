@@ -4,6 +4,12 @@
   outputs = {nixpkgs, ...}: let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
+    typeshedSrc = pkgs.fetchFromGitHub {
+      owner = "python";
+      repo = "typeshed";
+      rev = "1b267b25f2c726291e4e6627b7567f2c8dc04b60";
+      sha256 = "sha256-SQJypewNYLfNSIc+Myd9l+nypdMdOx+Fyymmg/YpFW4=";
+    };
   in {
     packages.${system}.default = pkgs.rustPlatform.buildRustPackage {
       pname = "zuban";
@@ -14,12 +20,7 @@
       };
 
       preBuild = ''
-        export TYPESHED_HOME=${pkgs.fetchFromGitHub {
-          owner = "python";
-          repo = "typeshed";
-          rev = "1b267b25f2c726291e4e6627b7567f2c8dc04b60";
-          sha256 = "sha256-SQJypewNYLfNSIc+Myd9l+nypdMdOx+Fyymmg/YpFW4=";
-        }}
+        export TYPESHED_HOME=${typeshedSrc}
         cp -r $TYPESHED_HOME typeshed
       '';
       cargoLock = {
@@ -29,17 +30,17 @@
         };
       };
       doCheck = false;
-      
+
       postInstall = ''
-        mkdir -p $out/lib/python3.13/site-packages/zuban
-        cp -r ${pkgs.fetchFromGitHub {
-          owner = "python";
-          repo = "typeshed";
-          rev = "1b267b25f2c726291e4e6627b7567f2c8dc04b60";
-          sha256 = "sha256-SQJypewNYLfNSIc+Myd9l+nypdMdOx+Fyymmg/YpFW4=";
-        }} $out/lib/python3.13/site-packages/zuban/typeshed
+        mkdir -p $out/${pkgs.python3.sitePackages}/zuban
+        cp -r ${typeshedSrc} $out/${pkgs.python3.sitePackages}/zuban/typeshed
       '';
+      meta = with pkgs.lib; {
+        description = "zuban";
+        license = licenses.agpl3Plus;
+        maintainers = [];
+        platforms = platforms.linux;
+      };
     };
   };
 }
-
