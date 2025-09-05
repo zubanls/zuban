@@ -1,4 +1,5 @@
 mod searcher;
+mod venv;
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -131,6 +132,27 @@ impl Settings {
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
         Ok(())
+    }
+
+    pub fn try_to_find_environment_if_not_defined(
+        &mut self,
+        vfs_handler: &dyn VfsHandler,
+        base_directory: &AbsPath,
+        lookup_env_var: impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) {
+        if self.environment.is_some() {
+            return;
+        }
+        match lookup_env_var("VIRTUAL_ENV") {
+            Ok(path) => {
+                self.environment = Some(
+                    vfs_handler.normalize_rc_path(vfs_handler.absolute_path(base_directory, &path)),
+                )
+            }
+            Err(err) => {
+                tracing::info!("Tried to access $VIRTUAL_ENV, but got: {err}");
+            }
+        }
     }
 }
 

@@ -1,3 +1,4 @@
+use std::env::VarError;
 use std::process::ExitCode;
 use std::{path::PathBuf, sync::Arc};
 
@@ -266,9 +267,7 @@ pub fn with_diagnostics_from_cli<T>(
 ) -> anyhow::Result<T> {
     tracing::info!("Checking in {current_dir}");
     let (mut project, diagnostic_config) =
-        project_from_cli(cli, &current_dir, typeshed_path, |name| {
-            std::env::var(name).ok()
-        });
+        project_from_cli(cli, &current_dir, typeshed_path, |name| std::env::var(name));
     let diagnostics = project.diagnostics();
     Ok(callback(diagnostics?, &diagnostic_config))
 }
@@ -277,7 +276,7 @@ fn project_from_cli(
     cli: Cli,
     current_dir: &str,
     typeshed_path: Option<Arc<NormalizedPath>>,
-    lookup_env_var: impl Fn(&str) -> Option<String>,
+    lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
@@ -293,10 +292,11 @@ fn project_from_cli(
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
-    if options.settings.environment.is_none() {
-        options.settings.environment = lookup_env_var("VIRTUAL_ENV")
-            .map(|v| local_fs.normalize_rc_path(local_fs.absolute_path(&current_dir, &v)))
-    }
+    options.settings.try_to_find_environment_if_not_defined(
+        &local_fs,
+        &current_dir,
+        lookup_env_var,
+    );
 
     apply_flags(
         &local_fs,
@@ -482,7 +482,7 @@ mod tests {
     fn diagnostics_with_env_lookup(
         cli: Cli,
         directory: &str,
-        lookup_env_var: impl Fn(&str) -> Option<String>,
+        lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
     ) -> anyhow::Result<Vec<String>> {
         let (mut project, diagnostic_config) = project_from_cli(
             cli,
@@ -501,11 +501,11 @@ mod tests {
     }
 
     fn diagnostics(cli: Cli, directory: &str) -> Vec<String> {
-        diagnostics_with_env_lookup(cli, directory, |_| None).unwrap()
+        diagnostics_with_env_lookup(cli, directory, |_| Err(VarError::NotPresent)).unwrap()
     }
 
     fn expect_diagnostics_error(cli: Cli, directory: &str) -> String {
-        diagnostics_with_env_lookup(cli, directory, |_| None)
+        diagnostics_with_env_lookup(cli, directory, |_| Err(VarError::NotPresent))
             .unwrap_err()
             .to_string()
     }
@@ -705,7 +705,10 @@ mod tests {
 
         // venv information via $VIRTUAL_ENV
         let ds = diagnostics_with_env_lookup(Cli::parse_from([""]), test_dir.path(), |name| {
-            (name == "VIRTUAL_ENV").then(|| "venv".to_string())
+            match name == "VIRTUAL_ENV" {
+                true => Ok("venv".to_string()),
+                false => Err(VarError::NotPresent),
+            }
         });
         assert_eq!(ds.unwrap(), empty);
     }
