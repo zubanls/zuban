@@ -3135,6 +3135,8 @@ fn diagnostics_for_scope(from: NodeRef, callable: impl FnOnce()) -> Result<(), (
     }
     from.set_point(Point::new_calculating());
     callable();
-    from.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
+    if !from.point().calculated() {
+        from.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
+    }
     Ok(())
 }

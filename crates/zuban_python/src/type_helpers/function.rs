@@ -205,8 +205,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any_from_error();
         }
         reference.set_point(Point::new_calculating());
-        let body = self.node().body();
-        if self.file.points.get(body.index()).calculating() {
+        let body_node_ref = NodeRef::new(self.file, self.node().body().index());
+        if body_node_ref.point().calculating() {
             // This would also recurse, because we are already calculating the function's results
             return Inferred::new_any_from_error();
         }
@@ -270,7 +270,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }));
         }
         let result = result
-            .unwrap_or_else(Inferred::new_none)
+            .unwrap_or_else(|| {
+                if body_node_ref.point().specific() == Specific::FunctionEndIsUnreachable {
+                    Inferred::new_never(NeverCause::Other)
+                } else {
+                    Inferred::new_none()
+                }
+            })
             .into_proper_type(i_s);
         result.save_redirect(i_s, reference.file, reference.node_index)
     }

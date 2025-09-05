@@ -783,3 +783,21 @@ foo()  # E: Missing positional argument "a" in call to "foo"
 [file pyproject.toml]
 [tool.zuban]
 disallow_untyped_defs = true
+
+[case reachability_for_untyped_function_with_never]
+# flags: --no-mypy-compatible --disallow-untyped-defs
+
+from m import f  # Ensure import order
+
+[file m.py]
+def f(a):  # E: Function is missing a type annotation
+    1 + 1
+    raise Exception()
+
+[file n.py]
+import m
+x = reveal_type(m.f(1))  # N: Revealed type is "Never"
+# Should not be unreachable at least for now, because this would probably lead
+# to a lot of false positives.
+1
+reveal_type(x)  # N: Revealed type is "Never"
