@@ -1272,7 +1272,6 @@ impl Inference<'_, '_, '_> {
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         function.cache_func(self.i_s);
         let func_node = function.node();
-        let from = NodeRef::new(self.file, func_node.body().index());
         if let Some(decorated) = func_node.maybe_decorated()
             && function.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable)
             && self.is_no_type_check(decorated)
@@ -1280,27 +1279,30 @@ impl Inference<'_, '_, '_> {
             return Ok(());
         }
 
-        diagnostics_for_scope(from, || {
-            debug!(
-                "Diagnostics for function {} ({}({}:{}):#{})",
-                function.name(),
-                self.file_path(),
-                self.file.file_index,
-                func_node.index(),
-                function.node_ref.line_one_based(self.i_s.db)
-            );
-            let _indent = debug_indent();
-            self.calc_func_diagnostics(function);
-        })
+        debug!(
+            "Diagnostics for function {} ({}({}:{}):#{})",
+            function.name(),
+            self.file_path(),
+            self.file.file_index,
+            func_node.index(),
+            function.node_ref.line_one_based(self.i_s.db)
+        );
+        let _indent = debug_indent();
+        self.calc_func_diagnostics(function)
     }
 
-    pub(crate) fn ensure_calculated_function_body(&self, function: Function) {
+    pub(crate) fn ensure_calculated_function_body(&self, function: Function) -> Result<(), ()> {
         let func_node = function.node();
         let (name_def, _, params, _, body) = func_node.unpack();
         let body_ref = NodeRef::new(self.file, body.index());
-        if body_ref.point().calculated() {
-            return;
+        let point = body_ref.point();
+        if point.calculated() {
+            return Ok(());
         }
+        if body_ref.point().calculating() {
+            return Err(());
+        }
+        body_ref.set_point(Point::new_calculating());
         FLOW_ANALYSIS.with(|fa| {
             let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
                 if func_node.is_empty_generator_function() {
@@ -1318,10 +1320,11 @@ impl Inference<'_, '_, '_> {
             };
             body_ref.set_point(Point::new_specific(specific, Locality::Todo));
         });
+        Ok(())
     }
 
-    fn calc_func_diagnostics(&self, function: Function) {
-        self.ensure_calculated_function_body(function);
+    fn calc_func_diagnostics(&self, function: Function) -> Result<(), ()> {
+        self.ensure_calculated_function_body(function)?;
 
         let i_s = self.i_s;
 
@@ -1676,6 +1679,7 @@ impl Inference<'_, '_, '_> {
             }
             */
         }
+        Ok(())
     }
 
     // This is mostly a helper function to avoid using the wrong InferenceState accidentally.

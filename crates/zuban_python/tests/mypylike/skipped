@@ -8,8 +8,6 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
-untyped_function_should_still_have_normal_errors
-
 docs_alias
 docs_property
 
