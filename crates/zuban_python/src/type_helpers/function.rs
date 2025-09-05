@@ -210,13 +210,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // This would also recurse, because we are already calculating the function's results
             return Inferred::new_any_from_error();
         }
-        debug!("Checking cached untyped return for func {}", self.name());
         let _indent = debug_indent();
+        debug!("Ensure cached untyped return for func {}", self.name());
         self.node_ref
             .file
             .inference(&InferenceState::new(i_s.db, self.node_ref.file))
             .ensure_calculated_function_body(*self);
 
+        debug!("Checking cached untyped return for func {}", self.name());
         let inference = self.node_ref.file.inference(inner_i_s);
         let mut generator: Option<Inferred> = None;
         let mut result: Option<Inferred> = None;
@@ -1731,7 +1732,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     i_s,
                     self,
                     args.iter(i_s.mode),
-                    |_| (),
+                    |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
                     type_vars,
                     self.as_link(),

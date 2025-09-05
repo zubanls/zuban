@@ -747,7 +747,7 @@ def safeiter(it):
     def n():
         while True:
             try:
-                return n(it)
+                return n(it)  # E: Too many arguments for "n"
             except StopIteration:
                 raise
 
@@ -770,3 +770,16 @@ class C:
 reveal_type(C.with_args)  # E: Argument 2 to "__get__" of "classmethod" has incompatible type "Type[C]"; expected "Type[_T]" \
                           # N: Revealed type is "def [_T] () -> int"
 x = C.with_args()  # E: Argument 2 to "__get__" of "classmethod" has incompatible type "Type[C]"; expected "Type[_T]"
+
+[case untyped_function_should_still_have_normal_errors]
+# flags: --no-mypy-compatible
+def foo(a):  # E: Function is missing a type annotation
+    if bool():
+        raise Exception()
+        return 1  # E: Statement is unreachable
+
+foo()  # E: Missing positional argument "a" in call to "foo"
+
+[file pyproject.toml]
+[tool.zuban]
+disallow_untyped_defs = true
