@@ -1,3 +1,4 @@
+use std::env::VarError;
 use std::process::ExitCode;
 use std::{path::PathBuf, sync::Arc};
 
@@ -266,9 +267,7 @@ pub fn with_diagnostics_from_cli<T>(
 ) -> anyhow::Result<T> {
     tracing::info!("Checking in {current_dir}");
     let (mut project, diagnostic_config) =
-        project_from_cli(cli, &current_dir, typeshed_path, |name| {
-            std::env::var(name).ok()
-        });
+        project_from_cli(cli, &current_dir, typeshed_path, |name| std::env::var(name));
     let diagnostics = project.diagnostics();
     Ok(callback(diagnostics?, &diagnostic_config))
 }
@@ -277,7 +276,7 @@ fn project_from_cli(
     cli: Cli,
     current_dir: &str,
     typeshed_path: Option<Arc<NormalizedPath>>,
-    lookup_env_var: impl Fn(&str) -> Option<String>,
+    lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
@@ -293,10 +292,11 @@ fn project_from_cli(
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
-    if options.settings.environment.is_none() {
-        options.settings.environment = lookup_env_var("VIRTUAL_ENV")
-            .map(|v| local_fs.normalize_rc_path(local_fs.absolute_path(&current_dir, &v)))
-    }
+    options.settings.try_to_find_environment_if_not_defined(
+        &local_fs,
+        &current_dir,
+        lookup_env_var,
+    );
 
     apply_flags(
         &local_fs,
@@ -482,7 +482,7 @@ mod tests {
     fn diagnostics_with_env_lookup(
         cli: Cli,
         directory: &str,
-        lookup_env_var: impl Fn(&str) -> Option<String>,
+        lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
     ) -> anyhow::Result<Vec<String>> {
         let (mut project, diagnostic_config) = project_from_cli(
             cli,
@@ -501,11 +501,11 @@ mod tests {
     }
 
     fn diagnostics(cli: Cli, directory: &str) -> Vec<String> {
-        diagnostics_with_env_lookup(cli, directory, |_| None).unwrap()
+        diagnostics_with_env_lookup(cli, directory, |_| Err(VarError::NotPresent)).unwrap()
     }
 
     fn expect_diagnostics_error(cli: Cli, directory: &str) -> String {
-        diagnostics_with_env_lookup(cli, directory, |_| None)
+        diagnostics_with_env_lookup(cli, directory, |_| Err(VarError::NotPresent))
             .unwrap_err()
             .to_string()
     }
@@ -558,8 +558,9 @@ mod tests {
 
             [file foo.py]
             1()
-            def foo(x) -> int: return 1
+            def foo(x: str) -> int: return 1
             [file bar.py]
+            def bar(x) -> None: ...
             "#,
             false,
         );
@@ -567,11 +568,46 @@ mod tests {
 
         const NOT_CALLABLE: &str = "foo.py:1: error: \"int\" not callable  [operator]";
 
-        assert!(d().is_empty());
+        let empty: [&str; _] = [];
+        assert_eq!(d(), empty);
 
         test_dir.write_file("pyproject.toml", "[tool.mypy]");
 
-        assert_eq!(d(), vec![NOT_CALLABLE.to_string()]);
+        assert_eq!(d(), [NOT_CALLABLE]);
+
+        test_dir.write_file("pyproject.toml", "[tool.zuban]");
+        assert_eq!(d(), empty);
+
+        // The Zuban config can overwrite mypy settings.
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.zuban]\ndisallow_untyped_defs = true",
+        );
+        const MISSING_ANNOTATION: &str = "bar.py:1: error: Function is missing a type \
+                                          annotation for one or more arguments  [no-untyped-def]";
+        assert_eq!(d(), [MISSING_ANNOTATION]);
+
+        // Using --config-file should disable all other config files and only use the one
+        // specified.
+        assert_eq!(
+            diagnostics(
+                Cli::parse_from(vec!["", "--config-file", "pyproject.toml"]),
+                test_dir.path()
+            ),
+            [MISSING_ANNOTATION, NOT_CALLABLE]
+        );
+
+        // If both the zuban config and the mypy section are available in pyproject.toml, that file
+        // overwrites everything else.
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.zuban]\ndisallow_untyped_defs = true\n[tool.mypy]",
+        );
+        assert_eq!(d(), [MISSING_ANNOTATION, NOT_CALLABLE]);
+
+        // mypy.ini doesn't change that.
+        test_dir.write_file("mypy.ini", "[mypy]\nexclude = \"foo.py\"");
+        assert_eq!(d(), [MISSING_ANNOTATION, NOT_CALLABLE]);
     }
 
     #[test]
@@ -669,7 +705,10 @@ mod tests {
 
         // venv information via $VIRTUAL_ENV
         let ds = diagnostics_with_env_lookup(Cli::parse_from([""]), test_dir.path(), |name| {
-            (name == "VIRTUAL_ENV").then(|| "venv".to_string())
+            match name == "VIRTUAL_ENV" {
+                true => Ok("venv".to_string()),
+                false => Err(VarError::NotPresent),
+            }
         });
         assert_eq!(ds.unwrap(), empty);
     }
@@ -923,6 +962,10 @@ mod tests {
                 r#"
                 [file venv/bin/python]
 
+                [file venv/pyvenv.cfg]
+                include-system-site-packages = false
+                version = 3.12.3
+
                 [file venv/Lib/site-packages/foo.py]
 
                 [file venv/src/baz/baz/__init__.py]
@@ -940,6 +983,10 @@ mod tests {
             } else {
                 r#"
                 [file venv/bin/python]
+
+                [file venv/pyvenv.cfg]
+                include-system-site-packages = false
+                version = 3.12.3
 
                 [file venv/lib/python3.12/site-packages/foo.py]
 
@@ -962,6 +1009,11 @@ mod tests {
 
         assert_eq!(
             d(&["", "--python-executable", "venv/bin/python"]),
+            ["m.py:3: note: Revealed type is \"builtins.int\""]
+        );
+
+        assert_eq!(
+            d(&[""]),
             ["m.py:3: note: Revealed type is \"builtins.int\""]
         );
     }

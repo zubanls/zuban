@@ -349,18 +349,11 @@ impl<'sender> GlobalState<'sender> {
                     .collect();
             }
             config.settings.typeshed_path = self.typeshed_path.clone();
-            if config.settings.environment.is_none() {
-                config.settings.environment = match std::env::var("VIRTUAL_ENV") {
-                    Ok(path) => Some(
-                        vfs_handler
-                            .normalize_rc_path(vfs_handler.absolute_path(&first_root, &path)),
-                    ),
-                    Err(err) => {
-                        tracing::info!("Tried to access $VIRTUAL_ENV, but got: {err}");
-                        None
-                    }
-                }
-            }
+            config.settings.try_to_find_environment_if_not_defined(
+                &vfs_handler,
+                &first_root,
+                |n| std::env::var(n),
+            );
 
             let vfs = Box::new(vfs_handler);
             *project = Some(if let Some(recovery) = self.panic_recovery.take() {

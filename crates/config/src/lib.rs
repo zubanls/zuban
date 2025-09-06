@@ -1,4 +1,5 @@
 mod searcher;
+mod venv;
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -189,11 +190,7 @@ impl ProjectOptions {
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Option<Self>> {
-        let options = ParseOption {
-            indented_multiline_values: true,
-            ..Default::default()
-        };
-        let ini = Ini::load_from_str_opt(code, options)?;
+        let ini = parse_python_ini(code)?;
         let mut result = Self::mypy_default();
         let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
@@ -229,66 +226,130 @@ impl ProjectOptions {
         Ok(had_relevant_section.then_some(result))
     }
 
-    pub fn from_pyproject_toml(
+    pub fn from_pyproject_toml_only(
         vfs: &dyn VfsHandler,
         current_dir: &AbsPath,
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
+        mypy_compatible_default: bool,
     ) -> anyhow::Result<Option<Self>> {
-        let document = code.parse::<DocumentMut>()?;
+        let document = code.parse()?;
+        let result = Self::apply_pyproject_toml_mypy_part(
+            vfs,
+            current_dir,
+            config_file_path,
+            &document,
+            diagnostic_config,
+        )?;
+        Ok(
+            if let Some(config) = document.get("tool").and_then(|item| item.get("zuban")) {
+                let mut result = result.unwrap_or_else(|| {
+                    if mypy_compatible_default {
+                        Self::mypy_default()
+                    } else {
+                        Self::default()
+                    }
+                });
+                result.apply_pyproject_table(
+                    vfs,
+                    current_dir,
+                    config_file_path,
+                    diagnostic_config,
+                    config,
+                )?;
+                Some(result)
+            } else {
+                result
+            },
+        )
+    }
+
+    pub fn apply_pyproject_toml_mypy_part(
+        vfs: &dyn VfsHandler,
+        current_dir: &AbsPath,
+        config_file_path: &AbsPath,
+        document: &DocumentMut,
+        diagnostic_config: &mut DiagnosticConfig,
+    ) -> anyhow::Result<Option<Self>> {
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             let mut result = ProjectOptions::mypy_default();
-            let Item::Table(table) = config else {
-                bail!("Expected tool.mypy to be a table in pyproject.toml");
-            };
-
-            for (key, item) in table.iter() {
-                match item {
-                    Item::Value(value) => {
-                        apply_from_base_config(
-                            vfs,
-                            current_dir,
-                            Some(config_file_path),
-                            &mut result.settings,
-                            &mut result.flags,
-                            diagnostic_config,
-                            key,
-                            IniOrTomlValue::Toml(value),
-                        )?;
-                    }
-                    Item::ArrayOfTables(override_tables) if key == "overrides" => {
-                        for override_table in override_tables.iter() {
-                            for module in pyproject_toml_override_module_names(override_table)? {
-                                let mut config = vec![];
-                                for (key, part) in override_table.iter() {
-                                    if key != "module" {
-                                        match part {
-                                            Item::Value(v) => config.push((
-                                                key.into(),
-                                                OverrideIniOrTomlValue::Toml(v.clone()),
-                                            )),
-                                            _ => {
-                                                bail!("Found unexpected value in override in pyproject.toml".to_string())
-                                            }
-                                        }
-                                    }
-                                }
-                                result.overrides.push(OverrideConfig { module, config })
-                            }
-                        }
-                    }
-                    Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
-                        bail!("Expected tool.mypy to be simple table in pyproject.toml");
-                    }
-                }
-            }
-            order_overrides_for_priority(&mut result.overrides);
+            result.apply_pyproject_table(
+                vfs,
+                current_dir,
+                config_file_path,
+                diagnostic_config,
+                config,
+            )?;
             Ok(Some(result))
         } else {
             Ok(None)
         }
     }
+
+    fn apply_pyproject_table(
+        &mut self,
+        vfs: &dyn VfsHandler,
+        current_dir: &AbsPath,
+        config_file_path: &AbsPath,
+        diagnostic_config: &mut DiagnosticConfig,
+        config: &Item,
+    ) -> anyhow::Result<()> {
+        let Item::Table(table) = config else {
+            bail!("Expected tool.mypy to be a table in pyproject.toml");
+        };
+
+        for (key, item) in table.iter() {
+            match item {
+                Item::Value(value) => {
+                    apply_from_base_config(
+                        vfs,
+                        current_dir,
+                        Some(config_file_path),
+                        &mut self.settings,
+                        &mut self.flags,
+                        diagnostic_config,
+                        key,
+                        IniOrTomlValue::Toml(value),
+                    )?;
+                }
+                Item::ArrayOfTables(override_tables) if key == "overrides" => {
+                    for override_table in override_tables.iter() {
+                        for module in pyproject_toml_override_module_names(override_table)? {
+                            let mut config = vec![];
+                            for (key, part) in override_table.iter() {
+                                if key != "module" {
+                                    match part {
+                                        Item::Value(v) => config.push((
+                                            key.into(),
+                                            OverrideIniOrTomlValue::Toml(v.clone()),
+                                        )),
+                                        _ => {
+                                            bail!("Found unexpected value in override in pyproject.toml".to_string())
+                                        }
+                                    }
+                                }
+                            }
+                            self.overrides.push(OverrideConfig { module, config })
+                        }
+                    }
+                }
+                Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
+                    bail!("Expected tool.mypy to be simple table in pyproject.toml");
+                }
+            }
+        }
+        order_overrides_for_priority(&mut self.overrides);
+        Ok(())
+    }
+}
+
+fn parse_python_ini(code: &str) -> anyhow::Result<Ini> {
+    let options = ParseOption {
+        indented_multiline_values: true,
+        ..Default::default()
+    };
+    Ok(Ini::load_from_str_opt(code, options)?)
 }
 
 fn order_overrides_for_priority(overrides: &mut [OverrideConfig]) {
@@ -442,8 +503,11 @@ impl std::str::FromStr for PythonVersion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let error = "Expected a dot separated python version like 3.13";
-        let Some((major, minor)) = s.split_once(".") else {
+        let Some((major, mut minor)) = s.split_once(".") else {
             bail!(error);
+        };
+        if let Some((new_minor, _patch)) = minor.split_once(".") {
+            minor = new_minor;
         };
         Ok(Self {
             major: major
@@ -969,12 +1033,13 @@ mod tests {
                 &mut DiagnosticConfig::default(),
             )
         } else {
-            ProjectOptions::from_pyproject_toml(
+            ProjectOptions::from_pyproject_toml_only(
                 &local_fs,
                 &current_dir,
                 &current_dir,
                 code,
                 &mut DiagnosticConfig::default(),
+                false,
             )
         }
     }
@@ -1073,6 +1138,19 @@ mod tests {
         let version = &opts.settings.python_version.unwrap();
         assert_eq!(version.major, 3);
         assert_eq!(version.minor, 1);
+    }
+
+    #[test]
+    fn test_parse_python_version() {
+        use std::str::FromStr;
+        assert_eq!(
+            PythonVersion::from_str("3.12").unwrap(),
+            PythonVersion::new(3, 12)
+        );
+        assert_eq!(
+            PythonVersion::from_str("3.12.42").unwrap(),
+            PythonVersion::new(3, 12)
+        );
     }
 
     #[test]

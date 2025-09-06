@@ -205,18 +205,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any_from_error();
         }
         reference.set_point(Point::new_calculating());
-        let body = self.node().body();
-        if self.file.points.get(body.index()).calculating() {
+        let body_node_ref = NodeRef::new(self.file, self.node().body().index());
+        if body_node_ref.point().calculating() {
             // This would also recurse, because we are already calculating the function's results
             return Inferred::new_any_from_error();
         }
-        debug!("Checking cached untyped return for func {}", self.name());
         let _indent = debug_indent();
+        debug!("Ensure cached untyped return for func {}", self.name());
         self.node_ref
             .file
             .inference(&InferenceState::new(i_s.db, self.node_ref.file))
             .ensure_calculated_function_body(*self);
 
+        debug!("Checking cached untyped return for func {}", self.name());
         let inference = self.node_ref.file.inference(inner_i_s);
         let mut generator: Option<Inferred> = None;
         let mut result: Option<Inferred> = None;
@@ -269,7 +270,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }));
         }
         let result = result
-            .unwrap_or_else(Inferred::new_none)
+            .unwrap_or_else(|| {
+                if body_node_ref.point().specific() == Specific::FunctionEndIsUnreachable {
+                    Inferred::new_never(NeverCause::Other)
+                } else {
+                    Inferred::new_none()
+                }
+            })
             .into_proper_type(i_s);
         result.save_redirect(i_s, reference.file, reference.node_index)
     }
@@ -1731,7 +1738,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     i_s,
                     self,
                     args.iter(i_s.mode),
-                    |_| (),
+                    |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
                     type_vars,
                     self.as_link(),
