@@ -1625,6 +1625,24 @@ impl Type {
         }
         false
     }
+
+    pub fn make_generator_type(
+        self,
+        db: &Database,
+        is_async: bool,
+        return_type: impl FnOnce() -> Type,
+    ) -> Self {
+        if is_async {
+            new_class!(db.python_state.async_generator_link(), self, Type::None,)
+        } else {
+            new_class!(
+                db.python_state.generator_link(),
+                self,
+                Type::None,
+                return_type()
+            )
+        }
+    }
 }
 
 impl FromIterator<Type> for Type {

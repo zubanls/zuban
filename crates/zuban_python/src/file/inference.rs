@@ -4347,20 +4347,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         _ => sync_for_if.has_await(),
                     },
                 });
-        Inferred::from_type(if is_async {
-            new_class!(
-                self.i_s.db.python_state.async_generator_link(),
-                t,
-                Type::None,
-            )
-        } else {
-            new_class!(
-                self.i_s.db.python_state.generator_link(),
-                t,
-                Type::None,
-                Type::None,
-            )
-        })
+        Inferred::from_type(t.make_generator_type(self.i_s.db, is_async, || Type::None))
     }
 
     check_point_cache_with!(pub infer_decorator, Self::_infer_decorator, Decorator);

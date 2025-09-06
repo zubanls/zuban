@@ -255,19 +255,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         }
         if let Some(generator) = generator {
-            let t = generator.as_type(i_s);
-            result = Some(Inferred::from_type(if self.is_async() {
-                new_class!(i_s.db.python_state.async_generator_link(), t, Type::None,)
-            } else {
-                let ret_t = if let Some(result) = result {
-                    result
-                        .as_type(i_s)
-                        .simplified_union(i_s, &Type::Any(AnyCause::Todo))
-                } else {
-                    Type::Any(AnyCause::Todo)
-                };
-                new_class!(i_s.db.python_state.generator_link(), t, Type::None, ret_t)
-            }));
+            let t = generator
+                .as_type(i_s)
+                .make_generator_type(i_s.db, self.is_async(), || {
+                    if let Some(result) = result {
+                        result
+                            .as_type(i_s)
+                            .simplified_union(i_s, &Type::Any(AnyCause::Todo))
+                    } else {
+                        Type::Any(AnyCause::Todo)
+                    }
+                });
+            result = Some(Inferred::from_type(t));
         }
         let result = result
             .unwrap_or_else(|| {
