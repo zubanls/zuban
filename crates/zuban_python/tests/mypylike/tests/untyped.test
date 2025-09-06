@@ -801,3 +801,9 @@ x = reveal_type(m.f(1))  # N: Revealed type is "Never"
 # to a lot of false positives.
 1
 reveal_type(x)  # N: Revealed type is "Never"
+
+[case untyped_simple_recursion]
+# flags: --no-mypy-compatible
+def foo():
+    reveal_type(foo()) # N: Revealed type is "Any"
+    return 1

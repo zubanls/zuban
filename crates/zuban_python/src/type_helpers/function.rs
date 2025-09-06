@@ -212,10 +212,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let _indent = debug_indent();
         debug!("Ensure cached untyped return for func {}", self.name());
-        self.node_ref
+        let result = self
+            .node_ref
             .file
             .inference(&InferenceState::new(i_s.db, self.node_ref.file))
             .ensure_calculated_function_body(*self);
+        debug_assert!(result.is_ok());
 
         debug!("Checking cached untyped return for func {}", self.name());
         let inference = self.node_ref.file.inference(inner_i_s);
