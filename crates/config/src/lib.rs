@@ -520,8 +520,11 @@ impl std::str::FromStr for PythonVersion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let error = "Expected a dot separated python version like 3.13";
-        let Some((major, minor)) = s.split_once(".") else {
+        let Some((major, mut minor)) = s.split_once(".") else {
             bail!(error);
+        };
+        if let Some((new_minor, _patch)) = minor.split_once(".") {
+            minor = new_minor;
         };
         Ok(Self {
             major: major
@@ -1152,6 +1155,19 @@ mod tests {
         let version = &opts.settings.python_version.unwrap();
         assert_eq!(version.major, 3);
         assert_eq!(version.minor, 1);
+    }
+
+    #[test]
+    fn test_parse_python_version() {
+        use std::str::FromStr;
+        assert_eq!(
+            PythonVersion::from_str("3.12").unwrap(),
+            PythonVersion::new(3, 12)
+        );
+        assert_eq!(
+            PythonVersion::from_str("3.12.42").unwrap(),
+            PythonVersion::new(3, 12)
+        );
     }
 
     #[test]
