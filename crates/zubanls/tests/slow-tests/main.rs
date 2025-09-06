@@ -939,6 +939,10 @@ fn test_virtual_environment() {
             r#"
                 [file venv/Scripts/python.exe]
 
+                [file venv/pyvenv.cfg]
+                include-system-site-packages = false
+                version = 3.12.3
+
                 [file venv/Lib/site-packages/foo/__init__.py]
                 foo = 1
 
@@ -951,6 +955,10 @@ fn test_virtual_environment() {
         } else {
             r#"
                 [file venv/bin/python]
+
+                [file venv/pyvenv.cfg]
+                include-system-site-packages = false
+                version = 3.12.3
 
                 [file venv/lib/python3.12/site-packages/foo/__init__.py]
                 foo = 1
@@ -1047,8 +1055,10 @@ fn test_virtual_environment() {
     run(&[], Some(&[import_err("foo")]));
     unsafe { std::env::remove_var("VIRTUAL_ENV") };
 
-    tracing::info!("test_virtual_environment - After unsetting it, there should just be errors");
-    run(&[import_err("foo"), import_err("bar")], None);
+    tracing::info!(
+        "test_virtual_environment - After unsetting it, there should still be no errors, because the venv is found"
+    );
+    run(&[], Some(&[import_err("foo")]));
 }
 
 #[test]

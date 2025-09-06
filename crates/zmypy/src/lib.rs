@@ -962,6 +962,10 @@ mod tests {
                 r#"
                 [file venv/bin/python]
 
+                [file venv/pyvenv.cfg]
+                include-system-site-packages = false
+                version = 3.12.3
+
                 [file venv/Lib/site-packages/foo.py]
 
                 [file venv/src/baz/baz/__init__.py]
@@ -979,6 +983,10 @@ mod tests {
             } else {
                 r#"
                 [file venv/bin/python]
+
+                [file venv/pyvenv.cfg]
+                include-system-site-packages = false
+                version = 3.12.3
 
                 [file venv/lib/python3.12/site-packages/foo.py]
 
@@ -1001,6 +1009,11 @@ mod tests {
 
         assert_eq!(
             d(&["", "--python-executable", "venv/bin/python"]),
+            ["m.py:3: note: Revealed type is \"builtins.int\""]
+        );
+
+        assert_eq!(
+            d(&[""]),
             ["m.py:3: note: Revealed type is \"builtins.int\""]
         );
     }

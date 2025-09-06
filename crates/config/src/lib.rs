@@ -133,27 +133,6 @@ impl Settings {
             .collect::<anyhow::Result<Vec<_>>>()?;
         Ok(())
     }
-
-    pub fn try_to_find_environment_if_not_defined(
-        &mut self,
-        vfs_handler: &dyn VfsHandler,
-        base_directory: &AbsPath,
-        lookup_env_var: impl Fn(&str) -> Result<String, std::env::VarError>,
-    ) {
-        if self.environment.is_some() {
-            return;
-        }
-        match lookup_env_var("VIRTUAL_ENV") {
-            Ok(path) => {
-                self.environment = Some(
-                    vfs_handler.normalize_rc_path(vfs_handler.absolute_path(base_directory, &path)),
-                )
-            }
-            Err(err) => {
-                tracing::info!("Tried to access $VIRTUAL_ENV, but got: {err}");
-            }
-        }
-    }
 }
 
 fn to_normalized_path(
@@ -211,11 +190,7 @@ impl ProjectOptions {
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
     ) -> anyhow::Result<Option<Self>> {
-        let options = ParseOption {
-            indented_multiline_values: true,
-            ..Default::default()
-        };
-        let ini = Ini::load_from_str_opt(code, options)?;
+        let ini = parse_python_ini(code)?;
         let mut result = Self::mypy_default();
         let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
@@ -367,6 +342,14 @@ impl ProjectOptions {
         order_overrides_for_priority(&mut self.overrides);
         Ok(())
     }
+}
+
+fn parse_python_ini(code: &str) -> anyhow::Result<Ini> {
+    let options = ParseOption {
+        indented_multiline_values: true,
+        ..Default::default()
+    };
+    Ok(Ini::load_from_str_opt(code, options)?)
 }
 
 fn order_overrides_for_priority(overrides: &mut [OverrideConfig]) {
