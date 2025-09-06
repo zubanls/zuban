@@ -256,7 +256,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
-        if let Some(generator) = generator {
+        let needs_async_remap = if let Some(generator) = generator {
             let t = generator
                 .as_type(i_s)
                 .make_generator_type(i_s.db, self.is_async(), || {
@@ -269,8 +269,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                 });
             result = Some(Inferred::from_type(t));
-        }
-        let result = result
+            false
+        } else {
+            self.is_async()
+        };
+        let mut result = result
             .unwrap_or_else(|| {
                 if body_node_ref.point().specific() == Specific::FunctionEndIsUnreachable {
                     Inferred::new_never(NeverCause::Other)
@@ -279,6 +282,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             })
             .into_proper_type(i_s);
+        if needs_async_remap {
+            result = Inferred::from_type(new_class!(
+                i_s.db.python_state.coroutine_link(),
+                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::Todo),
+                result.as_type(i_s),
+            ))
+        }
         result.save_redirect(i_s, reference.file, reference.node_index)
     }
 
@@ -1433,7 +1444,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         params: impl Iterator<Item = FunctionParam<'a>>,
         needs_self_type: bool,
         mut as_type: impl FnMut(&Type) -> Type,
-        mut return_type: Type,
+        return_type: Type,
     ) -> CallableContent {
         let mut params = params.peekable();
         let had_first_annotation = self.class.is_none()
@@ -1447,14 +1458,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 had_first_self_or_class_annotation: had_first_annotation,
             }
         };
-        if self.is_async() && !self.is_generator() {
-            return_type = new_class!(
-                i_s.db.python_state.coroutine_link(),
-                Type::Any(AnyCause::Todo),
-                Type::Any(AnyCause::Todo),
-                return_type,
-            );
-        }
 
         let return_result = |params| {
             self.as_callable_content_internal(
@@ -1749,7 +1752,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 )
             };
 
-        let result = if let Some(return_annotation) = return_annotation {
+        if let Some(return_annotation) = return_annotation {
             self.apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
                 i_s,
                 calculated_type_vars,
@@ -1782,16 +1785,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 // The mypy-compatible case
                 return Inferred::new_any(AnyCause::Unannotated);
             }
-        };
-        if self.is_async() && !self.is_generator() {
-            return Inferred::from_type(new_class!(
-                i_s.db.python_state.coroutine_link(),
-                Type::Any(AnyCause::Todo),
-                Type::Any(AnyCause::Todo),
-                result.as_type(i_s),
-            ));
         }
-        result
     }
 
     fn apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
@@ -1803,20 +1797,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let return_type = self
-            .node_ref
-            .file
-            .name_resolution_for_types(i_s)
-            .use_cached_return_annotation_type(return_annotation);
-
-        if return_type.is_never() && !self.is_async() {
+        let return_type = self.return_type(i_s);
+        if return_type.is_never() {
             FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
         }
 
-        if result_context.expect_not_none()
-            && matches!(return_type.as_ref(), Type::None)
-            && !self.is_async()
-        {
+        if result_context.expect_not_none() && matches!(return_type.as_ref(), Type::None) {
             args.add_issue(
                 i_s,
                 IssueKind::DoesNotReturnAValue(self.diagnostic_string().into()),
@@ -1843,6 +1829,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 self.class.as_ref(),
                 replace_self_type,
             )
+        } else if self.is_async() {
+            // Async functions remap the type so we can also not use the cache.
+            Inferred::from_type(return_type.into_owned())
         } else {
             self.node_ref
                 .file
@@ -1865,7 +1854,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState<'db, '_>,
     ) -> Cow<'_, Type> {
-        let mut t = self.node_ref.return_type(i_s);
+        let mut t = self.node_ref.return_annotation_type(i_s);
         if self.is_generator() {
             t = Cow::Owned(
                 GeneratorType::from_type(i_s.db, t)

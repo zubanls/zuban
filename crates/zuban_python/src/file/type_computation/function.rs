@@ -11,6 +11,7 @@ use crate::{
     diagnostics::{Issue, IssueKind},
     file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, PythonFile, func_parent_scope},
     inference_state::InferenceState,
+    new_class,
     node_ref::NodeRef,
     recoverable_error,
     type_::{
@@ -390,7 +391,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         (type_vars, type_guard, star_annotation)
     }
 
-    pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'file, Type> {
+    pub fn return_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'file, Type> {
         self.return_annotation()
             .map(|a| {
                 self.file
@@ -398,6 +399,20 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                     .use_cached_return_annotation_type(a)
             })
             .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))
+    }
+
+    pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'file, Type> {
+        let t = self.return_annotation_type(i_s);
+        if self.is_async() && !self.is_generator() {
+            Cow::Owned(new_class!(
+                i_s.db.python_state.coroutine_link(),
+                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::Todo),
+                t.into_owned(),
+            ))
+        } else {
+            t
+        }
     }
 }
 
