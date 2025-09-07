@@ -2015,12 +2015,12 @@ impl<'db> Diagnostic<'db> {
         let fmt_line = |writer: &mut dyn Write, kind: &str, error| {
             write!(writer, "{}{}: ", opts.path, opts.line_number_infos)?;
             if kind == "error" {
-                write!(writer, "{}", "error:".red().bold())?;
+                write!(writer, "{}", "error: ".red().bold())?;
             } else {
                 write!(writer, "{}", kind.blue())?;
-                write!(writer, "{}", ":".blue())?;
+                write!(writer, "{}", ": ".blue())?;
             }
-            write!(writer, " {error}")
+            highlight_quote_groups(writer, error)
         };
         fmt_line(writer, opts.kind, &opts.error)?;
         if config.show_error_codes
@@ -2036,6 +2036,20 @@ impl<'db> Diagnostic<'db> {
         write!(writer, "\n")?;
         Ok(())
     }
+}
+
+fn highlight_quote_groups(out: &mut dyn Write, msg: &str) -> std::io::Result<()> {
+    let mut in_quotes = false;
+
+    for part in msg.split('"') {
+        if in_quotes {
+            write!(out, "{}", format!("\"{}\"", part).bright_white().bold())?;
+        } else {
+            write!(out, "{}", part.white())?;
+        }
+        in_quotes = !in_quotes;
+    }
+    Ok(())
 }
 
 struct MessageFormattingInfos<'db> {
