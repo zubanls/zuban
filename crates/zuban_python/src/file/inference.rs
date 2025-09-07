@@ -505,6 +505,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 node_ref.file,
                 inplace_method,
                 &KnownArgs::new(&right, node_ref),
+                &mut ResultContext::Unknown,
                 &|_type| had_lookup_error.set(true),
             );
             if had_lookup_error.get() {
@@ -805,6 +806,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             self.file,
             "__iter__",
             &NoArgs::new(from),
+            &mut ResultContext::Unknown,
             &|_| {
                 if !added_iter_issue.get() {
                     added_iter_issue.set(true);
@@ -822,6 +824,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             from,
             "__next__",
             &NoArgs::new(from),
+            &mut ResultContext::Unknown,
         );
         (
             iter_result,
@@ -2450,6 +2453,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     node_ref.file,
                     method_name,
                     &NoArgs::new(node_ref),
+                    &mut ResultContext::Unknown,
                     &|type_| {
                         let operand = match operand.as_code() {
                             "~" => "~",
@@ -2473,10 +2477,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             self.i_s,
                             self.infer_expression_part_with_context(
                                 await_node.primary(),
-                                &mut match result_context {
-                                    ResultContext::ExpectUnused => ResultContext::ExpectUnused,
-                                    _ => ResultContext::Unknown,
-                                },
+                                &mut ResultContext::Await,
                             ),
                             from,
                             "\"await\"",
@@ -2531,6 +2532,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     from.file,
                     "__eq__",
                     &KnownArgs::new(right_inf, from),
+                    &mut ResultContext::Unknown,
                     &|_| {
                         debug!(
                             "__eq__ is normally accessible, but might not be \
@@ -2713,6 +2715,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 from,
                                 "__next__",
                                 &NoArgs::new(from),
+                                &mut ResultContext::Unknown,
                             )
                             .as_cow_type(i_s)
                             .is_simple_super_type_of(i_s, l_type);
@@ -4587,16 +4590,23 @@ pub fn await_(
                 },
             )
         },
-        inf.type_lookup_and_execute(i_s, from.file, "__await__", &NoArgs::new(from), &|t| {
-            from.add_issue(
-                i_s,
-                IssueKind::IncompatibleTypes {
-                    cause: no_lookup_cause,
-                    got: t.format_short(i_s.db),
-                    expected: "Awaitable[Any]".into(),
-                },
-            );
-        })
+        inf.type_lookup_and_execute(
+            i_s,
+            from.file,
+            "__await__",
+            &NoArgs::new(from),
+            &mut ResultContext::Await,
+            &|t| {
+                from.add_issue(
+                    i_s,
+                    IssueKind::IncompatibleTypes {
+                        cause: no_lookup_cause,
+                        got: t.format_short(i_s.db),
+                        expected: "Awaitable[Any]".into(),
+                    },
+                );
+            },
+        )
         .as_cow_type(i_s)
         .as_ref(),
     );

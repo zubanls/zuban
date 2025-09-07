@@ -1927,6 +1927,7 @@ impl<'db: 'slf, 'slf> Inferred {
         in_file: &PythonFile,
         name: &str,
         args: &dyn Args<'db>,
+        result_context: &mut ResultContext,
         on_lookup_error: OnLookupError,
     ) -> Self {
         self.type_lookup_and_execute_with_details(
@@ -1934,6 +1935,7 @@ impl<'db: 'slf, 'slf> Inferred {
             in_file,
             name,
             args,
+            result_context,
             &|issue| args.add_issue(i_s, issue),
             on_lookup_error,
             OnTypeError::new(&on_argument_type_error),
@@ -1946,8 +1948,9 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         name: &str,
         args: &dyn Args<'db>,
+        result_context: &mut ResultContext,
     ) -> Self {
-        self.type_lookup_and_execute(i_s, from.file, name, args, &|t| {
+        self.type_lookup_and_execute(i_s, from.file, name, args, result_context, &|t| {
             add_attribute_error(i_s, from, &self.as_cow_type(i_s), t, name)
         })
     }
@@ -1958,6 +1961,7 @@ impl<'db: 'slf, 'slf> Inferred {
         in_file: &PythonFile,
         name: &str,
         args: &dyn Args<'db>,
+        result_context: &mut ResultContext,
         add_issue: &dyn Fn(IssueKind),
         on_lookup_error: OnLookupError,
         on_type_error: OnTypeError,
@@ -1976,7 +1980,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let inf = lookup_result.lookup.into_inferred().execute_with_details(
                     i_s,
                     args,
-                    &mut ResultContext::ExpectUnused,
+                    result_context,
                     on_type_error,
                 );
                 result = if let Some(r) = result.take() {
@@ -2327,6 +2331,7 @@ impl<'db: 'slf, 'slf> Inferred {
             from.file,
             "__setitem__",
             &CombinedArgs::new(&args, &KnownArgs::new(value, from)),
+            &mut ResultContext::ExpectUnused,
             &|issue| from.add_issue(i_s, issue),
             &|_| {
                 slice_type.as_node_ref().add_issue(

@@ -24,6 +24,7 @@ pub(crate) enum ResultContext<'a, 'b> {
     },
     Unknown,
     ExpectUnused,
+    Await,
     RevealType,
 }
 
@@ -49,7 +50,8 @@ impl<'a> ResultContext<'a, '_> {
             Self::Unknown
             | Self::AssignmentNewDefinition { .. }
             | Self::ExpectUnused
-            | Self::RevealType => None,
+            | Self::RevealType
+            | Self::Await => None,
         }
     }
 
@@ -65,7 +67,8 @@ impl<'a> ResultContext<'a, '_> {
             Self::Unknown
             | Self::AssignmentNewDefinition { .. }
             | Self::ExpectUnused
-            | Self::RevealType => None,
+            | Self::RevealType
+            | Self::Await => None,
         }
     }
 
@@ -128,7 +131,7 @@ impl<'a> ResultContext<'a, '_> {
             Self::Known { type_, .. } | Self::WithMatcher { type_, .. } => {
                 !matches!(type_, Type::None)
             }
-            Self::AssignmentNewDefinition { .. } | Self::Unknown => true,
+            Self::AssignmentNewDefinition { .. } | Self::Unknown | Self::Await => true,
         }
     }
 
@@ -206,6 +209,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::ExpectUnused => write!(f, "ExpectUnused"),
             Self::RevealType => write!(f, "RevealType"),
             Self::AssignmentNewDefinition { .. } => write!(f, "AssignmentNewDefinition"),
+            Self::Await => write!(f, "Await"),
         }
     }
 }

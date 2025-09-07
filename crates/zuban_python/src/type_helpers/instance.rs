@@ -299,6 +299,7 @@ impl<'a> Instance<'a> {
                                 infos.file(),
                                 dunder_next,
                                 &infos.as_no_args(),
+                                &mut ResultContext::Unknown,
                                 &|t| {
                                     infos.add_issue(IssueKind::AttributeError {
                                         object: format!("\"{}\"", t.format_short(i_s.db)).into(),

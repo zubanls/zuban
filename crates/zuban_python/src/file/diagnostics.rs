@@ -1970,6 +1970,10 @@ impl Inference<'_, '_, '_> {
                 true => "__aenter__",
             },
             &NoArgs::new(from),
+            &mut match is_async {
+                false => ResultContext::ExpectUnused,
+                true => ResultContext::Await,
+            },
         );
         if is_async {
             enter_result = await_(
@@ -1995,6 +1999,10 @@ impl Inference<'_, '_, '_> {
                     &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
                 ),
             ),
+            &mut match is_async {
+                false => ResultContext::ExpectUnused,
+                true => ResultContext::Await,
+            },
         );
         if is_async {
             exit_result = await_(
@@ -2255,19 +2263,27 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
 pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {
     await_(
         i_s,
-        base.type_lookup_and_execute(i_s, from.file, "__aiter__", &NoArgs::new(from), &|t| {
-            from.add_issue(
-                i_s,
-                IssueKind::AsyncNotIterable {
-                    type_: t.format_short(i_s.db),
-                },
-            )
-        })
+        base.type_lookup_and_execute(
+            i_s,
+            from.file,
+            "__aiter__",
+            &NoArgs::new(from),
+            &mut ResultContext::Await,
+            &|t| {
+                from.add_issue(
+                    i_s,
+                    IssueKind::AsyncNotIterable {
+                        type_: t.format_short(i_s.db),
+                    },
+                )
+            },
+        )
         .type_lookup_and_execute_with_attribute_error(
             i_s,
             from,
             "__anext__",
             &NoArgs::new(from),
+            &mut ResultContext::Await,
         ),
         from,
         r#""async for""#,

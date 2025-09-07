@@ -325,8 +325,6 @@ testSlotsAssignmentWithMethodReassign
 # --enable-error-code unused-awaitable
 testUnusedAwaitable
 testForwardRefToBadAsyncShouldNotCrash_newsemanal
-# "Are you missing an await?", but unused-coroutine
-testPEP695Function
 # Crazy types.coroutine types/async await matrix
 testFullCoroutineMatrix
 

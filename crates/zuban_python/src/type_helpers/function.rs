@@ -1802,12 +1802,29 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
         }
 
-        if result_context.expect_not_none() && matches!(return_type.as_ref(), Type::None) {
+        if result_context.expect_not_none() {
+            if matches!(return_type.as_ref(), Type::None) {
+                args.add_issue(
+                    i_s,
+                    IssueKind::DoesNotReturnAValue(self.diagnostic_string().into()),
+                );
+                return Inferred::new_any_from_error();
+            }
+        } else if self.is_async() {
+            dbg!(&result_context);
+            let return_type = calculated_type_vars.into_return_type(
+                i_s,
+                &return_type,
+                self.class.as_ref(),
+                replace_self_type,
+            );
             args.add_issue(
                 i_s,
-                IssueKind::DoesNotReturnAValue(self.diagnostic_string().into()),
+                IssueKind::CoroutineValueMustBeUsed {
+                    type_: return_type.format_short(i_s),
+                },
             );
-            return Inferred::new_any_from_error();
+            return return_type;
         }
         // We check first if type vars are involved, because if they aren't we can reuse the
         // annotation expression cache instead of recalculating.

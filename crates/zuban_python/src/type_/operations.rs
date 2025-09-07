@@ -756,6 +756,7 @@ impl Type {
                     infos.from,
                     "__next__",
                     &infos.as_no_args(),
+                    &mut ResultContext::Unknown,
                 ),
             ),
         }
