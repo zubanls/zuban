@@ -28,6 +28,7 @@ zubanls = { path = "./crates/zubanls" }
 # General third party dependencies
 anyhow = "*"
 clap = { version = "*", features = ["derive"] }
+colored = { version = "*" }
 crossbeam-channel = "*"
 dirs = "*"
 fnv = "*"

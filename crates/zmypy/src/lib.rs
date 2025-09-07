@@ -2,6 +2,7 @@ use std::env::VarError;
 use std::process::ExitCode;
 use std::{path::PathBuf, sync::Arc};
 
+use colored::Colorize as _;
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
@@ -247,10 +248,17 @@ fn with_exit_code(
     typeshed_path: Option<Arc<NormalizedPath>>,
 ) -> ExitCode {
     with_diagnostics_from_cli(cli, current_dir, typeshed_path, |diagnostics, config| {
+        let stdout = std::io::stdout();
         for diagnostic in diagnostics.issues.iter() {
-            println!("{}", diagnostic.as_string(config))
+            diagnostic
+                .write_colored(&mut stdout.lock(), config)
+                .unwrap()
         }
-        println!("{}", diagnostics.summary());
+        if diagnostics.error_count() > 0 {
+            println!("{}", diagnostics.summary().red().bold());
+        } else {
+            println!("{}", diagnostics.summary().green().bold());
+        }
         ExitCode::from((diagnostics.error_count() > 0) as u8)
     })
     .unwrap_or_else(|err| {

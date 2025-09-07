@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
+use colored::Colorize as _;
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 use utils::InsertOnlyVec;
@@ -1945,13 +1946,7 @@ impl<'db> Diagnostic<'db> {
         msg
     }
 
-    pub fn as_string(&self, config: &DiagnosticConfig) -> String {
-        let kind = match &self.issue.kind {
-            IssueKind::AnnotationInUntypedFunction
-            | IssueKind::Note(_)
-            | IssueKind::InvariantNote { .. } => "note",
-            _ => "error",
-        };
+    fn message_formatting_options(&self, config: &DiagnosticConfig) -> MessageFormattingInfos<'db> {
         let original_file = self.file.original_file(self.db);
         let path = self
             .db
@@ -1963,45 +1958,92 @@ impl<'db> Diagnostic<'db> {
             .handler
             .strip_separator_prefix(path)
             .unwrap_or(path);
-        let start = self.start_position();
-        let end = self.end_position();
         let mut additional_notes = vec![];
         let error = self.message_with_notes(&mut additional_notes);
-        let mut result = fmt_line(config, path, start, end, kind, &error);
+
+        let mut line_number_infos = String::with_capacity(32);
+        let mut add_part = |n| line_number_infos.push_str(&format!(":{n}"));
+        let start = self.start_position();
+        let end = self.end_position();
+        add_part(start.line_one_based());
+        if config.show_column_numbers {
+            add_part(start.code_points_column() + 1);
+        }
+        if config.show_error_end {
+            add_part(end.line_one_based());
+            if config.show_column_numbers {
+                add_part(end.code_points_column() + 1);
+            }
+        }
+        MessageFormattingInfos {
+            error,
+            additional_notes,
+            kind: match &self.issue.kind {
+                IssueKind::AnnotationInUntypedFunction
+                | IssueKind::Note(_)
+                | IssueKind::InvariantNote { .. } => "note",
+                _ => "error",
+            },
+            path,
+            line_number_infos,
+        }
+    }
+
+    pub fn as_string(&self, config: &DiagnosticConfig) -> String {
+        let opts = self.message_formatting_options(config);
+        let fmt_line =
+            |kind, error| format!("{}{}: {kind}: {error}", opts.path, opts.line_number_infos);
+        let mut result = fmt_line(opts.kind, &opts.error);
         if config.show_error_codes
             && let Some(mypy_error_code) = self.issue.kind.mypy_error_code()
         {
             result += &format!("  [{mypy_error_code}]");
         }
-        for note in additional_notes {
+        for note in &opts.additional_notes {
             result += "\n";
-            result += &fmt_line(config, path, start, end, "note", &note);
+            result += &fmt_line("note", note);
         }
         result
     }
+
+    pub fn write_colored(
+        &self,
+        writer: &mut dyn Write,
+        config: &DiagnosticConfig,
+    ) -> anyhow::Result<()> {
+        let opts = self.message_formatting_options(config);
+        let fmt_line = |writer: &mut dyn Write, kind: &str, error| {
+            write!(writer, "{}{}: ", opts.path, opts.line_number_infos)?;
+            if kind == "error" {
+                write!(writer, "{}", "error:".red().bold())?;
+            } else {
+                write!(writer, "{}", kind.blue())?;
+                write!(writer, "{}", ":".blue())?;
+            }
+            write!(writer, " {error}")
+        };
+        fmt_line(writer, opts.kind, &opts.error)?;
+        if config.show_error_codes
+            && let Some(mypy_error_code) = self.issue.kind.mypy_error_code()
+        {
+            let with_code = format!("  [{mypy_error_code}]").yellow();
+            write!(writer, "{with_code}")?;
+        }
+        for note in &opts.additional_notes {
+            write!(writer, "\n")?;
+            fmt_line(writer, "note", note)?;
+        }
+        write!(writer, "\n")?;
+        Ok(())
+    }
 }
 
-fn fmt_line(
-    config: &DiagnosticConfig,
-    path: &str,
-    start: PositionInfos,
-    end: PositionInfos,
-    type_: &str,
-    error: &str,
-) -> String {
-    let mut line_number_infos = String::with_capacity(32);
-    let mut add_part = |n| line_number_infos.push_str(&format!(":{n}"));
-    add_part(start.line_one_based());
-    if config.show_column_numbers {
-        add_part(start.code_points_column() + 1);
-    }
-    if config.show_error_end {
-        add_part(end.line_one_based());
-        if config.show_column_numbers {
-            add_part(end.code_points_column() + 1);
-        }
-    }
-    format!("{path}{line_number_infos}: {type_}: {error}")
+struct MessageFormattingInfos<'db> {
+    error: String,
+    additional_notes: Vec<String>,
+    kind: &'static str,
+    path: &'db str,
+    line_number_infos: String,
 }
 
 impl std::fmt::Debug for Diagnostic<'_> {

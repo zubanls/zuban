@@ -18,6 +18,7 @@ zuban_python.workspace = true
 
 anyhow.workspace = true
 clap.workspace = true
+colored.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
