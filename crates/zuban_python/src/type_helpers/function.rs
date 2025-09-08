@@ -15,31 +15,31 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        FLOW_ANALYSIS, FuncNodeRef, FuncParent, OtherDefinitionIterator, PythonFile,
-        RedefinitionResult, TypeVarCallbackReturn, first_defined_name_of_multi_def,
-        on_argument_type_error, use_cached_param_annotation_type,
+        first_defined_name_of_multi_def, on_argument_type_error, use_cached_param_annotation_type,
+        FuncNodeRef, FuncParent, OtherDefinitionIterator, PythonFile, RedefinitionResult,
+        TypeVarCallbackReturn, FLOW_ANALYSIS,
     },
     format_data::FormatData,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{
-        CalculatedTypeArgs, ErrorStrs, OnTypeError, ReplaceSelfInMatcher, ResultContext,
-        calc_func_type_vars, calc_untyped_func_type_vars, maybe_class_usage,
+        calc_func_type_vars, calc_untyped_func_type_vars, maybe_class_usage, CalculatedTypeArgs,
+        ErrorStrs, OnTypeError, ReplaceSelfInMatcher, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
     params::{
-        InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
-        params_have_self_type_after_self,
+        params_have_self_type_after_self, InferrableParamIterator, Param, WrappedParamType,
+        WrappedStar, WrappedStarStar,
     },
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
     type_::{
-        AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
-        DataclassTransformObj, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        NeverCause, ParamType, PropertySetter, ReplaceSelf, ReplaceTypeVarLikes, StarParamType,
-        StarStarParamType, StringSlice, TupleArgs, Type, TypeVarLike, TypeVarLikes,
-        WrongPositionalCount, replace_param_spec,
+        replace_param_spec, AnyCause, CallableContent, CallableLike, CallableParam, CallableParams,
+        ClassGenerics, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
+        GenericClass, GenericItem, NeverCause, ParamType, PropertySetter, ReplaceSelf,
+        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
+        TypeVarLike, TypeVarLikes, WrongPositionalCount,
     },
     type_helpers::Class,
     utils::debug_indent,
@@ -1811,7 +1811,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 return Inferred::new_any_from_error();
             }
         } else if self.is_async() {
-            dbg!(&result_context);
             let return_type = calculated_type_vars.into_return_type(
                 i_s,
                 &return_type,
