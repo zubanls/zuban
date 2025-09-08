@@ -17,6 +17,7 @@ use vfs::{
 use crate::{
     ProjectOptions, TypeCheckerFlags, debug,
     file::{ClassNodeRef, File, PythonFile},
+    lines::split_lines,
     node_ref::NodeRef,
     python_state::PythonState,
     recoverable_error, sys_path,
@@ -1017,7 +1018,7 @@ impl Database {
         }
 
         for p in &project.sys_path {
-            vfs.add_workspace(p.clone(), WorkspaceKind::SitePackages)
+            add_workspace_and_check_for_pth_files(&mut vfs, p.clone(), recovery.is_some());
         }
         // This AbsPath is not really an absolute path, it's just a fallback so anything can be
         // part of it.
@@ -1410,6 +1411,59 @@ impl Database {
             typing_extensions,
             mypy_extensions,
         );
+    }
+}
+
+fn add_workspace_and_check_for_pth_files(
+    vfs: &mut Vfs<PythonFile>,
+    path: Arc<NormalizedPath>,
+    is_recovery: bool,
+) {
+    if vfs
+        .workspaces
+        .iter()
+        .any(|workspace| workspace.root_path() == &**path)
+    {
+        // The workspaces already contains the path
+        return;
+    }
+    vfs.add_workspace(path, WorkspaceKind::SitePackages);
+    if !is_recovery {
+        // Imitate the logic for .pth files. Copied some of the logic from site.py from the Python
+        // standard library.
+        let last = vfs.workspaces.iter().next_back().unwrap();
+        let mut pth_files = vec![];
+        for dir_entry in &last.entries.iter() {
+            if let DirectoryEntry::File(file_entry) = dir_entry {
+                if file_entry.name.ends_with(".pth") && !file_entry.name.starts_with('.') {
+                    pth_files.push(file_entry.clone())
+                }
+            }
+        }
+        if !pth_files.is_empty() {
+            let workspace_path = last.root_path.clone();
+            for pth_file in pth_files {
+                let pth_path = pth_file.absolute_path(&*vfs.handler);
+                tracing::info!("Found .pth file: {}", pth_path.as_uri());
+                if let Some(content) = vfs.handler.read_and_watch_file(&pth_path) {
+                    for line in split_lines(&content) {
+                        let line = line.trim_end();
+                        if line == ""
+                            || line.starts_with("#")
+                            || line.starts_with("import ")
+                            || line.starts_with("import\t")
+                        {
+                            continue;
+                        }
+                        let path = vfs
+                            .handler
+                            .normalize_rc_path(vfs.handler.absolute_path(&workspace_path, line));
+                        tracing::info!("Add entry {path} in .pth file: {}", pth_path.as_uri());
+                        add_workspace_and_check_for_pth_files(vfs, path, is_recovery)
+                    }
+                }
+            }
+        }
     }
 }
 

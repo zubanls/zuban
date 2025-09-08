@@ -981,6 +981,13 @@ mod tests {
                 include-system-site-packages = false
                 version = 3.12.3
 
+                [file venv/Lib/site-packages/frompth.pth]
+                ../../../frompth
+
+                [file venv/frompth/my_frompth/__init__.py]
+                x = 1
+                [file venv/frompth/my_frompth/py.typed]
+
                 [file venv/Lib/site-packages/foo.py]
 
                 [file venv/src/baz/baz/__init__.py]
@@ -990,10 +997,13 @@ mod tests {
                 [file venv/src/baz/baz/py.typed]
 
                 [file m.py]
+                from typing import assert_type
                 import foo
                 from baz import my_baz
                 reveal_type(my_baz)
 
+                from my_frompth import x
+                assert_type(x, int)
                 "#
             } else {
                 r#"
@@ -1002,6 +1012,13 @@ mod tests {
                 [file venv/pyvenv.cfg]
                 include-system-site-packages = false
                 version = 3.12.3
+
+                [file venv/lib/python3.12/site-packages/frompth.pth]
+                ../../../frompth
+
+                [file venv/frompth/my_frompth/__init__.py]
+                x = 1
+                [file venv/frompth/my_frompth/py.typed]
 
                 [file venv/lib/python3.12/site-packages/foo.py]
 
@@ -1012,9 +1029,13 @@ mod tests {
                 [file venv/src/baz/baz/py.typed]
 
                 [file m.py]
+                from typing import assert_type
                 import foo
                 from baz import my_baz
                 reveal_type(my_baz)
+
+                from my_frompth import x
+                assert_type(x, int)
 
                 "#
             },
@@ -1024,12 +1045,12 @@ mod tests {
 
         assert_eq!(
             d(&["", "--python-executable", "venv/bin/python"]),
-            ["m.py:3: note: Revealed type is \"builtins.int\""]
+            ["m.py:4: note: Revealed type is \"builtins.int\""]
         );
 
         assert_eq!(
             d(&[""]),
-            ["m.py:3: note: Revealed type is \"builtins.int\""]
+            ["m.py:4: note: Revealed type is \"builtins.int\""]
         );
     }
 }

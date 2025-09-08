@@ -9,6 +9,10 @@ lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
 }
 
+pub fn split_lines(code: &str) -> impl Iterator<Item = &str> {
+    NEWLINES.split(code)
+}
+
 #[derive(Clone)]
 pub(crate) struct NewlineIndices(OnceLock<Box<[u32]>>);
 

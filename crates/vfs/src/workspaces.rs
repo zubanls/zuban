@@ -245,7 +245,7 @@ impl Workspaces {
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    pub(crate) root_path: Arc<NormalizedPath>,
+    pub root_path: Arc<NormalizedPath>,
     // Mac sometimes needs a bit help with events that are reported for non-canonicalized paths
     // Without this check_rename_with_symlinks fails
     // On Windows this is also necessary since changing the watch logic. We canonicalize watched
