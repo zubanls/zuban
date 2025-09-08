@@ -232,6 +232,7 @@ impl TestCase<'_, '_> {
                 *change = false;
             }
         };
+        set_bool_flag(&mut diagnostic_config.pretty, "--pretty");
         set_bool_flag(&mut config.implicit_optional, "--implicit-optional");
         set_bool_flag(&mut config.check_untyped_defs, "--check-untyped-defs");
         set_bool_flag(&mut config.disallow_untyped_defs, "--disallow-untyped-defs");

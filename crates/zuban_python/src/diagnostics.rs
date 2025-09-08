@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Write};
 
-use colored::Colorize as _;
+use colored::{ColoredString, Colorize as _};
 use config::DiagnosticConfig;
 use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 use utils::InsertOnlyVec;
@@ -2003,6 +2003,13 @@ impl<'db> Diagnostic<'db> {
             result += "\n";
             result += &fmt_line("note", note);
         }
+        if config.pretty {
+            result += "\n";
+            let mut buf: Vec<u8> = Vec::new();
+            self.pretty_print_code_surrounding_issue(&mut buf, false)
+                .unwrap();
+            result += &String::from_utf8(buf).unwrap();
+        }
         result
     }
 
@@ -2010,7 +2017,7 @@ impl<'db> Diagnostic<'db> {
         &self,
         writer: &mut dyn Write,
         config: &DiagnosticConfig,
-    ) -> anyhow::Result<()> {
+    ) -> std::io::Result<()> {
         let opts = self.message_formatting_options(config);
         let fmt_line = |writer: &mut dyn Write, kind: &str, error| {
             write!(writer, "{}{}: ", opts.path, opts.line_number_infos)?;
@@ -2033,7 +2040,80 @@ impl<'db> Diagnostic<'db> {
             write!(writer, "\n")?;
             fmt_line(writer, "note", note)?;
         }
-        write!(writer, "\n")?;
+        writeln!(writer)?;
+        if config.pretty {
+            self.pretty_print_code_surrounding_issue(writer, true)?;
+            writeln!(writer)?;
+        }
+        Ok(())
+    }
+
+    fn pretty_print_code_surrounding_issue(
+        &self,
+        writer: &mut dyn Write,
+        add_colors: bool,
+    ) -> std::io::Result<()> {
+        let start = self.start_position();
+        let end = self.end_position();
+
+        // Find the context -/+ 2 lines in front and after the error
+        let start_line = start.line_zero_based();
+        let end_line = end.line_zero_based();
+
+        let lines_with_numbers = self
+            .file
+            .lines_context_around_range(self.db, start_line..end_line, 2)
+            .collect::<Vec<_>>();
+        let until_line_space_needed = format!("{}", lines_with_numbers.last().unwrap().0).len();
+
+        let write_colored = |writer: &mut dyn Write, colored: ColoredString| {
+            if add_colors {
+                write!(writer, "{colored}")
+            } else {
+                write!(writer, "{}", colored.clear())
+            }
+        };
+
+        // Empty |
+        for _ in 0..until_line_space_needed {
+            write!(writer, " ")?;
+        }
+        write_colored(writer, " |\n".blue())?;
+        for (line_nr, line) in lines_with_numbers {
+            write_colored(
+                writer,
+                format!("{line_nr:>width$} | ", width = until_line_space_needed).blue(),
+            )?;
+
+            // On these lines there are errors, so "underline" them.
+            if line_nr >= start_line && line_nr <= end_line {
+                let start_column = if line_nr == start_line {
+                    start.code_points_column()
+                } else {
+                    0
+                };
+                let end_column = if line_nr == end_line {
+                    end.code_points_column()
+                } else {
+                    line.len()
+                };
+                if start_column > 0 {
+                    write!(writer, "{}", &line[..start_column])?;
+                }
+
+                // Highlight the error
+                write_colored(writer, line[start_column..end_column].bright_red())?;
+
+                if end_column < line.len() {
+                    write!(writer, "{}", &line[end_column..])?;
+                }
+                write!(writer, "\n")?;
+
+                //writeln!(writer, "{}", format!("{:^>chars$}", "|", chars = x).bright_red());
+            } else {
+                writeln!(writer, "{line}")?;
+            }
+        }
         Ok(())
     }
 }

@@ -225,6 +225,12 @@ pub struct MypyCli {
     #[arg(long)]
     hide_error_codes: bool,
     // --show-absolute-path Show absolute paths to files (inverse: --hide-absolute-path)
+    /// Use visually nicer output in error messages: Use soft word wrap, show source code snippets,
+    /// and show error location markers (inverse: --no-pretty)
+    #[arg(long)]
+    pretty: bool,
+    #[arg(long)]
+    no_pretty: bool,
 }
 
 pub fn run(cli: Cli) -> ExitCode {
@@ -401,6 +407,7 @@ fn apply_mypy_flags(
     apply!(diagnostic_config, show_column_numbers, hide_column_numbers);
     apply!(diagnostic_config, show_error_end, hide_error_end);
     apply!(diagnostic_config, show_error_codes, hide_error_codes);
+    apply!(diagnostic_config, pretty, no_pretty);
 
     apply!(flags, allow_redefinition, disallow_redefinition);
     if cli.allow_redefinition_new {

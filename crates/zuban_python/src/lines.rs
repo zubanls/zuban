@@ -105,6 +105,40 @@ impl NewlineIndices {
         })
     }
 
+    pub fn numbers_with_lines<'code>(
+        &self,
+        code: &'code str,
+        skip_n_lines: usize,
+    ) -> impl Iterator<Item = (usize, &'code str)> {
+        let line_indexes = self.lines(code);
+        let mut previous = 0;
+        if skip_n_lines != 0 {
+            previous = line_indexes
+                .get(skip_n_lines - 1)
+                .copied()
+                .unwrap_or_else(|| line_indexes.len() as CodeIndex) as usize;
+        }
+        line_indexes
+            .iter()
+            .copied()
+            .chain(
+                if let Some(last) = line_indexes.last() {
+                    (*last as usize != code.len()).then(|| code.len() as CodeIndex + 1)
+                } else {
+                    Some(code.len() as CodeIndex + 1)
+                }
+                .into_iter(),
+            )
+            .enumerate()
+            .skip(skip_n_lines)
+            .map(move |(line_nr, line_index)| {
+                let line_index = line_index as usize;
+                let result = &code[previous..line_index - 1];
+                previous = line_index;
+                (line_nr, result)
+            })
+    }
+
     pub fn position_infos<'code>(
         &self,
         code: &'code str,
@@ -248,5 +282,42 @@ mod tests {
                 .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 1 })
                 .is_err()
         );
+    }
+
+    #[test]
+    fn test_numbers_with_lines() {
+        let check = |code, skip_lines| {
+            let indices = NewlineIndices::new();
+            indices
+                .numbers_with_lines(code, skip_lines)
+                .collect::<Vec<_>>()
+        };
+        let c1 = "x\nä\ny";
+        assert_eq!(check(c1, 0), [(0, "x"), (1, "ä"), (2, "y")]);
+        assert_eq!(check(c1, 1), [(1, "ä"), (2, "y")]);
+        assert_eq!(check(c1, 2), [(2, "y")]);
+        assert_eq!(check(c1, 3), []);
+        assert_eq!(check(c1, 4), []);
+
+        let c2 = "x\ny\n";
+        assert_eq!(check(c2, 0), [(0, "x"), (1, "y")]);
+        assert_eq!(check(c2, 1), [(1, "y")]);
+        assert_eq!(check(c2, 2), []);
+        assert_eq!(check(c2, 3), []);
+
+        let c3 = "x\n";
+        assert_eq!(check(c3, 0), [(0, "x")]);
+        assert_eq!(check(c3, 1), []);
+        assert_eq!(check(c3, 2), []);
+
+        let c4 = "x";
+        //assert_eq!(check(c4, 0), [(0, "x")]);
+        assert_eq!(check(c4, 1), []);
+        assert_eq!(check(c4, 2), []);
+
+        let c5 = "";
+        assert_eq!(check(c5, 0), [(0, "")]);
+        assert_eq!(check(c5, 1), []);
+        assert_eq!(check(c5, 2), []);
     }
 }

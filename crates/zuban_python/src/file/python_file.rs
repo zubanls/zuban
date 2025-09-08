@@ -3,6 +3,7 @@ use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt,
+    ops::Range,
     sync::{Arc, OnceLock, RwLock},
 };
 
@@ -761,6 +762,21 @@ impl<'db> PythonFile {
         if !delayed.is_empty() {
             FLOW_ANALYSIS.with(|fa| fa.process_delayed_diagnostics(db, delayed));
         }
+    }
+
+    pub fn lines_context_around_range(
+        &'db self,
+        db: &'db Database,
+        line_range: Range<usize>,
+        add_lines_at_start_and_end: usize,
+    ) -> impl Iterator<Item = (usize, &'db str)> {
+        let from_line: usize = (line_range.start as isize - add_lines_at_start_and_end as isize)
+            .try_into()
+            .unwrap_or_default();
+        let file = self.original_file(db);
+        file.newline_indices
+            .numbers_with_lines(self.tree.code(), from_line)
+            .take(line_range.len() + 1 + 2 * add_lines_at_start_and_end)
     }
 }
 

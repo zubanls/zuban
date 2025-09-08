@@ -24,6 +24,7 @@ pub struct DiagnosticConfig {
     pub show_error_codes: bool,
     pub show_error_end: bool,
     pub show_column_numbers: bool,
+    pub pretty: bool,
 }
 
 impl Default for DiagnosticConfig {
@@ -32,6 +33,7 @@ impl Default for DiagnosticConfig {
             show_error_codes: true,
             show_error_end: false,
             show_column_numbers: false,
+            pretty: false,
         }
     }
 }
@@ -932,9 +934,11 @@ fn apply_from_base_config(
         "show_error_end" => {
             diagnostic_config.show_error_end = value.as_bool(false)?;
         }
+        "pretty" => {
+            diagnostic_config.pretty = value.as_bool(false)?;
+        }
         "show_error_context"
         | "show_traceback"
-        | "pretty"
         | "plugins"
         | "enable_incomplete_feature"
         | "show_error_code_links"

@@ -613,3 +613,70 @@ x = {
     "a69": "b69",
 }
 reveal_type(x)  # N: Revealed type is "dict[str, str]"
+
+[case pretty_simple_flag]
+# flags: --pretty
+a = 1
+
+b: str = a
+# a
+# b
+# c
+
+[out]
+__main__:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+  |
+1 | a = 1
+2 | 
+3 | b: str = a
+4 | # a
+5 | # b
+
+[case pretty_simple_from_config]
+def x(
+    y: str = 1
+): ...
+
+[file pyproject.toml]
+[tool.zuban]
+pretty = true
+
+[out]
+__main__:2: error: Incompatible default for argument "y" (default has type "int", argument has type "str")
+  |
+0 | def x(
+1 |     y: str = 1
+2 | ): ...
+3 |
+
+[case pretty_overload_issue_multiline]
+# flags: --pretty
+from typing import overload
+
+@overload
+def f(x: str) -> str: ...
+@overload
+def f(x: int) -> int: ...
+def f(x: int | str) -> int | str: ...
+
+f(
+  1,
+  2
+)
+# a
+# b
+# c
+[out]
+__main__:10: error: No overload variant of "f" matches argument types "int", "int"
+__main__:10: note: Possible overload variants:
+__main__:10: note:     def f(x: str) -> str
+__main__:10: note:     def f(x: int) -> int
+   |
+ 7 | def f(x: int | str) -> int | str: ...
+ 8 | 
+ 9 | f(
+10 |   1,
+11 |   2
+12 | )
+13 | # a
+14 | # b
