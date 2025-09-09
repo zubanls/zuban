@@ -1825,6 +1825,7 @@ pub(crate) enum LiteralKind {
 pub(crate) enum DbBytes {
     Link(PointLink),
     Static(&'static [u8]),
+    Arc(Arc<[u8]>),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -1861,6 +1862,7 @@ impl Literal {
                     LiteralValue::Bytes(node_ref.expect_bytes_literal().content_as_bytes())
                 }
                 DbBytes::Static(b) => LiteralValue::Bytes(Cow::Borrowed(b)),
+                DbBytes::Arc(b) => LiteralValue::Bytes(Cow::Borrowed(b)),
             },
         }
     }

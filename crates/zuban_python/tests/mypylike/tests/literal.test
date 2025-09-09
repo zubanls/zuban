@@ -217,3 +217,12 @@ x: Final = "abc"
 reveal_type("a" + r"b\a")  # N: Revealed type is "Literal['ab\\a']?"
 reveal_type(x + "b")  # N: Revealed type is "Literal['abcb']?"
 reveal_type(x + "b" + x)  # N: Revealed type is "Literal['abcbabc']?"
+
+[case bytes_literal_additions]
+from typing import Literal, Final
+
+x: Final = b"abc"
+
+reveal_type(b"a" + rb"b\a")  # N: Revealed type is "Literal[b'ab\\a']?"
+reveal_type(x + b"b")  # N: Revealed type is "Literal[b'abcb']?"
+reveal_type(x + b"b" + x)  # N: Revealed type is "Literal[b'abcbabc']?"

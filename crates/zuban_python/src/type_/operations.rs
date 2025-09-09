@@ -23,7 +23,7 @@ use crate::{
     },
     node_ref::NodeRef,
     recoverable_error,
-    type_::{DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple},
+    type_::{DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple},
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, Instance, InstanceLookupOptions,
         LookupDetails, OverloadedFunction,
@@ -796,9 +796,13 @@ impl LiteralValue<'_> {
                     DbString::ArcStr(format!("{l}{r}").into()),
                 )))
             }),
+            (LiteralValue::Bytes(l), LiteralValue::Bytes(r)) => (operand == "+").then(|| {
+                Type::Literal(Literal::new_implicit(LiteralKind::Bytes(DbBytes::Arc(
+                    l.iter().chain(r.iter()).copied().collect(),
+                ))))
+            }),
             (LiteralValue::String(_), LiteralValue::Int(_)) => None, // TODO
             (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None,  // TODO
-            (LiteralValue::Bytes(_), LiteralValue::Bytes(_)) => None, // TODO
 
             (LiteralValue::Bool(l), LiteralValue::Bool(r)) => {
                 bool_operations(db, l, operand, r, add_issue)
