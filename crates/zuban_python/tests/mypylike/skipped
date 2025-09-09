@@ -11,6 +11,10 @@ goto_doc_contains_stdlib_compiled
 docs_alias
 docs_property
 
+int_literal_math_operations
+int_literal_binary_operations
+int_literal_division_like_operations
+
 # conformance tests: scoping
 type_var_syntax_nested_type_variables_not_reachable
 type_var_syntax_allowed_in_keyword_arg_in_class
