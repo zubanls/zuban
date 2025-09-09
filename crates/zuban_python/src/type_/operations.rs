@@ -23,7 +23,7 @@ use crate::{
     },
     node_ref::NodeRef,
     recoverable_error,
-    type_::{Intersection, NamedTuple},
+    type_::{Intersection, Literal, LiteralKind, LiteralValue, NamedTuple},
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, Instance, InstanceLookupOptions,
         LookupDetails, OverloadedFunction,
@@ -760,6 +760,81 @@ impl Type {
                 ),
             ),
         }
+    }
+
+    pub fn try_operation_against_literal(
+        &self,
+        db: &Database,
+        operand: &str,
+        right: &Literal,
+    ) -> Option<Type> {
+        match self {
+            Type::Literal(left) => left.value(db).operation(db, operand, right.value(db)),
+            _ => None,
+        }
+    }
+}
+
+impl LiteralValue<'_> {
+    pub fn operation(self, db: &Database, operand: &str, right: Self) -> Option<Type> {
+        match (self, right) {
+            (LiteralValue::String(_), LiteralValue::String(_)) => None, // TODO
+            (LiteralValue::String(_), LiteralValue::Int(_)) => None,    // TODO
+            (LiteralValue::Int(l), LiteralValue::Int(r)) => int_operations(db, l, operand, r),
+            (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None, // TODO
+            (LiteralValue::Bytes(_), LiteralValue::Bytes(_)) => None, // TODO
+
+            (LiteralValue::Bool(_), LiteralValue::Bool(_)) => None, // TODO
+            (left, LiteralValue::Bool(b)) => {
+                left.operation(db, operand, LiteralValue::Int(b as i64))
+            }
+            (LiteralValue::Bool(b), right) => {
+                LiteralValue::Int(b as i64).operation(db, operand, right)
+            }
+
+            (LiteralValue::Bytes(_), LiteralValue::String(_))
+            | (LiteralValue::String(_), LiteralValue::Bytes(_))
+            | (LiteralValue::Int(_), LiteralValue::String(_))
+            | (LiteralValue::Int(_), LiteralValue::Bytes(_)) => None,
+        }
+    }
+}
+
+fn int_operations(db: &Database, left: i64, operand: &str, right: i64) -> Option<Type> {
+    let result = match operand {
+        "+" => left.checked_add(right),
+        "-" => left.checked_sub(right),
+        "*" => left.checked_mul(right),
+        "/" => return None,  // TODO
+        "//" => return None, // TODO
+        "%" => return None,  // TODO
+        "**" => match right.try_into() {
+            Ok(right) => left.checked_pow(right),
+            Err(_) => {
+                return Some(if right >= 0 {
+                    db.python_state.int_type()
+                } else {
+                    db.python_state.float_type()
+                });
+            }
+        },
+        ">>" => return None, // TODO
+        "<<" => return None, // TODO
+        "|" => return None,  // TODO
+        "&" => return None,  // TODO
+        "^" => return None,  // TODO
+        _ => {
+            recoverable_error!("Expected all operations to be handled for int, also {operand:?}");
+            return None;
+        }
+    };
+    if let Some(result) = result {
+        Some(Type::Literal(Literal::new_implicit(LiteralKind::Int(
+            result,
+        ))))
+    } else {
+        // In case of overflows simply return int, we are probably using numbers bigger than i64
+        Some(db.python_state.int_type())
     }
 }
 

@@ -2883,8 +2883,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                        if let Type::Any(cause) = r_type {
-                            return add_to_union(Inferred::new_any(*cause));
+                        match r_type {
+                            Type::Any(cause) => {
+                                return add_to_union(Inferred::new_any(*cause));
+                            }
+                            Type::Literal(literal) => {
+                                if let Some(result) = l_type.try_operation_against_literal(
+                                    i_s.db,
+                                    op_infos.operand,
+                                    literal,
+                                ) {
+                                    add_to_union(Inferred::from_type(result));
+                                    continue;
+                                }
+                            }
+                            _ => (),
                         }
                         let instance;
                         let (r_defined_in, right_op_method) = match r_type {

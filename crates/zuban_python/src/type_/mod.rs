@@ -1843,6 +1843,13 @@ impl Literal {
         }
     }
 
+    pub fn new_implicit(kind: LiteralKind) -> Self {
+        Self {
+            kind,
+            implicit: true,
+        }
+    }
+
     pub fn value<'x>(&'x self, db: &'x Database) -> LiteralValue<'x> {
         match &self.kind {
             LiteralKind::Int(i) => LiteralValue::Int(*i),
