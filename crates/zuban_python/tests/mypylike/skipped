@@ -11,7 +11,6 @@ goto_doc_contains_stdlib_compiled
 docs_alias
 docs_property
 
-int_literal_binary_operations
 int_literal_division_like_operations
 
 # conformance tests: scoping

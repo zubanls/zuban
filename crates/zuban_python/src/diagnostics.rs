@@ -450,6 +450,9 @@ pub(crate) enum IssueKind {
     DataclassTransformFieldSpecifiersMustOnlyContainIdentifiers,
     DataclassTransformFieldAliasParamMustBeString,
 
+    NegativeShiftCount,
+    DivisionByZero,
+
     // From --disallow-untyped-defs
     FunctionIsUntyped,
     FunctionMissingReturnAnnotation { hint_return_none: bool }, // Also from --disallow-incomplete-defs
@@ -1115,6 +1118,9 @@ impl<'db> Diagnostic<'db> {
                 r#""field_specifiers" must only contain identifiers"#.to_string(),
             DataclassTransformFieldAliasParamMustBeString =>
                 r#""alias" argument to dataclass field must be a string literal"#.to_string(),
+
+            NegativeShiftCount => "Negative shift count".to_string(),
+            DivisionByZero => "Division by zero".to_string(),
 
             FunctionIsUntyped => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation { hint_return_none } => {

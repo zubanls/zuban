@@ -767,29 +767,41 @@ impl Type {
         db: &Database,
         operand: &str,
         right: &Literal,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Option<Type> {
         match self {
-            Type::Literal(left) => left.value(db).operation(db, operand, right.value(db)),
+            Type::Literal(left) => {
+                left.value(db)
+                    .operation(db, operand, right.value(db), add_issue)
+            }
             _ => None,
         }
     }
 }
 
 impl LiteralValue<'_> {
-    pub fn operation(self, db: &Database, operand: &str, right: Self) -> Option<Type> {
+    pub fn operation(
+        self,
+        db: &Database,
+        operand: &str,
+        right: Self,
+        add_issue: &dyn Fn(IssueKind),
+    ) -> Option<Type> {
         match (self, right) {
             (LiteralValue::String(_), LiteralValue::String(_)) => None, // TODO
             (LiteralValue::String(_), LiteralValue::Int(_)) => None,    // TODO
-            (LiteralValue::Int(l), LiteralValue::Int(r)) => int_operations(db, l, operand, r),
+            (LiteralValue::Int(l), LiteralValue::Int(r)) => {
+                int_operations(db, l, operand, r, add_issue)
+            }
             (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None, // TODO
             (LiteralValue::Bytes(_), LiteralValue::Bytes(_)) => None, // TODO
 
             (LiteralValue::Bool(_), LiteralValue::Bool(_)) => None, // TODO
             (left, LiteralValue::Bool(b)) => {
-                left.operation(db, operand, LiteralValue::Int(b as i64))
+                left.operation(db, operand, LiteralValue::Int(b as i64), add_issue)
             }
             (LiteralValue::Bool(b), right) => {
-                LiteralValue::Int(b as i64).operation(db, operand, right)
+                LiteralValue::Int(b as i64).operation(db, operand, right, add_issue)
             }
 
             (LiteralValue::Bytes(_), LiteralValue::String(_))
@@ -800,14 +812,34 @@ impl LiteralValue<'_> {
     }
 }
 
-fn int_operations(db: &Database, left: i64, operand: &str, right: i64) -> Option<Type> {
+fn int_operations(
+    db: &Database,
+    left: i64,
+    operand: &str,
+    right: i64,
+    add_issue: &dyn Fn(IssueKind),
+) -> Option<Type> {
     let result = match operand {
         "+" => left.checked_add(right),
         "-" => left.checked_sub(right),
         "*" => left.checked_mul(right),
-        "/" => return None,  // TODO
-        "//" => return None, // TODO
-        "%" => return None,  // TODO
+        "/" => return None, // TODO
+        "//" => {
+            if let result @ Some(_) = left.checked_div(right) {
+                result
+            } else {
+                add_issue(IssueKind::DivisionByZero);
+                return Some(Type::ERROR);
+            }
+        }
+        "%" => {
+            if let result @ Some(_) = left.checked_rem(right) {
+                result
+            } else {
+                add_issue(IssueKind::DivisionByZero);
+                return Some(Type::ERROR);
+            }
+        }
         "**" => match right.try_into() {
             Ok(right) => left.checked_pow(right),
             Err(_) => {
@@ -818,11 +850,31 @@ fn int_operations(db: &Database, left: i64, operand: &str, right: i64) -> Option
                 });
             }
         },
-        ">>" => return None, // TODO
-        "<<" => return None, // TODO
-        "|" => return None,  // TODO
-        "&" => return None,  // TODO
-        "^" => return None,  // TODO
+        ">>" => match right.try_into() {
+            Ok(right) => left.checked_shr(right),
+            Err(_) => {
+                if right >= 0 {
+                    None
+                } else {
+                    add_issue(IssueKind::NegativeShiftCount);
+                    return Some(Type::ERROR);
+                }
+            }
+        },
+        "<<" => match right.try_into() {
+            Ok(right) => left.checked_shl(right),
+            Err(_) => {
+                if right >= 0 {
+                    None
+                } else {
+                    add_issue(IssueKind::NegativeShiftCount);
+                    return Some(Type::ERROR);
+                }
+            }
+        },
+        "|" => Some(left | right),
+        "&" => Some(left & right),
+        "^" => Some(left ^ right),
         _ => {
             recoverable_error!("Expected all operations to be handled for int, also {operand:?}");
             return None;

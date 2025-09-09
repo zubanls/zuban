@@ -2892,6 +2892,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     i_s.db,
                                     op_infos.operand,
                                     literal,
+                                    &|issue| from.add_issue(i_s, issue),
                                 ) {
                                     add_to_union(Inferred::from_type(result));
                                     continue;
