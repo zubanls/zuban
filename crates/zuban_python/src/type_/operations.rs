@@ -823,21 +823,28 @@ fn int_operations(
         "+" => left.checked_add(right),
         "-" => left.checked_sub(right),
         "*" => left.checked_mul(right),
-        "/" => return None, // TODO
-        "//" => {
-            if let result @ Some(_) = left.checked_div(right) {
-                result
+        "/" => {
+            return Some(if right == 0 {
+                add_issue(IssueKind::DivisionByZero);
+                Type::ERROR
             } else {
+                db.python_state.float_type()
+            });
+        }
+        "//" => {
+            if right == 0 {
                 add_issue(IssueKind::DivisionByZero);
                 return Some(Type::ERROR);
+            } else {
+                Some(py_div_floor(left, right))
             }
         }
         "%" => {
-            if let result @ Some(_) = left.checked_rem(right) {
-                result
-            } else {
+            if right == 0 {
                 add_issue(IssueKind::DivisionByZero);
                 return Some(Type::ERROR);
+            } else {
+                Some(py_mod(left, right))
             }
         }
         "**" => match right.try_into() {
@@ -888,6 +895,17 @@ fn int_operations(
         // In case of overflows simply return int, we are probably using numbers bigger than i64
         Some(db.python_state.int_type())
     }
+}
+
+fn py_div_floor(a: i64, b: i64) -> i64 {
+    let q = a / b;
+    let r = a % b;
+    if (r > 0) != (b > 0) { q - 1 } else { q }
+}
+
+fn py_mod(a: i64, b: i64) -> i64 {
+    let r = a % b;
+    if (r > 0) != (b > 0) { r + b } else { r }
 }
 
 #[derive(Copy, Clone)]
