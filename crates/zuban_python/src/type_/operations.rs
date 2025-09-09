@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{iter::repeat_n, sync::Arc};
 
 use super::{
     AnyCause, LookupResult, Namespace, NewType, Type, TypeVarKind, dataclass_initialize,
@@ -787,6 +787,7 @@ impl LiteralValue<'_> {
         right: Self,
         add_issue: &dyn Fn(IssueKind),
     ) -> Option<Type> {
+        const MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION: usize = 1024 * 16;
         match (self, right) {
             (LiteralValue::Int(l), LiteralValue::Int(r)) => {
                 int_operations(db, l, operand, r, add_issue)
@@ -801,9 +802,26 @@ impl LiteralValue<'_> {
                     l.iter().chain(r.iter()).copied().collect(),
                 ))))
             }),
-            (LiteralValue::String(_), LiteralValue::Int(_)) => None, // TODO
-            (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None,  // TODO
-
+            (LiteralValue::String(l), LiteralValue::Int(n)) => (operand == "*").then(|| {
+                let n = n.try_into().unwrap_or(0);
+                if l.len() * n > MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION {
+                    Type::LiteralString
+                } else {
+                    Type::Literal(Literal::new_implicit(LiteralKind::String(
+                        DbString::ArcStr(repeat_n(l, n).collect::<String>().into()),
+                    )))
+                }
+            }),
+            (LiteralValue::Bytes(l), LiteralValue::Int(n)) => (operand == "*").then(|| {
+                let n = n.try_into().unwrap_or(0);
+                if l.len() * n > MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION {
+                    db.python_state.bytes_type()
+                } else {
+                    Type::Literal(Literal::new_implicit(LiteralKind::Bytes(DbBytes::Arc(
+                        repeat_n(l.as_ref(), n).flatten().copied().collect(),
+                    ))))
+                }
+            }),
             (LiteralValue::Bool(l), LiteralValue::Bool(r)) => {
                 bool_operations(db, l, operand, r, add_issue)
             }

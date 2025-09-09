@@ -226,3 +226,23 @@ x: Final = b"abc"
 reveal_type(b"a" + rb"b\a")  # N: Revealed type is "Literal[b'ab\\a']?"
 reveal_type(x + b"b")  # N: Revealed type is "Literal[b'abcb']?"
 reveal_type(x + b"b" + x)  # N: Revealed type is "Literal[b'abcbabc']?"
+
+[case string_literal_multiplication]
+from typing import Literal, Final
+
+x: Final = "abc"
+
+reveal_type("a" * 3)  # N: Revealed type is "Literal['aaa']?"
+reveal_type(x + "b" * 2)  # N: Revealed type is "Literal['abcbb']?"
+reveal_type(x * 3)  # N: Revealed type is "Literal['abcabcabc']?"
+reveal_type(x * 1000000)  # N: Revealed type is "LiteralString"
+
+[case bytes_literal_multiplication]
+from typing import Literal, Final
+
+x: Final = b"abc"
+
+reveal_type(b"a" * 3)  # N: Revealed type is "Literal[b'aaa']?"
+reveal_type(x + b"b" * 2)  # N: Revealed type is "Literal[b'abcbb']?"
+reveal_type(x * 3)  # N: Revealed type is "Literal[b'abcabcabc']?"
+reveal_type(x * 1000000)  # N: Revealed type is "bytes"
