@@ -23,7 +23,7 @@ use crate::{
     },
     node_ref::NodeRef,
     recoverable_error,
-    type_::{Intersection, Literal, LiteralKind, LiteralValue, NamedTuple},
+    type_::{DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple},
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, Instance, InstanceLookupOptions,
         LookupDetails, OverloadedFunction,
@@ -791,10 +791,14 @@ impl LiteralValue<'_> {
             (LiteralValue::Int(l), LiteralValue::Int(r)) => {
                 int_operations(db, l, operand, r, add_issue)
             }
-            (LiteralValue::String(_), LiteralValue::String(_)) => None, // TODO
-            (LiteralValue::String(_), LiteralValue::Int(_)) => None,    // TODO
-            (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None,     // TODO
-            (LiteralValue::Bytes(_), LiteralValue::Bytes(_)) => None,   // TODO
+            (LiteralValue::String(l), LiteralValue::String(r)) => (operand == "+").then(|| {
+                Type::Literal(Literal::new_implicit(LiteralKind::String(
+                    DbString::ArcStr(format!("{l}{r}").into()),
+                )))
+            }),
+            (LiteralValue::String(_), LiteralValue::Int(_)) => None, // TODO
+            (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None,  // TODO
+            (LiteralValue::Bytes(_), LiteralValue::Bytes(_)) => None, // TODO
 
             (LiteralValue::Bool(l), LiteralValue::Bool(r)) => {
                 bool_operations(db, l, operand, r, add_issue)

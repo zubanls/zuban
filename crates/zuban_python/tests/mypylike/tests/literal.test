@@ -208,3 +208,12 @@ reveal_type(5 ^ True)  # N: Revealed type is "Literal[4]?"
 reveal_type(True * False)  # N: Revealed type is "Literal[0]?"
 reveal_type(True << True)  # N: Revealed type is "Literal[2]?"
 reveal_type(True / False)  # E: Division by zero  # N: Revealed type is "Any"
+
+[case string_literal_additions]
+from typing import Literal, Final
+
+x: Final = "abc"
+
+reveal_type("a" + r"b\a")  # N: Revealed type is "Literal['ab\\a']?"
+reveal_type(x + "b")  # N: Revealed type is "Literal['abcb']?"
+reveal_type(x + "b" + x)  # N: Revealed type is "Literal['abcbabc']?"
