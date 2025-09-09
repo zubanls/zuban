@@ -788,15 +788,17 @@ impl LiteralValue<'_> {
         add_issue: &dyn Fn(IssueKind),
     ) -> Option<Type> {
         match (self, right) {
-            (LiteralValue::String(_), LiteralValue::String(_)) => None, // TODO
-            (LiteralValue::String(_), LiteralValue::Int(_)) => None,    // TODO
             (LiteralValue::Int(l), LiteralValue::Int(r)) => {
                 int_operations(db, l, operand, r, add_issue)
             }
-            (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None, // TODO
-            (LiteralValue::Bytes(_), LiteralValue::Bytes(_)) => None, // TODO
+            (LiteralValue::String(_), LiteralValue::String(_)) => None, // TODO
+            (LiteralValue::String(_), LiteralValue::Int(_)) => None,    // TODO
+            (LiteralValue::Bytes(_), LiteralValue::Int(_)) => None,     // TODO
+            (LiteralValue::Bytes(_), LiteralValue::Bytes(_)) => None,   // TODO
 
-            (LiteralValue::Bool(_), LiteralValue::Bool(_)) => None, // TODO
+            (LiteralValue::Bool(l), LiteralValue::Bool(r)) => {
+                bool_operations(db, l, operand, r, add_issue)
+            }
             (left, LiteralValue::Bool(b)) => {
                 left.operation(db, operand, LiteralValue::Int(b as i64), add_issue)
             }
@@ -906,6 +908,24 @@ fn py_div_floor(a: i64, b: i64) -> i64 {
 fn py_mod(a: i64, b: i64) -> i64 {
     let r = a % b;
     if (r > 0) != (b > 0) { r + b } else { r }
+}
+
+fn bool_operations(
+    db: &Database,
+    left: bool,
+    operand: &str,
+    right: bool,
+    add_issue: &dyn Fn(IssueKind),
+) -> Option<Type> {
+    let result = match operand {
+        "|" => left | right,
+        "&" => left & right,
+        "^" => left ^ right,
+        _ => return int_operations(db, left.into(), operand, right.into(), add_issue),
+    };
+    Some(Type::Literal(Literal::new_implicit(LiteralKind::Bool(
+        result,
+    ))))
 }
 
 #[derive(Copy, Clone)]

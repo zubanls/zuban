@@ -196,3 +196,15 @@ reveal_type(-16 >> 3)  # N: Revealed type is "Literal[-2]?"
 
 reveal_type(2 << -3)  # E: Negative shift count  # N: Revealed type is "Any"
 reveal_type(2 >> -3)  # E: Negative shift count  # N: Revealed type is "Any"
+
+[case bool_literal_operations]
+reveal_type(True | False)  # N: Revealed type is "Literal[True]?"
+reveal_type(True & False)  # N: Revealed type is "Literal[False]?"
+reveal_type(False ^ True)  # N: Revealed type is "Literal[True]?"
+
+reveal_type(True ^ 0)  # N: Revealed type is "Literal[1]?"
+reveal_type(5 ^ True)  # N: Revealed type is "Literal[4]?"
+
+reveal_type(True * False)  # N: Revealed type is "Literal[0]?"
+reveal_type(True << True)  # N: Revealed type is "Literal[2]?"
+reveal_type(True / False)  # E: Division by zero  # N: Revealed type is "Any"
