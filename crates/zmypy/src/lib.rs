@@ -982,7 +982,7 @@ mod tests {
                 version = 3.12.3
 
                 [file venv/Lib/site-packages/frompth.pth]
-                ../../../frompth
+                ../../frompth
 
                 [file venv/frompth/my_frompth/__init__.py]
                 x = 1
