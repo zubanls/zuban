@@ -1063,6 +1063,64 @@ fn test_virtual_environment() {
 
 #[test]
 #[serial]
+fn test_virtual_env_with_pth_into_working_dir() {
+    // The goal here is to reproduce setting similar to uv workspaces
+
+    if fails_too_much_on_linux_and_github_actions() {
+        // Somehow this test is failing a bit too often on GitHub, so for now ignore it.
+        return;
+    }
+
+    let (site_package_path, relative_path_to_other_project) = if cfg!(windows) {
+        ("venv/Lib/site-packages", "../../../other_project")
+    } else {
+        (
+            "venv/lib/python3.12/site-packages",
+            "../../../../other_project",
+        )
+    };
+    let server = Project::with_fixture(&format!(
+        r#"
+            [file venv/bin/python]
+
+            [file venv/pyvenv.cfg]
+            include-system-site-packages = false
+            version = 3.12.3
+
+            [file {site_package_path}/foo/__init__.py]
+            foo = 1
+            1()
+
+            [file {site_package_path}/foo/py.typed]
+            1()
+
+            [file {site_package_path}/frompth.pth]
+            {relative_path_to_other_project}
+
+            [file other_project/other_project/__init__.py]
+            1()
+            x = 1
+            [file other_project/other_project/py.typed]
+            "#
+    ))
+    .into_server();
+
+    const PATH: &str = "check.py";
+
+    server.open_in_memory_file(PATH, "from other_project import x\nreveal_type(x)");
+
+    assert_eq!(
+        server.diagnostics_for_file(PATH),
+        [r#"Revealed type is "builtins.int""#]
+    );
+    assert_eq!(
+        server.diagnostics_for_file("other_project/other_project/__init__.py"),
+        [r#""int" not callable"#]
+    );
+}
+
+#[test]
+#[serial]
 fn remove_directory_of_in_memory_file_without_push() {
     let server = Project::with_fixture(
         r#"
