@@ -19,7 +19,6 @@ class_matching_against_param_spec_with_type_var_syntax_late_bound
 literal_string_operations
 literal_string_conditions_and_context
 general_literalstring_type_usage
-literal_string_in_overloads
 # conformance tests: named tuple definitions
 disallow_subclassing_of_named_tuple_and_overwriting_attr
 
