@@ -164,6 +164,9 @@ if bool():
 if bool():
     reveal_type(5 / 0)  # E: Division by zero  # N: Revealed type is "Any"
 
+reveal_type(2 // 2)  # N: Revealed type is "Literal[1]?"
+reveal_type(0 % 3)   # N: Revealed type is "Literal[0]?"
+
 [case int_literal_binary_operations]
 reveal_type(6 & 3)  # N: Revealed type is "Literal[2]?"
 reveal_type(-6 & 3)  # N: Revealed type is "Literal[2]?"

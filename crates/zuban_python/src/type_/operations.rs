@@ -928,12 +928,20 @@ fn int_operations(
 fn py_div_floor(a: i64, b: i64) -> i64 {
     let q = a / b;
     let r = a % b;
-    if (r > 0) != (b > 0) { q - 1 } else { q }
+    if (r != 0) && ((r > 0) != (b > 0)) {
+        q - 1
+    } else {
+        q
+    }
 }
 
 fn py_mod(a: i64, b: i64) -> i64 {
     let r = a % b;
-    if (r > 0) != (b > 0) { r + b } else { r }
+    if (r != 0) && ((r > 0) != (b > 0)) {
+        r + b
+    } else {
+        r
+    }
 }
 
 fn bool_operations(
