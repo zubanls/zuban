@@ -12,8 +12,7 @@ x = (1, 'a', 1.0)
 #?
 x[12]
 
-# jedi-diff: #? float()
-#? int() str() float()
+#? float()
 x[1 + 1]
 
 index = 0 + 1
@@ -22,8 +21,7 @@ index = 0 + 1
 #? int() str() float()
 x[index]
 
-# jedi-diff: #? int()
-#? int() str() float()
+#? int()
 x[1 + (-1)]
 
 def calculate(number):
