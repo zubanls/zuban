@@ -217,6 +217,7 @@ impl Type {
                 t.matches(i_s, matcher, value_type, variance)
             }),
             Self::LiteralString => match value_type {
+                Self::LiteralString => Match::new_true(),
                 Self::Literal(l) => match &l.kind {
                     LiteralKind::String(_) => Match::new_true(),
                     _ => Match::new_false(),

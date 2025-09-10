@@ -98,6 +98,7 @@ def return_literal_str3() -> LiteralString:
 
 from typing import LiteralString, TypeVar, Literal, assert_type, Generic
 # > TypeVars can be bound to LiteralString.
+T = TypeVar("T")
 TLiteral = TypeVar("TLiteral", bound=LiteralString)
 
 def literal_identity(s: TLiteral) -> TLiteral:
@@ -112,7 +113,7 @@ def func4(s: LiteralString):
     assert_type(y2, LiteralString)
 
 def func5(s: str):
-    literal_identity(s)  # E
+    literal_identity(s)  # E: Value of type variable "TLiteral" of "literal_identity" cannot be "str"
 
 # > LiteralString can be used as a type argument for generic classes.
 class Container(Generic[T]):
@@ -123,7 +124,7 @@ def func6(s: LiteralString):
     x: Container[LiteralString] = Container(s)  # OK
 
 def func7(s: str):
-    x_error: Container[LiteralString] = Container(s)  # E
+    x_error: Container[LiteralString] = Container(s)  # E: Argument 1 to "Container" has incompatible type "str"; expected "LiteralString"
 
 # > Standard containers like List work as expected.
 xs: list[LiteralString] = ["foo", "bar", "baz"]
