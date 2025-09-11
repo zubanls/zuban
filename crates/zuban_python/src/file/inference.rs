@@ -3399,14 +3399,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             },
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
-            Strings(s_o_b) => {
-                for string in s_o_b.iter() {
+            Strings(strings) => {
+                let mut is_string_literal = true;
+                for string in strings.iter() {
                     if let StringType::FString(f) = string {
-                        self.calc_fstring_diagnostics(f)
+                        is_string_literal &= self
+                            .calc_fstring_content_diagnostics_and_return_is_string_literal(
+                                f.iter_content(),
+                            )
                     }
                 }
-                if let Some(s) = s_o_b.maybe_single_string_literal() {
+                if let Some(s) = strings.maybe_single_string_literal() {
                     return check_literal(result_context, i_s, s.index(), Specific::StringLiteral);
+                } else if is_string_literal {
+                    return Inferred::from_type(Type::LiteralString);
                 } else {
                     Specific::String
                 }
@@ -3619,6 +3625,43 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
         });
         gatherer.into_tuple(self, iterator)
+    }
+
+    fn calc_fstring_content_diagnostics_and_return_is_string_literal<'x>(
+        &self,
+        iter: impl Iterator<Item = FStringContent<'x>>,
+    ) -> bool {
+        let mut is_string_literal = true;
+        for content in iter {
+            match content {
+                FStringContent::FStringExpr(e) => {
+                    let (expressions, spec) = e.unpack();
+                    for expr in expressions.iter() {
+                        fn is_allowed_as_string_literal(t: &Type) -> bool {
+                            match t {
+                                Type::LiteralString | Type::Literal(_) => true,
+                                Type::Union(u) => u.iter().all(|t| is_allowed_as_string_literal(t)),
+                                Type::Intersection(i) => {
+                                    i.iter_entries().any(|t| is_allowed_as_string_literal(t))
+                                }
+                                _ => false,
+                            }
+                        }
+                        is_string_literal &= is_allowed_as_string_literal(
+                            &self.infer_expression(expr).as_cow_type(self.i_s),
+                        );
+                    }
+                    if let Some(spec) = spec {
+                        is_string_literal &= self
+                            .calc_fstring_content_diagnostics_and_return_is_string_literal(
+                                spec.iter_content(),
+                            );
+                    }
+                }
+                FStringContent::FStringString(_) => (),
+            }
+        }
+        is_string_literal
     }
 
     check_point_cache_with!(pub infer_subject_expr, Self::_infer_subject_expr, SubjectExpr);

@@ -84,6 +84,28 @@ def f(s: str, ls: LiteralString, l: Literal['x'], i: Literal[1], b: Literal[b'']
     b + ls  # E: Unsupported operand types for + ("Literal[b'']" and "LiteralString")
     ls + b  # E: Unsupported operand types for + ("LiteralString" and "Literal[b'']")
 
+[case fstrings_with_only_strings_is_literal_string]
+# flags: --no-mypy-compatible
+from typing import LiteralString, Literal
+def f(s: str, ls: LiteralString, l: Literal['x'], i: Literal[1], b: Literal[b''], u: Literal['a', 'b']):
+    reveal_type(f"s {'x'}")  # N: Revealed type is "LiteralString"
+    reveal_type(f"s {1}")  # N: Revealed type is "LiteralString"
+    reveal_type(f"s {s}")  # N: Revealed type is "str"
+    reveal_type(f"s {str()}")  # N: Revealed type is "str"
+    reveal_type(f"s {ls}")  # N: Revealed type is "LiteralString"
+    reveal_type(f"s {l}")  # N: Revealed type is "LiteralString"
+    reveal_type(f"s {i}")  # N: Revealed type is "LiteralString"
+    reveal_type(f"s {b}")  # N: Revealed type is "LiteralString"
+
+    reveal_type(f"s {ls:{s}}")  # N: Revealed type is "str"
+    reveal_type(f"s {ls:{ls}}")  # N: Revealed type is "LiteralString"
+
+    reveal_type(f"s {u}")  # N: Revealed type is "LiteralString"
+
+    reveal_type(f"s {ls}" "")  # N: Revealed type is "LiteralString"
+    reveal_type("a" f"s {ls}" "b")  # N: Revealed type is "LiteralString"
+    reveal_type("a" r"b")  # N: Revealed type is "LiteralString"
+
 [case literal_string_conditions_and_context]
 # flags: --no-mypy-compatible
 # Copied from conformance tests (literals_literalstring.py)

@@ -2024,27 +2024,6 @@ impl Inference<'_, '_, '_> {
         exit_result.save_redirect(self.i_s, self.file, with_item.index())
     }
 
-    pub fn calc_fstring_diagnostics(&self, fstring: FString) {
-        self.calc_fstring_content_diagnostics(fstring.iter_content())
-    }
-
-    fn calc_fstring_content_diagnostics<'x>(&self, iter: impl Iterator<Item = FStringContent<'x>>) {
-        for content in iter {
-            match content {
-                FStringContent::FStringExpr(e) => {
-                    let (expressions, spec) = e.unpack();
-                    for expr in expressions.iter() {
-                        self.infer_expression(expr);
-                    }
-                    if let Some(spec) = spec {
-                        self.calc_fstring_content_diagnostics(spec.iter_content());
-                    }
-                }
-                FStringContent::FStringString(_) => (),
-            }
-        }
-    }
-
     fn check_overlapping_op_methods(&self, func: Function, short_reverse_name: &str) {
         let i_s = self.i_s;
         let Some(normal_magic) = OVERLAPPING_REVERSE_TO_NORMAL_METHODS.get(short_reverse_name)
