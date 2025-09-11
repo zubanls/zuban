@@ -688,6 +688,8 @@ impl Type {
             Type::Dataclass(dc) => dc.class(db),
             Type::Enum(enum_) => enum_.class(db),
             Type::EnumMember(member) => member.enum_.class(db),
+            Type::Literal(l) => l.fallback_class(db),
+            Type::LiteralString => db.python_state.str_class(),
             Type::Type(t) => t
                 .inner_generic_class_with_db(db)?
                 .use_cached_class_infos(db)
@@ -1894,6 +1896,10 @@ impl Literal {
             LiteralKind::Bool(_) => db.python_state.bool_node_ref(),
             LiteralKind::Bytes(_) => db.python_state.bytes_node_ref(),
         }
+    }
+
+    pub fn fallback_class<'db>(&self, db: &'db Database) -> Class<'db> {
+        Class::from_non_generic_node_ref(self.fallback_node_ref(db))
     }
 
     pub fn as_instance<'db>(&self, db: &'db Database) -> Instance<'db> {

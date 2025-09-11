@@ -161,7 +161,8 @@ impl Type {
             }
             Type::Literal(literal) => {
                 let instance = literal.as_instance(i_s.db);
-                let l = instance.lookup(i_s, name, options());
+                let l =
+                    instance.lookup(i_s, name, options().with_as_self_instance(&|| self.clone()));
                 callable(self, l)
             }
             t @ Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {
@@ -472,12 +473,11 @@ impl Type {
             }
             Type::DataclassTransformObj(_) => callable(self, LookupDetails::none()),
             Type::LiteralString => {
-                let l = i_s
-                    .db
-                    .python_state
-                    .str_class()
-                    .instance()
-                    .lookup(i_s, name, options());
+                let l = i_s.db.python_state.str_class().instance().lookup(
+                    i_s,
+                    name,
+                    options().with_as_self_instance(&|| self.clone()),
+                );
                 callable(self, l)
             }
         }
@@ -810,11 +810,7 @@ impl Type {
         check(self, true)
     }
 
-    pub fn try_operation_against_literal_string(
-        &self,
-        db: &Database,
-        operand: &str,
-    ) -> Option<Type> {
+    pub fn try_operation_against_literal_string(&self, operand: &str) -> Option<Type> {
         match self {
             Type::LiteralString if operand == "+" => Some(Type::LiteralString),
             Type::Literal(left)

@@ -234,3 +234,28 @@ def f(x: Literal[1], y: Literal["c %s %s"], z: LiteralString, s: str, u1: Litera
     reveal_type(u1 % (u1, u2))  # N: Revealed type is "str"
     reveal_type(u1 % u2)  # N: Revealed type is "str"
     reveal_type(u2 % u1)  # N: Revealed type is "str"
+
+[case literal_string_format_function]
+# flags: --no-mypy-compatible
+
+from typing import Literal, LiteralString
+def f(l: Literal["a{}"], ls: LiteralString, u: Literal["a{}", "b{}"], s: str):
+    reveal_type("a{}".format(""))  # N: Revealed type is "LiteralString"
+
+    reveal_type(l.format(l))  # N: Revealed type is "LiteralString"
+    reveal_type(l.format(ls))  # N: Revealed type is "LiteralString"
+    reveal_type(ls.format(l))  # N: Revealed type is "LiteralString"
+    reveal_type(ls.format(ls))  # N: Revealed type is "LiteralString"
+
+    reveal_type(l.format(s))  # N: Revealed type is "str"
+    reveal_type(ls.format(s))  # N: Revealed type is "str"
+    reveal_type(s.format(ls))  # N: Revealed type is "str"
+
+    reveal_type(u.format(ls))  # N: Revealed type is "LiteralString"
+    reveal_type(u.format(l))  # N: Revealed type is "LiteralString"
+    reveal_type(l.format(u))  # N: Revealed type is "LiteralString"
+    reveal_type(ls.format(u))  # N: Revealed type is "LiteralString"
+    reveal_type(u.format(u))  # N: Revealed type is "LiteralString"
+
+    reveal_type(u.format(s))  # N: Revealed type is "str"
+    reveal_type(s.format(u))  # N: Revealed type is "str"
