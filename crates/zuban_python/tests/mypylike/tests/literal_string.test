@@ -69,6 +69,21 @@ def func2(a: LiteralString, b: LiteralString):
     x3: LiteralString = 3  # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "LiteralString")
     x4: LiteralString = b"test"  # E: Incompatible types in assignment (expression has type "Literal[b'test']", variable has type "LiteralString")
 
+[case literal_string_additions_with_literals]
+# flags: --no-mypy-compatible
+from typing import LiteralString, Literal
+def f(s: str, ls: LiteralString, l: Literal['x'], i: Literal[1], b: Literal[b'']):
+    reveal_type(s + ls)  # N: Revealed type is "str"
+    reveal_type(ls + s)  # N: Revealed type is "str"
+    reveal_type(l + ls)  # N: Revealed type is "LiteralString"
+    reveal_type(ls + l)  # N: Revealed type is "LiteralString"
+    reveal_type(ls + ls)  # N: Revealed type is "LiteralString"
+
+    i + ls  # E: Unsupported operand types for + ("Literal[1]" and "LiteralString")
+    ls + i  # E: Unsupported operand types for + ("LiteralString" and "Literal[1]")
+    b + ls  # E: Unsupported operand types for + ("Literal[b'']" and "LiteralString")
+    ls + b  # E: Unsupported operand types for + ("LiteralString" and "Literal[b'']")
+
 [case literal_string_conditions_and_context]
 # flags: --no-mypy-compatible
 # Copied from conformance tests (literals_literalstring.py)

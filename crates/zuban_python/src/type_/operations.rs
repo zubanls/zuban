@@ -774,6 +774,27 @@ impl Type {
                 left.value(db)
                     .operation(db, operand, right.value(db), add_issue)
             }
+            Type::LiteralString
+                if operand == "+" && matches!(right.kind, LiteralKind::String(_)) =>
+            {
+                Some(Type::LiteralString)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn try_operation_against_literal_string(
+        &self,
+        db: &Database,
+        operand: &str,
+    ) -> Option<Type> {
+        match self {
+            Type::LiteralString if operand == "+" => Some(Type::LiteralString),
+            Type::Literal(left)
+                if operand == "+" && matches!(left.kind, LiteralKind::String(_)) =>
+            {
+                Some(Type::LiteralString)
+            }
             _ => None,
         }
     }

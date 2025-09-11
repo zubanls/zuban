@@ -2898,6 +2898,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     continue;
                                 }
                             }
+                            Type::LiteralString => {
+                                if let Some(result) = l_type
+                                    .try_operation_against_literal_string(i_s.db, op_infos.operand)
+                                {
+                                    add_to_union(Inferred::from_type(result));
+                                    continue;
+                                }
+                            }
                             _ => (),
                         }
                         let instance;
