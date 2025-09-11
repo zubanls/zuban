@@ -112,7 +112,7 @@ impl<'a> ResultContext<'a, '_> {
         }
         fn could_be_a_literal(type_: &Type) -> CouldBeALiteral {
             match type_ {
-                Type::Literal(_) | Type::LiteralString | Type::EnumMember(_) => {
+                Type::Literal(_) | Type::LiteralString { .. } | Type::EnumMember(_) => {
                     CouldBeALiteral::Yes { implicit: false }
                 }
                 Type::Union(items) => {

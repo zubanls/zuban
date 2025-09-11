@@ -216,8 +216,8 @@ impl Type {
             Self::Intersection(intersection1) => Match::all(intersection1.iter_entries(), |t| {
                 t.matches(i_s, matcher, value_type, variance)
             }),
-            Self::LiteralString => match value_type {
-                Self::LiteralString => Match::new_true(),
+            Self::LiteralString { .. } => match value_type {
+                Self::LiteralString { .. } => Match::new_true(),
                 Self::Literal(l) => match &l.kind {
                     LiteralKind::String(_) => Match::new_true(),
                     _ => Match::new_false(),
@@ -717,7 +717,7 @@ impl Type {
                 (u2.bool_literal_count() == 2 && u2.entries.len() == 2).into()
             }
             Type::ParamSpecKwargs(_) if class1.is_dict_with_str_any(i_s.db) => Match::new_true(),
-            Type::LiteralString
+            Type::LiteralString { .. }
                 if class1.node_ref == i_s.db.python_state.str_node_ref()
                     && variance == Variance::Covariant =>
             {

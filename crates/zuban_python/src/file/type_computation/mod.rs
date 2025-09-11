@@ -1118,7 +1118,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             ClassGenerics::None,
                         )
                     } else {
-                        Type::LiteralString
+                        Type::LiteralString { implicit: false }
                     });
                 }
                 Specific::TypingLiteral => {

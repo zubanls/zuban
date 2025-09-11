@@ -473,7 +473,9 @@ pub(crate) enum Type {
     DataclassTransformObj(DataclassTransformObj),
     Self_,
     None,
-    LiteralString,
+    LiteralString {
+        implicit: bool,
+    },
     Any(AnyCause),
     Never(NeverCause),
 }
@@ -689,7 +691,7 @@ impl Type {
             Type::Enum(enum_) => enum_.class(db),
             Type::EnumMember(member) => member.enum_.class(db),
             Type::Literal(l) => l.fallback_class(db),
-            Type::LiteralString => db.python_state.str_class(),
+            Type::LiteralString { .. } => db.python_state.str_class(),
             Type::Type(t) => t
                 .inner_generic_class_with_db(db)?
                 .use_cached_class_infos(db)
@@ -1002,7 +1004,7 @@ impl Type {
             Self::Super { .. } => "super".into(),
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
             Self::DataclassTransformObj(_) => "TODO dataclass_transform".into(),
-            Self::LiteralString => "LiteralString".into(),
+            Self::LiteralString { .. } => "LiteralString".into(),
         }
     }
 
@@ -1040,7 +1042,7 @@ impl Type {
             | Self::Enum(_)
             | Self::EnumMember(_)
             | Self::NewType(_)
-            | Self::LiteralString => (),
+            | Self::LiteralString { .. } => (),
             Self::RecursiveType(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
                     generics.search_type_vars(found_type_var)
@@ -1140,7 +1142,7 @@ impl Type {
             | Self::EnumMember(_)
             | Self::Super { .. }
             | Self::Namespace(_)
-            | Self::LiteralString => false,
+            | Self::LiteralString { .. } => false,
             Self::Dataclass(d) => search_in_generic_class(&d.class),
             Self::TypedDict(d) => d.has_any_internal(i_s, already_checked),
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
@@ -1220,7 +1222,7 @@ impl Type {
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
             Type::Literal(l) if l.implicit => Some(l.fallback_type(db)),
-            Type::LiteralString => Some(db.python_state.str_type()),
+            Type::LiteralString { implicit: true } => Some(db.python_state.str_type()),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => Some(Type::Tuple(tup.maybe_avoid_implicit_literal(db)?)),
             Type::Union(union) => {
@@ -1294,7 +1296,7 @@ impl Type {
 
     pub fn is_allowed_as_literal_string(&self, allow_non_string_literals: bool) -> bool {
         match self {
-            Type::LiteralString => true,
+            Type::LiteralString { .. } => true,
             Type::Literal(_) if allow_non_string_literals => true,
             Type::Literal(l) => matches!(l.kind, LiteralKind::String(_)),
             Type::Union(u) => u

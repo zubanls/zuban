@@ -2886,7 +2886,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             .as_cow_type(i_s)
                             .is_literal_string_only_argument_for_string_percent_formatting()
                         {
-                            add_to_union(Inferred::from_type(Type::LiteralString));
+                            add_to_union(Inferred::from_type(Type::LiteralString {
+                                implicit: true,
+                            }));
                             return;
                         }
                     }
@@ -2908,7 +2910,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     continue;
                                 }
                             }
-                            Type::LiteralString => {
+                            Type::LiteralString { .. } => {
                                 if let Some(result) =
                                     l_type.try_operation_against_literal_string(op_infos.operand)
                                 {
@@ -3422,7 +3424,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 if let Some(s) = strings.maybe_single_string_literal() {
                     return check_literal(result_context, i_s, s.index(), Specific::StringLiteral);
                 } else if is_string_literal {
-                    return Inferred::from_type(Type::LiteralString);
+                    return Inferred::from_type(Type::LiteralString { implicit: true });
                 } else {
                     Specific::String
                 }

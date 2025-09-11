@@ -376,6 +376,7 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
         (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
             l.implicit && l.fallback_node_ref(db).as_link() == c.link
         }
+        (Type::LiteralString { .. }, Type::LiteralString { .. }) => true,
         (Type::Any(_), Type::Any(_)) => true,
         (Type::Never(_), Type::Never(_)) => true,
         (Type::Union(u1), Type::Union(u2)) => is_equal_union_or_intersection(

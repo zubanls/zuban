@@ -142,12 +142,10 @@ def literal_identity(s: TLiteral) -> TLiteral:
     return s
 
 def func3(s: Literal["hello"]):
-    y = literal_identity(s)
-    assert_type(y, Literal["hello"])
+    assert_type(literal_identity(s), Literal["hello"])
 
 def func4(s: LiteralString):
-    y2 = literal_identity(s)
-    assert_type(y2, LiteralString)
+    assert_type(literal_identity(s), LiteralString)
 
 def func5(s: str):
     literal_identity(s)  # E: Value of type variable "TLiteral" of "literal_identity" cannot be "str"
@@ -203,7 +201,8 @@ def func10(val: Sequence[LiteralString]):
 from typing import LiteralString, Literal
 
 def f(x: LiteralString, y: list[LiteralString]):
-    reveal_type([x])  # N: Revealed type is "list[str]"
+    reveal_type([f"asdf {'x'}"])  # N: Revealed type is "list[str]"
+    reveal_type([x])  # N: Revealed type is "list[LiteralString]"
     a: list[str] = [x]
     a = y  # E: Incompatible types in assignment (expression has type "list[LiteralString]", variable has type "list[str]") \
            # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \

@@ -472,7 +472,7 @@ impl Type {
                 );
             }
             Type::DataclassTransformObj(_) => callable(self, LookupDetails::none()),
-            Type::LiteralString => {
+            Type::LiteralString { .. } => {
                 let l = i_s.db.python_state.str_class().instance().lookup(
                     i_s,
                     name,
@@ -777,10 +777,10 @@ impl Type {
                 left.value(db)
                     .operation(db, operand, right.value(db), add_issue)
             }
-            Type::LiteralString
+            Type::LiteralString { .. }
                 if operand == "+" && matches!(right.kind, LiteralKind::String(_)) =>
             {
-                Some(Type::LiteralString)
+                Some(Type::LiteralString { implicit: true })
             }
             _ => None,
         }
@@ -812,11 +812,13 @@ impl Type {
 
     pub fn try_operation_against_literal_string(&self, operand: &str) -> Option<Type> {
         match self {
-            Type::LiteralString if operand == "+" => Some(Type::LiteralString),
+            Type::LiteralString { .. } if operand == "+" => {
+                Some(Type::LiteralString { implicit: true })
+            }
             Type::Literal(left)
                 if operand == "+" && matches!(left.kind, LiteralKind::String(_)) =>
             {
-                Some(Type::LiteralString)
+                Some(Type::LiteralString { implicit: true })
             }
             _ => None,
         }
@@ -849,7 +851,7 @@ impl LiteralValue<'_> {
             (LiteralValue::String(l), LiteralValue::Int(n)) => (operand == "*").then(|| {
                 let n = n.try_into().unwrap_or(0);
                 if l.len() * n > MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION {
-                    Type::LiteralString
+                    Type::LiteralString { implicit: true }
                 } else {
                     Type::Literal(Literal::new_implicit(LiteralKind::String(
                         DbString::ArcStr(repeat_n(l, n).collect::<String>().into()),

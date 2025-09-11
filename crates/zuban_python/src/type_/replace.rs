@@ -259,7 +259,7 @@ impl Type {
             | Type::DataclassTransformObj(_)
             | Type::ParamSpecArgs(_)
             | Type::ParamSpecKwargs(_)
-            | Type::LiteralString => None,
+            | Type::LiteralString { .. } => None,
         }
     }
 }
