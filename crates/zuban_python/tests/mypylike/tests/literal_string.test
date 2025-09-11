@@ -58,7 +58,7 @@ def func2(a: LiteralString, b: LiteralString):
     assert_type(f"{a} {b}", LiteralString)
 
     variable = 3
-    x1: LiteralString = f"{a} {str(variable)}"  # E
+    x1: LiteralString = f"{a} {str(variable)}"  # E: Incompatible types in assignment (expression has type "str", variable has type "LiteralString")
 
     assert_type(a + str(1), str)
 
@@ -66,8 +66,8 @@ def func2(a: LiteralString, b: LiteralString):
     x2: str = a
 
     # > Other literal types, such as literal integers, are not compatible with LiteralString.
-    x3: LiteralString = 3  # E
-    x4: LiteralString = b"test"  # E
+    x3: LiteralString = 3  # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "LiteralString")
+    x4: LiteralString = b"test"  # E: Incompatible types in assignment (expression has type "Literal[b'test']", variable has type "LiteralString")
 
 [case literal_string_conditions_and_context]
 # flags: --no-mypy-compatible

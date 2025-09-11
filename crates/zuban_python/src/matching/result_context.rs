@@ -110,19 +110,24 @@ impl<'a> ResultContext<'a, '_> {
         {
             return CouldBeALiteral::No;
         }
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| match type_ {
-            Type::Literal(_) => CouldBeALiteral::Yes { implicit: false },
-            Type::EnumMember(_) => CouldBeALiteral::Yes { implicit: false },
-            Type::Union(items)
-                if items
-                    .iter()
-                    .any(|i| matches!(i, Type::Literal(_) | Type::EnumMember(_))) =>
-            {
-                CouldBeALiteral::Yes { implicit: false }
+        fn could_be_a_literal(type_: &Type) -> CouldBeALiteral {
+            match type_ {
+                Type::Literal(_) | Type::LiteralString | Type::EnumMember(_) => {
+                    CouldBeALiteral::Yes { implicit: false }
+                }
+                Type::Union(items) => {
+                    for t in items.iter() {
+                        if let x @ CouldBeALiteral::Yes { .. } = could_be_a_literal(t) {
+                            return x;
+                        }
+                    }
+                    CouldBeALiteral::No
+                }
+                _ => CouldBeALiteral::No,
             }
-            _ => CouldBeALiteral::No,
-        })
-        .unwrap_or(CouldBeALiteral::Yes { implicit: true })
+        }
+        self.with_type_if_exists_and_replace_type_var_likes(i_s, could_be_a_literal)
+            .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
     pub fn expect_not_none(&mut self) -> bool {
