@@ -644,10 +644,7 @@ impl TupleArgs {
 
     pub fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
         match self {
-            TupleArgs::FixedLen(ts) => simplified_union_from_iterators(
-                i_s,
-                ts.iter().cloned().map(|t| t.avoid_implicit_literal(i_s.db)),
-            ),
+            TupleArgs::FixedLen(ts) => simplified_union_from_iterators(i_s, ts.iter()),
             TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
                 TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
                 TupleUnpack::ArbitraryLen(t) => simplified_union_from_iterators(
