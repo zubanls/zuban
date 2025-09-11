@@ -1290,6 +1290,15 @@ impl Type {
             })
     }
 
+    pub fn is_allowed_as_literal_string(&self) -> bool {
+        match self {
+            Type::LiteralString | Type::Literal(_) => true,
+            Type::Union(u) => u.iter().all(|t| t.is_allowed_as_literal_string()),
+            Type::Intersection(i) => i.iter_entries().any(|t| t.is_allowed_as_literal_string()),
+            _ => false,
+        }
+    }
+
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, 'x> {
         match self {
             Type::Literal(literal) => MroIterator::new(

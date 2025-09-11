@@ -1,7 +1,7 @@
 use std::{iter::repeat_n, sync::Arc};
 
 use super::{
-    AnyCause, LookupResult, Namespace, NewType, Type, TypeVarKind, dataclass_initialize,
+    AnyCause, LookupResult, Namespace, NewType, TupleArgs, Type, TypeVarKind, dataclass_initialize,
     initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type,
     lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance,
     lookup_on_typed_dict,
@@ -23,7 +23,10 @@ use crate::{
     },
     node_ref::NodeRef,
     recoverable_error,
-    type_::{DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple},
+    type_::{
+        DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple,
+        TupleUnpack,
+    },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, Instance, InstanceLookupOptions,
         LookupDetails, OverloadedFunction,
@@ -781,6 +784,30 @@ impl Type {
             }
             _ => None,
         }
+    }
+
+    pub fn is_literal_string_only_argument_for_string_percent_formatting(&self) -> bool {
+        fn check(t: &Type, allow_tuples: bool) -> bool {
+            let check_tup_items = |items: &Arc<[Type]>| items.iter().all(|t| check(t, false));
+            match t {
+                Type::Tuple(tup) if allow_tuples => match &tup.args {
+                    TupleArgs::WithUnpack(w) => match &w.unpack {
+                        TupleUnpack::TypeVarTuple(_) => false,
+                        TupleUnpack::ArbitraryLen(t) => {
+                            check(t, false)
+                                && check_tup_items(&w.before)
+                                && check_tup_items(&w.after)
+                        }
+                    },
+                    TupleArgs::FixedLen(items) => check_tup_items(items),
+                    TupleArgs::ArbitraryLen(t) => check(t, false),
+                },
+                Type::Union(u) => u.iter().all(|t| check(t, allow_tuples)),
+                Type::Intersection(i) => i.iter_entries().any(|t| check(t, allow_tuples)),
+                _ => t.is_allowed_as_literal_string(),
+            }
+        }
+        check(self, true)
     }
 
     pub fn try_operation_against_literal_string(

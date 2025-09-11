@@ -205,3 +205,32 @@ def f(x: LiteralString, y: list[LiteralString]):
     a = y  # E: Incompatible types in assignment (expression has type "list[LiteralString]", variable has type "list[str]") \
            # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
            # N: Consider using "Sequence" instead, which is covariant
+
+[case literal_string_percent_syntax]
+# flags: --no-mypy-compatible
+from typing import LiteralString, Literal
+
+def f(x: Literal[1], y: Literal["c %s %s"], z: LiteralString, s: str, u1: Literal['a%s', 'b%s'], u2: LiteralString | str):
+    reveal_type("asdf %s" % x)  # N: Revealed type is "LiteralString"
+    reveal_type("asdf %s" % y)  # N: Revealed type is "LiteralString"
+    reveal_type("asdf %s" % z)  # N: Revealed type is "LiteralString"
+    reveal_type("asdf %s" % s)  # N: Revealed type is "str"
+    reveal_type("asdf %s" % (y,))  # N: Revealed type is "LiteralString"
+    reveal_type("asdf %s %s" % (y, z))  # N: Revealed type is "LiteralString"
+    reveal_type("asdf %s %s" % (z, s))  # N: Revealed type is "str"
+
+    reveal_type(y % (z, z))  # N: Revealed type is "LiteralString"
+    reveal_type(y % z)  # N: Revealed type is "LiteralString"
+    reveal_type(y % s)  # N: Revealed type is "str"
+    reveal_type(z % (z, z))  # N: Revealed type is "LiteralString"
+    reveal_type(z % (s, z))  # N: Revealed type is "str"
+    reveal_type(z % z)  # N: Revealed type is "LiteralString"
+    reveal_type(z % s)  # N: Revealed type is "str"
+
+    reveal_type(z % s)  # N: Revealed type is "str"
+
+    reveal_type(u1 % u1)  # N: Revealed type is "LiteralString"
+    reveal_type(u1 % (u1, u1))  # N: Revealed type is "LiteralString"
+    reveal_type(u1 % (u1, u2))  # N: Revealed type is "str"
+    reveal_type(u1 % u2)  # N: Revealed type is "str"
+    reveal_type(u2 % u1)  # N: Revealed type is "str"

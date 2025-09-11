@@ -2881,6 +2881,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 LookupKind::OnlyType,
                 &|issue| from.add_issue(i_s, issue),
                 &mut |l_type, lookup_result| {
+                    if op_infos.operand == "%" && l_type.is_allowed_as_literal_string() {
+                        if right
+                            .as_cow_type(i_s)
+                            .is_literal_string_only_argument_for_string_percent_formatting()
+                        {
+                            add_to_union(Inferred::from_type(Type::LiteralString));
+                            return;
+                        }
+                    }
+
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
                         match r_type {
@@ -3637,19 +3647,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 FStringContent::FStringExpr(e) => {
                     let (expressions, spec) = e.unpack();
                     for expr in expressions.iter() {
-                        fn is_allowed_as_string_literal(t: &Type) -> bool {
-                            match t {
-                                Type::LiteralString | Type::Literal(_) => true,
-                                Type::Union(u) => u.iter().all(|t| is_allowed_as_string_literal(t)),
-                                Type::Intersection(i) => {
-                                    i.iter_entries().any(|t| is_allowed_as_string_literal(t))
-                                }
-                                _ => false,
-                            }
-                        }
-                        is_string_literal &= is_allowed_as_string_literal(
-                            &self.infer_expression(expr).as_cow_type(self.i_s),
-                        );
+                        is_string_literal &= self
+                            .infer_expression(expr)
+                            .as_cow_type(self.i_s)
+                            .is_allowed_as_literal_string();
                     }
                     if let Some(spec) = spec {
                         is_string_literal &= self
