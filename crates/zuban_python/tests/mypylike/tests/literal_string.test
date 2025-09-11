@@ -194,3 +194,14 @@ def func9(val: list[LiteralString]):
 
 def func10(val: Sequence[LiteralString]):
     x1: Sequence[str] = val  # OK
+
+[case literal_string_context_for_containers]
+# flags: --no-mypy-compatible
+from typing import LiteralString, Literal
+
+def f(x: LiteralString, y: list[LiteralString]):
+    reveal_type([x])  # N: Revealed type is "list[str]"
+    a: list[str] = [x]
+    a = y  # E: Incompatible types in assignment (expression has type "list[LiteralString]", variable has type "list[str]") \
+           # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+           # N: Consider using "Sequence" instead, which is covariant

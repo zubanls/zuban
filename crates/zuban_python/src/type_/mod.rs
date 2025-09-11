@@ -1218,6 +1218,7 @@ impl Type {
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
             Type::Literal(l) if l.implicit => Some(l.fallback_type(db)),
+            Type::LiteralString => Some(db.python_state.str_type()),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => Some(Type::Tuple(tup.maybe_avoid_implicit_literal(db)?)),
             Type::Union(union) => {
