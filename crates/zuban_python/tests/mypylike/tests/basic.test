@@ -427,7 +427,7 @@ baz("""ab\nc""")
 [out]
 __main__:9: error: Argument 1 to "foo" has incompatible type "Literal['ab\\\nc']"; expected "Literal['abc']"
 __main__:11: error: Argument 1 to "foo" has incompatible type "Literal['abc\n']"; expected "Literal['abc']"
-__main__:13: error: Argument 1 to "foo" has incompatible type "str"; expected "Literal['abc']"
+__main__:13: error: Argument 1 to "foo" has incompatible type "LiteralString"; expected "Literal['abc']"
 
 [case fstring_unions]
 abc = int

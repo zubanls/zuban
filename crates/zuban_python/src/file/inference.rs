@@ -2881,7 +2881,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 LookupKind::OnlyType,
                 &|issue| from.add_issue(i_s, issue),
                 &mut |l_type, lookup_result| {
-                    if op_infos.operand == "%" && l_type.is_allowed_as_literal_string() {
+                    if op_infos.operand == "%" && l_type.is_allowed_as_literal_string(false) {
                         if right
                             .as_cow_type(i_s)
                             .is_literal_string_only_argument_for_string_percent_formatting()
@@ -3650,7 +3650,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         is_string_literal &= self
                             .infer_expression(expr)
                             .as_cow_type(self.i_s)
-                            .is_allowed_as_literal_string();
+                            .is_allowed_as_literal_string(true);
                     }
                     if let Some(spec) = spec {
                         is_string_literal &= self

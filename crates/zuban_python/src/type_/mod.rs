@@ -1292,11 +1292,17 @@ impl Type {
             })
     }
 
-    pub fn is_allowed_as_literal_string(&self) -> bool {
+    pub fn is_allowed_as_literal_string(&self, allow_non_string_literals: bool) -> bool {
         match self {
-            Type::LiteralString | Type::Literal(_) => true,
-            Type::Union(u) => u.iter().all(|t| t.is_allowed_as_literal_string()),
-            Type::Intersection(i) => i.iter_entries().any(|t| t.is_allowed_as_literal_string()),
+            Type::LiteralString => true,
+            Type::Literal(_) if allow_non_string_literals => true,
+            Type::Literal(l) => matches!(l.kind, LiteralKind::String(_)),
+            Type::Union(u) => u
+                .iter()
+                .all(|t| t.is_allowed_as_literal_string(allow_non_string_literals)),
+            Type::Intersection(i) => i
+                .iter_entries()
+                .any(|t| t.is_allowed_as_literal_string(allow_non_string_literals)),
             _ => false,
         }
     }

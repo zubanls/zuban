@@ -190,7 +190,10 @@ assert_type(func8("bar"), B)  # Second overload
 assert_type(func8(str(1)), A)  # Third overload
 
 def func9(val: list[LiteralString]):
-    x1: list[str] = val  # E
+    x1: list[str] = val  # E: Incompatible types in assignment (expression has type "list[LiteralString]", variable has type "list[str]") \
+                         # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                         # N: Consider using "Sequence" instead, which is covariant
+
 
 def func10(val: Sequence[LiteralString]):
     x1: Sequence[str] = val  # OK

@@ -804,7 +804,7 @@ impl Type {
                 },
                 Type::Union(u) => u.iter().all(|t| check(t, allow_tuples)),
                 Type::Intersection(i) => i.iter_entries().any(|t| check(t, allow_tuples)),
-                _ => t.is_allowed_as_literal_string(),
+                _ => t.is_allowed_as_literal_string(true),
             }
         }
         check(self, true)

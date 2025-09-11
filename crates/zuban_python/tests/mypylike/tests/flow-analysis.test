@@ -274,12 +274,23 @@ class D(C):
 
 reveal_type(D().x)  # N: Revealed type is "int"
 
-[case avoid_crash_on_aug_assign_access2]
+[case avoid_crash_on_aug_assign_access2_mypy_compatible]
+# flags: --mypy-compatible
 class C:
     x: int
 class D(C):
     def f(self) -> None:
         self.x *= ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+reveal_type(D().x)  # N: Revealed type is "int"
+
+[case avoid_crash_on_aug_assign_access2_no_mypy_compatible]
+# flags: --no-mypy-compatible
+class C:
+    x: int
+class D(C):
+    def f(self) -> None:
+        self.x *= ""  # E: Incompatible types in assignment (expression has type "LiteralString", variable has type "int")
 
 reveal_type(D().x)  # N: Revealed type is "int"
 
