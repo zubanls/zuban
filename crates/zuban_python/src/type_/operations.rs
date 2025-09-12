@@ -942,24 +942,25 @@ fn int_operations(
                 }
             }
         },
-        "<<" => match right.try_into() {
-            Ok(right) => {
-                let shifted = left.checked_shl(right)?;
-                if left < 0 && shifted >= 0 || left > 0 && shifted <= 0 {
-                    None
-                } else {
-                    Some(shifted)
+        "<<" => {
+            let r: Result<u32, _> = right.try_into();
+            match r {
+                Ok(right) => {
+                    if right > 63 {
+                        return None;
+                    }
+                    ((left as i128) << right).try_into().ok()
+                }
+                Err(_) => {
+                    if right >= 0 {
+                        None
+                    } else {
+                        add_issue(IssueKind::NegativeShiftCount);
+                        return Some(Type::ERROR);
+                    }
                 }
             }
-            Err(_) => {
-                if right >= 0 {
-                    None
-                } else {
-                    add_issue(IssueKind::NegativeShiftCount);
-                    return Some(Type::ERROR);
-                }
-            }
-        },
+        }
         "|" => Some(left | right),
         "&" => Some(left & right),
         "^" => Some(left ^ right),

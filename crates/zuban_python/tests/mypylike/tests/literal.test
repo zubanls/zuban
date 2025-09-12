@@ -304,3 +304,6 @@ reveal_type(-2<<120)    # N: Revealed type is "int"
 reveal_type(-2<<120)    # N: Revealed type is "int"
 
 reveal_type(-2<<3)    # N: Revealed type is "Literal[-16]?"
+
+reveal_type(5<<62)     # N: Revealed type is "int"
+reveal_type(-11<<63)   # N: Revealed type is "int"
