@@ -1184,6 +1184,26 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn find_relevant_constructor(&self, i_s: &InferenceState<'db, '_>) -> ClassConstructor<'_> {
+        if !i_s.db.project.settings.mypy_compatible {
+            if let MetaclassState::Some(metaclass) = self.use_cached_class_infos(i_s.db).metaclass {
+                let meta = Class::from_non_generic_link(i_s.db, metaclass);
+                let lookup = meta.instance().lookup(
+                    i_s,
+                    "__call__",
+                    InstanceLookupOptions::new(&|_| todo!()),
+                );
+                if lookup.lookup.is_some() && !lookup.class.is_bare_type(i_s.db) {
+                    debug!(
+                        "Found __call__ on metaclass {:?} and using it as a constructor for {:?}",
+                        meta.qualified_name(i_s.db),
+                        self.qualified_name(i_s.db)
+                    );
+                    return ClassConstructor::MetaclassDunderCall {
+                        constructor: lookup.lookup,
+                    };
+                }
+            }
+        }
         let (__init__, init_class, init_mro_index) = self
             .lookup_and_class_and_maybe_ignore_self_internal(
                 i_s,
@@ -1317,7 +1337,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         .is_simple_super_type_of(i_s, &result)
                         .bool()
                 {
-                    return ClassExecutionResult::Inferred(Inferred::from_type(result));
+                    ClassExecutionResult::Inferred(Inferred::from_type(result))
                 } else if matches!(self.generics, Generics::NotDefinedYet { .. })
                     && !self.type_vars(i_s).is_empty()
                 {
@@ -1328,13 +1348,13 @@ impl<'db: 'a, 'a> Class<'a> {
                     Self::with_self_generics(i_s.db, self.node_ref)
                         .as_type(i_s.db)
                         .is_sub_type_of(i_s, &mut matcher, &result);
-                    return ClassExecutionResult::ClassGenerics(
+                    ClassExecutionResult::ClassGenerics(
                         matcher
                             .into_type_arguments(i_s, self.node_ref.as_link())
                             .type_arguments_into_class_generics(i_s.db),
-                    );
+                    )
                 } else {
-                    return ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db));
+                    ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db))
                 }
             }
             ClassConstructor::DunderInit {
@@ -1352,6 +1372,14 @@ impl<'db: 'a, 'a> Class<'a> {
                     on_type_error,
                     from_type_type,
                 )
+            }
+            ClassConstructor::MetaclassDunderCall { constructor } => {
+                ClassExecutionResult::Inferred(constructor.into_inferred().execute_with_details(
+                    i_s,
+                    args,
+                    result_context,
+                    on_type_error,
+                ))
             }
         }
     }
@@ -1931,6 +1959,10 @@ impl<'a> TypeOrClass<'a> {
         matches!(self, TypeOrClass::Class(c) if c.node_ref == db.python_state.object_node_ref())
     }
 
+    pub fn is_bare_type(&self, db: &Database) -> bool {
+        matches!(self, TypeOrClass::Class(c) if c.node_ref == db.python_state.bare_type_node_ref())
+    }
+
     pub fn is_frozen_dataclass(&self) -> bool {
         match self {
             Self::Type(t) => match t.as_ref() {
@@ -2252,15 +2284,20 @@ pub(crate) enum ClassConstructor<'a> {
         constructor: LookupResult,
         init_class: TypeOrClass<'a>,
     },
+    MetaclassDunderCall {
+        constructor: LookupResult,
+    },
 }
 
 impl ClassConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<CallableLike> {
         match self {
-            Self::DunderNew { constructor } => constructor
-                .into_inferred()
-                .as_cow_type(i_s)
-                .maybe_callable(i_s),
+            Self::DunderNew { constructor } | Self::MetaclassDunderCall { constructor } => {
+                constructor
+                    .into_inferred()
+                    .as_cow_type(i_s)
+                    .maybe_callable(i_s)
+            }
             Self::DunderInit {
                 constructor,
                 init_class,

@@ -1965,3 +1965,42 @@ class D[T]:
             return self.__class__(1, '')  # E: Argument 1 to "D" has incompatible type "int"; expected "T"
         else:
             return self.__class__(self.t, '')
+
+[case metaclass_dunder_call_mypy_compatible]
+# flags: --mypy-compatible
+from typing import assert_type, Self
+class Meta2(type):
+    def __call__(cls, *args, **kwargs) -> "int | Meta2":
+        return 1
+
+class Class2(metaclass=Meta2):
+    def __new__(cls, x: int) -> Self:
+        return super().__new__(cls)
+
+assert_type(Class2(1), Class2)
+
+[case metaclass_dunder_call_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# From conformance tests (constructors_call_metaclass.py)
+from typing import NoReturn, Self, TypeVar, assert_type
+
+class Meta1(type):
+    def __call__(cls, *args, **kwargs) -> NoReturn:
+        raise TypeError("Cannot instantiate class")
+
+class Class1(metaclass=Meta1):
+    def __new__(cls, x: int) -> Self:
+        return super().__new__(cls)
+
+if bool():
+    assert_type(Class1(), NoReturn)
+
+class Meta2(type):
+    def __call__(cls, *args, **kwargs) -> "int | Meta2":
+        return 1
+
+class Class2(metaclass=Meta2):
+    def __new__(cls, x: int) -> Self:
+        return super().__new__(cls)
+
+assert_type(Class2(), int | Meta2)
