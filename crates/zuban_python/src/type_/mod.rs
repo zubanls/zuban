@@ -645,6 +645,13 @@ impl Type {
         }
     }
 
+    pub fn for_all_in_union(&self, db: &Database, callback: &impl Fn(&Type) -> bool) -> bool {
+        self.iter_with_unpacked_unions(db).all(|t| match t {
+            Type::Intersection(intersection) => intersection.iter_entries().any(callback),
+            _ => callback(t),
+        })
+    }
+
     pub fn highest_union_format_index(&self) -> usize {
         match self {
             Type::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),

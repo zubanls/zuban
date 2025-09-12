@@ -1190,17 +1190,36 @@ impl<'db: 'a, 'a> Class<'a> {
                 let lookup = meta.instance().lookup(
                     i_s,
                     "__call__",
-                    InstanceLookupOptions::new(&|_| todo!()),
+                    InstanceLookupOptions::new(&|issue| {
+                        debug!("TODO issue when resolving __call__ to find constructor {issue:?}");
+                    })
+                    .with_as_self_instance(&|| self.as_type_type(i_s.db)),
                 );
-                if lookup.lookup.is_some() && !lookup.class.is_bare_type(i_s.db) {
-                    debug!(
-                        "Found __call__ on metaclass {:?} and using it as a constructor for {:?}",
-                        meta.qualified_name(i_s.db),
-                        self.qualified_name(i_s.db)
-                    );
-                    return ClassConstructor::MetaclassDunderCall {
-                        constructor: lookup.lookup,
-                    };
+                if let Some(inf) = lookup.lookup.maybe_inferred()
+                    && !lookup.class.is_bare_type(i_s.db)
+                {
+                    let has_special_type =
+                        inf.as_cow_type(i_s).for_all_in_union(i_s.db, &|t| match t {
+                            Type::Callable(callable) => {
+                                callable.return_type.for_all_in_union(i_s.db, &|t| match t {
+                                    Type::Class(class) => class.link != self.node_ref.as_link(),
+                                    Type::Any(_) => false,
+                                    _ => true,
+                                })
+                            }
+                            _ => false,
+                        });
+                    if has_special_type {
+                        debug!(
+                            "Found __call__ on metaclass {:?} with a special type \
+                             and using it as a constructor for {:?}",
+                            meta.qualified_name(i_s.db),
+                            self.qualified_name(i_s.db)
+                        );
+                        return ClassConstructor::MetaclassDunderCall {
+                            constructor: lookup.lookup,
+                        };
+                    }
                 }
             }
         }
