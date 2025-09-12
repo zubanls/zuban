@@ -171,13 +171,13 @@ from datetime import datetime, timedelta
 
 #?
 (datetime - timedelta)
-#? datetime()
+#? datetime.datetime()
 (datetime() - timedelta())
-#? timedelta()
+#? datetime.timedelta()
 (datetime() - datetime())
-#? timedelta()
+#? datetime.timedelta()
 (timedelta() - datetime())
-#? timedelta()
+#? datetime.timedelta()
 (timedelta() - timedelta())
 
 # -----------------

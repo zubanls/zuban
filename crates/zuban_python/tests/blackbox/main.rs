@@ -27,7 +27,7 @@ lazy_static::lazy_static! {
         ("async_.py", 4),
         ("basic.py", 23),
         ("classes.py", 20),
-        ("comprehensions.py", 32),
+        ("comprehensions.py", 31),
         ("decorators.py", 31),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 18),
@@ -43,7 +43,7 @@ lazy_static::lazy_static! {
         ("pep0484_generic_passthroughs.py", 5),
         ("pep0484_typing.py", 3),
         ("positional_only_params.py", 3),
-        ("precedence.py", 11),
+        ("precedence.py", 7),
         ("stdlib.py", 43),
 
         // TODO work on these files

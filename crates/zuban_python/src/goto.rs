@@ -934,7 +934,15 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
                 type_to_name(i_s, t, add)
             }
         }
-        Type::LiteralString { .. } => (), // TODO ?
+        Type::LiteralString { .. } => {
+            let node_ref = db.python_state.str_node_ref();
+            add(Name::TreeName(TreeName::with_parent_scope(
+                db,
+                node_ref.file,
+                node_ref.class_storage().parent_scope,
+                node_ref.node().name(),
+            )))
+        }
         Type::Never(_) => (),
     }
 }
