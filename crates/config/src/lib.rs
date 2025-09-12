@@ -784,7 +784,7 @@ pub fn set_flag_and_return_ignore_errors(
     flags: &mut TypeCheckerFlags,
     name: &str,
     value: IniOrTomlValue,
-    from_zuban: bool,
+    add_error_if_unrecognized_option: bool,
 ) -> ConfigResult {
     let (invert, option_name) = maybe_invert(name);
     let add_list_of_str = |target: &mut Vec<String>| {
@@ -832,7 +832,14 @@ pub fn set_flag_and_return_ignore_errors(
             r#"specify it in a configuration file instead, or set individual "#,
             r#"inline flags (see "mypy -h" for the list of flags enabled in strict mode)"#
         )),
-        _ => set_bool_init_flags(flags, name, &option_name, value, invert, from_zuban),
+        _ => set_bool_init_flags(
+            flags,
+            name,
+            &option_name,
+            value,
+            invert,
+            add_error_if_unrecognized_option,
+        ),
     }
 }
 
@@ -842,7 +849,7 @@ fn set_bool_init_flags(
     name: &str,
     value: IniOrTomlValue,
     invert: bool,
-    from_zuban: bool,
+    add_error_if_unrecognized_option: bool,
 ) -> ConfigResult {
     match name {
         "strict_optional" => flags.strict_optional = value.as_bool(invert)?,
@@ -884,6 +891,7 @@ fn set_bool_init_flags(
         | "packages"
         | "strict_concatenate"
         | "strict_bytes"
+        | "strict_equality_for_none"
         | "namespace_packages"
         | "explicit_package_bases"
         | "warn_incomplete_stub"
@@ -909,11 +917,8 @@ fn set_bool_init_flags(
         "ignore_errors" => return value.as_bool(invert),
         "python_version" => bail!("python_version not supported in inline configuration"),
         _ => {
-            if from_zuban {
-                bail!(
-                    "Zuban does not support option: {original_name} = {}",
-                    value.as_repr()
-                );
+            if add_error_if_unrecognized_option {
+                bail!("Unrecognized option: {original_name} = {}", value.as_repr());
             } else {
                 tracing::error!(
                     "Unsupported option given in config: {original_name} = {}",
