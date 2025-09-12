@@ -1183,10 +1183,7 @@ impl<'db: 'a, 'a> Class<'a> {
         })
     }
 
-    pub fn find_relevant_constructor(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-    ) -> NewOrInitConstructor<'_> {
+    pub fn find_relevant_constructor(&self, i_s: &InferenceState<'db, '_>) -> ClassConstructor<'_> {
         let (__init__, init_class, init_mro_index) = self
             .lookup_and_class_and_maybe_ignore_self_internal(
                 i_s,
@@ -1203,7 +1200,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
                 // a lower MRO than an __init__.
                 let is_new = new_mro_index < init_mro_index;
-                NewOrInitConstructor {
+                ClassConstructor {
                     is_new,
                     // TODO this should not be bound if is_new = false
                     constructor: match is_new {
@@ -2240,14 +2237,14 @@ fn init_as_callable(
     })
 }
 
-pub(crate) struct NewOrInitConstructor<'a> {
+pub(crate) struct ClassConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
     constructor: LookupResult,
     init_class: TypeOrClass<'a>,
     is_new: bool,
 }
 
-impl NewOrInitConstructor<'_> {
+impl ClassConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<CallableLike> {
         let inf = self.constructor.into_inferred();
         if self.is_new {
