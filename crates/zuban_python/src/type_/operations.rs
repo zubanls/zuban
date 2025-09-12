@@ -848,23 +848,25 @@ impl LiteralValue<'_> {
                     l.iter().chain(r.iter()).copied().collect(),
                 ))))
             }),
-            (LiteralValue::String(l), LiteralValue::Int(n)) => (operand == "*").then(|| {
+            (LiteralValue::String(s), LiteralValue::Int(n))
+            | (LiteralValue::Int(n), LiteralValue::String(s)) => (operand == "*").then(|| {
                 let n = n.try_into().unwrap_or(0);
-                if l.len() * n > MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION {
+                if s.len() * n > MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION {
                     Type::LiteralString { implicit: true }
                 } else {
                     Type::Literal(Literal::new_implicit(LiteralKind::String(
-                        DbString::ArcStr(repeat_n(l, n).collect::<String>().into()),
+                        DbString::ArcStr(repeat_n(s, n).collect::<String>().into()),
                     )))
                 }
             }),
-            (LiteralValue::Bytes(l), LiteralValue::Int(n)) => (operand == "*").then(|| {
+            (LiteralValue::Bytes(b), LiteralValue::Int(n))
+            | (LiteralValue::Int(n), LiteralValue::Bytes(b)) => (operand == "*").then(|| {
                 let n = n.try_into().unwrap_or(0);
-                if l.len() * n > MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION {
+                if b.len() * n > MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION {
                     db.python_state.bytes_type()
                 } else {
                     Type::Literal(Literal::new_implicit(LiteralKind::Bytes(DbBytes::Arc(
-                        repeat_n(l.as_ref(), n).flatten().copied().collect(),
+                        repeat_n(b.as_ref(), n).flatten().copied().collect(),
                     ))))
                 }
             }),
@@ -879,9 +881,7 @@ impl LiteralValue<'_> {
             }
 
             (LiteralValue::Bytes(_), LiteralValue::String(_))
-            | (LiteralValue::String(_), LiteralValue::Bytes(_))
-            | (LiteralValue::Int(_), LiteralValue::String(_))
-            | (LiteralValue::Int(_), LiteralValue::Bytes(_)) => None,
+            | (LiteralValue::String(_), LiteralValue::Bytes(_)) => None,
         }
     }
 }

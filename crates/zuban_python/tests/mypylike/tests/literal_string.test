@@ -261,3 +261,13 @@ def f(l: Literal["a{}"], ls: LiteralString, u: Literal["a{}", "b{}"], s: str):
 
     reveal_type(u.format(s))  # N: Revealed type is "str"
     reveal_type(s.format(u))  # N: Revealed type is "str"
+
+[case literal_string_multiplication]
+# flags: --no-mypy-compatible
+from typing import LiteralString
+
+def f(y: LiteralString):
+    reveal_type(y * 5)  # N: Revealed type is "LiteralString"
+    reveal_type(5 * y)  # N: Revealed type is "LiteralString"
+    reveal_type(y * 1000000)  # N: Revealed type is "LiteralString"
+    reveal_type(1000000 * y)  # N: Revealed type is "LiteralString"
