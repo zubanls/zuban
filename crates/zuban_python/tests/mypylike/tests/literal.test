@@ -290,3 +290,17 @@ def f(i: int, l: Literal[1, 2], bytes: Literal[b'a', b'b']):
     reveal_type(i * x)  # N: Revealed type is "bytes"
     reveal_type(l * bytes)  # N: Revealed type is "Literal[b'a']? | Literal[b'b']? | Literal[b'aa']? | Literal[b'bb']?"
     reveal_type(bytes * l)  # N: Revealed type is "Literal[b'a']? | Literal[b'aa']? | Literal[b'b']? | Literal[b'bb']?"
+
+[case left_shift_should_not_overflow]
+reveal_type(2<<62)    # N: Revealed type is "int"
+reveal_type(126<<63)  # N: Revealed type is "int"
+reveal_type(2<<120)    # N: Revealed type is "int"
+
+reveal_type(-2<<62)    # N: Revealed type is "Literal[-9223372036854775808]?"
+reveal_type(-2<<63)    # N: Revealed type is "int"
+reveal_type(-2<<64)    # N: Revealed type is "int"
+reveal_type(-2<<120)    # N: Revealed type is "int"
+
+reveal_type(-2<<120)    # N: Revealed type is "int"
+
+reveal_type(-2<<3)    # N: Revealed type is "Literal[-16]?"

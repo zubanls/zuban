@@ -943,7 +943,14 @@ fn int_operations(
             }
         },
         "<<" => match right.try_into() {
-            Ok(right) => left.checked_shl(right),
+            Ok(right) => {
+                let shifted = left.checked_shl(right)?;
+                if left < 0 && shifted >= 0 || left > 0 && shifted <= 0 {
+                    None
+                } else {
+                    Some(shifted)
+                }
+            }
             Err(_) => {
                 if right >= 0 {
                     None
