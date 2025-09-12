@@ -1200,18 +1200,20 @@ impl<'db: 'a, 'a> Class<'a> {
                 // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
                 // a lower MRO than an __init__.
                 let is_new = new_mro_index < init_mro_index;
-                ClassConstructor {
-                    is_new,
-                    // TODO this should not be bound if is_new = false
-                    constructor: match is_new {
-                        false => __init__,
-                        true => __new__
+                if is_new {
+                    ClassConstructor::DunderNew {
+                        // TODO this should not be bound
+                        constructor: __new__
                             .and_then(|inf| {
                                 Some(inf.bind_new_descriptors(i_s, self, cls.as_maybe_class()))
                             })
                             .unwrap(),
-                    },
-                    init_class,
+                    }
+                } else {
+                    ClassConstructor::DunderInit {
+                        constructor: __init__,
+                        init_class,
+                    }
                 }
             },
         )
@@ -1301,53 +1303,57 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let d = |_: &dyn FuncLike, _: &Database| Some(format!("\"{}\"", self.name()));
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
-        let constructor = self.find_relevant_constructor(i_s);
-        if constructor.is_new {
-            let result = constructor
-                .constructor
-                .into_inferred()
-                .execute_with_details(i_s, args, result_context, on_type_error)
-                .as_type(i_s);
-            // Only subclasses of the current class are valid, otherwise return the current
-            // class. Diagnostics will care about these cases and raise errors when needed.
-            if !result.is_any()
-                && Self::with_undefined_generics(self.node_ref)
-                    .as_type(i_s.db)
-                    .is_simple_super_type_of(i_s, &result)
-                    .bool()
-            {
-                return ClassExecutionResult::Inferred(Inferred::from_type(result));
-            } else if matches!(self.generics, Generics::NotDefinedYet { .. })
-                && !self.type_vars(i_s).is_empty()
-            {
-                // This is a bit special, because in some cases like reversed() __new__ returns a
-                // super class of the current class. We use that super class to infer the generics
-                // that are relevant in the current class.
-                let mut matcher = Matcher::new_class_matcher(i_s, *self);
-                Self::with_self_generics(i_s.db, self.node_ref)
-                    .as_type(i_s.db)
-                    .is_sub_type_of(i_s, &mut matcher, &result);
-                return ClassExecutionResult::ClassGenerics(
-                    matcher
-                        .into_type_arguments(i_s, self.node_ref.as_link())
-                        .type_arguments_into_class_generics(i_s.db),
-                );
-            } else {
-                return ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db));
+        match self.find_relevant_constructor(i_s) {
+            ClassConstructor::DunderNew { constructor } => {
+                let result = constructor
+                    .into_inferred()
+                    .execute_with_details(i_s, args, result_context, on_type_error)
+                    .as_type(i_s);
+                // Only subclasses of the current class are valid, otherwise return the current
+                // class. Diagnostics will care about these cases and raise errors when needed.
+                if !result.is_any()
+                    && Self::with_undefined_generics(self.node_ref)
+                        .as_type(i_s.db)
+                        .is_simple_super_type_of(i_s, &result)
+                        .bool()
+                {
+                    return ClassExecutionResult::Inferred(Inferred::from_type(result));
+                } else if matches!(self.generics, Generics::NotDefinedYet { .. })
+                    && !self.type_vars(i_s).is_empty()
+                {
+                    // This is a bit special, because in some cases like reversed() __new__ returns a
+                    // super class of the current class. We use that super class to infer the generics
+                    // that are relevant in the current class.
+                    let mut matcher = Matcher::new_class_matcher(i_s, *self);
+                    Self::with_self_generics(i_s.db, self.node_ref)
+                        .as_type(i_s.db)
+                        .is_sub_type_of(i_s, &mut matcher, &result);
+                    return ClassExecutionResult::ClassGenerics(
+                        matcher
+                            .into_type_arguments(i_s, self.node_ref.as_link())
+                            .type_arguments_into_class_generics(i_s.db),
+                    );
+                } else {
+                    return ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db));
+                }
+            }
+            ClassConstructor::DunderInit {
+                constructor,
+                init_class,
+            } => {
+                debug!("Check {} __init__", self.name());
+                let _indent = debug_indent();
+                self.type_check_dunder_init_func(
+                    i_s,
+                    constructor,
+                    init_class,
+                    args,
+                    result_context,
+                    on_type_error,
+                    from_type_type,
+                )
             }
         }
-
-        debug!("Check {} __init__", self.name());
-        let _indent = debug_indent();
-        self.type_check_dunder_init_func(
-            i_s,
-            constructor.constructor,
-            constructor.init_class,
-            args,
-            result_context,
-            on_type_error,
-            from_type_type,
-        )
     }
 
     pub fn ensure_calculated_diagnostics_for_class(&self, db: &Database) -> Result<(), ()> {
@@ -2237,20 +2243,28 @@ fn init_as_callable(
     })
 }
 
-pub(crate) struct ClassConstructor<'a> {
+pub(crate) enum ClassConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
-    constructor: LookupResult,
-    init_class: TypeOrClass<'a>,
-    is_new: bool,
+    DunderNew {
+        constructor: LookupResult,
+    },
+    DunderInit {
+        constructor: LookupResult,
+        init_class: TypeOrClass<'a>,
+    },
 }
 
 impl ClassConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<CallableLike> {
-        let inf = self.constructor.into_inferred();
-        if self.is_new {
-            inf.as_cow_type(i_s).maybe_callable(i_s)
-        } else {
-            init_as_callable(i_s, cls, inf, self.init_class)
+        match self {
+            Self::DunderNew { constructor } => constructor
+                .into_inferred()
+                .as_cow_type(i_s)
+                .maybe_callable(i_s),
+            Self::DunderInit {
+                constructor,
+                init_class,
+            } => init_as_callable(i_s, cls, constructor.into_inferred(), init_class),
         }
     }
 
