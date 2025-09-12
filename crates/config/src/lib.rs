@@ -888,21 +888,9 @@ fn set_bool_init_flags(
             flags.disable_memoryview_promotion = value.as_bool(invert)?
         }
         "warn_unused_ignores"
-        | "packages"
         | "strict_concatenate"
         | "strict_bytes"
-        | "strict_equality_for_none"
-        | "namespace_packages"
-        | "explicit_package_bases"
-        | "warn_incomplete_stub"
-        | "error_summary"
-        | "show_none_errors"
-        | "install_types"
-        | "non_interactive"
-        | "scripts_are_modules"
-        | "site_packages"
-        | "untyped_calls_exclude"
-        | "silence_site_packages" => {
+        | "strict_equality_for_none" => {
             tracing::warn!("Ignored config value {name}, please contact support if you need them");
         }
         "sqlite_cache" | "incremental" => (), // This doesn't matter
@@ -920,8 +908,8 @@ fn set_bool_init_flags(
             if add_error_if_unrecognized_option {
                 bail!("Unrecognized option: {original_name} = {}", value.as_repr());
             } else {
-                tracing::error!(
-                    "Unsupported option given in config: {original_name} = {}",
+                tracing::warn!(
+                    "Unsupported option given in Mypy config: {original_name} = {}, context support if you need it",
                     value.as_repr()
                 );
             }
