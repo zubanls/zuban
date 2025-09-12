@@ -209,6 +209,7 @@ impl ProjectOptions {
                         diagnostic_config,
                         key,
                         IniOrTomlValue::Ini(value),
+                        false,
                     )?;
                 }
             } else if let Some(rest) = name.strip_prefix("mypy-") {
@@ -259,6 +260,7 @@ impl ProjectOptions {
                     config_file_path,
                     diagnostic_config,
                     config,
+                    true,
                 )?;
                 Some(result)
             } else {
@@ -282,6 +284,7 @@ impl ProjectOptions {
                 config_file_path,
                 diagnostic_config,
                 config,
+                false,
             )?;
             Ok(Some(result))
         } else {
@@ -296,6 +299,7 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         diagnostic_config: &mut DiagnosticConfig,
         config: &Item,
+        from_zuban: bool,
     ) -> anyhow::Result<()> {
         let Item::Table(table) = config else {
             bail!("Expected tool.mypy to be a table in pyproject.toml");
@@ -313,6 +317,7 @@ impl ProjectOptions {
                         diagnostic_config,
                         key,
                         IniOrTomlValue::Toml(value),
+                        from_zuban,
                     )?;
                 }
                 Item::ArrayOfTables(override_tables) if key == "overrides" => {
@@ -673,6 +678,7 @@ impl OverrideConfig {
                     OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
                     OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
                 },
+                false,
             )?;
         }
         Ok(ignore_errors)
@@ -778,6 +784,7 @@ pub fn set_flag_and_return_ignore_errors(
     flags: &mut TypeCheckerFlags,
     name: &str,
     value: IniOrTomlValue,
+    from_zuban: bool,
 ) -> ConfigResult {
     let (invert, option_name) = maybe_invert(name);
     let add_list_of_str = |target: &mut Vec<String>| {
@@ -825,7 +832,7 @@ pub fn set_flag_and_return_ignore_errors(
             r#"specify it in a configuration file instead, or set individual "#,
             r#"inline flags (see "mypy -h" for the list of flags enabled in strict mode)"#
         )),
-        _ => set_bool_init_flags(flags, name, &option_name, value, invert),
+        _ => set_bool_init_flags(flags, name, &option_name, value, invert, from_zuban),
     }
 }
 
@@ -835,6 +842,7 @@ fn set_bool_init_flags(
     name: &str,
     value: IniOrTomlValue,
     invert: bool,
+    from_zuban: bool,
 ) -> ConfigResult {
     match name {
         "strict_optional" => flags.strict_optional = value.as_bool(invert)?,
@@ -900,7 +908,19 @@ fn set_bool_init_flags(
         "cache_fine_grained" => (),
         "ignore_errors" => return value.as_bool(invert),
         "python_version" => bail!("python_version not supported in inline configuration"),
-        _ => bail!("Unrecognized option: {original_name} = {}", value.as_repr()),
+        _ => {
+            if from_zuban {
+                bail!(
+                    "Zuban does not support option: {original_name} = {}",
+                    value.as_repr()
+                );
+            } else {
+                tracing::error!(
+                    "Unsupported option given in config: {original_name} = {}",
+                    value.as_repr()
+                );
+            }
+        }
     }
     Ok(false)
 }
@@ -923,6 +943,7 @@ fn apply_from_base_config(
     diagnostic_config: &mut DiagnosticConfig,
     key: &str,
     value: IniOrTomlValue,
+    from_zuban: bool,
 ) -> ConfigResult {
     match key {
         "show_error_codes" => {
@@ -970,7 +991,7 @@ fn apply_from_base_config(
             })
         }
         "platform" => settings.platform = Some(value.as_str()?.to_string()),
-        _ => return apply_from_config_part(flags, key, value),
+        _ => return apply_from_config_part(flags, key, value, from_zuban),
     };
     Ok(false)
 }
@@ -979,6 +1000,7 @@ fn apply_from_config_part(
     flags: &mut TypeCheckerFlags,
     key: &str,
     value: IniOrTomlValue,
+    from_zuban: bool,
 ) -> ConfigResult {
     if key == "strict" {
         if value.as_bool(false)? {
@@ -986,7 +1008,7 @@ fn apply_from_config_part(
         }
         Ok(false)
     } else {
-        set_flag_and_return_ignore_errors(flags, key, value)
+        set_flag_and_return_ignore_errors(flags, key, value, from_zuban)
     }
 }
 

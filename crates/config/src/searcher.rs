@@ -170,6 +170,7 @@ fn find_mypy_config_file_in_dir(
                 found.config_path.as_ref().unwrap(),
                 &mut found.diagnostic_config,
                 config,
+                true,
             )?
         }
     }

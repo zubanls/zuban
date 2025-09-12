@@ -852,8 +852,12 @@ fn info_from_directives<'x>(
                     Some(value) => IniOrTomlValue::Ini(value),
                     None => IniOrTomlValue::InlineConfigNoValue,
                 };
-                ignore_errors |=
-                    set_flag_and_return_ignore_errors(flags.as_mut().unwrap(), &name, value)?;
+                ignore_errors |= set_flag_and_return_ignore_errors(
+                    flags.as_mut().unwrap(),
+                    &name,
+                    value,
+                    false,
+                )?;
                 Ok(())
             };
             if let Err(err) = check() {
