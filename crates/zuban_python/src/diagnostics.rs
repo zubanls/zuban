@@ -2088,7 +2088,12 @@ impl<'db> Diagnostic<'db> {
         for (line_nr, line) in lines_with_numbers {
             write_colored(
                 writer,
-                format!("{line_nr:>width$} | ", width = until_line_space_needed).blue(),
+                format!(
+                    "{:>width$} | ",
+                    line_nr + 1,
+                    width = until_line_space_needed
+                )
+                .blue(),
             )?;
 
             // On these lines there are errors, so "underline" them.
