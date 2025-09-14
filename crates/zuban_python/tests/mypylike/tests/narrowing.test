@@ -490,6 +490,35 @@ def bar() -> None:
         reveal_type(x)  # N: Revealed type is "__main__.B"
     reveal_type(x)  # N: Revealed type is "__main__.B"
 
+[case walrus_narrowing_with_initial_definition_in_if]
+d = {'hello': 'hi'}
+
+if x:= d.get('hello'):
+    reveal_type(x)  # N: Revealed type is "str"
+elif x:= d.get('world'):
+    reveal_type(x)  # N: Revealed type is "str"
+else:
+    reveal_type(x)  # N: Revealed type is "Literal[''] | None"
+
+[case walrus_narrowing_with_initial_definition_in_class_body]
+class C:
+    x: int | None
+
+    def func(self) -> None:
+        if x := self.x:
+            reveal_type(x) # N: Revealed type is "int"
+        else:
+            reveal_type(x) # N: Revealed type is "Literal[0] | None"
+
+[case walrus_narrowing_with_unreachable_if]
+# flags: --warn-unreachable
+from typing import Literal
+def f(x: Literal[0] | None):
+    if y := x:
+        reveal_type(y)  # E: Statement is unreachable
+    else:
+        reveal_type(y)  # N: Revealed type is "Literal[0] | None"
+
 [case multi_while_break_widening]
 class A: ...
 class B: ...
