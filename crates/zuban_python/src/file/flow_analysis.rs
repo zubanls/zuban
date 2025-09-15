@@ -4039,7 +4039,7 @@ impl From<Inferred> for TruthyInferred {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum RedefinitionResult {
     RedefinitionAllowed,
     TypeMismatch(bool),

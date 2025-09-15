@@ -327,6 +327,15 @@ reveal_type(walrus)  # N: Revealed type is "collections.defaultdict[Any, int]"
 x[""] = 1
 reveal_type(x)  # N: Revealed type is "collections.defaultdict[str, int]"
 
+[case walrus_defaultdict_partial3]
+# flags: --disallow-untyped-globals
+from collections import defaultdict
+walrus = (x := defaultdict(int))
+x[""] = 1
+walrus[1] = 1  # E: Invalid index type "int" for "defaultdict[str, int]"; expected type "str"
+reveal_type(walrus)  # N: Revealed type is "collections.defaultdict[str, int]"
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[str, int]"
+
 [case list_no_partial_if_super_class_defines_attribute]
 class Super:
     x: list[int]

@@ -6,9 +6,9 @@
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::{
-    Atom, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName, NameDefParent,
-    NameImportParent, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
-    PrimaryTargetOrAtom, Scope,
+    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName,
+    NameDefParent, NameImportParent, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom,
+    PrimaryTarget, PrimaryTargetOrAtom, Scope,
 };
 use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
@@ -100,7 +100,19 @@ impl<'db, T> PositionalDocument<'db, T> {
 
     pub fn infer_name(&self, name: CSTName) -> Option<Inferred> {
         match name.parent() {
-            NameParent::NameDef(name_def) => self.maybe_inferred_node_index(name_def.index()),
+            NameParent::NameDef(name_def) => self
+                .maybe_inferred_node_index(name_def.index())
+                .or_else(|| {
+                    if let DefiningStmt::Walrus(walrus) = name_def.expect_defining_stmt() {
+                        Some(self.with_i_s(|i_s| {
+                            self.file
+                                .inference(i_s)
+                                .infer_expression(walrus.expression())
+                        }))
+                    } else {
+                        None
+                    }
+                }),
             NameParent::Atom(atom) => Some(self.infer_atom(atom)),
             NameParent::DottedImportName(dotted_name) => {
                 Some(self.infer_dotted_import_name(0, Some(dotted_name)))

@@ -1031,7 +1031,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 RedefinitionResult::TypeMismatch(had_error)
             },
         );
-        if had_error && assign_kind == AssignKind::Normal {
+        if had_error && matches!(assign_kind, AssignKind::Normal | AssignKind::Walrus) {
             save(name_def.index(), ancestor_inf);
         } else {
             save(name_def.index(), value);
@@ -1430,7 +1430,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             let original_inf = self.infer_name_of_definition_by_index(first_index);
-            if self.i_s.db.mode == Mode::LanguageServer {
+            // Walrus is special, because it relays values from the expression to the outer
+            // expression.
+            if self.i_s.db.mode == Mode::LanguageServer
+                && !matches!(assign_kind, AssignKind::Walrus)
+            {
                 // This information is only needed if we need to access it again and otherwise
                 // irrelevant, because we only acccess the information of the first name def.
                 save(name_def.index(), &original_inf);
@@ -1465,7 +1469,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 save(name_def.index(), &original);
                 return;
             }
-            if assign_kind == AssignKind::Normal {
+            if matches!(assign_kind, AssignKind::Normal | AssignKind::Walrus) {
                 if let Some(partial) = value.maybe_new_partial(i_s, |t| {
                     set_defaultdict_type(NodeRef::new(self.file, name_def.index()), t)
                 }) {
@@ -1800,7 +1804,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 },
             );
         }
-        if matches!(assign_kind, AssignKind::Normal)
+        if matches!(assign_kind, AssignKind::Normal | AssignKind::Walrus)
             && save_narrowed.get()
             // It seems like on explicit Any Mypy does not narrow
             // TODO it should not narrow on all Any declaration, not just base
@@ -2317,7 +2321,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let from = NodeRef::new(self.file, name_def.index());
         let inf = inf.avoid_implicit_literal(self.i_s);
         let narrowing_result =
-            self.assign_to_name_def(name_def, from, &inf, AssignKind::Normal, |index, value| {
+            self.assign_to_name_def(name_def, from, &inf, AssignKind::Walrus, |index, value| {
                 value.clone().save_redirect(self.i_s, self.file, index);
             });
         (
@@ -4727,8 +4731,9 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum AssignKind {
+    Normal, // a = 1
+    Walrus,
     Annotation { specific: Option<Specific> }, // `a: int = 1` or `a = 1 # type: int
-    Normal,                                    // a = 1
     Import,
     AugAssign, // a += 1
 }

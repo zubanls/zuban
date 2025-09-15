@@ -19,7 +19,7 @@ def test_assignments():
     match = ''
     #? str()
     match
-    #? 8 str()
+    #? 8 int()
     if match := 1:
         #? int()
         match
