@@ -667,7 +667,7 @@ def f(
 from typing import Literal
 good11: Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]
 
-[case avoid_error]
+[case avoid_error_in_invalid_syntax_definition_when_used]
 async def list  # E: invalid syntax
 
 @foo()  # E: Name "foo" is not defined
