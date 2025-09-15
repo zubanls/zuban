@@ -4237,6 +4237,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(param_maybe_default),
                 Nonterminal(starred_param),
                 Nonterminal(double_starred_param),
+                ErrorNonterminal(stmt),
             ])
             .expect("There should always be a stmt");
         if node.is_type(Nonterminal(class_def)) {
@@ -4245,7 +4246,10 @@ impl<'db> NameDef<'db> {
             TypeLike::Assignment(Assignment::new(node))
         } else if node.is_type(Nonterminal(function_def)) {
             TypeLike::Function(FunctionDef::new(node))
-        } else if node.is_type(Nonterminal(stmt)) | node.is_type(Nonterminal(walrus)) {
+        } else if node.is_type(Nonterminal(stmt))
+            | node.is_type(Nonterminal(walrus))
+            | node.is_type(ErrorNonterminal(stmt))
+        {
             TypeLike::Other
         } else if node.is_type(Nonterminal(import_from_as_name)) {
             TypeLike::ImportFromAsName(ImportFromAsName::new(node))
