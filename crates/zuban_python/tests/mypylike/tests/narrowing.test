@@ -1788,3 +1788,13 @@ def x() -> None:
 
 [out]
 __main__:4:5:5:15: error: Statement is unreachable
+
+[case except_var_deleted_after_scope]
+try:
+    try:
+        ...
+    except Exception as err:
+        print(err)
+except Exception as err:
+    print(err)
+err  # E: Trying to read deleted variable "err"

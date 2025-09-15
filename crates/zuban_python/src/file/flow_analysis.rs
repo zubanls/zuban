@@ -525,16 +525,22 @@ impl FlowAnalysis {
         &self,
         db: &Database,
         lookup_key: FlowKey,
-    ) -> Option<(Inferred, bool)> {
+    ) -> (Option<Inferred>, bool) {
         let frames = self.frames.borrow();
-        let entry = frames
+        let Some(entry) = frames
             .iter()
             .rev()
-            .find_map(|frame| frame.lookup_entry(db, &lookup_key))?;
-        match &entry.type_ {
-            EntryKind::Type(t) => Some((Inferred::from_type(t.clone()), entry.deleted)),
-            EntryKind::OriginalDeclaration => None,
-        }
+            .find_map(|frame| frame.lookup_entry(db, &lookup_key))
+        else {
+            return (None, false);
+        };
+        (
+            match &entry.type_ {
+                EntryKind::Type(t) => Some(Inferred::from_type(t.clone())),
+                EntryKind::OriginalDeclaration => None,
+            },
+            entry.deleted,
+        )
     }
 
     pub fn is_unreachable(&self) -> bool {
@@ -1581,10 +1587,12 @@ impl Inference<'_, '_, '_> {
         name_link: PointLink,
     ) -> Option<Inferred> {
         let (result, deleted) = FLOW_ANALYSIS
-            .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, FlowKey::Name(name_link)))?;
+            .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, FlowKey::Name(name_link)));
         if deleted {
-            self.add_issue(original_name_index, IssueKind::ReadingDeletedVariable)
+            self.add_issue(original_name_index, IssueKind::ReadingDeletedVariable);
+            return Some(Inferred::new_any_from_error());
         }
+        let result = result?;
         debug!(
             "Use narrowed {} as {}",
             NodeRef::from_link(self.i_s.db, name_link).as_code(),
@@ -1602,11 +1610,9 @@ impl Inference<'_, '_, '_> {
         primary_target: PrimaryTarget,
     ) -> Option<Inferred> {
         let key = self.key_from_primary_target(primary_target)?;
-        Some(
-            FLOW_ANALYSIS
-                .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key))?
-                .0,
-        )
+        FLOW_ANALYSIS
+            .with(|fa| fa.lookup_narrowed_key_and_deleted(self.i_s.db, key))
+            .0
     }
 
     pub fn flow_analysis_for_assert(&self, assert_stmt: AssertStmt) {
@@ -2304,52 +2310,57 @@ impl Inference<'_, '_, '_> {
             let mut nth_except_body = 0;
             for b in try_stmt.iter_blocks() {
                 let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
-                    let mut name_def = None;
-                    let except_type = if let Some(except_expr) = except_expr {
-                        let expr;
-                        (expr, name_def) = except_expr.unpack();
-                        let inf = self.infer_expression(expr);
-                        let inf_t = inf.as_cow_type(self.i_s);
-                        if let Some(name_def) = name_def {
-                            let instantiated = match is_star {
-                                false => instantiate_except(self.i_s, &inf_t),
-                                true => self.instantiate_except_star(name_def, &inf_t),
-                            };
-                            let name_index = name_def.name_index();
-                            let first = first_defined_name(self.file, name_index);
-                            if first == name_index {
-                                Inferred::from_type(instantiated).maybe_save_redirect(
-                                    self.i_s,
-                                    self.file,
-                                    name_def.index(),
-                                    false,
-                                );
-                            } else {
-                                self.save_narrowed(
-                                    FlowKey::Name(PointLink::new(self.file.file_index, first)),
-                                    instantiated,
-                                    false,
-                                )
-                            }
-                        }
-                        Some(except_type(self.i_s.db, &inf_t, true))
-                    } else {
-                        None
-                    };
                     nth_except_body += 1;
-                    let mut exception_frame = if nth_except_body == except_bodies {
+                    let exception_frame = if nth_except_body == except_bodies {
                         try_frame_for_except.take()
                     } else {
                         try_frame_for_except.clone()
                     };
-                    exception_frame = fa.with_frame(exception_frame, || {
-                        self.calc_block_diagnostics(block, class, func)
-                    });
+                    let mut name_def = None;
+                    let (exception_frame, except_type) =
+                        fa.with_frame_and_result(exception_frame, || {
+                            let except_type = if let Some(except_expr) = except_expr {
+                                let expr;
+                                (expr, name_def) = except_expr.unpack();
+                                let inf = self.infer_expression(expr);
+                                let inf_t = inf.as_cow_type(self.i_s);
+                                if let Some(name_def) = name_def {
+                                    let instantiated = match is_star {
+                                        false => instantiate_except(self.i_s, &inf_t),
+                                        true => self.instantiate_except_star(name_def, &inf_t),
+                                    };
+                                    let name_index = name_def.name_index();
+                                    let first = first_defined_name(self.file, name_index);
+                                    if first == name_index {
+                                        Inferred::from_type(instantiated).maybe_save_redirect(
+                                            self.i_s,
+                                            self.file,
+                                            name_def.index(),
+                                            false,
+                                        );
+                                    } else {
+                                        self.save_narrowed(
+                                            FlowKey::Name(PointLink::new(
+                                                self.file.file_index,
+                                                first,
+                                            )),
+                                            instantiated,
+                                            false,
+                                        )
+                                    }
+                                }
+                                Some(except_type(self.i_s.db, &inf_t, true))
+                            } else {
+                                None
+                            };
+                            self.calc_block_diagnostics(block, class, func);
+                            if let Some(name_def) = name_def {
+                                self.delete_name(name_def)
+                            }
+                            except_type
+                        });
                     let new_after = after_exception.take();
                     after_exception = fa.merge_or(self.i_s, exception_frame, new_after, false);
-                    if let Some(name_def) = name_def {
-                        self.delete_name(name_def)
-                    }
                     except_type
                 };
                 match b {
