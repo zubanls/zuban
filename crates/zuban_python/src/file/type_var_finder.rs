@@ -281,6 +281,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     }
                 }
             }
+            AtomContent::NamedExpression(ne) => self.find_in_expr(ne.expression()),
             _ => (),
         }
         BaseLookup::Other

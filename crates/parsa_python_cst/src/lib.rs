@@ -4475,6 +4475,7 @@ impl<'db> Atom<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum AtomContent<'db> {
     Name(Name<'db>),
 
