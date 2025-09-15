@@ -179,7 +179,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         .save_redirect(self.i_s, self.file, name_def.index());
                 }
             },
-        )
+        );
     }
 
     fn inferred_context_for_simple_assignment(
@@ -1056,7 +1056,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         value: &Inferred,
         assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex, &Inferred),
-    ) {
+    ) -> Option<RedefinitionResult> {
         debug!(
             "Assign to name {} ({}:#{}): {}",
             name_def.as_code(),
@@ -1098,10 +1098,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         &ancestor_inf,
                         save,
                     );
-                    return;
+                    return None; // TODO?
                 }
             }
         }
+        let result = Cell::new(None);
         self.assign_to_name_def_or_self_name_def(
             name_def,
             from,
@@ -1115,23 +1116,27 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
-                    if self.flags().allow_redefinition
+                    let r = if self.flags().allow_redefinition
                         && NodeRef::from_link(self.i_s.db, first_name_link)
                             .point()
                             .can_be_redefined()
                     {
-                        return RedefinitionResult::RedefinitionAllowed;
-                    }
-                    RedefinitionResult::TypeMismatch(self.check_assignment_type(
-                        value,
-                        declaration_t,
-                        from,
-                        None,
-                        assign_kind,
-                    ))
+                        RedefinitionResult::RedefinitionAllowed
+                    } else {
+                        RedefinitionResult::TypeMismatch(self.check_assignment_type(
+                            value,
+                            declaration_t,
+                            from,
+                            None,
+                            assign_kind,
+                        ))
+                    };
+                    result.set(Some(r));
+                    r
                 })
             },
-        )
+        );
+        result.into_inner()
     }
 
     fn check_assignment_type(
@@ -1816,7 +1821,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let i_s = self.i_s;
         match target {
             Target::Name(name_def) => {
-                self.assign_to_name_def(name_def, from, value, assign_kind, save)
+                self.assign_to_name_def(name_def, from, value, assign_kind, save);
             }
             Target::NameExpression(primary_target, name_def) => {
                 if self.is_self(primary_target.first()) {
@@ -2233,7 +2238,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             self.infer_expression(expr)
         };
 
-        self.save_walrus(name_def, inf)
+        self.save_walrus(name_def, inf).1
     }
 
     pub(crate) fn check_for_redefinition(
@@ -2304,11 +2309,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             .and_then(|inf| inf.maybe_saved_node_ref(self.i_s.db))
     }
 
-    pub fn save_walrus(&self, name_def: NameDef, inf: Inferred) -> Inferred {
+    pub fn save_walrus(
+        &self,
+        name_def: NameDef,
+        inf: Inferred,
+    ) -> (Option<RedefinitionResult>, Inferred) {
         let from = NodeRef::new(self.file, name_def.index());
         let inf = inf.avoid_implicit_literal(self.i_s);
-        self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Normal);
-        self.check_point_cache(name_def.index()).unwrap_or(inf)
+        let narrowing_result =
+            self.assign_to_name_def(name_def, from, &inf, AssignKind::Normal, |index, value| {
+                value.clone().save_redirect(self.i_s, self.file, index);
+            });
+        (
+            narrowing_result,
+            self.check_point_cache(name_def.index()).unwrap_or(inf),
+        )
     }
 
     pub fn infer_expression(&self, expr: Expression) -> Inferred {

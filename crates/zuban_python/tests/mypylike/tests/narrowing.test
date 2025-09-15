@@ -510,6 +510,18 @@ class C:
         else:
             reveal_type(x) # N: Revealed type is "Literal[0] | None"
 
+[case walrus_narrowing_with_initial_definition_outside_if_wrong_type]
+d = {'hello': 'hi'}
+
+x: str | None
+
+if x:= d.get('hello'):
+    reveal_type(x)  # N: Revealed type is "str"
+elif x:= 1:  # E: Incompatible types in assignment (expression has type "int", variable has type "str | None")
+    reveal_type(x)  # N: Revealed type is "Literal[''] | None"
+else:
+    reveal_type(x)  # N: Revealed type is "Literal[''] | None"
+
 [case walrus_narrowing_with_unreachable_if]
 # flags: --warn-unreachable
 from typing import Literal

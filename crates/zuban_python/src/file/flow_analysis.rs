@@ -25,7 +25,7 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassNodeRef, OtherDefinitionIterator, first_defined_name_of_multi_def},
+    file::{ClassNodeRef, OtherDefinitionIterator},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue, add_attribute_error},
@@ -149,7 +149,7 @@ struct Entry {
 
 impl Entry {
     fn new(key: FlowKey, type_: Type) -> Self {
-        Self {
+        Entry {
             key,
             type_: EntryKind::Type(type_),
             modifies_ancestors: false,
@@ -2831,54 +2831,65 @@ impl Inference<'_, '_, '_> {
                     } else {
                         self.find_guards_in_expr(expr)
                     };
-                let is_first =
-                    first_defined_name_of_multi_def(self.file, name_def.name_index()).is_none();
-                let inf =
+                FLOW_ANALYSIS.with(|fa| {
+                    let (walrus_frame, (narrowing_result, inf)) =
+                        fa.with_frame_and_result(Frame::new_conditional(), || {
                             // This can happen in weird closures. I'm not currently sure how we should
                             // best handle that, see avoid_walrus_crash_when_variable_is_used_in_closure
                             if self.point(name_def.index()).calculated() {
-                                inf
-                            } else if is_first {
-                                self.save_walrus(name_def, inf.into_inferred(self.i_s))
-                                    .into()
-                            } else {
-                                inf
-                            };
-                if let Some((walrus_truthy, walrus_falsey)) =
-                    split_truthy_and_falsey(self.i_s, &inf)
-                {
-                    debug!(
-                        "Narrowed {} to true: {} and false: {}",
-                        named_expr.as_code(),
-                        walrus_truthy.format_short(self.i_s.db),
-                        walrus_falsey.format_short(self.i_s.db)
-                    );
+                                return (None, inf);
+                            }
+                            let (narrowing_result, inf) =
+                                self.save_walrus(name_def, inf.into_inferred(self.i_s));
+                            (narrowing_result, inf.into())
+                        });
+
                     let key = self.key_from_name_def(name_def);
-                    truthy.add_entry(
-                        self.i_s,
-                        Entry {
-                            modifies_ancestors: true,
-                            ..Entry::new(key.clone(), walrus_truthy)
-                        },
-                    );
-                    falsey.add_entry(
-                        self.i_s,
-                        Entry {
-                            modifies_ancestors: true,
-                            ..Entry::new(key, walrus_falsey)
-                        },
-                    );
-                } else if !is_first {
-                    let t = inf.clone().into_inferred(self.i_s).as_type(self.i_s);
-                    let new_entry = Entry {
-                        modifies_ancestors: true,
-                        widens: true,
-                        ..Entry::new(self.key_from_name_def(name_def), t)
-                    };
-                    truthy.overwrite_entry(self.i_s.db, new_entry.clone());
-                    falsey.overwrite_entry(self.i_s.db, new_entry);
-                }
-                (inf, truthy, falsey)
+                    if matches!(
+                        narrowing_result,
+                        Some(RedefinitionResult::TypeMismatch(true))
+                    ) {
+                        return (
+                            Inferred::new_any_from_error().into(),
+                            Frame::new_conditional(),
+                            Frame::new_conditional(),
+                        );
+                    } else if let Some((walrus_truthy, walrus_falsey)) =
+                        split_truthy_and_falsey(self.i_s, &inf)
+                    {
+                        debug!(
+                            "Narrowed {} to true: {} and false: {}",
+                            named_expr.as_code(),
+                            walrus_truthy.format_short(self.i_s.db),
+                            walrus_falsey.format_short(self.i_s.db)
+                        );
+                        let widens = walrus_frame
+                            .entries
+                            .into_iter()
+                            .any(|e| e.key.equals(self.i_s.db, &key) && e.widens);
+                        truthy.overwrite_entry(
+                            self.i_s.db,
+                            Entry {
+                                widens,
+                                modifies_ancestors: true,
+                                ..Entry::new(key.clone(), walrus_truthy)
+                            },
+                        );
+                        falsey.overwrite_entry(
+                            self.i_s.db,
+                            Entry {
+                                widens,
+                                ..Entry::new(key, walrus_falsey)
+                            },
+                        );
+                    } else {
+                        for entry in walrus_frame.entries {
+                            truthy.overwrite_entry(self.i_s.db, entry.clone());
+                            falsey.overwrite_entry(self.i_s.db, entry);
+                        }
+                    }
+                    (inf, truthy, falsey)
+                })
             }
         }
     }
@@ -3969,7 +3980,6 @@ impl Inference<'_, '_, '_> {
     }
 }
 
-#[derive(Clone)]
 enum TruthyInferred {
     Simple {
         inf: Inferred,
@@ -4029,6 +4039,7 @@ impl From<Inferred> for TruthyInferred {
     }
 }
 
+#[derive(Copy, Clone)]
 pub(crate) enum RedefinitionResult {
     RedefinitionAllowed,
     TypeMismatch(bool),
