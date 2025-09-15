@@ -2134,9 +2134,9 @@ fn highlight_quote_groups(out: &mut dyn Write, msg: &str) -> std::io::Result<()>
 
     for part in msg.split('"') {
         if in_quotes {
-            write!(out, "{}", format!("\"{}\"", part).bright_white().bold())?;
+            write!(out, "{}", format!("\"{}\"", part).bold())?;
         } else {
-            write!(out, "{}", part.white())?;
+            write!(out, "{}", part)?;
         }
         in_quotes = !in_quotes;
     }
