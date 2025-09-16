@@ -675,20 +675,28 @@ fn field_options_from_args(
                 "factory" if in_dataclass_transform => options.has_default = true,
                 "converter" => {
                     let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
-                    match result.as_cow_type(i_s).maybe_callable(i_s) {
-                        Some(CallableLike::Callable(c)) => {
-                            options.converter = c.first_positional_type();
-                        }
+                    let mut converter = match result.as_cow_type(i_s).maybe_callable(i_s) {
+                        Some(CallableLike::Callable(c)) => c.first_positional_type(),
                         Some(CallableLike::Overload(overload)) => {
-                            options.converter = Some(simplified_union_from_iterators(
+                            Some(simplified_union_from_iterators(
                                 i_s,
                                 overload.iter_functions().map(|func| {
                                     func.first_positional_type().unwrap_or_else(|| Type::ERROR)
                                 }),
-                            ));
+                            ))
                         }
-                        None => (), // TODO
+                        None => None, // TODO
+                    };
+                    if let Some(c) = converter.as_ref() {
+                        // TODO We avoid generics here, is this correct? It feels like we should
+                        // type check them, but that gets extremely complicated quickly.
+                        if let new @ Some(_) = c.replace_type_var_likes(i_s.db, &mut |usage| {
+                            Some(usage.as_any_generic_item())
+                        }) {
+                            converter = new;
+                        }
                     }
+                    options.converter = converter;
                 }
                 _ => (), // Type checking is done in a separate place.
             }

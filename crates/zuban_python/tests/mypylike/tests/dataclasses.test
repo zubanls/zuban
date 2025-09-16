@@ -768,3 +768,31 @@ class DC3(ModelBase):
 
     field2: int = model_field(converter=converter_simple, default_factory=str)
     field3: int = model_field(converter=converter_simple, default_factory=int)  # E: Argument "default_factory" to "model_field" has incompatible type "Type[int]"; expected "Callable[[], str] | None"
+
+[case dataclass_transform_converter_generic]
+from typing import Callable, TypeVar, dataclass_transform
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def model_field(
+    *,
+    converter: Callable[[S], T],
+    default: S | None = None,
+    default_factory: Callable[[], S] | None = None,
+) -> T: ...
+
+@dataclass_transform(field_specifiers=(model_field,))
+class ModelBase: ...
+
+def converter_generic(s: list[T]) -> tuple[T, ...]:
+    return tuple(s)
+
+class DC(ModelBase):
+    field0: tuple[int, ...] = model_field(converter=converter_generic)
+
+DC((1,))  # E: Argument 1 to "DC" has incompatible type "tuple[int]"; expected "list[Any]"
+d = DC([1])
+reveal_type(d.field0)  # N: Revealed type is "tuple[int, ...]"
+d.field0 = [1]
+d.field0 = 1  # E: Incompatible types in assignment of a dataclass converter (expression has type "int", expected type "list[Any]")
