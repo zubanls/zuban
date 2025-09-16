@@ -29,6 +29,8 @@ zuban server  # An LSP server
 
 If you want Zuban to pick up your dependencies, please activate the virtual env first.
 
+You can install zuban locally by running `scripts/install-locally.sh`.
+
 ## License
 
 This project is dual licensed:
