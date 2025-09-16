@@ -546,6 +546,7 @@ struct FieldOptions {
     init: bool,
     // These are only used within dataclass_transform
     alias_name: Option<DbString>,
+    converter: Option<Type>,
 }
 
 impl Default for FieldOptions {
@@ -555,6 +556,7 @@ impl Default for FieldOptions {
             kw_only: None,
             init: true,
             alias_name: None,
+            converter: None,
         }
     }
 }
@@ -659,6 +661,17 @@ fn field_options_from_args(
                     }
                 }
                 "factory" if in_dataclass_transform => options.has_default = true,
+                "converter" => {
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
+                    match result.as_cow_type(i_s).as_ref() {
+                        Type::Callable(c) => {
+                            options.converter = Some(c.return_type.clone());
+                        }
+                        Type::FunctionOverload(_) => (),
+                        Type::Class(_) => (),
+                        _ => todo!(),
+                    }
+                }
                 _ => (), // Type checking is done in a separate place.
             }
         }

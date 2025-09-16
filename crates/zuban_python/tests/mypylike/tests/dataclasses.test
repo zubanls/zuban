@@ -670,7 +670,7 @@ class DC1(ModelBase):
     field1: int = model_field(converter=bad_converter1)  # E: Argument "converter" to "model_field" has incompatible type "Callable[[], int]"; expected "Callable[[Never], int]"
     field2: int = model_field(converter=bad_converter2)  # E: Argument "converter" to "model_field" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[Never], int]"
 
-[case dataclass_transform_converter]
+[case dataclass_transform_converter_conformance]
 # Copied from conformance tests (dataclasses_transform_converter.py)
 from typing import Any, Callable, TypeVar, dataclass_transform, overload
 
@@ -738,12 +738,32 @@ dc1.field3 = 1  # E:
 
 dc2 = DC2("f0", "f1", "f2", "f6", "1", (("a", "1"), ("b", "2")))
 
+[case dataclass_transform_converter_defaults]
+# Copied from conformance tests (dataclasses_transform_converter.py)
+from typing import Callable, TypeVar, dataclass_transform
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def model_field(
+    *,
+    converter: Callable[[S], T],
+    default: S | None = None,
+    default_factory: Callable[[], S] | None = None,
+) -> T: ...
+
+@dataclass_transform(field_specifiers=(model_field,))
+class ModelBase: ...
+
+def converter_simple(s: str) -> int:
+    return int(s)
+
 # > If default or default_factory are provided, the type of the default value
 # > should be assignable to the first positional parameter of the converter.
 
 class DC3(ModelBase):
     field0: int = model_field(converter=converter_simple, default="")
-    field1: int = model_field(converter=converter_simple, default=1)  # E: 
+    field1: int = model_field(converter=converter_simple, default=1)  # E: Argument "default" to "model_field" has incompatible type "int"; expected "str | None"
 
     field2: int = model_field(converter=converter_simple, default_factory=str)
-    field3: int = model_field(converter=converter_simple, default_factory=int)  # E: 
+    field3: int = model_field(converter=converter_simple, default_factory=int)  # E: Argument "default_factory" to "model_field" has incompatible type "Type[int]"; expected "Callable[[], str] | None"
