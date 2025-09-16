@@ -14,6 +14,7 @@ fi
 if [ ! -f licenses.html ]; then
     bash pre-maturin-build.sh
 fi
+
 maturin build "${@:1}"
 
 
