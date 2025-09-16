@@ -413,10 +413,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                 if let Some(conv) = infos.field_options.converter {
                     converter_fields.insert(
                         infos.name.as_str(i_s.db).into(),
-                        DataclassTransformConversion {
-                            from: conv.clone(),
-                            to: t,
-                        },
+                        DataclassTransformConversion { from: conv.clone() },
                     );
                     t = conv;
                 }
@@ -1021,12 +1018,6 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     } else if name == "__match_args__" && dataclass.options.match_args {
         let (lookup, attr_kind) = dunder_match_args_tuple(dataclass.clone(), i_s);
         LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind)
-    } else if let Some(conversion) = dataclass_converter_fields_lookup(dataclass, i_s.db, name) {
-        LookupDetails::new(
-            Type::Dataclass(dataclass.clone()),
-            LookupResult::UnknownName(Inferred::from_type(conversion.to.clone())),
-            AttributeKind::Attribute,
-        )
     } else {
         dataclass.class(i_s.db).lookup(
             i_s,
@@ -1246,5 +1237,4 @@ impl DataclassTransformObj {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DataclassTransformConversion {
     pub from: Type,
-    pub to: Type,
 }
