@@ -8,6 +8,7 @@ use parsa_python_cst::{
     ArgumentsDetails, AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart,
     NodeIndex, ParamKind, PrimaryContent, StarExpressionContent,
 };
+use utils::FastHashMap;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
@@ -30,7 +31,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
-    type_::{CallableLike, ReplaceTypeVarLikes},
+    type_::{CallableLike, ReplaceTypeVarLikes, simplified_union_from_iterators},
     type_helpers::{
         Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
         OverloadResult, OverloadedFunction, TypeOrClass,
@@ -39,6 +40,7 @@ use crate::{
 };
 
 type FieldSpecifiers = Arc<[PointLink]>;
+type ConverterFields = FastHashMap<String, DataclassTransformConversion>;
 
 const ORDER_METHOD_NAMES: [&str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
 
@@ -164,6 +166,7 @@ impl Dataclass {
 struct Inits {
     __init__: CallableContent,
     __post_init__: CallableContent,
+    converter_fields: ConverterFields,
 }
 
 fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Inits {
@@ -176,8 +179,9 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
 
     let mut params: Vec<CallableParam> = vec![];
     let mut post_init_params: Vec<CallableParam> = vec![];
+    let mut converter_fields = ConverterFields::default();
 
-    let add_param = |params: &mut Vec<CallableParam>, mut new_param: CallableParam| {
+    let mut add_param = |mut new_param: CallableParam| {
         let mut first_kwarg = None;
         if !matches!(
             dataclass.class.generics,
@@ -273,7 +277,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                         );
                     }
                 }
-                if add_param(&mut params, new_param) {
+                if add_param(new_param) {
                     for p in post_init.expect_simple_params() {
                         if p.name.as_ref().unwrap().as_str(db) == param_name {
                             post_init_params.push(p.clone());
@@ -405,15 +409,25 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                     .field_options
                     .kw_only
                     .unwrap_or_else(|| dataclass.options.kw_only || had_kw_only_marker);
+                let mut t = infos.t;
+                if let Some(conv) = infos.field_options.converter {
+                    converter_fields.insert(
+                        infos.name.as_str(i_s.db).into(),
+                        DataclassTransformConversion {
+                            from: conv.clone(),
+                            to: t,
+                        },
+                    );
+                    t = conv;
+                }
                 if infos.is_init_var {
                     post_init_params.push(CallableParam::new(
                         // This is what Mypy uses, apparently for practical reasons.
                         infos.name.clone(),
-                        ParamType::PositionalOrKeyword(infos.t.clone()),
+                        ParamType::PositionalOrKeyword(t.clone()),
                     ))
                 }
                 if infos.field_options.init {
-                    let mut t = infos.t;
                     let has_default = infos.field_options.has_default;
                     // Descriptors are assigned to in __init__, see
                     // https://github.com/microsoft/pyright/issues/3245
@@ -422,18 +436,15 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                     if has_default || dataclass.is_dataclass_transform() {
                         set_descriptor_update_for_init(i_s, &mut t)
                     }
-                    add_param(
-                        &mut params,
-                        CallableParam {
-                            type_: match kw_only {
-                                false => ParamType::PositionalOrKeyword(t),
-                                true => ParamType::KeywordOnly(t),
-                            },
-                            name: Some(infos.name),
-                            has_default,
-                            might_have_type_vars: true,
+                    add_param(CallableParam {
+                        type_: match kw_only {
+                            false => ParamType::PositionalOrKeyword(t),
+                            true => ParamType::KeywordOnly(t),
                         },
-                    );
+                        name: Some(infos.name),
+                        has_default,
+                        might_have_type_vars: true,
+                    });
                 }
             }
         }
@@ -513,6 +524,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
             CallableParams::new_simple(post_init_params.into()),
             Type::None,
         ),
+        converter_fields,
     }
 }
 
@@ -663,13 +675,19 @@ fn field_options_from_args(
                 "factory" if in_dataclass_transform => options.has_default = true,
                 "converter" => {
                     let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
-                    match result.as_cow_type(i_s).as_ref() {
-                        Type::Callable(c) => {
-                            options.converter = Some(c.return_type.clone());
+                    match result.as_cow_type(i_s).maybe_callable(i_s) {
+                        Some(CallableLike::Callable(c)) => {
+                            options.converter = c.first_positional_type();
                         }
-                        Type::FunctionOverload(_) => (),
-                        Type::Class(_) => (),
-                        _ => todo!(),
+                        Some(CallableLike::Overload(overload)) => {
+                            options.converter = Some(simplified_union_from_iterators(
+                                i_s,
+                                overload.iter_functions().map(|func| {
+                                    func.first_positional_type().unwrap_or_else(|| Type::ERROR)
+                                }),
+                            ));
+                        }
+                        None => (), // TODO
                     }
                 }
                 _ => (), // Type checking is done in a separate place.
@@ -924,6 +942,15 @@ pub fn dataclass_init_func<'a>(self_: &'a Arc<Dataclass>, db: &Database) -> &'a 
     &self_.inits.get().unwrap().__init__
 }
 
+pub fn dataclass_converter_fields_lookup<'a>(
+    self_: &'a Arc<Dataclass>,
+    db: &Database,
+    name: &str,
+) -> Option<&'a DataclassTransformConversion> {
+    ensure_calculated_dataclass(self_, db);
+    self_.inits.get().unwrap().converter_fields.get(name)
+}
+
 pub fn ensure_calculated_dataclass(self_: &Arc<Dataclass>, db: &Database) {
     if self_.inits.get().is_none() {
         debug!("Calculate dataclass {}", self_.class(db).name());
@@ -963,36 +990,44 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
         } else {
             i_s.db.python_state.dataclass_fields_type.clone()
         };
-        return LookupDetails::new(
+        LookupDetails::new(
             Type::Dataclass(dataclass.clone()),
             LookupResult::UnknownName(Inferred::from_type(t)),
             AttributeKind::Attribute,
-        );
-    }
-    if dataclass.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
-        return LookupDetails::new(
+        )
+    } else if dataclass.options.order
+        && ORDER_METHOD_NAMES.contains(&name)
+        && kind == LookupKind::Normal
+    {
+        LookupDetails::new(
             Type::Dataclass(dataclass.clone()),
             type_order_func(dataclass.clone(), i_s),
             AttributeKind::Attribute,
-        );
-    }
-    if name == "__slots__" && dataclass.options.slots {
-        return LookupDetails::new(
+        )
+    } else if name == "__slots__" && dataclass.options.slots {
+        LookupDetails::new(
             Type::Dataclass(dataclass.clone()),
             slots_as_lookup_result(dataclass, i_s.db),
             AttributeKind::Attribute,
-        );
+        )
     } else if name == "__match_args__" && dataclass.options.match_args {
         let (lookup, attr_kind) = dunder_match_args_tuple(dataclass.clone(), i_s);
-        return LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind);
+        LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind)
+    } else if let Some(conversion) = dataclass_converter_fields_lookup(dataclass, i_s.db, name) {
+        LookupDetails::new(
+            Type::Dataclass(dataclass.clone()),
+            LookupResult::UnknownName(Inferred::from_type(conversion.to.clone())),
+            AttributeKind::Attribute,
+        )
+    } else {
+        dataclass.class(i_s.db).lookup(
+            i_s,
+            name,
+            ClassLookupOptions::new(&add_issue)
+                .with_kind(kind)
+                .with_as_type_type(&|| Type::Type(in_type.clone())),
+        )
     }
-    dataclass.class(i_s.db).lookup(
-        i_s,
-        name,
-        ClassLookupOptions::new(&add_issue)
-            .with_kind(kind)
-            .with_as_type_type(&|| Type::Type(in_type.clone())),
-    )
 }
 
 fn slots_as_lookup_result(self_: &Arc<Dataclass>, db: &Database) -> LookupResult {
@@ -1198,4 +1233,10 @@ impl DataclassTransformObj {
             ..Default::default()
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DataclassTransformConversion {
+    pub from: Type,
+    pub to: Type,
 }

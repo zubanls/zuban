@@ -36,8 +36,8 @@ pub(crate) use self::{
         format_callable_params, format_params_as_param_spec, merge_class_type_vars,
     },
     dataclass::{
-        Dataclass, DataclassOptions, DataclassTransformObj, dataclass_init_func,
-        dataclass_initialize, dataclass_post_init_func, dataclasses_replace,
+        Dataclass, DataclassOptions, DataclassTransformObj, dataclass_converter_fields_lookup,
+        dataclass_init_func, dataclass_initialize, dataclass_post_init_func, dataclasses_replace,
         ensure_calculated_dataclass, lookup_dataclass_symbol, lookup_on_dataclass,
         lookup_on_dataclass_type,
     },

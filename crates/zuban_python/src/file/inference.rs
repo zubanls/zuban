@@ -39,7 +39,7 @@ use crate::{
         AnyCause, CallableContent, CallableParam, CallableParams, IterCause, IterInfos, Literal,
         LiteralKind, LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType,
         StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
-        WithUnpack,
+        WithUnpack, dataclass_converter_fields_lookup,
     },
     type_helpers::{
         Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
@@ -1700,14 +1700,29 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             property_is_read_only(d.class(i_s.db).name().into())
                         }
                     }
-                    save_narrowed.set(
-                        inst.check_set_descriptor_and_return_should_narrow(
-                            i_s,
-                            node_ref,
-                            name_def.name(),
-                            value,
-                        ) & save_narrowed.get(),
-                    );
+                    if let Some(expected) =
+                        dataclass_converter_fields_lookup(d, i_s.db, name_def.as_code())
+                    {
+                        let got = value.as_cow_type(i_s);
+                        if !expected.from.is_simple_super_type_of(i_s, &got).bool() {
+                            from.add_issue(
+                                i_s,
+                                IssueKind::IncompatibleDataclassTransformConverterAssignment {
+                                    got: got.format_short(i_s.db),
+                                    expected: expected.from.format_short(i_s.db),
+                                },
+                            );
+                        }
+                    } else {
+                        save_narrowed.set(
+                            inst.check_set_descriptor_and_return_should_narrow(
+                                i_s,
+                                node_ref,
+                                name_def.name(),
+                                value,
+                            ) & save_narrowed.get(),
+                        );
+                    }
                     continue;
                 }
                 Type::NamedTuple(nt) => {

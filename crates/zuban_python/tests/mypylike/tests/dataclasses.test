@@ -719,12 +719,13 @@ class DC2(ModelBase):
     field2: int = model_field(converter=converter_with_args)
     field3: ConverterClass = model_field(converter=ConverterClass)
     field4: int = model_field(converter=overloaded_converter)
-    field5: dict[str, str] = model_field(converter=dict, default=())
+    # TODO remove this error
+    field5: dict[str, str] = model_field(converter=dict, default=())  # E: Incompatible callable argument with type vars
 
 
-DC2(1, "f1", "f2", b"f3", [])  # E: 
-DC2("f0", "f1", "f2", 1, [])  # E: 
-DC2("f0", "f1", "f2", "f3", 3j)  # E: 
+DC2(1, "f1", "f2", b"f3", [])  # E: Argument 1 to "DC2" has incompatible type "int"; expected "str"
+DC2("f0", "f1", "f2", 1, [])  # E: Argument 4 to "DC2" has incompatible type "int"; expected "str | bytes"
+DC2("f0", "f1", "f2", "f3", 3j)  # E: Argument 5 to "DC2" has incompatible type "complex"; expected "str | list[str]"
 
 
 dc1 = DC2("f0", "f1", "f2", b"f6", [])
@@ -733,8 +734,8 @@ dc1.field0 = "f1"
 dc1.field3 = "f6"
 dc1.field3 = b"f6"
 
-dc1.field0 = 1  # E: 
-dc1.field3 = 1  # E: 
+dc1.field0 = 1  # E: Incompatible types in assignment of a dataclass converter (expression has type "int", expected type "str")
+dc1.field3 = 1  # E: Incompatible types in assignment of a dataclass converter (expression has type "int", expected type "str | bytes")
 
 dc2 = DC2("f0", "f1", "f2", "f6", "1", (("a", "1"), ("b", "2")))
 

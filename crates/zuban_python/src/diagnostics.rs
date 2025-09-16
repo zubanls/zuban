@@ -62,6 +62,7 @@ pub(crate) enum IssueKind {
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     IncompatibleImportAssignment { name: Box<str>, got: Box<str>, expected: Box<str> },
+    IncompatibleDataclassTransformConverterAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     CannotAssignToAMethod,
     CannotAssignToFinal { name: Box<str>, is_attribute: bool },
@@ -516,6 +517,7 @@ impl IssueKind {
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
             | IncompatibleImportAssignment { .. }
+            | IncompatibleDataclassTransformConverterAssignment { .. }
             | InvalidSetItemTarget { .. } => "assignment",
             CannotAssignToAMethod => "method-assign",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
@@ -832,6 +834,9 @@ impl<'db> Diagnostic<'db> {
                     )
                 }
             }
+            IncompatibleDataclassTransformConverterAssignment { got, expected } => format!(
+                r#"Incompatible types in assignment of a dataclass converter (expression has type "{got}", expected type "{expected}")"#,
+            ),
             CannotAssignToClassVarViaInstance { name } => format!(
                 "Cannot assign to class variable \"{name}\" via instance"
             ),
