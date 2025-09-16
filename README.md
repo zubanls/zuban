@@ -29,7 +29,16 @@ zuban server  # An LSP server
 
 If you want Zuban to pick up your dependencies, please activate the virtual env first.
 
-You can install zuban locally by running `scripts/install-locally.sh`.
+### Local Installation
+
+You can install zuban **locally** by running:
+
+```
+git clone --recursive https://github.com/zubanls/zuban
+bash scripts/install-locally.sh
+```
+
+Note that your build will not properly work if submodules are not cloned.
 
 ## License
 
