@@ -10,6 +10,11 @@ if [ $# -eq 0 ]; then
 else
     echo "Creating a build with maturin build ${@:1}"
 fi
+
+if [ ! -f licenses.html ]; then
+    bash pre-maturin-build.sh
+fi
+
 maturin build "${@:1}"
 
 
