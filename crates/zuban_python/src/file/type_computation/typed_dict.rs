@@ -28,7 +28,7 @@ use super::{
 
 struct TypedDictMemberType {
     pub type_: Type,
-    pub required: bool,
+    pub required: Option<bool>,
     pub read_only: bool,
 }
 
@@ -39,30 +39,28 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
         name: StringSlice,
         expr: Expression,
     ) -> TypedDictMember {
-        let tt = self.compute_typed_dict_type(initialization_args, expr);
+        let tt = self.compute_typed_dict_type(expr);
         TypedDictMember {
             name,
             type_: tt.type_,
-            required: tt.required,
+            required: tt
+                .required
+                .unwrap_or_else(|| initialization_args.total.unwrap_or(true)),
             read_only: tt.read_only,
         }
     }
 
-    fn compute_typed_dict_type(
-        &mut self,
-        initialization_args: &TypedDictArgs,
-        expr: Expression,
-    ) -> TypedDictMemberType {
+    fn compute_typed_dict_type(&mut self, expr: Expression) -> TypedDictMemberType {
         let calculated = self.compute_type(expr).remove_annotated();
-        let mut required = initialization_args.total.unwrap_or(true);
+        let mut required = None;
         let mut read_only = false;
         let type_ = match calculated {
             TypeContent::TypedDictMemberModifiers(m, t) => {
                 if m.required {
-                    required = true;
+                    required = Some(true);
                 }
                 if m.not_required {
-                    required = false;
+                    required = Some(false);
                 }
                 read_only |= m.read_only;
                 t
@@ -80,8 +78,8 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
         &mut self,
         initialization_args: &TypedDictArgs,
     ) -> Option<ExtraItemsType> {
-        initialization_args.calc_extra_items_type(self.file, |expr| {
-            self.compute_typed_dict_type(initialization_args, expr)
+        initialization_args.calc_extra_items_type(self.i_s.db, self.file, |expr| {
+            self.compute_typed_dict_type(expr)
         })
     }
 
@@ -195,20 +193,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name: StringSlice,
         annotation: Annotation,
     ) -> TypedDictMember {
-        let t = self.compute_class_typed_dict_type(initialization_args, annotation.expression());
+        let t = self.compute_class_typed_dict_type(annotation.expression());
         TypedDictMember {
             name,
             type_: t.type_,
-            required: t.required,
+            required: t
+                .required
+                .unwrap_or_else(|| initialization_args.total.unwrap_or(true)),
             read_only: t.read_only,
         }
     }
 
-    fn compute_class_typed_dict_type(
-        &self,
-        initialization_args: &TypedDictArgs,
-        expr: Expression,
-    ) -> TypedDictMemberType {
+    fn compute_class_typed_dict_type(&self, expr: Expression) -> TypedDictMemberType {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self.i_s,
@@ -218,7 +214,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             TypeComputationOrigin::TypedDictMember,
         );
 
-        let mut t = comp.compute_typed_dict_type(initialization_args, expr);
+        let mut t = comp.compute_typed_dict_type(expr);
         let type_vars = comp.into_type_vars(|_, recalculate_type_vars| {
             t.type_ = recalculate_type_vars(&t.type_);
         });
@@ -230,8 +226,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         initialization_args: &TypedDictArgs,
     ) -> Option<ExtraItemsType> {
-        initialization_args.calc_extra_items_type(self.file, |expr| {
-            self.compute_class_typed_dict_type(initialization_args, expr)
+        initialization_args.calc_extra_items_type(self.i_s.db, self.file, |expr| {
+            self.compute_class_typed_dict_type(expr)
         })
     }
 }
@@ -239,6 +235,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 impl TypedDictArgs {
     fn calc_extra_items_type(
         &self,
+        db: &Database,
         file: &PythonFile,
         callback: impl FnOnce(Expression) -> TypedDictMemberType,
     ) -> Option<ExtraItemsType> {
@@ -246,6 +243,17 @@ impl TypedDictArgs {
         if let Some(expr_index) = self.extra_items {
             let expr = NodeRef::new(file, expr_index).expect_expression();
             let t = callback(expr);
+            if let Some(required) = t.required {
+                NodeRef::new(file, expr_index).add_type_issue(
+                    db,
+                    IssueKind::TypedDictExtraItemsCannotBe {
+                        kind: match required {
+                            true => "Required",
+                            false => "NotRequired",
+                        },
+                    },
+                )
+            }
             result = Some(ExtraItemsType {
                 t: t.type_,
                 read_only: t.read_only,

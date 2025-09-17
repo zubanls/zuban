@@ -391,6 +391,7 @@ pub(crate) enum IssueKind {
     TypedDictCannotUseCloseIfSuperClassExtraItemsNonReadOnly,
     TypedDictCannotUseCloseFalseIfSuperClassClosed,
     TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems,
+    TypedDictExtraItemsCannotBe { kind: &'static str },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1883,6 +1884,9 @@ impl<'db> Diagnostic<'db> {
                 r#"Cannot set "closed=False" when superclass is "closed=True""#.to_string(),
             TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems =>
                 r#"Cannot set "closed=False" when superclass has "extra_items""#.to_string(),
+            TypedDictExtraItemsCannotBe { kind } => format!(
+                r#""extra_items" value cannot be "{kind}[...]""#
+            ),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),
