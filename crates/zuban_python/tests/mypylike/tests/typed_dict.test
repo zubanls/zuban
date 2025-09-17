@@ -699,3 +699,17 @@ def might_not_be(might_not_be_a_builtin_dict: dict[str, int]):
 
 not_a_builtin_dict = CustomDict({"num": 1})
 might_not_be(not_a_builtin_dict)
+
+[case typed_dict_wrong_args]
+from typing import TypedDict
+X = TypedDict("X", {'x', int}, total=True, foo=1)  # E: Too many arguments for "TypedDict()"
+
+class Y(TypedDict, total=True, foo=1):    # E: Unexpected keyword argument "foo" for TypedDict
+    x: int
+
+kwargs = dict(closed=True)
+
+A = TypedDict("A", {'x', int}, total=True, **kwargs)  # E: Too many arguments for "TypedDict()"
+
+class B(TypedDict, total=True, **kwargs):    # E: Invalid base class "**kwargs"
+    x: int

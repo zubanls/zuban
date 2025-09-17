@@ -244,19 +244,23 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     let mut total = true;
     if let Some(next) = iterator.next() {
         match &next.kind {
-            ArgKind::Keyword(kw) if kw.key == "total" => {
-                total = check_typed_dict_total_argument(kw.expression, |issue| {
-                    next.add_issue(i_s, issue)
-                })?;
-            }
-            ArgKind::Keyword(kw) => {
-                let s = format!(
-                    r#"Unexpected keyword argument "{}" for "TypedDict""#,
-                    kw.key
-                );
-                kw.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
-                return None;
-            }
+            ArgKind::Keyword(kw) => match kw.key {
+                "total" => {
+                    total = check_typed_dict_total_argument(kw.expression, |issue| {
+                        next.add_issue(i_s, issue)
+                    })?;
+                }
+                "extra_items" => (),
+                "closed" => (),
+                _ => {
+                    let s = format!(
+                        r#"Unexpected keyword argument "{}" for "TypedDict""#,
+                        kw.key
+                    );
+                    kw.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
+                    return None;
+                }
+            },
             _ => {
                 args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
                 return None;
@@ -264,7 +268,10 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
         };
     }
     if iterator.next().is_some() {
-        args.add_issue(i_s, IssueKind::TooManyArguments(" for \"TODO()\"".into()));
+        args.add_issue(
+            i_s,
+            IssueKind::TooManyArguments(" for \"TypedDict()\"".into()),
+        );
         return None;
     }
     let dct_iterator = match atom_content {

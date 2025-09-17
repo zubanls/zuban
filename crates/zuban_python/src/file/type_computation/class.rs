@@ -885,9 +885,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 Type::Dataclass(d) => Some(Self::from_link(db, d.class.link)),
                                 Type::TypedDict(typed_dict) => {
                                     if typed_dict_total.is_none() {
-                                        typed_dict_total = Some(
-                                            self.check_total_typed_dict_argument(db, arguments),
-                                        )
+                                        typed_dict_total =
+                                            Some(self.check_typed_dict_arguments(db, arguments))
                                     }
                                     class_kind = ClassKind::TypedDict;
                                     if typed_dict.is_final {
@@ -1003,7 +1002,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 class_kind = ClassKind::TypedDict;
                                 if typed_dict_total.is_none() {
                                     typed_dict_total =
-                                        Some(self.check_total_typed_dict_argument(db, arguments))
+                                        Some(self.check_typed_dict_arguments(db, arguments))
                                 }
                             }
                         }
@@ -1256,7 +1255,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         members.into_boxed_slice()
     }
 
-    fn check_total_typed_dict_argument(&self, db: &Database, args: CSTArguments) -> bool {
+    fn check_typed_dict_arguments(&self, db: &Database, args: CSTArguments) -> bool {
         let mut total = true;
         for argument in args.iter() {
             if let Argument::Keyword(kwarg) = argument {
