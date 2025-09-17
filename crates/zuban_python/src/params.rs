@@ -505,7 +505,8 @@ pub fn matches_simple_params<
                         ) => matches &= td2.matches(i_s, matcher, td1, true),
                         (WrappedStarStar::UnpackTypedDict(td1), WrappedStarStar::ValueType(t2)) => {
                             if let Some(t2) = t2 {
-                                for member in td1.members(i_s.db).iter() {
+                                // TODO extra_items: handle?!
+                                for member in td1.members(i_s.db).named.iter() {
                                     matches &= member.type_.matches(i_s, matcher, &t2, variance)
                                 }
                             }
@@ -521,10 +522,11 @@ pub fn matches_simple_params<
                     ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
                     | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
                         WrappedStarStar::UnpackTypedDict(td1) => {
+                            // TODO extra_items: handle?!
                             return matches_simple_params(
                                 i_s,
                                 matcher,
-                                td1.members(i_s.db).iter().map(TypedDictMemberParam),
+                                td1.members(i_s.db).named.iter().map(TypedDictMemberParam),
                                 params2,
                                 variance,
                             );
@@ -632,7 +634,9 @@ fn params1_matches_unpacked_dict<'db: 'x, 'x>(
     u: &TypedDict,
     variance: Variance,
 ) -> Match {
-    let mut required_members: Vec<_> = u.members(i_s.db).iter().filter(|m| m.required).collect();
+    let tdm = u.members(i_s.db);
+    // TODO extra_items: handle?
+    let mut required_members: Vec<_> = tdm.named.iter().filter(|m| m.required).collect();
     for param1 in params1 {
         match param1.specific(i_s.db) {
             WrappedParamType::KeywordOnly(t1) => {

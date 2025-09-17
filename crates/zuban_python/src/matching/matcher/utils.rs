@@ -881,7 +881,8 @@ pub(crate) fn match_arguments_against_params<
                         }
                     },
                     WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
-                        for member in td.members(i_s.db).iter() {
+                        // TODO extra_items: don't we have to match against extra_items?
+                        for member in td.members(i_s.db).named.iter() {
                             match_arg(
                                 argument,
                                 p.param.might_have_type_vars(),
@@ -1048,6 +1049,7 @@ pub(crate) fn match_arguments_against_params<
                     // Just fill the dict with all names and then remove them gradually.
                     missing_unpacked_typed_dict_names = Some(
                         td.members(i_s.db)
+                            .named
                             .iter()
                             .filter(|m| &m.name != name)
                             .map(|m| (m.name, m.required))
@@ -1152,7 +1154,7 @@ pub(crate) fn match_arguments_against_params<
         || args_with_params
             .unused_unpack_typed_dict
             .maybe_unchecked()
-            .is_some_and(|td| !td.members(i_s.db).is_empty())
+            .is_some_and(|td| !td.members(i_s.db).named.is_empty())
     {
         debug!("Unpacked typed dict mismatch");
         matches = Match::new_false()

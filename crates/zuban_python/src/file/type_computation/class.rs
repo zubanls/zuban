@@ -32,8 +32,8 @@ use crate::{
         AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass,
         DataclassOptions, DataclassTransformObj, DbString, Enum, EnumMemberDefinition,
         FunctionKind, GenericClass, NamedTuple, ParamType, ReplaceTypeVarLikes, StringSlice, Tuple,
-        Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict, TypedDictMember, Variance,
-        dataclass_init_func,
+        Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict, TypedDictMember,
+        TypedDictMembers, Variance, dataclass_init_func,
     },
     type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
@@ -1517,7 +1517,8 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<Typ
                     );
                     return;
                 };
-                typed_dict_members.merge(db, node_ref, td.members(db));
+                // TODO extra_items: handle!
+                typed_dict_members.merge(db, node_ref, &td.members(db).named);
             }
         }
     }
@@ -1531,7 +1532,11 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<Typ
         typed_dict_definition.total,
     );
     debug!("End TypedDict members calculation for {:?}", cls.name());
-    typed_dict.late_initialization_of_members(typed_dict_members.into_boxed_slice());
+    typed_dict.late_initialization_of_members(TypedDictMembers {
+        named: typed_dict_members.into_boxed_slice(),
+        // TODO extra_items: use!
+        extra_items: None,
+    });
     loop {
         let mut borrowed = typed_dict_definition
             .deferred_subclass_member_initializations

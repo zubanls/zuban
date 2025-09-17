@@ -1128,8 +1128,10 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
+                // TODO extra_items: use
                 let Some((name, t)) = typed_dict
                     .members(db)
+                    .named
                     .get(iterator_index)
                     .map(|member| (member.name, member.type_.clone()))
                 else {

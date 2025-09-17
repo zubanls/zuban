@@ -369,7 +369,7 @@ f: InheritedMovie = {
 # Copied from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, ReadOnly, Never
 
-class IllegalTD(TypedDict, closed=42 == 42):  # E: Argument to "closed" must be a literal True or False
+class IllegalTD(TypedDict, closed=42 == 42):  # E: "closed" argument must be a True or False literal
     name: str
 
 # > Passing ``closed=False`` explicitly requests the default TypedDict behavior,
@@ -715,3 +715,43 @@ class B(TypedDict, total=True, **kwargs):  # E: Unexpected arguments to TypedDic
     x: int
 
 C = TypedDict("C", {'x': int}, 1)  # E: Unexpected arguments to TypedDict()
+
+[case typed_dict_extra_items_formatting]
+from typing import TypedDict
+
+class IntDict(TypedDict, extra_items=int):
+    pass
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+def f(x: X, i: IntDict):
+    reveal_type(x)  # N: 
+    reveal_type(i)  # N: 
+    x = i  # E: 
+
+[case typed_dict_extra_items_assert_type]
+from typing import TypedDict, assert_type, ReadOnly
+
+class IntDict(TypedDict, extra_items=int):
+    pass
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+class StrDict(TypedDict, extra_items=int):
+    pass
+
+class StrDict2(TypedDict, extra_items=int):
+    pass
+
+class StrDictReadOnly(TypedDict, extra_items=ReadOnly[int]):
+    pass
+
+def f(x: X, i: IntDict, s: StrDict, sr: StrDictReadOnly):
+    assert_type(x, IntDict)
+    assert_type(i, IntDict)  # E: 
+    assert_type(s, StrDict)
+    assert_type(s, StrDict2)
+    assert_type(s, StrDictReadOnly)  # E: 
+    assert_type(sr, StrDictReadOnly)

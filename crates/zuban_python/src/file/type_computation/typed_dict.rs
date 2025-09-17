@@ -15,7 +15,10 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     recoverable_error,
-    type_::{GenericsList, StringSlice, Type, TypedDict, TypedDictGenerics, TypedDictMember},
+    type_::{
+        GenericsList, StringSlice, Type, TypedDict, TypedDictGenerics, TypedDictMember,
+        TypedDictMembers,
+    },
 };
 
 use super::{
@@ -23,13 +26,29 @@ use super::{
     TypedDictFieldModifiers, UnknownCause, type_computation_for_variable_annotation,
 };
 
+struct TypedDictMemberType {
+    pub type_: Type,
+    pub required: bool,
+    pub read_only: bool,
+}
+
 impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
-    pub fn compute_typed_dict_member(
+    fn compute_typed_dict_member(
         &mut self,
         name: StringSlice,
         expr: Expression,
         total: bool,
     ) -> TypedDictMember {
+        let tt = self.compute_typed_dict_type(expr, total);
+        TypedDictMember {
+            name,
+            type_: tt.type_,
+            required: tt.required,
+            read_only: tt.read_only,
+        }
+    }
+
+    fn compute_typed_dict_type(&mut self, expr: Expression, total: bool) -> TypedDictMemberType {
         let calculated = self.compute_type(expr).remove_annotated();
         let mut required = total;
         let mut read_only = false;
@@ -46,8 +65,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
             }
             _ => self.as_type(calculated, NodeRef::new(self.file, expr.index())),
         };
-        TypedDictMember {
-            name,
+        TypedDictMemberType {
             type_,
             required,
             read_only,
@@ -186,7 +204,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     i_s: &InferenceState<'db, '_>,
     comp: &mut TypeComputation,
     args: &dyn Args<'db>,
-) -> Option<(StringSlice, Box<[TypedDictMember]>)> {
+) -> Option<(StringSlice, TypedDictMembers)> {
     let simple_args = match args.maybe_simple_args().map(|args| args.details) {
         Some(ArgumentsDetails::Node(args)) => args,
         Some(_) => {
@@ -288,23 +306,29 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
             }
         };
     }
-    Some((name, members.into_boxed_slice()))
+    Some((
+        name,
+        TypedDictMembers {
+            named: members.into_boxed_slice(),
+            extra_items: None, // TODO extra_items
+        },
+    ))
 }
 
 #[derive(Default)]
-pub(super) struct TypedDictArgs {
+pub(super) struct TypedDictArgs<'file> {
     pub total: Option<bool>,
-    pub extra_items: Option<Type>,
+    pub extra_items: Option<Expression<'file>>,
     pub closed: Option<bool>,
 }
 
-pub(super) fn check_typed_dict_arguments(
+pub(super) fn check_typed_dict_arguments<'file>(
     i_s: &InferenceState,
     file: &PythonFile,
-    args: ArgsIterator,
+    args: ArgsIterator<'file>,
     ignore_positional: bool,
     add_issue: impl Fn(IssueKind),
-) -> TypedDictArgs {
+) -> TypedDictArgs<'file> {
     let mut result = TypedDictArgs::default();
 
     let check_bool = |name: Name, expr: Expression| {
@@ -324,7 +348,7 @@ pub(super) fn check_typed_dict_arguments(
                     "total" => {
                         result.total = check_bool(name, expr);
                     }
-                    "extra_items" => (), // TODO
+                    "extra_items" => result.extra_items = Some(expr),
                     "closed" => {
                         result.closed = check_bool(name, expr);
                     }

@@ -377,8 +377,10 @@ fn common_params<'x>(
         {
             let mut params = params.iter();
             params.next_back();
+            // TODO extra_items: handle
             *td_params = td
                 .members(i_s.db)
+                .named
                 .iter()
                 .map(|m| m.as_keyword_param())
                 .collect();
