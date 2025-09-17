@@ -717,7 +717,7 @@ class B(TypedDict, total=True, **kwargs):  # E: Unexpected arguments to TypedDic
 C = TypedDict("C", {'x': int}, 1)  # E: Unexpected arguments to TypedDict()
 
 [case typed_dict_extra_items_formatting]
-from typing import TypedDict
+from typing import TypedDict, ReadOnly
 
 class IntDict(TypedDict, extra_items=int):
     pass
@@ -725,8 +725,20 @@ class IntDict(TypedDict, extra_items=int):
 class X(TypedDict, extra_items=int):
     x: str
 
-def f(x: X, i: IntDict):
+class Y(TypedDict, extra_items=ReadOnly[int]):
+    x: str
+
+class C(TypedDict, closed=True):
+    x: str
+
+class D(TypedDict, closed=False):
+    x: str
+
+def f(x: X, y: Y, i: IntDict, c: C, d: D):
     reveal_type(x)  # N: Revealed type is "TypedDict('__main__.X', {'x': str}, extra_items=int)"
+    reveal_type(y)  # N: Revealed type is "TypedDict('__main__.Y', {'x': str}, extra_items=ReadOnly[int])"
+    reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'x': str}, closed=True)"
+    reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'x': str})"
     reveal_type(i)  # N: Revealed type is "TypedDict('__main__.IntDict', {}, extra_items=int)"
     x = i  # E: Incompatible types in assignment (expression has type "IntDict", variable has type "X")
 

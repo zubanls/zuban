@@ -384,10 +384,24 @@ impl TypedDict {
                         p.type_.format(&format_data)
                     )
                 }));
-                if let Some(name) = name {
-                    format!("TypedDict('{name}', {{{params}}})")
+
+                let rest = if let Some(e) = &m.extra_items {
+                    if e.t.is_never() {
+                        ", closed=True".to_string()
+                    } else {
+                        let mut inner = e.t.format(&format_data).into_string();
+                        if e.read_only {
+                            inner = format!("ReadOnly[{inner}]");
+                        }
+                        format!(", extra_items={inner}")
+                    }
                 } else {
-                    format!("TypedDict({{{params}}})")
+                    "".to_string()
+                };
+                if let Some(name) = name {
+                    format!("TypedDict('{name}', {{{params}}}{rest})")
+                } else {
+                    format!("TypedDict({{{params}}}{rest})")
                 }
             }
             Err(()) => "...".to_string(),
