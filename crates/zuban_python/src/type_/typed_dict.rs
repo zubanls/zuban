@@ -30,6 +30,12 @@ pub(crate) struct TypedDictMember {
     pub read_only: bool,
 }
 
+struct TypedDictEntry<'x> {
+    pub type_: &'x Type,
+    pub required: bool,
+    pub read_only: bool,
+}
+
 impl TypedDictMember {
     pub fn replace_type(&self, callable: impl FnOnce(&Type) -> Option<Type>) -> Self {
         Self {
@@ -253,6 +259,23 @@ impl TypedDict {
             .find(|p| p.name.as_str(db) == name)
     }
 
+    fn find_entry(&self, db: &Database, name: &str) -> Option<TypedDictEntry<'_>> {
+        let m = self.members(db);
+        if let Some(member) = m.named.iter().find(|p| p.name.as_str(db) == name) {
+            Some(TypedDictEntry {
+                type_: &member.type_,
+                required: member.required,
+                read_only: member.read_only,
+            })
+        } else {
+            m.extra_items.as_ref().map(|e| TypedDictEntry {
+                type_: &e.t,
+                required: false,
+                read_only: e.read_only,
+            })
+        }
+    }
+
     fn qualified_name(&self, db: &Database) -> Option<String> {
         let name = self.name?;
         let module = db.loaded_python_file(name.file_index).qualified_name(db);
@@ -383,7 +406,7 @@ impl TypedDict {
                 simple,
                 |key| {
                     Some({
-                        if let Some(member) = self.find_member(i_s.db, key) {
+                        if let Some(member) = self.find_entry(i_s.db, key) {
                             Inferred::from_type(member.type_.clone())
                         } else {
                             add_issue(IssueKind::TypedDictHasNoKeyForGet {
@@ -452,7 +475,7 @@ impl TypedDict {
         let mut matches = Match::new_true();
         // TODO extra_items also match
         for m1 in self.members(i_s.db).named.iter() {
-            if let Some(m2) = other.find_member(i_s.db, m1.name.as_str(i_s.db)) {
+            if let Some(m2) = other.find_entry(i_s.db, m1.name.as_str(i_s.db)) {
                 // Required must match except if the wanted type is also read-only (and therefore
                 // may not be modified afterwards
                 if m1.required != m2.required && !(m1.read_only && !m1.required) {
@@ -604,7 +627,7 @@ fn typed_dict_setdefault_internal<'db>(
         .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
-            if let Some(member) = td.find_member(i_s.db, key) {
+            if let Some(member) = td.find_entry(i_s.db, key) {
                 if !member
                     .type_
                     .is_simple_super_type_of(i_s, &default.as_cow_type(i_s))
@@ -695,7 +718,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
-            if let Some(member) = td.find_member(i_s.db, key) {
+            if let Some(member) = td.find_entry(i_s.db, key) {
                 if is_pop && (member.required || member.read_only) {
                     first_arg.add_issue(
                         i_s,
@@ -829,7 +852,7 @@ fn typed_dict_setitem_internal<'db>(
     let value = second_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let Some(literal) = inf_key.maybe_string_literal(i_s) {
         let key = literal.as_str(i_s.db);
-        if let Some(member) = td.find_member(i_s.db, key) {
+        if let Some(member) = td.find_entry(i_s.db, key) {
             if member.read_only {
                 args.add_issue(
                     i_s,
@@ -1019,7 +1042,7 @@ pub(crate) fn infer_typed_dict_arg(
     extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
 ) {
-    if let Some(member) = typed_dict.find_member(i_s.db, key) {
+    if let Some(member) = typed_dict.find_entry(i_s.db, key) {
         let inferred = infer(&mut ResultContext::WithMatcher {
             type_: &member.type_,
             matcher,
