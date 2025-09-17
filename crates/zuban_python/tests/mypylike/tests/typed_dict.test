@@ -328,13 +328,13 @@ m3: Mapping[str, Any] = b3  # OK
 
 [case typed_dict_extra_items_initialization]
 # Copied from conformance tests (typeddicts_extra_items.py)
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, assert_type, ReadOnly
 
 class Movie(TypedDict, extra_items=bool):
     name: str
 
 a: Movie = {"name": "Blade Runner", "novel_adaptation": True}  # OK
-b: Movie = {"name": "Blade Runner", "year": 1982}  # E: 'int' is not assignable to 'bool'
+b: Movie = {"name": "Blade Runner", "year": 1982}  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "bool")
 
 # > The alternative inline syntax is also supported::
 
@@ -358,7 +358,7 @@ class MovieBase(TypedDict, extra_items=ReadOnly[int | None]):
 class InheritedMovie(MovieBase):
     year: int
 
-e: InheritedMovie = {"name": "Blade Runner", "year": None}  # E: 'None' is incompatible with 'int'
+e: InheritedMovie = {"name": "Blade Runner", "year": None}  # E: Incompatible types (expression has type "None", TypedDict item "year" has type "int")
 f: InheritedMovie = {
     "name": "Blade Runner",
     "year": 1982,

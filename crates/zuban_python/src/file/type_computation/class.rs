@@ -1500,6 +1500,7 @@ fn initialize_typed_dict_members(
 ) {
     let typed_dict_definition = cls.maybe_typed_dict_definition().unwrap();
     let mut typed_dict_members = TypedDictMemberGatherer::default();
+    let mut extra_items = None;
     if let Some(args) = cls.node().arguments() {
         for (i, base) in cls
             .use_cached_class_infos(db)
@@ -1525,8 +1526,11 @@ fn initialize_typed_dict_members(
                     );
                     return;
                 };
-                // TODO extra_items: handle!
-                typed_dict_members.merge(db, node_ref, &td.members(db).named);
+                let m = td.members(db);
+                if m.extra_items.is_some() {
+                    extra_items = m.extra_items.clone()
+                }
+                typed_dict_members.merge(db, node_ref, &m.named);
             }
         }
     }
@@ -1541,14 +1545,16 @@ fn initialize_typed_dict_members(
         &typed_dict_definition.initialization_args,
     );
     let initialization_args = &td_infos.1;
-    let extra_items = file
+    if let new @ Some(_) = file
         .name_resolution_for_types(i_s)
-        .compute_class_typed_dict_extra_items(&initialization_args);
+        .compute_class_typed_dict_extra_items(&initialization_args)
+    {
+        extra_items = new
+    }
 
     debug!("End TypedDict members calculation for {:?}", cls.name());
     td_infos.0.late_initialization_of_members(TypedDictMembers {
         named: typed_dict_members.into_boxed_slice(),
-        // TODO extra_items: use!
         extra_items,
     });
     loop {
