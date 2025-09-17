@@ -726,9 +726,9 @@ class X(TypedDict, extra_items=int):
     x: str
 
 def f(x: X, i: IntDict):
-    reveal_type(x)  # N: 
-    reveal_type(i)  # N: 
-    x = i  # E: 
+    reveal_type(x)  # N: Revealed type is "TypedDict('__main__.X', {'x': str}, extra_items=int)"
+    reveal_type(i)  # N: Revealed type is "TypedDict('__main__.IntDict', {}, extra_items=int)"
+    x = i  # E: Incompatible types in assignment (expression has type "IntDict", variable has type "X")
 
 [case typed_dict_extra_items_assert_type]
 from typing import TypedDict, assert_type, ReadOnly
@@ -749,9 +749,9 @@ class StrDictReadOnly(TypedDict, extra_items=ReadOnly[int]):
     pass
 
 def f(x: X, i: IntDict, s: StrDict, sr: StrDictReadOnly):
-    assert_type(x, IntDict)
-    assert_type(i, IntDict)  # E: 
+    assert_type(x, IntDict)  # E: Expression is of type "X", not "IntDict"
+    assert_type(i, IntDict)
     assert_type(s, StrDict)
     assert_type(s, StrDict2)
-    assert_type(s, StrDictReadOnly)  # E: 
+    assert_type(s, StrDictReadOnly)  # E: Expression is of type "StrDict", not "StrDictReadOnly"
     assert_type(sr, StrDictReadOnly)

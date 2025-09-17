@@ -190,6 +190,8 @@ impl TypedDict {
     pub fn has_calculated_members(&self, db: &Database) -> bool {
         let members = self.members.get();
         if members.is_none() && matches!(&self.generics, TypedDictGenerics::Generics(_)) {
+            // Generic TypedDicts can be remapped so we need to recheck the original definition if
+            // there are calculated members.
             let class = Class::from_non_generic_link(db, self.defined_at);
             let original_typed_dict = class.maybe_typed_dict().unwrap();
             if original_typed_dict.has_calculated_members(db) {

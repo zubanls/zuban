@@ -396,9 +396,7 @@ typed_dict_extra_items_with_unpack
 typed_dict_extra_items_subclassing
 typed_dict_extra_items_further_tests1
 typed_dict_extra_items_further_tests2
-invalid_typed_dict_definitions_in_class_args (typed_dict, no-mypy-compatible)
-invalid_typed_dict_definitions_in_class_args (typed_dict, mypy-compatible)
-
+typed_dict_extra_items_formatting
 
 # dataclass classmethod
 testDataclassesClassmethods

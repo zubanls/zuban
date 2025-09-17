@@ -7,7 +7,7 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::Args,
-    database::Database,
+    database::{Database, TypedDictArgs},
     diagnostics::IssueKind,
     file::{PythonFile, name_resolution::NameResolution},
     format_data::FormatData,
@@ -16,8 +16,8 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        GenericsList, StringSlice, Type, TypedDict, TypedDictGenerics, TypedDictMember,
-        TypedDictMembers,
+        ExtraItemsType, GenericsList, NeverCause, StringSlice, Type, TypedDict, TypedDictGenerics,
+        TypedDictMember, TypedDictMembers,
     },
 };
 
@@ -35,11 +35,11 @@ struct TypedDictMemberType {
 impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
     fn compute_typed_dict_member(
         &mut self,
+        initialization_args: &TypedDictArgs,
         name: StringSlice,
         expr: Expression,
-        total: bool,
     ) -> TypedDictMember {
-        let tt = self.compute_typed_dict_type(expr, total);
+        let tt = self.compute_typed_dict_type(initialization_args, expr);
         TypedDictMember {
             name,
             type_: tt.type_,
@@ -48,9 +48,13 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
         }
     }
 
-    fn compute_typed_dict_type(&mut self, expr: Expression, total: bool) -> TypedDictMemberType {
+    fn compute_typed_dict_type(
+        &mut self,
+        initialization_args: &TypedDictArgs,
+        expr: Expression,
+    ) -> TypedDictMemberType {
         let calculated = self.compute_type(expr).remove_annotated();
-        let mut required = total;
+        let mut required = initialization_args.total.unwrap_or(true);
         let mut read_only = false;
         let type_ = match calculated {
             TypeContent::TypedDictMemberModifiers(m, t) => {
@@ -178,25 +182,60 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(crate) fn compute_class_typed_dict_member(
         &self,
+        initialization_args: &TypedDictArgs,
         name: StringSlice,
         annotation: Annotation,
-        total: bool,
     ) -> TypedDictMember {
+        let t = self.compute_class_typed_dict_type(initialization_args, annotation.expression());
+        TypedDictMember {
+            name,
+            type_: t.type_,
+            required: t.required,
+            read_only: t.read_only,
+        }
+    }
+
+    fn compute_class_typed_dict_type(
+        &self,
+        initialization_args: &TypedDictArgs,
+        expr: Expression,
+    ) -> TypedDictMemberType {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self.i_s,
             self.file,
-            NodeRef::new(self.file, annotation.index()).as_link(),
+            NodeRef::new(self.file, expr.index()).as_link(),
             &mut x,
             TypeComputationOrigin::TypedDictMember,
         );
 
-        let mut member = comp.compute_typed_dict_member(name, annotation.expression(), total);
+        let mut t = comp.compute_typed_dict_type(initialization_args, expr);
         let type_vars = comp.into_type_vars(|_, recalculate_type_vars| {
-            member.type_ = recalculate_type_vars(&member.type_);
+            t.type_ = recalculate_type_vars(&t.type_);
         });
         debug_assert!(type_vars.is_empty());
-        member
+        t
+    }
+
+    pub fn compute_class_typed_dict_extra_items(
+        &self,
+        initialization_args: &TypedDictArgs,
+    ) -> Option<ExtraItemsType> {
+        let mut result = None;
+        if let Some(expr_index) = initialization_args.extra_items {
+            let expr = NodeRef::new(self.file, expr_index).expect_expression();
+            let t = self.compute_class_typed_dict_type(&initialization_args, expr);
+            result = Some(ExtraItemsType {
+                t: t.type_,
+                read_only: t.read_only,
+            })
+        } else if let Some(true) = initialization_args.closed {
+            result = Some(ExtraItemsType {
+                t: Type::Never(NeverCause::Explicit),
+                read_only: false,
+            })
+        }
+        result
     }
 }
 
@@ -290,11 +329,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
                 };
                 if let Err(issue) = members.add(
                     i_s.db,
-                    comp.compute_typed_dict_member(
-                        name,
-                        key_value.value(),
-                        options.total.unwrap_or(true),
-                    ),
+                    comp.compute_typed_dict_member(&options, name, key_value.value()),
                 ) {
                     NodeRef::new(file, key_value.key().index()).add_issue(i_s, issue);
                 }
@@ -315,20 +350,13 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     ))
 }
 
-#[derive(Default)]
-pub(super) struct TypedDictArgs<'file> {
-    pub total: Option<bool>,
-    pub extra_items: Option<Expression<'file>>,
-    pub closed: Option<bool>,
-}
-
 pub(super) fn check_typed_dict_arguments<'file>(
     i_s: &InferenceState,
     file: &PythonFile,
     args: ArgsIterator<'file>,
     ignore_positional: bool,
     add_issue: impl Fn(IssueKind),
-) -> TypedDictArgs<'file> {
+) -> TypedDictArgs {
     let mut result = TypedDictArgs::default();
 
     let check_bool = |name: Name, expr: Expression| {
@@ -348,7 +376,7 @@ pub(super) fn check_typed_dict_arguments<'file>(
                     "total" => {
                         result.total = check_bool(name, expr);
                     }
-                    "extra_items" => result.extra_items = Some(expr),
+                    "extra_items" => result.extra_items = Some(expr.index()),
                     "closed" => {
                         result.closed = check_bool(name, expr);
                     }

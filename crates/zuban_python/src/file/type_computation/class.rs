@@ -14,7 +14,7 @@ use utils::FastHashSet;
 use crate::{
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific,
+        MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific, TypedDictArgs,
         TypedDictDefinition,
     },
     debug,
@@ -22,7 +22,7 @@ use crate::{
     file::{
         OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
         name_resolution::NameResolution,
-        type_computation::{InvalidVariableType, TypeContent, typed_dict::TypedDictMemberGatherer},
+        type_computation::{InvalidVariableType, TypeContent},
         use_cached_annotation_type,
     },
     inference_state::InferenceState,
@@ -41,7 +41,8 @@ use crate::{
 
 use super::{
     CalculatedBaseClass, FuncNodeRef, Lookup, TypeComputation, TypeComputationOrigin,
-    named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_arguments,
+    named_tuple::start_namedtuple_params,
+    typed_dict::{TypedDictMemberGatherer, check_typed_dict_arguments},
 };
 
 // Save the ClassInfos on the class keyword
@@ -508,7 +509,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
 
-        let (mut class_infos, typed_dict_total) = self.calculate_class_infos(i_s, type_vars);
+        let (mut class_infos, typed_dict_options) = self.calculate_class_infos(i_s, type_vars);
         if let Some(dataclass) = &was_dataclass {
             // It is possible that there was a dataclass_transform in the metaclass
             let _ = class_infos
@@ -585,7 +586,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
         let mut was_typed_dict = None;
-        if let Some(total) = typed_dict_total {
+        if let Some(typed_dict_options) = typed_dict_options {
             let td = TypedDict::new_class_definition(
                 self.name_string_slice(),
                 self.node_ref.as_link(),
@@ -597,10 +598,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 .undefined_generics_type
                 .set(Arc::new(Type::TypedDict(td.clone())));
             NodeRef::new(self.node_ref.file, self.node().name_def().index()).insert_complex(
-                ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
+                ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(
+                    td.clone(),
+                    typed_dict_options.clone(),
+                )),
                 Locality::ImplicitExtern,
             );
-            was_typed_dict = Some(td);
+            was_typed_dict = Some((td, typed_dict_options));
         }
 
         if type_vars.is_empty() && self.file.should_infer_untyped_returns(i_s.db) {
@@ -690,14 +694,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         type_vars: &TypeVarLikes,
-    ) -> (Box<ClassInfos>, Option<bool>) {
+    ) -> (Box<ClassInfos>, Option<TypedDictArgs>) {
         // Calculate all type vars beforehand
         let db = i_s.db;
 
         let mut bases: Vec<Type> = vec![];
         let mut incomplete_mro = false;
         let mut class_kind = ClassKind::Normal;
-        let mut typed_dict_total = None;
+        let mut typed_dict_options = None;
         let mut had_new_typed_dict = false;
         let mut is_new_named_tuple = false;
         let mut metaclass = MetaclassState::None;
@@ -894,8 +898,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                                 .add_type_issue(db, issue)
                                         },
                                     );
-                                    if typed_dict_total.is_none() {
-                                        typed_dict_total = Some(options.total.unwrap_or(true));
+                                    if typed_dict_options.is_none() {
+                                        typed_dict_options = Some(options);
                                     }
                                     class_kind = ClassKind::TypedDict;
                                     if typed_dict.is_final {
@@ -1019,8 +1023,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                             .add_type_issue(db, issue)
                                     },
                                 );
-                                if typed_dict_total.is_none() {
-                                    typed_dict_total = Some(options.total.unwrap_or(true));
+                                if typed_dict_options.is_none() {
+                                    typed_dict_options = Some(options);
                                 }
                             }
                         }
@@ -1159,7 +1163,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 dataclass_transform,
                 undefined_generics_type,
             }),
-            typed_dict_total,
+            typed_dict_options,
         )
     }
 
@@ -1489,7 +1493,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     }
 }
 
-fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<TypedDict>) {
+fn initialize_typed_dict_members(
+    db: &Database,
+    cls: &Class,
+    td_infos: (Arc<TypedDict>, TypedDictArgs),
+) {
     let typed_dict_definition = cls.maybe_typed_dict_definition().unwrap();
     let mut typed_dict_members = TypedDictMemberGatherer::default();
     if let Some(args) = cls.node().arguments() {
@@ -1509,7 +1517,7 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<Typ
                     tdd.deferred_subclass_member_initializations
                         .write()
                         .unwrap()
-                        .push(typed_dict.clone());
+                        .push(td_infos.clone());
                     debug!(
                         "Defer typed dict member initialization for {:?} after {:?}",
                         cls.name(),
@@ -1524,18 +1532,24 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<Typ
     }
     debug!("Start TypedDict members calculation for {:?}", cls.name());
     let file = cls.node_ref.file;
+    let i_s = &InferenceState::new(db, file).with_class_context(cls);
     find_stmt_typed_dict_types(
-        &InferenceState::new(db, file).with_class_context(cls),
+        i_s,
         file,
         &mut typed_dict_members,
         cls.node().block().iter_stmt_likes(),
-        typed_dict_definition.total,
+        &typed_dict_definition.initialization_args,
     );
+    let initialization_args = &td_infos.1;
+    let extra_items = file
+        .name_resolution_for_types(i_s)
+        .compute_class_typed_dict_extra_items(&initialization_args);
+
     debug!("End TypedDict members calculation for {:?}", cls.name());
-    typed_dict.late_initialization_of_members(TypedDictMembers {
+    td_infos.0.late_initialization_of_members(TypedDictMembers {
         named: typed_dict_members.into_boxed_slice(),
         // TODO extra_items: use!
-        extra_items: None,
+        extra_items,
     });
     loop {
         let mut borrowed = typed_dict_definition
@@ -1547,7 +1561,7 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, typed_dict: Arc<Typ
         };
         drop(borrowed);
         // TODO is this initialization correct?
-        let cls = Class::from_non_generic_link(db, deferred.defined_at);
+        let cls = Class::from_non_generic_link(db, deferred.0.defined_at);
         debug!(
             "Calculate TypedDict members for deferred subclass {:?}",
             cls.name()
@@ -1561,7 +1575,7 @@ fn find_stmt_typed_dict_types(
     file: &PythonFile,
     vec: &mut TypedDictMemberGatherer,
     stmt_likes: StmtLikeIterator,
-    total: bool,
+    initialization_args: &TypedDictArgs,
 ) {
     let db = i_s.db;
     for stmt_like in stmt_likes {
@@ -1576,9 +1590,9 @@ fn find_stmt_typed_dict_types(
                         db,
                         file.name_resolution_for_types(i_s)
                             .compute_class_typed_dict_member(
+                                &initialization_args,
                                 StringSlice::from_name(file.file_index, name_def.name()),
                                 annot,
-                                total,
                             ),
                     ) {
                         NodeRef::new(file, assignment.index()).add_type_issue(db, issue);

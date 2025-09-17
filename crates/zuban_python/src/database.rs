@@ -721,11 +721,18 @@ pub(crate) struct WidenedType {
     pub widened: Type,
 }
 
+#[derive(Debug, Default, Clone)]
+pub(super) struct TypedDictArgs {
+    pub total: Option<bool>,
+    pub extra_items: Option<NodeIndex>,
+    pub closed: Option<bool>,
+}
+
 #[derive(Debug)]
 pub(crate) struct TypedDictDefinition {
     pub type_: Arc<Type>,
-    pub deferred_subclass_member_initializations: Box<RwLock<Vec<Arc<TypedDict>>>>,
-    pub total: bool,
+    pub deferred_subclass_member_initializations: Box<RwLock<Vec<(Arc<TypedDict>, TypedDictArgs)>>>,
+    pub initialization_args: TypedDictArgs,
 }
 
 impl Clone for TypedDictDefinition {
@@ -741,7 +748,7 @@ impl Clone for TypedDictDefinition {
                     .unwrap()
                     .clone(),
             )),
-            total: self.total,
+            initialization_args: self.initialization_args.clone(),
         }
     }
 }
@@ -752,11 +759,11 @@ impl PartialEq for TypedDictDefinition {
 }
 
 impl TypedDictDefinition {
-    pub fn new(typed_dict: Arc<TypedDict>, total: bool) -> Self {
+    pub fn new(typed_dict: Arc<TypedDict>, initialization_args: TypedDictArgs) -> Self {
         Self {
             type_: Arc::new(Type::TypedDict(typed_dict)),
             deferred_subclass_member_initializations: Default::default(),
-            total,
+            initialization_args,
         }
     }
 
