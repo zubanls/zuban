@@ -796,7 +796,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     &mut comp,
                     &SimpleArgs::new(*self.i_s, self.file, args.primary_index, args.details),
                 ) {
-                    Some((name, members, _)) => {
+                    Some((name, members)) => {
                         alias.set_valid(
                             Type::TypedDict(TypedDict::new_definition(
                                 name,

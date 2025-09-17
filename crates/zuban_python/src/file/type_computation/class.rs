@@ -4,10 +4,10 @@ use std::{
 };
 
 use parsa_python_cst::{
-    ArgOrComprehension, Argument, Arguments as CSTArguments, ArgumentsDetails, AssignmentContent,
-    AsyncStmtContent, ClassDef, Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg,
-    Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent,
-    StmtLikeIterator, Target, TrivialBodyState, TypeLike,
+    ArgOrComprehension, Argument, ArgumentsDetails, AssignmentContent, AsyncStmtContent, ClassDef,
+    Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg, Name, NodeIndex, Primary,
+    PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator, Target,
+    TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -41,7 +41,7 @@ use crate::{
 
 use super::{
     CalculatedBaseClass, FuncNodeRef, Lookup, TypeComputation, TypeComputationOrigin,
-    named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_total_argument,
+    named_tuple::start_namedtuple_params, typed_dict::check_typed_dict_arguments,
 };
 
 // Save the ClassInfos on the class keyword
@@ -884,9 +884,18 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 }
                                 Type::Dataclass(d) => Some(Self::from_link(db, d.class.link)),
                                 Type::TypedDict(typed_dict) => {
+                                    let options = check_typed_dict_arguments(
+                                        i_s,
+                                        self.file,
+                                        arguments.iter(),
+                                        true,
+                                        |issue| {
+                                            NodeRef::new(self.node_ref.file, n.index())
+                                                .add_type_issue(db, issue)
+                                        },
+                                    );
                                     if typed_dict_total.is_none() {
-                                        typed_dict_total =
-                                            Some(self.check_typed_dict_arguments(db, arguments))
+                                        typed_dict_total = Some(options.total.unwrap_or(true));
                                     }
                                     class_kind = ClassKind::TypedDict;
                                     if typed_dict.is_final {
@@ -1000,9 +1009,18 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             } else {
                                 had_new_typed_dict = true;
                                 class_kind = ClassKind::TypedDict;
+                                let options = check_typed_dict_arguments(
+                                    i_s,
+                                    self.file,
+                                    arguments.iter(),
+                                    true,
+                                    |issue| {
+                                        NodeRef::new(self.node_ref.file, n.index())
+                                            .add_type_issue(db, issue)
+                                    },
+                                );
                                 if typed_dict_total.is_none() {
-                                    typed_dict_total =
-                                        Some(self.check_typed_dict_arguments(db, arguments))
+                                    typed_dict_total = Some(options.total.unwrap_or(true));
                                 }
                             }
                         }
@@ -1253,33 +1271,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
         members.into_boxed_slice()
-    }
-
-    fn check_typed_dict_arguments(&self, db: &Database, args: CSTArguments) -> bool {
-        let mut total = true;
-        for argument in args.iter() {
-            if let Argument::Keyword(kwarg) = argument {
-                let (name, expr) = kwarg.unpack();
-                if name.as_code() == "total" {
-                    total = check_typed_dict_total_argument(expr, |issue| {
-                        NodeRef::new(self.node_ref.file, expr.index()).add_type_issue(db, issue)
-                    })
-                    .unwrap_or(true);
-                } else {
-                    NodeRef::new(self.file, name.index()).add_type_issue(
-                        db,
-                        IssueKind::ArgumentIssue(
-                            format!(
-                                "Unexpected keyword argument {:?} for TypedDict",
-                                name.as_code()
-                            )
-                            .into(),
-                        ),
-                    )
-                }
-            }
-        }
-        total
     }
 
     fn named_tuple_from_class(&self, db: &Database) -> Arc<NamedTuple> {

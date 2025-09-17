@@ -296,11 +296,11 @@ v6: TDProtocol6 = func1  # OK
 [case invalid_typed_dict_definitions_in_class_args]
 # Copied from conformance tests (typeddicts_class_syntax.py)
 from typing import TypedDict
-class BadTypedDict2(TypedDict, metaclass=type):  # E: Unexpected keyword argument "metaclass" for TypedDict
+class BadTypedDict2(TypedDict, metaclass=type):  # E: Unexpected keyword argument "metaclass" for "TypedDict"
     name: str
 
 # This should generate an error because "other" is not an allowed keyword argument.
-class BadTypedDict3(TypedDict, other=True):  # E: Unexpected keyword argument "other" for TypedDict
+class BadTypedDict3(TypedDict, other=True):  # E: Unexpected keyword argument "other" for "TypedDict"
     name: str
 
 [case typed_dict_not_assignable_to_any_dict]
@@ -702,14 +702,16 @@ might_not_be(not_a_builtin_dict)
 
 [case typed_dict_wrong_args]
 from typing import TypedDict
-X = TypedDict("X", {'x', int}, total=True, foo=1)  # E: Too many arguments for "TypedDict()"
+X = TypedDict("X", {'x': int}, total=True, foo=1)  # E: Unexpected keyword argument "foo" for "TypedDict"
 
-class Y(TypedDict, total=True, foo=1):    # E: Unexpected keyword argument "foo" for TypedDict
+class Y(TypedDict, total=True, foo=1):    # E: Unexpected keyword argument "foo" for "TypedDict"
     x: int
 
 kwargs = dict(closed=True)
 
-A = TypedDict("A", {'x', int}, total=True, **kwargs)  # E: Too many arguments for "TypedDict()"
+A = TypedDict("A", {'x': int}, total=True, **kwargs)  # E: Unexpected arguments to TypedDict()
 
-class B(TypedDict, total=True, **kwargs):    # E: Invalid base class "**kwargs"
+class B(TypedDict, total=True, **kwargs):  # E: Unexpected arguments to TypedDict()  # E: Invalid base class "**kwargs"
     x: int
+
+C = TypedDict("C", {'x': int}, 1)  # E: Unexpected arguments to TypedDict()

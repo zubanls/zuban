@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
-use parsa_python_cst::{Annotation, AtomContent, DictElement, Expression};
+use parsa_python_cst::{
+    Annotation, ArgsIterator, Argument, ArgumentsDetails, AtomContent, DictElement, Expression,
+    Name,
+};
 
 use crate::{
-    arguments::{ArgKind, Args},
+    arguments::Args,
     database::Database,
     diagnostics::IssueKind,
-    file::name_resolution::NameResolution,
+    file::{PythonFile, name_resolution::NameResolution},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -183,22 +186,32 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     i_s: &InferenceState<'db, '_>,
     comp: &mut TypeComputation,
     args: &dyn Args<'db>,
-) -> Option<(StringSlice, Box<[TypedDictMember]>, bool)> {
-    let mut iterator = args.iter(i_s.mode);
+) -> Option<(StringSlice, Box<[TypedDictMember]>)> {
+    let simple_args = match args.maybe_simple_args().map(|args| args.details) {
+        Some(ArgumentsDetails::Node(args)) => args,
+        Some(_) => {
+            args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
+            return None;
+        }
+        _ => {
+            args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
+            return None;
+        }
+    };
+    debug_assert!(args.in_file().is_some());
+    let file = args.in_file()?;
+    let mut iterator = simple_args.iter();
     let Some(first_arg) = iterator.next() else {
         args.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
         return None;
     };
-    let ArgKind::Positional(first) = first_arg.kind else {
+    let Argument::Positional(first) = first_arg else {
         args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
         return None;
     };
-    let expr = first.node_ref.expect_named_expression().expression();
-    let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr)
-    else {
-        first
-            .node_ref
-            .add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
+    let expr = first.expression();
+    let Some(name) = StringSlice::from_string_in_expression(file.file_index, expr) else {
+        NodeRef::new(file, first.index()).add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
         return None;
     };
 
@@ -209,7 +222,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     {
         let name = name.as_str(i_s.db);
         if name != definition_name.as_code() {
-            first.node_ref.add_issue(
+            NodeRef::new(file, first.index()).add_issue(
                 i_s,
                 IssueKind::TypedDictNameMismatch {
                     string_name: Box::from(name),
@@ -226,59 +239,22 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
         args.add_issue(i_s, IssueKind::TooFewArguments(" for TypedDict()".into()));
         return None;
     };
-    let ArgKind::Positional(second) = second_arg.kind else {
-        second_arg.add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
-        return None;
-    };
-    let Some(atom_content) = second
-        .node_ref
-        .expect_named_expression()
-        .expression()
-        .maybe_unpacked_atom()
-    else {
-        second
-            .node_ref
+    let Argument::Positional(second) = second_arg else {
+        NodeRef::new(file, second_arg.index())
             .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
         return None;
     };
-    let mut total = true;
-    if let Some(next) = iterator.next() {
-        match &next.kind {
-            ArgKind::Keyword(kw) => match kw.key {
-                "total" => {
-                    total = check_typed_dict_total_argument(kw.expression, |issue| {
-                        next.add_issue(i_s, issue)
-                    })?;
-                }
-                "extra_items" => (),
-                "closed" => (),
-                _ => {
-                    let s = format!(
-                        r#"Unexpected keyword argument "{}" for "TypedDict""#,
-                        kw.key
-                    );
-                    kw.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
-                    return None;
-                }
-            },
-            _ => {
-                args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
-                return None;
-            }
-        };
-    }
-    if iterator.next().is_some() {
-        args.add_issue(
-            i_s,
-            IssueKind::TooManyArguments(" for \"TypedDict()\"".into()),
-        );
+    let Some(atom_content) = second.expression().maybe_unpacked_atom() else {
+        NodeRef::new(file, second.index()).add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
         return None;
-    }
+    };
+    let options = check_typed_dict_arguments(i_s, file, iterator, false, |issue| {
+        args.add_issue(i_s, issue)
+    });
     let dct_iterator = match atom_content {
         AtomContent::Dict(dct) => dct.iter_elements(),
         _ => {
-            second
-                .node_ref
+            NodeRef::new(file, second.index())
                 .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
             return None;
         }
@@ -287,42 +263,84 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     for element in dct_iterator {
         match element {
             DictElement::KeyValue(key_value) => {
-                let Some(name) = StringSlice::from_string_in_expression(
-                    first.node_ref.file_index(),
-                    key_value.key(),
-                ) else {
-                    NodeRef::new(first.node_ref.file, key_value.key().index())
+                let Some(name) =
+                    StringSlice::from_string_in_expression(file.file_index, key_value.key())
+                else {
+                    NodeRef::new(file, key_value.key().index())
                         .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
                     return None;
                 };
                 if let Err(issue) = members.add(
                     i_s.db,
-                    comp.compute_typed_dict_member(name, key_value.value(), total),
+                    comp.compute_typed_dict_member(
+                        name,
+                        key_value.value(),
+                        options.total.unwrap_or(true),
+                    ),
                 ) {
-                    NodeRef::new(first.node_ref.file, key_value.key().index())
-                        .add_issue(i_s, issue);
+                    NodeRef::new(file, key_value.key().index()).add_issue(i_s, issue);
                 }
                 key_value.key();
             }
             DictElement::Star(d) => {
-                NodeRef::new(first.node_ref.file, d.index())
-                    .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
+                NodeRef::new(file, d.index()).add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
                 return None;
             }
         };
     }
-    Some((name, members.into_boxed_slice(), total))
+    Some((name, members.into_boxed_slice()))
 }
 
-pub(super) fn check_typed_dict_total_argument(
-    expr: Expression,
+#[derive(Default)]
+pub(super) struct TypedDictArgs {
+    pub total: Option<bool>,
+    pub extra_items: Option<Type>,
+    pub closed: Option<bool>,
+}
+
+pub(super) fn check_typed_dict_arguments(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    args: ArgsIterator,
+    ignore_positional: bool,
     add_issue: impl Fn(IssueKind),
-) -> Option<bool> {
-    let result = expr.maybe_simple_bool();
-    if result.is_none() {
-        add_issue(IssueKind::ArgumentMustBeTrueOrFalse {
-            key: "total".into(),
-        });
+) -> TypedDictArgs {
+    let mut result = TypedDictArgs::default();
+
+    let check_bool = |name: Name, expr: Expression| {
+        let result = expr.maybe_simple_bool();
+        if result.is_none() {
+            add_issue(IssueKind::ArgumentMustBeTrueOrFalse {
+                key: name.as_code().into(),
+            });
+        }
+        result
+    };
+    for argument in args {
+        match argument {
+            Argument::Keyword(kw) => {
+                let (name, expr) = kw.unpack();
+                match name.as_code() {
+                    "total" => {
+                        result.total = check_bool(name, expr);
+                    }
+                    "extra_items" => (), // TODO
+                    "closed" => {
+                        result.closed = check_bool(name, expr);
+                    }
+                    name => {
+                        let s =
+                            format!(r#"Unexpected keyword argument "{}" for "TypedDict""#, name);
+                        NodeRef::new(file, kw.index())
+                            .add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
+                    }
+                }
+            }
+            Argument::Positional(_) if ignore_positional => continue,
+            _ => {
+                add_issue(IssueKind::UnexpectedArgumentsToTypedDict);
+            }
+        }
     }
     result
 }
