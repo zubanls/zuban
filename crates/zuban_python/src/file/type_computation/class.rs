@@ -1501,7 +1501,8 @@ fn initialize_typed_dict_members(
     let typed_dict_definition = cls.maybe_typed_dict_definition().unwrap();
     let mut typed_dict_members = TypedDictMemberGatherer::default();
     let mut extra_items = None;
-    if let Some(args) = cls.node().arguments() {
+    let args = cls.node().arguments();
+    if let Some(args) = args {
         for (i, base) in cls
             .use_cached_class_infos(db)
             .mro
@@ -1545,11 +1546,24 @@ fn initialize_typed_dict_members(
         &typed_dict_definition.initialization_args,
     );
     let initialization_args = &td_infos.1;
-    if let new @ Some(_) = file
+    if let Some(old) = &extra_items {
+        let add = |issue| NodeRef::new(file, args.unwrap().index()).add_type_issue(db, issue);
+        match initialization_args.closed {
+            Some(true) if !old.read_only && !old.t.is_never() => {
+                add(IssueKind::TypedDictCannotUseCloseIfSuperClassExtraItemsNonReadOnly)
+            }
+            Some(false) if old.t.is_never() => {
+                add(IssueKind::TypedDictCannotUseCloseFalseIfSuperClassClosed)
+            }
+            Some(false) => add(IssueKind::TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems),
+            _ => (),
+        }
+    }
+    if let Some(new) = file
         .name_resolution_for_types(i_s)
         .compute_class_typed_dict_extra_items(&initialization_args)
     {
-        extra_items = new
+        extra_items = Some(new)
     }
 
     debug!("End TypedDict members calculation for {:?}", cls.name());

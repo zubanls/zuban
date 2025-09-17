@@ -388,6 +388,9 @@ pub(crate) enum IssueKind {
     UnpackItemInStarStarMustBeTypedDict,
     TypedDictSetdefaultWrongDefaultType { got: Box<str>, expected: Box<str> },
     ArgumentMustBeTrueOrFalse { key: Box<str> },
+    TypedDictCannotUseCloseIfSuperClassExtraItemsNonReadOnly,
+    TypedDictCannotUseCloseFalseIfSuperClassClosed,
+    TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1874,6 +1877,12 @@ impl<'db> Diagnostic<'db> {
             ArgumentMustBeTrueOrFalse { key } => format!(
                 r#""{key}" argument must be a True or False literal"#
             ),
+            TypedDictCannotUseCloseIfSuperClassExtraItemsNonReadOnly =>
+                r#"Cannot set "closed=True" when superclass has non-read-only "extra_items""#.to_string(),
+            TypedDictCannotUseCloseFalseIfSuperClassClosed =>
+                r#"Cannot set "closed=False" when superclass is "closed=True""#.to_string(),
+            TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems =>
+                r#"Cannot set "closed=False" when superclass has "extra_items""#.to_string(),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),
