@@ -76,6 +76,15 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
         }
     }
 
+    fn compute_functional_typed_dict_extra_items(
+        &mut self,
+        initialization_args: &TypedDictArgs,
+    ) -> Option<ExtraItemsType> {
+        initialization_args.calc_extra_items_type(self.file, |expr| {
+            self.compute_typed_dict_type(initialization_args, expr)
+        })
+    }
+
     pub(super) fn compute_type_get_item_on_typed_dict_field_modifier(
         &mut self,
         slice_type: SliceType,
@@ -221,15 +230,27 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         initialization_args: &TypedDictArgs,
     ) -> Option<ExtraItemsType> {
+        initialization_args.calc_extra_items_type(self.file, |expr| {
+            self.compute_class_typed_dict_type(initialization_args, expr)
+        })
+    }
+}
+
+impl TypedDictArgs {
+    fn calc_extra_items_type(
+        &self,
+        file: &PythonFile,
+        callback: impl FnOnce(Expression) -> TypedDictMemberType,
+    ) -> Option<ExtraItemsType> {
         let mut result = None;
-        if let Some(expr_index) = initialization_args.extra_items {
-            let expr = NodeRef::new(self.file, expr_index).expect_expression();
-            let t = self.compute_class_typed_dict_type(&initialization_args, expr);
+        if let Some(expr_index) = self.extra_items {
+            let expr = NodeRef::new(file, expr_index).expect_expression();
+            let t = callback(expr);
             result = Some(ExtraItemsType {
                 t: t.type_,
                 read_only: t.read_only,
             })
-        } else if let Some(true) = initialization_args.closed {
+        } else if let Some(true) = self.closed {
             result = Some(ExtraItemsType {
                 t: Type::Never(NeverCause::Explicit),
                 read_only: false,
@@ -345,7 +366,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
         name,
         TypedDictMembers {
             named: members.into_boxed_slice(),
-            extra_items: None, // TODO extra_items
+            extra_items: comp.compute_functional_typed_dict_extra_items(&options),
         },
     ))
 }

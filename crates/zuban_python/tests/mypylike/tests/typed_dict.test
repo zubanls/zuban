@@ -341,7 +341,7 @@ b: Movie = {"name": "Blade Runner", "year": 1982}  # E: Incompatible types (expr
 MovieFunctional = TypedDict("MovieFunctional", {"name": str}, extra_items=bool)
 
 c: MovieFunctional = {"name": "Blade Runner", "novel_adaptation": True}  # OK
-d: MovieFunctional = {"name": "Blade Runner", "year": 1982}  # E: 'int' is not assignable to 'bool'
+d: MovieFunctional = {"name": "Blade Runner", "year": 1982}  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "bool")
 
 # > Accessing extra items is allowed. Type checkers must infer their value type from
 # > the ``extra_items`` argument
