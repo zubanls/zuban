@@ -18,6 +18,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
+    new_class,
     type_::{Tuple, simplified_union_from_iterators},
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
@@ -581,6 +582,10 @@ impl TypedDict {
         .then_some(&e_t.t)
     }
 
+    pub fn has_extra_items(&self, db: &Database) -> bool {
+        self.members(db).extra_items.is_some()
+    }
+
     pub fn union_of_all_types(&self, i_s: &InferenceState) -> Type {
         let ms = self.members(i_s.db);
         simplified_union_from_iterators(
@@ -844,7 +849,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         }
 
         Some(
-            if td.members(i_s.db).extra_items.is_some()
+            if td.has_extra_items(i_s.db)
                 && *inferred_name.as_cow_type(i_s) == i_s.db.python_state.str_type()
             {
                 Inferred::from_type(
@@ -1113,13 +1118,29 @@ pub(crate) fn initialize_typed_dict<'db>(
 }
 
 pub(crate) fn lookup_on_typed_dict<'a>(
-    typed_dict: Arc<TypedDict>,
+    td: Arc<TypedDict>,
     i_s: &'a InferenceState,
     add_issue: &dyn Fn(IssueKind),
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
-    let bound = || Arc::new(Type::TypedDict(typed_dict.clone()));
+    fn as_callable_without_params<'a>(
+        db: &'a Database,
+        td: Arc<TypedDict>,
+        name: &'static str,
+        return_type: Type,
+    ) -> LookupDetails<'a> {
+        let defined_at = td.defined_at;
+        let name1 = Some(DbString::Static(name));
+        LookupDetails::new(
+            Type::TypedDict(td),
+            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
+                CallableContent::new_non_generic(db, name1, None, defined_at, [], return_type),
+            )))),
+            AttributeKind::DefMethod { is_final: false },
+        )
+    }
+    let bound = || Arc::new(Type::TypedDict(td.clone()));
     let lookup = LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
         "get" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
         "setdefault" => CustomBehavior::new_method(typed_dict_setdefault, Some(bound())),
@@ -1127,47 +1148,31 @@ pub(crate) fn lookup_on_typed_dict<'a>(
         "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
         "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
-        "clear" if typed_dict.can_be_emptied(i_s.db) => {
-            let defined_at = typed_dict.defined_at;
+        "clear" if td.can_be_emptied(i_s.db) => {
             // Return an empty Callable
-            return LookupDetails::new(
-                Type::TypedDict(typed_dict),
-                LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
-                    CallableContent::new_non_generic(
-                        i_s.db,
-                        Some(DbString::Static("clear")),
-                        None,
-                        defined_at,
-                        [],
-                        Type::None,
-                    ),
-                )))),
-                AttributeKind::DefMethod { is_final: false },
-            );
+            return as_callable_without_params(i_s.db, td, "clear", Type::None);
         }
-        "popitem" if typed_dict.can_be_emptied(i_s.db) => {
-            let defined_at = typed_dict.defined_at;
+        "popitem" if td.can_be_emptied(i_s.db) => {
             let return_type = Type::Tuple(Tuple::new_fixed_length(
-                [
-                    i_s.db.python_state.str_type(),
-                    typed_dict.union_of_all_types(i_s),
-                ]
-                .into(),
+                [i_s.db.python_state.str_type(), td.union_of_all_types(i_s)].into(),
             ));
-            return LookupDetails::new(
-                Type::TypedDict(typed_dict),
-                LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
-                    CallableContent::new_non_generic(
-                        i_s.db,
-                        Some(DbString::Static("popitem")),
-                        None,
-                        defined_at,
-                        [],
-                        return_type,
-                    ),
-                )))),
-                AttributeKind::DefMethod { is_final: false },
+            return as_callable_without_params(i_s.db, td, "popitem", return_type);
+        }
+        "items" if td.has_extra_items(i_s.db) => {
+            let return_type = new_class!(
+                i_s.db.python_state.list_link(),
+                Type::Tuple(Tuple::new_fixed_length(
+                    [i_s.db.python_state.str_type(), td.union_of_all_types(i_s)].into(),
+                ))
             );
+            return as_callable_without_params(i_s.db, td, "items", return_type);
+        }
+        "values" if td.has_extra_items(i_s.db) => {
+            let return_type = new_class!(
+                i_s.db.python_state.list_link(),
+                td.union_of_all_types(i_s).into(),
+            );
+            return as_callable_without_params(i_s.db, td, "values", return_type);
         }
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None).lookup(
@@ -1175,12 +1180,12 @@ pub(crate) fn lookup_on_typed_dict<'a>(
                 name,
                 InstanceLookupOptions::new(add_issue)
                     .with_kind(kind)
-                    .with_as_self_instance(&|| Type::TypedDict(typed_dict.clone())),
+                    .with_as_self_instance(&|| Type::TypedDict(td.clone())),
             );
         }
     })));
     LookupDetails::new(
-        Type::TypedDict(typed_dict),
+        Type::TypedDict(td),
         lookup,
         AttributeKind::DefMethod { is_final: false },
     )

@@ -737,7 +737,7 @@ impl Type {
                             .is_same_type(i_s, matcher, got_value);
                     }
                 } else if class1.node_ref == i_s.db.python_state.mapping_node_ref() {
-                    if td.members(i_s.db).extra_items.is_some() {
+                    if td.has_extra_items(i_s.db) {
                         return class1.nth_type_argument(i_s.db, 0).is_same_type(
                             i_s,
                             matcher,
