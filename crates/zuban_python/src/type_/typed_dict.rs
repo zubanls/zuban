@@ -490,8 +490,8 @@ impl TypedDict {
         read_only: bool,
     ) -> Match {
         let mut matches = Match::new_true();
-        // TODO extra_items also match
-        for m1 in self.members(i_s.db).named.iter() {
+        let ms1 = self.members(i_s.db);
+        for m1 in ms1.named.iter() {
             if let Some(m2) = other.find_entry(i_s.db, m1.name.as_str(i_s.db)) {
                 // Required must match except if the wanted type is also read-only (and therefore
                 // may not be modified afterwards
@@ -510,6 +510,35 @@ impl TypedDict {
                 }
             } else if !read_only || m1.required {
                 return Match::new_false();
+            }
+        }
+        if let Some(extra_items1) = &ms1.extra_items {
+            let ms2 = other.members(i_s.db);
+            if let Some(extra_items2) = &ms2.extra_items {
+                matches &= if extra_items1.read_only {
+                    extra_items1
+                        .t
+                        .is_super_type_of(i_s, matcher, &extra_items2.t)
+                } else {
+                    extra_items1.t.is_same_type(i_s, matcher, &extra_items2.t)
+                }
+            } else {
+                return Match::new_false();
+            }
+
+            for m2 in ms2.named.iter() {
+                if let Some(m1) = self.find_entry(i_s.db, m2.name.as_str(i_s.db))
+                    && m1.name.is_none()
+                {
+                    if m2.required {
+                        return Match::new_false();
+                    }
+                    matches &= if extra_items1.read_only {
+                        m1.type_.is_super_type_of(i_s, matcher, &m2.type_)
+                    } else {
+                        m1.type_.is_same_type(i_s, matcher, &m2.type_)
+                    }
+                }
             }
         }
         matches

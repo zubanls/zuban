@@ -538,11 +538,11 @@ class Child(Parent, extra_items=int): # E: Cannot change "extra_items" type unle
 class MovieBase2(TypedDict, extra_items=int | None):
     name: str
 
-class MovieRequiredYear(MovieBase2):  # E[MovieRequiredYear]: Required key "year" is not known to "MovieBase"
-    year: int | None  # E[MovieRequiredYear]
+class MovieRequiredYear(MovieBase2):
+    year: int | None  # E: Required key "year" is not known to "MovieBase"
 
-class MovieNotRequiredYear(MovieBase2):  # E[MovieNotRequiredYear]: "int | None" is not consistent with "int"
-    year: NotRequired[int]  # E[MovieNotRequiredYear]
+class MovieNotRequiredYear(MovieBase2):
+    year: NotRequired[int]  # E: "int | None" is not consistent with "int"
 
 class MovieWithYear(MovieBase2):  # OK
     year: NotRequired[int | None]
@@ -550,11 +550,11 @@ class MovieWithYear(MovieBase2):  # OK
 class BookBase(TypedDict, extra_items=ReadOnly[int | None]):
     name: str
 
-class BookWithPublisher(BookBase):  # E[BookWithPublisher]: "str" is not assignable to "int | None"
-    publisher: str  # E[BookWithPublisher]
+class BookWithPublisher(BookBase):
+    publisher: str  # E: "str" is not assignable to "int | None"
 
-[case typed_dict_extra_items_further_tests1]
-# Copied from conformance tests (typeddicts_extra_items.py)
+[case typed_dict_extra_items_matching1]
+# Mostly copied from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, NotRequired, ReadOnly
 
 class MovieBase2(TypedDict, extra_items=int | None):
@@ -565,14 +565,16 @@ class MovieDetails(TypedDict, extra_items=int | None):
     year: NotRequired[int]
 
 details2: MovieDetails = {"name": "Kill Bill Vol. 1", "year": 2003}
-movie2: MovieBase2 = details2  # E: While "int" is not consistent with "int | None"
+movie2: MovieBase2 = details2  # E: Incompatible types in assignment (expression has type "MovieDetails", variable has type "MovieBase2")
+if bool:
+    details2 = movie2  # E: Incompatible types in assignment (expression has type "MovieBase2", variable has type "MovieDetails")
 
 class MovieWithYear2(TypedDict, extra_items=int | None):
     name: str
     year: int | None
 
 details3: MovieWithYear2 = {"name": "Kill Bill Vol. 1", "year": 2003}
-movie3: MovieBase2 = details3  # E:"year" is not required in "Movie", but it is required in "MovieWithYear2"
+movie3: MovieBase2 = details3  # E: Incompatible types in assignment (expression has type "MovieWithYear2", variable has type "MovieBase2")
 
 # > When ``extra_items`` is specified to be read-only on a TypedDict type, it is
 # > possible for an item to have a :term:`narrower <narrow>` type than the
@@ -592,9 +594,9 @@ class MovieDetails5(TypedDict, extra_items=int):
 details4: MovieDetails4 = {"name": "Kill Bill Vol. 2", "year": 2004}
 details5: MovieDetails5 = {"name": "Kill Bill Vol. 2", "actors": ["Uma Thurman"]}
 movie4: MovieSI = details4  # OK. 'int' is assignable to 'str | int'.
-movie5: MovieSI = details5  # E: "list[str]" is not assignable to "str | int".
+movie5: MovieSI = details5  # E: Incompatible types in assignment (expression has type "MovieDetails5", variable has type "MovieSI")
 
-[case typed_dict_extra_items_further_tests2]
+[case typed_dict_extra_items_matching2]
 # Copied from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, NotRequired, ReadOnly, Mapping, assert_type
 
@@ -610,8 +612,8 @@ class MovieExtraStr(TypedDict, extra_items=str):
 
 extra_int: MovieExtraInt = {"name": "No Country for Old Men", "year": 2007}
 extra_str: MovieExtraStr = {"name": "No Country for Old Men", "description": ""}
-extra_int = extra_str  # E: "str" is not assignable to extra items type "int"
-extra_str = extra_int  # E: "int" is not assignable to extra items type "str"
+extra_int = extra_str  # E: Incompatible types in assignment (expression has type "MovieExtraStr", variable has type "MovieExtraInt")
+extra_str = extra_int  # E: Incompatible types in assignment (expression has type "MovieExtraInt", variable has type "MovieExtraStr")
 
 # > A non-closed TypedDict type implicitly allows non-required extra keys of value
 # > type ``ReadOnly[object]``. Applying the assignability rules between this type
@@ -622,7 +624,7 @@ class MovieNotClosed(TypedDict):
 
 extra_int2: MovieExtraInt = {"name": "No Country for Old Men", "year": 2007}
 not_closed: MovieNotClosed = {"name": "No Country for Old Men"}
-extra_int2 = not_closed  # E: "extra_items=ReadOnly[object]" implicitly on "MovieNotClosed" is not assignable to with "extra_items=int"
+extra_int2 = not_closed  # E: Incompatible types in assignment (expression has type "MovieNotClosed", variable has type "MovieExtraInt")
 not_closed = extra_int2  # OK
 
 # > TypedDicts that allow extra items of type ``T`` also allow arbitrary keyword
@@ -632,14 +634,14 @@ class NonClosedMovie(TypedDict):
     name: str
 
 NonClosedMovie(name="No Country for Old Men")  # OK
-NonClosedMovie(name="No Country for Old Men", year=2007)  # E: Unrecognized item
+NonClosedMovie(name="No Country for Old Men", year=2007)  # E: Extra key "year" for TypedDict "NonClosedMovie"
 
 class ExtraMovie(TypedDict, extra_items=int):
     name: str
 
 ExtraMovie(name="No Country for Old Men")  # OK
 ExtraMovie(name="No Country for Old Men", year=2007)  # OK
-ExtraMovie(name="No Country for Old Men", language="English")  # E: Wrong type for extra item "language"
+ExtraMovie(name="No Country for Old Men", language="English")  # E: Incompatible types (expression has type "str", TypedDict item "language" has type "int")
 
 # This implies 'extra_items=Never',
 # so extra keyword arguments would produce an error
@@ -647,7 +649,7 @@ class ClosedMovie(TypedDict, closed=True):
     name: str
 
 ClosedMovie(name="No Country for Old Men")  # OK
-ClosedMovie(name="No Country for Old Men", year=2007)  # E: Extra items not allowed
+ClosedMovie(name="No Country for Old Men", year=2007)  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "Never")
 
 # > A TypedDict type is :term:`assignable` to a type of the form ``Mapping[str, VT]``
 # > when all value types of the items in the TypedDict

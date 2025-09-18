@@ -1558,6 +1558,9 @@ fn initialize_typed_dict_members(
             Some(false) => add(IssueKind::TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems),
             _ => (),
         }
+        if initialization_args.extra_items.is_some() {
+            add(IssueKind::TypedDictExtraItemsNonReadOnlyChangeDisallowed);
+        }
     }
     if let Some(new) = file
         .name_resolution_for_types(i_s)

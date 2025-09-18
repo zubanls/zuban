@@ -390,8 +390,7 @@ testSerializeTypedDictInMethod
 testTypedDictChainedGetWithEmptyDictDefault
 # TypedDict extra_items/closed
 typed_dict_extra_items_subclassing
-typed_dict_extra_items_further_tests1
-typed_dict_extra_items_further_tests2
+typed_dict_extra_items_matching2
 
 # dataclass classmethod
 testDataclassesClassmethods
