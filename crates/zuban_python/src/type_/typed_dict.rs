@@ -19,7 +19,7 @@ use crate::{
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
     new_class,
-    type_::{Tuple, simplified_union_from_iterators},
+    type_::{StarStarParamType, Tuple, simplified_union_from_iterators},
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
@@ -633,16 +633,19 @@ pub fn rc_typed_dict_as_callable(db: &Database, slf: Arc<TypedDict>) -> Callable
             }
             TypedDictGenerics::NotDefinedYet(type_vars) => type_vars.clone(),
         },
-        CallableParams::Simple(
-            // TODO extra_items: add
-            slf.members
-                .get()
-                .unwrap()
-                .named
+        CallableParams::Simple({
+            let ms = slf.members.get().unwrap();
+            ms.named
                 .iter()
                 .map(|m| m.as_keyword_param())
-                .collect(),
-        ),
+                .chain(ms.extra_items.as_ref().map(|e| {
+                    CallableParam::new_anonymous(ParamType::StarStar(StarStarParamType::ValueType(
+                        e.t.clone(),
+                    )))
+                }))
+                .into_iter()
+                .collect()
+        }),
         Type::TypedDict(slf.clone()),
     )
 }

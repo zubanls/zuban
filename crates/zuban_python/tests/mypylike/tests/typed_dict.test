@@ -856,3 +856,13 @@ def f(x: X, i: IntDict, s: StrDict, sr: StrDictReadOnly):
     assert_type(s, StrDict2)
     assert_type(s, StrDictReadOnly)  # E: Expression is of type "StrDict", not "StrDictReadOnly"
     assert_type(sr, StrDictReadOnly)
+
+[case typed_dict_extra_items_as_callable]
+from typing import TypedDict, Callable
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+def f[T, **P](x: Callable[P, T]) -> Callable[P, tuple[T, float]]: ...
+
+reveal_type(f(X))  # N: Revealed type is "def (*, x: str, **int) -> tuple[TypedDict('__main__.X', {'x': str}, extra_items=int), float]"
