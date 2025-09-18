@@ -197,6 +197,7 @@ pub(crate) struct PythonState {
     typing_final_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
+    typing_mutable_mapping_index: NodeIndex,
     typing_keys_view_index: NodeIndex,
     typing_runtime_checkable_index: NodeIndex,
     typing_extensions_runtime_checkable_index: NodeIndex,
@@ -324,6 +325,7 @@ impl PythonState {
             typing_typed_dict_index: 0,
             typing_container_index: 0,
             typing_mapping_index: 0,
+            typing_mutable_mapping_index: 0,
             typing_keys_view_index: 0,
             typing_runtime_checkable_index: 0,
             typing_extensions_runtime_checkable_index: 0,
@@ -693,6 +695,7 @@ impl PythonState {
         cache_index!(typing_typed_dict_index, typing, "_TypedDict");
         cache_index!(typing_container_index, typing, "Container");
         cache_index!(typing_mapping_index, typing, "Mapping");
+        cache_index!(typing_mutable_mapping_index, typing, "MutableMapping");
         cache_index!(typing_keys_view_index, typing, "KeysView");
         cache_index!(typing_special_form_index, typing, "_SpecialForm");
         cache_optional_index!(types_none_type_index, types, "NoneType");
@@ -1003,6 +1006,7 @@ impl PythonState {
     class_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
     class_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
+    class_node_ref!(typing, pub mutable_mapping_node_ref, typing_mutable_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
     optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);

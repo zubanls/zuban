@@ -669,7 +669,7 @@ extra_str3: MovieExtraStr = {"name": "Blade Runner", "summary": ""}
 str_mapping: Mapping[str, str] = extra_str3  # OK
 
 extra_int3: MovieExtraInt = {"name": "Blade Runner", "year": 1982}
-int_mapping: Mapping[str, int] = extra_int3  # E: "int | str" is not assignable with "int"
+int_mapping: Mapping[str, int] = extra_int3  # E: Incompatible types in assignment (expression has type "MovieExtraInt", variable has type "Mapping[str, int]")
 int_str_mapping: Mapping[str, int | str] = extra_int3  # OK
 
 # > Type checkers should infer the precise signatures of ``values()`` and ``items()``
@@ -678,6 +678,26 @@ int_str_mapping: Mapping[str, int | str] = extra_int3  # OK
 def foo(movie: MovieExtraInt) -> None:
     assert_type(list(movie.items()), list[tuple[str, int | str]])
     assert_type(list(movie.values()), list[int | str])
+
+[case typed_dict_extra_items_assignable_to_mutable_mapping]
+from typing import TypedDict, NotRequired, MutableMapping, Mapping
+
+class OnlyStr(TypedDict, extra_items=str):
+    name: str
+class OnlyStrNonRequired(TypedDict, extra_items=str):
+    name: NotRequired[str]
+
+def f(x: OnlyStr, y: OnlyStrNonRequired):
+    a: MutableMapping[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "MutableMapping[str, str]")
+    a = y
+    b: Mapping[str, str] = x
+    b = y
+    c: dict[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "dict[str, str]")
+    c = y
+
+    d: dict[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "dict[str, int]")
+    e: Mapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "Mapping[str, int]")
+    f: MutableMapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "MutableMapping[str, int]")
 
 [case typed_dict_extra_items_methods]
 # Copied from conformance tests (typeddicts_extra_items.py)
@@ -722,7 +742,7 @@ class CustomDict(dict[str, int]):
     pass
 
 def might_not_be(might_not_be_a_builtin_dict: dict[str, int]):
-    int_dict: IntDict = might_not_be_a_builtin_dict # E: Incompatible types in assignment (expression has type "dict[str, int]", variable has type "IntDict"
+    int_dict: IntDict = might_not_be_a_builtin_dict # E: Incompatible types in assignment (expression has type "dict[str, int]", variable has type "IntDict")
     print(int_dict)
 
 not_a_builtin_dict = CustomDict({"num": 1})

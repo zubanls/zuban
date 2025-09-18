@@ -571,7 +571,7 @@ impl TypedDict {
             && ms.named.iter().all(|m| !m.required && !m.read_only)
     }
 
-    fn can_be_overwritten_with(&self, i_s: &InferenceState) -> Option<&Type> {
+    pub fn can_be_overwritten_with(&self, i_s: &InferenceState) -> Option<&Type> {
         let ms = self.members(i_s.db);
         let e_t = ms.extra_items.as_ref()?;
         (!e_t.read_only
@@ -581,7 +581,7 @@ impl TypedDict {
         .then_some(&e_t.t)
     }
 
-    fn union_of_all_types(&self, i_s: &InferenceState) -> Type {
+    pub fn union_of_all_types(&self, i_s: &InferenceState) -> Type {
         let ms = self.members(i_s.db);
         simplified_union_from_iterators(
             i_s,
