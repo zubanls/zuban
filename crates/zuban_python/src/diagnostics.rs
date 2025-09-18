@@ -393,6 +393,7 @@ pub(crate) enum IssueKind {
     TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems,
     TypedDictExtraItemsCannotBe { kind: &'static str },
     TypedDictExtraItemsNonReadOnlyChangeDisallowed,
+    TypedDictSetItemWithExtraItemsMismatch { got: Box<str>, expected: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1890,6 +1891,9 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictExtraItemsNonReadOnlyChangeDisallowed =>
                 r#"Cannot change "extra_items" type unless it is "ReadOnly" in the superclass"#.to_string(),
+            TypedDictSetItemWithExtraItemsMismatch { got, expected } => format!(
+                r#"For a TypedDict with only types "{got}", "{expected}" is expected"#
+            ),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

@@ -651,6 +651,16 @@ class ClosedMovie(TypedDict, closed=True):
 ClosedMovie(name="No Country for Old Men")  # OK
 ClosedMovie(name="No Country for Old Men", year=2007)  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "Never")
 
+[case typed_dict_extra_items_assignable_to_mapping]
+# Copied from conformance tests (typeddicts_extra_items.py)
+from typing_extensions import TypedDict, NotRequired, ReadOnly, Mapping, assert_type
+
+class MovieExtraInt(TypedDict, extra_items=int):
+    name: str
+
+class MovieExtraStr(TypedDict, extra_items=str):
+    name: str
+
 # > A TypedDict type is :term:`assignable` to a type of the form ``Mapping[str, VT]``
 # > when all value types of the items in the TypedDict
 # > are assignable to ``VT``.
@@ -668,6 +678,10 @@ int_str_mapping: Mapping[str, int | str] = extra_int3  # OK
 def foo(movie: MovieExtraInt) -> None:
     assert_type(list(movie.items()), list[tuple[str, int | str]])
     assert_type(list(movie.values()), list[int | str])
+
+[case typed_dict_extra_items_methods]
+# Copied from conformance tests (typeddicts_extra_items.py)
+from typing_extensions import TypedDict, NotRequired, ReadOnly, Mapping, assert_type
 
 # > The TypedDict type is :term:`assignable` to ``dict[str, VT]`` if all
 # > items on the TypedDict type satisfy the following conditions:
@@ -708,11 +722,52 @@ class CustomDict(dict[str, int]):
     pass
 
 def might_not_be(might_not_be_a_builtin_dict: dict[str, int]):
-    int_dict: IntDict = might_not_be_a_builtin_dict # E
+    int_dict: IntDict = might_not_be_a_builtin_dict # E: Incompatible types in assignment (expression has type "dict[str, int]", variable has type "IntDict"
     print(int_dict)
 
 not_a_builtin_dict = CustomDict({"num": 1})
 might_not_be(not_a_builtin_dict)
+
+[case typed_dict_extra_items_methods_against_strings]
+from typing import TypedDict, NotRequired
+
+class IntOnly(TypedDict, extra_items=int):
+    other: NotRequired[int]
+
+class CanBeEmpty(TypedDict, extra_items=int):
+    other: NotRequired[str]
+
+class CannotBeEmpty(TypedDict, extra_items=int):
+    other: str
+
+def f(e: CanBeEmpty, n: CannotBeEmpty, s: str, i: int, int_only: IntOnly):
+    reveal_type(e[""])  # N: Revealed type is "int"
+    e[i]  # E: TypedDict key must be a string literal; expected one of ("other")
+    reveal_type(e.get(s))  # N: Revealed type is "str | int | None"
+    reveal_type(e.get(s, b''))  # N: Revealed type is "str | int | Literal[b'']?"
+    e.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
+              # N: Possible overload variants: \
+              # N:     def get(self, str, /) -> object \
+              # N:     def [_T] get(self, str, /, default: object) -> object
+    reveal_type(e.popitem())  # N: Revealed type is "tuple[str, str | int]"
+    del e[s]
+    e[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")
+    e.clear()
+
+    n[s]  # E: TypedDict key must be a string literal; expected one of ("other")
+    n[i]  # E: TypedDict key must be a string literal; expected one of ("other")
+    n.get(s)
+    n.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
+              # N: Possible overload variants: \
+              # N:     def get(self, str, /) -> object \
+              # N:     def [_T] get(self, str, /, default: object) -> object
+    n.popitem()  # E: "CannotBeEmpty" has no attribute "popitem"
+    del n[s]  # E: Expected TypedDict key to be string literal
+    n[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")
+    n.clear()  # E: "CannotBeEmpty" has no attribute "clear"
+
+    int_only[s] = 1
+    int_only[s] = ''  # E: For a TypedDict with only types "str", "int" is expected
 
 [case typed_dict_wrong_args]
 from typing import TypedDict

@@ -511,6 +511,24 @@ impl CallableContent {
         }
     }
 
+    pub fn new_non_generic(
+        db: &Database,
+        name: Option<DbString>,
+        class_name: Option<StringSlice>,
+        defined_at: PointLink,
+        params: impl Into<Arc<[CallableParam]>>,
+        return_type: Type,
+    ) -> Self {
+        Self::new_simple(
+            name,
+            class_name,
+            defined_at,
+            db.python_state.empty_type_var_likes.clone(),
+            CallableParams::new_simple(params.into()),
+            return_type,
+        )
+    }
+
     pub fn new_any(type_vars: TypeVarLikes, cause: AnyCause) -> Self {
         Self::new_any_internal(PointLink::new(FileIndex(0), 0), type_vars, cause)
     }

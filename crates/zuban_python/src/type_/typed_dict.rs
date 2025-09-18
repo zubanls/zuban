@@ -18,6 +18,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
+    type_::{Tuple, simplified_union_from_iterators},
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
@@ -372,7 +373,7 @@ impl TypedDict {
         match format_data.with_seen_recursive_type(AvoidRecursionFor::TypedDict(self.defined_at)) {
             Ok(format_data) => {
                 let m = self.members(format_data.db);
-                let mut params = join_with_commas(m.named.iter().map(|p| {
+                let params = join_with_commas(m.named.iter().map(|p| {
                     format!(
                         "'{}'{}{}: {}",
                         p.name.as_str(format_data.db),
@@ -562,6 +563,33 @@ impl TypedDict {
             || m.extra_items
                 .as_ref()
                 .is_some_and(|e| e.t.has_any_internal(i_s, already_checked))
+    }
+
+    fn can_be_emptied(&self, db: &Database) -> bool {
+        let ms = self.members(db);
+        ms.extra_items.as_ref().is_some_and(|e| !e.read_only)
+            && ms.named.iter().all(|m| !m.required && !m.read_only)
+    }
+
+    fn can_be_overwritten_with(&self, i_s: &InferenceState) -> Option<&Type> {
+        let ms = self.members(i_s.db);
+        let e_t = ms.extra_items.as_ref()?;
+        (!e_t.read_only
+            && ms.named.iter().all(|m| {
+                !m.required && !m.read_only && e_t.t.is_simple_same_type(i_s, &m.type_).bool()
+            }))
+        .then_some(&e_t.t)
+    }
+
+    fn union_of_all_types(&self, i_s: &InferenceState) -> Type {
+        let ms = self.members(i_s.db);
+        simplified_union_from_iterators(
+            i_s,
+            ms.named
+                .iter()
+                .map(|m| &m.type_)
+                .chain(ms.extra_items.as_ref().map(|t| &t.t).into_iter()),
+        )
     }
 }
 
@@ -800,11 +828,33 @@ fn typed_dict_get_or_pop_internal<'db>(
             Some(maybe_had_literals.simplified_union(i_s, default))
         }
     } else {
+        let default = infer_default(&mut ResultContext::Unknown)?;
+        let is_str_key = || {
+            inferred_name
+                .as_cow_type(i_s)
+                .is_simple_same_type(i_s, &i_s.db.python_state.str_type())
+                .bool()
+        };
         if is_pop {
-            first_arg.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
+            if !(td.can_be_emptied(i_s.db) && is_str_key()) {
+                first_arg.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
+            }
+        } else if !is_str_key() {
+            return None;
         }
-        infer_default(&mut ResultContext::Unknown)?;
-        Some(Inferred::from_type(i_s.db.python_state.object_type()))
+
+        Some(
+            if td.members(i_s.db).extra_items.is_some()
+                && *inferred_name.as_cow_type(i_s) == i_s.db.python_state.str_type()
+            {
+                Inferred::from_type(
+                    td.union_of_all_types(i_s)
+                        .simplified_union(i_s, &default.as_cow_type(i_s)),
+                )
+            } else {
+                Inferred::new_object(i_s.db)
+            },
+        )
     }
 }
 
@@ -927,6 +977,21 @@ fn typed_dict_setitem_internal<'db>(
                 },
             );
         }
+    } else if let Some(expected) = td.can_be_overwritten_with(i_s)
+        && inf_key
+            .as_cow_type(i_s)
+            .is_simple_same_type(i_s, &i_s.db.python_state.str_type())
+            .bool()
+    {
+        expected.error_if_not_matches(
+            i_s,
+            &value,
+            |issue| args.add_issue(i_s, issue),
+            |error_types| {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
+                Some(IssueKind::TypedDictSetItemWithExtraItemsMismatch { got, expected })
+            },
+        );
     } else {
         add_access_key_must_be_string_literal_issue(i_s.db, td, |issue| args.add_issue(i_s, issue))
     }
@@ -1062,6 +1127,48 @@ pub(crate) fn lookup_on_typed_dict<'a>(
         "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
         "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
+        "clear" if typed_dict.can_be_emptied(i_s.db) => {
+            let defined_at = typed_dict.defined_at;
+            // Return an empty Callable
+            return LookupDetails::new(
+                Type::TypedDict(typed_dict),
+                LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
+                    CallableContent::new_non_generic(
+                        i_s.db,
+                        Some(DbString::Static("clear")),
+                        None,
+                        defined_at,
+                        [],
+                        Type::None,
+                    ),
+                )))),
+                AttributeKind::DefMethod { is_final: false },
+            );
+        }
+        "popitem" if typed_dict.can_be_emptied(i_s.db) => {
+            let defined_at = typed_dict.defined_at;
+            let return_type = Type::Tuple(Tuple::new_fixed_length(
+                [
+                    i_s.db.python_state.str_type(),
+                    typed_dict.union_of_all_types(i_s),
+                ]
+                .into(),
+            ));
+            return LookupDetails::new(
+                Type::TypedDict(typed_dict),
+                LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
+                    CallableContent::new_non_generic(
+                        i_s.db,
+                        Some(DbString::Static("popitem")),
+                        None,
+                        defined_at,
+                        [],
+                        return_type,
+                    ),
+                )))),
+                AttributeKind::DefMethod { is_final: false },
+            );
+        }
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None).lookup(
                 i_s,
