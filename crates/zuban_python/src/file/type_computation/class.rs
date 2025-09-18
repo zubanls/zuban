@@ -31,9 +31,9 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass,
         DataclassOptions, DataclassTransformObj, DbString, Enum, EnumMemberDefinition,
-        FunctionKind, GenericClass, NamedTuple, ParamType, ReplaceTypeVarLikes, StringSlice, Tuple,
-        Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict, TypedDictMember,
-        TypedDictMembers, Variance, dataclass_init_func,
+        ExtraItemsType, FunctionKind, GenericClass, NamedTuple, ParamType, ReplaceTypeVarLikes,
+        StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict,
+        TypedDictMember, TypedDictMembers, Variance, dataclass_init_func,
     },
     type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
@@ -1544,6 +1544,7 @@ fn initialize_typed_dict_members(
         &mut typed_dict_members,
         cls.node().block().iter_stmt_likes(),
         &typed_dict_definition.initialization_args,
+        extra_items.as_ref(),
     );
     let initialization_args = &td_infos.1;
     if let Some(old) = &extra_items {
@@ -1599,6 +1600,7 @@ fn find_stmt_typed_dict_types(
     vec: &mut TypedDictMemberGatherer,
     stmt_likes: StmtLikeIterator,
     initialization_args: &TypedDictArgs,
+    extra_items: Option<&ExtraItemsType>,
 ) {
     let db = i_s.db;
     for stmt_like in stmt_likes {
@@ -1610,13 +1612,14 @@ fn find_stmt_typed_dict_types(
                             .add_type_issue(db, IssueKind::TypedDictInvalidMemberRightSide);
                     }
                     if let Err(issue) = vec.add(
-                        db,
+                        i_s,
                         file.name_resolution_for_types(i_s)
                             .compute_class_typed_dict_member(
                                 &initialization_args,
                                 StringSlice::from_name(file.file_index, name_def.name()),
                                 annot,
                             ),
+                        extra_items,
                     ) {
                         NodeRef::new(file, assignment.index()).add_type_issue(db, issue);
                     }
@@ -1628,13 +1631,14 @@ fn find_stmt_typed_dict_types(
                         if let Target::Name(name_def) = target {
                             // Add those names regardless, because an error was already added.
                             vec.add(
-                                db,
+                                i_s,
                                 TypedDictMember {
                                     type_: Type::Any(AnyCause::Todo),
                                     required: true,
                                     name: StringSlice::from_name(file.file_index, name_def.name()),
                                     read_only: false,
                                 },
+                                extra_items,
                             )
                             .ok();
                         }

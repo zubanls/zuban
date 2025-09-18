@@ -394,6 +394,9 @@ pub(crate) enum IssueKind {
     TypedDictExtraItemsCannotBe { kind: &'static str },
     TypedDictExtraItemsNonReadOnlyChangeDisallowed,
     TypedDictSetItemWithExtraItemsMismatch { got: Box<str>, expected: Box<str> },
+    TypedDictMemberRequiredButHasExtraItemsOfSuper { name: Box<str> },
+    TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs { name: Box<str> },
+    TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name: Box<str>, in_super_class: Box<str>, member_type: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1893,6 +1896,15 @@ impl<'db> Diagnostic<'db> {
                 r#"Cannot change "extra_items" type unless it is "ReadOnly" in the superclass"#.to_string(),
             TypedDictSetItemWithExtraItemsMismatch { got, expected } => format!(
                 r#"For a TypedDict with only types "{got}", "{expected}" is expected"#
+            ),
+            TypedDictMemberRequiredButHasExtraItemsOfSuper { name } => format!(
+                r#"TypedDict member "{name}" is required, but the extra_items of the super class are not"#
+            ),
+            TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs { name } => format!(
+                r#"TypedDict member "{name}" is not read only, but the extra_items of the super class are"#
+            ),
+            TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name, in_super_class, member_type } => format!(
+                r#"TypedDict member "{name}" type "{member_type}" is not assignable, but the extra_items of the super class are of type "{in_super_class}""#
             ),
 
             OverloadImplementationNotLast =>

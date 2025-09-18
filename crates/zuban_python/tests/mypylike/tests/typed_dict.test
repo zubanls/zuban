@@ -539,10 +539,10 @@ class MovieBase2(TypedDict, extra_items=int | None):
     name: str
 
 class MovieRequiredYear(MovieBase2):
-    year: int | None  # E: Required key "year" is not known to "MovieBase"
+    year: int | None  # E: TypedDict member "year" is required, but the extra_items of the super class are not
 
 class MovieNotRequiredYear(MovieBase2):
-    year: NotRequired[int]  # E: "int | None" is not consistent with "int"
+    year: NotRequired[int]  # E: TypedDict member "year" type "int" is not assignable, but the extra_items of the super class are of type "int | None"
 
 class MovieWithYear(MovieBase2):  # OK
     year: NotRequired[int | None]
@@ -551,7 +551,13 @@ class BookBase(TypedDict, extra_items=ReadOnly[int | None]):
     name: str
 
 class BookWithPublisher(BookBase):
-    publisher: str  # E: "str" is not assignable to "int | None"
+    publisher: str  # E: TypedDict member "publisher" is required, but the extra_items of the super class are not
+
+class BookWithPublisher2(BookBase):
+    publisher: NotRequired[int | None]  # E: TypedDict member "publisher" is not read only, but the extra_items of the super class are
+
+class BookWithPublisher3(BookBase):
+    publisher: NotRequired[ReadOnly[int | None]]
 
 [case typed_dict_extra_items_matching1]
 # Mostly copied from conformance tests (typeddicts_extra_items.py)

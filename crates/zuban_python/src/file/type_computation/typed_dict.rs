@@ -357,8 +357,9 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
                     return None;
                 };
                 if let Err(issue) = members.add(
-                    i_s.db,
+                    i_s,
                     comp.compute_typed_dict_member(&options, name, key_value.value()),
+                    None,
                 ) {
                     NodeRef::new(file, key_value.key().index()).add_issue(i_s, issue);
                 }
@@ -433,13 +434,18 @@ pub(super) struct TypedDictMemberGatherer {
 }
 
 impl TypedDictMemberGatherer {
-    pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueKind> {
-        let key = member.name.as_str(db);
+    pub(crate) fn add(
+        &mut self,
+        i_s: &InferenceState,
+        member: TypedDictMember,
+        base_class_extra_type: Option<&ExtraItemsType>,
+    ) -> Result<(), IssueKind> {
+        let key = member.name.as_str(i_s.db);
         if let Some((i, m)) = self
             .members
             .iter_mut()
             .enumerate()
-            .find(|(_, m)| m.name.as_str(db) == key)
+            .find(|(_, m)| m.name.as_str(i_s.db) == key)
         {
             if i >= self.first_after_merge_index {
                 Err(IssueKind::TypedDictDuplicateKey { key: key.into() })
@@ -448,8 +454,30 @@ impl TypedDictMemberGatherer {
                 Err(IssueKind::TypedDictOverwritingKeyWhileExtending { key: key.into() })
             }
         } else {
+            let mut result = Ok(());
+            if let Some(extra) = base_class_extra_type {
+                if member.required {
+                    result = Err(IssueKind::TypedDictMemberRequiredButHasExtraItemsOfSuper {
+                        name: member.name.as_str(i_s.db).into(),
+                    });
+                } else if extra.read_only && !member.read_only {
+                    result = Err(
+                        IssueKind::TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs {
+                            name: member.name.as_str(i_s.db).into(),
+                        },
+                    );
+                } else if !extra.t.is_simple_same_type(i_s, &member.type_).bool() {
+                    result = Err(
+                        IssueKind::TypedDictMemberNotAssignableToExtraItemsOfSuperClass {
+                            name: member.name.as_str(i_s.db).into(),
+                            in_super_class: extra.t.format_short(i_s.db),
+                            member_type: member.type_.format_short(i_s.db),
+                        },
+                    );
+                }
+            }
             self.members.push(member);
-            Ok(())
+            result
         }
     }
 

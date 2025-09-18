@@ -305,7 +305,7 @@ impl TypedDict {
             }
             members.push(m2.clone());
         }
-        // TODO deal with extra_items
+        // TODO extra_items: handle
         Type::TypedDict(Self::new(
             None,
             TypedDictMembers {
