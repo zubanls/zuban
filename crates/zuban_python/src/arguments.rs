@@ -1128,13 +1128,24 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
-                // TODO extra_items: use
-                let Some((name, t)) = typed_dict
-                    .members(db)
+                let ms = typed_dict.members(db);
+                let Some((name, t)) = ms
                     .named
                     .get(iterator_index)
                     .map(|member| (member.name, member.type_.clone()))
                 else {
+                    if let Some(e) = &ms.extra_items {
+                        return Some(Arg {
+                            kind: ArgKind::Inferred {
+                                inferred: Inferred::from_type(e.t.clone()),
+                                position,
+                                node_ref,
+                                in_args_or_kwargs_and_arbitrary_len: true,
+                                is_keyword: Some(None),
+                            },
+                            index,
+                        });
+                    }
                     return self.next();
                 };
                 self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {

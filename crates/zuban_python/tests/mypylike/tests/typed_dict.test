@@ -866,3 +866,23 @@ class X(TypedDict, extra_items=int):
 def f[T, **P](x: Callable[P, T]) -> Callable[P, tuple[T, float]]: ...
 
 reveal_type(f(X))  # N: Revealed type is "def (*, x: str, **int) -> tuple[TypedDict('__main__.X', {'x': str}, extra_items=int), float]"
+
+[case typed_dict_extra_items_as_args]
+from typing import TypedDict
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+def a() -> None: ...
+def b(x: str) -> None: ...
+def c(x: int, **kwargs: int) -> None: ...
+def d(x: str, **kwargs: str) -> None: ...
+def e(x: str, **kwargs: int) -> None: ...
+
+def f(x: X):
+    a(**x)  # E: Extra argument "x" from **args for "a"  # E: Too many arguments for "a"
+    b(**x)
+    c(**x)  # E: Argument "x" to "c" has incompatible type "str"; expected "int"
+    d(**x)  # E: Argument 1 to "d" has incompatible type "**X"; expected "str"
+    e(**x)
+    e(**x, **x)  # TODO this should also raise an error, because a param is used twice
