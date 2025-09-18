@@ -881,14 +881,27 @@ pub(crate) fn match_arguments_against_params<
                         }
                     },
                     WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
-                        // TODO extra_items: don't we have to match against extra_items?
-                        for member in td.members(i_s.db).named.iter() {
+                        let all_members = td.members(i_s.db);
+                        for member in all_members.named.iter() {
+                            if let Some(m) = &missing_unpacked_typed_dict_names
+                                && !m.iter().any(|(n, _)| *n == member.name)
+                            {
+                                continue;
+                            }
                             match_arg(
                                 argument,
                                 p.param.might_have_type_vars(),
                                 Cow::Borrowed(&member.type_),
                             )
                         }
+                        if let Some(extra_items) = &all_members.extra_items {
+                            match_arg(
+                                argument,
+                                p.param.might_have_type_vars(),
+                                Cow::Borrowed(&extra_items.t),
+                            )
+                        }
+                        //missing_unpacked_typed_dict_names.take();
                         continue;
                     }
                     WrappedParamType::Star(WrappedStar::UnpackedTuple(_)) => unreachable!(),
@@ -1030,33 +1043,35 @@ pub(crate) fn match_arguments_against_params<
                 name,
             } => {
                 // Checking totality for **Unpack[<TypedDict>]
-                if let Some(m) = missing_unpacked_typed_dict_names.as_mut() {
-                    if let Some(index) = m.iter().position(|(n, _)| n == name) {
-                        m.swap_remove(index);
+                if let Some(name) = name {
+                    if let Some(m) = missing_unpacked_typed_dict_names.as_mut() {
+                        if let Some(index) = m.iter().position(|(n, _)| n == name) {
+                            m.swap_remove(index);
+                        } else {
+                            matches = Match::new_false();
+                            add_keyword_argument_issue_maybe_multi_value(
+                                argument,
+                                name.as_str(i_s.db),
+                                true,
+                            );
+                            continue;
+                        }
                     } else {
-                        matches = Match::new_false();
-                        add_keyword_argument_issue_maybe_multi_value(
-                            argument,
-                            name.as_str(i_s.db),
-                            true,
+                        let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
+                            p.param.specific(i_s.db)
+                        else {
+                            unreachable!();
+                        };
+                        // Just fill the dict with all names and then remove them gradually.
+                        missing_unpacked_typed_dict_names = Some(
+                            td.members(i_s.db)
+                                .named
+                                .iter()
+                                .filter(|m| &m.name != name)
+                                .map(|m| (m.name, m.required))
+                                .collect(),
                         );
-                        continue;
                     }
-                } else {
-                    let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
-                        p.param.specific(i_s.db)
-                    else {
-                        unreachable!();
-                    };
-                    // Just fill the dict with all names and then remove them gradually.
-                    missing_unpacked_typed_dict_names = Some(
-                        td.members(i_s.db)
-                            .named
-                            .iter()
-                            .filter(|m| &m.name != name)
-                            .map(|m| (m.name, m.required))
-                            .collect(),
-                    );
                 }
                 match_arg(argument, true, Cow::Borrowed(type_))
             }

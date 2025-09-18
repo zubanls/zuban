@@ -1143,7 +1143,7 @@ where
                 if !matches!(self.unused_unpack_typed_dict, UnpackTypedDictState::Used) {
                     for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                         if let Some(key) = unused.keyword_name(self.db)
-                            && let Some(member) = td.find_member(self.db, key)
+                            && let Some(entry) = td.find_entry(self.db, key)
                         {
                             self.unused_unpack_typed_dict =
                                 UnpackTypedDictState::CheckingUnusedKwArgs;
@@ -1151,8 +1151,8 @@ where
                                 param,
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
                                     argument: self.unused_keyword_arguments.remove(i),
-                                    type_: member.type_.clone(),
-                                    name: member.name,
+                                    type_: entry.type_.clone(),
+                                    name: entry.name,
                                 },
                             });
                         }
@@ -1160,14 +1160,14 @@ where
                 }
                 while let Some(argument) = self.next_arg() {
                     if let Some(key) = argument.keyword_name(self.db) {
-                        if let Some(member) = td.find_member(self.db, key) {
+                        if let Some(entry) = td.find_entry(self.db, key) {
                             self.unused_unpack_typed_dict = UnpackTypedDictState::Used;
                             return Some(InferrableParam {
                                 param,
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
                                     argument,
-                                    type_: member.type_.clone(),
-                                    name: member.name,
+                                    type_: entry.type_.clone(),
+                                    name: entry.name,
                                 },
                             });
                         } else {
@@ -1387,7 +1387,7 @@ pub(crate) enum ParamArgument<'db, 'a> {
     MatchedUnpackedTypedDictMember {
         argument: Arg<'db, 'a>,
         type_: Type,
-        name: StringSlice,
+        name: Option<StringSlice>,
     },
     ParamSpecArgs(ParamSpecUsage, Box<[Arg<'db, 'a>]>),
 }

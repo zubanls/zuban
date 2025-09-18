@@ -491,7 +491,7 @@ class SpecificExtraItems(NonClosedBase, extra_items=bytes):  # OK
 
 
 [case typed_dict_extra_items_with_unpack]
-# Copied from conformance tests (typeddicts_extra_items.py)
+# Copied mostly from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, Unpack
 
 class MovieNoExtra(TypedDict):
@@ -503,8 +503,20 @@ class MovieExtra(TypedDict, extra_items=int):
 def unpack_no_extra(**kwargs: Unpack[MovieNoExtra]) -> None: ...
 def unpack_extra(**kwargs: Unpack[MovieExtra]) -> None: ...
 
-unpack_no_extra(name="No Country for Old Men", year=2007) # E: Unrecognized item
+unpack_no_extra(name="No Country for Old Men", year=2007) # E: Unexpected keyword argument "year" for "unpack_no_extra"
 unpack_extra(name="No Country for Old Men", year=2007) # OK
+
+dct_int = {"": 1}
+unpack_extra(**dct_int)  # E: Argument 1 to "unpack_extra" has incompatible type "**dict[str, int]"; expected "str"
+unpack_extra(name="foo", **dct_int)
+
+unpack_extra(foo=1, **dct_int)  # E: Argument 2 to "unpack_extra" has incompatible type "**dict[str, int]"; expected "str"
+unpack_extra(name="foo", foo=1, **dct_int)
+
+unpack_extra(name="foo", foo="", **dct_int)  # E: Argument "foo" to "unpack_extra" has incompatible type "str"; expected "int"
+
+dct_str = {"": ""}
+unpack_extra(name="foo", **dct_str)  # E: Argument 2 to "unpack_extra" has incompatible type "**dict[str, str]"; expected "int"
 
 [case typed_dict_extra_items_subclassing]
 # Copied from conformance tests (typeddicts_extra_items.py)

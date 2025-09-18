@@ -30,7 +30,8 @@ pub(crate) struct TypedDictMember {
     pub read_only: bool,
 }
 
-struct TypedDictEntry<'x> {
+pub(crate) struct TypedDictEntry<'x> {
+    pub name: Option<StringSlice>,
     pub type_: &'x Type,
     pub required: bool,
     pub read_only: bool,
@@ -259,16 +260,18 @@ impl TypedDict {
             .find(|p| p.name.as_str(db) == name)
     }
 
-    fn find_entry(&self, db: &Database, name: &str) -> Option<TypedDictEntry<'_>> {
+    pub fn find_entry(&self, db: &Database, name: &str) -> Option<TypedDictEntry<'_>> {
         let m = self.members(db);
         if let Some(member) = m.named.iter().find(|p| p.name.as_str(db) == name) {
             Some(TypedDictEntry {
+                name: Some(member.name),
                 type_: &member.type_,
                 required: member.required,
                 read_only: member.read_only,
             })
         } else {
             m.extra_items.as_ref().map(|e| TypedDictEntry {
+                name: None,
                 type_: &e.t,
                 required: false,
                 read_only: e.read_only,

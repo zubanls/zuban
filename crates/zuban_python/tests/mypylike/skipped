@@ -389,7 +389,6 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 # TypedDict extra_items/closed
-typed_dict_extra_items_with_unpack
 typed_dict_extra_items_subclassing
 typed_dict_extra_items_further_tests1
 typed_dict_extra_items_further_tests2
