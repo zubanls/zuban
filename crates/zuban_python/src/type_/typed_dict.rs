@@ -295,6 +295,7 @@ impl TypedDict {
             for m1 in members.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
                     if m1.required != m2.required
+                        || m1.read_only != m2.read_only
                         || !m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                     {
                         return Type::Never(NeverCause::Other);
@@ -304,11 +305,12 @@ impl TypedDict {
             }
             members.push(m2.clone());
         }
+        // TODO deal with extra_items
         Type::TypedDict(Self::new(
             None,
             TypedDictMembers {
                 named: members.into_boxed_slice(),
-                extra_items: None, // TODO extra_items this is not correct
+                extra_items: None,
             },
             self.defined_at,
             TypedDictGenerics::None,
@@ -317,13 +319,17 @@ impl TypedDict {
 
     pub fn intersection(&self, i_s: &InferenceState, other: &Self) -> Arc<TypedDict> {
         let mut new_members = vec![];
-        for m1 in self.members(i_s.db).named.iter() {
-            for m2 in other.members(i_s.db).named.iter() {
+        let ms1 = self.members(i_s.db);
+        let ms2 = other.members(i_s.db);
+        for m1 in ms1.named.iter() {
+            for m2 in ms2.named.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db)
                     && m1.required == m2.required
                     && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                 {
-                    new_members.push(m1.clone());
+                    let mut new = m1.clone();
+                    new.read_only |= m2.read_only;
+                    new_members.push(new);
                 }
             }
         }
@@ -331,7 +337,19 @@ impl TypedDict {
             None,
             TypedDictMembers {
                 named: new_members.into_boxed_slice(),
-                extra_items: None, // TODO extra_items this is not correct
+                extra_items: ms1
+                    .extra_items
+                    .as_ref()
+                    .zip(ms2.extra_items.as_ref())
+                    .and_then(|(e1, e2)| {
+                        if !e1.t.is_simple_same_type(i_s, &e2.t).bool() {
+                            return None;
+                        }
+                        Some(ExtraItemsType {
+                            t: e1.t.clone(),
+                            read_only: e1.read_only || e2.read_only,
+                        })
+                    }),
             },
             self.defined_at,
             TypedDictGenerics::None,
@@ -1058,7 +1076,8 @@ fn typed_dict_update_internal<'db>(
     td: &TypedDict,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let mut members: Vec<_> = td.members(i_s.db).named.as_ref().into();
+    let ms = td.members(i_s.db);
+    let mut members: Vec<_> = ms.named.as_ref().into();
     for member in members.iter_mut() {
         member.required = false;
     }
@@ -1066,8 +1085,7 @@ fn typed_dict_update_internal<'db>(
         td.name,
         TypedDictMembers {
             named: members.into_boxed_slice(),
-            // TODO extra_items: do we need that?
-            extra_items: None,
+            extra_items: ms.extra_items.clone(),
         },
         td.defined_at,
         td.generics.clone(),
