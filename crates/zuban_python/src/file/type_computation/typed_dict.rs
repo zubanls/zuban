@@ -456,24 +456,33 @@ impl TypedDictMemberGatherer {
         } else {
             let mut result = Ok(());
             if let Some(extra) = base_class_extra_type {
-                if member.required {
+                if member.required && !extra.read_only {
                     result = Err(IssueKind::TypedDictMemberRequiredButHasExtraItemsOfSuper {
                         name: member.name.as_str(i_s.db).into(),
                     });
-                } else if extra.read_only && !member.read_only {
-                    result = Err(
-                        IssueKind::TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs {
-                            name: member.name.as_str(i_s.db).into(),
-                        },
-                    );
-                } else if !extra.t.is_simple_same_type(i_s, &member.type_).bool() {
-                    result = Err(
-                        IssueKind::TypedDictMemberNotAssignableToExtraItemsOfSuperClass {
-                            name: member.name.as_str(i_s.db).into(),
-                            in_super_class: extra.t.format_short(i_s.db),
-                            member_type: member.type_.format_short(i_s.db),
-                        },
-                    );
+                    /*
+                    } else if extra.read_only && !member.read_only {
+                        result = Err(
+                            IssueKind::TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs {
+                                name: member.name.as_str(i_s.db).into(),
+                            },
+                        );
+                        */
+                } else {
+                    let matches = if extra.read_only {
+                        extra.t.is_simple_super_type_of(i_s, &member.type_)
+                    } else {
+                        extra.t.is_simple_same_type(i_s, &member.type_)
+                    };
+                    if !matches.bool() {
+                        result = Err(
+                            IssueKind::TypedDictMemberNotAssignableToExtraItemsOfSuperClass {
+                                name: member.name.as_str(i_s.db).into(),
+                                in_super_class: extra.t.format_short(i_s.db),
+                                member_type: member.type_.format_short(i_s.db),
+                            },
+                        );
+                    }
                 }
             }
             self.members.push(member);

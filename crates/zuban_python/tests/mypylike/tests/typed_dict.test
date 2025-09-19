@@ -551,10 +551,10 @@ class BookBase(TypedDict, extra_items=ReadOnly[int | None]):
     name: str
 
 class BookWithPublisher(BookBase):
-    publisher: str  # E: TypedDict member "publisher" is required, but the extra_items of the super class are not
+    publisher: str  # E: TypedDict member "publisher" type "str" is not assignable, but the extra_items of the super class are of type "int | None"
 
 class BookWithPublisher2(BookBase):
-    publisher: NotRequired[int | None]  # E: TypedDict member "publisher" is not read only, but the extra_items of the super class are
+    publisher: NotRequired[int | None]
 
 class BookWithPublisher3(BookBase):
     publisher: NotRequired[ReadOnly[int | None]]
