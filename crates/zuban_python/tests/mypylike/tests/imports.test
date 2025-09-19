@@ -636,3 +636,10 @@ import pathlib
 
 test: pathlib.NonExistentType  # E: Name "pathlib.NonExistentType" is not defined  [name-defined]
 _  # E: Name "_" is not defined  [name-defined]
+
+[case no_crash_on_syntax_error_import]
+# flags: --no-mypy-compatible
+from typing import Union, List,  # E: invalid syntax
+
+class Foo:
+    groups: List[str]  # E: Invalid type comment or annotation

@@ -111,7 +111,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         self.assign_import_from_only_particular_name_def(
             as_name,
             |name_def, pr, redirect_to_link| {
-                debug_assert!(self.point(name_def.index()).calculating());
+                if cfg!(debug_assertions) {
+                    let p = self.point(name_def.index());
+                    assert!(p.calculating() || !p.calculated(), "{p:?}",);
+                }
                 if self.is_allowed_to_assign_on_import_without_narrowing(name_def) {
                     match redirect_to_link {
                         Some(link) => {
