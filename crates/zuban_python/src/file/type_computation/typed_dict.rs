@@ -460,14 +460,12 @@ impl TypedDictMemberGatherer {
                     result = Err(IssueKind::TypedDictMemberRequiredButHasExtraItemsOfSuper {
                         name: member.name.as_str(i_s.db).into(),
                     });
-                    /*
-                    } else if extra.read_only && !member.read_only {
-                        result = Err(
-                            IssueKind::TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs {
-                                name: member.name.as_str(i_s.db).into(),
-                            },
-                        );
-                        */
+                } else if !extra.read_only && member.read_only {
+                    result = Err(
+                        IssueKind::TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot {
+                            name: member.name.as_str(i_s.db).into(),
+                        },
+                    );
                 } else {
                     let matches = if extra.read_only {
                         extra.t.is_simple_super_type_of(i_s, &member.type_)

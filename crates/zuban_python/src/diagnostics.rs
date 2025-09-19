@@ -396,7 +396,7 @@ pub(crate) enum IssueKind {
     TypedDictExtraItemsIncompatibleTypes { in_super_class: Box<str>, in_sub_class: Box<str> },
     TypedDictSetItemWithExtraItemsMismatch { got: Box<str>, expected: Box<str> },
     TypedDictMemberRequiredButHasExtraItemsOfSuper { name: Box<str> },
-    TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs { name: Box<str> },
+    TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot { name: Box<str> },
     TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name: Box<str>, in_super_class: Box<str>, member_type: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
@@ -1904,8 +1904,8 @@ impl<'db> Diagnostic<'db> {
             TypedDictMemberRequiredButHasExtraItemsOfSuper { name } => format!(
                 r#"TypedDict member "{name}" is required, but the extra_items of the super class are not"#
             ),
-            TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs { name } => format!(
-                r#"TypedDict member "{name}" is not read only, but the extra_items of the super class are"#
+            TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot { name } => format!(
+                r#"TypedDict member "{name}" is read only, but the extra_items of the super class are"#
             ),
             TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name, in_super_class, member_type } => format!(
                 r#"TypedDict member "{name}" type "{member_type}" is not assignable, but the extra_items of the super class are of type "{in_super_class}""#
