@@ -1,4 +1,4 @@
-use config::TypeCheckerFlags;
+use config::FinalizedTypeCheckerFlags;
 use parsa_python_cst::{
     DefiningStmt, DottedAsName, ImportFrom, ImportFromAsName, NAME_DEF_TO_NAME_DIFFERENCE, Name,
     NameDef, NodeIndex,
@@ -888,7 +888,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         from.add_issue(self.i_s, issue);
     }
 
-    pub fn flags(&self) -> &TypeCheckerFlags {
+    pub fn flags(&self) -> &FinalizedTypeCheckerFlags {
         self.file.flags(self.i_s.db)
     }
 

@@ -1,11 +1,10 @@
 use std::{cell::RefCell, cmp::Ordering};
 
-use config::Settings;
+use config::{FinalizedTypeCheckerFlags, Settings};
 use parsa_python_cst::*;
 use vfs::FileIndex;
 
 use crate::{
-    TypeCheckerFlags,
     database::{
         ClassStorage, ComplexPoint, Locality, ParentScope, Point, PointKind, Points, Specific,
     },
@@ -64,7 +63,7 @@ struct UnsavedClass<'db> {
 #[derive(Clone, Copy)]
 pub(crate) struct DbInfos<'db> {
     pub settings: &'db Settings,
-    pub flags: &'db TypeCheckerFlags,
+    pub flags: &'db FinalizedTypeCheckerFlags,
     pub tree: &'db Tree,
     pub points: &'db Points,
     pub complex_points: &'db ComplexValues,
@@ -2020,7 +2019,7 @@ fn maybe_sys_platform_startswith(
 
 fn is_expr_reachable_for_name_binder(
     settings: &Settings,
-    flags: &TypeCheckerFlags,
+    flags: &FinalizedTypeCheckerFlags,
     expr: Expression,
 ) -> Truthiness {
     match expr.unpack() {
@@ -2033,7 +2032,7 @@ fn is_expr_reachable_for_name_binder(
 
 pub fn is_expr_part_reachable_for_name_binder(
     settings: &Settings,
-    flags: &TypeCheckerFlags,
+    flags: &FinalizedTypeCheckerFlags,
     expr_part: ExpressionPart,
 ) -> Truthiness {
     match expr_part {

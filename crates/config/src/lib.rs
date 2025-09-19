@@ -407,6 +407,7 @@ pub struct TypeCheckerFlags {
 
     // Non-mypy settings
     pub use_joins: bool,
+    pub disallow_deprecated: bool,
 }
 
 impl Default for TypeCheckerFlags {
@@ -447,6 +448,7 @@ impl Default for TypeCheckerFlags {
             extra_checks: false,
             case_sensitive: true,
             use_joins: false,
+            disallow_deprecated: false,
         }
     }
 }
@@ -486,6 +488,15 @@ impl TypeCheckerFlags {
             warn_unreachable: false,
             ..Default::default()
         }
+    }
+
+    pub fn finalize(mut self) -> FinalizedTypeCheckerFlags {
+        if !self.disallow_deprecated {
+            if self.enabled_error_codes.iter().any(|s| s == "deprecated") {
+                self.disallow_deprecated = true;
+            }
+        }
+        FinalizedTypeCheckerFlags(self)
     }
 }
 
@@ -1031,6 +1042,23 @@ fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> Conf
         IniOrTomlValue::Toml(Value::String(s)) => compile_str(s.value()),
         IniOrTomlValue::Ini(v) => compile_str(v),
         _ => bail!("TODO expected string"),
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct FinalizedTypeCheckerFlags(TypeCheckerFlags);
+
+impl FinalizedTypeCheckerFlags {
+    pub fn into_unfinalized(self) -> TypeCheckerFlags {
+        self.0
+    }
+}
+
+impl std::ops::Deref for FinalizedTypeCheckerFlags {
+    type Target = TypeCheckerFlags;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

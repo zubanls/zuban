@@ -7,7 +7,10 @@ use std::{
     sync::{Arc, OnceLock, RwLock},
 };
 
-use config::{DiagnosticConfig, IniOrTomlValue, set_flag_and_return_ignore_errors};
+use config::{
+    DiagnosticConfig, FinalizedTypeCheckerFlags, IniOrTomlValue, TypeCheckerFlags,
+    set_flag_and_return_ignore_errors,
+};
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
 use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, PathWithScheme};
@@ -22,7 +25,7 @@ use super::{
     name_resolution::{ModuleAccessDetail, NameResolution},
 };
 use crate::{
-    InputPosition, TypeCheckerFlags,
+    InputPosition,
     database::{
         ComplexPoint, Database, Locality, Point, PointLink, Points, PythonProject, Specific,
     },
@@ -96,7 +99,7 @@ pub(crate) struct PythonFile {
     pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
-    flags: Option<TypeCheckerFlags>,
+    flags: Option<FinalizedTypeCheckerFlags>,
     pub(super) delayed_diagnostics: RwLock<VecDeque<DelayedDiagnostic>>,
 
     newline_indices: NewlineIndices,
@@ -188,7 +191,7 @@ impl File for PythonFile {
             points,
             Diagnostics::default(),
             is_stub,
-            self.flags.take(),
+            self.flags.take().map(|flags| flags.into_unfinalized()),
             project,
             self.ignore_type_errors,
         );
@@ -307,6 +310,7 @@ impl<'db> PythonFile {
         project: &PythonProject,
         ignore_type_errors: bool,
     ) -> Self {
+        let flags = flags.map(|flags| flags.finalize());
         let complex_points = Default::default();
         let star_imports: RefCell<Vec<StarImport>> = Default::default();
         let all_imports: RefCell<Vec<NodeIndex>> = Default::default();
@@ -714,7 +718,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn flags<'x>(&'x self, db: &'x Database) -> &'x TypeCheckerFlags {
+    pub fn flags<'x>(&'x self, db: &'x Database) -> &'x FinalizedTypeCheckerFlags {
         self.maybe_more_specific_flags(db)
             .unwrap_or(&db.project.flags)
     }
@@ -726,7 +730,7 @@ impl<'db> PythonFile {
     pub fn maybe_more_specific_flags<'x>(
         &'x self,
         db: &'x Database,
-    ) -> Option<&'x TypeCheckerFlags> {
+    ) -> Option<&'x FinalizedTypeCheckerFlags> {
         if let Some(super_file) = self.super_file {
             debug_assert!(self.flags.is_none());
             super_file.file(db).maybe_more_specific_flags(db)
@@ -827,7 +831,7 @@ fn info_from_directives<'x>(
                 .matches_file_path(name, parent_dir.as_deref())
             {
                 if flags.is_none() {
-                    flags = Some(project.flags.clone());
+                    flags = Some(project.flags.clone().into_unfinalized());
                 }
                 ignore_errors |= override_
                     .apply_to_flags_and_return_ignore_errors(flags.as_mut().unwrap())
@@ -845,7 +849,7 @@ fn info_from_directives<'x>(
         for (name, value) in splitter {
             let name = name.replace('-', "_");
             if flags.is_none() {
-                flags = Some(project.flags.clone());
+                flags = Some(project.flags.clone().into_unfinalized());
             }
             let mut check = || -> anyhow::Result<_> {
                 let value = match value {

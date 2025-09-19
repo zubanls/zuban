@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex, OnceLock, RwLock},
 };
 
-use config::{OverrideConfig, Settings};
+use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
 use rayon::prelude::*;
 use vfs::{
@@ -15,7 +15,7 @@ use vfs::{
 };
 
 use crate::{
-    ProjectOptions, TypeCheckerFlags, debug,
+    ProjectOptions, debug,
     file::{ClassNodeRef, File, PythonFile},
     lines::split_lines,
     node_ref::NodeRef,
@@ -994,7 +994,7 @@ impl Database {
         let project = PythonProject {
             sys_path: sys_path::create_sys_path(&*vfs_handler, &options.settings),
             settings: options.settings,
-            flags: options.flags,
+            flags: options.flags.finalize(),
             overrides: options.overrides,
         };
 
@@ -1067,7 +1067,7 @@ impl Database {
         let project = PythonProject {
             sys_path: sys_path::create_sys_path(&*self.vfs.handler, &options.settings),
             settings: options.settings,
-            flags: options.flags,
+            flags: options.flags.finalize(),
             overrides: options.overrides,
         };
 
@@ -1478,7 +1478,7 @@ fn add_workspace_and_check_for_pth_files(
 pub(crate) struct PythonProject {
     pub sys_path: Vec<Arc<NormalizedPath>>,
     pub settings: Settings,
-    pub flags: TypeCheckerFlags,
+    pub flags: FinalizedTypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,
     // is_django: bool,  // TODO maybe add?
 }
