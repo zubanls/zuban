@@ -1547,8 +1547,8 @@ fn initialize_typed_dict_members(
         extra_items.as_ref(),
     );
     let initialization_args = &td_infos.1;
+    let add = |issue| NodeRef::new(file, args.unwrap().index()).add_type_issue(db, issue);
     if let Some(old) = &extra_items {
-        let add = |issue| NodeRef::new(file, args.unwrap().index()).add_type_issue(db, issue);
         match initialization_args.closed {
             Some(true) if !old.read_only && !old.t.is_never() => {
                 add(IssueKind::TypedDictCannotUseCloseIfSuperClassExtraItemsNonReadOnly)
@@ -1559,14 +1559,17 @@ fn initialize_typed_dict_members(
             Some(false) => add(IssueKind::TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems),
             _ => (),
         }
-        if initialization_args.extra_items.is_some() {
-            add(IssueKind::TypedDictExtraItemsNonReadOnlyChangeDisallowed);
-        }
     }
     if let Some(new) = file
         .name_resolution_for_types(i_s)
         .compute_class_typed_dict_extra_items(&initialization_args)
     {
+        if let Some(old) = &extra_items {
+            // Closed was already handled above
+            if !old.read_only && !initialization_args.closed.is_some() {
+                add(IssueKind::TypedDictExtraItemsNonReadOnlyChangeDisallowed);
+            }
+        }
         extra_items = Some(new)
     }
 

@@ -411,11 +411,11 @@ class MovieA(BaseMovie):  # OK, still closed
 class MovieB(BaseMovie, closed=True):  # OK, but redundant
     pass
 
-class MovieC(MovieA):  # E[MovieC]
-    age: int  # E[MovieC]: "MovieC" is a closed TypedDict; extra key "age" not allowed
+class MovieC(MovieA):
+    age: int  # E: TypedDict member "age" is required, but the extra_items of the super class are not
 
-class MovieD(MovieB):  # E[MovieD]
-    age: int  # E[MovieD]: "MovieD" is a closed TypedDict; extra key "age" not allowed
+class MovieD(MovieB):
+    age: int  # E: TypedDict member "age" is required, but the extra_items of the super class are not
 
 # > It is possible to use ``closed=True`` when subclassing if the ``extra_items``
 # > argument is a read-only type.
