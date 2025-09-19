@@ -1566,8 +1566,14 @@ fn initialize_typed_dict_members(
     {
         if let Some(old) = &extra_items {
             // Closed was already handled above
-            if !old.read_only && !initialization_args.closed.is_some() {
-                add(IssueKind::TypedDictExtraItemsNonReadOnlyChangeDisallowed);
+            if !initialization_args.closed.is_some() {
+                if old.read_only {
+                    if !old.t.is_simple_super_type_of(i_s, &new.t).bool() {
+                        add(IssueKind::TypedDictExtraItemsNonReadOnlyChangeDisallowed);
+                    }
+                } else {
+                    add(IssueKind::TypedDictExtraItemsNonReadOnlyChangeDisallowed);
+                }
             }
         }
         extra_items = Some(new)

@@ -388,6 +388,8 @@ testTypedDictNonMappingMethods
 testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
+# extra_items
+typed_dict_extra_items_initialization
 
 # dataclass classmethod
 testDataclassesClassmethods

@@ -393,6 +393,7 @@ pub(crate) enum IssueKind {
     TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems,
     TypedDictExtraItemsCannotBe { kind: &'static str },
     TypedDictExtraItemsNonReadOnlyChangeDisallowed,
+    TypedDictExtraItemsIncompatibleTypes { in_super_class: Box<str>, in_sub_class: Box<str> },
     TypedDictSetItemWithExtraItemsMismatch { got: Box<str>, expected: Box<str> },
     TypedDictMemberRequiredButHasExtraItemsOfSuper { name: Box<str> },
     TypedDictMemberNotReadOnlyButExtraItemsOfSuperClassIs { name: Box<str> },
@@ -1894,6 +1895,9 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictExtraItemsNonReadOnlyChangeDisallowed =>
                 r#"Cannot change "extra_items" type unless it is "ReadOnly" in the superclass"#.to_string(),
+            TypedDictExtraItemsIncompatibleTypes { in_super_class, in_sub_class } => format!(
+                r#"Expected a subtype of "{in_super_class}", but got "{in_sub_class}""#
+            ),
             TypedDictSetItemWithExtraItemsMismatch { got, expected } => format!(
                 r#"For a TypedDict with only types "{got}", "{expected}" is expected"#
             ),
