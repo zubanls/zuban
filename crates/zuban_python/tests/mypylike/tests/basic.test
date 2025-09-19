@@ -307,7 +307,7 @@ from typing import Never
 xx: list[Never] = []
 
 for (y, z) in xx:  # E: "Never" object is not iterable
-    reveal_type(y)  # E: Statement is unreachable
+    reveal_type(y)  # TODO this might be unreachable, but doesn't need to be.
 
 1()  # E: "int" not callable
 

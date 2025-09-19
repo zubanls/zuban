@@ -571,7 +571,11 @@ impl FlowAnalysis {
         if !tos_frame.reported_unreachable {
             tos_frame.reported_unreachable = true;
             drop(tos_frame);
-            callback()
+            // Currently we don't recheck loops so we should not report unreachable frames, because
+            // they might just be fine if types are widened for example.
+            if self.loop_details.borrow().is_none() {
+                callback()
+            }
         }
     }
 

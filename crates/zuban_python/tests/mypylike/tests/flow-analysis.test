@@ -527,3 +527,22 @@ Transformer = m.C
 [file m.py]
 class C:
     x: int
+
+[case fix_unreachable_false_positive]
+# flags: --no-mypy-compatible
+
+def fetch_url(url: str) -> dict[str, int]: ...
+
+def test_func():
+    offset = None
+    for _ in range(10):
+        url = "http://example/com/"
+
+        if offset: # <- This part
+            url += f"?offset={offset}"
+
+        data = fetch_url(url)
+        if data["next"]:
+            offset = data["next"]
+        else:
+            break
