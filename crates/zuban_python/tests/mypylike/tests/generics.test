@@ -1809,3 +1809,16 @@ T = TypeVar("T")
 def f(cls: type[T]):
     cls()  # OK
     cls(1)  # E: Too many arguments for "object"
+
+[case set_generics_inference]
+a = set(('a', 'b'))
+z = set(('z',))
+
+reveal_type(a)  # N: Revealed type is "set[str]"
+reveal_type(z)  # N: Revealed type is "set[str]"
+
+for s in a:
+    pass
+
+for s in z:  # Redefining s here should be fine, see also #36
+    pass

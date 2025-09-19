@@ -157,7 +157,7 @@ from typing import MutableMapping, Union
 U = MutableMapping[str, "U"] | None
 
 def generate_arg(value: U):
-    if isinstance(value, MutableMapping) and value.get("class") in ("File",):  # E: Non-overlapping container check (element type: "MutableMapping[str, U] | None", container item type: "Literal['File']")
+    if isinstance(value, MutableMapping) and value.get("class") in ("File",):  # E: Non-overlapping container check (element type: "MutableMapping[str, U] | None", container item type: "str")
         pass
 
 [case files_in_mypy_ini]

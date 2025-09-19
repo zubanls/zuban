@@ -71,7 +71,8 @@ impl Tuple {
         self.tuple_class_generics.get_or_init(|| {
             let t = self
                 .args
-                .simplified_union_of_tuple_entries(&InferenceState::new_in_unknown_file(db));
+                .simplified_union_of_tuple_entries(&InferenceState::new_in_unknown_file(db))
+                .avoid_implicit_literal(db);
             debug!("Calculated tuple class generics: {}", t.format_short(db));
             GenericsList::new_generics(Arc::new([GenericItem::TypeArg(t)]))
         })
