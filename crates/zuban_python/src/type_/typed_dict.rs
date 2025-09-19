@@ -18,6 +18,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
+    new_class,
+    type_::{StarStarParamType, Tuple, simplified_union_from_iterators},
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
@@ -26,6 +28,13 @@ use crate::{
 pub(crate) struct TypedDictMember {
     pub name: StringSlice,
     pub type_: Type,
+    pub required: bool,
+    pub read_only: bool,
+}
+
+pub(crate) struct TypedDictEntry<'x> {
+    pub name: Option<StringSlice>,
+    pub type_: &'x Type,
     pub required: bool,
     pub read_only: bool,
 }
@@ -57,10 +66,22 @@ pub(crate) enum TypedDictGenerics {
     Generics(GenericsList),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ExtraItemsType {
+    pub t: Type,
+    pub read_only: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TypedDictMembers {
+    pub(crate) named: Box<[TypedDictMember]>,
+    pub(crate) extra_items: Option<ExtraItemsType>,
+}
+
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct TypedDict {
     pub name: Option<StringSlice>,
-    members: OnceLock<Box<[TypedDictMember]>>,
+    members: OnceLock<TypedDictMembers>,
     pub defined_at: PointLink,
     pub generics: TypedDictGenerics,
     pub is_final: bool,
@@ -69,7 +90,7 @@ pub(crate) struct TypedDict {
 impl TypedDict {
     pub fn new(
         name: Option<StringSlice>,
-        members: Box<[TypedDictMember]>,
+        members: TypedDictMembers,
         defined_at: PointLink,
         generics: TypedDictGenerics,
     ) -> Arc<Self> {
@@ -84,7 +105,7 @@ impl TypedDict {
 
     pub fn new_definition(
         name: StringSlice,
-        members: Box<[TypedDictMember]>,
+        members: TypedDictMembers,
         defined_at: PointLink,
         type_var_likes: TypeVarLikes,
     ) -> Arc<Self> {
@@ -122,7 +143,7 @@ impl TypedDict {
         })
     }
 
-    pub fn late_initialization_of_members(&self, members: Box<[TypedDictMember]>) {
+    pub fn late_initialization_of_members(&self, members: TypedDictMembers) {
         debug_assert!(!matches!(self.generics, TypedDictGenerics::Generics(_)));
         self.members.set(members).unwrap()
     }
@@ -145,24 +166,41 @@ impl TypedDict {
 
     fn remap_members_with_generics(
         db: &Database,
-        original_members: &[TypedDictMember],
+        original_members: &TypedDictMembers,
         generics: &GenericsList,
-    ) -> Box<[TypedDictMember]> {
-        original_members
-            .iter()
-            .map(|m| {
-                m.replace_type(|_| {
-                    m.type_.replace_type_var_likes(db, &mut |usage| {
-                        Some(generics[usage.index()].clone())
+    ) -> TypedDictMembers {
+        TypedDictMembers {
+            named: original_members
+                .named
+                .iter()
+                .map(|m| {
+                    m.replace_type(|_| {
+                        m.type_.replace_type_var_likes(db, &mut |usage| {
+                            Some(generics[usage.index()].clone())
+                        })
                     })
                 })
-            })
-            .collect()
+                .collect(),
+            extra_items: original_members
+                .extra_items
+                .as_ref()
+                .map(|extra| ExtraItemsType {
+                    t: extra
+                        .t
+                        .replace_type_var_likes(db, &mut |usage| {
+                            Some(generics[usage.index()].clone())
+                        })
+                        .unwrap_or_else(|| extra.t.clone()),
+                    read_only: extra.read_only,
+                }),
+        }
     }
 
     pub fn has_calculated_members(&self, db: &Database) -> bool {
-        let members = self.members.get().map(|m| m.as_ref());
+        let members = self.members.get();
         if members.is_none() && matches!(&self.generics, TypedDictGenerics::Generics(_)) {
+            // Generic TypedDicts can be remapped so we need to recheck the original definition if
+            // there are calculated members.
             let class = Class::from_non_generic_link(db, self.defined_at);
             let original_typed_dict = class.maybe_typed_dict().unwrap();
             if original_typed_dict.has_calculated_members(db) {
@@ -176,7 +214,7 @@ impl TypedDict {
         self.members.get().is_none()
     }
 
-    pub fn members(&self, db: &Database) -> &[TypedDictMember] {
+    pub fn members(&self, db: &Database) -> &TypedDictMembers {
         self.members.get().unwrap_or_else(|| {
             let TypedDictGenerics::Generics(list) = &self.generics else {
                 unreachable!()
@@ -201,18 +239,46 @@ impl TypedDict {
         &self,
         db: &Database,
     ) -> impl Iterator<Item = &'_ TypedDictMember> {
-        self.members(db).iter().filter(|member| member.required)
+        self.members(db)
+            .named
+            .iter()
+            .filter(|member| member.required)
     }
 
     pub fn iter_optional_members(
         &self,
         db: &Database,
     ) -> impl Iterator<Item = &'_ TypedDictMember> {
-        self.members(db).iter().filter(|member| !member.required)
+        self.members(db)
+            .named
+            .iter()
+            .filter(|member| !member.required)
     }
 
     pub fn find_member(&self, db: &Database, name: &str) -> Option<&TypedDictMember> {
-        self.members(db).iter().find(|p| p.name.as_str(db) == name)
+        self.members(db)
+            .named
+            .iter()
+            .find(|p| p.name.as_str(db) == name)
+    }
+
+    pub fn find_entry(&self, db: &Database, name: &str) -> Option<TypedDictEntry<'_>> {
+        let m = self.members(db);
+        if let Some(member) = m.named.iter().find(|p| p.name.as_str(db) == name) {
+            Some(TypedDictEntry {
+                name: Some(member.name),
+                type_: &member.type_,
+                required: member.required,
+                read_only: member.read_only,
+            })
+        } else {
+            m.extra_items.as_ref().map(|e| TypedDictEntry {
+                name: None,
+                type_: &e.t,
+                required: false,
+                read_only: e.read_only,
+            })
+        }
     }
 
     fn qualified_name(&self, db: &Database) -> Option<String> {
@@ -222,11 +288,14 @@ impl TypedDict {
     }
 
     pub fn union(&self, i_s: &InferenceState, other: &Self) -> Type {
-        let mut members: Vec<_> = self.members(i_s.db).into();
-        'outer: for m2 in other.members(i_s.db).iter() {
+        let m1 = self.members(i_s.db);
+        let m2 = other.members(i_s.db);
+        let mut members: Vec<_> = m1.named.clone().into();
+        'outer: for m2 in m2.named.iter() {
             for m1 in members.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
                     if m1.required != m2.required
+                        || m1.read_only != m2.read_only
                         || !m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                     {
                         return Type::Never(NeverCause::Other);
@@ -236,9 +305,13 @@ impl TypedDict {
             }
             members.push(m2.clone());
         }
+        // TODO extra_items: handle
         Type::TypedDict(Self::new(
             None,
-            members.into_boxed_slice(),
+            TypedDictMembers {
+                named: members.into_boxed_slice(),
+                extra_items: None,
+            },
             self.defined_at,
             TypedDictGenerics::None,
         ))
@@ -246,19 +319,38 @@ impl TypedDict {
 
     pub fn intersection(&self, i_s: &InferenceState, other: &Self) -> Arc<TypedDict> {
         let mut new_members = vec![];
-        for m1 in self.members(i_s.db).iter() {
-            for m2 in other.members(i_s.db).iter() {
+        let ms1 = self.members(i_s.db);
+        let ms2 = other.members(i_s.db);
+        for m1 in ms1.named.iter() {
+            for m2 in ms2.named.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db)
                     && m1.required == m2.required
                     && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                 {
-                    new_members.push(m1.clone());
+                    let mut new = m1.clone();
+                    new.read_only |= m2.read_only;
+                    new_members.push(new);
                 }
             }
         }
         Self::new(
             None,
-            new_members.into_boxed_slice(),
+            TypedDictMembers {
+                named: new_members.into_boxed_slice(),
+                extra_items: ms1
+                    .extra_items
+                    .as_ref()
+                    .zip(ms2.extra_items.as_ref())
+                    .and_then(|(e1, e2)| {
+                        if !e1.t.is_simple_same_type(i_s, &e2.t).bool() {
+                            return None;
+                        }
+                        Some(ExtraItemsType {
+                            t: e1.t.clone(),
+                            read_only: e1.read_only || e2.read_only,
+                        })
+                    }),
+            },
             self.defined_at,
             TypedDictGenerics::None,
         )
@@ -299,7 +391,8 @@ impl TypedDict {
     pub fn format_full(&self, format_data: &FormatData, name: Option<&str>) -> String {
         match format_data.with_seen_recursive_type(AvoidRecursionFor::TypedDict(self.defined_at)) {
             Ok(format_data) => {
-                let params = join_with_commas(self.members(format_data.db).iter().map(|p| {
+                let m = self.members(format_data.db);
+                let params = join_with_commas(m.named.iter().map(|p| {
                     format!(
                         "'{}'{}{}: {}",
                         p.name.as_str(format_data.db),
@@ -314,10 +407,24 @@ impl TypedDict {
                         p.type_.format(&format_data)
                     )
                 }));
-                if let Some(name) = name {
-                    format!("TypedDict('{name}', {{{params}}})")
+
+                let rest = if let Some(e) = &m.extra_items {
+                    if e.t.is_never() {
+                        ", closed=True".to_string()
+                    } else {
+                        let mut inner = e.t.format(&format_data).into_string();
+                        if e.read_only {
+                            inner = format!("ReadOnly[{inner}]");
+                        }
+                        format!(", extra_items={inner}")
+                    }
                 } else {
-                    format!("TypedDict({{{params}}})")
+                    "".to_string()
+                };
+                if let Some(name) = name {
+                    format!("TypedDict('{name}', {{{params}}}{rest})")
+                } else {
+                    format!("TypedDict({{{params}}}{rest})")
                 }
             }
             Err(()) => "...".to_string(),
@@ -336,7 +443,7 @@ impl TypedDict {
                 simple,
                 |key| {
                     Some({
-                        if let Some(member) = self.find_member(i_s.db, key) {
+                        if let Some(member) = self.find_entry(i_s.db, key) {
                             Inferred::from_type(member.type_.clone())
                         } else {
                             add_issue(IssueKind::TypedDictHasNoKeyForGet {
@@ -363,13 +470,18 @@ impl TypedDict {
     ) -> Arc<Self> {
         Arc::new(TypedDict {
             name: self.name,
-            members: if let Some(members) = self.members.get() {
-                OnceLock::from(
-                    members
+            members: if let Some(m) = self.members.get() {
+                OnceLock::from(TypedDictMembers {
+                    named: m
+                        .named
                         .iter()
                         .map(|m| m.replace_type(&mut callable))
                         .collect::<Box<_>>(),
-                )
+                    extra_items: m.extra_items.as_ref().map(|e| ExtraItemsType {
+                        t: callable(&e.t).unwrap_or_else(|| e.t.clone()),
+                        read_only: e.read_only,
+                    }),
+                })
             } else {
                 OnceLock::new()
             },
@@ -398,8 +510,9 @@ impl TypedDict {
         read_only: bool,
     ) -> Match {
         let mut matches = Match::new_true();
-        for m1 in self.members(i_s.db).iter() {
-            if let Some(m2) = other.find_member(i_s.db, m1.name.as_str(i_s.db)) {
+        let ms1 = self.members(i_s.db);
+        for m1 in ms1.named.iter() {
+            if let Some(m2) = other.find_entry(i_s.db, m1.name.as_str(i_s.db)) {
                 // Required must match except if the wanted type is also read-only (and therefore
                 // may not be modified afterwards
                 if m1.required != m2.required && !(m1.read_only && !m1.required) {
@@ -419,6 +532,35 @@ impl TypedDict {
                 return Match::new_false();
             }
         }
+        if let Some(extra_items1) = &ms1.extra_items {
+            let ms2 = other.members(i_s.db);
+            if let Some(extra_items2) = &ms2.extra_items {
+                matches &= if extra_items1.read_only {
+                    extra_items1
+                        .t
+                        .is_super_type_of(i_s, matcher, &extra_items2.t)
+                } else {
+                    extra_items1.t.is_same_type(i_s, matcher, &extra_items2.t)
+                }
+            } else {
+                return Match::new_false();
+            }
+
+            for m2 in ms2.named.iter() {
+                if let Some(m1) = self.find_entry(i_s.db, m2.name.as_str(i_s.db))
+                    && m1.name.is_none()
+                {
+                    if m2.required {
+                        return Match::new_false();
+                    }
+                    matches &= if extra_items1.read_only {
+                        m1.type_.is_super_type_of(i_s, matcher, &m2.type_)
+                    } else {
+                        m1.type_.is_same_type(i_s, matcher, &m2.type_)
+                    }
+                }
+            }
+        }
         matches
     }
 
@@ -433,9 +575,50 @@ impl TypedDict {
         i_s: &InferenceState,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
-        self.members(i_s.db)
+        let m = self.members(i_s.db);
+        m.named
             .iter()
             .any(|m| m.type_.has_any_internal(i_s, already_checked))
+            || m.extra_items
+                .as_ref()
+                .is_some_and(|e| e.t.has_any_internal(i_s, already_checked))
+    }
+
+    fn can_be_emptied(&self, db: &Database) -> bool {
+        let ms = self.members(db);
+        ms.extra_items.as_ref().is_some_and(|e| !e.read_only)
+            && ms.named.iter().all(|m| !m.required && !m.read_only)
+    }
+
+    pub fn can_be_overwritten_with(&self, i_s: &InferenceState) -> Option<&Type> {
+        let ms = self.members(i_s.db);
+        let e_t = ms.extra_items.as_ref()?;
+        (!e_t.read_only
+            && ms.named.iter().all(|m| {
+                !m.required && !m.read_only && e_t.t.is_simple_same_type(i_s, &m.type_).bool()
+            }))
+        .then_some(&e_t.t)
+    }
+
+    pub fn has_extra_items(&self, db: &Database) -> bool {
+        self.members(db).extra_items.is_some()
+    }
+
+    pub fn union_of_all_types(&self, i_s: &InferenceState) -> Type {
+        let ms = self.members(i_s.db);
+        simplified_union_from_iterators(
+            i_s,
+            ms.named
+                .iter()
+                .map(|m| &m.type_)
+                .chain(ms.extra_items.as_ref().map(|t| &t.t).into_iter()),
+        )
+    }
+}
+
+impl ExtraItemsType {
+    pub fn format_as_param(&self, format_data: &FormatData) -> String {
+        format!("**{}", self.t.format(format_data))
     }
 }
 
@@ -450,14 +633,19 @@ pub fn rc_typed_dict_as_callable(db: &Database, slf: Arc<TypedDict>) -> Callable
             }
             TypedDictGenerics::NotDefinedYet(type_vars) => type_vars.clone(),
         },
-        CallableParams::Simple(
-            slf.members
-                .get()
-                .unwrap()
+        CallableParams::Simple({
+            let ms = slf.members.get().unwrap();
+            ms.named
                 .iter()
                 .map(|m| m.as_keyword_param())
-                .collect(),
-        ),
+                .chain(ms.extra_items.as_ref().map(|e| {
+                    CallableParam::new_anonymous(ParamType::StarStar(StarStarParamType::ValueType(
+                        e.t.clone(),
+                    )))
+                }))
+                .into_iter()
+                .collect()
+        }),
         Type::TypedDict(slf.clone()),
     )
 }
@@ -483,6 +671,7 @@ fn add_access_key_must_be_string_literal_issue(
     add_issue(IssueKind::TypedDictAccessKeyMustBeStringLiteral {
         keys: join_with_commas(
             td.members(db)
+                .named
                 .iter()
                 .map(|member| format!("\"{}\"", member.name.as_str(db))),
         )
@@ -538,7 +727,7 @@ fn typed_dict_setdefault_internal<'db>(
         .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
-            if let Some(member) = td.find_member(i_s.db, key) {
+            if let Some(member) = td.find_entry(i_s.db, key) {
                 if !member
                     .type_
                     .is_simple_super_type_of(i_s, &default.as_cow_type(i_s))
@@ -629,7 +818,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
-            if let Some(member) = td.find_member(i_s.db, key) {
+            if let Some(member) = td.find_entry(i_s.db, key) {
                 if is_pop && (member.required || member.read_only) {
                     first_arg.add_issue(
                         i_s,
@@ -665,11 +854,33 @@ fn typed_dict_get_or_pop_internal<'db>(
             Some(maybe_had_literals.simplified_union(i_s, default))
         }
     } else {
+        let default = infer_default(&mut ResultContext::Unknown)?;
+        let is_str_key = || {
+            inferred_name
+                .as_cow_type(i_s)
+                .is_simple_same_type(i_s, &i_s.db.python_state.str_type())
+                .bool()
+        };
         if is_pop {
-            first_arg.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
+            if !(td.can_be_emptied(i_s.db) && is_str_key()) {
+                first_arg.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
+            }
+        } else if !is_str_key() {
+            return None;
         }
-        infer_default(&mut ResultContext::Unknown)?;
-        Some(Inferred::from_type(i_s.db.python_state.object_type()))
+
+        Some(
+            if td.has_extra_items(i_s.db)
+                && *inferred_name.as_cow_type(i_s) == i_s.db.python_state.str_type()
+            {
+                Inferred::from_type(
+                    td.union_of_all_types(i_s)
+                        .simplified_union(i_s, &default.as_cow_type(i_s)),
+                )
+            } else {
+                Inferred::new_object(i_s.db)
+            },
+        )
     }
 }
 
@@ -763,7 +974,7 @@ fn typed_dict_setitem_internal<'db>(
     let value = second_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let Some(literal) = inf_key.maybe_string_literal(i_s) {
         let key = literal.as_str(i_s.db);
-        if let Some(member) = td.find_member(i_s.db, key) {
+        if let Some(member) = td.find_entry(i_s.db, key) {
             if member.read_only {
                 args.add_issue(
                     i_s,
@@ -792,6 +1003,21 @@ fn typed_dict_setitem_internal<'db>(
                 },
             );
         }
+    } else if let Some(expected) = td.can_be_overwritten_with(i_s)
+        && inf_key
+            .as_cow_type(i_s)
+            .is_simple_same_type(i_s, &i_s.db.python_state.str_type())
+            .bool()
+    {
+        expected.error_if_not_matches(
+            i_s,
+            &value,
+            |issue| args.add_issue(i_s, issue),
+            |error_types| {
+                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
+                Some(IssueKind::TypedDictSetItemWithExtraItemsMismatch { got, expected })
+            },
+        );
     } else {
         add_access_key_must_be_string_literal_issue(i_s.db, td, |issue| args.add_issue(i_s, issue))
     }
@@ -853,13 +1079,17 @@ fn typed_dict_update_internal<'db>(
     td: &TypedDict,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let mut members: Vec<_> = td.members(i_s.db).into();
+    let ms = td.members(i_s.db);
+    let mut members: Vec<_> = ms.named.as_ref().into();
     for member in members.iter_mut() {
         member.required = false;
     }
     let expected = TypedDict::new(
         td.name,
-        members.into_boxed_slice(),
+        TypedDictMembers {
+            named: members.into_boxed_slice(),
+            extra_items: ms.extra_items.clone(),
+        },
         td.defined_at,
         td.generics.clone(),
     );
@@ -909,13 +1139,29 @@ pub(crate) fn initialize_typed_dict<'db>(
 }
 
 pub(crate) fn lookup_on_typed_dict<'a>(
-    typed_dict: Arc<TypedDict>,
+    td: Arc<TypedDict>,
     i_s: &'a InferenceState,
     add_issue: &dyn Fn(IssueKind),
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
-    let bound = || Arc::new(Type::TypedDict(typed_dict.clone()));
+    fn as_callable_without_params<'a>(
+        db: &'a Database,
+        td: Arc<TypedDict>,
+        name: &'static str,
+        return_type: Type,
+    ) -> LookupDetails<'a> {
+        let defined_at = td.defined_at;
+        let name1 = Some(DbString::Static(name));
+        LookupDetails::new(
+            Type::TypedDict(td),
+            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
+                CallableContent::new_non_generic(db, name1, None, defined_at, [], return_type),
+            )))),
+            AttributeKind::DefMethod { is_final: false },
+        )
+    }
+    let bound = || Arc::new(Type::TypedDict(td.clone()));
     let lookup = LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
         "get" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
         "setdefault" => CustomBehavior::new_method(typed_dict_setdefault, Some(bound())),
@@ -923,18 +1169,44 @@ pub(crate) fn lookup_on_typed_dict<'a>(
         "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
         "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
+        "clear" if td.can_be_emptied(i_s.db) => {
+            // Return an empty Callable
+            return as_callable_without_params(i_s.db, td, "clear", Type::None);
+        }
+        "popitem" if td.can_be_emptied(i_s.db) => {
+            let return_type = Type::Tuple(Tuple::new_fixed_length(
+                [i_s.db.python_state.str_type(), td.union_of_all_types(i_s)].into(),
+            ));
+            return as_callable_without_params(i_s.db, td, "popitem", return_type);
+        }
+        "items" if td.has_extra_items(i_s.db) => {
+            let return_type = new_class!(
+                i_s.db.python_state.list_link(),
+                Type::Tuple(Tuple::new_fixed_length(
+                    [i_s.db.python_state.str_type(), td.union_of_all_types(i_s)].into(),
+                ))
+            );
+            return as_callable_without_params(i_s.db, td, "items", return_type);
+        }
+        "values" if td.has_extra_items(i_s.db) => {
+            let return_type = new_class!(
+                i_s.db.python_state.list_link(),
+                td.union_of_all_types(i_s).into(),
+            );
+            return as_callable_without_params(i_s.db, td, "values", return_type);
+        }
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None).lookup(
                 i_s,
                 name,
                 InstanceLookupOptions::new(add_issue)
                     .with_kind(kind)
-                    .with_as_self_instance(&|| Type::TypedDict(typed_dict.clone())),
+                    .with_as_self_instance(&|| Type::TypedDict(td.clone())),
             );
         }
     })));
     LookupDetails::new(
-        Type::TypedDict(typed_dict),
+        Type::TypedDict(td),
         lookup,
         AttributeKind::DefMethod { is_final: false },
     )
@@ -949,7 +1221,7 @@ pub(crate) fn infer_typed_dict_arg(
     extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
 ) {
-    if let Some(member) = typed_dict.find_member(i_s.db, key) {
+    if let Some(member) = typed_dict.find_entry(i_s.db, key) {
         let inferred = infer(&mut ResultContext::WithMatcher {
             type_: &member.type_,
             matcher,
@@ -1013,7 +1285,8 @@ pub(crate) fn check_typed_dict_call<'db>(
         extra_keys,
     );
     let mut missing_keys: Vec<Box<str>> = vec![];
-    for member in typed_dict.members(i_s.db).iter() {
+    let m = typed_dict.members(i_s.db);
+    for member in m.named.iter() {
         if member.required {
             let expected_name = member.name.as_str(i_s.db);
             if !args

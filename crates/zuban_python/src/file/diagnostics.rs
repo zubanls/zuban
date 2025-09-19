@@ -1617,7 +1617,7 @@ impl Inference<'_, '_, '_> {
                     && let Type::TypedDict(td) = t.as_ref()
                 {
                     let mut overlapping_names = vec![];
-                    for member in td.members(i_s.db) {
+                    for member in &td.members(i_s.db).named {
                         for p in params.iter() {
                             let name = member.name.as_str(i_s.db);
                             if matches!(

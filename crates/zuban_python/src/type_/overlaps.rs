@@ -306,7 +306,7 @@ impl TypedDict {
 
                 let mut had_required = false;
                 // All required members must overlap
-                for member in self.members(i_s.db).iter() {
+                for member in self.members(i_s.db).named.iter() {
                     if member.required {
                         had_required = true;
                         if !member.type_.overlaps(i_s, matcher, &value) {

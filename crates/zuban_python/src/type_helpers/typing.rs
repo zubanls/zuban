@@ -156,20 +156,31 @@ fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
                     TypedDictGenerics::NotDefinedYet(tvs) => Some(tvs.format(&format_data)),
                     _ => None,
                 };
+                let m = td.members(i_s.db);
                 return format!(
                     "def {}(*, {}) -> {}",
                     tvs.as_deref().unwrap_or(""),
-                    join_with_commas(td.members(i_s.db).iter().map(|member| {
-                        let mut s = format!(
-                            "{}: {}",
-                            member.name.as_str(i_s.db),
-                            member.type_.format(&format_data)
-                        );
-                        if !member.required {
-                            s += " = ...";
-                        }
-                        s
-                    })),
+                    join_with_commas(
+                        m.named
+                            .iter()
+                            .map(|member| {
+                                let mut s = format!(
+                                    "{}: {}",
+                                    member.name.as_str(i_s.db),
+                                    member.type_.format(&format_data)
+                                );
+                                if !member.required {
+                                    s += " = ...";
+                                }
+                                s
+                            })
+                            .chain(
+                                m.extra_items
+                                    .as_ref()
+                                    .map(|e| { e.format_as_param(&format_data) })
+                                    .into_iter()
+                            )
+                    ),
                     type_.format(&format_data)
                 )
                 .into();
@@ -251,15 +262,22 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
     let eq = |t1: &Type, t2: &Type| is_equal_type(db, t1, t2);
     let all_eq = |ts1: &[Type], ts2: &[Type]| ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2));
     let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
-        td1.members(db)
-            .iter()
-            .zip(td2.members(db).iter())
-            .all(|(m1, m2)| {
+        let m1 = td1.members(db);
+        let m2 = td2.members(db);
+        m1.named.len() == m2.named.len()
+            && m1.named.iter().zip(m2.named.iter()).all(|(m1, m2)| {
                 m1.name.as_str(db) == m2.name.as_str(db)
                     && m1.required == m2.required
                     && m1.read_only == m2.read_only
                     && eq(&m1.type_, &m2.type_)
             })
+            && match (&m1.extra_items, &m2.extra_items) {
+                (None, None) => true,
+                (Some(t1), Some(t2)) => {
+                    is_equal_type(db, &t1.t, &t2.t) && t1.read_only == t2.read_only
+                }
+                _ => false,
+            }
     };
     let tuple_args_eq = |t1: &TupleArgs, t2: &TupleArgs| match (t1, t2) {
         (TupleArgs::WithUnpack(w1), TupleArgs::WithUnpack(w2)) => {

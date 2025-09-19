@@ -723,6 +723,34 @@ impl Type {
             {
                 Match::new_true()
             }
+            Type::TypedDict(td) => {
+                if class1.node_ref == i_s.db.python_state.dict_node_ref()
+                    || class1.node_ref == i_s.db.python_state.mutable_mapping_node_ref()
+                {
+                    if let Some(got_value) = td.can_be_overwritten_with(i_s) {
+                        return class1.nth_type_argument(i_s.db, 0).is_same_type(
+                            i_s,
+                            matcher,
+                            &i_s.db.python_state.str_type(),
+                        ) & class1
+                            .nth_type_argument(i_s.db, 1)
+                            .is_same_type(i_s, matcher, got_value);
+                    }
+                } else if class1.node_ref == i_s.db.python_state.mapping_node_ref() {
+                    if td.has_extra_items(i_s.db) {
+                        return class1.nth_type_argument(i_s.db, 0).is_same_type(
+                            i_s,
+                            matcher,
+                            &i_s.db.python_state.str_type(),
+                        ) & class1.nth_type_argument(i_s.db, 1).is_super_type_of(
+                            i_s,
+                            matcher,
+                            &td.union_of_all_types(i_s),
+                        );
+                    }
+                }
+                Match::new_false()
+            }
             _ => Match::new_false(),
         }
     }

@@ -60,8 +60,9 @@ pub(crate) use self::{
         TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, Variance,
     },
     typed_dict::{
-        TypedDict, TypedDictGenerics, TypedDictMember, check_typed_dict_call, infer_typed_dict_arg,
-        initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue,
+        ExtraItemsType, TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        check_typed_dict_call, infer_typed_dict_arg, initialize_typed_dict, lookup_on_typed_dict,
+        maybe_add_extra_keys_issue,
     },
     union::{
         UnionEntry, UnionType, simplified_union_from_iterators,

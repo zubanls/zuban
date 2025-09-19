@@ -163,6 +163,7 @@ impl<'db> Inference<'db, '_, '_> {
         let mut extra_keys = vec![];
         let mut missing_keys: Vec<_> = typed_dict
             .members(i_s.db)
+            .named
             .iter()
             .filter(|&m| m.required)
             .map(|m| m.name.as_str(i_s.db))
@@ -199,7 +200,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let node_ref = NodeRef::new(self.file, dict_starred.index());
                     match inf.as_cow_type(i_s).as_ref() {
                         Type::TypedDict(td) => {
-                            for member in td.members(i_s.db).iter() {
+                            for member in td.members(i_s.db).named.iter() {
                                 let key = member.name.as_str(i_s.db);
                                 if member.required {
                                     missing_keys.retain(|k| *k != key);

@@ -388,6 +388,16 @@ pub(crate) enum IssueKind {
     UnpackItemInStarStarMustBeTypedDict,
     TypedDictSetdefaultWrongDefaultType { got: Box<str>, expected: Box<str> },
     ArgumentMustBeTrueOrFalse { key: Box<str> },
+    TypedDictCannotUseCloseIfSuperClassExtraItemsNonReadOnly,
+    TypedDictCannotUseCloseFalseIfSuperClassClosed,
+    TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems,
+    TypedDictExtraItemsCannotBe { kind: &'static str },
+    TypedDictExtraItemsNonReadOnlyChangeDisallowed,
+    TypedDictExtraItemsIncompatibleTypes { in_super_class: Box<str>, in_sub_class: Box<str> },
+    TypedDictSetItemWithExtraItemsMismatch { got: Box<str>, expected: Box<str> },
+    TypedDictMemberRequiredButHasExtraItemsOfSuper { name: Box<str> },
+    TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot { name: Box<str> },
+    TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name: Box<str>, in_super_class: Box<str>, member_type: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1873,6 +1883,32 @@ impl<'db> Diagnostic<'db> {
             ),
             ArgumentMustBeTrueOrFalse { key } => format!(
                 r#""{key}" argument must be a True or False literal"#
+            ),
+            TypedDictCannotUseCloseIfSuperClassExtraItemsNonReadOnly =>
+                r#"Cannot set "closed=True" when superclass has non-read-only "extra_items""#.to_string(),
+            TypedDictCannotUseCloseFalseIfSuperClassClosed =>
+                r#"Cannot set "closed=False" when superclass is "closed=True""#.to_string(),
+            TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems =>
+                r#"Cannot set "closed=False" when superclass has "extra_items""#.to_string(),
+            TypedDictExtraItemsCannotBe { kind } => format!(
+                r#""extra_items" value cannot be "{kind}[...]""#
+            ),
+            TypedDictExtraItemsNonReadOnlyChangeDisallowed =>
+                r#"Cannot change "extra_items" type unless it is "ReadOnly" in the superclass"#.to_string(),
+            TypedDictExtraItemsIncompatibleTypes { in_super_class, in_sub_class } => format!(
+                r#"Expected a subtype of "{in_super_class}", but got "{in_sub_class}""#
+            ),
+            TypedDictSetItemWithExtraItemsMismatch { got, expected } => format!(
+                r#"For a TypedDict with only types "{got}", "{expected}" is expected"#
+            ),
+            TypedDictMemberRequiredButHasExtraItemsOfSuper { name } => format!(
+                r#"TypedDict member "{name}" is required, but the extra_items of the super class are not"#
+            ),
+            TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot { name } => format!(
+                r#"TypedDict member "{name}" is read only, but the extra_items of the super class are"#
+            ),
+            TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name, in_super_class, member_type } => format!(
+                r#"TypedDict member "{name}" type "{member_type}" is not assignable, but the extra_items of the super class are of type "{in_super_class}""#
             ),
 
             OverloadImplementationNotLast =>

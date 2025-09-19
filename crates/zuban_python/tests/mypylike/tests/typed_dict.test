@@ -328,20 +328,20 @@ m3: Mapping[str, Any] = b3  # OK
 
 [case typed_dict_extra_items_initialization]
 # Copied from conformance tests (typeddicts_extra_items.py)
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, assert_type, ReadOnly
 
 class Movie(TypedDict, extra_items=bool):
     name: str
 
 a: Movie = {"name": "Blade Runner", "novel_adaptation": True}  # OK
-b: Movie = {"name": "Blade Runner", "year": 1982}  # E: 'int' is not assignable to 'bool'
+b: Movie = {"name": "Blade Runner", "year": 1982}  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "bool")
 
 # > The alternative inline syntax is also supported::
 
 MovieFunctional = TypedDict("MovieFunctional", {"name": str}, extra_items=bool)
 
 c: MovieFunctional = {"name": "Blade Runner", "novel_adaptation": True}  # OK
-d: MovieFunctional = {"name": "Blade Runner", "year": 1982}  # E: 'int' is not assignable to 'bool'
+d: MovieFunctional = {"name": "Blade Runner", "year": 1982}  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "bool")
 
 # > Accessing extra items is allowed. Type checkers must infer their value type from
 # > the ``extra_items`` argument
@@ -358,7 +358,7 @@ class MovieBase(TypedDict, extra_items=ReadOnly[int | None]):
 class InheritedMovie(MovieBase):
     year: int
 
-e: InheritedMovie = {"name": "Blade Runner", "year": None}  # E: 'None' is incompatible with 'int'
+e: InheritedMovie = {"name": "Blade Runner", "year": None}  # E: Incompatible types (expression has type "None", TypedDict item "year" has type "int")
 f: InheritedMovie = {
     "name": "Blade Runner",
     "year": 1982,
@@ -369,7 +369,7 @@ f: InheritedMovie = {
 # Copied from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, ReadOnly, Never
 
-class IllegalTD(TypedDict, closed=42 == 42):  # E: Argument to "closed" must be a literal True or False
+class IllegalTD(TypedDict, closed=42 == 42):  # E: "closed" argument must be a True or False literal
     name: str
 
 # > Passing ``closed=False`` explicitly requests the default TypedDict behavior,
@@ -387,13 +387,13 @@ class ChildTD(BaseTD):  # OK
 class ClosedBase(TypedDict, closed=True):
     name: str
 
-class IllegalChild1(ClosedBase, closed=False):  # E: Cannot set 'closed=False' when superclass is 'closed=True'
+class IllegalChild1(ClosedBase, closed=False):  # E: Cannot set "closed=False" when superclass is "closed=True"
     pass
 
 class ExtraItemsBase(TypedDict, extra_items=int):
     name: str
 
-class IllegalChild2(ExtraItemsBase, closed=False):  # E: Cannot set 'closed=False' when superclass has 'extra_items'
+class IllegalChild2(ExtraItemsBase, closed=False):  # E: Cannot set "closed=False" when superclass has "extra_items"
     pass
 
 # > If ``closed`` is not provided, the behavior is inherited from the superclass.
@@ -411,11 +411,11 @@ class MovieA(BaseMovie):  # OK, still closed
 class MovieB(BaseMovie, closed=True):  # OK, but redundant
     pass
 
-class MovieC(MovieA):  # E[MovieC]
-    age: int  # E[MovieC]: "MovieC" is a closed TypedDict; extra key "age" not allowed
+class MovieC(MovieA):
+    age: int  # E: TypedDict member "age" is required, but the extra_items of the super class are not
 
-class MovieD(MovieB):  # E[MovieD]
-    age: int  # E[MovieD]: "MovieD" is a closed TypedDict; extra key "age" not allowed
+class MovieD(MovieB):
+    age: int  # E: TypedDict member "age" is required, but the extra_items of the super class are not
 
 # > It is possible to use ``closed=True`` when subclassing if the ``extra_items``
 # > argument is a read-only type.
@@ -429,7 +429,7 @@ class MovieClosed(MovieES, closed=True):  # OK
 class MovieNever(MovieES, extra_items=Never):  # OK, but 'closed=True' is preferred
     pass
 
-class IllegalCloseNonReadOnly(ExtraItemsBase, closed=True):  # E: Cannot set 'closed=True' when superclass has non-read-only 'extra_items'
+class IllegalCloseNonReadOnly(ExtraItemsBase, closed=True):  # E: Cannot set "closed=True" when superclass has non-read-only "extra_items"
     pass
 
 [case typed_dict_closed_with_read_only]
@@ -448,15 +448,15 @@ class MovieClosed(MovieES, closed=True):  # OK
 class MovieNever(MovieES, extra_items=Never):  # OK, but 'closed=True' is preferred
     pass
 
-class IllegalCloseNonReadOnly(ExtraItemsBase, closed=True):  # E: Cannot set 'closed=True' when superclass has non-read-only 'extra_items'
+class IllegalCloseNonReadOnly(ExtraItemsBase, closed=True):  # E: Cannot set "closed=True" when superclass has non-read-only "extra_items"
     pass
 
 # > It is an error to use ``Required[]`` or ``NotRequired[]`` with ``extra_items``.
 
-class IllegalExtraItemsTD(TypedDict, extra_items=Required[int]):  # E: 'extra_items' value cannot be 'Required[...]'
+class IllegalExtraItemsTD(TypedDict, extra_items=Required[int]):  # E: "extra_items" value cannot be "Required[...]"
     name: str
 
-class AnotherIllegalExtraItemsTD(TypedDict, extra_items=NotRequired[int]):  # E: 'extra_items' value cannot be 'NotRequired[...]'
+class AnotherIllegalExtraItemsTD(TypedDict, extra_items=NotRequired[int]):  # E: "extra_items" value cannot be "NotRequired[...]"
     name: str
 
 # > The extra items are non-required, regardless of the totality of the
@@ -467,8 +467,8 @@ class MovieEI(TypedDict, extra_items=int):
     name: str
 
 def del_items(movie: MovieEI) -> None:
-    del movie["name"]  # E: The value type of 'name' is 'Required[str]'
-    del movie["year"]  # OK: The value type of 'year' is 'NotRequired[int]'
+    del movie["name"]  # E: Key "name" of TypedDict "MovieEI" cannot be deleted
+    del movie["year"]  # OK: The value type of "year" is "NotRequired[int]"
 
 class ReadOnlyBase(TypedDict, extra_items=ReadOnly[int]):
     pass
@@ -491,7 +491,7 @@ class SpecificExtraItems(NonClosedBase, extra_items=bytes):  # OK
 
 
 [case typed_dict_extra_items_with_unpack]
-# Copied from conformance tests (typeddicts_extra_items.py)
+# Copied mostly from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, Unpack
 
 class MovieNoExtra(TypedDict):
@@ -503,8 +503,20 @@ class MovieExtra(TypedDict, extra_items=int):
 def unpack_no_extra(**kwargs: Unpack[MovieNoExtra]) -> None: ...
 def unpack_extra(**kwargs: Unpack[MovieExtra]) -> None: ...
 
-unpack_no_extra(name="No Country for Old Men", year=2007) # E: Unrecognized item
+unpack_no_extra(name="No Country for Old Men", year=2007) # E: Unexpected keyword argument "year" for "unpack_no_extra"
 unpack_extra(name="No Country for Old Men", year=2007) # OK
+
+dct_int = {"": 1}
+unpack_extra(**dct_int)  # E: Argument 1 to "unpack_extra" has incompatible type "**dict[str, int]"; expected "str"
+unpack_extra(name="foo", **dct_int)
+
+unpack_extra(foo=1, **dct_int)  # E: Argument 2 to "unpack_extra" has incompatible type "**dict[str, int]"; expected "str"
+unpack_extra(name="foo", foo=1, **dct_int)
+
+unpack_extra(name="foo", foo="", **dct_int)  # E: Argument "foo" to "unpack_extra" has incompatible type "str"; expected "int"
+
+dct_str = {"": ""}
+unpack_extra(name="foo", **dct_str)  # E: Argument 2 to "unpack_extra" has incompatible type "**dict[str, str]"; expected "int"
 
 [case typed_dict_extra_items_subclassing]
 # Copied from conformance tests (typeddicts_extra_items.py)
@@ -516,7 +528,7 @@ from typing_extensions import TypedDict, NotRequired, ReadOnly
 class Parent(TypedDict, extra_items=int | None):
     pass
 
-class Child(Parent, extra_items=int): # E: Cannot change 'extra_items' type unless it is 'ReadOnly' in the superclass
+class Child(Parent, extra_items=int): # E: Cannot change "extra_items" type unless it is "ReadOnly" in the superclass
     pass
 
 # > Second, ``extra_items=T`` effectively defines the value type of any unnamed
@@ -526,11 +538,11 @@ class Child(Parent, extra_items=int): # E: Cannot change 'extra_items' type unle
 class MovieBase2(TypedDict, extra_items=int | None):
     name: str
 
-class MovieRequiredYear(MovieBase2):  # E[MovieRequiredYear]: Required key 'year' is not known to 'MovieBase'
-    year: int | None  # E[MovieRequiredYear]
+class MovieRequiredYear(MovieBase2):
+    year: int | None  # E: TypedDict member "year" is required, but the extra_items of the super class are not
 
-class MovieNotRequiredYear(MovieBase2):  # E[MovieNotRequiredYear]: 'int | None' is not consistent with 'int'
-    year: NotRequired[int]  # E[MovieNotRequiredYear]
+class MovieNotRequiredYear(MovieBase2):
+    year: NotRequired[int]  # E: TypedDict member "year" type "int" is not assignable, but the extra_items of the super class are of type "int | None"
 
 class MovieWithYear(MovieBase2):  # OK
     year: NotRequired[int | None]
@@ -538,11 +550,17 @@ class MovieWithYear(MovieBase2):  # OK
 class BookBase(TypedDict, extra_items=ReadOnly[int | None]):
     name: str
 
-class BookWithPublisher(BookBase):  # E[BookWithPublisher]: 'str' is not assignable to 'int | None'
-    publisher: str  # E[BookWithPublisher]
+class BookWithPublisher(BookBase):
+    publisher: str  # E: TypedDict member "publisher" type "str" is not assignable, but the extra_items of the super class are of type "int | None"
 
-[case typed_dict_extra_items_further_tests1]
-# Copied from conformance tests (typeddicts_extra_items.py)
+class BookWithPublisher2(BookBase):
+    publisher: NotRequired[int | None]
+
+class BookWithPublisher3(BookBase):
+    publisher: NotRequired[ReadOnly[int | None]]
+
+[case typed_dict_extra_items_matching1]
+# Mostly copied from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, NotRequired, ReadOnly
 
 class MovieBase2(TypedDict, extra_items=int | None):
@@ -553,14 +571,16 @@ class MovieDetails(TypedDict, extra_items=int | None):
     year: NotRequired[int]
 
 details2: MovieDetails = {"name": "Kill Bill Vol. 1", "year": 2003}
-movie2: MovieBase2 = details2  # E: While 'int' is not consistent with 'int | None'
+movie2: MovieBase2 = details2  # E: Incompatible types in assignment (expression has type "MovieDetails", variable has type "MovieBase2")
+if bool:
+    details2 = movie2  # E: Incompatible types in assignment (expression has type "MovieBase2", variable has type "MovieDetails")
 
 class MovieWithYear2(TypedDict, extra_items=int | None):
     name: str
     year: int | None
 
 details3: MovieWithYear2 = {"name": "Kill Bill Vol. 1", "year": 2003}
-movie3: MovieBase2 = details3  # E:'year' is not required in 'Movie', but it is required in 'MovieWithYear2'
+movie3: MovieBase2 = details3  # E: Incompatible types in assignment (expression has type "MovieWithYear2", variable has type "MovieBase2")
 
 # > When ``extra_items`` is specified to be read-only on a TypedDict type, it is
 # > possible for an item to have a :term:`narrower <narrow>` type than the
@@ -580,9 +600,9 @@ class MovieDetails5(TypedDict, extra_items=int):
 details4: MovieDetails4 = {"name": "Kill Bill Vol. 2", "year": 2004}
 details5: MovieDetails5 = {"name": "Kill Bill Vol. 2", "actors": ["Uma Thurman"]}
 movie4: MovieSI = details4  # OK. 'int' is assignable to 'str | int'.
-movie5: MovieSI = details5  # E: 'list[str]' is not assignable to 'str | int'.
+movie5: MovieSI = details5  # E: Incompatible types in assignment (expression has type "MovieDetails5", variable has type "MovieSI")
 
-[case typed_dict_extra_items_further_tests2]
+[case typed_dict_extra_items_matching2]
 # Copied from conformance tests (typeddicts_extra_items.py)
 from typing_extensions import TypedDict, NotRequired, ReadOnly, Mapping, assert_type
 
@@ -598,8 +618,8 @@ class MovieExtraStr(TypedDict, extra_items=str):
 
 extra_int: MovieExtraInt = {"name": "No Country for Old Men", "year": 2007}
 extra_str: MovieExtraStr = {"name": "No Country for Old Men", "description": ""}
-extra_int = extra_str  # E: 'str' is not assignable to extra items type 'int'
-extra_str = extra_int  # E: 'int' is not assignable to extra items type 'str'
+extra_int = extra_str  # E: Incompatible types in assignment (expression has type "MovieExtraStr", variable has type "MovieExtraInt")
+extra_str = extra_int  # E: Incompatible types in assignment (expression has type "MovieExtraInt", variable has type "MovieExtraStr")
 
 # > A non-closed TypedDict type implicitly allows non-required extra keys of value
 # > type ``ReadOnly[object]``. Applying the assignability rules between this type
@@ -610,7 +630,7 @@ class MovieNotClosed(TypedDict):
 
 extra_int2: MovieExtraInt = {"name": "No Country for Old Men", "year": 2007}
 not_closed: MovieNotClosed = {"name": "No Country for Old Men"}
-extra_int2 = not_closed  # E: 'extra_items=ReadOnly[object]' implicitly on 'MovieNotClosed' is not assignable to with 'extra_items=int'
+extra_int2 = not_closed  # E: Incompatible types in assignment (expression has type "MovieNotClosed", variable has type "MovieExtraInt")
 not_closed = extra_int2  # OK
 
 # > TypedDicts that allow extra items of type ``T`` also allow arbitrary keyword
@@ -620,14 +640,14 @@ class NonClosedMovie(TypedDict):
     name: str
 
 NonClosedMovie(name="No Country for Old Men")  # OK
-NonClosedMovie(name="No Country for Old Men", year=2007)  # E: Unrecognized item
+NonClosedMovie(name="No Country for Old Men", year=2007)  # E: Extra key "year" for TypedDict "NonClosedMovie"
 
 class ExtraMovie(TypedDict, extra_items=int):
     name: str
 
 ExtraMovie(name="No Country for Old Men")  # OK
 ExtraMovie(name="No Country for Old Men", year=2007)  # OK
-ExtraMovie(name="No Country for Old Men", language="English")  # E: Wrong type for extra item 'language'
+ExtraMovie(name="No Country for Old Men", language="English")  # E: Incompatible types (expression has type "str", TypedDict item "language" has type "int")
 
 # This implies 'extra_items=Never',
 # so extra keyword arguments would produce an error
@@ -635,7 +655,17 @@ class ClosedMovie(TypedDict, closed=True):
     name: str
 
 ClosedMovie(name="No Country for Old Men")  # OK
-ClosedMovie(name="No Country for Old Men", year=2007)  # E: Extra items not allowed
+ClosedMovie(name="No Country for Old Men", year=2007)  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "Never")
+
+[case typed_dict_extra_items_assignable_to_mapping]
+# Copied from conformance tests (typeddicts_extra_items.py)
+from typing_extensions import TypedDict, NotRequired, ReadOnly, Mapping, assert_type
+
+class MovieExtraInt(TypedDict, extra_items=int):
+    name: str
+
+class MovieExtraStr(TypedDict, extra_items=str):
+    name: str
 
 # > A TypedDict type is :term:`assignable` to a type of the form ``Mapping[str, VT]``
 # > when all value types of the items in the TypedDict
@@ -645,7 +675,7 @@ extra_str3: MovieExtraStr = {"name": "Blade Runner", "summary": ""}
 str_mapping: Mapping[str, str] = extra_str3  # OK
 
 extra_int3: MovieExtraInt = {"name": "Blade Runner", "year": 1982}
-int_mapping: Mapping[str, int] = extra_int3  # E: 'int | str' is not assignable with 'int'
+int_mapping: Mapping[str, int] = extra_int3  # E: Incompatible types in assignment (expression has type "MovieExtraInt", variable has type "Mapping[str, int]")
 int_str_mapping: Mapping[str, int | str] = extra_int3  # OK
 
 # > Type checkers should infer the precise signatures of ``values()`` and ``items()``
@@ -654,6 +684,30 @@ int_str_mapping: Mapping[str, int | str] = extra_int3  # OK
 def foo(movie: MovieExtraInt) -> None:
     assert_type(list(movie.items()), list[tuple[str, int | str]])
     assert_type(list(movie.values()), list[int | str])
+
+[case typed_dict_extra_items_assignable_to_mutable_mapping]
+from typing import TypedDict, NotRequired, MutableMapping, Mapping
+
+class OnlyStr(TypedDict, extra_items=str):
+    name: str
+class OnlyStrNonRequired(TypedDict, extra_items=str):
+    name: NotRequired[str]
+
+def f(x: OnlyStr, y: OnlyStrNonRequired):
+    a: MutableMapping[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "MutableMapping[str, str]")
+    a = y
+    b: Mapping[str, str] = x
+    b = y
+    c: dict[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "dict[str, str]")
+    c = y
+
+    d: dict[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "dict[str, int]")
+    e: Mapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "Mapping[str, int]")
+    f: MutableMapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "MutableMapping[str, int]")
+
+[case typed_dict_extra_items_methods]
+# Copied from conformance tests (typeddicts_extra_items.py)
+from typing_extensions import TypedDict, NotRequired, ReadOnly, Mapping, assert_type
 
 # > The TypedDict type is :term:`assignable` to ``dict[str, VT]`` if all
 # > items on the TypedDict type satisfy the following conditions:
@@ -694,11 +748,52 @@ class CustomDict(dict[str, int]):
     pass
 
 def might_not_be(might_not_be_a_builtin_dict: dict[str, int]):
-    int_dict: IntDict = might_not_be_a_builtin_dict # E
+    int_dict: IntDict = might_not_be_a_builtin_dict # E: Incompatible types in assignment (expression has type "dict[str, int]", variable has type "IntDict")
     print(int_dict)
 
 not_a_builtin_dict = CustomDict({"num": 1})
 might_not_be(not_a_builtin_dict)
+
+[case typed_dict_extra_items_methods_against_strings]
+from typing import TypedDict, NotRequired
+
+class IntOnly(TypedDict, extra_items=int):
+    other: NotRequired[int]
+
+class CanBeEmpty(TypedDict, extra_items=int):
+    other: NotRequired[str]
+
+class CannotBeEmpty(TypedDict, extra_items=int):
+    other: str
+
+def f(e: CanBeEmpty, n: CannotBeEmpty, s: str, i: int, int_only: IntOnly):
+    reveal_type(e[""])  # N: Revealed type is "int"
+    e[i]  # E: TypedDict key must be a string literal; expected one of ("other")
+    reveal_type(e.get(s))  # N: Revealed type is "str | int | None"
+    reveal_type(e.get(s, b''))  # N: Revealed type is "str | int | Literal[b'']?"
+    e.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
+              # N: Possible overload variants: \
+              # N:     def get(self, str, /) -> object \
+              # N:     def [_T] get(self, str, /, default: object) -> object
+    reveal_type(e.popitem())  # N: Revealed type is "tuple[str, str | int]"
+    del e[s]
+    e[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")
+    e.clear()
+
+    n[s]  # E: TypedDict key must be a string literal; expected one of ("other")
+    n[i]  # E: TypedDict key must be a string literal; expected one of ("other")
+    n.get(s)
+    n.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
+              # N: Possible overload variants: \
+              # N:     def get(self, str, /) -> object \
+              # N:     def [_T] get(self, str, /, default: object) -> object
+    n.popitem()  # E: "CannotBeEmpty" has no attribute "popitem"
+    del n[s]  # E: Expected TypedDict key to be string literal
+    n[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")
+    n.clear()  # E: "CannotBeEmpty" has no attribute "clear"
+
+    int_only[s] = 1
+    int_only[s] = ''  # E: For a TypedDict with only types "str", "int" is expected
 
 [case typed_dict_wrong_args]
 from typing import TypedDict
@@ -715,3 +810,110 @@ class B(TypedDict, total=True, **kwargs):  # E: Unexpected arguments to TypedDic
     x: int
 
 C = TypedDict("C", {'x': int}, 1)  # E: Unexpected arguments to TypedDict()
+
+[case typed_dict_extra_items_formatting]
+from typing import TypedDict, ReadOnly
+
+class IntDict(TypedDict, extra_items=int):
+    pass
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+class Y(TypedDict, extra_items=ReadOnly[int]):
+    x: str
+
+class C(TypedDict, closed=True):
+    x: str
+
+class D(TypedDict, closed=False):
+    x: str
+
+def f(x: X, y: Y, i: IntDict, c: C, d: D):
+    reveal_type(x)  # N: Revealed type is "TypedDict('__main__.X', {'x': str}, extra_items=int)"
+    reveal_type(y)  # N: Revealed type is "TypedDict('__main__.Y', {'x': str}, extra_items=ReadOnly[int])"
+    reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'x': str}, closed=True)"
+    reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'x': str})"
+    reveal_type(i)  # N: Revealed type is "TypedDict('__main__.IntDict', {}, extra_items=int)"
+    x = i  # E: Incompatible types in assignment (expression has type "IntDict", variable has type "X")
+
+[case typed_dict_extra_items_assert_type]
+from typing import TypedDict, assert_type, ReadOnly
+
+class IntDict(TypedDict, extra_items=int):
+    pass
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+class StrDict(TypedDict, extra_items=int):
+    pass
+
+class StrDict2(TypedDict, extra_items=int):
+    pass
+
+class StrDictReadOnly(TypedDict, extra_items=ReadOnly[int]):
+    pass
+
+def f(x: X, i: IntDict, s: StrDict, sr: StrDictReadOnly):
+    assert_type(x, IntDict)  # E: Expression is of type "X", not "IntDict"
+    assert_type(i, IntDict)
+    assert_type(s, StrDict)
+    assert_type(s, StrDict2)
+    assert_type(s, StrDictReadOnly)  # E: Expression is of type "StrDict", not "StrDictReadOnly"
+    assert_type(sr, StrDictReadOnly)
+
+[case typed_dict_extra_items_as_callable]
+from typing import TypedDict, Callable
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+def f[T, **P](x: Callable[P, T]) -> Callable[P, tuple[T, float]]: ...
+
+reveal_type(f(X))  # N: Revealed type is "def (*, x: str, **int) -> tuple[TypedDict('__main__.X', {'x': str}, extra_items=int), float]"
+
+[case typed_dict_extra_items_as_args]
+from typing import TypedDict
+
+class X(TypedDict, extra_items=int):
+    x: str
+
+def a() -> None: ...
+def b(x: str) -> None: ...
+def c(x: int, **kwargs: int) -> None: ...
+def d(x: str, **kwargs: str) -> None: ...
+def e(x: str, **kwargs: int) -> None: ...
+
+def f(x: X):
+    a(**x)  # E: Extra argument "x" from **args for "a"  # E: Too many arguments for "a"
+    b(**x)
+    c(**x)  # E: Argument "x" to "c" has incompatible type "str"; expected "int"
+    d(**x)  # E: Argument 1 to "d" has incompatible type "**X"; expected "str"
+    e(**x)
+    e(**x, **x)  # TODO this should also raise an error, because a param is used twice
+
+[case additional_extra_items_inheritance]
+from typing import TypedDict, ReadOnly
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+class Base(TypedDict, extra_items=ReadOnly[B]): ...
+class X(Base, extra_items=A): ...  # E: Cannot change "extra_items" type unless it is "ReadOnly" in the superclass
+class Y(Base, extra_items=C): ...
+
+[case typed_dict_extra_items_read_only_in_subclass_members]
+from typing_extensions import TypedDict, NotRequired, ReadOnly
+
+class Base(TypedDict, extra_items=int | str):
+    ...
+
+class Sub1(Base):
+    x: NotRequired[int | str]
+    y: NotRequired[int]  # E: TypedDict member "y" type "int" is not assignable, but the extra_items of the super class are of type "int | str"
+
+class Sub2(Base):
+    x: NotRequired[ReadOnly[int | str]]  # E: TypedDict member "x" is read only, but the extra_items of the super class are
+    y: NotRequired[ReadOnly[int]]  # E: TypedDict member "y" is read only, but the extra_items of the super class are

@@ -7,7 +7,7 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::Args,
-    database::Database,
+    database::{Database, TypedDictArgs},
     diagnostics::IssueKind,
     file::{PythonFile, name_resolution::NameResolution},
     format_data::FormatData,
@@ -15,7 +15,10 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     recoverable_error,
-    type_::{GenericsList, StringSlice, Type, TypedDict, TypedDictGenerics, TypedDictMember},
+    type_::{
+        ExtraItemsType, GenericsList, NeverCause, StringSlice, Type, TypedDict, TypedDictGenerics,
+        TypedDictMember, TypedDictMembers,
+    },
 };
 
 use super::{
@@ -23,35 +26,61 @@ use super::{
     TypedDictFieldModifiers, UnknownCause, type_computation_for_variable_annotation,
 };
 
+struct TypedDictMemberType {
+    pub type_: Type,
+    pub required: Option<bool>,
+    pub read_only: bool,
+}
+
 impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
-    pub fn compute_typed_dict_member(
+    fn compute_typed_dict_member(
         &mut self,
+        initialization_args: &TypedDictArgs,
         name: StringSlice,
         expr: Expression,
-        total: bool,
     ) -> TypedDictMember {
+        let tt = self.compute_typed_dict_type(expr);
+        TypedDictMember {
+            name,
+            type_: tt.type_,
+            required: tt
+                .required
+                .unwrap_or_else(|| initialization_args.total.unwrap_or(true)),
+            read_only: tt.read_only,
+        }
+    }
+
+    fn compute_typed_dict_type(&mut self, expr: Expression) -> TypedDictMemberType {
         let calculated = self.compute_type(expr).remove_annotated();
-        let mut required = total;
+        let mut required = None;
         let mut read_only = false;
         let type_ = match calculated {
             TypeContent::TypedDictMemberModifiers(m, t) => {
                 if m.required {
-                    required = true;
+                    required = Some(true);
                 }
                 if m.not_required {
-                    required = false;
+                    required = Some(false);
                 }
                 read_only |= m.read_only;
                 t
             }
             _ => self.as_type(calculated, NodeRef::new(self.file, expr.index())),
         };
-        TypedDictMember {
-            name,
+        TypedDictMemberType {
             type_,
             required,
             read_only,
         }
+    }
+
+    fn compute_functional_typed_dict_extra_items(
+        &mut self,
+        initialization_args: &TypedDictArgs,
+    ) -> Option<ExtraItemsType> {
+        initialization_args.calc_extra_items_type(self.i_s.db, self.file, |expr| {
+            self.compute_typed_dict_type(expr)
+        })
     }
 
     pub(super) fn compute_type_get_item_on_typed_dict_field_modifier(
@@ -160,25 +189,82 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub(crate) fn compute_class_typed_dict_member(
         &self,
+        initialization_args: &TypedDictArgs,
         name: StringSlice,
         annotation: Annotation,
-        total: bool,
     ) -> TypedDictMember {
+        let t = self.compute_class_typed_dict_type(annotation.expression());
+        TypedDictMember {
+            name,
+            type_: t.type_,
+            required: t
+                .required
+                .unwrap_or_else(|| initialization_args.total.unwrap_or(true)),
+            read_only: t.read_only,
+        }
+    }
+
+    fn compute_class_typed_dict_type(&self, expr: Expression) -> TypedDictMemberType {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self.i_s,
             self.file,
-            NodeRef::new(self.file, annotation.index()).as_link(),
+            NodeRef::new(self.file, expr.index()).as_link(),
             &mut x,
             TypeComputationOrigin::TypedDictMember,
         );
 
-        let mut member = comp.compute_typed_dict_member(name, annotation.expression(), total);
+        let mut t = comp.compute_typed_dict_type(expr);
         let type_vars = comp.into_type_vars(|_, recalculate_type_vars| {
-            member.type_ = recalculate_type_vars(&member.type_);
+            t.type_ = recalculate_type_vars(&t.type_);
         });
         debug_assert!(type_vars.is_empty());
-        member
+        t
+    }
+
+    pub fn compute_class_typed_dict_extra_items(
+        &self,
+        initialization_args: &TypedDictArgs,
+    ) -> Option<ExtraItemsType> {
+        initialization_args.calc_extra_items_type(self.i_s.db, self.file, |expr| {
+            self.compute_class_typed_dict_type(expr)
+        })
+    }
+}
+
+impl TypedDictArgs {
+    fn calc_extra_items_type(
+        &self,
+        db: &Database,
+        file: &PythonFile,
+        callback: impl FnOnce(Expression) -> TypedDictMemberType,
+    ) -> Option<ExtraItemsType> {
+        let mut result = None;
+        if let Some(expr_index) = self.extra_items {
+            let expr = NodeRef::new(file, expr_index).expect_expression();
+            let t = callback(expr);
+            if let Some(required) = t.required {
+                NodeRef::new(file, expr_index).add_type_issue(
+                    db,
+                    IssueKind::TypedDictExtraItemsCannotBe {
+                        kind: match required {
+                            true => "Required",
+                            false => "NotRequired",
+                        },
+                    },
+                )
+            }
+            result = Some(ExtraItemsType {
+                t: t.type_,
+                read_only: t.read_only,
+            })
+        } else if let Some(true) = self.closed {
+            result = Some(ExtraItemsType {
+                t: Type::Never(NeverCause::Explicit),
+                read_only: false,
+            })
+        }
+        result
     }
 }
 
@@ -186,7 +272,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
     i_s: &InferenceState<'db, '_>,
     comp: &mut TypeComputation,
     args: &dyn Args<'db>,
-) -> Option<(StringSlice, Box<[TypedDictMember]>)> {
+) -> Option<(StringSlice, TypedDictMembers)> {
     let simple_args = match args.maybe_simple_args().map(|args| args.details) {
         Some(ArgumentsDetails::Node(args)) => args,
         Some(_) => {
@@ -271,12 +357,9 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
                     return None;
                 };
                 if let Err(issue) = members.add(
-                    i_s.db,
-                    comp.compute_typed_dict_member(
-                        name,
-                        key_value.value(),
-                        options.total.unwrap_or(true),
-                    ),
+                    i_s,
+                    comp.compute_typed_dict_member(&options, name, key_value.value()),
+                    None,
                 ) {
                     NodeRef::new(file, key_value.key().index()).add_issue(i_s, issue);
                 }
@@ -288,20 +371,19 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
             }
         };
     }
-    Some((name, members.into_boxed_slice()))
+    Some((
+        name,
+        TypedDictMembers {
+            named: members.into_boxed_slice(),
+            extra_items: comp.compute_functional_typed_dict_extra_items(&options),
+        },
+    ))
 }
 
-#[derive(Default)]
-pub(super) struct TypedDictArgs {
-    pub total: Option<bool>,
-    pub extra_items: Option<Type>,
-    pub closed: Option<bool>,
-}
-
-pub(super) fn check_typed_dict_arguments(
+pub(super) fn check_typed_dict_arguments<'file>(
     i_s: &InferenceState,
     file: &PythonFile,
-    args: ArgsIterator,
+    args: ArgsIterator<'file>,
     ignore_positional: bool,
     add_issue: impl Fn(IssueKind),
 ) -> TypedDictArgs {
@@ -324,7 +406,7 @@ pub(super) fn check_typed_dict_arguments(
                     "total" => {
                         result.total = check_bool(name, expr);
                     }
-                    "extra_items" => (), // TODO
+                    "extra_items" => result.extra_items = Some(expr.index()),
                     "closed" => {
                         result.closed = check_bool(name, expr);
                     }
@@ -352,13 +434,18 @@ pub(super) struct TypedDictMemberGatherer {
 }
 
 impl TypedDictMemberGatherer {
-    pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueKind> {
-        let key = member.name.as_str(db);
+    pub(crate) fn add(
+        &mut self,
+        i_s: &InferenceState,
+        member: TypedDictMember,
+        base_class_extra_type: Option<&ExtraItemsType>,
+    ) -> Result<(), IssueKind> {
+        let key = member.name.as_str(i_s.db);
         if let Some((i, m)) = self
             .members
             .iter_mut()
             .enumerate()
-            .find(|(_, m)| m.name.as_str(db) == key)
+            .find(|(_, m)| m.name.as_str(i_s.db) == key)
         {
             if i >= self.first_after_merge_index {
                 Err(IssueKind::TypedDictDuplicateKey { key: key.into() })
@@ -367,8 +454,37 @@ impl TypedDictMemberGatherer {
                 Err(IssueKind::TypedDictOverwritingKeyWhileExtending { key: key.into() })
             }
         } else {
+            let mut result = Ok(());
+            if let Some(extra) = base_class_extra_type {
+                if member.required && !extra.read_only {
+                    result = Err(IssueKind::TypedDictMemberRequiredButHasExtraItemsOfSuper {
+                        name: member.name.as_str(i_s.db).into(),
+                    });
+                } else if !extra.read_only && member.read_only {
+                    result = Err(
+                        IssueKind::TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot {
+                            name: member.name.as_str(i_s.db).into(),
+                        },
+                    );
+                } else {
+                    let matches = if extra.read_only {
+                        extra.t.is_simple_super_type_of(i_s, &member.type_)
+                    } else {
+                        extra.t.is_simple_same_type(i_s, &member.type_)
+                    };
+                    if !matches.bool() {
+                        result = Err(
+                            IssueKind::TypedDictMemberNotAssignableToExtraItemsOfSuperClass {
+                                name: member.name.as_str(i_s.db).into(),
+                                in_super_class: extra.t.format_short(i_s.db),
+                                member_type: member.type_.format_short(i_s.db),
+                            },
+                        );
+                    }
+                }
+            }
             self.members.push(member);
-            Ok(())
+            result
         }
     }
 

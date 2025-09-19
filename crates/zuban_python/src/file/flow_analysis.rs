@@ -3622,11 +3622,8 @@ impl Inference<'_, '_, '_> {
                         let mut true_only_count = 0;
                         let mut false_only_count = 0;
                         for str_literal in &str_literals {
-                            if let Some(m) = td
-                                .members(db)
-                                .iter()
-                                .find(|m| m.name.as_str(db) == *str_literal)
-                            {
+                            // TODO extra_items: handle?
+                            if let Some(m) = td.find_member(db, *str_literal) {
                                 if m.required {
                                     true_only_count += 1;
                                 }
