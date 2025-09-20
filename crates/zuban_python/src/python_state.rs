@@ -1088,7 +1088,7 @@ impl PythonState {
         dataclasses_capital_field_link,
         dataclasses_capital_field_index
     );
-    optional_attribute_link!(warnings, deprecated_link, warnings_deprecated_index);
+    optional_attribute_link!(warnings, pub deprecated_link, warnings_deprecated_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);

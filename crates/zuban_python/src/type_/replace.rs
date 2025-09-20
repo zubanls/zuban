@@ -126,6 +126,7 @@ impl Type {
                         is_abstract: c.is_abstract,
                         is_abstract_from_super: c.is_abstract_from_super,
                         is_final: c.is_final,
+                        deprecated: c.deprecated,
                         params: c
                             .params
                             .replace_internal(self, &mut None, None)
@@ -387,6 +388,7 @@ impl CallableContent {
             is_abstract: self.is_abstract,
             is_abstract_from_super: self.is_abstract_from_super,
             is_final: self.is_final,
+            deprecated: self.deprecated,
             params,
             return_type: new_return_type.unwrap_or_else(|| self.return_type.clone()),
         })
@@ -845,6 +847,7 @@ impl ReplaceTypeVarLikesHelper<'_, '_> {
             is_abstract: c.is_abstract,
             is_abstract_from_super: c.is_abstract_from_super,
             is_final: c.is_final,
+            deprecated: c.deprecated,
             params,
             return_type,
         })

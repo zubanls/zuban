@@ -747,6 +747,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut is_final = false;
         let mut is_override = false;
         let mut no_type_check = false;
+        let mut deprecated = false;
         let mut dataclass_transform = None;
         let mut inferred_decs = vec![];
         for decorator in decorated.decorators().iter_reverse() {
@@ -853,6 +854,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     dataclass_transform = Some(transform);
                 }
                 InferredDecorator::NoTypeCheck => no_type_check = true,
+                InferredDecorator::Deprecated => deprecated = true,
             }
         }
         let mut inferred = Inferred::from_type(
@@ -895,6 +897,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.kind = kind.clone();
             callable.is_abstract = is_abstract;
             callable.is_final = is_final;
+            callable.deprecated = deprecated;
             if no_type_check {
                 callable.set_all_types_to_any_for_no_type_check(AnyCause::Explicit);
             }
@@ -2151,6 +2154,9 @@ fn infer_decorator_details(
         if saved_link == i_s.db.python_state.no_type_check_link() {
             return InferredDecorator::NoTypeCheck;
         }
+        if Some(saved_link) == i_s.db.python_state.deprecated_link() {
+            return InferredDecorator::Deprecated;
+        }
         let node_ref = NodeRef::from_link(i_s.db, saved_link);
         // All these cases are classes.
         if node_ref.maybe_class().is_some() {
@@ -2214,6 +2220,7 @@ enum InferredDecorator {
     Abstractmethod,
     Override,
     NoTypeCheck,
+    Deprecated,
     Final,
 }
 
