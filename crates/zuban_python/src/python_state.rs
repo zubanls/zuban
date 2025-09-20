@@ -139,6 +139,7 @@ pub(crate) struct PythonState {
     pub dataclasses_file: *const PythonFile,
     pub mypy_extensions: *const PythonFile,
     pub typing_extensions: *const PythonFile,
+    pub warnings: *const PythonFile,
 
     builtins_object_index: NodeIndex,
     builtins_type_index: NodeIndex,
@@ -230,6 +231,7 @@ pub(crate) struct PythonState {
     mypy_extensions_var_arg_func: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
     dataclasses_replace_index: NodeIndex,
+    warnings_deprecated_index: Option<NodeIndex>,
     pub type_of_object: Type, // TODO currently unused
     pub type_of_any: Type,
     pub type_of_self: Type,
@@ -269,6 +271,7 @@ impl PythonState {
             dataclasses_file: null(),
             mypy_extensions: null(),
             typing_extensions: null(),
+            warnings: null(),
             builtins_object_index: 0,
             builtins_type_index: 0,
             builtins_list_index: 0,
@@ -359,6 +362,7 @@ impl PythonState {
             mypy_extensions_var_arg_func: 0,
             dataclasses_capital_field_index: 0,
             dataclasses_replace_index: 0,
+            warnings_deprecated_index: None,
             type_of_object: Type::None, // Will be set later
             type_of_any: Type::Type(Arc::new(Type::Any(AnyCause::Todo))),
             type_of_self: Type::Type(Arc::new(Type::Self_)),
@@ -404,6 +408,7 @@ impl PythonState {
         dataclasses_file: *const PythonFile,
         typing_extensions: *const PythonFile,
         mypy_extensions: *const PythonFile,
+        warnings: *const PythonFile,
     ) {
         let s = &mut db.python_state;
         s.builtins = builtins;
@@ -418,6 +423,7 @@ impl PythonState {
         s.dataclasses_file = dataclasses_file;
         s.typing_extensions = typing_extensions;
         s.mypy_extensions = mypy_extensions;
+        s.warnings = warnings;
 
         typing_changes(
             s.typing(),
@@ -731,6 +737,11 @@ impl PythonState {
 
         cache_index!(dataclasses_replace_index, dataclasses_file, "replace", true);
 
+        cache_optional_index!(warnings_deprecated_index, warnings, "deprecated");
+        if db.python_state.warnings_deprecated_index.is_none() {
+            cache_optional_index!(warnings_deprecated_index, typing_extensions, "deprecated");
+        }
+
         cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
         cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
 
@@ -923,6 +934,12 @@ impl PythonState {
     }
 
     #[inline]
+    pub fn warnings(&self) -> &PythonFile {
+        debug_assert!(!self.warnings.is_null());
+        unsafe { &*self.warnings }
+    }
+
+    #[inline]
     pub fn typing_extensions(&self) -> &PythonFile {
         debug_assert!(!self.typing_extensions.is_null());
         unsafe { &*self.typing_extensions }
@@ -1071,6 +1088,7 @@ impl PythonState {
         dataclasses_capital_field_link,
         dataclasses_capital_field_index
     );
+    optional_attribute_link!(warnings, deprecated_link, warnings_deprecated_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);

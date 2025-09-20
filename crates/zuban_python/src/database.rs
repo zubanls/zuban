@@ -1104,7 +1104,7 @@ impl Database {
                     || !is_package && entry.name.as_ref() == name
                 {
                     *pointer_ref = file_state.file().unwrap();
-                    debug_assert!(i < 12);
+                    debug_assert!(i < 13);
                     return;
                 }
             }
@@ -1362,6 +1362,7 @@ impl Database {
             mypy_extensions,
             collections,
             _collections_abc,
+            warnings,
         ]: [&PythonFile; _] = [
             (None, "builtins.pyi"),
             (None, "typing.pyi"),
@@ -1390,6 +1391,7 @@ impl Database {
                 "__init__.pyi",
             ),
             (None, "_collections_abc.pyi"),
+            (None, "warnings.pyi"),
         ]
         .into_par_iter()
         .map(|(in_dir, name)| {
@@ -1417,6 +1419,7 @@ impl Database {
             dataclasses_file,
             typing_extensions,
             mypy_extensions,
+            warnings,
         );
     }
 }
