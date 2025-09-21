@@ -78,6 +78,7 @@ pub(crate) enum IssueKind {
     CannotInferLambdaParams,
     NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
     CannotDetermineType { for_: Box<str> },
+    Deprecated { identifier: Box<str>, message: Box<str>},
 
     Redefinition { name: Box<str>, suffix: Box<str>, is_self_attribute: bool },
     CannotRedefineAs { name: Box<str>, as_: &'static str },
@@ -583,6 +584,7 @@ impl IssueKind {
             DecoratorOnTopOfPropertyNotSupported => "prop-decorator",
             CannotInstantiateAbstractClass { .. } => "abstract",
             CallToAbstractMethodViaSuper { .. } => "safe-super",
+            Deprecated { .. } => "deprecated",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }
@@ -893,6 +895,9 @@ impl<'db> Diagnostic<'db> {
                 None => format!(r#"Need type annotation for "{for_}""#),
             },
             CannotDetermineType { for_ } => format!(r#"Cannot determine type of "{for_}""#),
+            Deprecated { identifier, message } => format!(
+                "{identifier} is deprecated: {message}"
+            ),
 
             Redefinition{name, suffix, is_self_attribute } => match *is_self_attribute {
                 false => format!(r#"Name "{name}" already defined {suffix}"#),

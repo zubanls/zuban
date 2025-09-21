@@ -834,6 +834,20 @@ impl CallableContent {
         }
     }
 
+    pub fn qualified_name(&self, db: &Database) -> String {
+        let name = self
+            .name
+            .as_ref()
+            .map(|n| n.as_str(db))
+            .unwrap_or_else(|| "<nameless>".into());
+        let file = db.loaded_python_file(self.defined_at.file);
+        let base = file.qualified_name(db);
+        match self.class_name {
+            Some(class_name) => format!("{base}.{}.{name}", class_name.as_str(db)),
+            _ => format!("{base}.{name}"),
+        }
+    }
+
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         self.params.search_type_vars(found_type_var);
         self.return_type.search_type_vars(found_type_var);

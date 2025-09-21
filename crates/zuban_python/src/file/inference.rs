@@ -3424,7 +3424,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => {
-                let result = self.infer_name_reference(n);
+                let mut result = self.infer_name_reference(n);
+                if i_s.db.project.flags.disallow_deprecated {
+                    result = result
+                        .add_issue_if_deprecated(i_s.db, |issue| self.add_issue(n.index(), issue));
+                }
                 return if self.i_s.db.mode == Mode::LanguageServer
                     && !self.point(atom.index()).calculated()
                     // Avoid saving cycles, so that they are treated the same in all modes (easier

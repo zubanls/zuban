@@ -2154,9 +2154,6 @@ fn infer_decorator_details(
         if saved_link == i_s.db.python_state.no_type_check_link() {
             return InferredDecorator::NoTypeCheck;
         }
-        if Some(saved_link) == i_s.db.python_state.deprecated_link() {
-            return InferredDecorator::Deprecated;
-        }
         let node_ref = NodeRef::from_link(i_s.db, saved_link);
         // All these cases are classes.
         if node_ref.maybe_class().is_some() {
@@ -2200,12 +2197,17 @@ fn infer_decorator_details(
             }
         }
     }
-    if let Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(transform))) =
-        inf.maybe_complex_point(i_s.db)
-    {
-        return InferredDecorator::DataclassTransform(transform.clone());
+    match inf.maybe_complex_point(i_s.db) {
+        Some(ComplexPoint::TypeInstance(Type::DataclassTransformObj(transform))) => {
+            InferredDecorator::DataclassTransform(transform.clone())
+        }
+        Some(ComplexPoint::TypeInstance(Type::Class(c)))
+            if Some(c.link) == i_s.db.python_state.deprecated_link() =>
+        {
+            InferredDecorator::Deprecated
+        }
+        _ => InferredDecorator::Inferred(inf),
     }
-    InferredDecorator::Inferred(inf)
 }
 
 #[derive(Debug)]
