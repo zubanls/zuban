@@ -1231,128 +1231,155 @@ impl<'db: 'slf, 'slf> Inferred {
             })
         };
         match t {
-            Type::Callable(c) => match &c.kind {
-                FunctionKind::Function { .. }
-                    if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoBoundMethod) =>
+            Type::Callable(c) => {
+                if i_s.db.project.flags.disallow_deprecated
+                    && let Some(reason) = &c.deprecated_reason
                 {
-                    debug_assert!(matches!(c.kind, FunctionKind::Function { .. }));
-                    if let Some(f) = c.first_positional_type() {
-                        let mut new_c = create_signature_without_self_for_callable(
-                            i_s,
-                            c,
-                            &instance,
-                            &attribute_class,
-                            &f,
-                        )
-                        .map(Arc::new)
-                        .unwrap_or_else(|| {
-                            add_invalid_self_arg(c);
-                            i_s.db.python_state.any_callable_from_error.clone()
-                        });
-                        if avoid_inferring_return_types
-                            && let Some(func) = new_c.maybe_original_function(i_s.db)
-                            && func.return_annotation().is_none()
-                        {
-                            let mut new = new_c.as_ref().clone();
-                            new.return_type = Type::Any(AnyCause::Unannotated);
-                            new_c = Arc::new(new)
-                        }
-                        return Some(Some((
-                            Inferred::from_type(Type::Callable(new_c)),
-                            AttributeKind::DefMethod {
-                                is_final: c.is_final,
-                            },
-                        )));
-                    } else {
-                        add_issue(IssueKind::NotAcceptingSelfArgument {
-                            function_name: Box::from(for_name),
-                            callable: c.format(&FormatData::new_short(i_s.db)).into(),
-                        })
-                    }
+                    add_issue(IssueKind::Deprecated {
+                        identifier: format!("function {}", c.qualified_name(i_s.db)).into(),
+                        message: reason.clone(),
+                    });
+                    return Self::bind_instance_descriptors_for_type(
+                        i_s,
+                        for_name,
+                        instance,
+                        attribute_class,
+                        add_issue,
+                        &Type::Callable(c.remove_deprecated_reason()),
+                        apply_descriptors_kind,
+                        avoid_inferring_return_types,
+                    );
                 }
-                FunctionKind::Function { .. } => (),
-                FunctionKind::Property { setter_type, .. } => {
-                    return Some(Some(
-                        if let Some(t) = calculate_property_return(
-                            i_s,
-                            &instance,
-                            &attribute_class,
-                            c,
-                            avoid_inferring_return_types,
-                        ) {
-                            let setter_type = setter_type.as_ref().map(|s| match s.as_ref() {
-                                PropertySetter::OtherType(t)
-                                    if attribute_class
-                                        .needs_generic_remapping_for_attributes(i_s, t) =>
-                                {
-                                    let t = replace_class_type_vars(
-                                        i_s.db,
-                                        t,
-                                        &attribute_class,
-                                        &|| Some(instance.clone()),
-                                    );
-                                    Arc::new(PropertySetter::OtherType(t.into_owned()))
-                                }
-                                _ => s.clone(),
+                match &c.kind {
+                    FunctionKind::Function { .. }
+                        if !matches!(
+                            apply_descriptors_kind,
+                            ApplyDescriptorsKind::NoBoundMethod
+                        ) =>
+                    {
+                        debug_assert!(matches!(c.kind, FunctionKind::Function { .. }));
+                        if let Some(f) = c.first_positional_type() {
+                            let mut new_c = create_signature_without_self_for_callable(
+                                i_s,
+                                c,
+                                &instance,
+                                &attribute_class,
+                                &f,
+                            )
+                            .map(Arc::new)
+                            .unwrap_or_else(|| {
+                                add_invalid_self_arg(c);
+                                i_s.db.python_state.any_callable_from_error.clone()
                             });
-                            (
-                                Inferred::from_type(t),
-                                AttributeKind::Property {
-                                    setter_type,
-                                    is_abstract: c.is_abstract,
+                            if avoid_inferring_return_types
+                                && let Some(func) = new_c.maybe_original_function(i_s.db)
+                                && func.return_annotation().is_none()
+                            {
+                                let mut new = new_c.as_ref().clone();
+                                new.return_type = Type::Any(AnyCause::Unannotated);
+                                new_c = Arc::new(new)
+                            }
+                            return Some(Some((
+                                Inferred::from_type(Type::Callable(new_c)),
+                                AttributeKind::DefMethod {
                                     is_final: c.is_final,
                                 },
-                            )
+                            )));
                         } else {
-                            add_invalid_self_arg(c);
-                            (Inferred::new_any_from_error(), AttributeKind::Attribute)
-                        },
-                    ));
-                }
-                FunctionKind::Classmethod { .. } => {
-                    let result = infer_class_method_on_instance(i_s, &instance, attribute_class, c);
-                    if result.is_none() {
-                        let t = IssueKind::InvalidClassMethodFirstArgument {
-                            argument_type: Type::Type(Arc::new(instance)).format_short(i_s.db),
-                            function_name: c.name(i_s.db).into(),
-                            callable: t.format_short(i_s.db),
-                        };
-                        add_issue(t);
-                        return Some(Some((Self::new_any_from_error(), AttributeKind::Attribute)));
+                            add_issue(IssueKind::NotAcceptingSelfArgument {
+                                function_name: Box::from(for_name),
+                                callable: c.format(&FormatData::new_short(i_s.db)).into(),
+                            })
+                        }
                     }
-                    let is_final = c.is_final;
-                    return Some(result.map(|mut c| {
+                    FunctionKind::Function { .. } => (),
+                    FunctionKind::Property { setter_type, .. } => {
+                        return Some(Some(
+                            if let Some(t) = calculate_property_return(
+                                i_s,
+                                &instance,
+                                &attribute_class,
+                                c,
+                                avoid_inferring_return_types,
+                            ) {
+                                let setter_type = setter_type.as_ref().map(|s| match s.as_ref() {
+                                    PropertySetter::OtherType(t)
+                                        if attribute_class
+                                            .needs_generic_remapping_for_attributes(i_s, t) =>
+                                    {
+                                        let t = replace_class_type_vars(
+                                            i_s.db,
+                                            t,
+                                            &attribute_class,
+                                            &|| Some(instance.clone()),
+                                        );
+                                        Arc::new(PropertySetter::OtherType(t.into_owned()))
+                                    }
+                                    _ => s.clone(),
+                                });
+                                (
+                                    Inferred::from_type(t),
+                                    AttributeKind::Property {
+                                        setter_type,
+                                        is_abstract: c.is_abstract,
+                                        is_final: c.is_final,
+                                    },
+                                )
+                            } else {
+                                add_invalid_self_arg(c);
+                                (Inferred::new_any_from_error(), AttributeKind::Attribute)
+                            },
+                        ));
+                    }
+                    FunctionKind::Classmethod { .. } => {
+                        let result =
+                            infer_class_method_on_instance(i_s, &instance, attribute_class, c);
+                        if result.is_none() {
+                            let t = IssueKind::InvalidClassMethodFirstArgument {
+                                argument_type: Type::Type(Arc::new(instance)).format_short(i_s.db),
+                                function_name: c.name(i_s.db).into(),
+                                callable: t.format_short(i_s.db),
+                            };
+                            add_issue(t);
+                            return Some(Some((
+                                Self::new_any_from_error(),
+                                AttributeKind::Attribute,
+                            )));
+                        }
+                        let is_final = c.is_final;
+                        return Some(result.map(|mut c| {
+                            if avoid_inferring_return_types
+                                && let Some(func) = c.maybe_original_function(i_s.db)
+                                && func.return_annotation().is_none()
+                            {
+                                c.return_type = Type::Any(AnyCause::Unannotated);
+                            }
+                            (
+                                callable_into_inferred(c),
+                                AttributeKind::Classmethod { is_final },
+                            )
+                        }));
+                    }
+                    FunctionKind::Staticmethod => {
+                        let mut t = t.clone();
                         if avoid_inferring_return_types
                             && let Some(func) = c.maybe_original_function(i_s.db)
                             && func.return_annotation().is_none()
+                            && let Type::Callable(c) = &t
                         {
-                            c.return_type = Type::Any(AnyCause::Unannotated);
+                            let mut new_c = c.as_ref().clone();
+                            new_c.return_type = Type::Any(AnyCause::Unannotated);
+                            t = Type::Callable(Arc::new(new_c));
                         }
-                        (
-                            callable_into_inferred(c),
-                            AttributeKind::Classmethod { is_final },
-                        )
-                    }));
-                }
-                FunctionKind::Staticmethod => {
-                    let mut t = t.clone();
-                    if avoid_inferring_return_types
-                        && let Some(func) = c.maybe_original_function(i_s.db)
-                        && func.return_annotation().is_none()
-                        && let Type::Callable(c) = &t
-                    {
-                        let mut new_c = c.as_ref().clone();
-                        new_c.return_type = Type::Any(AnyCause::Unannotated);
-                        t = Type::Callable(Arc::new(new_c));
+                        return Some(Some((
+                            Inferred::from_type(t),
+                            AttributeKind::Staticmethod {
+                                is_final: c.is_final,
+                            },
+                        )));
                     }
-                    return Some(Some((
-                        Inferred::from_type(t),
-                        AttributeKind::Staticmethod {
-                            is_final: c.is_final,
-                        },
-                    )));
                 }
-            },
+            }
             Type::CustomBehavior(custom) => {
                 return Some(Some((
                     Inferred::from_type(Type::CustomBehavior(custom.bind(Arc::new(instance)))),
@@ -1618,6 +1645,24 @@ impl<'db: 'slf, 'slf> Inferred {
     ) -> Option<Option<Self>> {
         let mut t = t;
         if let Type::Callable(c) = t {
+            if i_s.db.project.flags.disallow_deprecated
+                && let Some(reason) = &c.deprecated_reason
+            {
+                add_issue(IssueKind::Deprecated {
+                    identifier: format!("function {}", c.qualified_name(i_s.db)).into(),
+                    message: reason.clone(),
+                });
+                return Self::bind_class_descriptors_for_type(
+                    i_s,
+                    class,
+                    attribute_class,
+                    add_issue,
+                    apply_descriptors,
+                    &Type::Callable(c.remove_deprecated_reason()),
+                    as_type_type,
+                    func_class_type,
+                );
+            }
             match c.kind {
                 FunctionKind::Function { .. } => {
                     return Some(Some(Inferred::from_type(Type::Callable(Arc::new(

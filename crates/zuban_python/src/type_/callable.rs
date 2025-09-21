@@ -883,6 +883,13 @@ impl CallableContent {
         self.guard = None;
         self.return_type = Type::Any(cause)
     }
+
+    pub fn remove_deprecated_reason(&self) -> Arc<CallableContent> {
+        debug_assert!(self.deprecated_reason.is_some());
+        let mut c = self.clone();
+        c.deprecated_reason = None;
+        Arc::new(c)
+    }
 }
 
 pub(crate) enum WrongPositionalCount {
