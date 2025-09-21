@@ -2489,7 +2489,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     add_issue(IssueKind::Deprecated {
                         identifier: format!("function {}", c.qualified_name(db)).into(),
                         message: reason.clone(),
-                    })
+                    });
+                    return Inferred::from_type(Type::Callable(c.remove_deprecated_reason()));
                 }
             }
             Some(ComplexPoint::Class(_)) => {

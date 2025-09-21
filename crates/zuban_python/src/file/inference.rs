@@ -164,7 +164,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         pr: PointResolution,
         redirect_to: Option<ModuleAccessDetail>,
     ) {
-        let inf = self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
+        let mut inf =
+            self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
+        if self.i_s.db.project.flags.disallow_deprecated {
+            inf = inf.add_issue_if_deprecated(self.i_s.db, |issue| {
+                self.add_issue(name_def.index(), issue)
+            })
+        }
         self.assign_to_name_def(
             name_def,
             NodeRef::new(self.file, name_def.index()),
@@ -3332,28 +3338,35 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                base.lookup_with_result_context(
-                    self.i_s,
-                    node_ref,
-                    name.as_str(),
-                    LookupKind::Normal,
-                    result_context,
-                )
-                .save_name(
-                    self.file,
-                    if is_target {
-                        // If it's a name def it might be something like self.foo = 1, which should not
-                        // be overwritten.
-                        if let Some(name_def) = name.name_def() {
-                            name_def.index()
+                let mut result = base
+                    .lookup_with_result_context(
+                        self.i_s,
+                        node_ref,
+                        name.as_str(),
+                        LookupKind::Normal,
+                        result_context,
+                    )
+                    .save_name(
+                        self.file,
+                        if is_target {
+                            // If it's a name def it might be something like self.foo = 1, which should not
+                            // be overwritten.
+                            if let Some(name_def) = name.name_def() {
+                                name_def.index()
+                            } else {
+                                name.index()
+                            }
                         } else {
                             name.index()
-                        }
-                    } else {
-                        name.index()
-                    },
-                )
-                .unwrap_or_else(Inferred::new_any_from_error)
+                        },
+                    )
+                    .unwrap_or_else(Inferred::new_any_from_error);
+                if self.i_s.db.project.flags.disallow_deprecated {
+                    result = result.add_issue_if_deprecated(self.i_s.db, |issue| {
+                        self.add_issue(name.index(), issue)
+                    });
+                }
+                result
             }
             PrimaryContent::Execution(details) => {
                 self.primary_execute(base, node_index, details, result_context)
