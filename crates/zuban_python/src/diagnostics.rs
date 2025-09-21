@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Write};
+use std::{collections::HashMap, io::Write, sync::Arc};
 
 use colored::{ColoredString, Colorize as _};
 use config::DiagnosticConfig;
@@ -78,7 +78,7 @@ pub(crate) enum IssueKind {
     CannotInferLambdaParams,
     NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
     CannotDetermineType { for_: Box<str> },
-    Deprecated { identifier: Box<str>, message: Box<str>},
+    Deprecated { identifier: Box<str>, message: Arc<Box<str>>},
 
     Redefinition { name: Box<str>, suffix: Box<str>, is_self_attribute: bool },
     CannotRedefineAs { name: Box<str>, as_: &'static str },

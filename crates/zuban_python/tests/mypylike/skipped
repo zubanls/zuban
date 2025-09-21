@@ -910,9 +910,9 @@ testNoCrashOnBreakOutsideLoopFunction
 testNoCrashOnBreakOutsideLoopClass
 testContinueOutsideLoop
 
-# deprecated
+# --report-deprecated-as-note
 testDeprecatedAsNoteWithErrorCode
-testDeprecatedAsErrorWithErrorCode
+# deprecated
 testDeprecatedFunction
 testDeprecatedFunctionDifferentModule
 testDeprecatedClass

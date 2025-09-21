@@ -2439,10 +2439,10 @@ impl<'db: 'slf, 'slf> Inferred {
     #[inline]
     pub fn add_issue_if_deprecated(self, db: &'db Database, add_issue: impl Fn(IssueKind)) -> Self {
         if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = self.maybe_complex_point(db) {
-            if c.deprecated {
+            if let Some(reason) = &c.deprecated {
                 add_issue(IssueKind::Deprecated {
                     identifier: format!("function {}", c.qualified_name(db)).into(),
-                    message: "".into(),
+                    message: reason.clone(),
                 })
             }
         }

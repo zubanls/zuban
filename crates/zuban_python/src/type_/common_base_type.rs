@@ -343,7 +343,7 @@ fn common_base_for_callables(
             is_abstract: c1.is_abstract && c2.is_abstract,
             is_abstract_from_super: false,
             is_final: c1.is_final && c2.is_final,
-            deprecated: false,
+            deprecated: None,
             params,
             return_type: c1.return_type.common_base_type_internal(
                 i_s,

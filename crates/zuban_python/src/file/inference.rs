@@ -12,7 +12,7 @@ use super::{
     utils::{func_of_self_symbol, infer_dict_like},
 };
 use crate::{
-    arguments::{Args, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
+    arguments::{Args, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
     database::{ComplexPoint, Database, Locality, Mode, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
@@ -4493,6 +4493,23 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         } else {
             i.save_redirect(self.i_s, self.file, decorator.index())
         }
+    }
+
+    pub fn infer_deprecated_reason(&self, decorator: Decorator) -> Box<str> {
+        let expr = decorator.named_expression().expression();
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
+            && let PrimaryContent::Execution(exec) = primary.second()
+        {
+            let args = SimpleArgs::new(*self.i_s, self.file, primary.index(), exec);
+            if let Some(arg) = args.iter(self.i_s.mode).next() {
+                if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown) {
+                    if let Some(s) = inf.maybe_string_literal(self.i_s) {
+                        return s.as_str(self.i_s.db).into();
+                    }
+                }
+            }
+        }
+        "<Could not infer deprecated reason>".into()
     }
 
     pub fn infer_pattern_dotted_name(&self, dotted: DottedPatternName) -> Inferred {

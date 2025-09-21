@@ -466,7 +466,7 @@ pub(crate) struct CallableContent {
     pub is_abstract: bool,
     pub is_abstract_from_super: bool,
     pub is_final: bool,
-    pub deprecated: bool,
+    pub deprecated: Option<Arc<Box<str>>>, // Contains the reason (first argument to deprecated())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -509,7 +509,7 @@ impl CallableContent {
             is_abstract: false,
             is_abstract_from_super: false,
             is_final: false,
-            deprecated: false,
+            deprecated: None,
         }
     }
 
@@ -556,7 +556,7 @@ impl CallableContent {
             is_abstract: false,
             is_abstract_from_super: false,
             is_final: false,
-            deprecated: false,
+            deprecated: None,
             return_type: Type::Any(cause),
         }
     }
