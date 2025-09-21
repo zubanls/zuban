@@ -912,14 +912,12 @@ testContinueOutsideLoop
 
 # --report-deprecated-as-note
 testDeprecatedAsNoteWithErrorCode
+# --deprecated-calls-exclude
+testDeprecatedExclude
 # deprecated
 testDeprecatedFunction
 testDeprecatedFunctionDifferentModule
 testDeprecatedClass
-testDeprecatedBaseClass
-testDeprecatedClassInTypeVar
-testDeprecatedClassInCast
-testDeprecatedInstanceInFunctionDefinition
 testDeprecatedClassDifferentModule
 testDeprecatedClassInitMethod
 testDeprecatedSpecialMethods
@@ -933,7 +931,6 @@ testDeprecatedProperty
 testDeprecatedDescriptor
 testDeprecatedOverloadedFunction
 testDeprecatedImportedOverloadedFunction
-testDeprecatedExclude
 testDeprecatedAddKeepChangeAndRemoveFunctionDeprecation
 testDeprecatedRemoveFunctionDeprecation
 testDeprecatedKeepFunctionDeprecation

@@ -1125,6 +1125,7 @@ impl Database {
         set_pointer(&mut new_db.python_state.abc, "abc.pyi", false);
         set_pointer(&mut new_db.python_state.functools, "functools.pyi", false);
         set_pointer(&mut new_db.python_state.enum_file, "enum.pyi", false);
+        set_pointer(&mut new_db.python_state.warnings, "warnings.pyi", false);
         set_pointer(
             &mut new_db.python_state.dataclasses_file,
             "dataclasses.pyi",
@@ -1583,6 +1584,7 @@ pub(crate) struct ClassInfos {
     pub abstract_attributes: Box<[PointLink]>,
     pub dataclass_transform: Option<Box<DataclassTransformObj>>,
     pub promote_to: Mutex<Option<PointLink>>,
+    pub deprecated_reason: Option<Arc<Box<str>>>,
     // Does not need to be a HashMap, because this is typically the size of 1-2
     pub variance_map: Vec<(TypeVarName, OnceLock<Variance>)>,
     // We have this less for caching and more to be able to have different types.
@@ -1604,6 +1606,7 @@ impl Clone for ClassInfos {
             abstract_attributes: self.abstract_attributes.clone(),
             dataclass_transform: self.dataclass_transform.clone(),
             promote_to: Mutex::new(*self.promote_to.lock().unwrap()),
+            deprecated_reason: self.deprecated_reason.clone(),
             variance_map: self.variance_map.clone(),
             undefined_generics_type: self.undefined_generics_type.clone(),
         }
@@ -1624,6 +1627,7 @@ impl PartialEq for ClassInfos {
             && self.abstract_attributes == other.abstract_attributes
             && self.dataclass_transform == other.dataclass_transform
             && *self.promote_to.lock().unwrap() == *other.promote_to.lock().unwrap()
+            && self.deprecated_reason == other.deprecated_reason
             && self.variance_map == other.variance_map
             && self.undefined_generics_type == other.undefined_generics_type
     }

@@ -11,8 +11,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        ANNOTATION_TO_EXPR_DIFFERENCE, ClassNodeRef, PythonFile, maybe_saved_annotation,
-        on_argument_type_error, use_cached_annotation_or_type_comment,
+        ANNOTATION_TO_EXPR_DIFFERENCE, ClassInitializer, ClassNodeRef, PythonFile,
+        maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -2437,14 +2437,32 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn add_issue_if_deprecated(self, db: &'db Database, add_issue: impl Fn(IssueKind)) -> Self {
-        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = self.maybe_complex_point(db) {
-            if let Some(reason) = &c.deprecated {
-                add_issue(IssueKind::Deprecated {
-                    identifier: format!("function {}", c.qualified_name(db)).into(),
-                    message: reason.clone(),
-                })
+    pub fn add_issue_if_deprecated(self, db: &Database, add_issue: impl Fn(IssueKind)) -> Self {
+        match self.maybe_complex_point(db) {
+            Some(ComplexPoint::TypeInstance(Type::Callable(c))) => {
+                if let Some(reason) = &c.deprecated_reason {
+                    add_issue(IssueKind::Deprecated {
+                        identifier: format!("function {}", c.qualified_name(db)).into(),
+                        message: reason.clone(),
+                    })
+                }
             }
+            Some(ComplexPoint::Class(_)) => {
+                if let Some(node_ref) = self.maybe_saved_node_ref(db) {
+                    let class_ref = ClassNodeRef::from_node_ref(node_ref);
+                    if let Some(reason) = class_ref
+                        .maybe_cached_class_infos(db)
+                        .and_then(|c| c.deprecated_reason.as_ref())
+                    {
+                        let class = ClassInitializer::from_node_ref(class_ref);
+                        add_issue(IssueKind::Deprecated {
+                            identifier: format!("class {}", class.qualified_name(db)).into(),
+                            message: reason.clone(),
+                        })
+                    }
+                }
+            }
+            _ => (),
         }
         self
     }

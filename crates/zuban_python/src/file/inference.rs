@@ -4495,7 +4495,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    pub fn infer_deprecated_reason(&self, decorator: Decorator) -> Box<str> {
+    pub fn infer_deprecated_reason(&self, decorator: Decorator) -> Arc<Box<str>> {
         let expr = decorator.named_expression().expression();
         if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
             && let PrimaryContent::Execution(exec) = primary.second()
@@ -4504,12 +4504,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if let Some(arg) = args.iter(self.i_s.mode).next() {
                 if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown) {
                     if let Some(s) = inf.maybe_string_literal(self.i_s) {
-                        return s.as_str(self.i_s.db).into();
+                        return Arc::new(s.as_str(self.i_s.db).into());
                     }
                 }
             }
         }
-        "<Could not infer deprecated reason>".into()
+        Arc::new("<Could not infer deprecated reason>".into())
     }
 
     pub fn infer_pattern_dotted_name(&self, dotted: DottedPatternName) -> Inferred {

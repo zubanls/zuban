@@ -1026,6 +1026,7 @@ impl PythonState {
     class_node_ref!(typing, pub mutable_mapping_node_ref, typing_mutable_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
     optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
+    optional_attribute_node_ref!(warnings, pub deprecated, warnings_deprecated_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);

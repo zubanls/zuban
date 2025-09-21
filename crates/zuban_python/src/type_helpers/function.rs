@@ -854,7 +854,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     dataclass_transform = Some(transform);
                 }
                 InferredDecorator::NoTypeCheck => no_type_check = true,
-                InferredDecorator::Deprecated(reason) => deprecated = Some(Arc::new(reason)),
+                InferredDecorator::Deprecated(reason) => deprecated = Some(reason),
             }
         }
         let mut inferred = Inferred::from_type(
@@ -897,7 +897,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.kind = kind.clone();
             callable.is_abstract = is_abstract;
             callable.is_final = is_final;
-            callable.deprecated = deprecated;
+            callable.deprecated_reason = deprecated;
             if no_type_check {
                 callable.set_all_types_to_any_for_no_type_check(AnyCause::Explicit);
             }
@@ -2223,7 +2223,7 @@ enum InferredDecorator {
     Abstractmethod,
     Override,
     NoTypeCheck,
-    Deprecated(Box<str>),
+    Deprecated(Arc<Box<str>>),
     Final,
 }
 

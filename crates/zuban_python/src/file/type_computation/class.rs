@@ -437,6 +437,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut total_ordering = false;
         let mut is_runtime_checkable = false;
         let mut dataclass_transform = None;
+        let mut deprecated_reason = None;
         if let Some(decorated) = self.node().maybe_decorated() {
             let name_resolution = self.node_ref.file.name_resolution_for_types(i_s);
             let mut dataclass_options = None;
@@ -472,6 +473,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         ))) => {
                             let d = name_resolution.insert_dataclass_transform(primary, exec);
                             dataclass_transform = Some(Box::new(d.clone()));
+                        }
+                        Some(Lookup::T(TypeContent::Class { node_ref, .. }))
+                            if Some(*node_ref) == db.python_state.deprecated() =>
+                        {
+                            deprecated_reason =
+                                Some(self.file.inference(i_s).infer_deprecated_reason(decorator));
                         }
                         _ => (),
                     }
@@ -539,6 +546,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
         class_infos.is_final |= is_final;
         class_infos.total_ordering = total_ordering;
+        class_infos.deprecated_reason = deprecated_reason;
 
         if class_infos.class_kind == ClassKind::Protocol {
             class_infos.is_runtime_checkable = is_runtime_checkable;
@@ -1160,6 +1168,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 promote_to: Mutex::new(promote_to),
                 is_runtime_checkable: true,
                 abstract_attributes,
+                deprecated_reason: None,
                 dataclass_transform,
                 undefined_generics_type,
             }),

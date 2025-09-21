@@ -1423,7 +1423,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn compute_type_expression_part(&mut self, node: ExpressionPart<'x>) -> TypeContent<'db, 'x> {
-        match node {
+        let result = match node {
             ExpressionPart::Atom(atom) => self.compute_type_atom(atom),
             ExpressionPart::Primary(primary) => self.compute_type_primary(primary),
             ExpressionPart::BitwiseOr(bitwise_or) => {
@@ -1457,7 +1457,29 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Type(first.union(second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
+        };
+        if self.i_s.db.project.flags.disallow_deprecated {
+            if let TypeContent::Class { node_ref, .. } = &result {
+                if let Some(message) = node_ref
+                    .maybe_cached_class_infos(self.i_s.db)
+                    .and_then(|c| c.deprecated_reason.clone())
+                {
+                    self.add_issue_for_index(
+                        node.index(),
+                        IssueKind::Deprecated {
+                            identifier: format!(
+                                "class {}",
+                                ClassInitializer::from_node_ref(*node_ref)
+                                    .qualified_name(self.i_s.db),
+                            )
+                            .into(),
+                            message,
+                        },
+                    )
+                }
+            }
         }
+        result
     }
 
     fn compute_type_primary(&mut self, primary: Primary<'x>) -> TypeContent<'db, 'x> {
