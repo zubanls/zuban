@@ -917,7 +917,6 @@ testDeprecatedExclude
 # deprecated
 testDeprecatedSpecialMethods
 testDeprecatedOverloadedSpecialMethods
-testDeprecatedProperty
 
 # "Maybe you forgot to use "await"?" (currently ignored)
 #testAsyncForErrorNote

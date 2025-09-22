@@ -1028,7 +1028,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         },
                     );
                 }
-                PropertyModifier::Setter(setter_type) => {
+                PropertyModifier::Setter(mut setter_type) => {
+                    for dec in iterator {
+                        match infer_decorator_details(i_s, file, dec, true) {
+                            InferredDecorator::Deprecated(deprecated_reason) => {
+                                setter_type = Arc::new(PropertySetter {
+                                    deprecated_reason: Some(deprecated_reason),
+                                    ..setter_type.as_ref().clone()
+                                });
+                            }
+                            _ => (),
+                        }
+                    }
                     callable.kind = FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
                         setter_type: Some(setter_type),

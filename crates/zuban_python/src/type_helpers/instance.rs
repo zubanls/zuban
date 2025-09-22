@@ -183,15 +183,23 @@ impl<'a> Instance<'a> {
                     FunctionKind::Property {
                         setter_type: Some(wanted),
                         ..
-                    } => match &wanted.type_ {
-                        PropertySetterType::SameTypeFromCachedProperty => {
-                            check_compatible(&c.return_type, value)
+                    } => {
+                        if let Some(reason) = &wanted.deprecated_reason {
+                            add_issue(IssueKind::Deprecated {
+                                identifier: format!("function {}", c.qualified_name(i_s.db)).into(),
+                                reason: reason.clone(),
+                            })
                         }
-                        PropertySetterType::OtherType(t) => {
-                            check_compatible(t, value);
-                            false
+                        match &wanted.type_ {
+                            PropertySetterType::SameTypeFromCachedProperty => {
+                                check_compatible(&c.return_type, value)
+                            }
+                            PropertySetterType::OtherType(t) => {
+                                check_compatible(t, value);
+                                false
+                            }
                         }
-                    },
+                    }
                     _ => unreachable!(),
                 };
             }
