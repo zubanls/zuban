@@ -514,7 +514,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 &|_type| had_lookup_error.set(true),
             );
             if had_lookup_error.get() {
-                result = self.infer_detailed_operation(right_side.index(), op_infos, left, &right)
+                result = self.infer_detailed_operation(
+                    right_side.index(),
+                    op_infos,
+                    left,
+                    &right,
+                    &mut ResultContext::Unknown,
+                )
             }
             result
         };
@@ -2402,7 +2408,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         match node {
             ExpressionPart::Atom(atom) => self.infer_atom(atom, result_context),
             ExpressionPart::Primary(primary) => self.infer_primary(primary, result_context),
-            ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
+            ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation(), result_context),
             ExpressionPart::Term(term) => {
                 let op = term.as_operation();
                 // Mypy special cases the case [...] * n where n is an int (see check_list_multiply
@@ -2418,10 +2424,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 {
                     return self.infer_atom(atom, result_context);
                 }
-                self.infer_operation(op)
+                self.infer_operation(op, result_context)
             }
-            ExpressionPart::Power(power) => self.infer_operation(power.as_operation()),
-            ExpressionPart::ShiftExpr(shift) => self.infer_operation(shift.as_operation()),
+            ExpressionPart::Power(power) => {
+                self.infer_operation(power.as_operation(), result_context)
+            }
+            ExpressionPart::ShiftExpr(shift) => {
+                self.infer_operation(shift.as_operation(), result_context)
+            }
             ExpressionPart::BitwiseOr(or) => {
                 if let ResultContext::AssignmentNewDefinition {
                     assignment_definition,
@@ -2438,10 +2448,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         return Inferred::from_type(union_type);
                     }
                 }
-                self.infer_operation(or.as_operation())
+                self.infer_operation(or.as_operation(), result_context)
             }
-            ExpressionPart::BitwiseAnd(and) => self.infer_operation(and.as_operation()),
-            ExpressionPart::BitwiseXor(xor) => self.infer_operation(xor.as_operation()),
+            ExpressionPart::BitwiseAnd(and) => {
+                self.infer_operation(and.as_operation(), result_context)
+            }
+            ExpressionPart::BitwiseXor(xor) => {
+                self.infer_operation(xor.as_operation(), result_context)
+            }
             ExpressionPart::Disjunction(or) => {
                 self.flow_analysis_for_disjunction(or, result_context)
             }
@@ -2642,9 +2656,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
                 self.infer_in_operator(from, &left_inf, right_inf)
             }
-            ComparisonContent::Ordering(op) => {
-                self.infer_detailed_operation(op.index, op.infos, left_inf, right_inf)
-            }
+            ComparisonContent::Ordering(op) => self.infer_detailed_operation(
+                op.index,
+                op.infos,
+                left_inf,
+                right_inf,
+                &mut ResultContext::Unknown,
+            ),
         }
     }
 
@@ -2890,10 +2908,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             })
     }
 
-    fn infer_operation(&self, op: Operation) -> Inferred {
+    fn infer_operation(&self, op: Operation, result_context: &mut ResultContext) -> Inferred {
         let left = self.infer_expression_part(op.left);
         let right = self.infer_expression_part(op.right);
-        self.infer_detailed_operation(op.index, op.infos, left, &right)
+        self.infer_detailed_operation(op.index, op.infos, left, &right, result_context)
     }
 
     fn infer_detailed_operation(
@@ -2902,6 +2920,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         op_infos: OpInfos,
         left: Inferred,
         right: &Inferred,
+        result_context: &mut ResultContext,
     ) -> Inferred {
         enum LookupStrategy {
             ShortCircuit,
@@ -2979,7 +2998,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                         from.file,
                                         op_infos.reverse_magic_method,
                                         LookupKind::OnlyType,
-                                        &mut ResultContext::Unknown,
+                                        result_context,
                                         &|issue| from.add_issue(i_s, issue),
                                         &|_| {},
                                     )
@@ -3017,7 +3036,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             let result = first.execute_with_details(
                                 i_s,
                                 &KnownArgs::new(&second, from),
-                                &mut ResultContext::Unknown,
+                                result_context,
                                 OnTypeError::with_overload_mismatch(
                                     &|_, _, _, _| local_error.set(true),
                                     Some(&|| local_error.set(true)),
