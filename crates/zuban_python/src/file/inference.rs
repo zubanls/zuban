@@ -3437,14 +3437,18 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let specific = match atom.unpack() {
             Name(n) => {
                 let result = self.infer_name_reference(n);
+                let mut should_save = self.i_s.db.mode == Mode::LanguageServer;
                 if i_s.db.project.flags.disallow_deprecated {
                     result.add_issue_if_deprecated(
                         i_s.db,
                         Some(NodeRef::new(self.file, n.index())),
-                        |issue| self.add_issue(n.index(), issue),
-                    )
+                        |issue| {
+                            self.add_issue(n.index(), issue);
+                            should_save = true;
+                        },
+                    );
                 }
-                return if self.i_s.db.mode == Mode::LanguageServer
+                return if should_save
                     && !self.point(atom.index()).calculated()
                     // Avoid saving cycles, so that they are treated the same in all modes (easier
                     // for consistent test results).

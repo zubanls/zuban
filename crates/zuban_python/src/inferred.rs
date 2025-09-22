@@ -2496,19 +2496,19 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn add_issue_if_deprecated(
+    pub fn add_issue_if_deprecated<AddIssue: FnOnce(IssueKind)>(
         &self,
         db: &Database,
         on_name: Option<NodeRef>,
-        add_issue: impl Fn(IssueKind),
+        add_issue: AddIssue,
     ) {
-        let add_func_deprecation = |callable: &CallableContent| {
+        let add_func_deprecation = |add: AddIssue, callable: &CallableContent| {
             if let Some(reason) = &callable.deprecated_reason {
                 let in_node = NodeRef::from_link(db, callable.defined_at);
                 if should_add_deprecated(db, in_node, on_name) {
                     return;
                 }
-                add_issue(IssueKind::Deprecated {
+                add(IssueKind::Deprecated {
                     identifier: format!("function {}", callable.qualified_name(db)).into(),
                     reason: reason.clone(),
                 });
@@ -2516,11 +2516,11 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         match self.maybe_complex_point(db) {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => {
-                add_func_deprecation(c);
+                add_func_deprecation(add_issue, c);
             }
             Some(ComplexPoint::FunctionOverload(overload)) => {
                 if let Some(implementation) = &overload.implementation {
-                    add_func_deprecation(&implementation.callable);
+                    add_func_deprecation(add_issue, &implementation.callable);
                 }
             }
             Some(ComplexPoint::Class(_)) => {

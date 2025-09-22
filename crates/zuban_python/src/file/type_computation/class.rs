@@ -285,7 +285,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         self,
         db: &Database,
         on_name: Option<NodeRef>,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl FnOnce(IssueKind),
     ) {
         let class = ClassInitializer::from_node_ref(self);
         class.ensure_calculated_class_infos(db);
