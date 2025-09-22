@@ -90,9 +90,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             if i_s.db.project.flags.disallow_deprecated
                 && let Some(deprecated) = &callable.content.deprecated_reason
             {
-                let fmt = callable
-                    .content
-                    .format_pretty(&FormatData::new_short(i_s.db));
+                let fmt = callable.content.format_pretty_detailed(
+                    &FormatData::new_reveal_type(i_s.db),
+                    false,
+                    true,
+                );
                 args.add_issue(
                     i_s,
                     IssueKind::Deprecated {

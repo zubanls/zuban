@@ -1030,6 +1030,19 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointKind::Complex => {
                         match node_ref.maybe_complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
+                                if i_s.db.project.flags.disallow_deprecated
+                                    && let Some(implementation) = &o.implementation
+                                    && let Some(reason) = &implementation.callable.deprecated_reason
+                                {
+                                    add_issue(IssueKind::Deprecated {
+                                        identifier: format!(
+                                            "function {}",
+                                            implementation.callable.qualified_name(i_s.db)
+                                        )
+                                        .into(),
+                                        reason: reason.clone(),
+                                    });
+                                }
                                 let kind = o.kind();
                                 let attr_kind = match kind {
                                     FunctionKind::Staticmethod => {
