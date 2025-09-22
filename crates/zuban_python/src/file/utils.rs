@@ -664,14 +664,25 @@ pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> 
         .expect_as_param_of_function()
 }
 
-pub fn is_import_from_in_same_file(db: &Database, on_name: Option<NodeRef>) -> bool {
+pub fn should_add_deprecated(
+    db: &Database,
+    func_or_class: NodeRef,
+    on_name: Option<NodeRef>,
+) -> bool {
+    let Some(on_name) = on_name else { return false };
+    if on_name.file.file_index == func_or_class.file.file_index {
+        if on_name.node_index >= func_or_class.node_index
+            && on_name.node_end_position() < func_or_class.node_end_position()
+        {
+            return true;
+        }
+    }
     (|| {
-        let on_name = on_name?;
         let redirect = on_name.maybe_redirect(db)?;
         if redirect.file.file_index != on_name.file.file_index {
             // We filter out if a deprecation was already reported for the current file.
             // This should not count for indirect deprecations.
-            //return None;
+            return None;
         }
         match redirect.maybe_name()?.name_def()?.maybe_import()? {
             NameImportParent::ImportFromAsName(_) => Some(()),

@@ -11,8 +11,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        ANNOTATION_TO_EXPR_DIFFERENCE, ClassNodeRef, PythonFile, is_import_from_in_same_file,
-        maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
+        ANNOTATION_TO_EXPR_DIFFERENCE, ClassNodeRef, PythonFile, maybe_saved_annotation,
+        on_argument_type_error, should_add_deprecated, use_cached_annotation_or_type_comment,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -2503,7 +2503,8 @@ impl<'db: 'slf, 'slf> Inferred {
     ) {
         let add_func_deprecation = |callable: &CallableContent| {
             if let Some(reason) = &callable.deprecated_reason {
-                if is_import_from_in_same_file(db, on_name) {
+                let in_node = NodeRef::from_link(db, callable.defined_at);
+                if should_add_deprecated(db, in_node, on_name) {
                     return;
                 }
                 add_issue(IssueKind::Deprecated {

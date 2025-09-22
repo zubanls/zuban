@@ -24,7 +24,7 @@ use crate::{
         name_resolution::NameResolution,
         type_computation::{InvalidVariableType, TypeContent},
         use_cached_annotation_type,
-        utils::is_import_from_in_same_file,
+        utils::should_add_deprecated,
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -293,7 +293,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             .maybe_cached_class_infos(db)
             .and_then(|c| c.deprecated_reason.as_ref())
         {
-            if is_import_from_in_same_file(db, on_name) {
+            if should_add_deprecated(db, *self, on_name) {
                 // The error was already added on the from ... import
                 return;
             }

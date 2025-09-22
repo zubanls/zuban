@@ -923,7 +923,6 @@ testDeprecatedOverloadedClassMethods
 testDeprecatedOverloadedStaticMethods
 testDeprecatedOverloadedSpecialMethods
 testDeprecatedProperty
-testDeprecatedDescriptor
 
 # "Maybe you forgot to use "await"?" (currently ignored)
 #testAsyncForErrorNote
