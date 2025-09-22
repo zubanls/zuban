@@ -1237,7 +1237,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 {
                     add_issue(IssueKind::Deprecated {
                         identifier: format!("function {}", c.qualified_name(i_s.db)).into(),
-                        message: reason.clone(),
+                        reason: reason.clone(),
                     });
                     return Self::bind_instance_descriptors_for_type(
                         i_s,
@@ -1650,7 +1650,7 @@ impl<'db: 'slf, 'slf> Inferred {
             {
                 add_issue(IssueKind::Deprecated {
                     identifier: format!("function {}", c.qualified_name(i_s.db)).into(),
-                    message: reason.clone(),
+                    reason: reason.clone(),
                 });
                 return Self::bind_class_descriptors_for_type(
                     i_s,
@@ -2488,16 +2488,24 @@ impl<'db: 'slf, 'slf> Inferred {
         on_name: Option<NodeRef>,
         add_issue: impl Fn(IssueKind),
     ) {
+        let add_func_deprecation = |callable: &CallableContent| {
+            if let Some(reason) = &callable.deprecated_reason {
+                if is_import_from_in_same_file(db, on_name) {
+                    return;
+                }
+                add_issue(IssueKind::Deprecated {
+                    identifier: format!("function {}", callable.qualified_name(db)).into(),
+                    reason: reason.clone(),
+                });
+            }
+        };
         match self.maybe_complex_point(db) {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => {
-                if let Some(reason) = &c.deprecated_reason {
-                    if is_import_from_in_same_file(db, on_name) {
-                        return;
-                    }
-                    add_issue(IssueKind::Deprecated {
-                        identifier: format!("function {}", c.qualified_name(db)).into(),
-                        message: reason.clone(),
-                    });
+                add_func_deprecation(c);
+            }
+            Some(ComplexPoint::FunctionOverload(overload)) => {
+                if let Some(implementation) = &overload.implementation {
+                    add_func_deprecation(&implementation.callable);
                 }
             }
             Some(ComplexPoint::Class(_)) => {

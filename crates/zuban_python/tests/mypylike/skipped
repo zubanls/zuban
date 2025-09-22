@@ -916,6 +916,7 @@ testDeprecatedAsNoteWithErrorCode
 testDeprecatedExclude
 # deprecated
 testDeprecatedClass
+testDeprecatedFunction
 testDeprecatedClassInitMethod
 testDeprecatedSpecialMethods
 testDeprecatedOverloadedInstanceMethods
@@ -924,8 +925,6 @@ testDeprecatedOverloadedStaticMethods
 testDeprecatedOverloadedSpecialMethods
 testDeprecatedProperty
 testDeprecatedDescriptor
-testDeprecatedOverloadedFunction
-testDeprecatedImportedOverloadedFunction
 
 # "Maybe you forgot to use "await"?" (currently ignored)
 #testAsyncForErrorNote

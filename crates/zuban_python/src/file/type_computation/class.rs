@@ -299,7 +299,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             }
             add_issue(IssueKind::Deprecated {
                 identifier: format!("class {}", class.qualified_name(db)).into(),
-                message: reason.clone(),
+                reason: reason.clone(),
             })
         }
     }

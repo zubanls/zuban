@@ -78,7 +78,7 @@ pub(crate) enum IssueKind {
     CannotInferLambdaParams,
     NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
     CannotDetermineType { for_: Box<str> },
-    Deprecated { identifier: Box<str>, message: Arc<Box<str>>},
+    Deprecated { identifier: Box<str>, reason: Arc<Box<str>>},
 
     Redefinition { name: Box<str>, suffix: Box<str>, is_self_attribute: bool },
     CannotRedefineAs { name: Box<str>, as_: &'static str },
@@ -895,7 +895,7 @@ impl<'db> Diagnostic<'db> {
                 None => format!(r#"Need type annotation for "{for_}""#),
             },
             CannotDetermineType { for_ } => format!(r#"Cannot determine type of "{for_}""#),
-            Deprecated { identifier, message } => format!(
+            Deprecated { identifier, reason: message } => format!(
                 "{identifier} is deprecated: {message}"
             ),
 

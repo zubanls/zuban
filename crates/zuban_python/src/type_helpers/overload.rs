@@ -86,6 +86,27 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 )
             }
         };
+        let add_issue_if_deprecated = |callable: &Callable| {
+            if i_s.db.project.flags.disallow_deprecated
+                && let Some(deprecated) = &callable.content.deprecated_reason
+            {
+                let fmt = callable
+                    .content
+                    .format_pretty(&FormatData::new_short(i_s.db));
+                args.add_issue(
+                    i_s,
+                    IssueKind::Deprecated {
+                        identifier: format!(
+                            "overload def {} of function {}",
+                            &fmt[fmt.find('(').unwrap()..],
+                            callable.content.qualified_name(i_s.db)
+                        )
+                        .into(),
+                        reason: deprecated.clone(),
+                    },
+                );
+            }
+        };
         let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, Box<_>)> = None;
@@ -120,6 +141,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable.content.format(&FormatData::new_short(i_s.db))
                         );
                         args.reset_points_from_backup(&points_backup);
+                        add_issue_if_deprecated(&callable);
                         return OverloadResult::Single(callable);
                     }
                 }
