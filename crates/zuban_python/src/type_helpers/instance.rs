@@ -18,7 +18,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult,
-        PropertySetter, Type, TypeVarKind,
+        PropertySetterType, Type, TypeVarKind,
     },
 };
 
@@ -183,11 +183,11 @@ impl<'a> Instance<'a> {
                     FunctionKind::Property {
                         setter_type: Some(wanted),
                         ..
-                    } => match wanted.as_ref() {
-                        PropertySetter::SameTypeFromCachedProperty => {
+                    } => match &wanted.type_ {
+                        PropertySetterType::SameTypeFromCachedProperty => {
                             check_compatible(&c.return_type, value)
                         }
-                        PropertySetter::OtherType(t) => {
+                        PropertySetterType::OtherType(t) => {
                             check_compatible(t, value);
                             false
                         }

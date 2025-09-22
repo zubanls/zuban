@@ -12,7 +12,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
-    type_::{AnyCause, NeverCause, TupleUnpack, WithUnpack},
+    type_::{AnyCause, NeverCause, PropertySetterType, TupleUnpack, WithUnpack},
     utils::arc_slice_into_vec,
 };
 
@@ -445,12 +445,13 @@ impl FunctionKind {
             FunctionKind::Property {
                 setter_type: Some(setter_type),
                 had_first_self_or_class_annotation,
-            } => match setter_type.as_ref() {
-                PropertySetter::SameTypeFromCachedProperty => None,
-                PropertySetter::OtherType(type_) => Some(FunctionKind::Property {
-                    setter_type: Some(Arc::new(PropertySetter::OtherType(
-                        type_.replace_internal(replacer)?,
-                    ))),
+            } => match &setter_type.type_ {
+                PropertySetterType::SameTypeFromCachedProperty => None,
+                PropertySetterType::OtherType(type_) => Some(FunctionKind::Property {
+                    setter_type: Some(Arc::new(PropertySetter {
+                        type_: PropertySetterType::OtherType(type_.replace_internal(replacer)?),
+                        deprecated_reason: None,
+                    })),
                     had_first_self_or_class_annotation: *had_first_self_or_class_annotation,
                 }),
             },

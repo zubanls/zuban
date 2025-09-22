@@ -37,9 +37,9 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         DataclassTransformObj, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        NeverCause, ParamType, PropertySetter, ReplaceSelf, ReplaceTypeVarLikes, StarParamType,
-        StarStarParamType, StringSlice, TupleArgs, Type, TypeVarLike, TypeVarLikes,
-        WrongPositionalCount, replace_param_spec,
+        NeverCause, ParamType, PropertySetter, PropertySetterType, ReplaceSelf,
+        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
+        TypeVarLike, TypeVarLikes, WrongPositionalCount, replace_param_spec,
     },
     type_helpers::Class,
     utils::debug_indent,
@@ -975,7 +975,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         );
                         Type::ERROR
                     };
-                    PropertyModifier::Setter(Arc::new(PropertySetter::OtherType(setter)))
+                    PropertyModifier::Setter(Arc::new(PropertySetter {
+                        type_: PropertySetterType::OtherType(setter),
+                        deprecated_reason: None,
+                    }))
                 }
                 "deleter" => PropertyModifier::Deleter,
                 _ => PropertyModifier::JustADecorator,
@@ -2190,7 +2193,10 @@ fn infer_decorator_details(
                 return InferredDecorator::FunctionKind {
                     kind: FunctionKind::Property {
                         had_first_self_or_class_annotation: had_first_annotation,
-                        setter_type: Some(Arc::new(PropertySetter::SameTypeFromCachedProperty)),
+                        setter_type: Some(Arc::new(PropertySetter {
+                            type_: PropertySetterType::SameTypeFromCachedProperty,
+                            deprecated_reason: None,
+                        })),
                     },
                     is_abstract: false,
                 };

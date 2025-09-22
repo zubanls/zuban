@@ -1704,9 +1704,15 @@ impl Tuple {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum PropertySetter {
+pub(crate) enum PropertySetterType {
     SameTypeFromCachedProperty, // This happens when @functools.cached_property is used
     OtherType(Type),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct PropertySetter {
+    pub type_: PropertySetterType,
+    pub deprecated_reason: Option<Arc<Box<str>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

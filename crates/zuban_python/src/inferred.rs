@@ -29,8 +29,8 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
         IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
-        PropertySetter, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
-        execute_tuple_class, execute_type_of_type, merge_class_type_vars,
+        PropertySetter, PropertySetterType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
+        TypeVarLikes, execute_tuple_class, execute_type_of_type, merge_class_type_vars,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function,
@@ -1316,8 +1316,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                 c,
                                 avoid_inferring_return_types,
                             ) {
-                                let setter_type = setter_type.as_ref().map(|s| match s.as_ref() {
-                                    PropertySetter::OtherType(t)
+                                let setter_type = setter_type.as_ref().map(|s| match &s.type_ {
+                                    PropertySetterType::OtherType(t)
                                         if attribute_class
                                             .needs_generic_remapping_for_attributes(i_s, t) =>
                                     {
@@ -1327,7 +1327,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                             &attribute_class,
                                             &|| Some(instance.clone()),
                                         );
-                                        Arc::new(PropertySetter::OtherType(t.into_owned()))
+                                        Arc::new(PropertySetter {
+                                            type_: PropertySetterType::OtherType(t.into_owned()),
+                                            deprecated_reason: None,
+                                        })
                                     }
                                     _ => s.clone(),
                                 });
@@ -3187,9 +3190,9 @@ impl AttributeKind {
 
     pub(crate) fn property_setter_type(&self) -> Option<&Type> {
         if let Self::Property { setter_type, .. } = self {
-            match setter_type.as_ref()?.as_ref() {
-                PropertySetter::OtherType(t) => Some(t),
-                PropertySetter::SameTypeFromCachedProperty => None,
+            match &setter_type.as_ref()?.type_ {
+                PropertySetterType::OtherType(t) => Some(t),
+                PropertySetterType::SameTypeFromCachedProperty => None,
             }
         } else {
             None
@@ -3199,8 +3202,8 @@ impl AttributeKind {
     pub fn is_cached_property(&self) -> bool {
         if let Self::Property { setter_type, .. } = self {
             matches!(
-                setter_type.as_deref(),
-                Some(PropertySetter::SameTypeFromCachedProperty)
+                setter_type.as_ref().map(|s| &s.type_),
+                Some(PropertySetterType::SameTypeFromCachedProperty)
             )
         } else {
             false
