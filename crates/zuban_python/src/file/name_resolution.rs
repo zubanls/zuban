@@ -123,12 +123,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         None => {
                             // We can not assign in all cases here, for example in the presence of
                             // a module __getattr__, we don't know the assignment type, yet.
-                            if let PointResolution::Inferred(mut inf) = pr {
-                                if self.i_s.db.project.flags.disallow_deprecated {
-                                    inf = inf.add_issue_if_deprecated(self.i_s.db, |issue| {
-                                        self.add_issue(name_def.index(), issue)
-                                    });
-                                }
+                            if let PointResolution::Inferred(inf) = pr {
                                 found_pr = Some(PointResolution::Inferred(inf.save_redirect(
                                     self.i_s,
                                     self.file,

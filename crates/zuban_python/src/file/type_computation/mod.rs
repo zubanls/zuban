@@ -1460,23 +1460,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
         if self.i_s.db.project.flags.disallow_deprecated {
             if let TypeContent::Class { node_ref, .. } = &result {
-                if let Some(message) = node_ref
-                    .maybe_cached_class_infos(self.i_s.db)
-                    .and_then(|c| c.deprecated_reason.clone())
-                {
-                    self.add_issue_for_index(
-                        node.index(),
-                        IssueKind::Deprecated {
-                            identifier: format!(
-                                "class {}",
-                                ClassInitializer::from_node_ref(*node_ref)
-                                    .qualified_name(self.i_s.db),
-                            )
-                            .into(),
-                            message,
-                        },
-                    )
-                }
+                let on_name = match node.maybe_unpacked_atom() {
+                    Some(AtomContent::Name(name)) => Some(NodeRef::new(self.file, name.index())),
+                    _ => None,
+                };
+                node_ref.add_issue_if_deprecated(self.i_s.db, on_name, |issue| {
+                    self.add_issue_for_index(node.index(), issue)
+                })
             }
         }
         result
@@ -3572,7 +3562,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         ..
                     }) = &lookup
                     {
-                        class_node_ref.add_issue_if_deprecated(i_s.db, |issue| {
+                        class_node_ref.add_issue_if_deprecated(i_s.db, None, |issue| {
                             node_ref.add_type_issue(i_s.db, issue)
                         });
                     }

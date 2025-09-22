@@ -5,9 +5,9 @@ use std::{
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, AssignmentContent, AsyncStmtContent, ClassDef,
-    Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg, Name, NodeIndex, Primary,
-    PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator, Target,
-    TrivialBodyState, TypeLike,
+    Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg, Name, NameImportParent,
+    NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator,
+    Target, TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -280,13 +280,36 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         colon_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
     }
 
-    pub fn add_issue_if_deprecated(self, db: &Database, add_issue: impl Fn(IssueKind)) {
+    pub fn add_issue_if_deprecated(
+        self,
+        db: &Database,
+        on_name: Option<NodeRef>,
+        add_issue: impl Fn(IssueKind),
+    ) {
         let class = ClassInitializer::from_node_ref(self);
         class.ensure_calculated_class_infos(db);
         if let Some(reason) = class
             .maybe_cached_class_infos(db)
             .and_then(|c| c.deprecated_reason.as_ref())
         {
+            let maybe_import_from = (|| {
+                let on_name = on_name?;
+                let redirect = on_name.maybe_redirect(db)?;
+                if redirect.file.file_index != on_name.file.file_index {
+                    // We filter out if a deprecation was already reported for the current file.
+                    // This should not count for indirect deprecations.
+                    //return None;
+                }
+                match redirect.maybe_name()?.name_def()?.maybe_import()? {
+                    NameImportParent::ImportFromAsName(_) => Some(()),
+                    NameImportParent::DottedAsName(_) => None,
+                }
+            })()
+            .is_some();
+            if maybe_import_from {
+                // The error was already added on the from ... import
+                return;
+            }
             add_issue(IssueKind::Deprecated {
                 identifier: format!("class {}", class.qualified_name(db)).into(),
                 message: reason.clone(),

@@ -167,7 +167,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let mut inf =
             self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
         if self.i_s.db.project.flags.disallow_deprecated {
-            inf = inf.add_issue_if_deprecated(self.i_s.db, |issue| {
+            inf = inf.add_issue_if_deprecated(self.i_s.db, None, |issue| {
                 self.add_issue(name_def.index(), issue)
             })
         }
@@ -3362,7 +3362,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     )
                     .unwrap_or_else(Inferred::new_any_from_error);
                 if self.i_s.db.project.flags.disallow_deprecated {
-                    result = result.add_issue_if_deprecated(self.i_s.db, |issue| {
+                    result = result.add_issue_if_deprecated(self.i_s.db, None, |issue| {
                         self.add_issue(name.index(), issue)
                     });
                 }
@@ -3439,8 +3439,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Name(n) => {
                 let mut result = self.infer_name_reference(n);
                 if i_s.db.project.flags.disallow_deprecated {
-                    result = result
-                        .add_issue_if_deprecated(i_s.db, |issue| self.add_issue(n.index(), issue));
+                    result = result.add_issue_if_deprecated(
+                        i_s.db,
+                        Some(NodeRef::new(self.file, n.index())),
+                        |issue| self.add_issue(n.index(), issue),
+                    );
                 }
                 return if self.i_s.db.mode == Mode::LanguageServer
                     && !self.point(atom.index()).calculated()

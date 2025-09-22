@@ -2482,7 +2482,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn add_issue_if_deprecated(self, db: &Database, add_issue: impl Fn(IssueKind)) -> Self {
+    pub fn add_issue_if_deprecated(
+        self,
+        db: &Database,
+        on_name: Option<NodeRef>,
+        add_issue: impl Fn(IssueKind),
+    ) -> Self {
         match self.maybe_complex_point(db) {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => {
                 if let Some(reason) = &c.deprecated_reason {
@@ -2496,7 +2501,7 @@ impl<'db: 'slf, 'slf> Inferred {
             Some(ComplexPoint::Class(_)) => {
                 if let Some(node_ref) = self.maybe_saved_node_ref(db) {
                     let class_node_ref = ClassNodeRef::from_node_ref(node_ref);
-                    class_node_ref.add_issue_if_deprecated(db, add_issue);
+                    class_node_ref.add_issue_if_deprecated(db, on_name, add_issue);
                 }
             }
             _ => (),
