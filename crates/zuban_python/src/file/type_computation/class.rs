@@ -5,9 +5,9 @@ use std::{
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, AssignmentContent, AsyncStmtContent, ClassDef,
-    Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg, Name, NameImportParent,
-    NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator,
-    Target, TrivialBodyState, TypeLike,
+    Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg, Name, NodeIndex, Primary,
+    PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator, Target,
+    TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -24,6 +24,7 @@ use crate::{
         name_resolution::NameResolution,
         type_computation::{InvalidVariableType, TypeContent},
         use_cached_annotation_type,
+        utils::is_import_from_in_same_file,
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -292,21 +293,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             .maybe_cached_class_infos(db)
             .and_then(|c| c.deprecated_reason.as_ref())
         {
-            let maybe_import_from = (|| {
-                let on_name = on_name?;
-                let redirect = on_name.maybe_redirect(db)?;
-                if redirect.file.file_index != on_name.file.file_index {
-                    // We filter out if a deprecation was already reported for the current file.
-                    // This should not count for indirect deprecations.
-                    //return None;
-                }
-                match redirect.maybe_name()?.name_def()?.maybe_import()? {
-                    NameImportParent::ImportFromAsName(_) => Some(()),
-                    NameImportParent::DottedAsName(_) => None,
-                }
-            })()
-            .is_some();
-            if maybe_import_from {
+            if is_import_from_in_same_file(db, on_name) {
                 // The error was already added on the from ... import
                 return;
             }

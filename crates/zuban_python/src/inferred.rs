@@ -11,8 +11,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        ANNOTATION_TO_EXPR_DIFFERENCE, ClassNodeRef, PythonFile, maybe_saved_annotation,
-        on_argument_type_error, use_cached_annotation_or_type_comment,
+        ANNOTATION_TO_EXPR_DIFFERENCE, ClassNodeRef, PythonFile, is_import_from_in_same_file,
+        maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -2483,19 +2483,21 @@ impl<'db: 'slf, 'slf> Inferred {
 
     #[inline]
     pub fn add_issue_if_deprecated(
-        self,
+        &self,
         db: &Database,
         on_name: Option<NodeRef>,
         add_issue: impl Fn(IssueKind),
-    ) -> Self {
+    ) {
         match self.maybe_complex_point(db) {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => {
                 if let Some(reason) = &c.deprecated_reason {
+                    if is_import_from_in_same_file(db, on_name) {
+                        return;
+                    }
                     add_issue(IssueKind::Deprecated {
                         identifier: format!("function {}", c.qualified_name(db)).into(),
                         message: reason.clone(),
                     });
-                    return Inferred::from_type(Type::Callable(c.remove_deprecated_reason()));
                 }
             }
             Some(ComplexPoint::Class(_)) => {
@@ -2506,7 +2508,6 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             _ => (),
         }
-        self
     }
 
     pub fn into_proper_type(self, i_s: &InferenceState) -> Self {

@@ -164,10 +164,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         pr: PointResolution,
         redirect_to: Option<ModuleAccessDetail>,
     ) {
-        let mut inf =
-            self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
+        let inf = self.infer_module_point_resolution(pr, |k| self.add_issue(name_def.index(), k));
         if self.i_s.db.project.flags.disallow_deprecated {
-            inf = inf.add_issue_if_deprecated(self.i_s.db, None, |issue| {
+            inf.add_issue_if_deprecated(self.i_s.db, None, |issue| {
                 self.add_issue(name_def.index(), issue)
             })
         }
@@ -3338,7 +3337,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                let mut result = base
+                let result = base
                     .lookup_with_result_context(
                         self.i_s,
                         node_ref,
@@ -3362,9 +3361,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     )
                     .unwrap_or_else(Inferred::new_any_from_error);
                 if self.i_s.db.project.flags.disallow_deprecated {
-                    result = result.add_issue_if_deprecated(self.i_s.db, None, |issue| {
+                    result.add_issue_if_deprecated(self.i_s.db, None, |issue| {
                         self.add_issue(name.index(), issue)
-                    });
+                    })
                 }
                 result
             }
@@ -3437,13 +3436,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => {
-                let mut result = self.infer_name_reference(n);
+                let result = self.infer_name_reference(n);
                 if i_s.db.project.flags.disallow_deprecated {
-                    result = result.add_issue_if_deprecated(
+                    result.add_issue_if_deprecated(
                         i_s.db,
                         Some(NodeRef::new(self.file, n.index())),
                         |issue| self.add_issue(n.index(), issue),
-                    );
+                    )
                 }
                 return if self.i_s.db.mode == Mode::LanguageServer
                     && !self.point(atom.index()).calculated()

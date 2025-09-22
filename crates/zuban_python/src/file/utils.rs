@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use parsa_python_cst::{
     Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef, Int,
-    NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
+    NAME_DEF_TO_NAME_DIFFERENCE, NameImportParent, NodeIndex, StarLikeExpression,
+    StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -661,4 +662,21 @@ pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> 
     param_name_node_ref
         .expect_name()
         .expect_as_param_of_function()
+}
+
+pub fn is_import_from_in_same_file(db: &Database, on_name: Option<NodeRef>) -> bool {
+    (|| {
+        let on_name = on_name?;
+        let redirect = on_name.maybe_redirect(db)?;
+        if redirect.file.file_index != on_name.file.file_index {
+            // We filter out if a deprecation was already reported for the current file.
+            // This should not count for indirect deprecations.
+            //return None;
+        }
+        match redirect.maybe_name()?.name_def()?.maybe_import()? {
+            NameImportParent::ImportFromAsName(_) => Some(()),
+            NameImportParent::DottedAsName(_) => None,
+        }
+    })()
+    .is_some()
 }

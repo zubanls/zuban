@@ -32,4 +32,6 @@ pub(crate) use type_computation::{
     use_cached_param_annotation_type, use_cached_simple_generic_type,
 };
 pub(crate) use type_var_finder::TypeVarFinder;
-pub(crate) use utils::{infer_index, infer_string_index, on_argument_type_error};
+pub(crate) use utils::{
+    infer_index, infer_string_index, is_import_from_in_same_file, on_argument_type_error,
+};
