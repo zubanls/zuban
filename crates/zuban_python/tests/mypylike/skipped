@@ -919,7 +919,6 @@ testDeprecatedClass
 testDeprecatedFunction
 testDeprecatedClassInitMethod
 testDeprecatedSpecialMethods
-testDeprecatedOverloadedClassMethods
 testDeprecatedOverloadedSpecialMethods
 testDeprecatedProperty
 
