@@ -915,7 +915,6 @@ testDeprecatedAsNoteWithErrorCode
 # --deprecated-calls-exclude
 testDeprecatedExclude
 # deprecated
-testDeprecatedFunction
 testDeprecatedClass
 testDeprecatedClassDifferentModule
 testDeprecatedClassInitMethod

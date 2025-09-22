@@ -3563,9 +3563,21 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .compute_type_assignment(assignment),
             TypeLike::ImportFromAsName(from_as_name) => {
                 let name_resolution = node_ref.file.name_resolution_for_types(i_s);
-                name_resolution.point_resolution_to_type_name_lookup(
+                let lookup = name_resolution.point_resolution_to_type_name_lookup(
                     name_resolution.resolve_import_from_name_def_without_narrowing(from_as_name),
-                )
+                );
+                if i_s.db.project.flags.disallow_deprecated {
+                    if let Lookup::T(TypeContent::Class {
+                        node_ref: class_node_ref,
+                        ..
+                    }) = &lookup
+                    {
+                        class_node_ref.add_issue_if_deprecated(i_s.db, |issue| {
+                            node_ref.add_type_issue(i_s.db, issue)
+                        });
+                    }
+                }
+                lookup
             }
             TypeLike::DottedAsName(dotted_as_name) => {
                 let name_resolution = node_ref.file.name_resolution_for_types(i_s);

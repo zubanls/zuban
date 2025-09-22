@@ -279,6 +279,20 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         }
         colon_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
     }
+
+    pub fn add_issue_if_deprecated(self, db: &Database, add_issue: impl Fn(IssueKind)) {
+        let class = ClassInitializer::from_node_ref(self);
+        class.ensure_calculated_class_infos(db);
+        if let Some(reason) = class
+            .maybe_cached_class_infos(db)
+            .and_then(|c| c.deprecated_reason.as_ref())
+        {
+            add_issue(IssueKind::Deprecated {
+                identifier: format!("class {}", class.qualified_name(db)).into(),
+                message: reason.clone(),
+            })
+        }
+    }
 }
 
 impl<'a> std::ops::Deref for ClassNodeRef<'a> {
