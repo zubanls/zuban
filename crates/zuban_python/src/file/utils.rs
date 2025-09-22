@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use parsa_python_cst::{
-    Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef, Int,
-    NAME_DEF_TO_NAME_DIFFERENCE, NameImportParent, NodeIndex, StarLikeExpression,
-    StarLikeExpressionIterator,
+    DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef,
+    Int, NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -684,9 +683,10 @@ pub fn should_add_deprecated(
             // This should not count for indirect deprecations.
             return None;
         }
-        match redirect.maybe_name()?.name_def()?.maybe_import()? {
-            NameImportParent::ImportFromAsName(_) => Some(()),
-            NameImportParent::DottedAsName(_) => None,
+        let name_def = redirect.maybe_name()?.name_def()?;
+        match name_def.expect_defining_stmt() {
+            DefiningStmt::FunctionDef(_) | DefiningStmt::ClassDef(_) => None,
+            _ => Some(()),
         }
     })()
     .is_some()

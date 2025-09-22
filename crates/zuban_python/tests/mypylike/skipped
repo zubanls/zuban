@@ -916,7 +916,6 @@ testDeprecatedAsNoteWithErrorCode
 testDeprecatedExclude
 # deprecated
 testDeprecatedClass
-testDeprecatedFunction
 testDeprecatedClassInitMethod
 testDeprecatedSpecialMethods
 testDeprecatedOverloadedSpecialMethods
