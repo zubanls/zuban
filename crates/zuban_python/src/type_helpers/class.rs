@@ -402,6 +402,10 @@ impl<'db: 'a, 'a> Class<'a> {
                     },
                     &mut ResultContext::Unknown,
                     &|issue| {
+                        // Deprecated should not affect matching
+                        if let IssueKind::Deprecated { .. } = &issue {
+                            return;
+                        }
                         let issue_str = self.node_ref.issue_to_str(i_s, issue);
                         debug!("Issue in protocol: {}", issue_str);
                         *had_error.borrow_mut() = Some(issue_str);

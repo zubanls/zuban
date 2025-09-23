@@ -2034,3 +2034,21 @@ class Class4(metaclass=Meta4):
 
 Class4()  # E: Missing positional argument "x" in call to "Class4"
 assert_type(Class4(1), Class4)
+
+[case deprecated_should_still_be_matchable_as_protocol]
+# flags: --enable-error-code=deprecated
+from typing import Protocol
+from warnings import deprecated
+class SupportsFoo2(Protocol):
+    def foo(self) -> None: ...
+
+class FooConcrete2:
+    @deprecated("Deprecated")
+    def foo(self) -> None: ...
+
+def takes_foo(f: SupportsFoo2) -> None: ...
+
+def caller(c: FooConcrete2) -> None:
+    takes_foo(
+        c
+    )
