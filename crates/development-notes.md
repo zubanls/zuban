@@ -86,6 +86,7 @@ some of these projects with:
 - 2025-05-23:  9400 / 10701 (1.71s ->  5497 tests/s 4827fc01e4052bfe9fbbd0535a84906ae9159b7d)
 - 2025-07-23:  9573 / 10859 (1.89s ->  5065 tests/s 5b5c3779cde57d943d8d0f06c3ef1e0142f49da3)
 - 2025-08-23:  9789 / 11063 (2.18s ->  4490 tests/s da3fd1393bc921d66ac143889505c239a30777b9) (note: most things are Sync now)
+- 2025-09-23:  9970 / 11203 (2.28s ->  4373 tests/s 6db6999b5fa2614985f1a84889970eb01fac5587)
 
 ### Jedi-Like Tests
 
