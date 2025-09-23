@@ -28,11 +28,11 @@ pub(crate) fn diagnostics_for_relevant_files<'db>(
         .unwrap_or_default())
 }
 
-fn should_skip(flags: &TypeCheckerFlags, path: &AbsPath) -> bool {
-    if !path.ends_with(".py") && !path.ends_with(".pyi") {
+fn should_skip(flags: &TypeCheckerFlags, rel_path: &str) -> bool {
+    if !rel_path.ends_with(".py") && !rel_path.ends_with(".pyi") {
         return true;
     }
-    flags.excludes.iter().any(|e| e.regex.is_match(path))
+    flags.excludes.iter().any(|e| e.regex.is_match(rel_path))
 }
 
 struct FileSelector<'db> {
@@ -74,11 +74,11 @@ impl<'db> FileSelector<'db> {
             .map(|file_index| db.loaded_python_file(file_index))
             // TODO shouldn't this be done before name binding?
             .filter(|file| {
-                let p = file.file_entry(db).absolute_path(vfs_handler);
+                let p = file.file_entry(db).relative_path(vfs_handler);
                 if let Some(more_specific_flags) = file.maybe_more_specific_flags(db) {
                     // We need to recheck, because we might have more specific information now for this
                     // file now that it's parsed.
-                    if should_skip(more_specific_flags, p.path()) {
+                    if should_skip(more_specific_flags, &p) {
                         return false;
                     }
                 }
@@ -186,7 +186,7 @@ impl<'db> FileSelector<'db> {
             DirectoryEntry::File(file) => {
                 if !should_skip(
                     &self.db.project.flags,
-                    file.absolute_path(&*self.db.vfs.handler).path(),
+                    &file.relative_path(&*self.db.vfs.handler),
                 ) && !ignore_py_if_overwritten_by_pyi(parent_entries, file)
                 {
                     self.add_file(file.clone())

@@ -680,3 +680,14 @@ __main__:10: note:     def f(x: int) -> int
 13 | )
 14 | # a
 15 | # b
+
+[case exclude_start_matching_at_beginning]
+[file out/foo.py]
+1()
+[file foo.py]
+1()  # E: "int" not callable
+
+[file pyproject.toml]
+[tool.mypy]
+files = '.'
+exclude = '^out/'
