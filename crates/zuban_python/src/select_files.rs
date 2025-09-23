@@ -4,8 +4,8 @@ use config::TypeCheckerFlags;
 use rayon::prelude::*;
 use utils::FastHashSet;
 use vfs::{
-    AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, GlobAbsPath,
-    LocalFS, PathWithScheme,
+    DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, GlobAbsPath, LocalFS,
+    PathWithScheme,
 };
 
 use crate::{
