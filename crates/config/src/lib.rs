@@ -920,7 +920,7 @@ fn set_bool_init_flags(
                 bail!("Unrecognized option: {original_name} = {}", value.as_repr());
             } else {
                 tracing::warn!(
-                    "Unsupported option given in Mypy config: {original_name} = {}, context support if you need it",
+                    "Unsupported option given in Mypy config: {original_name} = {}, contact support if you need it",
                     value.as_repr()
                 );
             }
