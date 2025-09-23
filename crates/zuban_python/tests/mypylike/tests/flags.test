@@ -690,4 +690,4 @@ __main__:10: note:     def f(x: int) -> int
 [file pyproject.toml]
 [tool.mypy]
 files = '.'
-exclude = '^out/'
+exclude = '^out'
