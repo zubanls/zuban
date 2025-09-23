@@ -541,3 +541,16 @@ t33: tuple[..., int]  # E: Unexpected "..."
 t34: tuple[int, ..., int]  # E: Unexpected "..."
 t35: tuple[*tuple[str], ...]  # E: Unpack is only valid in a variadic position
 t36: tuple[*tuple[str, ...], ...]  # E: Unpack is only valid in a variadic position
+
+[case tuple_len_narrowing_with_unpack_should_not_be_unreachable]
+# flags: --warn-unreachable
+# Fixes #46
+foo: tuple[int, ...] = (1, 2)
+if len(foo) > 1:
+    reveal_type(foo)  # N: Revealed type is "tuple[int, int, Unpack[Tuple[int, ...]]]"
+    if len(foo) == 1:
+        reveal_type(foo)  # E: Statement is unreachable
+    if len(foo) == 2:
+        reveal_type(foo)  # N: Revealed type is "tuple[int, int]"
+    if len(foo) == 3:
+        reveal_type(foo)  # N: Revealed type is "tuple[int, int, int]"

@@ -4454,7 +4454,7 @@ fn narrow_len_for_tuples(
         TupleArgs::WithUnpack(with_unpack) => {
             let min_len = with_unpack.before.len() + with_unpack.after.len();
             let lower_than = lower_than();
-            if (lower_than.unwrap_or(n) <= min_len) && invert == negative {
+            if (lower_than.unwrap_or(n) < min_len) && invert == negative {
                 // This is unreachable, so no type is added.
                 return true;
             }
