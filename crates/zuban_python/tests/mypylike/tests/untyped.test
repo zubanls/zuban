@@ -678,7 +678,7 @@ class C(A):
     def typed_staticmethod(self) -> str: # E: Return type "str" of "typed_staticmethod" incompatible with return type "int" in supertype "A"
          return ""
 
-[case incompatible_untyped_inplace_methods]
+[case compatible_untyped_inplace_methods]
 # flags: --no-mypy-compatible
 class A:
     def __iadd__(self, other):
@@ -696,7 +696,7 @@ class A:
     def __sub__(self, other) -> int:
         return 1
 
-    def __ior__(self, other) -> str:  # E: Signatures of "__ior__" and "__or__" are incompatible
+    def __ior__(self, other) -> str:
         return ""
     def __or__(self, other) -> int:
         return 1

@@ -2155,11 +2155,33 @@ impl Inference<'_, '_, '_> {
         let normal_method = instance.lookup(i_s, normal_magic_name, options).lookup;
         if let Some(normal_inf) = normal_method.into_maybe_inferred() {
             let inplace_method = instance.lookup(i_s, func.name(), options).lookup;
-            if !normal_inf
-                .as_cow_type(i_s)
-                .is_simple_super_type_of(i_s, &inplace_method.into_inferred().as_cow_type(i_s))
-                .bool()
-            {
+            let is_compatible = match (
+                normal_inf.as_cow_type(i_s).as_ref(),
+                inplace_method.into_inferred().as_cow_type(i_s).as_ref(),
+            ) {
+                (Type::Callable(c1), Type::Callable(c2)) => matches_params(
+                    self.i_s,
+                    &mut Matcher::new_callable_matcher(&Callable::new(c2, func.class)),
+                    &c1.params,
+                    &c2.params,
+                ),
+                (Type::FunctionOverload(o1), Type::FunctionOverload(o2)) => {
+                    let fs1 = o1.iter_functions();
+                    let fs2 = o2.iter_functions();
+                    let mut match_: Match = (fs1.len() == fs2.len()).into();
+                    for (c1, c2) in fs1.zip(fs2) {
+                        match_ &= matches_params(
+                            self.i_s,
+                            &mut Matcher::new_callable_matcher(&Callable::new(c2, func.class)),
+                            &c1.params,
+                            &c2.params,
+                        )
+                    }
+                    match_
+                }
+                (normal, inplace) => normal.is_simple_super_type_of(i_s, &inplace),
+            };
+            if !is_compatible.bool() {
                 func.add_issue_for_declaration(
                     self.i_s,
                     IssueKind::SignaturesAreIncompatible {
