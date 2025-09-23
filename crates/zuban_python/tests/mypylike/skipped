@@ -914,9 +914,6 @@ testContinueOutsideLoop
 testDeprecatedAsNoteWithErrorCode
 # --deprecated-calls-exclude
 testDeprecatedExclude
-# deprecated
-testDeprecatedSpecialMethods
-testDeprecatedOverloadedSpecialMethods
 
 # "Maybe you forgot to use "await"?" (currently ignored)
 #testAsyncForErrorNote
