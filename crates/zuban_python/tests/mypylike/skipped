@@ -7,7 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
-testIntroducingInplaceOperatorInSubclass
 
 docs_alias
 docs_property
@@ -915,6 +914,9 @@ testContinueOutsideLoop
 testDeprecatedAsNoteWithErrorCode
 # --deprecated-calls-exclude
 testDeprecatedExclude
+# deprecated
+testDeprecatedSpecialMethods
+testDeprecatedOverloadedSpecialMethods
 
 # "Maybe you forgot to use "await"?" (currently ignored)
 #testAsyncForErrorNote

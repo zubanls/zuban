@@ -370,7 +370,7 @@ impl FunctionOverload {
         self.0[0].is_abstract
     }
 
-    pub fn iter_functions(&self) -> impl ExactSizeIterator<Item = &Arc<CallableContent>> + Clone {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Arc<CallableContent>> + Clone {
         self.0.iter()
     }
 }
