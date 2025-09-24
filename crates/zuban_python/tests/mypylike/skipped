@@ -389,10 +389,6 @@ testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
 
-# dataclass classmethod
-testDataclassesClassmethods
-testClassmethodShadowingFieldDoesNotCrash
-testDeferredDataclassInitSignature
 # dataclasses __slots__
 testDataclassWithSlotsArg
 # InitVar set default

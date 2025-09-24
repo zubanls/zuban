@@ -796,3 +796,21 @@ d = DC([1])
 reveal_type(d.field0)  # N: Revealed type is "tuple[int, ...]"
 d.field0 = [1]
 d.field0 = 1  # E: Incompatible types in assignment of a dataclass converter (expression has type "int", expected type "list[Any]")
+
+[case dataclass_classmethod_initialization_type_checking]
+from dataclasses import dataclass
+
+@dataclass
+class Foo:
+    a: int
+    b: str
+
+    @classmethod
+    def create(cls, a: int, b: str) -> Foo:
+        Foo(a=a, b=a)  # E: Argument "b" to "Foo" has incompatible type "int"; expected "str"
+        Foo(b=b, a=b)  # E: Argument "a" to "Foo" has incompatible type "str"; expected "int"
+        Foo(b=b, a=a)
+        Foo(b, a)  # E: Argument 1 to "Foo" has incompatible type "str"; expected "int" \
+                   # E: Argument 2 to "Foo" has incompatible type "int"; expected "str"
+        Foo(a, b)
+        return cls(a=a, b=b)

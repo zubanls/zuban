@@ -4027,29 +4027,29 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         recoverable_error!("Expected a class in i_s because we're on a self param");
                         return Inferred::new_any(AnyCause::Internal);
                     };
-                    let mut t = if func.node_ref.node_index < cls.node_ref.node_index {
-                        // If the function is defined before the class, the class is part of the
-                        // function.
-                        if let Some(cls) = func.class {
+                    if func.node_ref.node_index < cls.node_ref.node_index {
+                        // If the function is defined before the class, the class is defined within
+                        // the function and we're inferring it from inside.
+                        let mut t = if let Some(cls) = func.class {
                             cls.as_type(self.i_s.db)
                         } else {
                             recoverable_error!(
                                 "Expected a class in func because we're on a self param"
                             );
                             Type::Any(AnyCause::Internal)
+                        };
+                        if is_classmethod {
+                            t = Type::Type(Arc::new(t))
                         }
+                        Inferred::from_type(t)
                     } else {
-                        if !is_classmethod {
-                            return Inferred::new_saved(self.file, node_index);
+                        if is_classmethod {
+                            Inferred::from_type(self.i_s.db.python_state.type_of_self.clone())
+                        } else {
+                            Inferred::new_saved(self.file, node_index)
                         }
-                        Type::Self_
-                    };
-                    if is_classmethod {
-                        t = Type::Type(Arc::new(t))
                     }
-                    Inferred::from_type(t)
                 };
-                self.i_s.current_class();
 
                 let specific = self.point(node_index).specific();
                 if let Some(annotation) = name_def.maybe_param_annotation() {
