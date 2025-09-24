@@ -1855,63 +1855,34 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             Target::NameExpression(primary_target, name_def) => {
                 if self.is_self(primary_target.first()) {
-                    self.assign_to_name_def_or_self_name_def(
-                        name_def,
-                        from,
-                        value,
-                        assign_kind,
-                        save,
-                        Some(&|| {
-                            // TODO this should never be None
-                            let Some(c) = i_s.current_class() else {
-                                return LookupDetails::any(AnyCause::Internal);
-                            };
-                            c.instance().lookup(
-                                i_s,
-                                name_def.as_code(),
-                                InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue))
-                                    .with_skip_first_self_variables(),
-                            )
-                        }),
-                        |_, declaration_t| {
-                            let current_t = value.as_cow_type(i_s);
-                            self.narrow_or_widen_self_target(
+                    // TODO The func should ALWAYS exist, this is just a bug at the moment.
+                    if let Some(func) = dbg!(i_s.current_function()) {
+                        //if let FirstParamKind::Self_ = func.first_param_kind(self.i_s) {
+                        if let Some(in_class) = dbg!(func.parent_class(self.i_s.db)) {
+                            self.check_self_assign(
+                                in_class,
                                 primary_target,
-                                declaration_t,
-                                &current_t,
-                                || {
-                                    RedefinitionResult::TypeMismatch(self.check_assignment_type(
-                                        value,
-                                        declaration_t,
-                                        from,
-                                        None,
-                                        assign_kind,
-                                    ))
-                                },
-                            )
-                        },
-                    );
-                    // TODO we should probably check if we are in a staticmethod/classmethod
-                    // TODO The class should ALWAYS exist, this is just a bug at the moment.
-                    if let Some(class) = i_s.current_class() {
-                        class.check_self_definition(
-                            i_s,
-                            |issue| from.add_issue(i_s, issue),
-                            name_def.as_code(),
-                        );
+                                name_def,
+                                from,
+                                value,
+                                assign_kind,
+                                save,
+                            );
+                            return;
+                        }
+                        //}
                     }
-                } else {
-                    let base = self.infer_primary_target_or_atom(primary_target.first());
-                    self.check_assign_arbitrary_named_expr(
-                        base,
-                        primary_target,
-                        name_def,
-                        from,
-                        value,
-                        assign_kind,
-                    );
-                    save(name_def.index(), value);
                 }
+                let base = self.infer_primary_target_or_atom(primary_target.first());
+                self.check_assign_arbitrary_named_expr(
+                    base,
+                    primary_target,
+                    name_def,
+                    from,
+                    value,
+                    assign_kind,
+                );
+                save(name_def.index(), value);
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -2000,6 +1971,47 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 _ => false,
             },
         }
+    }
+
+    fn check_self_assign(
+        &self,
+        in_class: Class,
+        primary_target: PrimaryTarget,
+        name_def: NameDef,
+        from: NodeRef,
+        value: &Inferred,
+        assign_kind: AssignKind,
+        save: impl FnOnce(NodeIndex, &Inferred),
+    ) {
+        let i_s = self.i_s;
+        self.assign_to_name_def_or_self_name_def(
+            name_def,
+            from,
+            value,
+            assign_kind,
+            save,
+            Some(&|| {
+                in_class.instance().lookup(
+                    i_s,
+                    name_def.as_code(),
+                    InstanceLookupOptions::new(&|issue| from.add_issue(i_s, issue))
+                        .with_skip_first_self_variables(),
+                )
+            }),
+            |_, declaration_t| {
+                let current_t = value.as_cow_type(i_s);
+                self.narrow_or_widen_self_target(primary_target, declaration_t, &current_t, || {
+                    RedefinitionResult::TypeMismatch(self.check_assignment_type(
+                        value,
+                        declaration_t,
+                        from,
+                        None,
+                        assign_kind,
+                    ))
+                })
+            },
+        );
+        in_class.check_self_definition(i_s, |issue| from.add_issue(i_s, issue), name_def.as_code());
     }
 
     pub fn assign_any_to_target(&self, target: Target, n: NodeRef) {

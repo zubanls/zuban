@@ -412,26 +412,28 @@ impl<'a> Instance<'a> {
                 {
                     let i_s = i_s.with_class_context(&c);
                     let inference = c.node_ref.file.inference(&i_s);
-                    let Ok(inf) =
+                    let Ok(maybe_found) =
                         inference.self_lookup_with_flow_analysis(c, self_symbol, options.add_issue)
                     else {
                         (options.add_issue)(IssueKind::CannotDetermineType { for_: name.into() });
                         return LookupDetails::any(AnyCause::FromError);
                     };
-                    if inf.maybe_saved_specific(i_s.db)
-                        == Some(Specific::AnnotationOrTypeCommentFinal)
-                    {
-                        attr_kind = AttributeKind::Final
+                    if let Some(inf) = maybe_found {
+                        if inf.maybe_saved_specific(i_s.db)
+                            == Some(Specific::AnnotationOrTypeCommentFinal)
+                        {
+                            attr_kind = AttributeKind::Final
+                        }
+                        return LookupDetails {
+                            class: TypeOrClass::Class(c),
+                            attr_kind,
+                            lookup: LookupResult::GotoName {
+                                name: PointLink::new(c.node_ref.file.file_index, self_symbol),
+                                inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
+                            },
+                            mro_index: Some(mro_index),
+                        };
                     }
-                    return LookupDetails {
-                        class: TypeOrClass::Class(c),
-                        attr_kind,
-                        lookup: LookupResult::GotoName {
-                            name: PointLink::new(c.node_ref.file.file_index, self_symbol),
-                            inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
-                        },
-                        mro_index: Some(mro_index),
-                    };
                 }
             }
         }

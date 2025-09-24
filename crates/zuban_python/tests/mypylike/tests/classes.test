@@ -2052,3 +2052,47 @@ def caller(c: FooConcrete2) -> None:
     takes_foo(
         c
     )
+
+[case should_be_able_to_assign_class_variable]
+from typing import ClassVar
+
+class Test:
+    _results: ClassVar[list[int]]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._results = [1, 2, 3]  # error: Cannot assign to class variable "_results" via instance  [misc]
+        cls.foo = 1  # E: "Type[Self]" has no attribute "foo"
+        cls.with_annotation: int = ""  # E: "Type[Self]" has no attribute "with_annotation" \
+                                       # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
+                                       # E: Type cannot be declared in assignment to non-self attribute
+
+Test.foo = 1  # E: "Type[Test]" has no attribute "foo"
+y = Test().foo  # E: "Test" has no attribute "foo"
+reveal_type(y)  # N: Revealed type is "Any"
+Test().with_annotation  # E: "Test" has no attribute "with_annotation"
+
+[case staticmethod_assignment_to_first_var]
+class Test:
+    x = 1
+    @staticmethod
+    def f(non_cls) -> None:
+        non_cls.x = ""
+        reveal_type(non_cls)  # N: Revealed type is "Any"
+        non_cls.with_annotation1: int = ""  # E: Type cannot be declared in assignment to non-self attribute \
+                                            # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+    @staticmethod
+    def g(non_cls: bytes) -> None:
+        non_cls.x = ""  # E: "bytes" has no attribute "x"
+        non_cls.y = ""  # E: "bytes" has no attribute "y"
+        reveal_type(non_cls)  # N: Revealed type is "bytes"
+        non_cls.with_annotation2: int = ""  # E: Type cannot be declared in assignment to non-self attribute \
+                                            # E: "bytes" has no attribute "with_annotation2" \
+                                            # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+y = Test().y  # E: "Test" has no attribute "y"
+reveal_type(y)  # N: Revealed type is "Any"
+Test().y = ''  # E: "Test" has no attribute "y"
+Test().with_annotation1  # E: "Test" has no attribute "with_annotation1"
+Test().with_annotation2  # E: "Test" has no attribute "with_annotation2"

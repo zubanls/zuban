@@ -8,6 +8,9 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
+del_stmt_inference_of_self_name
+var_defined_on_if_in_unannotated_self_function
+
 docs_alias
 docs_property
 

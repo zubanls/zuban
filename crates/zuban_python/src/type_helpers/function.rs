@@ -2259,7 +2259,7 @@ enum PropertyModifier {
     Deleter,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub(crate) enum FirstParamKind {
     Self_,
     ClassOfSelf,

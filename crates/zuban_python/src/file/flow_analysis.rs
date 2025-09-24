@@ -39,8 +39,8 @@ use crate::{
         lookup_on_enum_instance, simplified_union_from_iterators,
     },
     type_helpers::{
-        Callable, Class, ClassLookupOptions, Function, InstanceLookupOptions, LookupDetails,
-        OverloadResult, OverloadedFunction,
+        Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
+        LookupDetails, OverloadResult, OverloadedFunction,
     },
     utils::{EitherIterator, debug_indent},
 };
@@ -1799,9 +1799,17 @@ impl Inference<'_, '_, '_> {
         c: Class,
         self_symbol: NodeIndex,
         add_issue: &dyn Fn(IssueKind),
-    ) -> Result<Inferred, ()> {
+    ) -> Result<Option<Inferred>, ()> {
         let name_node_ref = NodeRef::new(self.file, self_symbol);
         let name_def_node_ref = name_node_ref.name_def_ref_of_name();
+        let recheck_if_on_actual_self = |func: &Function| {
+            // We cache all potential self assignments while name binding. Here we recheck that
+            // this is an assignment on self and not on cls or a staticmethod param.
+
+            // TODO We need to recheck all following symbols to the self symbol, because there
+            // might be a valid assignment in there.
+            matches!(func.first_param_kind(self.i_s), FirstParamKind::Self_)
+        };
         if !name_node_ref.point().needs_flow_analysis() {
             let assignment = name_node_ref
                 .expect_name()
@@ -1813,6 +1821,9 @@ impl Inference<'_, '_, '_> {
                     let func_def = func_of_self_symbol(self.file, self_symbol);
                     let func = Function::new(NodeRef::new(self.file, func_def.index()), Some(c));
                     func.ensure_cached_func(&InferenceState::from_class(self.i_s.db, &c));
+                    if !recheck_if_on_actual_self(&func) {
+                        return Ok(None);
+                    }
                     let i_s = &self.i_s.with_func_context(&func);
                     let inference = self.file.inference(i_s);
                     inference.ensure_cached_annotation(annotation, right_side.is_some());
@@ -1821,7 +1832,7 @@ impl Inference<'_, '_, '_> {
                         Specific::AnnotationOrTypeCommentClassVar
                             | Specific::AnnotationOrTypeCommentFinal
                     ) {
-                        return Ok(inference.use_cached_annotation(annotation));
+                        return Ok(Some(inference.use_cached_annotation(annotation)));
                     }
                 }
                 _ => unreachable!("For now we don't support something like this"),
@@ -1837,13 +1848,14 @@ impl Inference<'_, '_, '_> {
         }
         if !p.calculated() {
             let func_def = func_of_self_symbol(self.file, self_symbol);
+            let func = Function::new(NodeRef::new(self.file, func_def.index()), Some(c));
+            if !recheck_if_on_actual_self(&func) {
+                return Ok(None);
+            }
             let result = FLOW_ANALYSIS.with(|fa| {
                 // The class should have self generics within the functions
                 let c = Class::with_self_generics(self.i_s.db, c.node_ref);
-                self.ensure_func_diagnostics_for_self_attribute(
-                    fa,
-                    Function::new(NodeRef::new(self.file, func_def.index()), Some(c)),
-                )
+                self.ensure_func_diagnostics_for_self_attribute(fa, func)
             });
             if result.is_err() {
                 // It is possible that the self variable is defined in a super class and we are
@@ -1862,12 +1874,12 @@ impl Inference<'_, '_, '_> {
                     .lookup
                     .into_maybe_inferred()
                 {
-                    return Ok(inf);
+                    return Ok(Some(inf));
                 }
                 return Err(());
             }
         }
-        Ok(self.infer_name_of_definition_by_index(self_symbol))
+        Ok(Some(self.infer_name_of_definition_by_index(self_symbol)))
     }
 
     fn ensure_func_diagnostics_for_self_attribute(
