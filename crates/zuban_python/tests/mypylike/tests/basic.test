@@ -116,6 +116,7 @@ def yield_receive() -> SubGenerator:  # E: The return type of a generator functi
     return 1
 
 [case yield_with_generator]
+# flags: --warn-no-return
 from typing import Generator
 
 def yield_send() -> Generator[bytes, str, float]:  # E: Missing return statement

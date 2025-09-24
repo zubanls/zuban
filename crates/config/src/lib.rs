@@ -435,7 +435,7 @@ impl Default for TypeCheckerFlags {
             warn_unreachable: true,
             warn_redundant_casts: false,
             warn_return_any: false,
-            warn_no_return: true,
+            warn_no_return: false,
             local_partial_types: true,
             no_implicit_reexport: false,
             disable_bytearray_promotion: false,
@@ -486,6 +486,7 @@ impl TypeCheckerFlags {
             allow_untyped_globals: false,
             use_joins: true,
             warn_unreachable: false,
+            warn_no_return: true,
             ..Default::default()
         }
     }

@@ -691,3 +691,23 @@ __main__:10: note:     def f(x: int) -> int
 [tool.mypy]
 files = '.'
 exclude = '^out'
+
+[case avoid_invalid_missing_return_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# From #50
+def check_url(url: str) -> str | None:
+    try:
+        if bool():
+            return url
+    except Exception as err:
+        pass
+
+[case avoid_invalid_missing_return_mypy_compatible]
+# flags: --mypy-compatible
+# From #50
+def check_url(url: str) -> str | None:  # E: Missing return statement
+    try:
+        if bool():
+            return url
+    except Exception as err:
+        pass

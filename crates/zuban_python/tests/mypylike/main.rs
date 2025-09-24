@@ -291,6 +291,7 @@ impl TestCase<'_, '_> {
             "--follow-untyped-imports",
         );
         set_bool_flag(&mut config.use_joins, "--use-joins");
+        set_bool_flag(&mut config.warn_no_return, "--warn-no-return");
         set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
         set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
         set_reverse_bool_flag(&mut config.local_partial_types, "--no-local-partial-types");
