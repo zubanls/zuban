@@ -4740,7 +4740,7 @@ pub(crate) fn use_cached_simple_generic_type<'db>(
     expect_class_or_simple_generic(db, NodeRef::new(file, expr.index()))
 }
 
-fn expect_class_or_simple_generic(db: &Database, node_ref: NodeRef) -> Cow<'static, Type> {
+pub fn expect_class_or_simple_generic(db: &Database, node_ref: NodeRef) -> Cow<'static, Type> {
     fn inner(db: &Database, node_ref: NodeRef) -> GenericClass {
         let p = node_ref.point();
         debug_assert!(p.calculated(), "{node_ref:?}");

@@ -697,3 +697,12 @@ __main__.py:3:goto -> Doc for token matched
 __main__.py:7:goto -> Doc for token matched
 __main__.py:10:infer -> Doc for token matched
 __main__.py:13:infer -> Doc for token matched
+
+[case goto_on_simple_generic]
+#? goto
+def evaluate_file(document: str, analysis_config: dict[str, str]
+) -> str:
+    return ""
+
+[out]
+__main__.py:2:goto -> builtins.pyi:1086:6:builtins.dict

@@ -18,7 +18,10 @@ use crate::{
     completion::ScopesIterator,
     database::{Database, ParentScope, PointKind, Specific},
     debug,
-    file::{ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile, first_defined_name},
+    file::{
+        ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile,
+        expect_class_or_simple_generic, first_defined_name,
+    },
     format_data::FormatData,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
@@ -77,7 +80,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     }
 
     fn infer_position(&self) -> Option<Inferred> {
-        match self.node {
+        let result = match self.node {
             GotoNode::Name(name) => self.infer_name(name),
             GotoNode::ImportFromAsName { import_as_name, .. } => {
                 self.infer_name(import_as_name.name_def().name())
@@ -89,7 +92,17 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 self.infer_name(name_def.name())
             }
             GotoNode::None => None,
+        };
+        if let Some(result) = &result {
+            if let Some(node_ref) = result.maybe_saved_node_ref(self.db)
+                && node_ref.point().maybe_calculated_and_specific() == Some(Specific::SimpleGeneric)
+            {
+                return Some(Inferred::from_type(
+                    expect_class_or_simple_generic(self.db, node_ref).into_owned(),
+                ));
+            }
         }
+        result
     }
 }
 
