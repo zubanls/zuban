@@ -1802,7 +1802,11 @@ impl Inference<'_, '_, '_> {
     ) -> Result<Option<Inferred>, ()> {
         let name_node_ref = NodeRef::new(self.file, self_symbol);
         let name_def_node_ref = name_node_ref.name_def_ref_of_name();
-        let recheck_if_on_actual_self = |func: &Function| {
+        let c = Class::with_self_generics(self.i_s.db, c.node_ref);
+        let func_def = func_of_self_symbol(self.file, self_symbol);
+        let func = Function::new(NodeRef::new(self.file, func_def.index()), Some(c));
+        let i_s = &self.i_s.with_func_context(&func);
+        let recheck_if_on_actual_self = || {
             // We cache all potential self assignments while name binding. Here we recheck that
             // this is an assignment on self and not on cls or a staticmethod param.
 
@@ -1817,14 +1821,10 @@ impl Inference<'_, '_, '_> {
                 .expect("Expected an assignment, because self type var without flow analysis");
             match assignment.unpack() {
                 AssignmentContent::WithAnnotation(_, annotation, right_side) => {
-                    let c = Class::with_self_generics(self.i_s.db, c.node_ref);
-                    let func_def = func_of_self_symbol(self.file, self_symbol);
-                    let func = Function::new(NodeRef::new(self.file, func_def.index()), Some(c));
                     func.ensure_cached_func(&InferenceState::from_class(self.i_s.db, &c));
-                    if !recheck_if_on_actual_self(&func) {
+                    if !recheck_if_on_actual_self() {
                         return Ok(None);
                     }
-                    let i_s = &self.i_s.with_func_context(&func);
                     let inference = self.file.inference(i_s);
                     inference.ensure_cached_annotation(annotation, right_side.is_some());
                     if !matches!(
@@ -1847,14 +1847,11 @@ impl Inference<'_, '_, '_> {
             return Err(());
         }
         if !p.calculated() {
-            let func_def = func_of_self_symbol(self.file, self_symbol);
-            let func = Function::new(NodeRef::new(self.file, func_def.index()), Some(c));
-            if !recheck_if_on_actual_self(&func) {
+            if !recheck_if_on_actual_self() {
                 return Ok(None);
             }
             let result = FLOW_ANALYSIS.with(|fa| {
                 // The class should have self generics within the functions
-                let c = Class::with_self_generics(self.i_s.db, c.node_ref);
                 self.ensure_func_diagnostics_for_self_attribute(fa, func)
             });
             if result.is_err() {
@@ -1879,7 +1876,11 @@ impl Inference<'_, '_, '_> {
                 return Err(());
             }
         }
-        Ok(Some(self.infer_name_of_definition_by_index(self_symbol)))
+        Ok(Some(
+            self.file
+                .inference(i_s)
+                .infer_name_of_definition_by_index(self_symbol),
+        ))
     }
 
     fn ensure_func_diagnostics_for_self_attribute(

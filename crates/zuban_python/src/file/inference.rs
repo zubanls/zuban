@@ -1856,21 +1856,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Target::NameExpression(primary_target, name_def) => {
                 if self.is_self(primary_target.first()) {
                     // TODO The func should ALWAYS exist, this is just a bug at the moment.
-                    if let Some(func) = dbg!(i_s.current_function()) {
-                        //if let FirstParamKind::Self_ = func.first_param_kind(self.i_s) {
-                        if let Some(in_class) = dbg!(func.parent_class(self.i_s.db)) {
-                            self.check_self_assign(
-                                in_class,
-                                primary_target,
-                                name_def,
-                                from,
-                                value,
-                                assign_kind,
-                                save,
-                            );
-                            return;
+                    if let Some(func) = i_s.current_function() {
+                        if let FirstParamKind::Self_ = func.first_param_kind(self.i_s) {
+                            if let Some(in_class) = func.parent_class(self.i_s.db) {
+                                self.check_self_assign(
+                                    in_class,
+                                    primary_target,
+                                    name_def,
+                                    from,
+                                    value,
+                                    assign_kind,
+                                    save,
+                                );
+                                return;
+                            }
                         }
-                        //}
                     }
                 }
                 let base = self.infer_primary_target_or_atom(primary_target.first());
