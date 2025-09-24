@@ -12,6 +12,7 @@ docs_alias
 docs_property
 
 # typeshed upgrade
+testTypedDictGet
 testOpenReturnTypeInference
 testOpenReturnTypeInferenceSpecialCases
 testPathOpenReturnTypeInference
