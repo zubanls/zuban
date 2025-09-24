@@ -1,4 +1,7 @@
-Copyright (c) 2020-2025 Dave Halter; Licensed as AGPL; Contact us for a commercial license.
+Copyright (c) 2020-2025 Dave Halter; Licensed as AGPL version 3.0 only; Contact
+us for a commercial license.
+
+SPDX-License-Identifier: AGPL-3.0-only
 
 You can find the used licenses of libraries in the built wheel in `licenses.html`.
 
