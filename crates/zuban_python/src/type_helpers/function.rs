@@ -1526,7 +1526,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                     }
                                 }
                                 FunctionKind::Classmethod { .. } => {
-                                    Type::Any(AnyCause::Unannotated)
+                                    if let Some(cls) = self.class {
+                                        cls.as_type_type(i_s.db)
+                                    } else {
+                                        recoverable_error!(
+                                            "No class for calculating classmethod type"
+                                        );
+                                        Type::Any(AnyCause::Unannotated)
+                                    }
                                 }
                                 FunctionKind::Staticmethod => {
                                     if let Some(usage) =

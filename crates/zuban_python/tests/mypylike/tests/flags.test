@@ -711,3 +711,10 @@ def check_url(url: str) -> str | None:  # E: Missing return statement
             return url
     except Exception as err:
         pass
+
+[case disallow_any_decorated_with_classmethod_should_not_cause_error]
+# flags: --disallow-any-decorated
+class Test():
+    @classmethod
+    def setup(cls) -> None:
+        pass
