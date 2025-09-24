@@ -600,6 +600,7 @@ impl PythonState {
         }
 
         // This first block
+        cache_index!(typing_final_index, typing, "final", true);
         cache_index!(typing_no_type_check_index, typing, "no_type_check", true);
         cache_index!(
             typing_runtime_checkable_index,
@@ -621,7 +622,6 @@ impl PythonState {
         );
         cache_index!(builtins_object_index, builtins, "object");
         cache_index!(builtins_type_index, builtins, "type");
-        cache_index!(typing_final_index, typing, "final", true);
         cache_index!(abc_abc_meta_index, abc, "ABCMeta");
         cache_index!(types_module_type_index, types, "ModuleType");
         cache_index!(enum_enum_meta_index, enum_file, "EnumMeta");

@@ -774,7 +774,8 @@ def f(e: CanBeEmpty, n: CannotBeEmpty, s: str, i: int, int_only: IntOnly):
     e.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
               # N: Possible overload variants: \
               # N:     def get(self, str, /) -> object \
-              # N:     def [_T] get(self, str, /, default: object) -> object
+              # N:     def get(self, str, /, default: object) -> object \
+              # N:     def [_T] get(self, str, /, default: _T) -> object
     reveal_type(e.popitem())  # N: Revealed type is "tuple[str, str | int]"
     del e[s]
     e[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")
@@ -786,7 +787,8 @@ def f(e: CanBeEmpty, n: CannotBeEmpty, s: str, i: int, int_only: IntOnly):
     n.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
               # N: Possible overload variants: \
               # N:     def get(self, str, /) -> object \
-              # N:     def [_T] get(self, str, /, default: object) -> object
+              # N:     def get(self, str, /, default: object) -> object \
+              # N:     def [_T] get(self, str, /, default: _T) -> object
     n.popitem()  # E: "CannotBeEmpty" has no attribute "popitem"
     del n[s]  # E: Expected TypedDict key to be string literal
     n[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")

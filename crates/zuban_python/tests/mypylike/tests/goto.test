@@ -582,13 +582,13 @@ importlib.import_module
 importlib.import_module
 
 [out]
-__main__.py:2:goto -> builtins.pyi:438:6:builtins.str
-__main__.py:4:goto -> builtins.pyi:438:6:builtins.str
-__main__.py:9:goto -> token.pyi:81:0:token.ENDMARKER
+__main__.py:2:goto -> builtins.pyi:476:6:builtins.str
+__main__.py:4:goto -> builtins.pyi:476:6:builtins.str
+__main__.py:9:goto -> token.pyi:85:0:token.ENDMARKER
 __main__.py:11:goto -> token.py:token.ENDMARKER
-__main__.py:15:goto -> os/__init__.pyi:989:4:os.getenv
+__main__.py:15:goto -> os/__init__.pyi:999:4:os.getenv
 __main__.py:17:goto -> os.py:os.getenv
-__main__.py:21:goto -> importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:21:goto -> importlib/__init__.pyi:10:4:importlib.import_module
 __main__.py:23:goto -> importlib/__init__.py:importlib.import_module
 
 [case infer_stdlib]
@@ -621,15 +621,15 @@ importlib.import_module
 importlib.import_module
 
 [out]
-__main__.py:2:infer -> builtins.pyi:438:6:builtins.str
-__main__.py:4:infer -> builtins.pyi:438:6:builtins.str
-__main__.py:9:infer -> builtins.pyi:231:6:builtins.int
-__main__.py:11:infer -> builtins.pyi:231:6:builtins.int
-__main__.py:13:infer -> token.pyi:158:4:token.ISTERMINAL
+__main__.py:2:infer -> builtins.pyi:476:6:builtins.str
+__main__.py:4:infer -> builtins.pyi:476:6:builtins.str
+__main__.py:9:infer -> builtins.pyi:251:6:builtins.int
+__main__.py:11:infer -> builtins.pyi:251:6:builtins.int
+__main__.py:13:infer -> token.pyi:167:4:token.ISTERMINAL
 __main__.py:15:infer -> token.py:token.ISTERMINAL
-__main__.py:19:infer -> os/__init__.pyi:989:4:os.getenv
+__main__.py:19:infer -> os/__init__.pyi:999:4:os.getenv
 __main__.py:21:infer -> os.py:os.getenv
-__main__.py:25:infer -> importlib/__init__.pyi:9:4:importlib.import_module
+__main__.py:25:infer -> importlib/__init__.pyi:10:4:importlib.import_module
 __main__.py:27:infer -> importlib/__init__.py:importlib.import_module
 
 [case goto_doc_contains_with_stubs]
@@ -705,4 +705,4 @@ def evaluate_file(document: str, analysis_config: dict[str, str]
     return ""
 
 [out]
-__main__.py:2:goto -> builtins.pyi:1086:6:builtins.dict
+__main__.py:2:goto -> builtins.pyi:1157:6:builtins.dict

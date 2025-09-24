@@ -689,7 +689,7 @@ import dataclasses
 import mypy_extensions
 
 reveal_type(collections.namedtuple)  # N: Revealed type is "def (typename: str, field_names: str | typing.Iterable[str], *, rename: bool =, module: str | None =, defaults: typing.Iterable[Any] | None =) -> Type[tuple[Any, ...]]"
-reveal_type(dataclasses.dataclass)  # N: Revealed type is "Overload(def (None) -> def [_T] (Type[_T]) -> Type[_T], def [_T] (Type[_T]) -> Type[_T], def (*, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> def [_T] (Type[_T]) -> Type[_T])"
+reveal_type(dataclasses.dataclass)  # N: Revealed type is "Overload(def [_T] (Type[_T], *, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> Type[_T], def (None =, *, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> def [_T] (Type[_T]) -> Type[_T])"
 reveal_type(mypy_extensions.FlexibleAlias)  # N: Revealed type is "Any"
 reveal_type(mypy_extensions.Arg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
 reveal_type(mypy_extensions.DefaultArg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
