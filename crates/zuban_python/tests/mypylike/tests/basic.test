@@ -1357,3 +1357,11 @@ def f(a: 1 + 2, b: str) -> None:
 
 reveal_type(f) # N: Revealed type is "None"
 f(1, 2)  # E: "None" not callable
+
+[case non_redundant_cast_with_any]
+# flags: --strict
+from typing import Any, cast
+
+def f(x: Any | None) -> None:
+    y = cast(str | None, x)
+    reveal_type(y)  # N: Revealed type is "str | None"
