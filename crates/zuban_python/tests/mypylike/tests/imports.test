@@ -425,8 +425,8 @@ class m: ...
 
 [file x.py]
 from n import *
-import m  # E: Incompatible import of "m" (imported name has type Module, local name has type "Type[m]")
-import m  # E: Incompatible import of "m" (imported name has type Module, local name has type "Type[m]")
+import m  # E: Incompatible import of "m" (imported name has type Module, local name has type "type[m]")
+import m  # E: Incompatible import of "m" (imported name has type Module, local name has type "type[m]")
 
 [case importing_dunder_file]
 reveal_type(__file__)  # N: Revealed type is "str"
@@ -531,7 +531,7 @@ else:
 
 [case type_alias_overrides_star_import]
 from m import *
-type X = str  # E: Incompatible types in assignment (expression has type "TypeAliasType", variable has type "Type[C]")
+type X = str  # E: Incompatible types in assignment (expression has type "TypeAliasType", variable has type "type[C]")
 
 reveal_type(X)  # N: Revealed type is "def () -> m.C"
 def f(x: X) -> None:
@@ -639,7 +639,7 @@ _  # E: Name "_" is not defined  [name-defined]
 
 [case no_crash_on_syntax_error_import]
 # flags: --no-mypy-compatible
-from typing import Union, List,  # E: invalid syntax
+from typing import Union, List,  # E: Invalid syntax
 
 class Foo:
     groups: List[str]  # E: Invalid type comment or annotation

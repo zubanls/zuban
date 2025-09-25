@@ -91,8 +91,8 @@ class A(metaclass=Meta): ...
 # >>> A.a
 # (<class '__main__.A'>, <class '__main__.Meta'>)
 # However in mypy it's tuple[None, Type[x2.A@1369]]
-reveal_type(A.a)  # N: Revealed type is "tuple[Type[__main__.A], Type[Type[__main__.A]]]"
-reveal_type(Meta(A()).a)  # N: Revealed type is "tuple[__main__.Meta, Type[__main__.Meta]]"
+reveal_type(A.a)  # N: Revealed type is "tuple[type[__main__.A], type[type[__main__.A]]]"
+reveal_type(Meta(A()).a)  # N: Revealed type is "tuple[__main__.Meta, type[__main__.Meta]]"
 
 [case metaclass_iter_on_type_bound]
 # Similar to testInferringLvarTypesUnpackedFromIterableClassObject, but with
@@ -123,8 +123,8 @@ def check_bound2(x: Type[U]) -> None:
 
 V = TypeVar("V", bound=Bar | Baz | Spam)
 def check_bound3(x: Type[V]) -> None:
-    for var in x:  # E: "Type[Baz]" has no attribute "__iter__" (not iterable) \
-                   # E: "Type[Spam]" has no attribute "__iter__" (not iterable)
+    for var in x:  # E: "type[Baz]" has no attribute "__iter__" (not iterable) \
+                   # E: "type[Spam]" has no attribute "__iter__" (not iterable)
         reveal_type(var)  # N: Revealed type is "str | Any"
 
 [case kwargs_base_class]
@@ -246,7 +246,7 @@ class Foo:
 reveal_type(Foo().foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (__main__.Foo, int)"
-Foo.foo  # E: "Type[Foo]" has no attribute "foo"
+Foo.foo  # E: "type[Foo]" has no attribute "foo"
 
 [case callable_on_class_with_classvar]
 from typing import Callable, ClassVar
@@ -334,11 +334,11 @@ class Foo:
 
 x: int
 x = Foo().d1  # E: Argument 1 to "__get__" of "Descriptor" has incompatible type "Foo"; expected "None" \
-              # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
+              # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "type[Foo]"; expected "None"
 x = Foo().d2  # E: Argument 1 to "__get__" of "Descriptor" has incompatible type "Foo"; expected "None" \
-              # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
-x = Foo.d1  # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
-x = Foo.d2  # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
+              # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "type[Foo]"; expected "None"
+x = Foo.d1  # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "type[Foo]"; expected "None"
+x = Foo.d2  # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "type[Foo]"; expected "None"
 
 [case instance_self___call__]
 def call(x: int) -> int:
@@ -384,7 +384,7 @@ class X(B, A, C): ...
 
 [case classes_with__and__]
 # int() supports __and__, but int should not.
-int & int  # E: Unsupported left operand type for & ("Type[int]")
+int & int  # E: Unsupported left operand type for & ("type[int]")
 int() & int()
 
 [case typed_dict_with_normal_bases]
@@ -433,7 +433,7 @@ def foo(c: Callable[[int], Foo[int]]) -> None: ...
 def bar(c: Callable[[int], Foo[str]]) -> None: ...
 
 foo(Foo)
-bar(Foo)  # E: Argument 1 to "bar" has incompatible type "Type[Foo]"; expected "Callable[[int], Foo[str]]"
+bar(Foo)  # E: Argument 1 to "bar" has incompatible type "type[Foo]"; expected "Callable[[int], Foo[str]]"
 
 [case generic_class_as_callable_with_func_type_vars]
 from typing import TypeVar, Generic, Callable
@@ -451,7 +451,7 @@ def baz(c: Callable[[str, str, float], Foo[int]]) -> None: ...
 
 foo(Foo)
 bar(Foo)
-baz(Foo)  # E: Argument 1 to "baz" has incompatible type "Type[Foo]"; expected "Callable[[str, str, float], Foo[int]]"
+baz(Foo)  # E: Argument 1 to "baz" has incompatible type "type[Foo]"; expected "Callable[[str, str, float], Foo[int]]"
 
 [case generic_class_as_callable_with_func_type_vars_and_bounds]
 from typing import TypeVar, Generic, Callable
@@ -550,7 +550,7 @@ type("B", 1, 1)
 __main__:2: error: No overload variant of "type" matches argument types "str", "int", "int"
 __main__:2: note: Possible overload variants:
 __main__:2: note:     def __init__(self, object, /) -> type
-__main__:2: note:     def __init__(self, str, tuple[Type[Any], ...], dict[str, Any], /, **kwds: Any) -> type
+__main__:2: note:     def __init__(self, str, tuple[type[Any], ...], dict[str, Any], /, **kwds: Any) -> type
 
 [case assign_in_subclass_to_callable]
 # Inspired a bit by testTypedDictUnpackSingleWithSubtypingNoCrash
@@ -821,16 +821,16 @@ def foo(
         b: type[int],
         n: N,
         ):
-    reveal_type(type(a))  # N: Revealed type is "Type[Any]"
-    reveal_type(type(b))  # N: Revealed type is "Type[object]"
+    reveal_type(type(a))  # N: Revealed type is "type[Any]"
+    reveal_type(type(b))  # N: Revealed type is "type[object]"
     reveal_type(type(()))  # N: Revealed type is "def (typing.Iterable[Never] =) -> tuple[()]"
-    reveal_type(type(T))  # N: Revealed type is "Type[typing.TypeVar]"
+    reveal_type(type(T))  # N: Revealed type is "type[typing.TypeVar]"
 
-    reveal_type(type(n))  # N: Revealed type is "Type[__main__.N]"
-    reveal_type(type(N))  # N: Revealed type is "Type[object]"
-    reveal_type(type(N))  # N: Revealed type is "Type[object]"
-    reveal_type(type(typing))  # N: Revealed type is "Type[types.ModuleType]"
-    reveal_type(type(abs))  # N: Revealed type is "Type[object]"
+    reveal_type(type(n))  # N: Revealed type is "type[__main__.N]"
+    reveal_type(type(N))  # N: Revealed type is "type[object]"
+    reveal_type(type(N))  # N: Revealed type is "type[object]"
+    reveal_type(type(typing))  # N: Revealed type is "type[types.ModuleType]"
+    reveal_type(type(abs))  # N: Revealed type is "type[object]"
 
 [case weird_type_executions_in_class]
 from typing import Generic, ParamSpec, TypeVarTuple
@@ -838,12 +838,12 @@ Ts = TypeVarTuple("Ts")
 P = ParamSpec("P")
 class Foo(Generic[*Ts, P]):
     def foo(self, *x: P.args, **y: P.kwargs) -> None:
-        reveal_type(type(super()))  # N: Revealed type is "Type[super]"
-        reveal_type(type(Ts))  # N: Revealed type is "Type[typing.TypeVarTuple]"
-        reveal_type(type(P))  # N: Revealed type is "Type[typing.ParamSpec]"
-        reveal_type(type(x))  # N: Revealed type is "Type[object]"
-        reveal_type(type(y))  # N: Revealed type is "Type[object]"
-        reveal_type(type(self))  # N: Revealed type is "Type[Self]"
+        reveal_type(type(super()))  # N: Revealed type is "type[super]"
+        reveal_type(type(Ts))  # N: Revealed type is "type[typing.TypeVarTuple]"
+        reveal_type(type(P))  # N: Revealed type is "type[typing.ParamSpec]"
+        reveal_type(type(x))  # N: Revealed type is "type[object]"
+        reveal_type(type(y))  # N: Revealed type is "type[object]"
+        reveal_type(type(self))  # N: Revealed type is "type[Self]"
 
 [case type_executions_of_special_types]
 from enum import Enum
@@ -865,18 +865,18 @@ class T(TypedDict):
     x: int
 
 def foo(e: E, d: D, n: N, t: T):
-    reveal_type(type(E))  # N: Revealed type is "Type[object]"
-    reveal_type(type(e))  # N: Revealed type is "Type[__main__.E]"
-    reveal_type(type(E.x))  # N: Revealed type is "Type[__main__.E]"
+    reveal_type(type(E))  # N: Revealed type is "type[object]"
+    reveal_type(type(e))  # N: Revealed type is "type[__main__.E]"
+    reveal_type(type(E.x))  # N: Revealed type is "type[__main__.E]"
 
-    reveal_type(type(D))  # N: Revealed type is "Type[object]"
+    reveal_type(type(D))  # N: Revealed type is "type[object]"
     reveal_type(type(d))  # N: Revealed type is "def (x: int) -> __main__.D"
 
-    reveal_type(type(N))  # N: Revealed type is "Type[object]"
-    reveal_type(type(n))  # N: Revealed type is "Type[tuple[int, fallback=__main__.N]]"
+    reveal_type(type(N))  # N: Revealed type is "type[object]"
+    reveal_type(type(n))  # N: Revealed type is "type[tuple[int, fallback=__main__.N]]"
 
-    reveal_type(type(T))  # N: Revealed type is "Type[object]"
-    reveal_type(type(t))  # N: Revealed type is "Type[object]"
+    reveal_type(type(T))  # N: Revealed type is "type[object]"
+    reveal_type(type(t))  # N: Revealed type is "type[object]"
 
 [case self_argument_against_generics]
 from typing import Self, Generic, TypeVar
@@ -954,22 +954,22 @@ class C(B):
     c: int
 
 A.a  # E: "a" in __slots__ conflicts with class variable access
-A.b  # E: "Type[A]" has no attribute "b"
-A.c  # E: "Type[A]" has no attribute "c"
+A.b  # E: "type[A]" has no attribute "b"
+A.c  # E: "type[A]" has no attribute "c"
 A.x
-A.undefined = 1  # E: "Type[A]" has no attribute "undefined"
+A.undefined = 1  # E: "type[A]" has no attribute "undefined"
 
 B.a  # E: "a" in __slots__ conflicts with class variable access
 B.b
-B.c  # E: "Type[B]" has no attribute "c"
+B.c  # E: "type[B]" has no attribute "c"
 B.x
-B.undefined = 1  # E: "Type[B]" has no attribute "undefined"
+B.undefined = 1  # E: "type[B]" has no attribute "undefined"
 
 C.a  # E: "a" in __slots__ conflicts with class variable access
 C.b
 C.c  # E: "c" in __slots__ conflicts with class variable access
 C.x
-C.undefined = 1  # E: "Type[C]" has no attribute "undefined"
+C.undefined = 1  # E: "type[C]" has no attribute "undefined"
 
 [case aug_assign_with_inheritance_context]
 class Foo:
@@ -1013,7 +1013,7 @@ class Foo:
 
 Foo().mro = ""
 Foo.mro = ""  # E: Cannot assign to a method \
-              # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[[], list[Type[Any]]]")
+              # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[[], list[type[Any]]]")
 
 [case var_defined_on_if_in_unannotated_self_function]
 class F:
@@ -1063,7 +1063,7 @@ class UnknownMeta(metaclass=UNDEFINED): ...  # E: Name "UNDEFINED" is not define
 
 def f(with_type: WithType, simple: Simple, unknown_base: UnknownBase, unknown_meta_t: type[UnknownMeta]):
     with_type = unknown_meta_t
-    simple = unknown_meta_t  # E: Incompatible types in assignment (expression has type "Type[UnknownMeta]", variable has type "Simple")
+    simple = unknown_meta_t  # E: Incompatible types in assignment (expression has type "type[UnknownMeta]", variable has type "Simple")
     unknown_base = unknown_meta_t
 
 [case unknown_metaclass_getitem]
@@ -1111,7 +1111,7 @@ class B:
 def foo(x: Callable[[int], Any]) -> None: ...
 
 foo(A)
-foo(B)  # E: Argument 1 to "foo" has incompatible type "Type[B]"; expected "Callable[[int], Any]"
+foo(B)  # E: Argument 1 to "foo" has incompatible type "type[B]"; expected "Callable[[int], Any]"
 
 [case nested_class_self_assignment]
 class Foo:
@@ -1371,7 +1371,7 @@ def g(x: type[Foo], y: type[Bar]):
 # flags: --use-joins
 from collections import defaultdict
 m = set([dict, defaultdict])
-reveal_type(m)  # N: Revealed type is "set[Type[dict[Any, Any]]]"
+reveal_type(m)  # N: Revealed type is "set[type[dict[Any, Any]]]"
 
 [case class_name_resolving_if_member_has_same_name]
 import m
@@ -2062,12 +2062,12 @@ class Test:
     @classmethod
     def setUpClass(cls) -> None:
         cls._results = [1, 2, 3]  # error: Cannot assign to class variable "_results" via instance  [misc]
-        cls.foo = 1  # E: "Type[Self]" has no attribute "foo"
-        cls.with_annotation: int = ""  # E: "Type[Self]" has no attribute "with_annotation" \
+        cls.foo = 1  # E: "type[Self]" has no attribute "foo"
+        cls.with_annotation: int = ""  # E: "type[Self]" has no attribute "with_annotation" \
                                        # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
                                        # E: Type cannot be declared in assignment to non-self attribute
 
-Test.foo = 1  # E: "Type[Test]" has no attribute "foo"
+Test.foo = 1  # E: "type[Test]" has no attribute "foo"
 y = Test().foo  # E: "Test" has no attribute "foo"
 reveal_type(y)  # N: Revealed type is "Any"
 Test().with_annotation  # E: "Test" has no attribute "with_annotation"

@@ -221,7 +221,7 @@ from mypy_extensions import Arg, DefaultArg
 
 x1: Callable[[Arg(int, f"{1}")], int]  # E: Name argument should be a string literal
 x2: Callable[[Arg(int, 1)], int] # E: Name argument should be a string literal \
-                                 # E: No overload variant of "Arg" matches argument types "Type[int]", "int" \
+                                 # E: No overload variant of "Arg" matches argument types "type[int]", "int" \
                                  # N: Possible overload variants: \
                                  # N:     def [_T] Arg(type: _T, name: str | None = ...) -> _T \
                                  # N:     def Arg(*, name: str | None = ...) -> Any
@@ -401,7 +401,7 @@ def f(x: X, y: Y, z: Z):
 [case no_crash_on_badly_defined_type_alias]
 from typing import TypeAlias
 
-M: TypeAlias = None  # type: can't parse me!  # E: invalid syntax
+M: TypeAlias = None  # type: can't parse me!  # E: Invalid syntax
 N: TypeAlias = None  # type: int
 
 def foo(x: M, y: N):
@@ -548,7 +548,7 @@ from typing import TypeAlias, Any, Mapping
 if bool():
     X: TypeAlias = int
 else:
-    X = Any  # E: Incompatible types in assignment (expression has type "object", variable has type "Type[int]")
+    X = Any  # E: Incompatible types in assignment (expression has type "object", variable has type "type[int]")
 
 [case type_alias_invalid_star_in_type_var_bounds]
 def f[T: (int, *str)](t: T) -> list[T]: ...  # E: Unpack is only valid in a variadic position
@@ -561,8 +561,8 @@ def f(
     a: m.int_literal,  # E: Variable "m.int_literal" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     b: m.int_literal,  # E: Variable "m.int_literal" is not valid as a type  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ):
-    reveal_type(x)  # N: Revealed type is "Type[None]"
-    reveal_type(m.void)  # N: Revealed type is "Type[None]"
+    reveal_type(x)  # N: Revealed type is "type[None]"
+    reveal_type(m.void)  # N: Revealed type is "type[None]"
 
 [file m.py]
 void = type(None)
@@ -668,7 +668,7 @@ from typing import Literal
 good11: Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]
 
 [case avoid_error_in_invalid_syntax_definition_when_used]
-async def list  # E: invalid syntax
+async def list  # E: Invalid syntax
 
 @foo()  # E: Name "foo" is not defined
 async def list_foo() -> list[str]:  # E: Variable "__main__.list" is not valid as a type \

@@ -1240,7 +1240,7 @@ fn check_for_and_replace_type_type_in_finished_alias(
             _ => false,
         })
     {
-        alias_origin.add_issue(i_s, IssueKind::CannotContainType { name: "Type" });
+        alias_origin.add_issue(i_s, IssueKind::CannotContainType { name: "type" });
         let alias = TypeAlias::new(
             alias.type_vars.clone(),
             alias.location,

@@ -93,7 +93,7 @@ def foo(x: tuple[int, ...], y: tuple[int, int]) -> tuple[int, int]:
 #x: object = type(None)
 def foo(obj: object) -> None:
     if obj is type(None): ...
-    if 1 is type(None): ...  # E: Non-overlapping identity check (left operand type: "int", right operand type: "Type[None]")
+    if 1 is type(None): ...  # E: Non-overlapping identity check (left operand type: "int", right operand type: "type[None]")
 
 [case type_overlaps_with_type]
 # flags: --strict-equality
@@ -114,8 +114,8 @@ def foo(i: type[int], x: type[Any], y: type, z: type[object]) -> None:
     z == i
     i == z
 
-    type == i  # E: Non-overlapping equality check (left operand type: "Type[type]", right operand type: "Type[int]")
-    i == type  # E: Non-overlapping equality check (left operand type: "Type[int]", right operand type: "Type[type]")
+    type == i  # E: Non-overlapping equality check (left operand type: "type[type]", right operand type: "type[int]")
+    i == type  # E: Non-overlapping equality check (left operand type: "type[int]", right operand type: "type[type]")
     type == x
     x == type
     type == y

@@ -388,10 +388,10 @@ def foo_int(x: Type[A[int]]) -> None:
     reveal_type(y.delete(10))  # N: Revealed type is "int"
 
 def foo_something_else(x: Type[A[list[int]]]) -> None:
-    reveal_type(x.delete)  # E: Invalid self argument "Type[A[list[int]]]" to attribute function "delete" with type "overloaded function" \
+    reveal_type(x.delete)  # E: Invalid self argument "type[A[list[int]]]" to attribute function "delete" with type "overloaded function" \
                            # N: Revealed type is "Any"
     y = x()
-    reveal_type(y.delete)  # E: Invalid self argument "Type[A[list[int]]]" to class attribute function "delete" with type "Callable[[Type[A[int]], int], int]" \
+    reveal_type(y.delete)  # E: Invalid self argument "type[A[list[int]]]" to class attribute function "delete" with type "Callable[[type[A[int]], int], int]" \
                            # N: Revealed type is "Any"
 
 [case overload_star_args_as_self_works]
@@ -849,3 +849,164 @@ class F(E):
         self, x: str
     ) -> str:
         ...
+
+[case reverted_testTypeIsInOverloads]
+# flags: --mypy-compatible
+# From https://github.com/python/mypy/pull/17678 and were reverted
+from typing import Any, overload, Union
+from typing_extensions import TypeIs
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+@overload
+def func1(x: int) -> TypeIs[int]:
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Any):
+    if func1(val):
+--zuban-diff         reveal_type(val)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+        reveal_type(val)  # N: Revealed type is "Any"
+    else:
+        reveal_type(val)  # N: Revealed type is "Any"
+
+def func3(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "int | str"
+    else:
+        reveal_type(val)
+
+def func4(val: int):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "int"
+    else:
+        reveal_type(val)
+[builtins fixtures/tuple.pyi]
+
+[case reverted_testTypeIsInOverloadsSameReturn]
+# From https://github.com/python/mypy/pull/17678 and was reverted, but still useful
+from typing import Any, overload, Union
+from typing_extensions import TypeIs
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+@overload
+def func1(x: int) -> TypeIs[str]:  # type: ignore
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "str"
+    else:
+        reveal_type(val)  # N: Revealed type is "int"
+[builtins fixtures/tuple.pyi]
+
+[case reverted_testTypeIsInOverloadsUnionizeError]
+# From https://github.com/python/mypy/pull/17678 and was reverted, but still useful
+from typing import Any, overload, Union
+from typing_extensions import TypeIs, TypeGuard
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+@overload
+def func1(x: int) -> TypeGuard[int]:
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "int | str"
+    else:
+        reveal_type(val)  # N: Revealed type is "int | str"
+[builtins fixtures/tuple.pyi]
+
+[case reverted_testTypeIsInOverloadsUnionizeError2]
+# From https://github.com/python/mypy/pull/17678 and was reverted, but still useful
+from typing import Any, overload, Union
+from typing_extensions import TypeIs, TypeGuard
+
+@overload
+def func1(x: int) -> TypeGuard[int]:
+    ...
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "int | str"
+    else:
+        reveal_type(val)  # N: Revealed type is "int | str"
+[builtins fixtures/tuple.pyi]
+
+[case reverted_testTypeIsLikeIsDataclass]
+# From https://github.com/python/mypy/pull/17678 and was reverted, but still useful
+from typing import Any, overload, Union, Type
+from typing_extensions import TypeIs
+
+class DataclassInstance: ...
+
+@overload
+def is_dataclass(obj: type) -> TypeIs[Type[DataclassInstance]]: ...
+@overload
+def is_dataclass(obj: object) -> TypeIs[Union[DataclassInstance, Type[DataclassInstance]]]: ...
+
+def is_dataclass(obj: Union[type, object]) -> bool:
+    return False
+
+def func(arg: Any) -> None:
+    if is_dataclass(arg):
+--zuban-diff         reveal_type(arg)  # N: Revealed type is "Union[type[__main__.DataclassInstance], __main__.DataclassInstance]"
+        reveal_type(arg)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case reverted_testNoCrashOnDunderCallTypeGuardTemporaryObject]
+# From https://github.com/python/mypy/pull/17678 and was reverted, but still useful
+from typing_extensions import TypeGuard, overload, Any, Union
+
+@overload
+def func1(x: str) -> TypeGuard[str]:
+    ...
+
+@overload
+def func1(x: int) -> TypeGuard[int]:
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Any):
+    if func1(val):
+--zuban-diff         reveal_type(val)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+        reveal_type(val)  # N: Revealed type is "Any"
+    else:
+        reveal_type(val)  # N: Revealed type is "Any"
+
+def func3(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "int | str"
+    else:
+        reveal_type(val)  # N: Revealed type is "int | str"
+
+def func4(val: int):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "int"
+    else:
+        reveal_type(val)  # N: Revealed type is "int"

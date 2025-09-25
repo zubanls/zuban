@@ -81,8 +81,8 @@ Rec1 = list[type['Rec1'] | int]
 Rec2 = list[type['Rec2[T]'] | T]
 
 def f(x: Rec1, y: Rec2[int]):
-    x[0].append  # E: Item "int" of "Type[list[Type[Rec1] | int]] | int" has no attribute "append"
-    y[1].append  # E: Item "int" of "Type[Rec2[int]] | int" has no attribute "append"
+    x[0].append  # E: Item "int" of "type[list[type[Rec1] | int]] | int" has no attribute "append"
+    y[1].append  # E: Item "int" of "type[Rec2[int]] | int" has no attribute "append"
 
 [case recursive_alias_without_generics]
 from typing import TypeVar, TypeAlias

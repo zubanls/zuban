@@ -77,7 +77,7 @@ def foo(x: type[TD[int]], y: type[TD[str]]) -> None:
     if bool():
         w = x
     if bool():
-        w = y  # E: Incompatible types in assignment (expression has type "Type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], __main__.TD[Any]]")
+        w = y  # E: Incompatible types in assignment (expression has type "type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], __main__.TD[Any]]")
     w = TD
 
 [case invalid_typed_dict]

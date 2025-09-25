@@ -765,7 +765,7 @@ impl Type {
     }
 
     fn type_type_maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
-        // Is Type[Foo] a callable?
+        // Is type[Foo] a callable?
         match self {
             Type::Class(c) => {
                 let cls = c.class(i_s.db);
@@ -934,7 +934,7 @@ impl Type {
                 _ => Box::from("overloaded function"),
             },
             Self::TypeVar(t) => format_data.format_type_var(t),
-            Self::Type(type_) => format!("Type[{}]", type_.format(format_data)).into(),
+            Self::Type(type_) => format!("type[{}]", type_.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
             Self::Any(_) => Box::from("Any"),

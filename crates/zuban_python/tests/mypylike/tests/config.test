@@ -85,7 +85,7 @@ exclude = "inherited_exclude"
 [file m.py]
 1[]
 [file n.py]
-1[]  # E: invalid syntax
+1[]  # E: Invalid syntax
 [file mypy.ini]
 \[mypy]
 exclude = 'm.py$'

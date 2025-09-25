@@ -9,7 +9,7 @@ class C(Enum):
     X = 1
     Y = 2
 
-C._ignore_ # E: "Type[C]" has no attribute "_ignore_"
+C._ignore_ # E: "type[C]" has no attribute "_ignore_"
 C.Y._ignore_ # E: "C" has no attribute "_ignore_"
 
 c: C

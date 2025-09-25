@@ -767,7 +767,7 @@ class DC3(ModelBase):
     field1: int = model_field(converter=converter_simple, default=1)  # E: Argument "default" to "model_field" has incompatible type "int"; expected "str | None"
 
     field2: int = model_field(converter=converter_simple, default_factory=str)
-    field3: int = model_field(converter=converter_simple, default_factory=int)  # E: Argument "default_factory" to "model_field" has incompatible type "Type[int]"; expected "Callable[[], str] | None"
+    field3: int = model_field(converter=converter_simple, default_factory=int)  # E: Argument "default_factory" to "model_field" has incompatible type "type[int]"; expected "Callable[[], str] | None"
 
 [case dataclass_transform_converter_generic]
 from typing import Callable, TypeVar, dataclass_transform

@@ -18,7 +18,7 @@ def function(): ...
 __main__:2: error: Module "m" has no attribute "functio"
 __main__:4: error: Module "m" has no attribute "unknown"
 __main__:7: error: Name "func" is not defined
-__main__:10: error: invalid syntax
+__main__:10: error: Invalid syntax
 __main__.py:2:complete -> [function]
 __main__.py:4:complete -> []
 __main__.py:7:complete -> [functio, function]
@@ -76,7 +76,7 @@ class C:
     #? complete --show-kind
     __init__
 [out]
-__main__:3: error: "Type[C]" has no attribute "attr"
+__main__:3: error: "type[C]" has no attribute "attr"
 __main__:5: error: "C" has no attribute "attr"
 m.py:19: error: Name "attr" is not defined
 __main__.py:3:complete -> [attr_classmethod:Function, attr_decorated:Method, attr_func:Method, attr_property:Property, attr_property_writable:Property, attr_staticmethod:Function, attr_var:Field]
@@ -175,8 +175,8 @@ str.
 str.
 
 [out]
-__main__:9: error: invalid syntax
-__main__:11: error: invalid syntax
+__main__:9: error: Invalid syntax
+__main__:11: error: Invalid syntax
 __main__.py:2:complete -> [NotImplementedError, object]
 __main__.py:5:complete -> [NotImplementedError, object]
 __main__.py:9:complete -> [upper]
@@ -196,8 +196,8 @@ str.
 str.
 
 [out]
-__main__:9: error: invalid syntax
-__main__:11: error: invalid syntax
+__main__:9: error: Invalid syntax
+__main__:11: error: Invalid syntax
 __main__.py:2:complete -> [NotImplementedError, object]
 __main__.py:5:complete -> [NotImplementedError, object]
 __main__.py:9:complete -> [upper]
@@ -217,8 +217,8 @@ str.
 str.
 
 [out]
-__main__:9: error: invalid syntax
-__main__:11: error: invalid syntax
+__main__:9: error: Invalid syntax
+__main__:11: error: Invalid syntax
 __main__.py:2:complete -> [NotImplementedError, object]
 __main__.py:5:complete -> [NotImplementedError, object]
 __main__.py:9:complete -> [upper]

@@ -15,7 +15,7 @@ def test(arg: P) -> None: ...
 b: Type[B]
 c: Type[C]
 test(b)  # OK
-test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(c)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def [T] foo(self: T) -> T \
@@ -50,7 +50,7 @@ class C:
     def __call__(self, el: str) -> None:
         return None
 
-p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "P") \
+p: P = C  # E: Incompatible types in assignment (expression has type "type[C]", variable has type "P") \
           # N: Following member(s) of "C" have conflicts: \
           # N: "C" has constructor incompatible with "__call__" of "P" \
           # N:     Expected: \
@@ -58,7 +58,7 @@ p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", 
           # N:     Got: \
           # N:         def __init__(app: str) -> C
 q: Q = C
-r: R = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "R") \
+r: R = C  # E: Incompatible types in assignment (expression has type "type[C]", variable has type "R") \
           # N: Following member(s) of "C" have conflicts: \
           # N: "C" has constructor incompatible with "__call__" of "R" \
           # N:     Expected: \
@@ -306,11 +306,11 @@ class Concrete:
 def fun(cls: type[Proto]) -> int:
     return cls().meth()  # OK
 
-fun(Proto)  # E: Only concrete class can be given where "Type[Proto]" is expected
+fun(Proto)  # E: Only concrete class can be given where "type[Proto]" is expected
 fun(Concrete)  # OK
 
 var: type[Proto]
-var = Proto  # E: Can only assign concrete classes to a variable of type "Type[Proto]"
+var = Proto  # E: Can only assign concrete classes to a variable of type "type[Proto]"
 var = Concrete  # OK
 var().meth()  # OK
 

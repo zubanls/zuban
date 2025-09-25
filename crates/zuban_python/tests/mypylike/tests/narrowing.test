@@ -223,7 +223,7 @@ a1: Type[A[int]]
 a2: A[int]
 
 if issubclass(a1, A):
-    reveal_type(a1)  # N: Revealed type is "Type[__main__.A[int]]"
+    reveal_type(a1)  # N: Revealed type is "type[__main__.A[int]]"
 
 if isinstance(a2, A):
     reveal_type(a2) # N: Revealed type is "__main__.A[int]"
@@ -245,15 +245,15 @@ class Bar:
 
 def foo(x: Type[Foo | Bar]) -> None:
     if x.baz == 1:
-        reveal_type(x)  # N: Revealed type is "Type[__main__.Foo]"
+        reveal_type(x)  # N: Revealed type is "type[__main__.Foo]"
     else:
-        reveal_type(x)  # N: Revealed type is "Type[__main__.Bar]"
+        reveal_type(x)  # N: Revealed type is "type[__main__.Bar]"
 
 def bar(x: Type[Foo] | Type[Bar]) -> None:
     if x.baz == 2:
-        reveal_type(x)  # N: Revealed type is "Type[__main__.Bar]"
+        reveal_type(x)  # N: Revealed type is "type[__main__.Bar]"
     else:
-        reveal_type(x)  # N: Revealed type is "Type[__main__.Foo]"
+        reveal_type(x)  # N: Revealed type is "type[__main__.Foo]"
 
 [case try_stmt_else_narrowing1]
 class A: ...
@@ -1414,9 +1414,9 @@ def foo(
     if isinstance(y, x2):
         reveal_type(y)  # N: Revealed type is "int"
 
-    if isinstance(y, x3):  # E: Argument 2 to "isinstance" has incompatible type "tuple[Type[int], Unpack[Ts], Type[str]]"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
+    if isinstance(y, x3):  # E: Argument 2 to "isinstance" has incompatible type "tuple[type[int], Unpack[Ts], type[str]]"; expected "type[Any] | UnionType | tuple[_ClassInfo, ...]"
         reveal_type(y)  # N: Revealed type is "Any"
-    if isinstance(y, x4):  # E: Argument 2 to "isinstance" has incompatible type "tuple[int, Unpack[Tuple[Type[bytes], ...]], Type[str]]"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
+    if isinstance(y, x4):  # E: Argument 2 to "isinstance" has incompatible type "tuple[int, Unpack[Tuple[type[bytes], ...]], type[str]]"; expected "type[Any] | UnionType | tuple[_ClassInfo, ...]"
         reveal_type(y)  # N: Revealed type is "Any"
 
 [case comprehension_if_complex_narrowing]
@@ -1737,7 +1737,7 @@ class B: ...
 class C: ...
 def f(x: type[A | B]):
     if issubclass(x, C):
-        reveal_type(x)  # N: Revealed type is "Type[<subclass of "__main__.C" and "__main__.A"> | <subclass of "__main__.C" and "__main__.B">]"
+        reveal_type(x)  # N: Revealed type is "type[<subclass of "__main__.C" and "__main__.A"> | <subclass of "__main__.C" and "__main__.B">]"
 
 [case narrowing_with_key_in_different_file]
 import m
@@ -1755,7 +1755,7 @@ S1 = "hello"
 from typing import Any, Tuple
 
 x = tuple([Tuple, set])
-reveal_type(x)  # Revealed types is "tuple[Type[typing.Collection[Any]], ...]"
+reveal_type(x)  # Revealed types is "tuple[type[typing.Collection[Any]], ...]"
 
 def f(value: Any) -> bool:
     return isinstance(value, x)

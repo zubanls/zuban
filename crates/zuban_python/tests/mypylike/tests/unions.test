@@ -39,7 +39,7 @@ b: Type[int] | Type[bytes]
 
 if bool():
     x = y
-    a = y  # E: Incompatible types in assignment (expression has type "Type[str] | Type[int]", variable has type "Type[int | bytes]")
-    b = x  # E: Incompatible types in assignment (expression has type "Type[str] | Type[int]", variable has type "Type[int] | Type[bytes]")
+    a = y  # E: Incompatible types in assignment (expression has type "type[str] | type[int]", variable has type "type[int | bytes]")
+    b = x  # E: Incompatible types in assignment (expression has type "type[str] | type[int]", variable has type "type[int] | type[bytes]")
 if bool():
     y = x

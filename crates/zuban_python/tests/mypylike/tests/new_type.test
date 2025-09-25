@@ -23,7 +23,7 @@ class Y(Generic[T]):
         reveal_type(Y.X(1)) # N: Revealed type is "__main__.X" \
                             # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 
-reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
+reveal_type(Y.X)  # N: Revealed type is "type[__main__.X]"
 Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
@@ -40,7 +40,7 @@ T = TypeVar("T")
 class Y(Generic[T]):
     X = NewType("X", list[T])
 
-reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
+reveal_type(Y.X)  # N: Revealed type is "type[__main__.X]"
 Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
@@ -60,7 +60,7 @@ class Y(Generic[T]):
                             # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 
 Y(1).self_t
-reveal_type(Y.X)  # N: Revealed type is "Type[__main__.X]"
+reveal_type(Y.X)  # N: Revealed type is "type[__main__.X]"
 Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
 Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
 Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
@@ -73,7 +73,7 @@ T = TypeVar("T")
 def y(a: T) -> T:
     X = NewType("X", list[T])
 
-    reveal_type(X)  # N: Revealed type is "Type[__main__.X]"
+    reveal_type(X)  # N: Revealed type is "type[__main__.X]"
     reveal_type(X(1)) # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]" \
                       # N: Revealed type is "__main__.X"
     reveal_type(X([a]))  # N: Revealed type is "__main__.X"
@@ -107,8 +107,8 @@ def unpack(x: tuple[*Ts]):
 # From conformance tests (aliases_newtype.py) and slightly extended
 from typing import NewType, Any, Type
 UserId = NewType("UserId", int)
-reveal_type(UserId)  # N: Revealed type is "Type[__main__.UserId]"
-_: type = UserId  # E: Incompatible types in assignment (expression has type "Type[UserId]", variable has type "Type[Any]")
+reveal_type(UserId)  # N: Revealed type is "type[__main__.UserId]"
+_: type = UserId  # E: Incompatible types in assignment (expression has type "type[UserId]", variable has type "type[Any]")
 
-a: Type[Any] = UserId  # E: Incompatible types in assignment (expression has type "Type[UserId]", variable has type "Type[Any]")
-b: Type[UserId] = UserId  # E: Incompatible types in assignment (expression has type "Type[UserId]", variable has type "Type[UserId]")
+a: Type[Any] = UserId  # E: Incompatible types in assignment (expression has type "type[UserId]", variable has type "type[Any]")
+b: Type[UserId] = UserId  # E: Incompatible types in assignment (expression has type "type[UserId]", variable has type "type[UserId]")

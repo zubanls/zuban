@@ -769,7 +769,7 @@ impl<'db> Diagnostic<'db> {
     pub(crate) fn message_with_notes(&self, additional_notes: &mut Vec<String>) -> String {
         use IssueKind::*;
         match &self.issue.kind {
-            InvalidSyntax => "invalid syntax".to_string(),
+            InvalidSyntax => "Invalid syntax".to_string(),
             InvalidSyntaxInTypeComment { type_comment } => format!(
                 r#"Syntax error in type comment "{type_comment}""#
             ),
@@ -1340,7 +1340,7 @@ impl<'db> Diagnostic<'db> {
             MustHaveOneArgument { name } => format!(
                 "{name} must have exactly one type argument"
             ),
-            CannotContainType { name } => format!(r#"Type[...] can't contain "{name}[...]""#),
+            CannotContainType { name } => format!(r#"type[...] can't contain "{name}[...]""#),
             InvalidRecursiveTypeAliasUnionOfItself { target } => format!(
                 "Invalid recursive alias: a {target} item of itself"
             ),

@@ -149,7 +149,7 @@ def g() -> Generator[int, str, None]:
 
 [case invalid_forward_reference]
 a: 'int; str'  # E: Syntax error in type annotation
-b: 'int str'  # E: invalid syntax
+b: 'int str'  # E: Invalid syntax
 
 [case typing_extensions_assert_type]
 from typing_extensions import assert_type, Literal
@@ -226,14 +226,14 @@ if bool():
 else:
     x = Foo.a  # E: "a" in __slots__ conflicts with class variable access
     reveal_type(x) # N: Revealed type is "int"
-Foo.b = 3  # E: "Type[Foo]" has no attribute "b"
+Foo.b = 3  # E: "type[Foo]" has no attribute "b"
 
 [case type_type_annotation]
 # No such test exists in Mypy (only for recursive aliases)
-foo: type[type[int]]  # E: Type[...] can't contain "Type[...]"
+foo: type[type[int]]  # E: type[...] can't contain "type[...]"
 
 [case type_type_alias_circular]
-A = type["B"]  # E: Type[...] can't contain "Type[...]"
+A = type["B"]  # E: type[...] can't contain "type[...]"
 B = list[type[A]]
 
 [case assign_bool_to_false_true_literal]
@@ -457,8 +457,8 @@ from typing import Literal
 def foo(y: Literal[b"abc"]): ...
 foo(b'a' b'bc')  # E: Argument 1 to "foo" has incompatible type "bytes"; expected "Literal[b'abc']"
 foo(b'abc')
-foo(b'a' f'bc')  # E: invalid syntax
-foo('a' b'bc')  # E: invalid syntax
+foo(b'a' f'bc')  # E: Invalid syntax
+foo('a' b'bc')  # E: Invalid syntax
 
 def simple(y: bytes): ...
 simple(b'a' b'bc')
@@ -541,7 +541,7 @@ Foo().undefined += 1  # E: "Foo" has no attribute "undefined"  # E: "Foo" has no
 class Foo:
     def f(self) -> None:
         self.a = 3
-        (self.bar, self.baz) += 1  # E: invalid syntax
+        (self.bar, self.baz) += 1  # E: Invalid syntax
         self.b = 3
 
 reveal_type(Foo().a)  # N: Revealed type is "int"
@@ -641,21 +641,21 @@ f"{a / 3:9}"  # E: Unsupported operand types for / ("str" and "int")
 f"""{'' + ":":24}"""
 
 [case special_builtins_access]
-reveal_type(isinstance)  # N: Revealed type is "def (object, Type[Any] | types.UnionType | tuple[..., ...]) -> bool"
-reveal_type(issubclass)  # N: Revealed type is "def (Type[Any], Type[Any] | types.UnionType | tuple[..., ...]) -> bool"
+reveal_type(isinstance)  # N: Revealed type is "def (object, type[Any] | types.UnionType | tuple[..., ...]) -> bool"
+reveal_type(issubclass)  # N: Revealed type is "def (type[Any], type[Any] | types.UnionType | tuple[..., ...]) -> bool"
 reveal_type(super)  # N: Revealed type is "super"
 
 [case special_typing_access]
 # Some types are handled in a special way, check however that normal
 # reveal_type does not crash.
 import typing
-reveal_type(typing.TypeVar)  # N: Revealed type is "Type[typing.TypeVar]"
-reveal_type(typing.TypeVarTuple)  # N: Revealed type is "Type[typing.TypeVarTuple]"
-reveal_type(typing.ParamSpec)  # N: Revealed type is "Type[typing.ParamSpec]"
+reveal_type(typing.TypeVar)  # N: Revealed type is "type[typing.TypeVar]"
+reveal_type(typing.TypeVarTuple)  # N: Revealed type is "type[typing.TypeVarTuple]"
+reveal_type(typing.ParamSpec)  # N: Revealed type is "type[typing.ParamSpec]"
 reveal_type(typing.cast)  # N: Revealed type is "object"
 reveal_type(typing.ClassVar)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
-reveal_type(typing.NewType)  # N: Revealed type is "Type[typing.NewType]"
+reveal_type(typing.NewType)  # N: Revealed type is "type[typing.NewType]"
 reveal_type(typing.TypeGuard)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.TypeIs)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.Concatenate)  # N: Revealed type is "typing._SpecialForm"
@@ -688,8 +688,8 @@ import collections
 import dataclasses
 import mypy_extensions
 
-reveal_type(collections.namedtuple)  # N: Revealed type is "def (typename: str, field_names: str | typing.Iterable[str], *, rename: bool =, module: str | None =, defaults: typing.Iterable[Any] | None =) -> Type[tuple[Any, ...]]"
-reveal_type(dataclasses.dataclass)  # N: Revealed type is "Overload(def [_T] (Type[_T], *, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> Type[_T], def (None =, *, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> def [_T] (Type[_T]) -> Type[_T])"
+reveal_type(collections.namedtuple)  # N: Revealed type is "def (typename: str, field_names: str | typing.Iterable[str], *, rename: bool =, module: str | None =, defaults: typing.Iterable[Any] | None =) -> type[tuple[Any, ...]]"
+reveal_type(dataclasses.dataclass)  # N: Revealed type is "Overload(def [_T] (type[_T], *, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> type[_T], def (None =, *, init: bool =, repr: bool =, eq: bool =, order: bool =, unsafe_hash: bool =, frozen: bool =, match_args: bool =, kw_only: bool =, slots: bool =, weakref_slot: bool =) -> def [_T] (type[_T]) -> type[_T])"
 reveal_type(mypy_extensions.FlexibleAlias)  # N: Revealed type is "Any"
 reveal_type(mypy_extensions.Arg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
 reveal_type(mypy_extensions.DefaultArg)  # N: Revealed type is "Overload(def [_T] (type: _T, name: str | None =) -> _T, def (*, name: str | None =) -> Any)"
@@ -734,12 +734,12 @@ class Bar(type): ...
 
 a: Any = ...
 if isinstance(a, type):
-    reveal_type(a) # N: Revealed type is "Type[Any]"
+    reveal_type(a) # N: Revealed type is "type[Any]"
 if issubclass(a, type):
-    reveal_type(a) # N: Revealed type is "Type[type]"
+    reveal_type(a) # N: Revealed type is "type[type]"
 
-isinstance(x, Type)  # E: Argument 2 to "isinstance" has incompatible type "_SpecialForm"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
-issubclass(x, Type)  # E: Argument 2 to "issubclass" has incompatible type "_SpecialForm"; expected "Type[Any] | UnionType | tuple[_ClassInfo, ...]"
+isinstance(x, Type)  # E: Argument 2 to "isinstance" has incompatible type "_SpecialForm"; expected "type[Any] | UnionType | tuple[_ClassInfo, ...]"
+issubclass(x, Type)  # E: Argument 2 to "issubclass" has incompatible type "_SpecialForm"; expected "type[Any] | UnionType | tuple[_ClassInfo, ...]"
 
 type.mro
 Type.mro  # E: "_SpecialForm" has no attribute "mro"
@@ -867,7 +867,7 @@ reveal_type(a=1)  # E: "reveal_type" only accepts one positional argument
 from typing import cast
 from collections import namedtuple
 from mypy_extensions import DefaultArg
-x: str = namedtuple  # E: Incompatible types in assignment (expression has type "Callable[[str, str | Iterable[str], DefaultNamedArg(bool, 'rename'), DefaultNamedArg(str | None, 'module'), DefaultNamedArg(Iterable[Any] | None, 'defaults')], Type[tuple[Any, ...]]]", variable has type "str")
+x: str = namedtuple  # E: Incompatible types in assignment (expression has type "Callable[[str, str | Iterable[str], DefaultNamedArg(bool, 'rename'), DefaultNamedArg(str | None, 'module'), DefaultNamedArg(Iterable[Any] | None, 'defaults')], type[tuple[Any, ...]]]", variable has type "str")
 y: str = cast  # E: Incompatible types in assignment (expression has type "object", variable has type "str")
 z: str = DefaultArg  # E: Incompatible types in assignment (expression has type "overloaded function", variable has type "str")
 
@@ -993,12 +993,12 @@ reveal_type(m.x)  # N: Revealed type is "int"
 reveal_type(n.x)  # N: Revealed type is "int"
 
 [file m.py]
-e =   # E: invalid syntax
+e =   # E: Invalid syntax
 x = 1
 
 [file n.py]
-def err()(value: str) -> str  # E: invalid syntax
-    return value  # E: "return" outside function  # E: invalid syntax
+def err()(value: str) -> str  # E: Invalid syntax
+    return value  # E: "return" outside function  # E: Invalid syntax
 x = 1
 
 [case avoid_bracket_slowdown]
@@ -1090,7 +1090,7 @@ except *Exception as x:
 # flags: --python-version 3.8
 import typing
 reveal_type(reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
-reveal_type(typing.NewType)  # N: Revealed type is "Type[typing_extensions.NewType]"
+reveal_type(typing.NewType)  # N: Revealed type is "type[typing_extensions.NewType]"
 
 [case set_item_error_code]
 # flags: --show-error-codes
@@ -1128,19 +1128,19 @@ def short_type(obj: object) -> str:
 [case broken_if_and_variables_after_should_still_resolve]
 def f() -> None:
     x = 1
-    if asd fds:  # E: invalid syntax
-        reveal_type(x)  # E: invalid syntax # N: Revealed type is "int"
+    if asd fds:  # E: Invalid syntax
+        reveal_type(x)  # E: Invalid syntax # N: Revealed type is "int"
     reveal_type(x)  # N: Revealed type is "int"
 
 [case broken_scope1]
 a = 1
- b = 1  # E: invalid syntax
+ b = 1  # E: Invalid syntax
 c = 1
 
 [case broken_scope2]
 a = 1
-if bool()  # E: invalid syntax
-    b = 1  # E: invalid syntax
+if bool()  # E: Invalid syntax
+    b = 1  # E: Invalid syntax
 c = 1
 
 [case diagnostics_after_trailing_semicolon_regression]
@@ -1200,16 +1200,16 @@ T = TypeVar("T")
 # > Annotated is not type compatible with type or type[T]
 SmallInt: TypeAlias = Annotated[int, ""]
 
-not_type1: type[Any] = Annotated[int, ""]  # E: Incompatible types in assignment (expression has type "_SpecialForm", variable has type "Type[Any]")
-not_type2: type[Any] = SmallInt  # E: Incompatible types in assignment (expression has type "_SpecialForm", variable has type "Type[Any]")
+not_type1: type[Any] = Annotated[int, ""]  # E: Incompatible types in assignment (expression has type "_SpecialForm", variable has type "type[Any]")
+not_type2: type[Any] = SmallInt  # E: Incompatible types in assignment (expression has type "_SpecialForm", variable has type "type[Any]")
 
 
 def func4(x: type[T]) -> T:
     return x()
 
 
-func4(Annotated[str, ""])  # E: Argument 1 to "func4" has incompatible type "_SpecialForm"; expected "Type[Never]"
-func4(SmallInt)  # E: Argument 1 to "func4" has incompatible type "_SpecialForm"; expected "Type[Never]"
+func4(Annotated[str, ""])  # E: Argument 1 to "func4" has incompatible type "_SpecialForm"; expected "type[Never]"
+func4(SmallInt)  # E: Argument 1 to "func4" has incompatible type "_SpecialForm"; expected "type[Never]"
 
 
 # > An attempt to call Annotated (whether parameterized or not) should be
@@ -1240,7 +1240,7 @@ non_alias1, non_alias2 = list[T] | str  # E: "UnionType" object is not iterable 
                                         # E: Type variable "__main__.T" is unbound \
                                         # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
                                         # N: (Hint: Use "T" in function signature to bind "T" inside a function)
-non_alias3: type = list[T] | str  # E: Incompatible types in assignment (expression has type "UnionType", variable has type "Type[Any]") \
+non_alias3: type = list[T] | str  # E: Incompatible types in assignment (expression has type "UnionType", variable has type "type[Any]") \
                                   # E: Type variable "__main__.T" is unbound \
                                   # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
                                   # N: (Hint: Use "T" in function signature to bind "T" inside a function)

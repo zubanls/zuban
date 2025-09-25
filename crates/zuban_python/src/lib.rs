@@ -371,10 +371,10 @@ impl<'project> Document<'project> {
             if let Some(name) = on_name {
                 match declaration_kinds.as_slice() {
                     ["class"] => {
-                        // Return the inner part in Type[A], because that makes more sense and
+                        // Return the inner part in type[A], because that makes more sense and
                         // looks nicer
                         for ty in &mut types {
-                            if ty.starts_with("Type[") && ty.ends_with("]") {
+                            if ty.starts_with("type[") && ty.ends_with("]") {
                                 ty.drain(..5);
                                 ty.drain(ty.len() - 1..);
                             }

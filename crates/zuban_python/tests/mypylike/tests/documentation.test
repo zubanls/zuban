@@ -66,8 +66,8 @@ def bar() -> OtherAlias: ...
 [out]
 __main__.py:3:documentation -> "(type) Alias = int"
 __main__.py:5:documentation -> "(type) Alias = int"
-__main__.py:8:documentation -> "(variable) OtherAlias: Type[str]"
-__main__.py:11:documentation -> "(variable) OtherAlias: Type[str]"
+__main__.py:8:documentation -> "(variable) OtherAlias: type[str]"
+__main__.py:11:documentation -> "(variable) OtherAlias: type[str]"
 
 [case docs_function_mypy_compatible]
 # flags: --mypy-compatible

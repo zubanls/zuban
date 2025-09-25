@@ -2621,7 +2621,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let ret = |t| TypeContent::Type(Type::Type(Arc::new(t)));
         for inner in t.iter_with_unpacked_unions_without_unpacking_recursive_types() {
             let name = match inner {
-                Type::Type(_) => "Type",
+                Type::Type(_) => "type",
                 Type::Literal(_) => "Literal",
                 _ => continue,
             };
