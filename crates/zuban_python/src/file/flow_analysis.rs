@@ -30,6 +30,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue, add_attribute_error},
     matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
+    new_class,
     node_ref::NodeRef,
     recoverable_error,
     type_::{
@@ -2781,7 +2782,7 @@ impl Inference<'_, '_, '_> {
         match case_pattern {
             CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, subject_key, pattern),
             CasePattern::OpenSequencePattern(seq) => {
-                self.find_guards_in_sequence_pattern(seq.iter())
+                self.find_guards_in_sequence_pattern(inf, seq.iter())
             }
         }
     }
@@ -2887,7 +2888,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
             PatternKind::SequencePattern(sequence_pattern) => {
-                return self.find_guards_in_sequence_pattern(sequence_pattern.iter());
+                return self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter());
             }
             PatternKind::MappingPattern(mapping_pattern) => {
                 for item in mapping_pattern.iter() {
@@ -2914,32 +2915,69 @@ impl Inference<'_, '_, '_> {
 
     fn find_guards_in_sequence_pattern<'x>(
         &self,
+        inf: &Inferred,
+        sequence_patterns: impl Iterator<Item = SequencePatternItem<'x>> + Clone,
+    ) -> (Frame, Frame) {
+        FLOW_ANALYSIS.with(|fa| {
+            let i_s = self.i_s;
+            let mut result_truthy = Frame::new_unreachable();
+            let mut result_falsey = Frame::new_unreachable();
+            for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                let separate_tup = |tup: &Tuple| {
+                    // TODO
+                    (Frame::new_conditional(), Frame::new_conditional())
+                };
+                let (new_truthy, new_falsey) = match t {
+                    Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
+                    Type::Tuple(tup) => separate_tup(tup),
+                    Type::NamedTuple(nt) => separate_tup(&nt.as_tuple()),
+                    _ => {
+                        if let Some(cls) = t.maybe_class(i_s.db)
+                            && let Some(sequence) =
+                                cls.class_in_mro(i_s.db, i_s.db.python_state.sequence_node_ref())
+                        {
+                            let container_t = sequence.nth_type_argument(i_s.db, 0);
+                            self.assign_sequence_patterns(&container_t, sequence_patterns.clone())
+                        } else {
+                            (Frame::new_conditional(), Frame::new_conditional())
+                        }
+                    }
+                };
+                result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
+                result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
+            }
+            (result_truthy, result_falsey)
+        })
+    }
+
+    fn assign_sequence_patterns<'x>(
+        &self,
+        container_t: &Type,
         iter: impl Iterator<Item = SequencePatternItem<'x>>,
     ) -> (Frame, Frame) {
-        let assign_any = |name_def| {
-            // This is just temporary until the TODOs are resolved below
-            self.assign_to_name_def_simple(
-                name_def,
-                NodeRef::new(self.file, name_def.index()),
-                &Inferred::new_any_from_error(),
-                AssignKind::Normal,
-            )
-        };
         for item in iter {
             match item {
                 SequencePatternItem::Entry(pattern) => {
-                    // TODO
-                    self.find_guards_in_pattern(&Inferred::new_any_from_error(), None, pattern);
+                    self.find_guards_in_pattern(
+                        &Inferred::from_type(container_t.clone()),
+                        None,
+                        pattern,
+                    );
                 }
-                SequencePatternItem::Rest(star_pattern) => {
-                    match star_pattern.unpack() {
-                        StarPatternContent::NameDef(name_def) => {
-                            // TODO
-                            assign_any(name_def)
-                        }
-                        StarPatternContent::WildcardPattern(_) => (),
+                SequencePatternItem::Rest(star_pattern) => match star_pattern.unpack() {
+                    StarPatternContent::NameDef(name_def) => {
+                        self.assign_to_name_def_simple(
+                            name_def,
+                            NodeRef::new(self.file, name_def.index()),
+                            &Inferred::from_type(new_class!(
+                                self.i_s.db.python_state.list_link(),
+                                container_t.clone()
+                            )),
+                            AssignKind::Normal,
+                        );
                     }
-                }
+                    StarPatternContent::WildcardPattern(_) => (),
+                },
             }
         }
         (Frame::new_conditional(), Frame::new_conditional())

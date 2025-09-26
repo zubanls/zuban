@@ -188,6 +188,7 @@ pub(crate) struct PythonState {
     typing_coroutine_index: NodeIndex,
     typing_iterator_index: NodeIndex,
     typing_iterable_index: NodeIndex,
+    typing_sequence_index: NodeIndex,
     typing_generator_index: NodeIndex,
     typing_async_generator_index: NodeIndex,
     typing_async_iterator_index: NodeIndex,
@@ -337,6 +338,7 @@ impl PythonState {
             typing_coroutine_index: 0,
             typing_iterator_index: 0,
             typing_iterable_index: 0,
+            typing_sequence_index: 0,
             typing_generator_index: 0,
             typing_async_generator_index: 0,
             typing_async_iterator_index: 0,
@@ -693,6 +695,7 @@ impl PythonState {
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
         cache_index!(typing_iterable_index, typing, "Iterable");
+        cache_index!(typing_sequence_index, typing, "Sequence");
         cache_index!(typing_generator_index, typing, "Generator");
         cache_index!(typing_async_generator_index, typing, "AsyncGenerator");
         cache_index!(typing_async_iterator_index, typing, "AsyncIterator");
@@ -1030,6 +1033,7 @@ impl PythonState {
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
+    class_node_ref!(typing, pub sequence_node_ref, typing_sequence_index);
     attribute_node_ref!(
         typing,
         pub typing_special_form_node_ref,

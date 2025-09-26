@@ -155,7 +155,7 @@ impl<'db> KeywordPattern<'db> {
 }
 
 impl<'db> SequencePattern<'db> {
-    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> {
+    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> + Clone {
         let node = self.node.nth_child(1);
         node.is_type(Nonterminal(open_sequence_pattern))
             .then(|| OpenSequencePattern::new(node).iter())
@@ -165,7 +165,7 @@ impl<'db> SequencePattern<'db> {
 }
 
 impl<'db> OpenSequencePattern<'db> {
-    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> + use<'db> {
+    pub fn iter(&self) -> impl Iterator<Item = SequencePatternItem<'db>> + Clone + use<'db> {
         self.node.iter_children().step_by(2).map(|n| {
             if n.is_type(Nonterminal(pattern)) {
                 SequencePatternItem::Entry(Pattern::new(n))
