@@ -585,9 +585,6 @@ testRejectCovariantArgumentInLambda
 testLambdaInOverrideInference
 
 # match statement
-testMatchValuePatternNarrows
-testMatchValuePatternIntersect
-testMatchValuePatternUnreachable
 testMatchSequencePatternCaptures
 testMatchSequencePatternCapturesStarred
 testMatchSequencePatternNarrowsInner

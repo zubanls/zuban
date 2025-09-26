@@ -2828,8 +2828,23 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::WildcardPattern(_) => (),
             PatternKind::DottedName(dotted_name) => {
-                self.infer_pattern_dotted_name(dotted_name);
-                // TODO use this
+                let dotted_inf = self.infer_pattern_dotted_name(dotted_name);
+                if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
+                    let (truthy, falsey) = split_and_intersect(
+                        self.i_s,
+                        &inf.as_cow_type(i_s),
+                        &dotted_inf.as_cow_type(i_s),
+                        |issue| {
+                            if self.flags().warn_unreachable {
+                                self.add_issue(dotted_name.index(), issue)
+                            }
+                        },
+                    );
+                    return (
+                        Frame::from_type(key.clone(), truthy),
+                        Frame::from_type(key.clone(), falsey),
+                    );
+                }
             }
             PatternKind::ClassPattern(class_pattern) => {
                 let (dotted, params) = class_pattern.unpack();
