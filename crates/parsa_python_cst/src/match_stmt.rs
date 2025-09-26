@@ -1,8 +1,9 @@
 use crate::{
-    Block, CaseBlock, ClassPattern, DottedPatternName, DoubleStarPattern, GroupPattern, Guard,
-    KeyValuePattern, KeywordPattern, LiteralPattern, MappingPattern, MatchStmt, Name, NameDef,
-    NamedExpression, OpenSequencePattern, OrPattern, Pattern, SequencePattern,
-    StarLikeExpressionIterator, StarPattern, SubjectExpr, WildcardPattern,
+    Block, Bytes, CaseBlock, ClassPattern, ComplexNumber, DottedPatternName, DoubleStarPattern,
+    GroupPattern, Guard, KeyValuePattern, KeywordPattern, LiteralPattern, MappingPattern,
+    MatchStmt, Name, NameDef, NamedExpression, OpenSequencePattern, OrPattern, Pattern,
+    SequencePattern, SignedNumber, StarLikeExpressionIterator, StarPattern, Strings, SubjectExpr,
+    UnpackedNumber, WildcardPattern,
 };
 use parsa_python::{NonterminalType::*, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 
@@ -264,5 +265,48 @@ impl<'db> OrPattern<'db> {
 impl<'db> Guard<'db> {
     pub fn named_expr(&self) -> NamedExpression<'db> {
         NamedExpression::new(self.node.nth_child(1))
+    }
+}
+
+pub enum LiteralPatternContent<'db> {
+    Strings(Strings<'db>),
+    Bytes(Bytes<'db>),
+    SignedNumber(SignedNumber<'db>),
+    ComplexNumber(ComplexNumber<'db>),
+    None,
+    Bool(bool),
+}
+
+impl<'db> LiteralPattern<'db> {
+    pub fn unpack(&self) -> LiteralPatternContent<'db> {
+        let node = self.node.nth_child(0);
+        if node.is_type(Nonterminal(strings)) {
+            LiteralPatternContent::Strings(Strings::new(node))
+        } else if node.is_type(Nonterminal(bytes)) {
+            LiteralPatternContent::Bytes(Bytes::new(node))
+        } else if node.is_type(Nonterminal(signed_number)) {
+            LiteralPatternContent::SignedNumber(SignedNumber::new(node))
+        } else if node.is_type(Nonterminal(complex_number)) {
+            LiteralPatternContent::ComplexNumber(ComplexNumber::new(node))
+        } else if node.as_code() == "True" {
+            LiteralPatternContent::Bool(true)
+        } else if node.as_code() == "False" {
+            LiteralPatternContent::Bool(false)
+        } else {
+            debug_assert_eq!(node.as_code(), "None");
+            LiteralPatternContent::None
+        }
+    }
+}
+
+impl<'db> SignedNumber<'db> {
+    pub fn number_and_is_negated(&self) -> (UnpackedNumber<'db>, bool) {
+        let mut iter = self.node.iter_children();
+        let mut number = iter.next().unwrap();
+        let negated = number.as_code() == "-";
+        if negated {
+            number = iter.next().unwrap();
+        }
+        (UnpackedNumber::from_node(number), negated)
     }
 }

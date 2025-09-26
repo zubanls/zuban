@@ -574,6 +574,7 @@ impl<'db> NameBinder<'db> {
                 }
                 StmtLikeContent::WithStmt(with_stmt) => self.index_with_stmt(with_stmt, ordered),
                 StmtLikeContent::MatchStmt(match_stmt) => {
+                    self.following_nodes_need_flow_analysis = true;
                     self.index_match_stmt(match_stmt, ordered)
                 }
                 StmtLikeContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {

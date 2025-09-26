@@ -3499,24 +3499,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             },
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
-            Strings(strings) => {
-                let mut is_string_literal = true;
-                for string in strings.iter() {
-                    if let StringType::FString(f) = string {
-                        is_string_literal &= self
-                            .calc_fstring_content_diagnostics_and_return_is_string_literal(
-                                f.iter_content(),
-                            )
-                    }
-                }
-                if let Some(s) = strings.maybe_single_string_literal() {
+            Strings(strings) => match self.process_str_literal(strings) {
+                ProcessedStrings::Literal(s) => {
                     return check_literal(result_context, i_s, s.index(), Specific::StringLiteral);
-                } else if is_string_literal {
-                    return Inferred::from_type(Type::LiteralString { implicit: true });
-                } else {
-                    Specific::String
                 }
-            }
+                ProcessedStrings::LiteralString => {
+                    return Inferred::from_type(Type::LiteralString { implicit: true });
+                }
+                ProcessedStrings::WithFStringVariables => Specific::String,
+            },
             Bytes(b) => {
                 if let Some(b) = b.maybe_single_bytes_literal() {
                     return check_literal(result_context, i_s, b.index(), Specific::BytesLiteral);
@@ -3592,7 +3583,24 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 
-    fn infer_tuple_iterator<'x>(
+    pub(super) fn process_str_literal<'x>(&self, strings: Strings<'x>) -> ProcessedStrings<'x> {
+        let mut is_string_literal = true;
+        for string in strings.iter() {
+            if let StringType::FString(f) = string {
+                is_string_literal &= self
+                    .calc_fstring_content_diagnostics_and_return_is_string_literal(f.iter_content())
+            }
+        }
+        if let Some(s) = strings.maybe_single_string_literal() {
+            ProcessedStrings::Literal(s)
+        } else if is_string_literal {
+            ProcessedStrings::LiteralString
+        } else {
+            ProcessedStrings::WithFStringVariables
+        }
+    }
+
+    pub(super) fn infer_tuple_iterator<'x>(
         &self,
         iterator: impl ClonableTupleIterator<'x>,
         result_context: &mut ResultContext,
@@ -3753,18 +3761,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
         }
         is_string_literal
-    }
-
-    check_point_cache_with!(pub infer_subject_expr, Self::_infer_subject_expr, SubjectExpr);
-    fn _infer_subject_expr(&self, subject_expr: SubjectExpr) -> Inferred {
-        match subject_expr.unpack() {
-            SubjectExprContent::NamedExpression(named_expression) => {
-                self.infer_named_expression(named_expression)
-            }
-            SubjectExprContent::Tuple(star_like_expression_iterator) => self
-                .infer_tuple_iterator(star_like_expression_iterator, &mut ResultContext::Unknown),
-        }
-        .save_redirect(self.i_s, self.file, subject_expr.index())
     }
 
     pub fn infer_primary_target(
@@ -4585,6 +4581,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         is_no_type_check
     }
+}
+
+pub(super) enum ProcessedStrings<'db> {
+    Literal(StringLiteral<'db>),
+    LiteralString,
+    WithFStringVariables,
 }
 
 pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {

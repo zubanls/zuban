@@ -14,8 +14,8 @@ pub use bytes::parse_python_bytes_literal;
 use completion::scope_for_node;
 pub use completion::{CompletionNode, RestNode, Scope};
 pub use match_stmt::{
-    CasePattern, KeyEntryInPattern, MappingPatternItem, ParamPattern, PatternKind,
-    SequencePatternItem, StarPatternContent, SubjectExprContent,
+    CasePattern, KeyEntryInPattern, LiteralPatternContent, MappingPatternItem, ParamPattern,
+    PatternKind, SequencePatternItem, StarPatternContent, SubjectExprContent,
 };
 pub use parsa_python::{CodeIndex, NodeIndex, keywords_contain};
 use parsa_python::{
@@ -4390,6 +4390,25 @@ impl NameImportParent<'_> {
     }
 }
 
+pub enum UnpackedNumber<'db> {
+    Int(Int<'db>),
+    Float(Float<'db>),
+    Complex(Complex<'db>),
+}
+
+impl<'db> UnpackedNumber<'db> {
+    fn from_node(node: PyNode<'db>) -> Self {
+        let code = node.as_code();
+        if code.contains('j') || code.contains('J') {
+            Self::Complex(Complex::new(node))
+        } else if code.contains('.') {
+            Self::Float(Float::new(node))
+        } else {
+            Self::Int(Int::new(node))
+        }
+    }
+}
+
 impl<'db> Atom<'db> {
     #[inline]
     pub fn unpack(&self) -> AtomContent<'db> {
@@ -4398,16 +4417,11 @@ impl<'db> Atom<'db> {
 
         match first.type_() {
             Terminal(TerminalType::Name) => AtomContent::Name(Name::new(first)),
-            Terminal(TerminalType::Number) => {
-                let code = first.as_code();
-                if code.contains('j') || code.contains('J') {
-                    AtomContent::Complex(Complex::new(first))
-                } else if code.contains('.') {
-                    AtomContent::Float(Float::new(first))
-                } else {
-                    AtomContent::Int(Int::new(first))
-                }
-            }
+            Terminal(TerminalType::Number) => match UnpackedNumber::from_node(first) {
+                UnpackedNumber::Int(int) => AtomContent::Int(int),
+                UnpackedNumber::Float(float) => AtomContent::Float(float),
+                UnpackedNumber::Complex(complex) => AtomContent::Complex(complex),
+            },
             Nonterminal(strings) => AtomContent::Strings(Strings::new(first)),
             Nonterminal(bytes) => AtomContent::Bytes(Bytes::new(first)),
             PyNodeType::Keyword => match first.as_code() {

@@ -11,11 +11,11 @@ use parsa_python_cst::{
     BreakStmt, CaseBlock, CasePattern, CompIfIterator, ComparisonContent, Comparisons, Conjunction,
     ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression,
     ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
-    IfStmt, KeyEntryInPattern, MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression,
-    NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
-    SliceType as CSTSliceType, StarPatternContent, Target, Ternary, TryBlockType, TryStmt,
-    WhileStmt,
+    IfStmt, KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPatternItem,
+    MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
+    ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
+    PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType, StarPatternContent,
+    SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
 };
 
 use crate::{
@@ -25,7 +25,7 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassNodeRef, OtherDefinitionIterator},
+    file::{ClassNodeRef, OtherDefinitionIterator, inference::ProcessedStrings},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue, add_attribute_error},
@@ -2483,13 +2483,29 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         let (subject_expr, case_blocks) = match_stmt.unpack();
-        let subject = self.infer_subject_expr(subject_expr);
-        self.process_match_cases(&subject, case_blocks, class, func);
+        let (subject_key, inf) = match subject_expr.unpack() {
+            SubjectExprContent::NamedExpression(ne) => {
+                let k = self.key_from_namedexpression(ne);
+                (
+                    k.key.map(|key| SubjectKey::Expr {
+                        key,
+                        parent_unions: k.parent_unions,
+                    }),
+                    k.inf,
+                )
+            }
+            SubjectExprContent::Tuple(iterator) => (
+                None,
+                self.infer_tuple_iterator(iterator, &mut ResultContext::Unknown),
+            ),
+        };
+        self.process_match_cases(&inf, subject_key.as_ref(), case_blocks, class, func);
     }
 
     fn process_match_cases<'x>(
         &self,
         subject: &Inferred,
+        subject_key: Option<&SubjectKey>,
         mut case_blocks: impl Iterator<Item = CaseBlock<'x>>,
         class: Option<Class>,
         func: Option<&Function>,
@@ -2498,7 +2514,8 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let (case_pattern, guard, block) = case_block.unpack();
-        let (true_frame, false_frame) = self.find_guards_in_case_pattern(subject, case_pattern);
+        let (true_frame, false_frame) =
+            self.find_guards_in_case_pattern(subject, subject_key, case_pattern);
         if let Some(guard) = guard {
             self.infer_named_expression(guard.named_expr());
         }
@@ -2508,7 +2525,7 @@ impl Inference<'_, '_, '_> {
                 self.calc_block_diagnostics(block, class, func)
             });
             let false_frame = fa.with_frame(false_frame, || {
-                self.process_match_cases(subject, case_blocks, class, func)
+                self.process_match_cases(subject, subject_key, case_blocks, class, func)
             });
             fa.merge_conditional(self.i_s, true_frame, false_frame);
         });
@@ -2707,22 +2724,76 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    fn literal_pattern_to_type(&self, pat: LiteralPattern) -> Type {
+        let db = self.i_s.db;
+        match pat.unpack() {
+            LiteralPatternContent::Strings(strings) => match self.process_str_literal(strings) {
+                ProcessedStrings::Literal(s) => {
+                    if let Some(s) =
+                        DbString::from_python_string(self.file.file_index, s.as_python_string())
+                    {
+                        Type::Literal(Literal::new(LiteralKind::String(s)))
+                    } else {
+                        db.python_state.str_type()
+                    }
+                }
+                ProcessedStrings::LiteralString => Type::LiteralString { implicit: true },
+                ProcessedStrings::WithFStringVariables => db.python_state.str_type(),
+            },
+            LiteralPatternContent::Bytes(bytes) => {
+                if let Some(b) = bytes.maybe_single_bytes_literal() {
+                    Type::Literal(Literal::new(LiteralKind::Bytes(DbBytes::Link(
+                        PointLink::new(self.file.file_index, b.index()),
+                    ))))
+                } else {
+                    db.python_state.bytes_type()
+                }
+            }
+            LiteralPatternContent::SignedNumber(signed_number) => {
+                let (number, is_negated) = signed_number.number_and_is_negated();
+                match number {
+                    UnpackedNumber::Int(int) => {
+                        if let Some(mut result) = int.parse() {
+                            if is_negated {
+                                result = -result
+                            }
+                            Type::Literal(Literal::new(LiteralKind::Int(result)))
+                        } else {
+                            db.python_state.float_type()
+                        }
+                    }
+                    UnpackedNumber::Float(_) => db.python_state.float_type(),
+                    UnpackedNumber::Complex(_) => db.python_state.complex_type(),
+                }
+            }
+            LiteralPatternContent::ComplexNumber(_) => db.python_state.complex_type(),
+            LiteralPatternContent::None => Type::None,
+            LiteralPatternContent::Bool(b) => Type::Literal(Literal::new(LiteralKind::Bool(b))),
+        }
+    }
+
     fn find_guards_in_case_pattern(
         &self,
         inf: &Inferred,
+        subject_key: Option<&SubjectKey>,
         case_pattern: CasePattern,
     ) -> (Frame, Frame) {
         match case_pattern {
-            CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, pattern),
+            CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, subject_key, pattern),
             CasePattern::OpenSequencePattern(seq) => {
                 self.find_guards_in_sequence_pattern(seq.iter())
             }
         }
     }
 
-    fn find_guards_in_pattern(&self, inf: &Inferred, pattern: Pattern) -> (Frame, Frame) {
+    fn find_guards_in_pattern(
+        &self,
+        inf: &Inferred,
+        subject_key: Option<&SubjectKey>,
+        pattern: Pattern,
+    ) -> (Frame, Frame) {
         let (pattern_kind, as_name) = pattern.unpack();
-        let result = self.find_guards_in_pattern_kind(inf, pattern_kind);
+        let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind);
         if let Some(as_name) = as_name {
             let from = NodeRef::new(self.file, pattern.index());
             self.assign_to_name_def_simple(as_name, from, inf, AssignKind::Normal);
@@ -2730,7 +2801,12 @@ impl Inference<'_, '_, '_> {
         result
     }
 
-    fn find_guards_in_pattern_kind(&self, inf: &Inferred, kind: PatternKind) -> (Frame, Frame) {
+    fn find_guards_in_pattern_kind(
+        &self,
+        inf: &Inferred,
+        subject_key: Option<&SubjectKey>,
+        kind: PatternKind,
+    ) -> (Frame, Frame) {
         let assign_any = |name_def| {
             // This is just temporary until the TODOs are resolved below
             self.assign_to_name_def_simple(
@@ -2742,8 +2818,9 @@ impl Inference<'_, '_, '_> {
         };
         let assign_any_to_pattern = |pat| {
             // This is just temporary until the TODOs are resolved below
-            self.find_guards_in_pattern(&Inferred::new_any_from_error(), pat);
+            self.find_guards_in_pattern(&Inferred::new_any_from_error(), None, pat);
         };
+        let i_s = self.i_s;
         match kind {
             PatternKind::NameDef(name_def) => {
                 let from = NodeRef::new(self.file, name_def.index());
@@ -2771,16 +2848,27 @@ impl Inference<'_, '_, '_> {
                     }
                 }
             }
-            PatternKind::LiteralPattern(_literal_pattern) => {
-                // TODO
+            PatternKind::LiteralPattern(literal_pattern) => {
+                let expected = self.literal_pattern_to_type(literal_pattern);
+                if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
+                    if let Some(result) =
+                        narrow_is_or_eq(i_s, key.clone(), &inf.as_cow_type(i_s), &expected, true)
+                    {
+                        return result;
+                    }
+                }
             }
             PatternKind::GroupPattern(group_pattern) => {
-                return self.find_guards_in_pattern(inf, group_pattern.inner());
+                return self.find_guards_in_pattern(inf, subject_key, group_pattern.inner());
             }
             PatternKind::OrPattern(or_pattern) => {
                 for pat in or_pattern.iter() {
                     // TODO
-                    self.find_guards_in_pattern_kind(&Inferred::new_any_from_error(), pat);
+                    self.find_guards_in_pattern_kind(
+                        &Inferred::new_any_from_error(),
+                        subject_key,
+                        pat,
+                    );
                 }
             }
             PatternKind::SequencePattern(sequence_pattern) => {
@@ -2826,7 +2914,7 @@ impl Inference<'_, '_, '_> {
             match item {
                 SequencePatternItem::Entry(pattern) => {
                     // TODO
-                    self.find_guards_in_pattern(&Inferred::new_any_from_error(), pattern);
+                    self.find_guards_in_pattern(&Inferred::new_any_from_error(), None, pattern);
                 }
                 SequencePatternItem::Rest(star_pattern) => {
                     match star_pattern.unpack() {
@@ -4062,6 +4150,13 @@ impl From<Inferred> for TruthyInferred {
             truthiness: None,
         }
     }
+}
+
+enum SubjectKey {
+    Expr {
+        key: FlowKey,
+        parent_unions: ParentUnions,
+    },
 }
 
 #[derive(Copy, Clone, Debug)]
