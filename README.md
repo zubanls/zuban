@@ -27,6 +27,12 @@ zmypy         # An alias for zuban mypy
 zuban server  # An LSP server
 ```
 
+If you have [Homebrew](https://brew.sh/) installed, run
+
+```
+brew install zuban
+```
+
 If you want Zuban to pick up your dependencies, please activate the virtual env first.
 
 ### Local Installation
