@@ -2924,6 +2924,13 @@ impl Inference<'_, '_, '_> {
             let mut result_falsey = Frame::new_unreachable();
             for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
                 let (new_truthy, new_falsey) = match t {
+                    Type::Class(c)
+                        if c.link == i_s.db.python_state.str_link()
+                            || c.link == i_s.db.python_state.bytes_link()
+                            || c.link == i_s.db.python_state.bytearray_link() =>
+                    {
+                        (Frame::new_unreachable(), Frame::new_conditional())
+                    }
                     Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
                     Type::Tuple(tup) => {
                         self.assign_tup_for_sequence_patterns(tup, sequence_patterns.clone())
