@@ -425,6 +425,7 @@ impl IteratorContent {
         i_s: &InferenceState,
         after: usize,
         tuple_target: bool,
+        use_joins: bool,
     ) -> (bool, Inferred) {
         (
             false,
@@ -447,11 +448,19 @@ impl IteratorContent {
                             tuple_entries.into(),
                         )))
                     } else {
-                        let union = Inferred::gather_base_types(i_s, |callable| {
-                            for t in relevant_entries {
-                                callable(Inferred::from_type(t.clone()));
-                            }
-                        });
+                        let union = if use_joins {
+                            Inferred::gather_base_types(i_s, |callable| {
+                                for t in relevant_entries {
+                                    callable(Inferred::from_type(t.clone()));
+                                }
+                            })
+                        } else {
+                            Inferred::gather_simplified_union(i_s, |callable| {
+                                for t in relevant_entries {
+                                    callable(Inferred::from_type(t.clone()));
+                                }
+                            })
+                        };
                         let generic = union.as_type(i_s);
                         Inferred::new_list_of(i_s.db, generic)
                     };

@@ -2923,14 +2923,15 @@ impl Inference<'_, '_, '_> {
             let mut result_truthy = Frame::new_unreachable();
             let mut result_falsey = Frame::new_unreachable();
             for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                let separate_tup = |tup: &Tuple| {
-                    // TODO
-                    (Frame::new_conditional(), Frame::new_conditional())
-                };
                 let (new_truthy, new_falsey) = match t {
                     Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
-                    Type::Tuple(tup) => separate_tup(tup),
-                    Type::NamedTuple(nt) => separate_tup(&nt.as_tuple()),
+                    Type::Tuple(tup) => {
+                        self.assign_tup_for_sequence_patterns(tup, sequence_patterns.clone())
+                    }
+                    Type::NamedTuple(nt) => self.assign_tup_for_sequence_patterns(
+                        &nt.as_tuple(),
+                        sequence_patterns.clone(),
+                    ),
                     _ => {
                         if let Some(cls) = t.maybe_class(i_s.db)
                             && let Some(sequence) =
@@ -2978,6 +2979,81 @@ impl Inference<'_, '_, '_> {
                     }
                     StarPatternContent::WildcardPattern(_) => (),
                 },
+            }
+        }
+        (Frame::new_conditional(), Frame::new_conditional())
+    }
+
+    fn assign_tup_for_sequence_patterns<'x>(
+        &self,
+        tup: &Tuple,
+        sequence_patterns: impl Iterator<Item = SequencePatternItem<'x>> + Clone,
+    ) -> (Frame, Frame) {
+        let has_fixed_len_items = match &tup.args {
+            TupleArgs::WithUnpack(u) => u.before.len() + u.after.len(),
+            TupleArgs::FixedLen(items) => items.len(),
+            TupleArgs::ArbitraryLen(t) => {
+                return self.assign_sequence_patterns(&t, sequence_patterns);
+            }
+        };
+
+        let unreachable_pattern = || (Frame::new_unreachable(), Frame::new_conditional());
+        // Calculate first how many items are needed
+        let mut normal_patterns = 0;
+        let mut after_stars = 0;
+        let mut had_starred_pattern = false;
+        for item in sequence_patterns.clone() {
+            match item {
+                SequencePatternItem::Entry(_) => {
+                    normal_patterns += 1;
+                    if had_starred_pattern {
+                        after_stars += 1;
+                    }
+                }
+                SequencePatternItem::Rest(_) => {
+                    if had_starred_pattern {
+                        // TODO two+ stars add issue
+                        return self.assign_sequence_patterns(&Type::ERROR, sequence_patterns);
+                    }
+                    had_starred_pattern = true;
+                }
+            }
+        }
+
+        if !had_starred_pattern && has_fixed_len_items > normal_patterns
+            || has_fixed_len_items < normal_patterns
+                && !matches!(&tup.args, TupleArgs::WithUnpack(_))
+        {
+            return unreachable_pattern();
+        }
+        let mut value_iterator = tup.iter();
+        for pattern in sequence_patterns {
+            match pattern {
+                SequencePatternItem::Entry(pattern) => {
+                    self.find_guards_in_pattern(&value_iterator.unpack_next(), None, pattern);
+                }
+                SequencePatternItem::Rest(star_pattern) => {
+                    let (is_empty, mut value) =
+                        value_iterator.unpack_starred(self.i_s, after_stars, false, false);
+                    match star_pattern.unpack() {
+                        StarPatternContent::NameDef(name_def) => {
+                            if is_empty && self.infer_name_target(name_def, false).is_some() {
+                                // The type is already defined, just use any here, because the
+                                // list really can be anything.
+                                value = Inferred::from_type(
+                                    self.i_s.db.python_state.list_of_any.clone(),
+                                )
+                            }
+                            self.assign_to_name_def_simple(
+                                name_def,
+                                NodeRef::new(self.file, name_def.index()),
+                                &value,
+                                AssignKind::Normal,
+                            );
+                        }
+                        StarPatternContent::WildcardPattern(_) => (),
+                    }
+                }
             }
         }
         (Frame::new_conditional(), Frame::new_conditional())
