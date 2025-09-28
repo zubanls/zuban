@@ -20,13 +20,13 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{KnownArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
+    arguments::{KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{
         ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, WidenedType,
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassNodeRef, OtherDefinitionIterator, inference::ProcessedStrings},
+    file::{ClassNodeRef, OtherDefinitionIterator},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue, add_attribute_error},
@@ -2797,15 +2797,6 @@ impl Inference<'_, '_, '_> {
         subject_key: Option<&SubjectKey>,
         kind: PatternKind,
     ) -> (Frame, Frame) {
-        let assign_any = |name_def| {
-            // This is just temporary until the TODOs are resolved below
-            self.assign_to_name_def_simple(
-                name_def,
-                NodeRef::new(self.file, name_def.index()),
-                &Inferred::new_any_from_error(),
-                AssignKind::Normal,
-            )
-        };
         let assign_any_to_pattern = |pat| {
             // This is just temporary until the TODOs are resolved below
             self.find_guards_in_pattern(&Inferred::new_any_from_error(), None, pat);
@@ -2880,7 +2871,7 @@ impl Inference<'_, '_, '_> {
                 return self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter());
             }
             PatternKind::MappingPattern(mapping_pattern) => {
-                FLOW_ANALYSIS.with(|fa| {
+                return FLOW_ANALYSIS.with(|fa| {
                     let i_s = self.i_s;
                     let mut result_truthy = Frame::new_unreachable();
                     let mut result_falsey = Frame::new_unreachable();
