@@ -2883,7 +2883,7 @@ impl Inference<'_, '_, '_> {
                             _ => {
                                 let key = self.infer_mapping_key(mapping_pattern);
                                 let not_found = Cell::new(false);
-                                let executed = t
+                                let mut executed = t
                                     .lookup(
                                         i_s,
                                         self.file,
@@ -2901,13 +2901,14 @@ impl Inference<'_, '_, '_> {
                                         OnTypeError::new(&|_, _, _, _| ()),
                                     );
                                 if not_found.get() {
-                                    (Frame::new_unreachable(), Frame::new_conditional())
-                                } else {
-                                    self.assign_key_value_to_mapping_pattern(
-                                        executed,
-                                        mapping_pattern,
-                                    )
+                                    // A subclass could always create __getitem__
+                                    executed = Inferred::new_object(i_s.db)
                                 }
+                                self.assign_key_value_to_mapping_pattern(
+                                    t,
+                                    executed,
+                                    mapping_pattern,
+                                )
                             }
                         };
                         result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
@@ -3032,9 +3033,11 @@ impl Inference<'_, '_, '_> {
 
     fn assign_key_value_to_mapping_pattern(
         &self,
+        mapping_type: &Type,
         value: Inferred,
         mapping_pattern: MappingPattern,
     ) -> (Frame, Frame) {
+        let db = self.i_s.db;
         for item in mapping_pattern.iter() {
             match item {
                 MappingPatternItem::Entry(e) => {
@@ -3044,12 +3047,20 @@ impl Inference<'_, '_, '_> {
                 }
                 MappingPatternItem::Rest(rest) => {
                     let name_def = rest.name_def();
+                    let key_type = mapping_type
+                        .maybe_class(db)
+                        .and_then(|cls| {
+                            let mapping_node_ref = db.python_state.mapping_node_ref();
+                            let mapping = cls.class_in_mro(db, mapping_node_ref)?;
+                            Some(mapping.nth_type_argument(db, 0))
+                        })
+                        .unwrap_or_else(|| db.python_state.object_type());
                     self.assign_to_name_def_simple(
                         name_def,
                         NodeRef::new(self.file, name_def.index()),
                         &Inferred::from_type(new_class!(
-                            self.i_s.db.python_state.dict_link(),
-                            self.i_s.db.python_state.str_type(),
+                            db.python_state.dict_link(),
+                            key_type,
                             value.as_type(self.i_s),
                         )),
                         AssignKind::Normal,

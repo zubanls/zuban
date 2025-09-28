@@ -48,7 +48,6 @@ def f(td: TD):
             reveal_type(rest)  # N: Revealed type is "dict[str, int | str | bytes]"
 
 [case match_non_mapping_as_mapping]
-# flags: --warn-unreachable
 match 1:
     case { "x": x }:
-        x  # E: Statement is unreachable
+        reveal_type(x)  # N: Revealed type is "object"
