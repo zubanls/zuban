@@ -11,15 +11,16 @@ use parsa_python_cst::{
     BreakStmt, CaseBlock, CasePattern, CompIfIterator, ComparisonContent, Comparisons, Conjunction,
     ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression,
     ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
-    IfStmt, KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPatternItem,
-    MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
-    ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
-    PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType, StarPatternContent,
-    SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
+    IfStmt, KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPattern,
+    MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent,
+    NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom,
+    PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType,
+    StarPatternContent, SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber,
+    WhileStmt,
 };
 
 use crate::{
-    arguments::SimpleArgs,
+    arguments::{KnownArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{
         ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, WidenedType,
     },
@@ -36,8 +37,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, DbBytes, DbString, EnumKind,
         EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
-        lookup_on_enum_instance, simplified_union_from_iterators,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, TypedDict, UnionType,
+        WithUnpack, lookup_on_enum_instance, simplified_union_from_iterators,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -2728,19 +2729,7 @@ impl Inference<'_, '_, '_> {
     fn literal_pattern_to_type(&self, pat: LiteralPattern) -> Type {
         let db = self.i_s.db;
         match pat.unpack() {
-            LiteralPatternContent::Strings(strings) => match self.process_str_literal(strings) {
-                ProcessedStrings::Literal(s) => {
-                    if let Some(s) =
-                        DbString::from_python_string(self.file.file_index, s.as_python_string())
-                    {
-                        Type::Literal(Literal::new(LiteralKind::String(s)))
-                    } else {
-                        db.python_state.str_type()
-                    }
-                }
-                ProcessedStrings::LiteralString => Type::LiteralString { implicit: true },
-                ProcessedStrings::WithFStringVariables => db.python_state.str_type(),
-            },
+            LiteralPatternContent::Strings(strings) => self.strings_to_type(strings),
             LiteralPatternContent::Bytes(bytes) => {
                 if let Some(b) = bytes.maybe_single_bytes_literal() {
                     Type::Literal(Literal::new(LiteralKind::Bytes(DbBytes::Link(
@@ -2891,23 +2880,52 @@ impl Inference<'_, '_, '_> {
                 return self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter());
             }
             PatternKind::MappingPattern(mapping_pattern) => {
-                for item in mapping_pattern.iter() {
-                    match item {
-                        MappingPatternItem::Entry(e) => {
-                            let (key, value) = e.unpack();
-                            // TODO
-                            match key {
-                                KeyEntryInPattern::LiteralPattern(_lit) => (),
-                                KeyEntryInPattern::DottedName(_dotted) => (),
-                            };
-                            assign_any_to_pattern(value);
-                        }
-                        MappingPatternItem::Rest(rest) => {
-                            // TODO
-                            assign_any(rest.name_def())
-                        }
+                FLOW_ANALYSIS.with(|fa| {
+                    let i_s = self.i_s;
+                    let mut result_truthy = Frame::new_unreachable();
+                    let mut result_falsey = Frame::new_unreachable();
+                    for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                        let (new_truthy, new_falsey) = match t {
+                            Type::TypedDict(td) => self
+                                .find_guards_in_typed_dict_for_mapping_pattern(td, mapping_pattern),
+                            Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
+                            _ => {
+                                let key = self.infer_mapping_key(mapping_pattern);
+                                let had_issue = Cell::new(false);
+                                let executed = t
+                                    .lookup(
+                                        i_s,
+                                        self.file,
+                                        "__getitem__",
+                                        LookupKind::OnlyType,
+                                        &mut ResultContext::Unknown,
+                                        &|_| had_issue.set(true),
+                                        &|_| had_issue.set(true),
+                                    )
+                                    .into_inferred()
+                                    .execute_with_details(
+                                        i_s,
+                                        &KnownArgsWithCustomAddIssue::new(&key, &|_| {
+                                            had_issue.set(true)
+                                        }),
+                                        &mut ResultContext::Unknown,
+                                        OnTypeError::new(&|_, _, _, _| had_issue.set(true)),
+                                    );
+                                if !had_issue.get() {
+                                    self.assign_key_value_to_mapping_pattern(
+                                        executed,
+                                        mapping_pattern,
+                                    )
+                                } else {
+                                    (Frame::new_unreachable(), Frame::new_conditional())
+                                }
+                            }
+                        };
+                        result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
+                        result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
                     }
-                }
+                    (result_truthy, result_falsey)
+                });
             }
         }
         (Frame::new_conditional(), Frame::new_conditional())
@@ -2923,6 +2941,7 @@ impl Inference<'_, '_, '_> {
             let mut result_truthy = Frame::new_unreachable();
             let mut result_falsey = Frame::new_unreachable();
             for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                // TODO this everything should probably assign?!
                 let (new_truthy, new_falsey) = match t {
                     Type::Class(c)
                         if c.link == i_s.db.python_state.str_link()
@@ -2955,6 +2974,121 @@ impl Inference<'_, '_, '_> {
                 result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
             }
             (result_truthy, result_falsey)
+        })
+    }
+
+    fn find_guards_in_typed_dict_for_mapping_pattern(
+        &self,
+        td: &TypedDict,
+        mapping_pattern: MappingPattern,
+    ) -> (Frame, Frame) {
+        let i_s = self.i_s;
+        let fallback_type = || {
+            if td.has_extra_items(i_s.db) {
+                td.union_of_all_types(i_s)
+            } else {
+                i_s.db.python_state.object_type()
+            }
+        };
+        for item in mapping_pattern.iter() {
+            match item {
+                MappingPatternItem::Entry(e) => {
+                    let (key, value) = e.unpack();
+                    let inf_key = match key {
+                        KeyEntryInPattern::LiteralPattern(lit) => match lit.unpack() {
+                            LiteralPatternContent::Strings(strings) => {
+                                Inferred::from_type(self.strings_to_type(strings))
+                            }
+                            _ => return unreachable_pattern(),
+                        },
+                        KeyEntryInPattern::DottedName(dotted) => {
+                            self.infer_pattern_dotted_name(dotted)
+                        }
+                    };
+                    let value_t = match inf_key.as_cow_type(i_s).as_ref() {
+                        Type::Literal(literal) => match &literal.kind {
+                            LiteralKind::String(s) => {
+                                if let Some(member) = td.find_member(i_s.db, s.as_str(i_s.db)) {
+                                    member.type_.clone()
+                                } else if td.is_closed(i_s.db) {
+                                    return unreachable_pattern();
+                                } else {
+                                    fallback_type()
+                                }
+                            }
+                            _ => return unreachable_pattern(),
+                        },
+                        t if t.might_be_string(i_s.db) => fallback_type(),
+                        _ => return unreachable_pattern(),
+                    };
+                    self.find_guards_in_pattern(&Inferred::from_type(value_t), None, value);
+                }
+                MappingPatternItem::Rest(rest) => {
+                    let name_def = rest.name_def();
+                    self.assign_to_name_def_simple(
+                        name_def,
+                        NodeRef::new(self.file, name_def.index()),
+                        &Inferred::from_type(new_class!(
+                            self.i_s.db.python_state.dict_link(),
+                            self.i_s.db.python_state.str_type(),
+                            fallback_type()
+                        )),
+                        AssignKind::Normal,
+                    )
+                }
+            }
+        }
+        (Frame::new_conditional(), Frame::new_conditional())
+    }
+
+    fn assign_key_value_to_mapping_pattern(
+        &self,
+        value: Inferred,
+        mapping_pattern: MappingPattern,
+    ) -> (Frame, Frame) {
+        for item in mapping_pattern.iter() {
+            match item {
+                MappingPatternItem::Entry(e) => {
+                    let (_, val) = e.unpack();
+                    // This is just temporary until the TODOs are resolved below
+                    self.find_guards_in_pattern(&value, None, val);
+                }
+                MappingPatternItem::Rest(rest) => {
+                    let name_def = rest.name_def();
+                    self.assign_to_name_def_simple(
+                        name_def,
+                        NodeRef::new(self.file, name_def.index()),
+                        &Inferred::from_type(new_class!(
+                            self.i_s.db.python_state.dict_link(),
+                            self.i_s.db.python_state.str_type(),
+                            value.as_type(self.i_s),
+                        )),
+                        AssignKind::Normal,
+                    );
+                }
+            }
+        }
+        (Frame::new_conditional(), Frame::new_conditional())
+    }
+
+    fn infer_mapping_key(&self, mapping_pattern: MappingPattern) -> Inferred {
+        Inferred::gather_simplified_union(self.i_s, |gather| {
+            for item in mapping_pattern.iter() {
+                match item {
+                    MappingPatternItem::Entry(e) => {
+                        let (key, _) = e.unpack();
+                        gather(match key {
+                            KeyEntryInPattern::LiteralPattern(lit) => {
+                                Inferred::from_type(self.literal_pattern_to_type(lit))
+                            }
+                            KeyEntryInPattern::DottedName(dotted) => {
+                                self.infer_pattern_dotted_name(dotted)
+                            }
+                        })
+                    }
+                    MappingPatternItem::Rest(..) => (),
+                }
+            }
         })
     }
 
@@ -4227,6 +4361,10 @@ impl Inference<'_, '_, '_> {
     pub fn has_frames(&self) -> bool {
         !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
     }
+}
+
+fn unreachable_pattern() -> (Frame, Frame) {
+    (Frame::new_unreachable(), Frame::new_conditional())
 }
 
 enum TruthyInferred {

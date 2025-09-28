@@ -36,10 +36,10 @@ use crate::{
     params::matches_simple_params,
     recoverable_error,
     type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, IterCause, IterInfos, Literal,
-        LiteralKind, LookupResult, NeverCause, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
-        WithUnpack, dataclass_converter_fields_lookup,
+        AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
+        Literal, LiteralKind, LookupResult, NeverCause, ParamType, StarParamType,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType,
+        Variance, WithUnpack, dataclass_converter_fields_lookup,
     },
     type_helpers::{
         Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
@@ -3597,6 +3597,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             ProcessedStrings::LiteralString
         } else {
             ProcessedStrings::WithFStringVariables
+        }
+    }
+
+    pub(super) fn strings_to_type(&self, strings: Strings) -> Type {
+        match self.process_str_literal(strings) {
+            ProcessedStrings::Literal(s) => {
+                if let Some(s) =
+                    DbString::from_python_string(self.file.file_index, s.as_python_string())
+                {
+                    Type::Literal(Literal::new(LiteralKind::String(s)))
+                } else {
+                    self.i_s.db.python_state.str_type()
+                }
+            }
+            ProcessedStrings::LiteralString => Type::LiteralString { implicit: true },
+            ProcessedStrings::WithFStringVariables => self.i_s.db.python_state.str_type(),
         }
     }
 

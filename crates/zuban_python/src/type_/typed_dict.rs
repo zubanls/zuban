@@ -604,6 +604,13 @@ impl TypedDict {
         self.members(db).extra_items.is_some()
     }
 
+    pub fn is_closed(&self, db: &Database) -> bool {
+        self.members(db)
+            .extra_items
+            .as_ref()
+            .is_some_and(|t| t.t.is_never())
+    }
+
     pub fn union_of_all_types(&self, i_s: &InferenceState) -> Type {
         let ms = self.members(i_s.db);
         simplified_union_from_iterators(

@@ -8,3 +8,41 @@ match x:
         pass
     case something:
         pass
+
+[case match_closed_typed_dict]
+from typing import TypedDict
+
+class TD(TypedDict, closed=True):
+    x: int
+    y: str
+
+def f(td: TD): 
+    match td:
+        case { "x": 1, "y": y }:
+            reveal_type(y)  # N: Revealed type is "str"
+        case { "x": x }:
+            reveal_type(x)  # N: Revealed type is "int"
+
+    match td:
+        case { "x": 1, "y": y }: pass
+        case { **rest }:
+            reveal_type(rest)  # N: Revealed type is "dict[str, int | str]"
+
+[case match_extra_items_typed_dict]
+from typing import TypedDict
+
+class TD(TypedDict, extra_items=bytes):
+    x: int
+    y: str
+
+def f(td: TD): 
+    match td:
+        case { "x": 1, "y": y }:
+            reveal_type(y)  # N: Revealed type is "str"
+        case { "x": x }:
+            reveal_type(x)  # N: Revealed type is "int"
+
+    match td:
+        case { "x": 1, "y": y }: pass
+        case { **rest }:
+            reveal_type(rest)  # N: Revealed type is "dict[str, int | str | bytes]"
