@@ -2882,7 +2882,7 @@ impl Inference<'_, '_, '_> {
                             Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
                             _ => {
                                 let key = self.infer_mapping_key(mapping_pattern);
-                                let had_issue = Cell::new(false);
+                                let not_found = Cell::new(false);
                                 let executed = t
                                     .lookup(
                                         i_s,
@@ -2890,25 +2890,23 @@ impl Inference<'_, '_, '_> {
                                         "__getitem__",
                                         LookupKind::OnlyType,
                                         &mut ResultContext::Unknown,
-                                        &|_| had_issue.set(true),
-                                        &|_| had_issue.set(true),
+                                        &|_| (),
+                                        &|_| not_found.set(true),
                                     )
                                     .into_inferred()
                                     .execute_with_details(
                                         i_s,
-                                        &KnownArgsWithCustomAddIssue::new(&key, &|_| {
-                                            had_issue.set(true)
-                                        }),
+                                        &KnownArgsWithCustomAddIssue::new(&key, &|_| {}),
                                         &mut ResultContext::Unknown,
-                                        OnTypeError::new(&|_, _, _, _| had_issue.set(true)),
+                                        OnTypeError::new(&|_, _, _, _| ()),
                                     );
-                                if !had_issue.get() {
+                                if not_found.get() {
+                                    (Frame::new_unreachable(), Frame::new_conditional())
+                                } else {
                                     self.assign_key_value_to_mapping_pattern(
                                         executed,
                                         mapping_pattern,
                                     )
-                                } else {
-                                    (Frame::new_unreachable(), Frame::new_conditional())
                                 }
                             }
                         };
