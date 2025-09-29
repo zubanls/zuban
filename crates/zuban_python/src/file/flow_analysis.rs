@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, RefCell, RefMut},
+    cell::{Cell, OnceCell, RefCell, RefMut},
     collections::VecDeque,
     rc::Rc,
     sync::Arc,
@@ -2921,7 +2921,7 @@ impl Inference<'_, '_, '_> {
             let mut result_truthy = Frame::new_unreachable();
             let mut result_falsey = Frame::new_unreachable();
             for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                let lookup_for_pattern = |for_node_ref, name| {
+                let lookup = |for_node_ref, name: &str| {
                     t.lookup(
                         i_s,
                         self.file,
@@ -2933,15 +2933,49 @@ impl Inference<'_, '_, '_> {
                     )
                 };
                 let assign_to_pattern = || {
+                    let match_args = OnceCell::new();
+                    let mut nth_positional = 0;
                     for param in params.clone() {
                         match param {
                             ParamPattern::Positional(pat) => {
-                                // TODO
-                                assign_any_to_pattern(pat);
+                                let node_ref = NodeRef::new(self.file, pat.index());
+                                if let Some(match_args) = match_args.get_or_init(|| {
+                                    lookup(node_ref, "__match_args__").into_maybe_inferred()
+                                }) {
+                                    if let Some(tup_entries) =
+                                        match_args.as_cow_type(self.i_s).maybe_fixed_len_tuple()
+                                    {
+                                        if let Some(entry) = tup_entries.get(nth_positional) {
+                                            if let Type::Literal(literal) = entry
+                                                && let LiteralKind::String(s) = &literal.kind
+                                            {
+                                                let result = lookup(
+                                                    NodeRef::new(self.file, pat.index()),
+                                                    s.as_str(i_s.db),
+                                                );
+                                                if let Some(inf) = result.into_maybe_inferred() {
+                                                    self.find_guards_in_pattern(&inf, None, pat);
+                                                } else {
+                                                    return unreachable_pattern();
+                                                }
+                                            } else {
+                                                todo!()
+                                            }
+                                        } else {
+                                            todo!()
+                                        }
+                                    } else {
+                                        todo!()
+                                    }
+                                } else {
+                                    assign_any_to_pattern(pat);
+                                    todo!()
+                                }
+                                nth_positional += 1;
                             }
                             ParamPattern::Keyword(keyword_pattern) => {
                                 let (key, pat) = keyword_pattern.unpack();
-                                let result = lookup_for_pattern(
+                                let result = lookup(
                                     NodeRef::new(self.file, keyword_pattern.index()),
                                     key.as_code(),
                                 );

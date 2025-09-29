@@ -1673,7 +1673,7 @@ impl Type {
     }
 
     pub fn might_be_string(&self, db: &Database) -> bool {
-        self.iter_with_unpacked_unions(db).any(|t| match t {
+        self.for_all_in_union(db, &|t| match t {
             Type::LiteralString { .. } => true,
             Type::Literal(literal) => matches!(literal.kind, LiteralKind::String(_)),
             Type::Class(c) => c.link == db.python_state.str_link(),
