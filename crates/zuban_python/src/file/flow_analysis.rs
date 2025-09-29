@@ -2936,7 +2936,7 @@ impl Inference<'_, '_, '_> {
             )
         };
         return FLOW_ANALYSIS.with(|fa| {
-            let mut added_no_match_args = false;
+            let mut added_no_match_args_issue = false;
             let mut result_truthy = Frame::new_unreachable();
             let mut result_falsey = Frame::new_unreachable();
             for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -2974,8 +2974,12 @@ impl Inference<'_, '_, '_> {
                                             } else {
                                                 todo!()
                                             }
-                                        } else {
-                                            todo!()
+                                        } else if !added_no_match_args_issue {
+                                            added_no_match_args_issue = true;
+                                            node_ref.add_issue(
+                                                i_s,
+                                                IssueKind::TooManyPositionalPatternsForMatchArgs,
+                                            );
                                         }
                                     } else {
                                         todo!()
@@ -3007,7 +3011,7 @@ impl Inference<'_, '_, '_> {
                                         pat,
                                     );
                                 } else {
-                                    if !added_no_match_args {
+                                    if !added_no_match_args_issue {
                                         node_ref.add_issue(
                                             i_s,
                                             IssueKind::ClassHasNoMatchArgs {
@@ -3016,7 +3020,7 @@ impl Inference<'_, '_, '_> {
                                             },
                                         );
                                     }
-                                    added_no_match_args = true;
+                                    added_no_match_args_issue = true;
                                     assign_any_to_pattern(pat);
                                 }
                                 nth_positional += 1;
