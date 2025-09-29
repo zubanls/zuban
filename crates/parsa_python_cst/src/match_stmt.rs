@@ -116,7 +116,7 @@ impl<'db> ClassPattern<'db> {
         &self,
     ) -> (
         DottedPatternName<'db>,
-        impl Iterator<Item = ParamPattern<'db>>,
+        impl Iterator<Item = ParamPattern<'db>> + Clone,
     ) {
         let mut iterator = self.node.iter_children();
         let dotted = DottedPatternName::new(iterator.next().unwrap());
@@ -139,6 +139,7 @@ impl<'db> ClassPattern<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum ParamPattern<'db> {
     Positional(Pattern<'db>),
     Keyword(KeywordPattern<'db>),

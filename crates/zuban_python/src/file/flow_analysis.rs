@@ -8,15 +8,15 @@ use std::{
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, AssignmentContent, Atom, AtomContent, Block,
-    BreakStmt, CaseBlock, CasePattern, CompIfIterator, ComparisonContent, Comparisons, Conjunction,
-    ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock, ExceptExpression, Expression,
-    ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt, IfBlockIterator, IfBlockType,
-    IfStmt, KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPattern,
-    MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent,
-    NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType,
-    StarPatternContent, SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber,
-    WhileStmt,
+    BreakStmt, CaseBlock, CasePattern, ClassPattern, CompIfIterator, ComparisonContent,
+    Comparisons, Conjunction, ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock,
+    ExceptExpression, Expression, ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt,
+    IfBlockIterator, IfBlockType, IfStmt, KeyEntryInPattern, LiteralPattern, LiteralPatternContent,
+    MappingPattern, MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression,
+    NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
+    SliceType as CSTSliceType, StarPatternContent, SubjectExprContent, Target, Ternary,
+    TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
 };
 
 use crate::{
@@ -2797,10 +2797,6 @@ impl Inference<'_, '_, '_> {
         subject_key: Option<&SubjectKey>,
         kind: PatternKind,
     ) -> (Frame, Frame) {
-        let assign_any_to_pattern = |pat| {
-            // This is just temporary until the TODOs are resolved below
-            self.find_guards_in_pattern(&Inferred::new_any_from_error(), None, pat);
-        };
         let i_s = self.i_s;
         match kind {
             PatternKind::NameDef(name_def) => {
@@ -2828,21 +2824,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
             PatternKind::ClassPattern(class_pattern) => {
-                let (dotted, params) = class_pattern.unpack();
-                self.infer_pattern_dotted_name(dotted);
-                for param in params {
-                    match param {
-                        ParamPattern::Positional(pat) => {
-                            // TODO
-                            assign_any_to_pattern(pat);
-                        }
-                        ParamPattern::Keyword(keyword_pattern) => {
-                            // TODO
-                            let (_, pat) = keyword_pattern.unpack();
-                            assign_any_to_pattern(pat);
-                        }
-                    }
-                }
+                return self.find_guards_in_class_pattern(inf, class_pattern);
             }
             PatternKind::LiteralPattern(literal_pattern) => {
                 let expected = self.literal_pattern_to_type(literal_pattern);
@@ -2872,7 +2854,6 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::MappingPattern(mapping_pattern) => {
                 return FLOW_ANALYSIS.with(|fa| {
-                    let i_s = self.i_s;
                     let mut result_truthy = Frame::new_unreachable();
                     let mut result_falsey = Frame::new_unreachable();
                     for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -2919,6 +2900,72 @@ impl Inference<'_, '_, '_> {
             }
         }
         (Frame::new_conditional(), Frame::new_conditional())
+    }
+
+    fn find_guards_in_class_pattern(
+        &self,
+        inf: &Inferred,
+        class_pattern: ClassPattern,
+    ) -> (Frame, Frame) {
+        let (dotted, params) = class_pattern.unpack();
+        let assign_any_to_pattern = |pat| {
+            // This is just temporary until the TODOs are resolved below
+            self.find_guards_in_pattern(&Inferred::new_any_from_error(), None, pat);
+        };
+        let inferred_target = self.infer_pattern_dotted_name(dotted);
+        let Some(wanted) = inferred_target.maybe_saved_node_ref(self.i_s.db) else {
+            return unreachable_pattern();
+        };
+        return FLOW_ANALYSIS.with(|fa| {
+            let i_s = self.i_s;
+            let mut result_truthy = Frame::new_unreachable();
+            let mut result_falsey = Frame::new_unreachable();
+            for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                let lookup_for_pattern = |for_node_ref, name| {
+                    t.lookup(
+                        i_s,
+                        self.file,
+                        name,
+                        LookupKind::OnlyType,
+                        &mut ResultContext::Unknown,
+                        &|_| (),
+                        &|_| (),
+                    )
+                };
+                let assign_to_pattern = || {
+                    for param in params.clone() {
+                        match param {
+                            ParamPattern::Positional(pat) => {
+                                // TODO
+                                assign_any_to_pattern(pat);
+                            }
+                            ParamPattern::Keyword(keyword_pattern) => {
+                                let (key, pat) = keyword_pattern.unpack();
+                                let result = lookup_for_pattern(
+                                    NodeRef::new(self.file, keyword_pattern.index()),
+                                    key.as_code(),
+                                );
+                                if let Some(inf) = result.into_maybe_inferred() {
+                                    self.find_guards_in_pattern(&inf, None, pat);
+                                } else {
+                                    return unreachable_pattern();
+                                }
+                            }
+                        }
+                    }
+                    (Frame::new_conditional(), Frame::new_conditional())
+                };
+                let (new_truthy, new_falsey) = match t {
+                    Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
+                    Type::Class(c) if c.link == wanted.as_link() => assign_to_pattern(),
+                    Type::Dataclass(d) if d.class.link == wanted.as_link() => assign_to_pattern(),
+                    _ => unreachable_pattern(),
+                };
+                result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
+                result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
+            }
+            (result_truthy, result_falsey)
+        });
     }
 
     fn find_guards_in_sequence_pattern<'x>(
