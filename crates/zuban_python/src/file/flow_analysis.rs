@@ -2919,14 +2919,11 @@ impl Inference<'_, '_, '_> {
         let target_t = match inferred_target.as_ref() {
             Type::Type(t) => t.as_ref(),
             Type::Any(cause) => {
-                // TODO
                 return (Frame::new_conditional(), Frame::new_conditional());
-                //return self.find_guards_in_pattern(&Inferred::new_any(*cause), None, pat);
             }
             _ => todo!(),
         };
         let lookup = |for_node_ref, name: &str| {
-            dbg!(target_t.format_short(i_s.db), name);
             target_t.lookup(
                 i_s,
                 self.file,
@@ -2981,6 +2978,32 @@ impl Inference<'_, '_, '_> {
                                     } else {
                                         todo!()
                                     }
+                                } else if params.clone().count() == 1 && {
+                                    let py = &i_s.db.python_state;
+                                    match target_t {
+                                        Type::Class(c) => {
+                                            c.link == py.int_link()
+                                                || c.link == py.int_link()
+                                                || c.link == py.float_link()
+                                                || c.link == py.bool_link()
+                                                || c.link == py.str_link()
+                                                || c.link == py.bytes_link()
+                                                || c.link == py.bytearray_link()
+                                                || c.link == py.list_link()
+                                                || c.link == py.dict_link()
+                                                || c.link == py.set_link()
+                                                || c.link == py.frozenset_link()
+                                                || c.link == py.int_link()
+                                        }
+                                        Type::Tuple(_) => true,
+                                        _ => false,
+                                    }
+                                } {
+                                    self.find_guards_in_pattern(
+                                        &Inferred::from_type(target_t.clone()),
+                                        subject_key,
+                                        pat,
+                                    );
                                 } else {
                                     assign_any_to_pattern(pat);
                                     //todo!()
