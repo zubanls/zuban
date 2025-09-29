@@ -27,6 +27,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{ClassNodeRef, OtherDefinitionIterator},
+    format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue, add_attribute_error},
@@ -2935,10 +2936,11 @@ impl Inference<'_, '_, '_> {
             )
         };
         return FLOW_ANALYSIS.with(|fa| {
+            let mut added_no_match_args = false;
             let mut result_truthy = Frame::new_unreachable();
             let mut result_falsey = Frame::new_unreachable();
             for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                let assign_to_pattern = || {
+                let mut assign_to_pattern = || {
                     let mut result = (Frame::new_conditional(), Frame::new_conditional());
                     let match_args = OnceCell::new();
                     let mut nth_positional = 0;
@@ -3005,8 +3007,17 @@ impl Inference<'_, '_, '_> {
                                         pat,
                                     );
                                 } else {
+                                    if !added_no_match_args {
+                                        node_ref.add_issue(
+                                            i_s,
+                                            IssueKind::ClassHasNoMatchArgs {
+                                                class: target_t
+                                                    .format(&FormatData::new_reveal_type(i_s.db)),
+                                            },
+                                        );
+                                    }
+                                    added_no_match_args = true;
                                     assign_any_to_pattern(pat);
-                                    //todo!()
                                 }
                                 nth_positional += 1;
                             }

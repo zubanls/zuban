@@ -323,6 +323,8 @@ pub(crate) enum IssueKind {
     BaseExceptionExpectedForRaise { did_you_mean: Option<Box<str>> },
     ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
+    ClassHasNoMatchArgs { class: Box<str> },
+
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
     IntersectionCannotExistDueToInconsistentMro { intersection: Box<str> },
@@ -1727,6 +1729,10 @@ impl<'db> Diagnostic<'db> {
             },
             ExceptStarIsNotAllowedToBeAnExceptionGroup =>
                 "Exception type in except* cannot derive from BaseExceptionGroup".to_string(),
+
+            ClassHasNoMatchArgs { class } => format!(
+                r#"Class "{class}" doesn't define "__match_args__""#
+            ),
 
             IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection } => format!(
                 "Subclass of {intersection} cannot exist: would have incompatible method signatures"
