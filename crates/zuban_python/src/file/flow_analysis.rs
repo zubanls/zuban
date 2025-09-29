@@ -2940,6 +2940,11 @@ impl Inference<'_, '_, '_> {
             let mut result_truthy = Frame::new_unreachable();
             let mut result_falsey = Frame::new_unreachable();
             for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                let Some(target_t) = intersect(i_s, t, target_t, &mut |issue| {
+                    debug!("Intersection for class target not possible: {issue:?}");
+                }) else {
+                    continue;
+                };
                 let mut assign_to_pattern = || {
                     let mut result = (Frame::new_conditional(), Frame::new_conditional());
                     let match_args = OnceCell::new();
@@ -2986,7 +2991,7 @@ impl Inference<'_, '_, '_> {
                                     }
                                 } else if params.clone().count() == 1 && {
                                     let py = &i_s.db.python_state;
-                                    match target_t {
+                                    match target_t.as_ref() {
                                         Type::Class(c) => {
                                             c.link == py.int_link()
                                                 || c.link == py.int_link()
@@ -3006,7 +3011,7 @@ impl Inference<'_, '_, '_> {
                                     }
                                 } {
                                     self.find_guards_in_pattern(
-                                        &Inferred::from_type(target_t.clone()),
+                                        &Inferred::from_type(target_t.as_ref().clone()),
                                         subject_key,
                                         pat,
                                     );
@@ -3041,7 +3046,8 @@ impl Inference<'_, '_, '_> {
                 if !new_truthy.unreachable {
                     // This narrows the outer variable
                     if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                        new_truthy.add_entry(i_s, Entry::new(key.clone(), target_t.clone()))
+                        new_truthy
+                            .add_entry(i_s, Entry::new(key.clone(), target_t.as_ref().clone()))
                     }
                 }
                 result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
