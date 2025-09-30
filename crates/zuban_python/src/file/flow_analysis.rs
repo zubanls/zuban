@@ -2517,17 +2517,29 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let (case_pattern, guard, block) = case_block.unpack();
-        let frames = self.find_guards_in_case_pattern(subject, subject_key, case_pattern);
         FLOW_ANALYSIS.with(|fa| {
+            let (mut in_frame, frames) = fa.with_frame_and_result(Frame::new_conditional(), || {
+                self.find_guards_in_case_pattern(subject, subject_key, case_pattern)
+            });
+
             let (mut truthy_frame, mut falsey_frame) =
                 if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
+                    let truthy_t = frames.truthy_t.into_type(self.i_s);
+                    if truthy_t.is_never() {
+                        in_frame.unreachable = true;
+                    } else {
+                        in_frame.add_entry(self.i_s, Entry::new(key.clone(), truthy_t));
+                    }
                     (
-                        Frame::from_type(key.clone(), frames.truthy_t.into_type(self.i_s)),
+                        in_frame,
                         Frame::from_type(key.clone(), frames.falsey_t.as_type(self.i_s)),
                     )
                 } else {
+                    if frames.truthy_t.as_cow_type(self.i_s).is_never() {
+                        in_frame.unreachable = true;
+                    }
                     (
-                        Frame::from_type_without_entry(&frames.truthy_t.as_cow_type(self.i_s)),
+                        in_frame,
                         Frame::from_type_without_entry(&frames.falsey_t.as_cow_type(self.i_s)),
                     )
                 };

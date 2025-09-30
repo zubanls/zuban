@@ -51,3 +51,16 @@ def f(td: TD):
 match 1:
     case { "x": x }:
         reveal_type(x)  # N: Revealed type is "object"
+
+[case multi_assign_pattern]
+# flags: --no-mypy-compatible
+# Like testMatchCapturePatternMultipleCases but for non-mypy compatibility
+m: object
+
+match m:
+    case int(x):
+        reveal_type(x)  # N: Revealed type is "int"
+    case str(x):
+        reveal_type(x)  # N: Revealed type is "str"
+
+reveal_type(x)  # N: Revealed type is "int | str"
