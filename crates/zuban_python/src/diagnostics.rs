@@ -326,6 +326,7 @@ pub(crate) enum IssueKind {
     ClassHasNoMatchArgs { class: Box<str> },
     TooManyPositionalPatternsForMatchArgs,
     ExpectedTypeInClassPattern { got: Box<str> },
+    InvalidDunderMatchArgs,
 
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
@@ -502,7 +503,7 @@ impl IssueKind {
     pub fn mypy_error_code(&self) -> Option<&'static str> {
         use IssueKind::*;
         Some(match &self {
-            Note(_) | InvariantNote { .. } => return None,
+            Note(_) | InvariantNote { .. } | InvalidDunderMatchArgs => return None,
             InvalidSyntax
             | InvalidSyntaxInTypeComment { .. }
             | InvalidSyntaxInTypeAnnotation
@@ -720,9 +721,19 @@ impl<'db> Diagnostic<'db> {
     }
 
     pub fn severity(&self) -> Severity {
+        match &self.is_note() {
+            false => Severity::Error,
+            true => Severity::Information,
+        }
+    }
+
+    fn is_note(&self) -> bool {
         match &self.issue.kind {
-            IssueKind::Note(_) | IssueKind::InvariantNote { .. } => Severity::Information,
-            _ => Severity::Error,
+            IssueKind::Note(_)
+            | IssueKind::InvariantNote { .. }
+            | IssueKind::AnnotationInUntypedFunction
+            | IssueKind::InvalidDunderMatchArgs => true,
+            _ => false,
         }
     }
 
@@ -1740,6 +1751,9 @@ impl<'db> Diagnostic<'db> {
             ExpectedTypeInClassPattern { got } => format!(
                 r#"Expected type in class pattern; found "{got}""#
             ),
+            InvalidDunderMatchArgs =>
+                "__match_args__ must be a tuple containing string literals for \
+                 checking of match statements to work".to_string(),
 
             IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection } => format!(
                 "Subclass of {intersection} cannot exist: would have incompatible method signatures"
@@ -2043,11 +2057,9 @@ impl<'db> Diagnostic<'db> {
         MessageFormattingInfos {
             error,
             additional_notes,
-            kind: match &self.issue.kind {
-                IssueKind::AnnotationInUntypedFunction
-                | IssueKind::Note(_)
-                | IssueKind::InvariantNote { .. } => "note",
-                _ => "error",
+            kind: match self.is_note() {
+                true => "note",
+                false => "error",
             },
             path,
             line_number_infos,

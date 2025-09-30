@@ -3032,7 +3032,11 @@ impl Inference<'_, '_, '_> {
                                             break;
                                         }
                                     } else {
-                                        todo!()
+                                        self.find_guards_in_pattern(
+                                            Inferred::new_any_from_error(),
+                                            None,
+                                            pat,
+                                        );
                                     }
                                 } else if !added_no_match_args_issue {
                                     added_no_match_args_issue = true;
@@ -4662,7 +4666,7 @@ enum SubjectKey {
 }
 
 impl Type {
-    fn ensure_dunder_match_args_with_literals(
+    pub fn ensure_dunder_match_args_with_literals(
         self,
         db: &Database,
         name: Option<PointLink>,

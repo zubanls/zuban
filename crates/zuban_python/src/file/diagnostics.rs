@@ -17,7 +17,7 @@ use crate::{
     arguments::{CombinedArgs, InitSubclassArgs, KnownArgs, NoArgs, SimpleArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation,
-        ParentScope, Point, Specific,
+        ParentScope, Point, PointLink, Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -36,7 +36,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
         FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
-        NeverCause, ParamType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
+        NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind, TypeVarLike,
         TypeVarVariance, Variance, dataclass_post_init_func, ensure_calculated_dataclass,
         format_callable_params, merge_class_type_vars,
     },
@@ -449,10 +449,10 @@ impl Inference<'_, '_, '_> {
                 self.assign_type_alias_name(type_alias);
             }
             StmtLikeContent::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
-            StmtLikeContent::ClassDef(class) => self.calc_class_diagnostics(class),
+            StmtLikeContent::ClassDef(class) => self.bind_class_names(class),
             StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
                 Decoratee::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
-                Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
+                Decoratee::ClassDef(class) => self.bind_class_names(class),
                 Decoratee::AsyncFunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
             },
             StmtLikeContent::IfStmt(if_stmt) => {
@@ -842,7 +842,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    fn calc_class_diagnostics(&self, class: ClassDef) {
+    fn bind_class_names(&self, class: ClassDef) {
         debug!(
             "Diagnostics for class {} ({}({}:{}):#{})",
             class.name().as_code(),
@@ -1027,6 +1027,35 @@ impl Inference<'_, '_, '_> {
                         actual: t.format_short(i_s.db),
                     },
                 )
+            }
+        }
+        if let Some(node_index) = c
+            .class_storage
+            .class_symbol_table
+            .lookup_symbol("__match_args__")
+        {
+            let inf = self.infer_name_of_definition_by_index(node_index);
+            let t = inf.as_type(&i_s).ensure_dunder_match_args_with_literals(
+                db,
+                Some(PointLink::new(self.file.file_index, node_index)),
+            );
+            let is_ok = match t {
+                Type::Tuple(tup) => {
+                    if let TupleArgs::FixedLen(tup_entries) = &tup.args {
+                        tup_entries.iter().all(|t| {
+                            matches!(t, Type::Literal(literal)
+                                     if matches!(&literal.kind, LiteralKind::String(_)))
+                        })
+                    } else {
+                        tup.args.is_any()
+                    }
+                }
+                Type::Any(_) => true,
+                _ => false,
+            };
+            if !is_ok {
+                NodeRef::new(self.file, node_index)
+                    .add_issue(&i_s, IssueKind::InvalidDunderMatchArgs)
             }
         }
         if matches!(class_infos.class_kind, ClassKind::Protocol) {
