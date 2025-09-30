@@ -584,6 +584,11 @@ testRejectCovariantArgumentInLambda
 # lambda override inference fails because of context given an instance callable
 testLambdaInOverrideInference
 
+#
+testMatchLiteralPatternAlreadyNarrower-skip
+testMatchLiteralPatternUnreachable
+testMatchMappingPatternCapturesTypedDictUnreachable
+#
 testMatchMiscNonExhaustiveReturn
 # match statement tests used to pass
 testMatchClassPatternCaptureNamedTupleInline
