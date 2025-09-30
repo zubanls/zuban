@@ -2776,7 +2776,7 @@ impl Inference<'_, '_, '_> {
         inf: Inferred,
         subject_key: Option<&SubjectKey>,
         case_pattern: CasePattern,
-    ) -> ClassPatternResult {
+    ) -> PatternResult {
         match case_pattern {
             CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, subject_key, pattern),
             CasePattern::OpenSequencePattern(seq) => {
@@ -2790,13 +2790,12 @@ impl Inference<'_, '_, '_> {
         inf: Inferred,
         subject_key: Option<&SubjectKey>,
         pattern: Pattern,
-    ) -> ClassPatternResult {
+    ) -> PatternResult {
         let (pattern_kind, as_name) = pattern.unpack();
-        let copied_inf = as_name.is_some().then(|| inf.clone());
         let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind);
         if let Some(as_name) = as_name {
             let from = NodeRef::new(self.file, pattern.index());
-            self.assign_to_name_def_simple(as_name, from, &copied_inf.unwrap(), AssignKind::Normal);
+            self.assign_to_name_def_simple(as_name, from, &result.truthy_t, AssignKind::Normal);
         }
         result
     }
@@ -2806,7 +2805,7 @@ impl Inference<'_, '_, '_> {
         inf: Inferred,
         subject_key: Option<&SubjectKey>,
         kind: PatternKind,
-    ) -> ClassPatternResult {
+    ) -> PatternResult {
         let i_s = self.i_s;
         match kind {
             PatternKind::NameDef(name_def) => {
@@ -2826,7 +2825,7 @@ impl Inference<'_, '_, '_> {
                         }
                     },
                 );
-                return ClassPatternResult {
+                return PatternResult {
                     truthy_frame: Frame::from_type_without_entry(&truthy),
                     falsey_frame: Frame::from_type_without_entry(&falsey),
                     truthy_t: Inferred::from_type(truthy),
@@ -2842,7 +2841,7 @@ impl Inference<'_, '_, '_> {
                     if let Some((truthy_frame, falsey_frame)) =
                         narrow_is_or_eq(i_s, key.clone(), &inf.as_cow_type(i_s), &expected, true)
                     {
-                        return ClassPatternResult {
+                        return PatternResult {
                             truthy_t: Inferred::from_type(expected),
                             falsey_t: inf,
                             truthy_frame,
@@ -2910,7 +2909,7 @@ impl Inference<'_, '_, '_> {
                         truthy_frame = fa.merge_or(self.i_s, truthy_frame, new_truthy, true);
                         falsey_frame = fa.merge_or(self.i_s, falsey_frame, new_falsey, true);
                     }
-                    ClassPatternResult {
+                    PatternResult {
                         truthy_t: inf.clone(),
                         falsey_t: inf,
                         truthy_frame,
@@ -2919,7 +2918,7 @@ impl Inference<'_, '_, '_> {
                 });
             }
         }
-        ClassPatternResult {
+        PatternResult {
             truthy_t: inf.clone(),
             falsey_t: inf,
             truthy_frame: Frame::new_conditional(),
@@ -2932,7 +2931,7 @@ impl Inference<'_, '_, '_> {
         inf: Inferred,
         subject_key: Option<&SubjectKey>,
         class_pattern: ClassPattern,
-    ) -> ClassPatternResult {
+    ) -> PatternResult {
         let i_s = self.i_s;
         let (dotted, params) = class_pattern.unpack();
         let assign_any_to_pattern = |pat| {
@@ -2944,7 +2943,7 @@ impl Inference<'_, '_, '_> {
         let target_t = match inferred_target.as_ref() {
             Type::Type(t) => t.as_ref(),
             Type::Any(_) => {
-                return ClassPatternResult {
+                return PatternResult {
                     truthy_t: inf.clone(),
                     falsey_t: inf,
                     truthy_frame: Frame::new_conditional(),
@@ -3090,7 +3089,7 @@ impl Inference<'_, '_, '_> {
                 truthy_frame = fa.merge_or(self.i_s, truthy_frame, new_truthy, true);
                 falsey_frame = fa.merge_or(self.i_s, falsey_frame, new_falsey, true);
             }
-            ClassPatternResult {
+            PatternResult {
                 truthy_t: inf.clone(),
                 falsey_t: inf,
                 truthy_frame,
@@ -3103,7 +3102,7 @@ impl Inference<'_, '_, '_> {
         &self,
         inf: Inferred,
         sequence_patterns: impl Iterator<Item = SequencePatternItem<'x>> + Clone,
-    ) -> ClassPatternResult {
+    ) -> PatternResult {
         FLOW_ANALYSIS.with(|fa| {
             let i_s = self.i_s;
             let mut result_truthy = Frame::new_unreachable();
@@ -3141,7 +3140,7 @@ impl Inference<'_, '_, '_> {
                 result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
                 result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
             }
-            ClassPatternResult {
+            PatternResult {
                 truthy_t: inf.clone(),
                 falsey_t: inf,
                 truthy_frame: result_truthy,
@@ -4549,7 +4548,7 @@ fn unreachable_pattern() -> (Frame, Frame) {
     (Frame::new_unreachable(), Frame::new_conditional())
 }
 
-struct ClassPatternResult {
+struct PatternResult {
     truthy_t: Inferred,
     falsey_t: Inferred,
     truthy_frame: Frame,
