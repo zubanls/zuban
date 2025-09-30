@@ -614,7 +614,6 @@ testMatchClassPatternIsNotType
 testMatchClassPatternNestedGenerics
 testMatchNonFinalMatchArgs
 testMatchNonLiteralMatchArgs
-testMatchAsPatternNarrows
 testMatchAsPatternCapturesOr
 testMatchOrPatternNarrows
 testMatchOrPatternNarrowsStr

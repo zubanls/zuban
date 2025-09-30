@@ -2952,7 +2952,7 @@ impl Inference<'_, '_, '_> {
             }
             _ => todo!(),
         };
-        let (truthy, falsey) =
+        let (mut truthy, falsey) =
             split_and_intersect(self.i_s, &inf.as_cow_type(i_s), &target_t, |issue| {
                 debug!("Intersection for class target not possible: {issue:?}");
             });
@@ -2969,131 +2969,121 @@ impl Inference<'_, '_, '_> {
         };
         return FLOW_ANALYSIS.with(|fa| {
             let mut added_no_match_args_issue = false;
-            let mut truthy_frame = Frame::new_unreachable();
-            let mut falsey_frame = if falsey.is_never() {
-                Frame::new_unreachable()
-            } else {
-                Frame::new_conditional()
-            };
+            let mut mismatch = false;
             for t in truthy.iter_with_unpacked_unions(i_s.db) {
-                let mut assign_to_pattern = || {
-                    let mut result = (Frame::new_conditional(), Frame::new_unreachable());
-                    let match_args = OnceCell::new();
-                    let mut nth_positional = 0;
-                    let mut find_inner_guards_and_return_unreachable =
-                        |node_ref, name: &str, pat| {
-                            let lookup = lookup(node_ref, name);
-                            if let Some(inf) = lookup.into_maybe_inferred() {
-                                self.find_guards_in_pattern(inf, None, pat);
-                            } else {
-                                result = unreachable_pattern()
-                            }
-                            result.0.unreachable
-                        };
-                    for param in params.clone() {
-                        match param {
-                            ParamPattern::Positional(pat) => {
-                                let node_ref = NodeRef::new(self.file, pat.index());
-                                if let Some(match_args) = match_args.get_or_init(|| {
-                                    lookup(node_ref, "__match_args__").into_maybe_inferred()
-                                }) {
-                                    if let Some(tup_entries) =
-                                        match_args.as_cow_type(self.i_s).maybe_fixed_len_tuple()
-                                    {
-                                        if let Some(entry) = tup_entries.get(nth_positional) {
-                                            if let Type::Literal(literal) = entry
-                                                && let LiteralKind::String(s) = &literal.kind
-                                            {
-                                                if find_inner_guards_and_return_unreachable(
-                                                    NodeRef::new(self.file, pat.index()),
-                                                    s.as_str(i_s.db),
-                                                    pat,
-                                                ) {
-                                                    return result;
-                                                }
-                                            } else {
-                                                todo!()
+                let mut reachable = (!truthy.is_never(), !falsey.is_never());
+                let match_args = OnceCell::new();
+                let mut nth_positional = 0;
+                let mut find_inner_guards_and_return_unreachable = |node_ref, name: &str, pat| {
+                    let lookup = lookup(node_ref, name);
+                    if let Some(inf) = lookup.into_maybe_inferred() {
+                        self.find_guards_in_pattern(inf, None, pat);
+                    } else {
+                        mismatch = true;
+                    }
+                    mismatch
+                };
+                for param in params.clone() {
+                    match param {
+                        ParamPattern::Positional(pat) => {
+                            let node_ref = NodeRef::new(self.file, pat.index());
+                            if let Some(match_args) = match_args.get_or_init(|| {
+                                lookup(node_ref, "__match_args__").into_maybe_inferred()
+                            }) {
+                                if let Some(tup_entries) =
+                                    match_args.as_cow_type(self.i_s).maybe_fixed_len_tuple()
+                                {
+                                    if let Some(entry) = tup_entries.get(nth_positional) {
+                                        if let Type::Literal(literal) = entry
+                                            && let LiteralKind::String(s) = &literal.kind
+                                        {
+                                            if find_inner_guards_and_return_unreachable(
+                                                NodeRef::new(self.file, pat.index()),
+                                                s.as_str(i_s.db),
+                                                pat,
+                                            ) {
+                                                break;
                                             }
-                                        } else if !added_no_match_args_issue {
-                                            added_no_match_args_issue = true;
-                                            node_ref.add_issue(
-                                                i_s,
-                                                IssueKind::TooManyPositionalPatternsForMatchArgs,
-                                            );
+                                        } else {
+                                            todo!()
                                         }
-                                    } else {
-                                        todo!()
-                                    }
-                                } else if params.clone().count() == 1 && {
-                                    let py = &i_s.db.python_state;
-                                    match t {
-                                        Type::Class(c) => {
-                                            c.link == py.int_link()
-                                                || c.link == py.int_link()
-                                                || c.link == py.float_link()
-                                                || c.link == py.bool_link()
-                                                || c.link == py.str_link()
-                                                || c.link == py.bytes_link()
-                                                || c.link == py.bytearray_link()
-                                                || c.link == py.list_link()
-                                                || c.link == py.dict_link()
-                                                || c.link == py.set_link()
-                                                || c.link == py.frozenset_link()
-                                                || c.link == py.int_link()
-                                        }
-                                        Type::Tuple(_) => true,
-                                        _ => false,
-                                    }
-                                } {
-                                    self.find_guards_in_pattern(
-                                        Inferred::from_type(t.clone()),
-                                        subject_key,
-                                        pat,
-                                    );
-                                } else {
-                                    if !added_no_match_args_issue {
+                                    } else if !added_no_match_args_issue {
+                                        added_no_match_args_issue = true;
                                         node_ref.add_issue(
                                             i_s,
-                                            IssueKind::ClassHasNoMatchArgs {
-                                                class: t
-                                                    .format(&FormatData::new_reveal_type(i_s.db)),
-                                            },
+                                            IssueKind::TooManyPositionalPatternsForMatchArgs,
                                         );
                                     }
-                                    added_no_match_args_issue = true;
-                                    assign_any_to_pattern(pat);
+                                } else {
+                                    todo!()
                                 }
-                                nth_positional += 1;
-                            }
-                            ParamPattern::Keyword(keyword_pattern) => {
-                                let (key, pat) = keyword_pattern.unpack();
-                                if find_inner_guards_and_return_unreachable(
-                                    NodeRef::new(self.file, keyword_pattern.index()),
-                                    key.as_code(),
+                            } else if params.clone().count() == 1 && {
+                                let py = &i_s.db.python_state;
+                                match t {
+                                    Type::Class(c) => {
+                                        c.link == py.int_link()
+                                            || c.link == py.int_link()
+                                            || c.link == py.float_link()
+                                            || c.link == py.bool_link()
+                                            || c.link == py.str_link()
+                                            || c.link == py.bytes_link()
+                                            || c.link == py.bytearray_link()
+                                            || c.link == py.list_link()
+                                            || c.link == py.dict_link()
+                                            || c.link == py.set_link()
+                                            || c.link == py.frozenset_link()
+                                            || c.link == py.int_link()
+                                    }
+                                    Type::Tuple(_) => true,
+                                    _ => false,
+                                }
+                            } {
+                                self.find_guards_in_pattern(
+                                    Inferred::from_type(t.clone()),
+                                    subject_key,
                                     pat,
-                                ) {
-                                    return result;
+                                );
+                            } else {
+                                if !added_no_match_args_issue {
+                                    node_ref.add_issue(
+                                        i_s,
+                                        IssueKind::ClassHasNoMatchArgs {
+                                            class: t.format(&FormatData::new_reveal_type(i_s.db)),
+                                        },
+                                    );
                                 }
+                                added_no_match_args_issue = true;
+                                assign_any_to_pattern(pat);
+                            }
+                            nth_positional += 1;
+                        }
+                        ParamPattern::Keyword(keyword_pattern) => {
+                            let (key, pat) = keyword_pattern.unpack();
+                            if find_inner_guards_and_return_unreachable(
+                                NodeRef::new(self.file, keyword_pattern.index()),
+                                key.as_code(),
+                                pat,
+                            ) {
+                                break;
                             }
                         }
                     }
-                    result
-                };
-                let (mut new_truthy, new_falsey) = assign_to_pattern();
-                if !new_truthy.unreachable {
-                    // This narrows the outer variable
-                    if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                        new_truthy.add_entry(i_s, Entry::new(key.clone(), t.clone()))
-                    }
                 }
-                truthy_frame = fa.merge_or(self.i_s, truthy_frame, new_truthy, true);
-                falsey_frame = fa.merge_or(self.i_s, falsey_frame, new_falsey, true);
             }
+            let truthy = if mismatch {
+                Type::Never(NeverCause::Other)
+            } else {
+                truthy
+            };
             PatternResult {
-                truthy_t: inf.clone(),
-                falsey_t: inf,
-                truthy_frame,
-                falsey_frame,
+                truthy_frame: Frame::from_type_without_entry(&truthy),
+                falsey_frame: Frame::from_type_without_entry(&falsey),
+                truthy_t: Inferred::from_type(truthy),
+                falsey_t: if mismatch {
+                    inf
+                } else {
+                    Inferred::from_type(falsey)
+                },
             }
         });
     }
