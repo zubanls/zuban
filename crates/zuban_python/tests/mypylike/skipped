@@ -679,7 +679,6 @@ testMatchOrPatternCapturesMissing
 testMatchCapturePatternFromAsyncFunctionReturningUnion
 testMatchSubjectAssignExprWithGuard
 testMatchFunctionCall
-testMatchAttribute
 testMatchLiteral
 testMatchOperations
 testMatchDictItem

@@ -2546,6 +2546,13 @@ impl<'db: 'slf, 'slf> Inferred {
         }
         self
     }
+
+    pub fn into_type(self, i_s: &InferenceState) -> Type {
+        if let InferredState::UnsavedComplex(ComplexPoint::TypeInstance(t)) = self.state {
+            return t;
+        }
+        self.as_type(i_s)
+    }
 }
 
 fn load_bound_method<'db: 'a, 'a, 'b>(

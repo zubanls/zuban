@@ -2522,20 +2522,22 @@ impl Inference<'_, '_, '_> {
             self.infer_named_expression(guard.named_expr());
         }
         FLOW_ANALYSIS.with(|fa| {
-            if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                frames.truthy_frame.add_entry(
-                    self.i_s,
-                    Entry::new(key.clone(), frames.truthy_t.as_type(self.i_s)),
-                );
-                frames.falsey_frame.add_entry(
-                    self.i_s,
-                    Entry::new(key.clone(), frames.falsey_t.as_type(self.i_s)),
-                );
-            }
-            let true_frame = fa.with_frame(frames.truthy_frame, || {
+            let (truthy_frame, falsey_frame) =
+                if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
+                    (
+                        Frame::from_type(key.clone(), frames.truthy_t.into_type(self.i_s)),
+                        Frame::from_type(key.clone(), frames.falsey_t.as_type(self.i_s)),
+                    )
+                } else {
+                    (
+                        Frame::from_type_without_entry(&frames.truthy_t.as_cow_type(self.i_s)),
+                        Frame::from_type_without_entry(&frames.falsey_t.as_cow_type(self.i_s)),
+                    )
+                };
+            let true_frame = fa.with_frame(truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)
             });
-            let false_frame = fa.with_frame(frames.falsey_frame, || {
+            let false_frame = fa.with_frame(falsey_frame, || {
                 self.process_match_cases(frames.falsey_t, subject_key, case_blocks, class, func)
             });
             fa.merge_conditional(self.i_s, true_frame, false_frame);
@@ -4538,6 +4540,7 @@ fn unreachable_pattern() -> (Frame, Frame) {
     (Frame::new_unreachable(), Frame::new_conditional())
 }
 
+#[derive(Debug)]
 struct PatternResult {
     truthy_t: Inferred,
     falsey_t: Inferred,
