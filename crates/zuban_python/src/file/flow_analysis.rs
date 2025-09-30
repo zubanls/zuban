@@ -329,7 +329,7 @@ impl Frame {
         self.entries.push(entry)
     }
 
-    fn from_type_without_entry(t: Type) -> Self {
+    fn from_type_without_entry(t: &Type) -> Self {
         match t {
             Type::Never(_) => Self::new_unreachable(),
             _ => Self::new_conditional(),
@@ -2517,12 +2517,21 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let (case_pattern, guard, block) = case_block.unpack();
-        let frames = self.find_guards_in_case_pattern(subject, subject_key, case_pattern);
+        let mut frames = self.find_guards_in_case_pattern(subject, subject_key, case_pattern);
         if let Some(guard) = guard {
             self.infer_named_expression(guard.named_expr());
         }
-        // TODO use patterns
         FLOW_ANALYSIS.with(|fa| {
+            if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
+                frames.truthy_frame.add_entry(
+                    self.i_s,
+                    Entry::new(key.clone(), frames.truthy_t.as_type(self.i_s)),
+                );
+                frames.falsey_frame.add_entry(
+                    self.i_s,
+                    Entry::new(key.clone(), frames.falsey_t.as_type(self.i_s)),
+                );
+            }
             let true_frame = fa.with_frame(frames.truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)
             });
@@ -2817,20 +2826,11 @@ impl Inference<'_, '_, '_> {
                         }
                     },
                 );
-                return if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                    ClassPatternResult {
-                        truthy_t: Inferred::from_type(truthy.clone()),
-                        falsey_t: inf,
-                        truthy_frame: Frame::from_type(key.clone(), truthy),
-                        falsey_frame: Frame::from_type(key.clone(), falsey),
-                    }
-                } else {
-                    ClassPatternResult {
-                        truthy_t: Inferred::from_type(truthy),
-                        falsey_t: inf,
-                        truthy_frame: Frame::new_conditional(),
-                        falsey_frame: Frame::new_conditional(),
-                    }
+                return ClassPatternResult {
+                    truthy_frame: Frame::from_type_without_entry(&truthy),
+                    falsey_frame: Frame::from_type_without_entry(&falsey),
+                    truthy_t: Inferred::from_type(truthy),
+                    falsey_t: Inferred::from_type(falsey),
                 };
             }
             PatternKind::ClassPattern(class_pattern) => {
@@ -3512,8 +3512,8 @@ impl Inference<'_, '_, '_> {
                 let inf = inf.into();
                 if let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf) {
                     let frames = FramesWithParentUnions {
-                        truthy: Frame::from_type_without_entry(truthy),
-                        falsey: Frame::from_type_without_entry(falsey),
+                        truthy: Frame::from_type_without_entry(&truthy),
+                        falsey: Frame::from_type_without_entry(&falsey),
                         ..Default::default()
                     };
                     let as_s = |frame: &Frame| match frame.unreachable {
