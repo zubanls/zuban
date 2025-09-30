@@ -2856,14 +2856,23 @@ impl Inference<'_, '_, '_> {
                 return self.find_guards_in_pattern(inf, subject_key, group_pattern.inner());
             }
             PatternKind::OrPattern(or_pattern) => {
+                let mut truthy = Type::Never(NeverCause::Other);
+                let mut falsey = Type::Never(NeverCause::Other);
                 for pat in or_pattern.iter() {
-                    // TODO
-                    self.find_guards_in_pattern_kind(
+                    let result = self.find_guards_in_pattern_kind(
                         Inferred::new_any_from_error(),
                         subject_key,
                         pat,
                     );
+                    truthy = truthy.simplified_union(i_s, &result.truthy_t.as_cow_type(i_s));
+                    falsey = falsey.simplified_union(i_s, &result.falsey_t.as_cow_type(i_s));
                 }
+                return PatternResult {
+                    truthy_t: Inferred::from_type(truthy),
+                    falsey_t: Inferred::from_type(falsey),
+                    truthy_frame: Frame::new_conditional(),
+                    falsey_frame: Frame::new_conditional(),
+                };
             }
             PatternKind::SequencePattern(sequence_pattern) => {
                 return self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter());
@@ -3113,7 +3122,6 @@ impl Inference<'_, '_, '_> {
             .into_iter_with_unpacked_unions(i_s.db, true)
         {
             let t = e.type_;
-            // TODO this everything should probably assign?!
             match &t {
                 Type::Class(c)
                     if c.link == i_s.db.python_state.str_link()
