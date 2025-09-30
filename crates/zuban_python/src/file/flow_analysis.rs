@@ -2919,11 +2919,15 @@ impl Inference<'_, '_, '_> {
         let inferred_target = inferred_target.as_cow_type(i_s);
         let target_t = match inferred_target.as_ref() {
             Type::Type(t) => t.as_ref(),
-            Type::Any(cause) => {
+            Type::Any(_) => {
                 return (Frame::new_conditional(), Frame::new_conditional());
             }
             _ => todo!(),
         };
+        let (truthy, falsey) =
+            split_and_intersect(self.i_s, &inf.as_cow_type(i_s), &target_t, |issue| {
+                debug!("Intersection for class target not possible: {issue:?}");
+            });
         let lookup = |for_node_ref, name: &str| {
             target_t.lookup(
                 i_s,
@@ -2938,25 +2942,26 @@ impl Inference<'_, '_, '_> {
         return FLOW_ANALYSIS.with(|fa| {
             let mut added_no_match_args_issue = false;
             let mut result_truthy = Frame::new_unreachable();
-            let mut result_falsey = Frame::new_unreachable();
-            for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                let Some(target_t) = intersect(i_s, t, target_t, &mut |issue| {
-                    debug!("Intersection for class target not possible: {issue:?}");
-                }) else {
-                    continue;
-                };
+            let mut result_falsey = if falsey.is_never() {
+                Frame::new_unreachable()
+            } else {
+                Frame::new_conditional()
+            };
+            for t in truthy.iter_with_unpacked_unions(i_s.db) {
                 let mut assign_to_pattern = || {
-                    let mut result = (Frame::new_conditional(), Frame::new_conditional());
+                    let mut result = (Frame::new_conditional(), Frame::new_unreachable());
                     let match_args = OnceCell::new();
                     let mut nth_positional = 0;
-                    let mut find_inner_guards = |node_ref, name: &str, pat| {
-                        let lookup = lookup(node_ref, name);
-                        if let Some(inf) = lookup.into_maybe_inferred() {
-                            self.find_guards_in_pattern(&inf, None, pat);
-                        } else {
-                            result = unreachable_pattern()
-                        }
-                    };
+                    let mut find_inner_guards_and_return_unreachable =
+                        |node_ref, name: &str, pat| {
+                            let lookup = lookup(node_ref, name);
+                            if let Some(inf) = lookup.into_maybe_inferred() {
+                                self.find_guards_in_pattern(&inf, None, pat);
+                            } else {
+                                result = unreachable_pattern()
+                            }
+                            result.0.unreachable
+                        };
                     for param in params.clone() {
                         match param {
                             ParamPattern::Positional(pat) => {
@@ -2971,11 +2976,13 @@ impl Inference<'_, '_, '_> {
                                             if let Type::Literal(literal) = entry
                                                 && let LiteralKind::String(s) = &literal.kind
                                             {
-                                                find_inner_guards(
+                                                if find_inner_guards_and_return_unreachable(
                                                     NodeRef::new(self.file, pat.index()),
                                                     s.as_str(i_s.db),
                                                     pat,
-                                                )
+                                                ) {
+                                                    return result;
+                                                }
                                             } else {
                                                 todo!()
                                             }
@@ -2991,7 +2998,7 @@ impl Inference<'_, '_, '_> {
                                     }
                                 } else if params.clone().count() == 1 && {
                                     let py = &i_s.db.python_state;
-                                    match target_t.as_ref() {
+                                    match t {
                                         Type::Class(c) => {
                                             c.link == py.int_link()
                                                 || c.link == py.int_link()
@@ -3011,7 +3018,7 @@ impl Inference<'_, '_, '_> {
                                     }
                                 } {
                                     self.find_guards_in_pattern(
-                                        &Inferred::from_type(target_t.as_ref().clone()),
+                                        &Inferred::from_type(t.clone()),
                                         subject_key,
                                         pat,
                                     );
@@ -3020,7 +3027,7 @@ impl Inference<'_, '_, '_> {
                                         node_ref.add_issue(
                                             i_s,
                                             IssueKind::ClassHasNoMatchArgs {
-                                                class: target_t
+                                                class: t
                                                     .format(&FormatData::new_reveal_type(i_s.db)),
                                             },
                                         );
@@ -3032,11 +3039,13 @@ impl Inference<'_, '_, '_> {
                             }
                             ParamPattern::Keyword(keyword_pattern) => {
                                 let (key, pat) = keyword_pattern.unpack();
-                                find_inner_guards(
+                                if find_inner_guards_and_return_unreachable(
                                     NodeRef::new(self.file, keyword_pattern.index()),
                                     key.as_code(),
                                     pat,
-                                )
+                                ) {
+                                    return result;
+                                }
                             }
                         }
                     }
@@ -3046,8 +3055,7 @@ impl Inference<'_, '_, '_> {
                 if !new_truthy.unreachable {
                     // This narrows the outer variable
                     if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                        new_truthy
-                            .add_entry(i_s, Entry::new(key.clone(), target_t.as_ref().clone()))
+                        new_truthy.add_entry(i_s, Entry::new(key.clone(), t.clone()))
                     }
                 }
                 result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
