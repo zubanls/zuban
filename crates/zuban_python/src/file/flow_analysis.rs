@@ -2502,12 +2502,12 @@ impl Inference<'_, '_, '_> {
                 self.infer_tuple_iterator(iterator, &mut ResultContext::Unknown),
             ),
         };
-        self.process_match_cases(&inf, subject_key.as_ref(), case_blocks, class, func);
+        self.process_match_cases(inf, subject_key.as_ref(), case_blocks, class, func);
     }
 
     fn process_match_cases<'x>(
         &self,
-        subject: &Inferred,
+        subject: Inferred,
         subject_key: Option<&SubjectKey>,
         mut case_blocks: impl Iterator<Item = CaseBlock<'x>>,
         class: Option<Class>,
@@ -2517,18 +2517,17 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let (case_pattern, guard, block) = case_block.unpack();
-        let (true_frame, false_frame) =
-            self.find_guards_in_case_pattern(subject, subject_key, case_pattern);
+        let frames = self.find_guards_in_case_pattern(subject, subject_key, case_pattern);
         if let Some(guard) = guard {
             self.infer_named_expression(guard.named_expr());
         }
         // TODO use patterns
         FLOW_ANALYSIS.with(|fa| {
-            let true_frame = fa.with_frame(true_frame, || {
+            let true_frame = fa.with_frame(frames.truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)
             });
-            let false_frame = fa.with_frame(false_frame, || {
-                self.process_match_cases(subject, subject_key, case_blocks, class, func)
+            let false_frame = fa.with_frame(frames.falsey_frame, || {
+                self.process_match_cases(frames.falsey_t, subject_key, case_blocks, class, func)
             });
             fa.merge_conditional(self.i_s, true_frame, false_frame);
         });
@@ -2765,10 +2764,10 @@ impl Inference<'_, '_, '_> {
 
     fn find_guards_in_case_pattern(
         &self,
-        inf: &Inferred,
+        inf: Inferred,
         subject_key: Option<&SubjectKey>,
         case_pattern: CasePattern,
-    ) -> (Frame, Frame) {
+    ) -> ClassPatternResult {
         match case_pattern {
             CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, subject_key, pattern),
             CasePattern::OpenSequencePattern(seq) => {
@@ -2779,50 +2778,60 @@ impl Inference<'_, '_, '_> {
 
     fn find_guards_in_pattern(
         &self,
-        inf: &Inferred,
+        inf: Inferred,
         subject_key: Option<&SubjectKey>,
         pattern: Pattern,
-    ) -> (Frame, Frame) {
+    ) -> ClassPatternResult {
         let (pattern_kind, as_name) = pattern.unpack();
+        let copied_inf = as_name.is_some().then(|| inf.clone());
         let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind);
         if let Some(as_name) = as_name {
             let from = NodeRef::new(self.file, pattern.index());
-            self.assign_to_name_def_simple(as_name, from, inf, AssignKind::Normal);
+            self.assign_to_name_def_simple(as_name, from, &copied_inf.unwrap(), AssignKind::Normal);
         }
         result
     }
 
     fn find_guards_in_pattern_kind(
         &self,
-        inf: &Inferred,
+        inf: Inferred,
         subject_key: Option<&SubjectKey>,
         kind: PatternKind,
-    ) -> (Frame, Frame) {
+    ) -> ClassPatternResult {
         let i_s = self.i_s;
         match kind {
             PatternKind::NameDef(name_def) => {
                 let from = NodeRef::new(self.file, name_def.index());
-                self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Normal);
+                self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Normal);
             }
             PatternKind::WildcardPattern(_) => (),
             PatternKind::DottedName(dotted_name) => {
                 let dotted_inf = self.infer_pattern_dotted_name(dotted_name);
-                if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                    let (truthy, falsey) = split_and_intersect(
-                        self.i_s,
-                        &inf.as_cow_type(i_s),
-                        &dotted_inf.as_cow_type(i_s),
-                        |issue| {
-                            if self.flags().warn_unreachable {
-                                self.add_issue(dotted_name.index(), issue)
-                            }
-                        },
-                    );
-                    return (
-                        Frame::from_type(key.clone(), truthy),
-                        Frame::from_type(key.clone(), falsey),
-                    );
-                }
+                let (truthy, falsey) = split_and_intersect(
+                    self.i_s,
+                    &inf.as_cow_type(i_s),
+                    &dotted_inf.as_cow_type(i_s),
+                    |issue| {
+                        if self.flags().warn_unreachable {
+                            self.add_issue(dotted_name.index(), issue)
+                        }
+                    },
+                );
+                return if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
+                    ClassPatternResult {
+                        truthy_t: Inferred::from_type(truthy.clone()),
+                        falsey_t: inf,
+                        truthy_frame: Frame::from_type(key.clone(), truthy),
+                        falsey_frame: Frame::from_type(key.clone(), falsey),
+                    }
+                } else {
+                    ClassPatternResult {
+                        truthy_t: Inferred::from_type(truthy),
+                        falsey_t: inf,
+                        truthy_frame: Frame::new_conditional(),
+                        falsey_frame: Frame::new_conditional(),
+                    }
+                };
             }
             PatternKind::ClassPattern(class_pattern) => {
                 return self.find_guards_in_class_pattern(inf, subject_key, class_pattern);
@@ -2830,10 +2839,15 @@ impl Inference<'_, '_, '_> {
             PatternKind::LiteralPattern(literal_pattern) => {
                 let expected = self.literal_pattern_to_type(literal_pattern);
                 if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                    if let Some(result) =
+                    if let Some((truthy_frame, falsey_frame)) =
                         narrow_is_or_eq(i_s, key.clone(), &inf.as_cow_type(i_s), &expected, true)
                     {
-                        return result;
+                        return ClassPatternResult {
+                            truthy_t: Inferred::from_type(expected),
+                            falsey_t: inf,
+                            truthy_frame,
+                            falsey_frame,
+                        };
                     }
                 }
             }
@@ -2844,7 +2858,7 @@ impl Inference<'_, '_, '_> {
                 for pat in or_pattern.iter() {
                     // TODO
                     self.find_guards_in_pattern_kind(
-                        &Inferred::new_any_from_error(),
+                        Inferred::new_any_from_error(),
                         subject_key,
                         pat,
                     );
@@ -2855,8 +2869,8 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::MappingPattern(mapping_pattern) => {
                 return FLOW_ANALYSIS.with(|fa| {
-                    let mut result_truthy = Frame::new_unreachable();
-                    let mut result_falsey = Frame::new_unreachable();
+                    let mut truthy_frame = Frame::new_unreachable();
+                    let mut falsey_frame = Frame::new_unreachable();
                     for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
                         let (new_truthy, new_falsey) = match t {
                             Type::TypedDict(td) => self
@@ -2893,34 +2907,49 @@ impl Inference<'_, '_, '_> {
                                 )
                             }
                         };
-                        result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
-                        result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
+                        truthy_frame = fa.merge_or(self.i_s, truthy_frame, new_truthy, true);
+                        falsey_frame = fa.merge_or(self.i_s, falsey_frame, new_falsey, true);
                     }
-                    (result_truthy, result_falsey)
+                    ClassPatternResult {
+                        truthy_t: inf.clone(),
+                        falsey_t: inf,
+                        truthy_frame,
+                        falsey_frame,
+                    }
                 });
             }
         }
-        (Frame::new_conditional(), Frame::new_conditional())
+        ClassPatternResult {
+            truthy_t: inf.clone(),
+            falsey_t: inf,
+            truthy_frame: Frame::new_conditional(),
+            falsey_frame: Frame::new_conditional(),
+        }
     }
 
     fn find_guards_in_class_pattern(
         &self,
-        inf: &Inferred,
+        inf: Inferred,
         subject_key: Option<&SubjectKey>,
         class_pattern: ClassPattern,
-    ) -> (Frame, Frame) {
+    ) -> ClassPatternResult {
         let i_s = self.i_s;
         let (dotted, params) = class_pattern.unpack();
         let assign_any_to_pattern = |pat| {
             // This is just temporary until the TODOs are resolved below
-            self.find_guards_in_pattern(&Inferred::new_any_from_error(), None, pat);
+            self.find_guards_in_pattern(Inferred::new_any_from_error(), None, pat);
         };
         let inferred_target = self.infer_pattern_dotted_name(dotted);
         let inferred_target = inferred_target.as_cow_type(i_s);
         let target_t = match inferred_target.as_ref() {
             Type::Type(t) => t.as_ref(),
             Type::Any(_) => {
-                return (Frame::new_conditional(), Frame::new_conditional());
+                return ClassPatternResult {
+                    truthy_t: inf.clone(),
+                    falsey_t: inf,
+                    truthy_frame: Frame::new_conditional(),
+                    falsey_frame: Frame::new_conditional(),
+                };
             }
             _ => todo!(),
         };
@@ -2941,8 +2970,8 @@ impl Inference<'_, '_, '_> {
         };
         return FLOW_ANALYSIS.with(|fa| {
             let mut added_no_match_args_issue = false;
-            let mut result_truthy = Frame::new_unreachable();
-            let mut result_falsey = if falsey.is_never() {
+            let mut truthy_frame = Frame::new_unreachable();
+            let mut falsey_frame = if falsey.is_never() {
                 Frame::new_unreachable()
             } else {
                 Frame::new_conditional()
@@ -2956,7 +2985,7 @@ impl Inference<'_, '_, '_> {
                         |node_ref, name: &str, pat| {
                             let lookup = lookup(node_ref, name);
                             if let Some(inf) = lookup.into_maybe_inferred() {
-                                self.find_guards_in_pattern(&inf, None, pat);
+                                self.find_guards_in_pattern(inf, None, pat);
                             } else {
                                 result = unreachable_pattern()
                             }
@@ -3018,7 +3047,7 @@ impl Inference<'_, '_, '_> {
                                     }
                                 } {
                                     self.find_guards_in_pattern(
-                                        &Inferred::from_type(t.clone()),
+                                        Inferred::from_type(t.clone()),
                                         subject_key,
                                         pat,
                                     );
@@ -3058,18 +3087,23 @@ impl Inference<'_, '_, '_> {
                         new_truthy.add_entry(i_s, Entry::new(key.clone(), t.clone()))
                     }
                 }
-                result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
-                result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
+                truthy_frame = fa.merge_or(self.i_s, truthy_frame, new_truthy, true);
+                falsey_frame = fa.merge_or(self.i_s, falsey_frame, new_falsey, true);
             }
-            (result_truthy, result_falsey)
+            ClassPatternResult {
+                truthy_t: inf.clone(),
+                falsey_t: inf,
+                truthy_frame,
+                falsey_frame,
+            }
         });
     }
 
     fn find_guards_in_sequence_pattern<'x>(
         &self,
-        inf: &Inferred,
+        inf: Inferred,
         sequence_patterns: impl Iterator<Item = SequencePatternItem<'x>> + Clone,
-    ) -> (Frame, Frame) {
+    ) -> ClassPatternResult {
         FLOW_ANALYSIS.with(|fa| {
             let i_s = self.i_s;
             let mut result_truthy = Frame::new_unreachable();
@@ -3107,7 +3141,12 @@ impl Inference<'_, '_, '_> {
                 result_truthy = fa.merge_or(self.i_s, result_truthy, new_truthy, true);
                 result_falsey = fa.merge_or(self.i_s, result_falsey, new_falsey, true);
             }
-            (result_truthy, result_falsey)
+            ClassPatternResult {
+                truthy_t: inf.clone(),
+                falsey_t: inf,
+                truthy_frame: result_truthy,
+                falsey_frame: result_falsey,
+            }
         })
     }
 
@@ -3155,7 +3194,7 @@ impl Inference<'_, '_, '_> {
                         t if t.might_be_string(i_s.db) => fallback_type(),
                         _ => return unreachable_pattern(),
                     };
-                    self.find_guards_in_pattern(&Inferred::from_type(value_t), None, value);
+                    self.find_guards_in_pattern(Inferred::from_type(value_t), None, value);
                 }
                 MappingPatternItem::Rest(rest) => {
                     let name_def = rest.name_def();
@@ -3186,8 +3225,7 @@ impl Inference<'_, '_, '_> {
             match item {
                 MappingPatternItem::Entry(e) => {
                     let (_, val) = e.unpack();
-                    // This is just temporary until the TODOs are resolved below
-                    self.find_guards_in_pattern(&value, None, val);
+                    self.find_guards_in_pattern(value.clone(), None, val);
                 }
                 MappingPatternItem::Rest(rest) => {
                     let name_def = rest.name_def();
@@ -3245,7 +3283,7 @@ impl Inference<'_, '_, '_> {
             match item {
                 SequencePatternItem::Entry(pattern) => {
                     self.find_guards_in_pattern(
-                        &Inferred::from_type(container_t.clone()),
+                        Inferred::from_type(container_t.clone()),
                         None,
                         pattern,
                     );
@@ -3315,7 +3353,7 @@ impl Inference<'_, '_, '_> {
         for pattern in sequence_patterns {
             match pattern {
                 SequencePatternItem::Entry(pattern) => {
-                    self.find_guards_in_pattern(&value_iterator.unpack_next(), None, pattern);
+                    self.find_guards_in_pattern(value_iterator.unpack_next(), None, pattern);
                 }
                 SequencePatternItem::Rest(star_pattern) => {
                     let (is_empty, mut value) =
@@ -4511,6 +4549,13 @@ fn unreachable_pattern() -> (Frame, Frame) {
     (Frame::new_unreachable(), Frame::new_conditional())
 }
 
+struct ClassPatternResult {
+    truthy_t: Inferred,
+    falsey_t: Inferred,
+    truthy_frame: Frame,
+    falsey_frame: Frame,
+}
+
 enum TruthyInferred {
     Simple {
         inf: Inferred,
@@ -5139,7 +5184,7 @@ fn intersect<'x>(
     i_s: &InferenceState,
     t1: &'x Type,
     t2: &'x Type,
-    mut add_issue: &mut dyn FnMut(IssueKind),
+    add_issue: &mut dyn FnMut(IssueKind),
 ) -> Option<Cow<'x, Type>> {
     Some(if t2.is_simple_sub_type_of(i_s, t1).bool() {
         Cow::Borrowed(t2)
