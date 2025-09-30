@@ -325,6 +325,7 @@ pub(crate) enum IssueKind {
 
     ClassHasNoMatchArgs { class: Box<str> },
     TooManyPositionalPatternsForMatchArgs,
+    ExpectedTypeInClassPattern { got: Box<str> },
 
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
@@ -1736,6 +1737,9 @@ impl<'db> Diagnostic<'db> {
             ),
             TooManyPositionalPatternsForMatchArgs =>
                 "Too many positional patterns for class pattern".to_string(),
+            ExpectedTypeInClassPattern { got } => format!(
+                r#"Expected type in class pattern; found "{got}""#
+            ),
 
             IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection } => format!(
                 "Subclass of {intersection} cannot exist: would have incompatible method signatures"

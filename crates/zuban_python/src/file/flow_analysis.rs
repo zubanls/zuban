@@ -2952,7 +2952,20 @@ impl Inference<'_, '_, '_> {
                     falsey_frame: Frame::new_conditional(),
                 };
             }
-            _ => todo!(),
+            t => {
+                self.add_issue(
+                    dotted.index(),
+                    IssueKind::ExpectedTypeInClassPattern {
+                        got: t.format_short(i_s.db),
+                    },
+                );
+                return PatternResult {
+                    truthy_t: Inferred::new_never(NeverCause::Other),
+                    falsey_t: inf,
+                    truthy_frame: Frame::new_conditional(),
+                    falsey_frame: Frame::new_conditional(),
+                };
+            }
         };
         let (truthy, falsey) =
             split_and_intersect(self.i_s, &inf.as_cow_type(i_s), &target_t, |issue| {
