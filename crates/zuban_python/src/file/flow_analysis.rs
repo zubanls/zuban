@@ -3014,9 +3014,8 @@ impl Inference<'_, '_, '_> {
                         if let Some(match_args) = match_args.get_or_init(|| {
                             lookup(node_ref, "__match_args__").into_maybe_inferred()
                         }) {
-                            if let Some(tup_entries) =
-                                match_args.as_cow_type(self.i_s).maybe_fixed_len_tuple()
-                            {
+                            let t = match_args.as_cow_type(self.i_s);
+                            if let Some(tup_entries) = t.maybe_fixed_len_tuple() {
                                 if let Some(entry) = tup_entries.get(nth_positional) {
                                     if let Type::Literal(literal) = entry
                                         && let LiteralKind::String(s) = &literal.kind
@@ -3038,6 +3037,15 @@ impl Inference<'_, '_, '_> {
                                         IssueKind::TooManyPositionalPatternsForMatchArgs,
                                     );
                                 }
+                            } else if let Type::Tuple(tup) = t.as_ref()
+                                && tup.args.is_any()
+                            {
+                                return PatternResult {
+                                    truthy_frame: Frame::new_conditional(),
+                                    falsey_frame: Frame::new_conditional(),
+                                    truthy_t: Inferred::from_type(truthy.clone()),
+                                    falsey_t: inf,
+                                };
                             } else {
                                 todo!()
                             }
