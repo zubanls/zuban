@@ -48,6 +48,13 @@ impl LookupResult {
         }
     }
 
+    pub fn maybe_name(&self) -> Option<PointLink> {
+        match self {
+            Self::GotoName { name, .. } => Some(*name),
+            _ => None,
+        }
+    }
+
     pub fn update_inferred(&mut self, new: Inferred) {
         match self {
             Self::GotoName { inf, .. } => *inf = new,

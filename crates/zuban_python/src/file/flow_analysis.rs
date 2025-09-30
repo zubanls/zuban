@@ -3012,10 +3012,14 @@ impl Inference<'_, '_, '_> {
                     ParamPattern::Positional(pat) => {
                         let node_ref = NodeRef::new(self.file, pat.index());
                         if let Some(match_args) = match_args.get_or_init(|| {
-                            lookup(node_ref, "__match_args__").into_maybe_inferred()
+                            let lookup = lookup(node_ref, "__match_args__");
+                            let name = lookup.maybe_name();
+                            lookup.into_maybe_inferred().map(|inf| {
+                                let t = inf.as_type(i_s);
+                                t.ensure_dunder_match_args_with_literals(i_s.db, name)
+                            })
                         }) {
-                            let t = match_args.as_cow_type(self.i_s);
-                            if let Some(tup_entries) = t.maybe_fixed_len_tuple() {
+                            if let Some(tup_entries) = match_args.maybe_fixed_len_tuple() {
                                 if let Some(entry) = tup_entries.get(nth_positional) {
                                     if let Type::Literal(literal) = entry
                                         && let LiteralKind::String(s) = &literal.kind
@@ -3037,7 +3041,7 @@ impl Inference<'_, '_, '_> {
                                         IssueKind::TooManyPositionalPatternsForMatchArgs,
                                     );
                                 }
-                            } else if let Type::Tuple(tup) = t.as_ref()
+                            } else if let Type::Tuple(tup) = match_args
                                 && tup.args.is_any()
                             {
                                 return PatternResult {
@@ -4655,6 +4659,33 @@ enum SubjectKey {
         key: FlowKey,
         parent_unions: ParentUnions,
     },
+}
+
+impl Type {
+    fn ensure_dunder_match_args_with_literals(
+        self,
+        db: &Database,
+        name: Option<PointLink>,
+    ) -> Self {
+        let Some(name) = name else { return self };
+        if let Some(tup_entries) = self.maybe_fixed_len_tuple() {
+            for entry in tup_entries {
+                if let Type::Class(_) = entry {
+                    let name_ref = NodeRef::from_link(db, name);
+                    if let Some(name) = name_ref.maybe_name()
+                        && let Some(assignment) = name.maybe_assignment_definition_name()
+                        && let Some((_, _, expr)) =
+                            assignment.maybe_simple_type_expression_assignment()
+                        && let Some(tuple) = expr.maybe_tuple()
+                        && let Some(t) = NodeRef::new(name_ref.file, tuple.index()).maybe_type()
+                    {
+                        return t.clone();
+                    }
+                }
+            }
+        }
+        self
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
