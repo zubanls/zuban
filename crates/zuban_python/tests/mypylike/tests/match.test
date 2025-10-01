@@ -64,3 +64,20 @@ match m:
         reveal_type(x)  # N: Revealed type is "str"
 
 reveal_type(x)  # N: Revealed type is "int | str"
+
+[case match_narrow_captured_variable_with_guard]
+# Copied partially from testMatchSubjectAssignExprWithGuard
+from typing import Optional
+def func() -> Optional[str]: ...
+
+match func():
+    case _ as m if not m:
+        reveal_type(m)  # N: Revealed type is "Union[Literal[''], None]"
+    case m:
+        reveal_type(m)  # N: Revealed type is "str | None"
+
+match func():
+    case m if not m:
+        reveal_type(m)  # N: Revealed type is "Union[Literal[''], None]"
+    case m:
+        reveal_type(m)  # N: Revealed type is "str | None"

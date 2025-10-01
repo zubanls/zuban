@@ -2530,9 +2530,10 @@ impl Inference<'_, '_, '_> {
         let (case_pattern, guard, block) = case_block.unpack();
         FLOW_ANALYSIS.with(|fa| {
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
-            let (mut in_frame, frames) = fa.with_frame_and_result(Frame::new_conditional(), || {
-                self.find_guards_in_case_pattern(subject, subject_key, case_pattern)
-            });
+            let (mut in_frame, mut frames) = fa
+                .with_frame_and_result(Frame::new_conditional(), || {
+                    self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
+                });
 
             let (mut truthy_frame, mut falsey_frame) =
                 if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
@@ -2558,7 +2559,11 @@ impl Inference<'_, '_, '_> {
             if let Some(guard) = guard {
                 let (_, truthy, falsey) = self.find_guards_in_named_expr(guard.named_expr());
                 truthy_frame = merge_and(self.i_s, truthy_frame, truthy);
+                let was_unreachable = falsey_frame.unreachable;
                 falsey_frame = fa.merge_or(self.i_s, falsey_frame, falsey, true);
+                if !falsey_frame.unreachable && was_unreachable {
+                    frames.falsey_t = subject;
+                }
             }
             let true_frame = fa.with_frame(truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)

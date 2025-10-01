@@ -646,7 +646,6 @@ testMatchNarrowingUnionTypedDictViaIndex
 testMatchNarrowingUnionClassViaAttribute
 testMatchSequencePatternCaptureNamedTuple
 testMatchOrPatternCapturesMissing
-testMatchSubjectAssignExprWithGuard
 testMatchLiteral
 testMatchOperations
 testMatchLiteralValuePathological
@@ -655,6 +654,9 @@ testNonExhaustiveMatchEnumWithFlag
 testNonExhaustiveMatchEnumMultipleMissingMatchesWithFlag
 testExhaustiveMatchNarrowingUnionTypedDictViaIndex
 testEnumTypeObjectMember
+# match patterns additional narrowings
+testMatchSubjectAssignExprWithGuard
+testMatchNarrowUsingPatternGuardSpecialCase
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1
