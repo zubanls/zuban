@@ -2899,11 +2899,7 @@ impl Inference<'_, '_, '_> {
                 let mut truthy = Type::Never(NeverCause::Other);
                 let mut falsey = Type::Never(NeverCause::Other);
                 for pat in or_pattern.iter() {
-                    let result = self.find_guards_in_pattern_kind(
-                        Inferred::new_any_from_error(),
-                        subject_key,
-                        pat,
-                    );
+                    let result = self.find_guards_in_pattern_kind(inf.clone(), subject_key, pat);
                     truthy = truthy.simplified_union(i_s, &result.truthy_t.as_cow_type(i_s));
                     falsey = falsey.simplified_union(i_s, &result.falsey_t.as_cow_type(i_s));
                 }
@@ -2979,10 +2975,6 @@ impl Inference<'_, '_, '_> {
     ) -> PatternResult {
         let i_s = self.i_s;
         let (dotted, params) = class_pattern.unpack();
-        let assign_any_to_pattern = |pat| {
-            // This is just temporary until the TODOs are resolved below
-            self.find_guards_in_pattern(Inferred::new_any_from_error(), None, pat);
-        };
         let inferred_target = self.infer_pattern_dotted_name(dotted);
         let inferred_target = inferred_target.as_cow_type(i_s);
         let target_t = match inferred_target.as_ref() {
@@ -3063,6 +3055,9 @@ impl Inference<'_, '_, '_> {
                                             break;
                                         }
                                     } else {
+                                        // If the type is not a literal, an error should be added
+                                        // in diagnostics that __match_args__ is not correct and we
+                                        // can simply work with Any here.
                                         self.find_guards_in_pattern(
                                             Inferred::new_any_from_error(),
                                             None,
@@ -3122,7 +3117,7 @@ impl Inference<'_, '_, '_> {
                                 );
                             }
                             added_no_match_args_issue = true;
-                            assign_any_to_pattern(pat);
+                            self.find_guards_in_pattern(Inferred::new_any_from_error(), None, pat);
                         }
                         nth_positional += 1;
                     }
