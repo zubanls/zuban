@@ -2852,8 +2852,6 @@ impl Inference<'_, '_, '_> {
                     },
                 );
                 return PatternResult {
-                    truthy_frame: Frame::from_type_without_entry(&truthy),
-                    falsey_frame: Frame::from_type_without_entry(&falsey),
                     truthy_t: Inferred::from_type(truthy),
                     falsey_t: Inferred::from_type(falsey),
                 };
@@ -2870,8 +2868,6 @@ impl Inference<'_, '_, '_> {
                         return PatternResult {
                             truthy_t: Inferred::from_type(expected),
                             falsey_t: inf,
-                            truthy_frame,
-                            falsey_frame,
                         };
                     }
                 }
@@ -2894,8 +2890,6 @@ impl Inference<'_, '_, '_> {
                 return PatternResult {
                     truthy_t: Inferred::from_type(truthy),
                     falsey_t: Inferred::from_type(falsey),
-                    truthy_frame: Frame::new_conditional(),
-                    falsey_frame: Frame::new_conditional(),
                 };
             }
             PatternKind::SequencePattern(sequence_pattern) => {
@@ -2947,8 +2941,6 @@ impl Inference<'_, '_, '_> {
                     PatternResult {
                         truthy_t: inf.clone(),
                         falsey_t: inf,
-                        truthy_frame,
-                        falsey_frame,
                     }
                 });
             }
@@ -2956,8 +2948,6 @@ impl Inference<'_, '_, '_> {
         PatternResult {
             truthy_t: inf.clone(),
             falsey_t: inf,
-            truthy_frame: Frame::new_conditional(),
-            falsey_frame: Frame::new_conditional(),
         }
     }
 
@@ -2981,8 +2971,6 @@ impl Inference<'_, '_, '_> {
                 return PatternResult {
                     truthy_t: inf.clone(),
                     falsey_t: inf,
-                    truthy_frame: Frame::new_conditional(),
-                    falsey_frame: Frame::new_conditional(),
                 };
             }
             t => {
@@ -2995,8 +2983,6 @@ impl Inference<'_, '_, '_> {
                 return PatternResult {
                     truthy_t: Inferred::new_never(NeverCause::Other),
                     falsey_t: inf,
-                    truthy_frame: Frame::new_conditional(),
-                    falsey_frame: Frame::new_conditional(),
                 };
             }
         };
@@ -3071,8 +3057,6 @@ impl Inference<'_, '_, '_> {
                                 && tup.args.is_any()
                             {
                                 return PatternResult {
-                                    truthy_frame: Frame::new_conditional(),
-                                    falsey_frame: Frame::new_conditional(),
                                     truthy_t: Inferred::from_type(truthy.clone()),
                                     falsey_t: inf,
                                 };
@@ -3138,8 +3122,6 @@ impl Inference<'_, '_, '_> {
             truthy
         };
         PatternResult {
-            truthy_frame: Frame::from_type_without_entry(&truthy),
-            falsey_frame: Frame::from_type_without_entry(&falsey),
             truthy_t: Inferred::from_type(truthy),
             falsey_t: if mismatch {
                 inf
@@ -3208,8 +3190,6 @@ impl Inference<'_, '_, '_> {
         PatternResult {
             truthy_t: Inferred::from_type(truthy),
             falsey_t: Inferred::from_type(falsey),
-            truthy_frame: Frame::new_conditional(),
-            falsey_frame: Frame::new_conditional(),
         }
     }
 
@@ -4606,8 +4586,6 @@ fn unreachable_pattern() -> (Frame, Frame) {
 struct PatternResult {
     truthy_t: Inferred,
     falsey_t: Inferred,
-    truthy_frame: Frame,
-    falsey_frame: Frame,
 }
 
 enum TruthyInferred {
