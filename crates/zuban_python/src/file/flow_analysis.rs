@@ -34,6 +34,7 @@ use crate::{
     matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
     new_class,
     node_ref::NodeRef,
+    python_state::PythonState,
     recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, DbBytes, DbString, EnumKind,
@@ -3099,27 +3100,7 @@ impl Inference<'_, '_, '_> {
                             } else {
                                 todo!()
                             }
-                        } else if params.clone().count() == 1 && {
-                            let py = &i_s.db.python_state;
-                            match t {
-                                Type::Class(c) => {
-                                    c.link == py.int_link()
-                                        || c.link == py.int_link()
-                                        || c.link == py.float_link()
-                                        || c.link == py.bool_link()
-                                        || c.link == py.str_link()
-                                        || c.link == py.bytes_link()
-                                        || c.link == py.bytearray_link()
-                                        || c.link == py.list_link()
-                                        || c.link == py.dict_link()
-                                        || c.link == py.set_link()
-                                        || c.link == py.frozenset_link()
-                                        || c.link == py.int_link()
-                                }
-                                Type::Tuple(_) => true,
-                                _ => false,
-                            }
-                        } {
+                        } else if params.clone().count() == 1 && is_self_match_type(i_s.db, t) {
                             self.find_guards_in_pattern(
                                 Inferred::from_type(t.clone()),
                                 subject_key,
@@ -4631,6 +4612,29 @@ impl Inference<'_, '_, '_> {
 
 fn unreachable_pattern() -> (Frame, Frame) {
     (Frame::new_unreachable(), Frame::new_conditional())
+}
+
+fn is_self_match_type(db: &Database, t: &Type) -> bool {
+    let py = &db.python_state;
+    match t {
+        Type::Class(c) => {
+            c.link == py.int_link()
+                || c.link == py.int_link()
+                || c.link == py.float_link()
+                || c.link == py.bool_link()
+                || c.link == py.str_link()
+                || c.link == py.bytes_link()
+                || c.link == py.bytearray_link()
+                || c.link == py.list_link()
+                || c.link == py.dict_link()
+                || c.link == py.set_link()
+                || c.link == py.frozenset_link()
+                || c.link == py.int_link()
+        }
+        Type::Literal(l) => is_self_match_type(db, &l.fallback_type(db)),
+        Type::Tuple(_) => true,
+        _ => false,
+    }
 }
 
 #[derive(Debug)]

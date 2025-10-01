@@ -81,3 +81,11 @@ match func():
         reveal_type(m)  # N: Revealed type is "Union[Literal[''], None]"
     case m:
         reveal_type(m)  # N: Revealed type is "str | None"
+
+[case match_literal_as_int]
+# flags: --warn-unreachable
+match 0:
+    case int(i):
+        reveal_type(i)  # N: Revealed type is "Literal[0]?"
+    case other:
+        other  # E: Statement is unreachable
