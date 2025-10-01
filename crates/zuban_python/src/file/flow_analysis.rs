@@ -1238,12 +1238,7 @@ fn split_off_enum_member(
     Some((truthy, falsey))
 }
 
-fn split_off_singleton(
-    i_s: &InferenceState,
-    of_type: &Type,
-    singleton: &Type,
-    abort_on_custom_eq: bool,
-) -> Option<(Type, Type)> {
+fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -> (Type, Type) {
     let mut truthy = Type::Never(NeverCause::Other);
     let mut falsey = Type::Never(NeverCause::Other);
     let mut add = |t| falsey.union_in_place(t);
@@ -1257,10 +1252,6 @@ fn split_off_singleton(
             }
             _ if singleton == sub_t => truthy = singleton.clone(),
             _ => {
-                if abort_on_custom_eq && has_custom_eq(i_s, sub_t) {
-                    return None;
-                }
-
                 if singleton == sub_t {
                     truthy = singleton.clone()
                 } else {
@@ -1269,7 +1260,7 @@ fn split_off_singleton(
             }
         }
     }
-    Some((truthy, falsey))
+    (truthy, falsey)
 }
 
 fn narrow_is_or_eq(
@@ -1280,12 +1271,11 @@ fn narrow_is_or_eq(
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
     let split_singleton = |key: FlowKey| {
-        let (truthy, falsey) = split_off_singleton(i_s, checking_t, other_t, is_eq)?;
-        let result = (
+        let (truthy, falsey) = split_off_singleton(i_s, checking_t, other_t);
+        (
             Frame::from_type(key.clone(), truthy),
             Frame::from_type(key, falsey),
-        );
-        Some(result)
+        )
     };
 
     match other_t {
@@ -1296,17 +1286,17 @@ fn narrow_is_or_eq(
         }
         Type::None if !is_eq => {
             // Mypy makes it possible to narrow None against a bare TypeVar.
-            if matches!(checking_t, Type::TypeVar(_)) {
-                Some((
+            Some(if matches!(checking_t, Type::TypeVar(_)) {
+                (
                     Frame::from_type(key.clone(), Type::None),
                     Frame::from_type(key, checking_t.clone()),
-                ))
+                )
             } else {
                 split_singleton(key)
-            }
+            })
         }
         Type::None => {
-            let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq)?;
+            let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None);
             Some((Frame::new_conditional(), Frame::from_type(key, falsey)))
         }
         Type::EnumMember(member) if !is_eq || !member.implicit => {
@@ -1374,7 +1364,9 @@ fn narrow_is_or_eq(
             Frame::from_type(key, left_t.clone()),
         )),
         */
-        Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => split_singleton(key),
+        Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => {
+            Some(split_singleton(key))
+        }
         _ => match checking_t {
             Type::Union(_) => {
                 // Remove None from the checking side, if the other side matches everything except None.
@@ -1382,7 +1374,7 @@ fn narrow_is_or_eq(
                     .iter_with_unpacked_unions(i_s.db)
                     .any(|t| matches!(t, Type::None))
                 {
-                    let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq)?;
+                    let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None);
                     if falsey.is_simple_sub_type_of(i_s, other_t).bool()
                         || falsey.is_simple_super_type_of(i_s, other_t).bool()
                     {
