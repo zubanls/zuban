@@ -2965,27 +2965,22 @@ impl Inference<'_, '_, '_> {
         let Some(pattern) = patterns.next() else {
             return PatternResult {
                 truthy_t: Inferred::new_never(NeverCause::Other),
-                falsey_t: Inferred::new_never(NeverCause::Other),
+                falsey_t: inf,
             };
         };
         FLOW_ANALYSIS.with(|fa| {
-            let (mut first_frame, mut result1) = fa
-                .with_frame_and_result(Frame::new_conditional(), || {
-                    self.find_guards_in_pattern_kind(inf.clone(), subject_key, pattern)
-                });
-            let (mut next_frame, mut result2) = fa
-                .with_frame_and_result(Frame::new_conditional(), || {
-                    self.find_guards_in_or_pattern(inf, subject_key, patterns)
-                });
-
+            let (first_frame, result1) = fa.with_frame_and_result(Frame::new_conditional(), || {
+                self.find_guards_in_pattern_kind(inf, subject_key, pattern)
+            });
+            let (next_frame, result2) = fa.with_frame_and_result(Frame::new_conditional(), || {
+                self.find_guards_in_or_pattern(result1.falsey_t, subject_key, patterns)
+            });
             fa.merge_conditional(self.i_s, first_frame, next_frame);
             PatternResult {
                 truthy_t: result1
                     .truthy_t
                     .simplified_union(self.i_s, result2.truthy_t),
-                falsey_t: result1
-                    .falsey_t
-                    .simplified_union(self.i_s, result2.falsey_t),
+                falsey_t: result2.falsey_t,
             }
         })
     }
