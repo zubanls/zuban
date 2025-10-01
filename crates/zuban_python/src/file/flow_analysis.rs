@@ -3053,9 +3053,11 @@ impl Inference<'_, '_, '_> {
                                     if let Type::Literal(literal) = entry
                                         && let LiteralKind::String(s) = &literal.kind
                                     {
+                                        let key = s.as_str(i_s.db);
+                                        used_keywords.push((key, false));
                                         if find_inner_guards_and_return_unreachable(
                                             NodeRef::new(self.file, pat.index()),
-                                            s.as_str(i_s.db),
+                                            key,
                                             pat,
                                         ) {
                                             break;
@@ -3131,7 +3133,13 @@ impl Inference<'_, '_, '_> {
                             if key == *used {
                                 self.add_issue(
                                     key_node.index(),
-                                    IssueKind::DuplicateKeywordPattern { name: key.into() },
+                                    if *is_kw {
+                                        IssueKind::DuplicateKeywordPattern { name: key.into() }
+                                    } else {
+                                        IssueKind::DuplicateImplicitKeywordPattern {
+                                            name: key.into(),
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -3142,7 +3150,7 @@ impl Inference<'_, '_, '_> {
                         ) {
                             break;
                         }
-                        used_keywords.push((key, false))
+                        used_keywords.push((key, true))
                     }
                 }
             }

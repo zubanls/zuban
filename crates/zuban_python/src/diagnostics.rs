@@ -329,6 +329,7 @@ pub(crate) enum IssueKind {
     ExpectedTypeInClassPattern { got: Box<str> },
     InvalidDunderMatchArgs,
     DuplicateKeywordPattern { name: Box<str> },
+    DuplicateImplicitKeywordPattern { name: Box<str> },
 
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
@@ -1761,6 +1762,9 @@ impl<'db> Diagnostic<'db> {
                 "__match_args__ must be a tuple containing string literals for \
                  checking of match statements to work".to_string(),
             DuplicateKeywordPattern { name } => format!(r#"Duplicate keyword pattern "{name}""#),
+            DuplicateImplicitKeywordPattern { name } => format!(
+                r#"Keyword "{name}" already matches a positional pattern"#
+            ),
 
             IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection } => format!(
                 "Subclass of {intersection} cannot exist: would have incompatible method signatures"
