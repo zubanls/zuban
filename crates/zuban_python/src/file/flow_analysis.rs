@@ -746,7 +746,11 @@ impl FlowAnalysis {
             })
             // The fallback just assigns an "empty" key. This is needed, because otherwise we would
             // not be able to know if the entry invalidated entries further up the stack.
-            .unwrap_or_else(|| search_for.with_declaration(i_s.flags().allow_redefinition))
+            .unwrap_or_else(|| {
+                search_for.with_declaration(
+                    i_s.flags().allow_redefinition || self.in_pattern_matching.get() > 0,
+                )
+            })
     }
 
     fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {
@@ -1558,8 +1562,8 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
     }
 
-    pub fn in_pattern_matching(&self) -> bool {
-        FLOW_ANALYSIS.with(|fa| fa.in_pattern_matching.get() > 0)
+    pub fn allow_redefinitions_in_specific_scope(&self) -> bool {
+        self.flags().allow_redefinition || FLOW_ANALYSIS.with(|fa| fa.in_pattern_matching.get() > 0)
     }
 
     pub fn in_type_checking_only_block(&self) -> bool {
@@ -1585,7 +1589,7 @@ impl Inference<'_, '_, '_> {
 
     #[inline]
     pub fn add_initial_name_definition(&self, name: NameDef) {
-        if self.flags().allow_redefinition {
+        if self.allow_redefinitions_in_specific_scope() {
             FLOW_ANALYSIS.with(|fa| {
                 fa.add_initial_name_definition(
                     self.i_s.db,
@@ -1691,7 +1695,7 @@ impl Inference<'_, '_, '_> {
             return;
         }
         let error_result = if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-            if self.flags().allow_redefinition
+            if self.allow_redefinitions_in_specific_scope()
                 && matches!(key, FlowKey::Name(_))
                 && matches!(check_for_error(), RedefinitionResult::RedefinitionAllowed)
             {
@@ -2826,7 +2830,7 @@ impl Inference<'_, '_, '_> {
 
     fn assign_to_pattern_name(&self, name_def: NameDef, inf: &Inferred) {
         let from = NodeRef::new(self.file, name_def.index());
-        self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Normal);
+        self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Pattern);
     }
 
     fn find_guards_in_pattern_kind(
@@ -2837,8 +2841,19 @@ impl Inference<'_, '_, '_> {
     ) -> PatternResult {
         let i_s = self.i_s;
         match kind {
-            PatternKind::NameDef(name_def) => self.assign_to_pattern_name(name_def, &inf),
-            PatternKind::WildcardPattern(_) => (),
+            PatternKind::NameDef(name_def) => {
+                self.assign_to_pattern_name(name_def, &inf);
+                return PatternResult {
+                    truthy_t: inf,
+                    falsey_t: Inferred::new_never(NeverCause::Other),
+                };
+            }
+            PatternKind::WildcardPattern(_) => {
+                return PatternResult {
+                    truthy_t: inf,
+                    falsey_t: Inferred::new_never(NeverCause::Other),
+                };
+            }
             PatternKind::DottedName(dotted_name) => {
                 let dotted_inf = self.infer_pattern_dotted_name(dotted_name);
                 let (truthy, falsey) = split_and_intersect(

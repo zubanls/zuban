@@ -1042,12 +1042,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 RedefinitionResult::TypeMismatch(had_error)
             },
         );
-        if had_error && matches!(assign_kind, AssignKind::Normal | AssignKind::Walrus) {
+        if had_error && assign_kind.is_normal_assignment() {
             save(name_def.index(), ancestor_inf);
         } else {
             save(name_def.index(), value);
         }
     }
+
     pub(super) fn assign_to_name_def_simple(
         &self,
         name_def: NameDef,
@@ -1127,7 +1128,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
-                    let r = if self.flags().allow_redefinition
+                    let r = if self.allow_redefinitions_in_specific_scope()
                         && NodeRef::from_link(self.i_s.db, first_name_link)
                             .point()
                             .can_be_redefined()
@@ -1166,21 +1167,25 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             |error_types| {
                 had_error = true;
                 let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
-                if let Some(base_class) = base_class.as_ref() {
-                    Some(IssueKind::IncompatibleAssignmentInSubclass {
+                Some(if let Some(base_class) = base_class.as_ref() {
+                    IssueKind::IncompatibleAssignmentInSubclass {
                         base_class: base_class.name(self.i_s.db).into(),
                         got,
                         expected,
-                    })
-                } else if matches!(assign_kind, AssignKind::Import) {
-                    Some(IssueKind::IncompatibleImportAssignment {
-                        name: from.as_code().into(),
-                        got,
-                        expected,
-                    })
+                    }
                 } else {
-                    Some(IssueKind::IncompatibleAssignment { got, expected })
-                }
+                    match assign_kind {
+                        AssignKind::Import => IssueKind::IncompatibleImportAssignment {
+                            name: from.as_code().into(),
+                            got,
+                            expected,
+                        },
+                        AssignKind::Pattern => {
+                            IssueKind::IncompatiblePatternAssignment { got, expected }
+                        }
+                        _ => IssueKind::IncompatibleAssignment { got, expected },
+                    }
+                })
             },
         );
         had_error
@@ -1480,7 +1485,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 save(name_def.index(), &original);
                 return;
             }
-            if matches!(assign_kind, AssignKind::Normal | AssignKind::Walrus) {
+            if assign_kind.is_normal_assignment() {
                 if let Some(partial) = value.maybe_new_partial(i_s, |t| {
                     set_defaultdict_type(NodeRef::new(self.file, name_def.index()), t)
                 }) {
@@ -1830,7 +1835,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 },
             );
         }
-        if matches!(assign_kind, AssignKind::Normal | AssignKind::Walrus)
+        if assign_kind.is_normal_assignment()
             && save_narrowed.get()
             // It seems like on explicit Any Mypy does not narrow
             // TODO it should not narrow on all Any declaration, not just base
@@ -4840,6 +4845,13 @@ pub(crate) enum AssignKind {
     Annotation { specific: Option<Specific> }, // `a: int = 1` or `a = 1 # type: int
     Import,
     AugAssign, // a += 1
+    Pattern,   // case foo:
+}
+
+impl AssignKind {
+    fn is_normal_assignment(self) -> bool {
+        matches!(self, Self::Normal | Self::Walrus | Self::Pattern)
+    }
 }
 
 pub(crate) enum StarImportResult {
