@@ -3035,6 +3035,7 @@ impl Inference<'_, '_, '_> {
                 }
                 mismatch
             };
+            let mut used_keywords: Vec<(&str, bool)> = vec![];
             for param in params.clone() {
                 match param {
                     ParamPattern::Positional(pat) => {
@@ -3124,14 +3125,24 @@ impl Inference<'_, '_, '_> {
                         nth_positional += 1;
                     }
                     ParamPattern::Keyword(keyword_pattern) => {
-                        let (key, pat) = keyword_pattern.unpack();
+                        let (key_node, pat) = keyword_pattern.unpack();
+                        let key = key_node.as_code();
+                        for (used, is_kw) in &used_keywords {
+                            if key == *used {
+                                self.add_issue(
+                                    key_node.index(),
+                                    IssueKind::DuplicateKeywordPattern { name: key.into() },
+                                )
+                            }
+                        }
                         if find_inner_guards_and_return_unreachable(
                             NodeRef::new(self.file, keyword_pattern.index()),
-                            key.as_code(),
+                            key,
                             pat,
                         ) {
                             break;
                         }
+                        used_keywords.push((key, false))
                     }
                 }
             }
@@ -3377,7 +3388,6 @@ impl Inference<'_, '_, '_> {
             }
         };
 
-        let unreachable_pattern = || (Frame::new_unreachable(), Frame::new_conditional());
         // Calculate first how many items are needed
         let mut normal_patterns = 0;
         let mut after_stars = 0;
