@@ -1210,7 +1210,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 ) {
                     self.check_assignment_type(
                         value,
-                        &declaration_t.into_owned().avoid_implicit_literal(i_s.db),
+                        &declaration_t.avoid_implicit_literal_cow(i_s.db),
                         from,
                         None,
                         assign_kind,
