@@ -388,6 +388,7 @@ pub(crate) struct FlowAnalysis {
     partials_in_module: RefCell<Vec<PointLink>>,
     in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
     accumulating_types: Cell<usize>, // Can accumulate nested and thereore use this counter like a stack
+    in_pattern_matching: Cell<usize>, // Counts how many times we're inside pattern matching
 }
 
 impl FlowAnalysis {
@@ -453,6 +454,7 @@ impl FlowAnalysis {
         let partials = self.partials_in_module.take();
         let in_type_checking_only_block = self.in_type_checking_only_block.take();
         let accumulating_types = self.accumulating_types.take();
+        let in_pattern_matching = self.in_pattern_matching.take();
 
         let result = FlowAnalysisResult {
             result: callable(),
@@ -468,6 +470,7 @@ impl FlowAnalysis {
         self.in_type_checking_only_block
             .set(in_type_checking_only_block);
         self.accumulating_types.set(accumulating_types);
+        self.in_pattern_matching.set(in_pattern_matching);
         result
     }
 
@@ -521,7 +524,7 @@ impl FlowAnalysis {
         debug_assert!(self.partials_in_module.borrow().is_empty());
         debug_assert!(!self.in_type_checking_only_block.get());
         debug_assert!(!self.in_type_checking_only_block.get());
-        debug_assert_eq!(self.accumulating_types.get(), 0);
+        debug_assert_eq!(self.in_pattern_matching.get(), 0);
     }
 
     fn lookup_narrowed_key_and_deleted(
@@ -1555,6 +1558,10 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
     }
 
+    pub fn in_pattern_matching(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| fa.in_pattern_matching.get() > 0)
+    }
+
     pub fn in_type_checking_only_block(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| fa.in_type_checking_only_block.get())
     }
@@ -2518,6 +2525,7 @@ impl Inference<'_, '_, '_> {
         };
         let (case_pattern, guard, block) = case_block.unpack();
         FLOW_ANALYSIS.with(|fa| {
+            fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
             let (mut in_frame, frames) = fa.with_frame_and_result(Frame::new_conditional(), || {
                 self.find_guards_in_case_pattern(subject, subject_key, case_pattern)
             });
@@ -2555,6 +2563,7 @@ impl Inference<'_, '_, '_> {
                 self.process_match_cases(frames.falsey_t, subject_key, case_blocks, class, func)
             });
             fa.merge_conditional(self.i_s, true_frame, false_frame);
+            fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
         });
     }
 
@@ -2810,10 +2819,14 @@ impl Inference<'_, '_, '_> {
         let (pattern_kind, as_name) = pattern.unpack();
         let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind);
         if let Some(as_name) = as_name {
-            let from = NodeRef::new(self.file, pattern.index());
-            self.assign_to_name_def_simple(as_name, from, &result.truthy_t, AssignKind::Normal);
+            self.assign_to_pattern_name(as_name, &result.truthy_t)
         }
         result
+    }
+
+    fn assign_to_pattern_name(&self, name_def: NameDef, inf: &Inferred) {
+        let from = NodeRef::new(self.file, name_def.index());
+        self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Normal);
     }
 
     fn find_guards_in_pattern_kind(
@@ -2824,10 +2837,7 @@ impl Inference<'_, '_, '_> {
     ) -> PatternResult {
         let i_s = self.i_s;
         match kind {
-            PatternKind::NameDef(name_def) => {
-                let from = NodeRef::new(self.file, name_def.index());
-                self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Normal);
-            }
+            PatternKind::NameDef(name_def) => self.assign_to_pattern_name(name_def, &inf),
             PatternKind::WildcardPattern(_) => (),
             PatternKind::DottedName(dotted_name) => {
                 let dotted_inf = self.infer_pattern_dotted_name(dotted_name);
@@ -3251,15 +3261,13 @@ impl Inference<'_, '_, '_> {
                 }
                 MappingPatternItem::Rest(rest) => {
                     let name_def = rest.name_def();
-                    self.assign_to_name_def_simple(
+                    self.assign_to_pattern_name(
                         name_def,
-                        NodeRef::new(self.file, name_def.index()),
                         &Inferred::from_type(new_class!(
                             self.i_s.db.python_state.dict_link(),
                             self.i_s.db.python_state.str_type(),
                             fallback_type()
                         )),
-                        AssignKind::Normal,
                     )
                 }
             }
@@ -3290,15 +3298,13 @@ impl Inference<'_, '_, '_> {
                             Some(mapping.nth_type_argument(db, 0))
                         })
                         .unwrap_or_else(|| db.python_state.object_type());
-                    self.assign_to_name_def_simple(
+                    self.assign_to_pattern_name(
                         name_def,
-                        NodeRef::new(self.file, name_def.index()),
                         &Inferred::from_type(new_class!(
                             db.python_state.dict_link(),
                             key_type,
                             value.as_type(self.i_s),
                         )),
-                        AssignKind::Normal,
                     );
                 }
             }
@@ -3343,14 +3349,12 @@ impl Inference<'_, '_, '_> {
                 }
                 SequencePatternItem::Rest(star_pattern) => match star_pattern.unpack() {
                     StarPatternContent::NameDef(name_def) => {
-                        self.assign_to_name_def_simple(
+                        self.assign_to_pattern_name(
                             name_def,
-                            NodeRef::new(self.file, name_def.index()),
                             &Inferred::from_type(new_class!(
                                 self.i_s.db.python_state.list_link(),
                                 container_t.clone()
                             )),
-                            AssignKind::Normal,
                         );
                     }
                     StarPatternContent::WildcardPattern(_) => (),
@@ -3421,12 +3425,7 @@ impl Inference<'_, '_, '_> {
                                     self.i_s.db.python_state.list_of_any.clone(),
                                 )
                             }
-                            self.assign_to_name_def_simple(
-                                name_def,
-                                NodeRef::new(self.file, name_def.index()),
-                                &value,
-                                AssignKind::Normal,
-                            );
+                            self.assign_to_pattern_name(name_def, &value);
                         }
                         StarPatternContent::WildcardPattern(_) => (),
                     }
