@@ -2848,17 +2848,15 @@ impl Inference<'_, '_, '_> {
         match kind {
             PatternKind::NameDef(name_def) => {
                 self.assign_to_pattern_name(name_def, &inf);
-                return PatternResult {
+                PatternResult {
                     truthy_t: inf,
                     falsey_t: Inferred::new_never(NeverCause::Other),
-                };
+                }
             }
-            PatternKind::WildcardPattern(_) => {
-                return PatternResult {
-                    truthy_t: inf,
-                    falsey_t: Inferred::new_never(NeverCause::Other),
-                };
-            }
+            PatternKind::WildcardPattern(_) => PatternResult {
+                truthy_t: inf,
+                falsey_t: Inferred::new_never(NeverCause::Other),
+            },
             PatternKind::DottedName(dotted_name) => {
                 let dotted_inf = self.infer_pattern_dotted_name(dotted_name);
                 let (truthy, falsey) = split_and_intersect(
@@ -2871,13 +2869,13 @@ impl Inference<'_, '_, '_> {
                         }
                     },
                 );
-                return PatternResult {
+                PatternResult {
                     truthy_t: Inferred::from_type(truthy),
                     falsey_t: Inferred::from_type(falsey),
-                };
+                }
             }
             PatternKind::ClassPattern(class_pattern) => {
-                return self.find_guards_in_class_pattern(inf, subject_key, class_pattern);
+                self.find_guards_in_class_pattern(inf, subject_key, class_pattern)
             }
             PatternKind::LiteralPattern(literal_pattern) => {
                 let expected = self.literal_pattern_to_type(literal_pattern);
@@ -2891,18 +2889,23 @@ impl Inference<'_, '_, '_> {
                         };
                     }
                 }
+                // TODO this looks wrong
+                PatternResult {
+                    truthy_t: inf.clone(),
+                    falsey_t: inf,
+                }
             }
             PatternKind::GroupPattern(group_pattern) => {
-                return self.find_guards_in_pattern(inf, subject_key, group_pattern.inner());
+                self.find_guards_in_pattern(inf, subject_key, group_pattern.inner())
             }
             PatternKind::OrPattern(or_pattern) => {
-                return self.find_guards_in_or_pattern(inf, subject_key, or_pattern.iter());
+                self.find_guards_in_or_pattern(inf, subject_key, or_pattern.iter())
             }
             PatternKind::SequencePattern(sequence_pattern) => {
-                return self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter());
+                self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter())
             }
             PatternKind::MappingPattern(mapping_pattern) => {
-                return FLOW_ANALYSIS.with(|fa| {
+                FLOW_ANALYSIS.with(|fa| {
                     let mut truthy_frame = Frame::new_unreachable();
                     let mut falsey_frame = Frame::new_unreachable();
                     for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -2948,12 +2951,8 @@ impl Inference<'_, '_, '_> {
                         truthy_t: inf.clone(),
                         falsey_t: inf,
                     }
-                });
+                })
             }
-        }
-        PatternResult {
-            truthy_t: inf.clone(),
-            falsey_t: inf,
         }
     }
 
