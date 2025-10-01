@@ -34,7 +34,6 @@ use crate::{
     matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
     new_class,
     node_ref::NodeRef,
-    python_state::PythonState,
     recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, DbBytes, DbString, EnumKind,
@@ -2805,8 +2804,22 @@ impl Inference<'_, '_, '_> {
         case_pattern: CasePattern,
     ) -> PatternResult {
         match case_pattern {
-            CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, subject_key, pattern),
+            CasePattern::Pattern(pattern) => {
+                debug!(
+                    "Check pattern: {:?} with type {:?}",
+                    pattern.as_code(),
+                    inf.as_cow_type(self.i_s)
+                );
+                let _indent = debug_indent();
+                self.find_guards_in_pattern(inf, subject_key, pattern)
+            }
             CasePattern::OpenSequencePattern(seq) => {
+                debug!(
+                    "Check open sequence pattern: {:?} with type {:?}",
+                    seq.as_code(),
+                    inf.as_cow_type(self.i_s)
+                );
+                let _indent = debug_indent();
                 self.find_guards_in_sequence_pattern(inf, seq.iter())
             }
         }
@@ -2852,16 +2865,13 @@ impl Inference<'_, '_, '_> {
             },
             PatternKind::DottedName(dotted_name) => {
                 let dotted_inf = self.infer_pattern_dotted_name(dotted_name);
-                let (truthy, falsey) = split_and_intersect(
-                    self.i_s,
-                    &inf.as_cow_type(i_s),
-                    &dotted_inf.as_cow_type(i_s),
-                    |issue| {
+                let inf_t = dotted_inf.as_cow_type(i_s);
+                let (truthy, falsey) =
+                    split_and_intersect(self.i_s, &inf.as_cow_type(i_s), &inf_t, |issue| {
                         if self.flags().warn_unreachable {
                             self.add_issue(dotted_name.index(), issue)
                         }
-                    },
-                );
+                    });
                 PatternResult {
                     truthy_t: Inferred::from_type(truthy),
                     falsey_t: Inferred::from_type(falsey),
@@ -2872,20 +2882,10 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::LiteralPattern(literal_pattern) => {
                 let expected = self.literal_pattern_to_type(literal_pattern);
-                if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                    if let Some((truthy_frame, falsey_frame)) =
-                        narrow_is_or_eq(i_s, key.clone(), &inf.as_cow_type(i_s), &expected, true)
-                    {
-                        return PatternResult {
-                            truthy_t: Inferred::from_type(expected),
-                            falsey_t: inf,
-                        };
-                    }
-                }
-                // TODO this looks wrong
+                let (truthy, falsey) = split_off_singleton(i_s, &inf.as_cow_type(i_s), &expected);
                 PatternResult {
-                    truthy_t: inf.clone(),
-                    falsey_t: inf,
+                    truthy_t: Inferred::from_type(truthy),
+                    falsey_t: Inferred::from_type(falsey),
                 }
             }
             PatternKind::GroupPattern(group_pattern) => {
@@ -3009,10 +3009,10 @@ impl Inference<'_, '_, '_> {
                 };
             }
         };
-        let (truthy, falsey) =
-            split_and_intersect(self.i_s, &inf.as_cow_type(i_s), &target_t, |issue| {
-                debug!("Intersection for class target not possible: {issue:?}");
-            });
+        let inf_t = inf.as_cow_type(i_s);
+        let (truthy, falsey) = split_and_intersect(self.i_s, &inf_t, &target_t, |issue| {
+            debug!("Intersection for class target not possible: {issue:?}");
+        });
         let lookup = |for_node_ref, name: &str| {
             target_t.lookup(
                 i_s,
@@ -3141,7 +3141,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        let truthy = if mismatch {
+        let truthy = if mismatch || inf_t.is_never() {
             Type::Never(NeverCause::Other)
         } else {
             truthy
