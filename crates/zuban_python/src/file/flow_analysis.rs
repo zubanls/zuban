@@ -2896,17 +2896,7 @@ impl Inference<'_, '_, '_> {
                 return self.find_guards_in_pattern(inf, subject_key, group_pattern.inner());
             }
             PatternKind::OrPattern(or_pattern) => {
-                let mut truthy = Type::Never(NeverCause::Other);
-                let mut falsey = Type::Never(NeverCause::Other);
-                for pat in or_pattern.iter() {
-                    let result = self.find_guards_in_pattern_kind(inf.clone(), subject_key, pat);
-                    truthy = truthy.simplified_union(i_s, &result.truthy_t.as_cow_type(i_s));
-                    falsey = falsey.simplified_union(i_s, &result.falsey_t.as_cow_type(i_s));
-                }
-                return PatternResult {
-                    truthy_t: Inferred::from_type(truthy),
-                    falsey_t: Inferred::from_type(falsey),
-                };
+                return self.find_guards_in_or_pattern(inf, subject_key, or_pattern.iter());
             }
             PatternKind::SequencePattern(sequence_pattern) => {
                 return self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter());
@@ -2965,6 +2955,40 @@ impl Inference<'_, '_, '_> {
             truthy_t: inf.clone(),
             falsey_t: inf,
         }
+    }
+
+    fn find_guards_in_or_pattern<'x>(
+        &self,
+        inf: Inferred,
+        subject_key: Option<&SubjectKey>,
+        mut patterns: impl Iterator<Item = PatternKind<'x>>,
+    ) -> PatternResult {
+        let Some(pattern) = patterns.next() else {
+            return PatternResult {
+                truthy_t: Inferred::new_never(NeverCause::Other),
+                falsey_t: Inferred::new_never(NeverCause::Other),
+            };
+        };
+        FLOW_ANALYSIS.with(|fa| {
+            let (mut first_frame, mut result1) = fa
+                .with_frame_and_result(Frame::new_conditional(), || {
+                    self.find_guards_in_pattern_kind(inf.clone(), subject_key, pattern)
+                });
+            let (mut next_frame, mut result2) = fa
+                .with_frame_and_result(Frame::new_conditional(), || {
+                    self.find_guards_in_or_pattern(inf, subject_key, patterns)
+                });
+
+            fa.merge_conditional(self.i_s, first_frame, next_frame);
+            PatternResult {
+                truthy_t: result1
+                    .truthy_t
+                    .simplified_union(self.i_s, result2.truthy_t),
+                falsey_t: result1
+                    .falsey_t
+                    .simplified_union(self.i_s, result2.falsey_t),
+            }
+        })
     }
 
     fn find_guards_in_class_pattern(
