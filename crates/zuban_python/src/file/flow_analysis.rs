@@ -1250,13 +1250,7 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
                 add(sub_t.clone());
             }
             _ if singleton == sub_t => truthy = singleton.clone(),
-            _ => {
-                if singleton == sub_t {
-                    truthy = singleton.clone()
-                } else {
-                    add(sub_t.clone())
-                }
-            }
+            _ => add(sub_t.clone()),
         }
     }
     (truthy, falsey)
