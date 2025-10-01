@@ -45,7 +45,6 @@ testPropertyNameIsChecked
 testPropertyAttributeIsChecked
 testPropertyNameAndAttributeIsCheckedPretty
 testPropertyGetterDecoratorIsRejected
-testInvalidMetaclassStructure
 testSlotsCompatibility
 testMetaclassConflict
 testMetaClassConflictIssue14033
@@ -70,10 +69,6 @@ testSingleUnderscoreNameEnumMember
 testSunderValueTypeEllipsis
 testSunderValueTypeEllipsisNonStub
 testDynamicMetaclass
-testMetaclassOfTypeAny
-testMetaclassOfWrongType
-testMetaclassNotTypeSubclass
-testMultipleMetaclasses
 testInvalidMetaclassStructure
 testStrictEqualityForNone
 testNarrowingOfFinalPersistsInFunctions
@@ -1079,6 +1074,7 @@ testSixMetaclass
 testFromSixMetaclass
 testSixMetaclassGenericBase
 testIgnoreInsideClassDoesntAffectWhole
+testMultipleMetaclasses
 # import of typeshed stubs
 testErrorFromGoogleCloud
 
