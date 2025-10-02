@@ -89,3 +89,18 @@ match 0:
         reveal_type(i)  # N: Revealed type is "Literal[0]?"
     case other:
         other  # E: Statement is unreachable
+
+[case match_classes_with_wrong_attr]
+class A: ...
+
+def f(m: object):
+    match m:
+        case A(a=j):  # E: Class "__main__.A" has no attribute "a"
+            reveal_type(m)  # N: Revealed type is "__main__.A"
+            reveal_type(j)  # N: Revealed type is "Any"
+            m.a  # E: "A" has no attribute "a"
+
+        case A(b=j, c=k):  # E: Class "__main__.A" has no attribute "b"  # E: Class "__main__.A" has no attribute "c"
+            reveal_type(m)  # N: Revealed type is "__main__.A"
+            reveal_type(j)  # N: Revealed type is "Any"
+            m.a  # E: "A" has no attribute "a"

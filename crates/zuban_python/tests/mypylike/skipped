@@ -595,7 +595,6 @@ testMatchAndWithStatementScope
 # match statement
 testMatchSequencePatternMatches
 testMatchSequencePatternWithInvalidClassPattern
-testMatchClassPatternNonexistentKeyword
 testMatchNarrowDownWithStarred-skip
 testOverrideMatchArgs
 testMatchReachableDottedNames
@@ -636,6 +635,8 @@ testMatchSubjectAssignExprWithGuard
 testMatchNarrowUsingPatternGuardSpecialCase
 # self matching str subclass
 testMatchClassPatternCaptureSelfSubtype
+# generalized object unpacking leads to any for attributes
+testMatchClassPatternNonexistentKeyword
 # --enable-error-code exhaustive-match
 testNonExhaustiveMatchWithFlag
 testNonExhaustiveMatchEnumWithFlag
@@ -1277,8 +1278,8 @@ check-possibly-undefined:testUntypedDefCheckUntypedDefs
 check-possibly-undefined:testClassBody
 check-possibly-undefined:testUntypedDef
 check-possibly-undefined:testNoReturn
-check-possibly-undefined:testPossiblyUndefinedMatch
-check-possibly-undefined:testPossiblyUndefinedMatchUnreachable
+check-python310:testPossiblyUndefinedMatch
+check-python310:testPossiblyUndefinedMatchUnreachable
 
 # Different but fine diagnostics
 testTypedDictFinalAndClassVar

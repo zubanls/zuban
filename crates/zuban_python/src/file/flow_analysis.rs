@@ -3022,7 +3022,7 @@ impl Inference<'_, '_, '_> {
         let (truthy, falsey) = split_and_intersect(self.i_s, &inf_t, &target_t, |issue| {
             debug!("Intersection for class target not possible: {issue:?}");
         });
-        let lookup = |for_node_ref, name: &str| {
+        let lookup = |for_node_ref: NodeRef, name: &str| {
             truthy.lookup(
                 i_s,
                 self.file,
@@ -3038,15 +3038,22 @@ impl Inference<'_, '_, '_> {
         for t in truthy.iter_with_unpacked_unions(i_s.db) {
             let match_args = OnceCell::new();
             let mut nth_positional = 0;
-            let mut find_inner_guards_and_return_unreachable = |node_ref, name: &str, pat| {
-                let lookup = lookup(node_ref, name);
-                if let Some(inf) = lookup.into_maybe_inferred() {
+            let mut find_inner_guards_and_return_unreachable =
+                |node_ref: NodeRef, name: &str, pat| {
+                    let lookup = lookup(node_ref, name);
+                    let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
+                        node_ref.add_issue(
+                            i_s,
+                            IssueKind::ClassPatternHasNoAttribute {
+                                class: target_t.format(&FormatData::new_reveal_type(i_s.db)),
+                                attribute: name.into(),
+                            },
+                        );
+                        Inferred::new_any_from_error()
+                    });
                     self.find_guards_in_pattern(inf, None, pat);
-                } else {
-                    mismatch = true;
-                }
-                mismatch
-            };
+                    mismatch
+                };
             let mut used_keywords: Vec<(&str, bool)> = vec![];
             for param in params.clone() {
                 match param {

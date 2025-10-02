@@ -328,6 +328,7 @@ pub(crate) enum IssueKind {
     TooManyPositionalPatternsForMatchArgs,
     ExpectedTypeInClassPattern { got: Box<str> },
     ClassPatternCannotParametrized,
+    ClassPatternHasNoAttribute { class: Box<str>, attribute: Box<str> },
     InvalidDunderMatchArgs,
     DuplicateKeywordPattern { name: Box<str> },
     DuplicateImplicitKeywordPattern { name: Box<str> },
@@ -1764,6 +1765,9 @@ impl<'db> Diagnostic<'db> {
             ),
             ClassPatternCannotParametrized => format!(
                 r#"Class pattern class must not be a type alias with type parameters"#
+            ),
+            ClassPatternHasNoAttribute { class, attribute } => format!(
+                r#"Class "{class}" has no attribute "{attribute}""#
             ),
             InvalidDunderMatchArgs =>
                 "__match_args__ must be a tuple containing string literals for \
