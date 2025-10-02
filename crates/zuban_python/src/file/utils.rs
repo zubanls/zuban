@@ -714,7 +714,11 @@ impl TupleGatherer {
         }
     }
 
-    pub fn extend_from_inferred_iterator(&mut self, inferred_iterator: IteratorContent) {
+    pub fn extend_from_inferred_iterator(
+        &mut self,
+        inferred_iterator: IteratorContent,
+        after: usize,
+    ) {
         match inferred_iterator {
             IteratorContent::Inferred(_) | IteratorContent::Any(_) => {
                 if self.unpack.is_some() {
@@ -725,8 +729,11 @@ impl TupleGatherer {
                 // TODO this is part of --enable-incomplete-feature=PreciseTupleTypes
                 self.is_arbitrary_length = true;
             }
-            IteratorContent::FixedLenTupleGenerics { entries, .. } => {
-                self.extend_from_slice(&entries);
+            IteratorContent::FixedLenTupleGenerics {
+                entries,
+                current_index,
+            } => {
+                self.extend_from_slice(&entries[current_index..entries.len() - after]);
             }
             IteratorContent::WithUnpack { unpack, .. } => {
                 if self.unpack.is_some() {
@@ -766,7 +773,10 @@ impl TupleGatherer {
         } else {
             Tuple::new_fixed_length(self.before.into())
         };
-        debug!("Inferred: {}", content.format(&FormatData::new_short(db)));
+        debug!(
+            "Inferred tuple: {}",
+            content.format(&FormatData::new_short(db))
+        );
         Inferred::from_type(Type::Tuple(content))
     }
 }

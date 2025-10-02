@@ -1913,6 +1913,10 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).is_union_like(i_s.db)
     }
 
+    pub fn is_never(&self, i_s: &InferenceState) -> bool {
+        self.as_cow_type(i_s).is_never()
+    }
+
     pub fn maybe_any(&self, db: &Database) -> Option<AnyCause> {
         if let Some(complex) = self.maybe_complex_point(db) {
             return match complex.maybe_instance() {

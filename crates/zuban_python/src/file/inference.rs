@@ -3629,11 +3629,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let mut gatherer = TupleGatherer::default();
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             let add_from_stars = |gatherer: &mut TupleGatherer, inferred: Inferred, from_index| {
-                gatherer.extend_from_inferred_iterator(inferred.iter(
-                    self.i_s,
-                    NodeRef::new(self.file, from_index),
-                    IterCause::VariadicUnpack,
-                ))
+                gatherer.extend_from_inferred_iterator(
+                    inferred.iter(
+                        self.i_s,
+                        NodeRef::new(self.file, from_index),
+                        IterCause::VariadicUnpack,
+                    ),
+                    0,
+                )
             };
             for (entry, expected) in iterator.clone().zip(tuple_context_iterator) {
                 match entry {

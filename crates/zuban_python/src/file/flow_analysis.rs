@@ -26,7 +26,7 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassNodeRef, OtherDefinitionIterator},
+    file::{ClassNodeRef, OtherDefinitionIterator, utils::TupleGatherer},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -3210,22 +3210,16 @@ impl Inference<'_, '_, '_> {
                     falsey.union_in_place(t);
                 }
                 Type::Tuple(tup) => {
-                    if !self.assign_tup_for_sequence_patterns_and_is_unreachable(
-                        tup,
-                        sequence_patterns.clone(),
-                    ) {
-                        truthy.union_in_place(t.clone());
-                    }
-                    falsey.union_in_place(t);
+                    let (tr, fa) = self
+                        .assign_tup_for_sequence_patterns(tup.clone(), sequence_patterns.clone());
+                    truthy.union_in_place(tr);
+                    falsey.union_in_place(fa);
                 }
                 Type::NamedTuple(nt) => {
-                    if !self.assign_tup_for_sequence_patterns_and_is_unreachable(
-                        &nt.as_tuple(),
-                        sequence_patterns.clone(),
-                    ) {
-                        truthy.union_in_place(t.clone());
-                    }
-                    falsey.union_in_place(t);
+                    let (tr, fa) = self
+                        .assign_tup_for_sequence_patterns(nt.as_tuple(), sequence_patterns.clone());
+                    truthy.union_in_place(tr);
+                    falsey.union_in_place(fa);
                 }
                 _ => {
                     if let Some(cls) = t.maybe_class(i_s.db)
@@ -3396,17 +3390,17 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn assign_tup_for_sequence_patterns_and_is_unreachable<'x>(
+    fn assign_tup_for_sequence_patterns<'x>(
         &self,
-        tup: &Tuple,
+        tup: Arc<Tuple>,
         sequence_patterns: impl Iterator<Item = SequencePatternItem<'x>> + Clone,
-    ) -> bool {
+    ) -> (Type, Type) {
         let has_fixed_len_items = match &tup.args {
             TupleArgs::WithUnpack(u) => u.before.len() + u.after.len(),
             TupleArgs::FixedLen(items) => items.len(),
             TupleArgs::ArbitraryLen(t) => {
                 self.assign_sequence_patterns(&t, sequence_patterns);
-                return false;
+                return (Type::Tuple(tup.clone()), Type::Tuple(tup));
             }
         };
 
@@ -3426,7 +3420,7 @@ impl Inference<'_, '_, '_> {
                     if had_starred_pattern {
                         // TODO two+ stars add issue
                         self.assign_sequence_patterns(&Type::ERROR, sequence_patterns);
-                        return false;
+                        return (Type::Tuple(tup.clone()), Type::Tuple(tup));
                     }
                     had_starred_pattern = true;
                 }
@@ -3437,25 +3431,31 @@ impl Inference<'_, '_, '_> {
             || has_fixed_len_items < normal_patterns
                 && !matches!(&tup.args, TupleArgs::WithUnpack(_))
         {
-            return true;
+            return (Type::Never(NeverCause::Other), Type::Tuple(tup));
         }
+        let i_s = self.i_s;
         let mut value_iterator = tup.iter();
+        let mut truthy_gatherer = TupleGatherer::default();
+        let mut is_fully_unreachable = true;
         for pattern in sequence_patterns {
             match pattern {
                 SequencePatternItem::Entry(pattern) => {
-                    self.find_guards_in_pattern(value_iterator.unpack_next(), None, pattern);
+                    let result =
+                        self.find_guards_in_pattern(value_iterator.unpack_next(), None, pattern);
+                    truthy_gatherer.add(result.truthy_t.into_type(i_s));
+                    is_fully_unreachable |= !result.falsey_t.is_never(i_s);
                 }
                 SequencePatternItem::Rest(star_pattern) => {
+                    truthy_gatherer
+                        .extend_from_inferred_iterator(value_iterator.clone(), after_stars);
                     let (is_empty, mut value) =
-                        value_iterator.unpack_starred(self.i_s, after_stars, false, false);
+                        value_iterator.unpack_starred(i_s, after_stars, false, false);
                     match star_pattern.unpack() {
                         StarPatternContent::NameDef(name_def) => {
                             if is_empty && self.infer_name_target(name_def, false).is_some() {
                                 // The type is already defined, just use any here, because the
                                 // list really can be anything.
-                                value = Inferred::from_type(
-                                    self.i_s.db.python_state.list_of_any.clone(),
-                                )
+                                value = Inferred::from_type(i_s.db.python_state.list_of_any.clone())
                             }
                             self.assign_to_pattern_name(name_def, &value);
                         }
@@ -3464,7 +3464,16 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        false
+        (
+            truthy_gatherer
+                .into_tuple(i_s.db, || unreachable!())
+                .into_type(i_s),
+            if is_fully_unreachable {
+                Type::Never(NeverCause::Other)
+            } else {
+                Type::Tuple(tup)
+            },
+        )
     }
 
     fn find_guards_in_named_expr(
