@@ -3106,6 +3106,10 @@ impl Inference<'_, '_, '_> {
                                         i_s,
                                         IssueKind::TooManyPositionalPatternsForMatchArgs,
                                     );
+                                    // If there are too many positional patterns don't mark the
+                                    // rest as potentially unreachable, since an error occured.
+                                    falsey.simplified_union_in_place(i_s, &t);
+                                    break;
                                 }
                             } else if let Type::Tuple(tup) = match_args
                                 && tup.args.is_any()

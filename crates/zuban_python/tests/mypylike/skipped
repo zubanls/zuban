@@ -581,7 +581,6 @@ testRejectCovariantArgumentInLambda
 testLambdaInOverrideInference
 
 # match statement tests used to pass
-testMatchClassPatternCaptureDataclassPartialMatchArgs
 testNarrowingTypeVarMatch
 testMatchMappingPatternCapturesTypedDictUnreachable
 # match statement
