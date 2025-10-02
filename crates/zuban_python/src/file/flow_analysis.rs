@@ -3197,6 +3197,12 @@ impl Inference<'_, '_, '_> {
             .into_iter_with_unpacked_unions(i_s.db, true)
         {
             let t = e.type_;
+            let mut assign_from_tuple = |tup| {
+                let (tr, fa) =
+                    self.assign_tup_for_sequence_patterns(tup, sequence_patterns.clone());
+                truthy.union_in_place(tr);
+                falsey.union_in_place(fa);
+            };
             match &t {
                 Type::Class(c)
                     if c.link == i_s.db.python_state.str_link()
@@ -3209,25 +3215,20 @@ impl Inference<'_, '_, '_> {
                     truthy.union_in_place(t.clone());
                     falsey.union_in_place(t);
                 }
-                Type::Tuple(tup) => {
-                    let (tr, fa) = self
-                        .assign_tup_for_sequence_patterns(tup.clone(), sequence_patterns.clone());
-                    truthy.union_in_place(tr);
-                    falsey.union_in_place(fa);
-                }
-                Type::NamedTuple(nt) => {
-                    let (tr, fa) = self
-                        .assign_tup_for_sequence_patterns(nt.as_tuple(), sequence_patterns.clone());
-                    truthy.union_in_place(tr);
-                    falsey.union_in_place(fa);
-                }
+                Type::Tuple(tup) => assign_from_tuple(tup.clone()),
+                Type::NamedTuple(nt) => assign_from_tuple(nt.as_tuple()),
                 _ => {
-                    if let Some(cls) = t.maybe_class(i_s.db)
-                        && let Some(sequence) =
+                    if let Some(cls) = t.maybe_class(i_s.db) {
+                        if let Some(tup) = cls.maybe_tuple_base(i_s.db) {
+                            assign_from_tuple(tup);
+                            continue;
+                        }
+                        if let Some(sequence) =
                             cls.class_in_mro(i_s.db, i_s.db.python_state.sequence_node_ref())
-                    {
-                        let container_t = sequence.nth_type_argument(i_s.db, 0);
-                        self.assign_sequence_patterns(&container_t, sequence_patterns.clone())
+                        {
+                            let container_t = sequence.nth_type_argument(i_s.db, 0);
+                            self.assign_sequence_patterns(&container_t, sequence_patterns.clone())
+                        }
                     }
                     truthy.union_in_place(t.clone());
                     falsey.union_in_place(t);
