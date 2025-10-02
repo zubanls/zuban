@@ -584,7 +584,6 @@ testLambdaInOverrideInference
 testNarrowingTypeVarMatch
 testMatchMappingPatternCapturesTypedDictUnreachable
 # match statement
-testOverrideMatchArgs
 testMatchReachableDottedNames
 testMatchGuardReachability
 # match statement questionable error
@@ -626,6 +625,8 @@ testMatchClassPatternCaptureSelfSubtype
 testMatchAndWithStatementScope
 # generalized object unpacking leads to any for attributes
 testMatchClassPatternNonexistentKeyword
+# Overriding match args details
+testOverrideMatchArgs
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1

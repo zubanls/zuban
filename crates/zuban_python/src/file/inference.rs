@@ -1084,7 +1084,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if let Some(class) = i_s.in_class_scope() {
             let name_str = name_def.as_code();
             if class.node_ref != i_s.db.python_state.bare_type_node_ref()
-                && name_str != "__slots__"
+                && !matches!(name_str, "__slots__" | "__match_args__")
                 && !is_private(name_str)
                 // This happens for NamedTuples and should probably not be here, but otherwise we
                 // cannot do lookups.
