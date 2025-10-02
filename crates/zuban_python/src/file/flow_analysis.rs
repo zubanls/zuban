@@ -3211,6 +3211,9 @@ impl Inference<'_, '_, '_> {
                 {
                     falsey.union_in_place(t);
                 }
+                Type::None | Type::Literal(_) | Type::LiteralString { .. } => {
+                    falsey.union_in_place(t)
+                }
                 Type::Any(_) => {
                     truthy.union_in_place(t.clone());
                     falsey.union_in_place(t);
@@ -3218,17 +3221,25 @@ impl Inference<'_, '_, '_> {
                 Type::Tuple(tup) => assign_from_tuple(tup.clone()),
                 Type::NamedTuple(nt) => assign_from_tuple(nt.as_tuple()),
                 _ => {
-                    if let Some(cls) = t.maybe_class(i_s.db) {
-                        if let Some(tup) = cls.maybe_tuple_base(i_s.db) {
-                            assign_from_tuple(tup);
-                            continue;
-                        }
-                        if let Some(sequence) =
+                    let maybe_class = t.maybe_class(i_s.db);
+                    if let Some(cls) = maybe_class
+                        && let Some(tup) = cls.maybe_tuple_base(i_s.db)
+                    {
+                        assign_from_tuple(tup);
+                        continue;
+                    }
+
+                    if let Some(cls) = maybe_class
+                        && let Some(sequence) =
                             cls.class_in_mro(i_s.db, i_s.db.python_state.sequence_node_ref())
-                        {
-                            let container_t = sequence.nth_type_argument(i_s.db, 0);
-                            self.assign_sequence_patterns(&container_t, sequence_patterns.clone())
-                        }
+                    {
+                        let container_t = sequence.nth_type_argument(i_s.db, 0);
+                        self.assign_sequence_patterns(&container_t, sequence_patterns.clone())
+                    } else {
+                        self.assign_sequence_patterns(
+                            &i_s.db.python_state.object_type(),
+                            sequence_patterns.clone(),
+                        )
                     }
                     truthy.union_in_place(t.clone());
                     falsey.union_in_place(t);
