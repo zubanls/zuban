@@ -2500,19 +2500,41 @@ impl Inference<'_, '_, '_> {
                 self.infer_tuple_iterator(iterator, &mut ResultContext::Unknown),
             ),
         };
-        self.process_match_cases(inf, subject_key.as_ref(), case_blocks, class, func);
+        let rest = self.process_match_cases_and_return_rest(
+            inf,
+            subject_key.as_ref(),
+            case_blocks,
+            class,
+            func,
+        );
+        if self
+            .flags()
+            .enabled_error_codes
+            .iter()
+            .any(|enabled| enabled == "exhaustive-match")
+        {
+            let rest = rest.as_cow_type(self.i_s);
+            if !rest.is_never() {
+                self.add_issue(
+                    subject_expr.index(),
+                    IssueKind::NonExhaustiveMatch {
+                        unmatched_type: rest.format_short(self.i_s.db),
+                    },
+                )
+            }
+        }
     }
 
-    fn process_match_cases<'x>(
+    fn process_match_cases_and_return_rest<'x>(
         &self,
         subject: Inferred,
         subject_key: Option<&SubjectKey>,
         mut case_blocks: impl Iterator<Item = CaseBlock<'x>>,
         class: Option<Class>,
         func: Option<&Function>,
-    ) {
+    ) -> Inferred {
         let Some(case_block) = case_blocks.next() else {
-            return;
+            return subject;
         };
         let (case_pattern, guard, block) = case_block.unpack();
         FLOW_ANALYSIS.with(|fa| {
@@ -2558,13 +2580,20 @@ impl Inference<'_, '_, '_> {
             let true_frame = fa.with_frame(truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)
             });
-            let false_frame = fa.with_frame(falsey_frame, || {
-                self.process_match_cases(frames.falsey_t, subject_key, case_blocks, class, func)
+            let (false_frame, result) = fa.with_frame_and_result(falsey_frame, || {
+                self.process_match_cases_and_return_rest(
+                    frames.falsey_t,
+                    subject_key,
+                    case_blocks,
+                    class,
+                    func,
+                )
             });
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
             fa.merge_conditional(self.i_s, true_frame, false_frame);
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
-        });
+            result
+        })
     }
 
     fn check_conjunction(

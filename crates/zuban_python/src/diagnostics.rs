@@ -332,6 +332,7 @@ pub(crate) enum IssueKind {
     InvalidDunderMatchArgs,
     DuplicateKeywordPattern { name: Box<str> },
     DuplicateImplicitKeywordPattern { name: Box<str> },
+    NonExhaustiveMatch { unmatched_type: Box<str> },
 
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
@@ -1776,6 +1777,12 @@ impl<'db> Diagnostic<'db> {
             DuplicateImplicitKeywordPattern { name } => format!(
                 r#"Keyword "{name}" already matches a positional pattern"#
             ),
+            NonExhaustiveMatch { unmatched_type } => {
+                additional_notes.push(
+                    "If match statement is intended to be non-exhaustive, add `case _: pass`".into()
+                );
+                format!(r#"Match statement has unhandled case for values of type "{unmatched_type}""#)
+            }
 
             IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection } => format!(
                 "Subclass of {intersection} cannot exist: would have incompatible method signatures"
