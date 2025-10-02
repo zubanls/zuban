@@ -3466,6 +3466,9 @@ impl Inference<'_, '_, '_> {
                         None,
                         pattern,
                     );
+                    if result.truthy_t.is_never(i_s) {
+                        return (Type::Never(NeverCause::Other), Type::Tuple(tup));
+                    }
                     truthy_gatherer.add(result.truthy_t.into_type(i_s));
                     is_fully_unreachable |= !result.falsey_t.is_never(i_s);
                 }

@@ -586,7 +586,6 @@ testMatchMappingPatternCapturesTypedDictUnreachable
 # match statement
 testOverrideMatchArgs
 testMatchReachableDottedNames
-testMatchUnionTwoTuplesNoCrash
 testMatchSubjectRedefinition
 testMatchGuardReachability
 testMatchNarrowingUnionTypedDictViaIndex
