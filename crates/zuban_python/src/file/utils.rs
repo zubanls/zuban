@@ -16,13 +16,17 @@ use crate::{
     getitem::Simple,
     inference_state::InferenceState,
     inferred::UnionValue,
-    matching::{ErrorStrs, ErrorTypes, GotType, Match, Matcher, MismatchReason, ResultContext},
+    matching::{
+        ErrorStrs, ErrorTypes, GotType, IteratorContent, Match, Matcher, MismatchReason,
+        ResultContext,
+    },
     new_class,
     node_ref::NodeRef,
     type_::{
         AnyCause, IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes,
-        Type, TypedDict, TypedDictGenerics, UniqueInUnpackedUnionError, check_typed_dict_call,
-        infer_typed_dict_arg, maybe_add_extra_keys_issue,
+        Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics,
+        UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
+        maybe_add_extra_keys_issue,
     },
 };
 
@@ -690,4 +694,79 @@ pub fn should_add_deprecated(
         }
     })()
     .is_some()
+}
+
+#[derive(Default)]
+pub(super) struct TupleGatherer {
+    // "before" means before an unpack, which is usually always the case.
+    before: Vec<Type>,
+    unpack: Option<TupleUnpack>,
+    after: Vec<Type>,
+    pub is_arbitrary_length: bool,
+}
+
+impl TupleGatherer {
+    pub fn add(&mut self, t: Type) {
+        if self.unpack.is_some() {
+            self.after.push(t)
+        } else {
+            self.before.push(t)
+        }
+    }
+
+    pub fn extend_from_inferred_iterator(&mut self, inferred_iterator: IteratorContent) {
+        match inferred_iterator {
+            IteratorContent::Inferred(_) | IteratorContent::Any(_) => {
+                if self.unpack.is_some() {
+                    self.is_arbitrary_length = true;
+                    return;
+                }
+                //gatherer.unpack = Some(TupleUnpack::ArbitraryLen(it.infer_all(self.i_s).as_type(self.i_s)));
+                // TODO this is part of --enable-incomplete-feature=PreciseTupleTypes
+                self.is_arbitrary_length = true;
+            }
+            IteratorContent::FixedLenTupleGenerics { entries, .. } => {
+                self.extend_from_slice(&entries);
+            }
+            IteratorContent::WithUnpack { unpack, .. } => {
+                if self.unpack.is_some() {
+                    // Fallback to simplified tuple inference.
+                    self.is_arbitrary_length = true;
+                    return;
+                }
+                self.extend_from_slice(&unpack.before);
+                self.unpack = Some(unpack.unpack);
+                self.extend_from_slice(&unpack.after)
+            }
+            IteratorContent::Union(_) => {
+                // TODO once we implement --enable-incomplete-feature=PreciseTupleTypes, we
+                // should also generalize this.
+                self.is_arbitrary_length = true;
+            }
+        }
+    }
+
+    fn extend_from_slice(&mut self, ts: &[Type]) {
+        if self.unpack.is_some() {
+            self.after.extend_from_slice(ts)
+        } else {
+            self.before.extend_from_slice(ts)
+        }
+    }
+
+    pub fn into_tuple(self, db: &Database, on_arbitrary_length: impl FnOnce() -> Type) -> Inferred {
+        let content = if self.is_arbitrary_length {
+            Tuple::new_arbitrary_length(on_arbitrary_length())
+        } else if let Some(unpack) = self.unpack {
+            Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                before: self.before.into(),
+                unpack,
+                after: self.after.into(),
+            }))
+        } else {
+            Tuple::new_fixed_length(self.before.into())
+        };
+        debug!("Inferred: {}", content.format(&FormatData::new_short(db)));
+        Inferred::from_type(Type::Tuple(content))
+    }
 }

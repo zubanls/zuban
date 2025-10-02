@@ -18,7 +18,7 @@ use crate::{
     diagnostics::{Issue, IssueKind},
     file::{
         flow_analysis::RedefinitionResult, name_resolution::PointResolution,
-        type_computation::TypeCommentState,
+        type_computation::TypeCommentState, utils::TupleGatherer,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -39,7 +39,7 @@ use crate::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
         Literal, LiteralKind, LookupResult, NeverCause, ParamType, StarParamType,
         StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType,
-        Variance, WithUnpack, dataclass_converter_fields_lookup,
+        Variance, dataclass_converter_fields_lookup,
     },
     type_helpers::{
         Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
@@ -3626,98 +3626,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         iterator: impl ClonableTupleIterator<'x>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        struct TupleGatherer {
-            // "before" means before an unpack, which is usually always the case.
-            before: Vec<Type>,
-            unpack: Option<TupleUnpack>,
-            after: Vec<Type>,
-            is_arbitrary_length: bool,
-        }
-
-        impl TupleGatherer {
-            fn add(&mut self, t: Type) {
-                if self.unpack.is_some() {
-                    self.after.push(t)
-                } else {
-                    self.before.push(t)
-                }
-            }
-
-            fn extend_from_slice(&mut self, ts: &[Type]) {
-                if self.unpack.is_some() {
-                    self.after.extend_from_slice(ts)
-                } else {
-                    self.before.extend_from_slice(ts)
-                }
-            }
-
-            fn into_tuple<'x>(
-                self,
-                inference: &Inference,
-                iterator: impl ClonableTupleIterator<'x>,
-            ) -> Inferred {
-                let content = if self.is_arbitrary_length {
-                    let generic = inference.create_list_or_set_generics(iterator);
-                    Tuple::new_arbitrary_length(generic)
-                } else if let Some(unpack) = self.unpack {
-                    Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                        before: self.before.into(),
-                        unpack,
-                        after: self.after.into(),
-                    }))
-                } else {
-                    Tuple::new_fixed_length(self.before.into())
-                };
-                debug!(
-                    "Inferred: {}",
-                    content.format(&FormatData::new_short(inference.i_s.db))
-                );
-                Inferred::from_type(Type::Tuple(content))
-            }
-        }
-
-        let mut gatherer = TupleGatherer {
-            before: vec![],
-            unpack: None,
-            after: vec![],
-            is_arbitrary_length: false,
-        };
-
+        let mut gatherer = TupleGatherer::default();
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             let add_from_stars = |gatherer: &mut TupleGatherer, inferred: Inferred, from_index| {
-                match inferred.iter(
+                gatherer.extend_from_inferred_iterator(inferred.iter(
                     self.i_s,
                     NodeRef::new(self.file, from_index),
                     IterCause::VariadicUnpack,
-                ) {
-                    IteratorContent::Inferred(_) | IteratorContent::Any(_) => {
-                        if gatherer.unpack.is_some() {
-                            gatherer.is_arbitrary_length = true;
-                            return;
-                        }
-                        //gatherer.unpack = Some(TupleUnpack::ArbitraryLen(it.infer_all(self.i_s).as_type(self.i_s)));
-                        // TODO this is part of --enable-incomplete-feature=PreciseTupleTypes
-                        gatherer.is_arbitrary_length = true;
-                    }
-                    IteratorContent::FixedLenTupleGenerics { entries, .. } => {
-                        gatherer.extend_from_slice(&entries);
-                    }
-                    IteratorContent::WithUnpack { unpack, .. } => {
-                        if gatherer.unpack.is_some() {
-                            // Fallback to simplified tuple inference.
-                            gatherer.is_arbitrary_length = true;
-                            return;
-                        }
-                        gatherer.extend_from_slice(&unpack.before);
-                        gatherer.unpack = Some(unpack.unpack);
-                        gatherer.extend_from_slice(&unpack.after)
-                    }
-                    IteratorContent::Union(_) => {
-                        // TODO once we implement --enable-incomplete-feature=PreciseTupleTypes, we
-                        // should also generalize this.
-                        gatherer.is_arbitrary_length = true;
-                    }
-                }
+                ))
             };
             for (entry, expected) in iterator.clone().zip(tuple_context_iterator) {
                 match entry {
@@ -3753,7 +3669,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
         });
-        gatherer.into_tuple(self, iterator)
+        gatherer.into_tuple(self.i_s.db, || self.create_list_or_set_generics(iterator))
     }
 
     fn calc_fstring_content_diagnostics_and_return_is_string_literal<'x>(
