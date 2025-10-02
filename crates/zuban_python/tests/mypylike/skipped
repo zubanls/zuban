@@ -581,12 +581,7 @@ testRejectCovariantArgumentInLambda
 testLambdaInOverrideInference
 
 # match statement tests used to pass
-testMatchLiteralPatternNarrows
 testMatchClassPatternCaptureDataclassPartialMatchArgs
-testMatchAsPatternCapturesOr
-testMatchOrPatternNarrows
-testMatchOrPatternNarrowsStr
-testMatchOrPatternNarrowsUnion
 testNarrowingTypeVarMatch
 #
 testMatchRedefiningPatternGuard
@@ -632,7 +627,6 @@ testMatchLiteralPatternEnumWithTypedAttribute
 testMatchLiteralPatternFunctionalEnum
 testMatchLiteralPatternEnumCustomEquals-skip
 testMatchNarrowDownUsingLiteralMatch
-testMatchOrPatternExhaustiveness
 # sequence inner narrowing
 testMatchSequencePatternNarrowsInner
 testMatchSequencePatternNarrowsOuter

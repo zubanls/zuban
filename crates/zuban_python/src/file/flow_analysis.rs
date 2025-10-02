@@ -1246,11 +1246,41 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
         match sub_t {
             Type::Any(_) => {
                 // Any can be None or something else.
-                truthy = singleton.clone();
+                truthy.union_in_place(singleton.clone());
                 add(sub_t.clone());
             }
-            _ if singleton == sub_t => truthy = singleton.clone(),
-            _ => add(sub_t.clone()),
+            Type::Literal(literal1) => match singleton {
+                Type::Literal(literal2) if literal1.value(i_s.db) == literal2.value(i_s.db) => {
+                    let true_literal = || {
+                        let mut new_literal = literal1.clone();
+                        new_literal.implicit = false;
+                        Type::Literal(new_literal)
+                    };
+                    truthy.union_in_place(true_literal());
+                }
+                _ => add(sub_t.clone()),
+            },
+            _ if singleton == sub_t => truthy.union_in_place(singleton.clone()),
+            _ => {
+                if let Type::Literal(literal2) = singleton {
+                    if let Some((tr, fa)) =
+                        maybe_split_bool_from_literal(i_s.db, sub_t, &literal2.kind)
+                    {
+                        truthy.union_in_place(tr);
+                        add(fa);
+                        continue;
+                    }
+                    /*
+                    if has_custom_eq(i_s, sub_t) {
+                        return None;
+                    }
+                    */
+                    if sub_t.is_simple_super_type_of(i_s, singleton).bool() {
+                        truthy.union_in_place(singleton.clone())
+                    }
+                }
+                add(sub_t.clone())
+            }
         }
     }
     (truthy, falsey)
@@ -1316,36 +1346,7 @@ fn narrow_is_or_eq(
             if is_eq && (!literal1.implicit || has_explicit_literal(i_s.db, checking_t))
                 || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
         {
-            let mut true_type = Type::Never(NeverCause::Other);
-            let mut false_type = Type::Never(NeverCause::Other);
-            let true_literal = || {
-                let mut new_literal = literal1.clone();
-                new_literal.implicit = false;
-                Type::Literal(new_literal)
-            };
-            for sub_t in checking_t.iter_with_unpacked_unions(i_s.db) {
-                match sub_t {
-                    Type::Literal(literal2) if literal1.value(i_s.db) == literal2.value(i_s.db) => {
-                        true_type.union_in_place(true_literal())
-                    }
-                    _ => {
-                        if let Some((truthy, falsey)) =
-                            maybe_split_bool_from_literal(i_s.db, sub_t, &literal1.kind)
-                        {
-                            true_type.union_in_place(truthy);
-                            false_type.union_in_place(falsey);
-                            continue;
-                        }
-                        if has_custom_eq(i_s, sub_t) {
-                            return None;
-                        }
-                        if sub_t.is_simple_super_type_of(i_s, other_t).bool() {
-                            true_type.union_in_place(other_t.clone())
-                        }
-                        false_type.union_in_place(sub_t.clone())
-                    }
-                }
-            }
+            let (true_type, false_type) = split_off_singleton(i_s, checking_t, other_t);
             Some((
                 Frame::from_type(key.clone(), true_type),
                 Frame::from_type(key, false_type),
