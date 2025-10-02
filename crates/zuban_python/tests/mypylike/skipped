@@ -608,10 +608,6 @@ testMatchSequencePatternTypeVarBoundNarrows
 testMatchNarrowingUnionTypedDictViaIndex
 testMatchNarrowingUnionClassViaAttribute
 testMatchSequencePatternCaptureNamedTuple
-# wtf?
-testMatchValueConstrainedTypeVar
-testPossiblyUndefinedMatch
-testPossiblyUndefinedMatchUnreachable
 # enum splitting
 testMatchEnumSingleChoice
 testMatchLiteralPatternEnumNegativeNarrowing
@@ -697,6 +693,7 @@ testGenericFunctionMemberExpand
 testTypeVarValuesNarrowing
 testConstrainedGenericSuper
 testTypingSelfOnSuperTypeVarValues
+testMatchValueConstrainedTypeVar
 # type var values syntax
 testPEP695ValueRestriction
 testPEP695ValueRestrictionForwardReference
@@ -1280,6 +1277,8 @@ check-possibly-undefined:testUntypedDefCheckUntypedDefs
 check-possibly-undefined:testClassBody
 check-possibly-undefined:testUntypedDef
 check-possibly-undefined:testNoReturn
+check-possibly-undefined:testPossiblyUndefinedMatch
+check-possibly-undefined:testPossiblyUndefinedMatchUnreachable
 
 # Different but fine diagnostics
 testTypedDictFinalAndClassVar
