@@ -31,7 +31,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     recoverable_error,
-    type_::{AnyCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
+    type_::{AnyCause, NeverCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
     type_helpers::FuncLike,
     utils::debug_indent,
 };
@@ -481,16 +481,17 @@ impl IteratorContent {
                         match &unpack.unpack {
                             TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
                             TupleUnpack::ArbitraryLen(t) => {
-                                let inner = Inferred::gather_base_types(i_s, |add| {
-                                    for entry in unpack.before.iter().skip(*before_index) {
-                                        add(Inferred::from_type(entry.clone()));
-                                    }
-                                    add(Inferred::from_type(t.clone()));
-                                    for entry in unpack.after.iter().rev().skip(after).rev() {
-                                        add(Inferred::from_type(entry.clone()));
-                                    }
-                                });
-                                inner.as_type(i_s)
+                                let mut result = Type::Never(NeverCause::Other);
+                                for entry in unpack.before.iter().skip(*before_index) {
+                                    result = result
+                                        .gather_types_maybe_with_joins(i_s, &entry, use_joins);
+                                }
+                                result = result.gather_types_maybe_with_joins(i_s, &t, use_joins);
+                                for entry in unpack.after.iter().rev().skip(after).rev() {
+                                    result = result
+                                        .gather_types_maybe_with_joins(i_s, &entry, use_joins);
+                                }
+                                result
                             }
                         },
                     );
