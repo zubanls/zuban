@@ -104,3 +104,25 @@ def f(m: object):
             reveal_type(m)  # N: Revealed type is "__main__.A"
             reveal_type(j)  # N: Revealed type is "Any"
             m.a  # E: "A" has no attribute "a"
+
+[case match_classes_nested_exhaustive]
+from typing import assert_never
+
+class A:
+    x: str
+class B:
+    x: int
+
+def f(m: A | B):
+    match m:
+        case object(x=int(i)):
+            reveal_type(i)  # N: Revealed type is "int"
+            reveal_type(m)  # N: Revealed type is "__main__.B"
+
+        case object(x=str(i)):
+            reveal_type(i)  # N: Revealed type is "str"
+            reveal_type(m)  # N: Revealed type is "__main__.A"
+
+        case rest: assert_never(rest)
+    reveal_type(m)  # N: Revealed type is "__main__.A | __main__.B"
+    reveal_type(i)  # N: Revealed type is "int | str"

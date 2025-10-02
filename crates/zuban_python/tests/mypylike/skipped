@@ -585,13 +585,8 @@ testMatchClassPatternCaptureDataclassPartialMatchArgs
 testNarrowingTypeVarMatch
 #
 testMatchRedefiningPatternGuard
-testMatchNamedAndKeywordsAreTheSame
 #
 testMatchMappingPatternCapturesTypedDictUnreachable
-#
-testMatchMiscNonExhaustiveReturn
-#
-testMatchAndWithStatementScope
 # match statement
 testMatchSequencePatternMatches
 testMatchSequencePatternWithInvalidClassPattern
@@ -605,8 +600,11 @@ testMatchSequencePatternVariadicTupleNotTooShort
 testMatchSequencePatternTypeVarTupleNotTooShort
 testMatchSequencePatternTypeVarBoundNarrows
 testMatchNarrowingUnionTypedDictViaIndex
-testMatchNarrowingUnionClassViaAttribute
 testMatchSequencePatternCaptureNamedTuple
+# type merging
+testMatchMiscNonExhaustiveReturn
+# maybe parent unions narrowing?
+testMatchNarrowingUnionClassViaAttribute
 # enum splitting
 testMatchEnumSingleChoice
 testMatchLiteralPatternEnumNegativeNarrowing
@@ -635,6 +633,7 @@ testMatchSubjectAssignExprWithGuard
 testMatchNarrowUsingPatternGuardSpecialCase
 # self matching str subclass
 testMatchClassPatternCaptureSelfSubtype
+testMatchAndWithStatementScope
 # generalized object unpacking leads to any for attributes
 testMatchClassPatternNonexistentKeyword
 # --enable-error-code exhaustive-match

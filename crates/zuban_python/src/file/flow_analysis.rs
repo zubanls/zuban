@@ -2799,20 +2799,12 @@ impl Inference<'_, '_, '_> {
         case_pattern: CasePattern,
     ) -> PatternResult {
         match case_pattern {
-            CasePattern::Pattern(pattern) => {
-                debug!(
-                    "Check pattern: {:?} with type {:?}",
-                    pattern.as_code(),
-                    inf.as_cow_type(self.i_s)
-                );
-                let _indent = debug_indent();
-                self.find_guards_in_pattern(inf, subject_key, pattern)
-            }
+            CasePattern::Pattern(pattern) => self.find_guards_in_pattern(inf, subject_key, pattern),
             CasePattern::OpenSequencePattern(seq) => {
                 debug!(
                     "Check open sequence pattern: {:?} with type {:?}",
                     seq.as_code(),
-                    inf.as_cow_type(self.i_s)
+                    inf.format_short(self.i_s)
                 );
                 let _indent = debug_indent();
                 self.find_guards_in_sequence_pattern(inf, seq.iter())
@@ -2826,6 +2818,12 @@ impl Inference<'_, '_, '_> {
         subject_key: Option<&SubjectKey>,
         pattern: Pattern,
     ) -> PatternResult {
+        debug!(
+            "Check pattern: {:?} with type {:?}",
+            pattern.as_code(),
+            inf.format_short(self.i_s)
+        );
+        let _indent = debug_indent();
         let (pattern_kind, as_name) = pattern.unpack();
         let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind);
         if let Some(as_name) = as_name {
@@ -3019,11 +3017,15 @@ impl Inference<'_, '_, '_> {
             }
         };
         let inf_t = inf.as_cow_type(i_s);
-        let (truthy, falsey) = split_and_intersect(self.i_s, &inf_t, &target_t, |issue| {
+        let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, &target_t, |issue| {
             debug!("Intersection for class target not possible: {issue:?}");
         });
-        let lookup = |for_node_ref: NodeRef, name: &str| {
-            truthy.lookup(
+        debug!(
+            "Check class pattern with intersected type {:?}",
+            truthy.format_short(i_s.db)
+        );
+        let lookup = |t: &Type, for_node_ref: NodeRef, name: &str| {
+            t.lookup(
                 i_s,
                 self.file,
                 name,
@@ -3034,13 +3036,15 @@ impl Inference<'_, '_, '_> {
             )
         };
         let mut added_no_match_args_issue = false;
-        let mut mismatch = false;
-        for t in truthy.iter_with_unpacked_unions(i_s.db) {
+        let mut new_truthy = Type::Never(NeverCause::Other);
+        for e in truthy.into_iter_with_unpacked_unions(i_s.db, true) {
+            let t = e.type_;
+            let mut inner_mismatch = false;
             let match_args = OnceCell::new();
             let mut nth_positional = 0;
             let mut find_inner_guards_and_return_unreachable =
                 |node_ref: NodeRef, name: &str, pat| {
-                    let lookup = lookup(node_ref, name);
+                    let lookup = lookup(&t, node_ref, name);
                     let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
                         node_ref.add_issue(
                             i_s,
@@ -3051,8 +3055,9 @@ impl Inference<'_, '_, '_> {
                         );
                         Inferred::new_any_from_error()
                     });
-                    self.find_guards_in_pattern(inf, None, pat);
-                    mismatch
+                    let inner_result = self.find_guards_in_pattern(inf, None, pat);
+                    inner_mismatch |= inner_result.truthy_t.as_cow_type(i_s).is_never();
+                    inner_mismatch
                 };
             let mut used_keywords: Vec<(&str, bool)> = vec![];
             for param in params.clone() {
@@ -3060,7 +3065,7 @@ impl Inference<'_, '_, '_> {
                     ParamPattern::Positional(pat) => {
                         let node_ref = NodeRef::new(self.file, pat.index());
                         if let Some(match_args) = match_args.get_or_init(|| {
-                            let lookup = lookup(node_ref, "__match_args__");
+                            let lookup = lookup(&t, node_ref, "__match_args__");
                             let name = lookup.maybe_name();
                             lookup.into_maybe_inferred().map(|inf| {
                                 let t = inf.as_type(i_s);
@@ -3101,14 +3106,12 @@ impl Inference<'_, '_, '_> {
                             } else if let Type::Tuple(tup) = match_args
                                 && tup.args.is_any()
                             {
-                                return PatternResult {
-                                    truthy_t: Inferred::from_type(truthy.clone()),
-                                    falsey_t: inf,
-                                };
+                                // This is just matching
+                                break;
                             } else {
                                 todo!()
                             }
-                        } else if params.clone().count() == 1 && is_self_match_type(i_s.db, t) {
+                        } else if params.clone().count() == 1 && is_self_match_type(i_s.db, &t) {
                             self.find_guards_in_pattern(
                                 Inferred::from_type(t.clone()),
                                 subject_key,
@@ -3156,19 +3159,20 @@ impl Inference<'_, '_, '_> {
                     }
                 }
             }
+            if inner_mismatch {
+                falsey.simplified_union_in_place(i_s, &t);
+            } else {
+                new_truthy.union_in_place(t);
+            }
         }
-        let truthy = if mismatch || inf_t.is_never() {
+        let new_truthy = if inf_t.is_never() {
             Type::Never(NeverCause::Other)
         } else {
-            truthy
+            new_truthy
         };
         PatternResult {
-            truthy_t: Inferred::from_type(truthy),
-            falsey_t: if mismatch {
-                inf
-            } else {
-                Inferred::from_type(falsey)
-            },
+            truthy_t: Inferred::from_type(new_truthy),
+            falsey_t: Inferred::from_type(falsey),
         }
     }
 
