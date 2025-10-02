@@ -36,10 +36,10 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        AnyCause, CallableContent, CallableLike, CallableParams, DbBytes, DbString, EnumKind,
-        EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, TypedDict, UnionType,
-        WithUnpack, lookup_on_enum_instance, simplified_union_from_iterators,
+        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
+        EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple,
+        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, TypedDict,
+        UnionType, WithUnpack, lookup_on_enum_instance, simplified_union_from_iterators,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -2984,7 +2984,21 @@ impl Inference<'_, '_, '_> {
         let inferred_target = self.infer_pattern_dotted_name(dotted);
         let inferred_target = inferred_target.as_cow_type(i_s);
         let target_t = match inferred_target.as_ref() {
-            Type::Type(t) => t.as_ref(),
+            Type::Type(t) => {
+                if let Type::Class(c) = &**t {
+                    if !matches!(
+                        c.generics,
+                        ClassGenerics::None | ClassGenerics::NotDefinedYet
+                    ) {
+                        self.add_issue(dotted.index(), IssueKind::ClassPatternCannotParametrized);
+                        return PatternResult {
+                            truthy_t: Inferred::new_never(NeverCause::Other),
+                            falsey_t: inf,
+                        };
+                    }
+                }
+                t.as_ref()
+            }
             Type::Any(_) => {
                 return PatternResult {
                     truthy_t: inf.clone(),
