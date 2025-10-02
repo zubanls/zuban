@@ -2555,6 +2555,7 @@ impl Inference<'_, '_, '_> {
                     } else {
                         in_frame.add_entry(self.i_s, Entry::new(key.clone(), truthy_t));
                     }
+                    self.propagate_parent_unions(&mut in_frame, parent_unions);
                     (
                         in_frame,
                         Frame::from_type(key.clone(), frames.falsey_t.as_type(self.i_s)),

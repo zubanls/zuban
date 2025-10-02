@@ -587,14 +587,10 @@ testMatchMappingPatternCapturesTypedDictUnreachable
 testOverrideMatchArgs
 testMatchReachableDottedNames
 testMatchGuardReachability
-testMatchNarrowingUnionTypedDictViaIndex
-testExhaustiveMatchNarrowingUnionTypedDictViaIndex
 # match statement questionable error
 testMatchSequencePatternWithInvalidClassPattern
 # type merging
 testMatchMiscNonExhaustiveReturn
-# maybe parent unions narrowing?
-testMatchNarrowingUnionClassViaAttribute
 # enum splitting
 testMatchEnumSingleChoice
 testMatchLiteralPatternEnumNegativeNarrowing
