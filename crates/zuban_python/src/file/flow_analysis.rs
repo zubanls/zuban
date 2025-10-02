@@ -3009,7 +3009,7 @@ impl Inference<'_, '_, '_> {
             debug!("Intersection for class target not possible: {issue:?}");
         });
         let lookup = |for_node_ref, name: &str| {
-            target_t.lookup(
+            truthy.lookup(
                 i_s,
                 self.file,
                 name,
