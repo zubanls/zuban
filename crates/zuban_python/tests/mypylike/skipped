@@ -583,9 +583,6 @@ testLambdaInOverrideInference
 # match statement tests used to pass
 testMatchClassPatternCaptureDataclassPartialMatchArgs
 testNarrowingTypeVarMatch
-#
-testMatchRedefiningPatternGuard
-#
 testMatchMappingPatternCapturesTypedDictUnreachable
 # match statement
 testMatchSequencePatternMatches

@@ -2521,6 +2521,9 @@ impl Inference<'_, '_, '_> {
                 .with_frame_and_result(Frame::new_conditional(), || {
                     self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
                 });
+            // Only enable pattern matching logic for the patterns, the other blocks should be
+            // calculated in normal ways
+            fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
 
             let (mut truthy_frame, mut falsey_frame) =
                 if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
@@ -2558,6 +2561,7 @@ impl Inference<'_, '_, '_> {
             let false_frame = fa.with_frame(falsey_frame, || {
                 self.process_match_cases(frames.falsey_t, subject_key, case_blocks, class, func)
             });
+            fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
             fa.merge_conditional(self.i_s, true_frame, false_frame);
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
         });
