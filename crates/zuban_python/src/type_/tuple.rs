@@ -453,6 +453,13 @@ impl TupleUnpack {
         matches!(self, Self::ArbitraryLen(Type::Any(_)))
     }
 
+    pub fn fallback_bound(&self, db: &Database) -> Type {
+        match self {
+            TupleUnpack::TypeVarTuple(_) => db.python_state.object_type(),
+            TupleUnpack::ArbitraryLen(t) => t.clone(),
+        }
+    }
+
     fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
             Self::TypeVarTuple(t) => format_data.format_type_var_tuple(t),

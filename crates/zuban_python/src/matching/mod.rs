@@ -30,6 +30,7 @@ use crate::{
     format_data::{FormatData, find_similar_types},
     inference_state::InferenceState,
     inferred::Inferred,
+    recoverable_error,
     type_::{AnyCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
     type_helpers::FuncLike,
     utils::debug_indent,
@@ -495,7 +496,8 @@ impl IteratorContent {
                     );
                     // Change the indexes, to account for what has been fetched.
                     *before_index = unpack.before.len();
-                    *after_index = unpack.after.len() - after;
+                    let after_len = unpack.after.len();
+                    *after_index = after_len.checked_sub(after).unwrap_or(0);
                     result
                 }
                 Self::Union(_) => unreachable!(),
@@ -504,9 +506,16 @@ impl IteratorContent {
     }
 
     pub fn unpack_next(&mut self) -> Inferred {
+        self.unpack_next_with_customized_after(|unpack| None)
+    }
+
+    pub fn unpack_next_with_customized_after(
+        &mut self,
+        on_after: impl FnOnce(&WithUnpack) -> Option<Type>,
+    ) -> Inferred {
         // It is important to note that the lengths have been checked before and it is at this
         // point clear that we can unpack the iterator. This should only ever be used for
-        // assignment calculation, e.g. foo, *bar = ...
+        // assignment calculation and assigning patterns, e.g. foo, *bar = ...
         match self {
             Self::Inferred(inf) => inf.clone(),
             Self::Any(cause) => Inferred::new_any(*cause),
@@ -518,17 +527,18 @@ impl IteratorContent {
                 unpack,
                 before_index,
                 after_index,
-            } => {
-                if *before_index == unpack.before.len() {
-                    let result = unpack.after.get(*after_index).unwrap();
-                    *after_index += 1;
-                    Inferred::from_type(result.clone())
-                } else {
-                    let result = unpack.before.get(*before_index).unwrap();
-                    *before_index += 1;
-                    Inferred::from_type(result.clone())
-                }
-            }
+            } => Inferred::from_type(if let Some(result) = unpack.before.get(*before_index) {
+                *before_index += 1;
+                result.clone()
+            } else if let Some(custom) = on_after(unpack) {
+                custom
+            } else if let Some(result) = unpack.after.get(*after_index) {
+                *after_index += 1;
+                result.clone()
+            } else {
+                recoverable_error!("Next on exhausted after should never happen");
+                Type::ERROR
+            }),
             Self::Union(_) => unreachable!(),
         }
     }

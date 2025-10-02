@@ -3437,11 +3437,23 @@ impl Inference<'_, '_, '_> {
         let mut value_iterator = tup.iter();
         let mut truthy_gatherer = TupleGatherer::default();
         let mut is_fully_unreachable = true;
-        for pattern in sequence_patterns {
+        for (i, pattern) in sequence_patterns.enumerate() {
             match pattern {
                 SequencePatternItem::Entry(pattern) => {
-                    let result =
-                        self.find_guards_in_pattern(value_iterator.unpack_next(), None, pattern);
+                    let result = self.find_guards_in_pattern(
+                        value_iterator.unpack_next_with_customized_after(|with_unpack| {
+                            if normal_patterns - i + had_starred_pattern as usize
+                                > with_unpack.after.len()
+                            {
+                                // This mostly for pattern unpacking
+                                Some(with_unpack.unpack.fallback_bound(i_s.db))
+                            } else {
+                                None
+                            }
+                        }),
+                        None,
+                        pattern,
+                    );
                     truthy_gatherer.add(result.truthy_t.into_type(i_s));
                     is_fully_unreachable |= !result.falsey_t.is_never(i_s);
                 }
