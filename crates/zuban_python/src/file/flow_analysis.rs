@@ -2546,29 +2546,24 @@ impl Inference<'_, '_, '_> {
             // calculated in normal ways
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
 
-            let (mut truthy_frame, mut falsey_frame) = (
-                in_frame,
-                Frame::from_type_without_entry(&frames.falsey_t.as_cow_type(self.i_s)),
-            );
-            let mut narrow_subject = |truthy_frame: &mut Frame, for_type: Cow<Type>| {
+            let falsey_t = frames.falsey_t.as_cow_type(self.i_s);
+            let (mut truthy_frame, mut falsey_frame) =
+                (in_frame, Frame::from_type_without_entry(&falsey_t));
+            if let Some(SubjectKey::Expr { key, .. }) = subject_key {
+                falsey_frame.add_entry(self.i_s, Entry::new(key.clone(), falsey_t.into_owned()))
+            }
+            let narrow_subject = |frame: &mut Frame, for_type: Cow<Type>| {
                 // In this function we make sure that the type accepted by the pattern is narrowed
                 // for subject.
                 if for_type.is_never() {
-                    truthy_frame.unreachable = true;
+                    frame.unreachable = true;
                     return;
                 }
                 if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                    truthy_frame
-                        .add_entry(self.i_s, Entry::new(key.clone(), for_type.into_owned()));
-                    self.propagate_parent_unions(truthy_frame, parent_unions);
+                    frame.add_entry(self.i_s, Entry::new(key.clone(), for_type.into_owned()));
+                    self.propagate_parent_unions(frame, parent_unions);
                 }
             };
-            if let Some(SubjectKey::Expr { key, .. }) = subject_key {
-                falsey_frame.add_entry(
-                    self.i_s,
-                    Entry::new(key.clone(), frames.falsey_t.as_type(self.i_s)),
-                )
-            }
             narrow_subject(&mut truthy_frame, frames.truthy_t.as_cow_type(self.i_s));
 
             if let Some(guard) = guard {
@@ -2604,6 +2599,7 @@ impl Inference<'_, '_, '_> {
                 if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
                     frames.falsey_t = subject;
                 }
+                //narrow_subject(&mut falsey_frame, frames.falsey_t.as_cow_type(self.i_s));
             }
             let true_frame = fa.with_frame(truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)

@@ -147,3 +147,31 @@ def f(m: A | B):
         case rest: assert_never(rest)
     reveal_type(m)  # N: Revealed type is "__main__.A | __main__.B"
     reveal_type(i)  # N: Revealed type is "int | str"
+
+[case match_reachability_with_returns]
+# flags: --warn-unreachable
+def f(x: str | int | bytes):
+    if bool():
+        match x:
+            case int(): return
+            case bytes(): return
+        reveal_type(x)  # N: Revealed type is "str"
+
+    if bool():
+        match x:
+            case int(): pass
+            case bytes(): return
+        reveal_type(x)  # N: Revealed type is "int | str"
+
+    if bool():
+        match x:
+            case str(): pass
+            case int(): pass
+            case bytes(): return
+        reveal_type(x)  # N: Revealed type is "str | int"
+
+    if bool():
+        if isinstance(x, str): ...
+        elif isinstance(x, int): ...
+        else: return
+        reveal_type(x)  # N: Revealed type is "str | int"

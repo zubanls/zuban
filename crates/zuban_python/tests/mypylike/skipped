@@ -8,6 +8,8 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
+match_reachability_with_returns
+
 docs_alias
 docs_property
 
