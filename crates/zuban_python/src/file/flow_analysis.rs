@@ -2943,7 +2943,13 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::LiteralPattern(literal_pattern) => {
                 let expected = self.literal_pattern_to_type(literal_pattern);
-                let (truthy, falsey) = split_off_singleton(i_s, &inf.as_cow_type(i_s), &expected);
+                // Floats for example are not literals and can therefore never change the falsey
+                // side.
+                let (truthy, falsey) = if matches!(expected, Type::Class(_)) {
+                    (expected, inf.into_type(i_s))
+                } else {
+                    split_off_singleton(i_s, &inf.as_cow_type(i_s), &expected)
+                };
                 PatternResult {
                     truthy_t: Inferred::from_type(truthy),
                     falsey_t: Inferred::from_type(falsey),

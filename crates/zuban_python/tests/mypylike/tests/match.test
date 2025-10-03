@@ -214,3 +214,11 @@ match x:
         reveal_type(s)  # N: Revealed type is "str"
     case rest:
         reveal_type(rest)  # N: Revealed type is "int | str"
+
+[case match_float_literal]
+def f(x: float | str):
+    match x:
+        case 1.0:
+            reveal_type(x)  # N: Revealed type is "float"
+        case rest:
+            reveal_type(rest)  # N: Revealed type is "float | str"
