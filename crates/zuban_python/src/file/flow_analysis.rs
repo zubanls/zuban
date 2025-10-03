@@ -346,6 +346,10 @@ impl Frame {
             type_ => Self::new(FrameKind::Conditional, vec![Entry::new(key, type_)]),
         }
     }
+
+    fn has_entries(&self) -> bool {
+        !self.entries.is_empty()
+    }
 }
 
 fn invalidate_child_entries(entries: &mut Vec<Entry>, db: &Database, key: &FlowKey) {
@@ -594,9 +598,9 @@ impl FlowAnalysis {
         // TODO merge frames properly, this is just a special case
         if false_frame.unreachable || true_frame.unreachable {
             if !false_frame.unreachable {
-                self.overwrite_entries(i_s.db, false_frame.entries)
+                self.overwrite_entries(i_s.db, false_frame.entries, true_frame.has_entries())
             } else if !true_frame.unreachable {
-                self.overwrite_entries(i_s.db, true_frame.entries)
+                self.overwrite_entries(i_s.db, true_frame.entries, false_frame.has_entries())
             } else {
                 self.mark_current_frame_unreachable()
             }
@@ -771,7 +775,12 @@ impl FlowAnalysis {
             .retain(|entry| !entry.modifies_ancestors || !entry.key.equals(i_s.db, key))
     }
 
-    fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
+    fn overwrite_entries(
+        &self,
+        db: &Database,
+        new_entries: Entries,
+        overwritten_entries_possibly_modify_ancestors: bool,
+    ) {
         let Some(mut tos_frame) = self.maybe_tos_frame() else {
             recoverable_error!("Trying to overwrite entries, but there are no frames");
             return;
@@ -785,7 +794,8 @@ impl FlowAnalysis {
         'outer: for mut new_entry in new_entries {
             for entry in &mut *entries {
                 if entry.key.equals(db, &new_entry.key) {
-                    new_entry.modifies_ancestors |= entry.modifies_ancestors;
+                    new_entry.modifies_ancestors |=
+                        entry.modifies_ancestors | overwritten_entries_possibly_modify_ancestors;
                     new_entry.widens |= entry.widens;
                     *entry = new_entry;
                     continue 'outer;
@@ -796,7 +806,7 @@ impl FlowAnalysis {
     }
 
     fn overwrite_frame(&self, db: &Database, new_frame: Frame) {
-        self.overwrite_entries(db, new_frame.entries);
+        self.overwrite_entries(db, new_frame.entries, false);
         self.tos_frame().unreachable |= new_frame.unreachable;
     }
 
@@ -2460,7 +2470,7 @@ impl Inference<'_, '_, '_> {
                 // that the end of the with statement might never be reached.
                 fa.with_frame(Frame::new_conditional(), callable);
             });
-            fa.overwrite_entries(self.i_s.db, try_frame_for_except.entries);
+            fa.overwrite_entries(self.i_s.db, try_frame_for_except.entries, false);
         })
     }
 
