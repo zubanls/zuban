@@ -1077,6 +1077,7 @@ impl PythonState {
     attribute_link!(enum_file, pub enum_meta_link, enum_enum_meta_index);
     attribute_link!(enum_file, pub enum_auto_link, enum_auto_index);
     attribute_link!(typing, pub overload_link, typing_overload_index);
+    attribute_link!(typing, pub sequence_link, typing_sequence_index);
     attribute_link!(typing, pub coroutine_link, typing_coroutine_index);
     attribute_link!(typing, pub generator_link, typing_generator_index);
     attribute_link!(typing, pub iterator_link, typing_iterator_index);

@@ -3288,19 +3288,23 @@ impl Inference<'_, '_, '_> {
                         return assign_from_tuple(tup);
                     }
 
+                    let sequence_link = i_s.db.python_state.sequence_link();
                     if let Some(cls) = maybe_class
                         && let Some(sequence) =
                             cls.class_in_mro(i_s.db, i_s.db.python_state.sequence_node_ref())
                     {
                         let container_t = sequence.nth_type_argument(i_s.db, 0);
-                        self.assign_sequence_patterns(&container_t, sequence_patterns.clone());
-                        (t.clone(), t)
+                        let inferred_container =
+                            self.assign_sequence_patterns(&container_t, sequence_patterns.clone());
+                        if cls.node_ref.as_link() == sequence_link {
+                            (new_class!(sequence_link, inferred_container), t)
+                        } else {
+                            (t.clone(), t)
+                        }
                     } else {
-                        self.assign_sequence_patterns(
-                            &i_s.db.python_state.object_type(),
-                            sequence_patterns.clone(),
-                        );
-                        (t.clone(), t)
+                        let obj = i_s.db.python_state.object_type();
+                        let inner = self.assign_sequence_patterns(&obj, sequence_patterns.clone());
+                        (new_class!(sequence_link, inner), t)
                     }
                 }
             }
@@ -3445,15 +3449,18 @@ impl Inference<'_, '_, '_> {
         &self,
         container_t: &Type,
         iter: impl Iterator<Item = SequencePatternItem<'x>>,
-    ) {
+    ) -> Type {
+        let mut result = Type::NEVER;
+        let i_s = self.i_s;
         for item in iter {
             match item {
                 SequencePatternItem::Entry(pattern) => {
-                    self.find_guards_in_pattern(
+                    let r = self.find_guards_in_pattern(
                         Inferred::from_type(container_t.clone()),
                         None,
                         pattern,
                     );
+                    result.simplified_union_in_place(i_s, &r.truthy_t.as_cow_type(i_s));
                 }
                 SequencePatternItem::Rest(star_pattern) => match star_pattern.unpack() {
                     StarPatternContent::NameDef(name_def) => {
@@ -3469,6 +3476,7 @@ impl Inference<'_, '_, '_> {
                 },
             }
         }
+        result
     }
 
     fn assign_tup_for_sequence_patterns<'x>(
