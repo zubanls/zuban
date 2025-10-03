@@ -2571,10 +2571,35 @@ impl Inference<'_, '_, '_> {
                 };
             if let Some(guard) = guard {
                 let (_, truthy, falsey) = self.find_guards_in_named_expr(guard.named_expr());
+
+                let mut input_for_next_case_should_be_rewritten = falsey_frame.unreachable;
+
+                // If the guard narrowed the subject, copy the narrowed types over
+                let (name_def, as_name_def) = case_pattern.maybe_simple_name_assignments();
+                for name_def in name_def.into_iter().chain(as_name_def.into_iter()) {
+                    let key = self.key_from_name_def(name_def);
+                    if let Some(found) = falsey.lookup_entry(self.i_s.db, &key) {
+                        if let EntryKind::Type(t) = &found.type_ {
+                            frames.falsey_t = Inferred::from_type(t.clone());
+                            input_for_next_case_should_be_rewritten = false;
+                        }
+                    }
+                    if let Some(found) = truthy.lookup_entry(self.i_s.db, &key) {
+                        if let EntryKind::Type(t) = &found.type_ {
+                            if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
+                                truthy_frame
+                                    .add_entry(self.i_s, Entry::new(key.clone(), t.clone()));
+                                self.propagate_parent_unions(&mut truthy_frame, parent_unions);
+                            }
+                            frames.truthy_t = Inferred::from_type(t.clone())
+                        }
+                    }
+                }
+
                 truthy_frame = merge_and(self.i_s, truthy_frame, truthy);
-                let was_unreachable = falsey_frame.unreachable;
+
                 falsey_frame = fa.merge_or(self.i_s, falsey_frame, falsey, true);
-                if !falsey_frame.unreachable && was_unreachable {
+                if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
                     frames.falsey_t = subject;
                 }
             }

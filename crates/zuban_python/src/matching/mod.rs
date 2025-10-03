@@ -507,7 +507,7 @@ impl IteratorContent {
     }
 
     pub fn unpack_next(&mut self) -> Inferred {
-        self.unpack_next_with_customized_after(|unpack| None)
+        self.unpack_next_with_customized_after(|_| None)
     }
 
     pub fn unpack_next_with_customized_after(

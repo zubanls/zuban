@@ -60,9 +60,28 @@ impl<'db> CaseBlock<'db> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum CasePattern<'db> {
     Pattern(Pattern<'db>),
     OpenSequencePattern(OpenSequencePattern<'db>),
+}
+
+impl<'db> CasePattern<'db> {
+    pub fn maybe_simple_name_assignments(&self) -> (Option<NameDef<'db>>, Option<NameDef<'db>>) {
+        match self {
+            CasePattern::Pattern(pat) => {
+                let (pat, name_def_) = pat.unpack();
+                (
+                    match pat {
+                        PatternKind::NameDef(n) => Some(n),
+                        _ => None,
+                    },
+                    name_def_,
+                )
+            }
+            CasePattern::OpenSequencePattern(_) => (None, None),
+        }
+    }
 }
 
 pub enum PatternKind<'db> {
