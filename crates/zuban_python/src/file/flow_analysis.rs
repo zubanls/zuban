@@ -2980,8 +2980,6 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::MappingPattern(mapping_pattern) => {
                 FLOW_ANALYSIS.with(|fa| {
-                    let mut truthy_frame = Frame::new_unreachable();
-                    let mut falsey_frame = Frame::new_unreachable();
                     for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
                         let (new_truthy, new_falsey) = match t {
                             Type::TypedDict(td) => self
@@ -3018,8 +3016,6 @@ impl Inference<'_, '_, '_> {
                                 )
                             }
                         };
-                        truthy_frame = fa.merge_or(self.i_s, truthy_frame, new_truthy, true);
-                        falsey_frame = fa.merge_or(self.i_s, falsey_frame, new_falsey, true);
                     }
                     PatternResult {
                         truthy_t: inf.clone(),
