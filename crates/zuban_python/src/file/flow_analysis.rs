@@ -3293,14 +3293,15 @@ impl Inference<'_, '_, '_> {
                             cls.class_in_mro(i_s.db, i_s.db.python_state.sequence_node_ref())
                     {
                         let container_t = sequence.nth_type_argument(i_s.db, 0);
-                        self.assign_sequence_patterns(&container_t, sequence_patterns.clone())
+                        self.assign_sequence_patterns(&container_t, sequence_patterns.clone());
+                        (t.clone(), t)
                     } else {
                         self.assign_sequence_patterns(
                             &i_s.db.python_state.object_type(),
                             sequence_patterns.clone(),
-                        )
+                        );
+                        (t.clone(), t)
                     }
-                    (t.clone(), t)
                 }
             }
         })
@@ -3359,7 +3360,7 @@ impl Inference<'_, '_, '_> {
                     };
                     let inner_result =
                         self.find_guards_in_pattern(Inferred::from_type(value_t), None, value);
-                    unsure |= !inner_result.falsey_t.is_never(i_s);
+                    unsure |= !inner_result.is_falsey_unreachable(i_s);
                 }
                 MappingPatternItem::Rest(rest) => {
                     let name_def = rest.name_def();
@@ -3516,7 +3517,7 @@ impl Inference<'_, '_, '_> {
         let i_s = self.i_s;
         let mut value_iterator = tup.iter();
         let mut truthy_gatherer = TupleGatherer::default();
-        let mut is_fully_unreachable = true;
+        let mut falsey_unreachable = true;
         for (i, pattern) in sequence_patterns.enumerate() {
             match pattern {
                 SequencePatternItem::Entry(pattern) => {
@@ -3537,8 +3538,8 @@ impl Inference<'_, '_, '_> {
                     if result.truthy_t.is_never(i_s) {
                         return (Type::Never(NeverCause::Other), Type::Tuple(tup));
                     }
+                    falsey_unreachable &= result.is_falsey_unreachable(i_s);
                     truthy_gatherer.add(result.truthy_t.into_type(i_s));
-                    is_fully_unreachable |= !result.falsey_t.is_never(i_s);
                 }
                 SequencePatternItem::Rest(star_pattern) => {
                     truthy_gatherer
@@ -3563,7 +3564,7 @@ impl Inference<'_, '_, '_> {
             truthy_gatherer
                 .into_tuple(i_s.db, || unreachable!())
                 .into_type(i_s),
-            if is_fully_unreachable {
+            if falsey_unreachable {
                 Type::Never(NeverCause::Other)
             } else {
                 Type::Tuple(tup)
@@ -4814,6 +4815,12 @@ fn is_self_match_type(db: &Database, t: &Type) -> bool {
 struct PatternResult {
     truthy_t: Inferred,
     falsey_t: Inferred,
+}
+
+impl PatternResult {
+    fn is_falsey_unreachable(&self, i_s: &InferenceState) -> bool {
+        self.falsey_t.is_never(i_s)
+    }
 }
 
 enum TruthyInferred {
