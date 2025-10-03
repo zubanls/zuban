@@ -84,6 +84,7 @@ impl<'db> CasePattern<'db> {
     }
 }
 
+#[derive(Clone)]
 pub enum PatternKind<'db> {
     NameDef(NameDef<'db>),
     WildcardPattern(WildcardPattern<'db>),

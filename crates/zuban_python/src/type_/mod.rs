@@ -487,6 +487,7 @@ impl Type {
     }
 
     pub const ERROR: Self = Self::Any(AnyCause::FromError);
+    pub const NEVER: Self = Self::Never(NeverCause::Other);
 
     pub fn from_union_entries(
         entries: Vec<UnionEntry>,

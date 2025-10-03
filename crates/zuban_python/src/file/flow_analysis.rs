@@ -2620,7 +2620,7 @@ impl Inference<'_, '_, '_> {
 
                 truthy_frame = merge_and(self.i_s, truthy_frame, guard_truthy);
 
-                falsey_frame = fa.merge_or(self.i_s, falsey_frame, guard_falsey, true);
+                falsey_frame = fa.merge_or(self.i_s, falsey_frame, guard_falsey, false);
                 if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
                     frames.falsey_t = subject;
                 }
@@ -2907,7 +2907,7 @@ impl Inference<'_, '_, '_> {
         );
         let _indent = debug_indent();
         let (pattern_kind, as_name) = pattern.unpack();
-        let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind);
+        let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind.clone());
         if let Some(as_name) = as_name {
             self.assign_to_pattern_name(as_name, &result.truthy_t)
         }
@@ -3100,10 +3100,31 @@ impl Inference<'_, '_, '_> {
                 };
             }
         };
-        let inf_t = inf.as_cow_type(i_s);
-        let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, &target_t, |issue| {
+        let inf_type = inf.as_cow_type(i_s);
+        let (truthy, falsey) = split_and_intersect(self.i_s, &inf_type, &target_t, |issue| {
             debug!("Intersection for class target not possible: {issue:?}");
         });
+        let (mut truthy, falsey_new) = run_pattern_for_each_type(self.i_s, truthy, |t| {
+            self.find_guards_in_class_pattern_part2(t, subject_key, params.clone(), target_t)
+        });
+        if inf_type.is_never() {
+            truthy = Type::Never(NeverCause::Other)
+        }
+
+        PatternResult {
+            truthy_t: Inferred::from_type(truthy),
+            falsey_t: Inferred::from_type(falsey.union(falsey_new)),
+        }
+    }
+
+    fn find_guards_in_class_pattern_part2<'x>(
+        &self,
+        truthy: Type,
+        subject_key: Option<&SubjectKey>,
+        params: impl Iterator<Item = ParamPattern<'x>> + Clone,
+        target_t: &Type,
+    ) -> (Type, Type) {
+        let i_s = self.i_s;
         debug!(
             "Check class pattern with intersected type {:?}",
             truthy.format_short(i_s.db)
@@ -3120,147 +3141,130 @@ impl Inference<'_, '_, '_> {
             )
         };
         let mut added_no_match_args_issue = false;
-        let mut new_truthy = Type::Never(NeverCause::Other);
-        for e in truthy.into_iter_with_unpacked_unions(i_s.db, true) {
-            let t = e.type_;
-            let mut inner_mismatch = false;
-            let match_args = OnceCell::new();
-            let mut nth_positional = 0;
-            let mut find_inner_guards_and_return_unreachable =
-                |node_ref: NodeRef, name: &str, pat| {
-                    let lookup = lookup(&t, node_ref, name);
-                    let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::ClassPatternHasNoAttribute {
-                                class: target_t.format(&FormatData::new_reveal_type(i_s.db)),
-                                attribute: name.into(),
-                            },
-                        );
-                        Inferred::new_any_from_error()
-                    });
-                    let inner_result = self.find_guards_in_pattern(inf, None, pat);
-                    inner_mismatch |= inner_result.truthy_t.as_cow_type(i_s).is_never();
-                    inner_mismatch
-                };
-            let mut used_keywords: Vec<(&str, bool)> = vec![];
-            for param in params.clone() {
-                match param {
-                    ParamPattern::Positional(pat) => {
-                        let node_ref = NodeRef::new(self.file, pat.index());
-                        if let Some(match_args) = match_args.get_or_init(|| {
-                            let lookup = lookup(&t, node_ref, "__match_args__");
-                            let name = lookup.maybe_name();
-                            lookup.into_maybe_inferred().map(|inf| {
-                                let t = inf.as_type(i_s);
-                                t.ensure_dunder_match_args_with_literals(i_s.db, name)
-                            })
-                        }) {
-                            if let Some(tup_entries) = match_args.maybe_fixed_len_tuple() {
-                                if let Some(entry) = tup_entries.get(nth_positional) {
-                                    if let Type::Literal(literal) = entry
-                                        && let LiteralKind::String(s) = &literal.kind
-                                    {
-                                        let key = s.as_str(i_s.db);
-                                        used_keywords.push((key, false));
-                                        if find_inner_guards_and_return_unreachable(
-                                            NodeRef::new(self.file, pat.index()),
-                                            key,
-                                            pat,
-                                        ) {
-                                            break;
-                                        }
-                                    } else {
-                                        // If the type is not a literal, an error should be added
-                                        // in diagnostics that __match_args__ is not correct and we
-                                        // can simply work with Any here.
-                                        self.find_guards_in_pattern(
-                                            Inferred::new_any_from_error(),
-                                            None,
-                                            pat,
-                                        );
+        //for e in truthy.into_iter_with_unpacked_unions(i_s.db, true) {
+        let mut inner_mismatch = false;
+        let match_args = OnceCell::new();
+        let mut nth_positional = 0;
+        let mut find_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
+            let lookup = lookup(&truthy, node_ref, name);
+            let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
+                node_ref.add_issue(
+                    i_s,
+                    IssueKind::ClassPatternHasNoAttribute {
+                        class: target_t.format(&FormatData::new_reveal_type(i_s.db)),
+                        attribute: name.into(),
+                    },
+                );
+                Inferred::new_any_from_error()
+            });
+            let inner_result = self.find_guards_in_pattern(inf, None, pat);
+            inner_mismatch |= inner_result.truthy_t.as_cow_type(i_s).is_never();
+            inner_mismatch
+        };
+        let mut used_keywords: Vec<(&str, bool)> = vec![];
+        for param in params.clone() {
+            match param {
+                ParamPattern::Positional(pat) => {
+                    let node_ref = NodeRef::new(self.file, pat.index());
+                    if let Some(match_args) = match_args.get_or_init(|| {
+                        let lookup = lookup(&truthy, node_ref, "__match_args__");
+                        let name = lookup.maybe_name();
+                        lookup.into_maybe_inferred().map(|inf| {
+                            let truthy = inf.as_type(i_s);
+                            truthy.ensure_dunder_match_args_with_literals(i_s.db, name)
+                        })
+                    }) {
+                        if let Some(tup_entries) = match_args.maybe_fixed_len_tuple() {
+                            if let Some(entry) = tup_entries.get(nth_positional) {
+                                if let Type::Literal(literal) = entry
+                                    && let LiteralKind::String(s) = &literal.kind
+                                {
+                                    let key = s.as_str(i_s.db);
+                                    used_keywords.push((key, false));
+                                    if find_inner_guards_and_return_unreachable(
+                                        NodeRef::new(self.file, pat.index()),
+                                        key,
+                                        pat,
+                                    ) {
+                                        break;
                                     }
-                                } else if !added_no_match_args_issue {
-                                    added_no_match_args_issue = true;
-                                    node_ref.add_issue(
-                                        i_s,
-                                        IssueKind::TooManyPositionalPatternsForMatchArgs,
+                                } else {
+                                    // If the type is not a literal, an error should be added
+                                    // in diagnostics that __match_args__ is not correct and we
+                                    // can simply work with Any here.
+                                    self.find_guards_in_pattern(
+                                        Inferred::new_any_from_error(),
+                                        None,
+                                        pat,
                                     );
-                                    // If there are too many positional patterns don't mark the
-                                    // rest as potentially unreachable, since an error occured.
-                                    falsey.simplified_union_in_place(i_s, &t);
-                                    break;
                                 }
-                            } else if let Type::Tuple(tup) = match_args
-                                && tup.args.is_any()
-                            {
-                                // This is just matching
-                                break;
-                            } else {
-                                todo!()
-                            }
-                        } else if params.clone().count() == 1 && is_self_match_type(i_s.db, &t) {
-                            self.find_guards_in_pattern(
-                                Inferred::from_type(t.clone()),
-                                subject_key,
-                                pat,
-                            );
-                        } else {
-                            if !added_no_match_args_issue {
+                            } else if !added_no_match_args_issue {
                                 node_ref.add_issue(
                                     i_s,
-                                    IssueKind::ClassHasNoMatchArgs {
-                                        class: t.format(&FormatData::new_reveal_type(i_s.db)),
-                                    },
+                                    IssueKind::TooManyPositionalPatternsForMatchArgs,
                                 );
+                                // If there are too many positional patterns don't mark the
+                                // rest as potentially unreachable, since an error occured.
+                                return (Type::Never(NeverCause::Other), truthy);
                             }
-                            added_no_match_args_issue = true;
-                            self.find_guards_in_pattern(Inferred::new_any_from_error(), None, pat);
-                        }
-                        nth_positional += 1;
-                    }
-                    ParamPattern::Keyword(keyword_pattern) => {
-                        let (key_node, pat) = keyword_pattern.unpack();
-                        let key = key_node.as_code();
-                        for (used, is_kw) in &used_keywords {
-                            if key == *used {
-                                self.add_issue(
-                                    key_node.index(),
-                                    if *is_kw {
-                                        IssueKind::DuplicateKeywordPattern { name: key.into() }
-                                    } else {
-                                        IssueKind::DuplicateImplicitKeywordPattern {
-                                            name: key.into(),
-                                        }
-                                    },
-                                )
-                            }
-                        }
-                        if find_inner_guards_and_return_unreachable(
-                            NodeRef::new(self.file, keyword_pattern.index()),
-                            key,
-                            pat,
-                        ) {
+                        } else if let Type::Tuple(tup) = match_args
+                            && tup.args.is_any()
+                        {
+                            // This is just matching
                             break;
+                        } else {
+                            todo!()
                         }
-                        used_keywords.push((key, true))
+                    } else if params.clone().count() == 1 && is_self_match_type(i_s.db, &truthy) {
+                        self.find_guards_in_pattern(
+                            Inferred::from_type(truthy.clone()),
+                            subject_key,
+                            pat,
+                        );
+                    } else {
+                        if !added_no_match_args_issue {
+                            node_ref.add_issue(
+                                i_s,
+                                IssueKind::ClassHasNoMatchArgs {
+                                    class: truthy.format(&FormatData::new_reveal_type(i_s.db)),
+                                },
+                            );
+                        }
+                        added_no_match_args_issue = true;
+                        self.find_guards_in_pattern(Inferred::new_any_from_error(), None, pat);
                     }
+                    nth_positional += 1;
+                }
+                ParamPattern::Keyword(keyword_pattern) => {
+                    let (key_node, pat) = keyword_pattern.unpack();
+                    let key = key_node.as_code();
+                    for (used, is_kw) in &used_keywords {
+                        if key == *used {
+                            self.add_issue(
+                                key_node.index(),
+                                if *is_kw {
+                                    IssueKind::DuplicateKeywordPattern { name: key.into() }
+                                } else {
+                                    IssueKind::DuplicateImplicitKeywordPattern { name: key.into() }
+                                },
+                            )
+                        }
+                    }
+                    if find_inner_guards_and_return_unreachable(
+                        NodeRef::new(self.file, keyword_pattern.index()),
+                        key,
+                        pat,
+                    ) {
+                        break;
+                    }
+                    used_keywords.push((key, true))
                 }
             }
-            if inner_mismatch {
-                falsey.simplified_union_in_place(i_s, &t);
-            } else {
-                new_truthy.union_in_place(t);
-            }
         }
-        let new_truthy = if inf_t.is_never() {
-            Type::Never(NeverCause::Other)
+        if inner_mismatch {
+            (Type::NEVER, truthy)
         } else {
-            new_truthy
-        };
-        PatternResult {
-            truthy_t: Inferred::from_type(new_truthy),
-            falsey_t: Inferred::from_type(falsey),
+            (truthy, Type::NEVER)
         }
     }
 
@@ -4744,6 +4748,47 @@ impl Inference<'_, '_, '_> {
     pub fn has_frames(&self) -> bool {
         !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
     }
+}
+
+fn run_pattern_for_each_type<'x>(
+    i_s: &InferenceState,
+    t: Type,
+    callback: impl Fn(Type) -> (Type, Type),
+) -> (Type, Type) {
+    fn run<'x>(
+        i_s: &InferenceState,
+        mut iterator: std::iter::Peekable<impl Iterator<Item = Type>>,
+        callback: impl Fn(Type) -> (Type, Type),
+    ) -> (Frame, Type, Type) {
+        let Some(t) = iterator.next() else {
+            return (
+                Frame::new_conditional(),
+                Type::Never(NeverCause::Other),
+                Type::Never(NeverCause::Other),
+            );
+        };
+        FLOW_ANALYSIS.with(|fa| {
+            let (first_frame, (truthy1, falsey1)) =
+                fa.with_frame_and_result(Frame::new_conditional(), || callback(t));
+            if iterator.peek().is_none() {
+                return (first_frame, truthy1, falsey1);
+            }
+            let (next_frame, truthy2, falsey2) = run(i_s, iterator, callback);
+            (
+                fa.merge_or(i_s, first_frame, next_frame, false),
+                truthy1.simplified_union(i_s, &truthy2),
+                falsey1.union(falsey2),
+            )
+        })
+    }
+
+    let iterator = t
+        .into_iter_with_unpacked_unions(i_s.db, true)
+        .map(|e| e.type_)
+        .peekable();
+    let (frame, truthy1, falsey1) = run(i_s, iterator, callback);
+    FLOW_ANALYSIS.with(|fa| fa.merge_conditional(i_s, frame, Frame::new_conditional()));
+    (truthy1, falsey1)
 }
 
 fn unreachable_pattern() -> (Frame, Frame) {
