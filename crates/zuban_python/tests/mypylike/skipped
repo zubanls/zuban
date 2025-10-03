@@ -587,7 +587,6 @@ testNarrowingTypeVarMatch
 testMatchMappingPatternCapturesTypedDictUnreachable
 # match statement
 testMatchReachableDottedNames
-testMatchGuardReachability
 # match statement questionable error
 testMatchSequencePatternWithInvalidClassPattern
 # type merging

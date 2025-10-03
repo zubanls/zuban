@@ -2610,7 +2610,7 @@ impl Inference<'_, '_, '_> {
                 if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
                     frames.falsey_t = subject;
                 }
-                //narrow_subject(&mut falsey_frame, frames.falsey_t.as_cow_type(self.i_s));
+                narrow_subject(&mut falsey_frame, frames.falsey_t.as_cow_type(self.i_s));
             }
             let true_frame = fa.with_frame(truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)
