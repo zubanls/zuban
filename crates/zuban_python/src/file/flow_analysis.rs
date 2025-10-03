@@ -2550,7 +2550,7 @@ impl Inference<'_, '_, '_> {
                 in_frame,
                 Frame::from_type_without_entry(&frames.falsey_t.as_cow_type(self.i_s)),
             );
-            let mut add_to_truthy_frame = |for_type: Cow<Type>| {
+            let mut narrow_subject = |truthy_frame: &mut Frame, for_type: Cow<Type>| {
                 // In this function we make sure that the type accepted by the pattern is narrowed
                 // for subject.
                 if for_type.is_never() {
@@ -2560,7 +2560,7 @@ impl Inference<'_, '_, '_> {
                 if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
                     truthy_frame
                         .add_entry(self.i_s, Entry::new(key.clone(), for_type.into_owned()));
-                    self.propagate_parent_unions(&mut truthy_frame, parent_unions);
+                    self.propagate_parent_unions(truthy_frame, parent_unions);
                 }
             };
             if let Some(SubjectKey::Expr { key, .. }) = subject_key {
@@ -2569,10 +2569,14 @@ impl Inference<'_, '_, '_> {
                     Entry::new(key.clone(), frames.falsey_t.as_type(self.i_s)),
                 )
             }
-            add_to_truthy_frame(frames.truthy_t.as_cow_type(self.i_s));
+            narrow_subject(&mut truthy_frame, frames.truthy_t.as_cow_type(self.i_s));
 
             if let Some(guard) = guard {
-                let (_, truthy, falsey) = self.find_guards_in_named_expr(guard.named_expr());
+                let (guard_truthy, guard_falsey);
+                (truthy_frame, (_, guard_truthy, guard_falsey)) = fa
+                    .with_frame_and_result(truthy_frame, || {
+                        self.find_guards_in_named_expr(guard.named_expr())
+                    });
 
                 let mut input_for_next_case_should_be_rewritten = falsey_frame.unreachable;
 
@@ -2580,23 +2584,23 @@ impl Inference<'_, '_, '_> {
                 let (name_def, as_name_def) = case_pattern.maybe_simple_name_assignments();
                 for name_def in name_def.into_iter().chain(as_name_def.into_iter()) {
                     let key = self.key_from_name_def(name_def);
-                    if let Some(found) = falsey.lookup_entry(self.i_s.db, &key) {
+                    if let Some(found) = guard_falsey.lookup_entry(self.i_s.db, &key) {
                         if let EntryKind::Type(t) = &found.type_ {
                             frames.falsey_t = Inferred::from_type(t.clone());
                             input_for_next_case_should_be_rewritten = false;
                         }
                     }
-                    if let Some(found) = truthy.lookup_entry(self.i_s.db, &key) {
+                    if let Some(found) = guard_truthy.lookup_entry(self.i_s.db, &key) {
                         if let EntryKind::Type(t) = &found.type_ {
                             // We need to rerun this, because the types might have changed
-                            add_to_truthy_frame(Cow::Borrowed(t));
+                            narrow_subject(&mut truthy_frame, Cow::Borrowed(t));
                         }
                     }
                 }
 
-                truthy_frame = merge_and(self.i_s, truthy_frame, truthy);
+                truthy_frame = merge_and(self.i_s, truthy_frame, guard_truthy);
 
-                falsey_frame = fa.merge_or(self.i_s, falsey_frame, falsey, true);
+                falsey_frame = fa.merge_or(self.i_s, falsey_frame, guard_falsey, true);
                 if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
                     frames.falsey_t = subject;
                 }
