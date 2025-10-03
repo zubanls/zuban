@@ -196,3 +196,21 @@ def f(x: str | int | bytes):
         elif isinstance(x, bytes): return
         elif isinstance(x, int): ...
         reveal_type(x)  # N: Revealed type is "str | int"
+
+[case match_classes_with_guards_should_not_narrow_rest]
+from typing import assert_never
+
+def f() -> int | str: return 1
+
+match f():
+    case str(s) if s == "foo":
+        reveal_type(s)  # N: Revealed type is "str"
+    case rest:
+        reveal_type(rest)  # N: Revealed type is "int | str"
+
+x = f()
+match x:
+    case str(s) if s == "foo":
+        reveal_type(s)  # N: Revealed type is "str"
+    case rest:
+        reveal_type(rest)  # N: Revealed type is "int | str"

@@ -2584,7 +2584,7 @@ impl Inference<'_, '_, '_> {
                         self.find_guards_in_named_expr(guard.named_expr())
                     });
 
-                let mut input_for_next_case_should_be_rewritten = falsey_frame.unreachable;
+                let mut input_for_next_case_should_be_rewritten = true;
 
                 // If the guard narrowed the subject, copy the narrowed types over
                 let (name_def, as_name_def) = case_pattern.maybe_simple_name_assignments();
