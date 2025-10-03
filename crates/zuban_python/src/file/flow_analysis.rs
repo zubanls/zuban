@@ -2539,36 +2539,38 @@ impl Inference<'_, '_, '_> {
         let (case_pattern, guard, block) = case_block.unpack();
         FLOW_ANALYSIS.with(|fa| {
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
-            let (mut in_frame, mut frames) = fa
-                .with_frame_and_result(Frame::new_conditional(), || {
-                    self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
-                });
+            let (in_frame, mut frames) = fa.with_frame_and_result(Frame::new_conditional(), || {
+                self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
+            });
             // Only enable pattern matching logic for the patterns, the other blocks should be
             // calculated in normal ways
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
 
-            let (mut truthy_frame, mut falsey_frame) =
+            let (mut truthy_frame, mut falsey_frame) = (
+                in_frame,
+                Frame::from_type_without_entry(&frames.falsey_t.as_cow_type(self.i_s)),
+            );
+            let mut add_to_truthy_frame = |for_type: Cow<Type>| {
+                // In this function we make sure that the type accepted by the pattern is narrowed
+                // for subject.
+                if for_type.is_never() {
+                    truthy_frame.unreachable = true;
+                    return;
+                }
                 if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                    let truthy_t = frames.truthy_t.into_type(self.i_s);
-                    if truthy_t.is_never() {
-                        in_frame.unreachable = true;
-                    } else {
-                        in_frame.add_entry(self.i_s, Entry::new(key.clone(), truthy_t));
-                    }
-                    self.propagate_parent_unions(&mut in_frame, parent_unions);
-                    (
-                        in_frame,
-                        Frame::from_type(key.clone(), frames.falsey_t.as_type(self.i_s)),
-                    )
-                } else {
-                    if frames.truthy_t.as_cow_type(self.i_s).is_never() {
-                        in_frame.unreachable = true;
-                    }
-                    (
-                        in_frame,
-                        Frame::from_type_without_entry(&frames.falsey_t.as_cow_type(self.i_s)),
-                    )
-                };
+                    truthy_frame
+                        .add_entry(self.i_s, Entry::new(key.clone(), for_type.into_owned()));
+                    self.propagate_parent_unions(&mut truthy_frame, parent_unions);
+                }
+            };
+            if let Some(SubjectKey::Expr { key, .. }) = subject_key {
+                falsey_frame.add_entry(
+                    self.i_s,
+                    Entry::new(key.clone(), frames.falsey_t.as_type(self.i_s)),
+                )
+            }
+            add_to_truthy_frame(frames.truthy_t.as_cow_type(self.i_s));
+
             if let Some(guard) = guard {
                 let (_, truthy, falsey) = self.find_guards_in_named_expr(guard.named_expr());
 
@@ -2586,12 +2588,8 @@ impl Inference<'_, '_, '_> {
                     }
                     if let Some(found) = truthy.lookup_entry(self.i_s.db, &key) {
                         if let EntryKind::Type(t) = &found.type_ {
-                            if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                                truthy_frame
-                                    .add_entry(self.i_s, Entry::new(key.clone(), t.clone()));
-                                self.propagate_parent_unions(&mut truthy_frame, parent_unions);
-                            }
-                            frames.truthy_t = Inferred::from_type(t.clone())
+                            // We need to rerun this, because the types might have changed
+                            add_to_truthy_frame(Cow::Borrowed(t));
                         }
                     }
                 }
