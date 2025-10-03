@@ -582,8 +582,6 @@ testRejectCovariantArgumentInLambda
 # lambda override inference fails because of context given an instance callable
 testLambdaInOverrideInference
 
-# match statement tests used to pass
-testMatchMappingPatternCapturesTypedDictUnreachable
 # match statement
 testMatchReachableDottedNames
 # match statement questionable error

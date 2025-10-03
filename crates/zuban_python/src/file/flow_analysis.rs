@@ -2980,11 +2980,11 @@ impl Inference<'_, '_, '_> {
             }
             PatternKind::MappingPattern(mapping_pattern) => {
                 run_pattern_for_each_type_with_pattern_result(i_s, inf, |t| {
-                    let (new_truthy, new_falsey) = match &t {
+                    match t {
                         Type::TypedDict(td) => {
                             self.find_guards_in_typed_dict_for_mapping_pattern(td, mapping_pattern)
                         }
-                        Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
+                        Type::Any(_) => (t.clone(), t),
                         _ => {
                             let key = self.infer_mapping_key(mapping_pattern);
                             let not_found = Cell::new(false);
@@ -3009,10 +3009,9 @@ impl Inference<'_, '_, '_> {
                                 // A subclass could always create __getitem__
                                 executed = Inferred::new_object(i_s.db)
                             }
-                            self.assign_key_value_to_mapping_pattern(&t, executed, mapping_pattern)
+                            self.assign_key_value_to_mapping_pattern(t, executed, mapping_pattern)
                         }
-                    };
-                    (t.clone(), t)
+                    }
                 })
             }
         }
@@ -3330,9 +3329,10 @@ impl Inference<'_, '_, '_> {
 
     fn find_guards_in_typed_dict_for_mapping_pattern(
         &self,
-        td: &TypedDict,
+        td: Arc<TypedDict>,
         mapping_pattern: MappingPattern,
-    ) -> (Frame, Frame) {
+    ) -> (Type, Type) {
+        let unreachable_pattern = || (Type::NEVER, Type::TypedDict(td.clone()));
         let i_s = self.i_s;
         let fallback_type = || {
             if td.has_extra_items(i_s.db) {
@@ -3341,6 +3341,7 @@ impl Inference<'_, '_, '_> {
                 i_s.db.python_state.object_type()
             }
         };
+        let mut unsure = false;
         for item in mapping_pattern.iter() {
             match item {
                 MappingPatternItem::Entry(e) => {
@@ -3360,19 +3361,26 @@ impl Inference<'_, '_, '_> {
                         Type::Literal(literal) => match &literal.kind {
                             LiteralKind::String(s) => {
                                 if let Some(member) = td.find_member(i_s.db, s.as_str(i_s.db)) {
+                                    unsure |= !member.required;
                                     member.type_.clone()
                                 } else if td.is_closed(i_s.db) {
                                     return unreachable_pattern();
                                 } else {
+                                    unsure = true;
                                     fallback_type()
                                 }
                             }
                             _ => return unreachable_pattern(),
                         },
-                        t if t.might_be_string(i_s.db) => fallback_type(),
+                        t if t.might_be_string(i_s.db) => {
+                            unsure = true;
+                            fallback_type()
+                        }
                         _ => return unreachable_pattern(),
                     };
-                    self.find_guards_in_pattern(Inferred::from_type(value_t), None, value);
+                    let inner_result =
+                        self.find_guards_in_pattern(Inferred::from_type(value_t), None, value);
+                    unsure |= !inner_result.falsey_t.is_never(i_s);
                 }
                 MappingPatternItem::Rest(rest) => {
                     let name_def = rest.name_def();
@@ -3387,15 +3395,20 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        (Frame::new_conditional(), Frame::new_conditional())
+        // Mypy doesn't support narrowing TypedDicts by its subattributes at the moment
+        let falsey = match unsure || i_s.db.project.settings.mypy_compatible {
+            true => Type::TypedDict(td.clone()),
+            false => Type::NEVER,
+        };
+        (Type::TypedDict(td), falsey)
     }
 
     fn assign_key_value_to_mapping_pattern(
         &self,
-        mapping_type: &Type,
+        mapping_type: Type,
         value: Inferred,
         mapping_pattern: MappingPattern,
-    ) -> (Frame, Frame) {
+    ) -> (Type, Type) {
         let db = self.i_s.db;
         for item in mapping_pattern.iter() {
             match item {
@@ -3424,7 +3437,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        (Frame::new_conditional(), Frame::new_conditional())
+        (mapping_type.clone(), mapping_type)
     }
 
     fn infer_mapping_key(&self, mapping_pattern: MappingPattern) -> Inferred {
@@ -4793,10 +4806,6 @@ fn run_pattern_for_each_type_with_pattern_result(
         truthy_t: Inferred::from_type(truthy),
         falsey_t: Inferred::from_type(falsey),
     }
-}
-
-fn unreachable_pattern() -> (Frame, Frame) {
-    (Frame::new_unreachable(), Frame::new_conditional())
 }
 
 fn is_self_match_type(db: &Database, t: &Type) -> bool {

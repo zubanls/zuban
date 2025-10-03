@@ -223,3 +223,33 @@ def f(x: float | str):
         case rest:
             reveal_type(rest)  # N: Revealed type is "float | str"
             reveal_type(x)  # N: Revealed type is "float | str"
+
+[case match_typed_dict_reachability]
+# flags: --no-mypy-compatible
+# Copied from testMatchMappingPatternCapturesTypedDict, adapted for non-mypy compatibility
+from typing import TypedDict
+
+class A(TypedDict):
+    a: str
+    b: int
+
+class B(TypedDict, total=False):
+    a: str
+    b: int
+
+def f(m: A, n: B):
+    match m:
+        case {"a": v0, "x": _}:
+            reveal_type(v0)  # N: Revealed type is "str"
+        case {"a": v1}:
+            reveal_type(v1)  # N: Revealed type is "str"
+        case {"b": v2}:
+            reveal_type(v2)  # E: Statement is unreachable
+
+    match n:
+        case {"a": v3, "x": _}:
+            reveal_type(v3)  # N: Revealed type is "str"
+        case {"a": v4}:
+            reveal_type(v4)  # N: Revealed type is "str"
+        case {"b": v5}:
+            reveal_type(v5)  # N: Revealed type is "int"
