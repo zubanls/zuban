@@ -2549,19 +2549,20 @@ impl Inference<'_, '_, '_> {
         let (case_pattern, guard, block) = case_block.unpack();
         FLOW_ANALYSIS.with(|fa| {
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
-            let (in_frame, mut frames) = fa.with_frame_and_result(Frame::new_conditional(), || {
-                self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
-            });
+            let (mut truthy_frame, mut frames) = fa
+                .with_frame_and_result(Frame::new_conditional(), || {
+                    self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
+                });
             // Only enable pattern matching logic for the patterns, the other blocks should be
             // calculated in normal ways
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
 
             let falsey_t = frames.falsey_t.as_cow_type(self.i_s);
-            let (mut truthy_frame, mut falsey_frame) =
-                (in_frame, Frame::from_type_without_entry(&falsey_t));
-            if let Some(SubjectKey::Expr { key, .. }) = subject_key {
-                falsey_frame.add_entry(self.i_s, Entry::new(key.clone(), falsey_t.into_owned()))
-            }
+            let mut falsey_frame = if let Some(SubjectKey::Expr { key, .. }) = subject_key {
+                Frame::from_type(key.clone(), falsey_t.into_owned())
+            } else {
+                Frame::from_type_without_entry(&falsey_t)
+            };
             let narrow_subject = |frame: &mut Frame, for_type: Cow<Type>| {
                 // In this function we make sure that the type accepted by the pattern is narrowed
                 // for subject.

@@ -145,7 +145,7 @@ def f(m: A | B):
             reveal_type(m)  # N: Revealed type is "__main__.A"
 
         case rest: assert_never(rest)
-    reveal_type(m)  # N: Revealed type is "__main__.B | __main__.A"
+    reveal_type(m)  # N: Revealed type is "__main__.A | __main__.B"
     reveal_type(i)  # N: Revealed type is "int | str"
 
 [case match_reachability_with_returns]
