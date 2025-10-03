@@ -1296,6 +1296,20 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
     (truthy, falsey)
 }
 
+fn split_off_singleton_with_type_var(
+    i_s: &InferenceState,
+    of_type: &Type,
+    singleton: &Type,
+) -> (Type, Type) {
+    match singleton {
+        Type::None if matches!(of_type, Type::TypeVar(_)) => {
+            // Mypy makes it possible to narrow None against a bare TypeVar.
+            (Type::None, of_type.clone())
+        }
+        _ => split_off_singleton(i_s, of_type, singleton),
+    }
+}
+
 fn narrow_is_or_eq(
     i_s: &InferenceState,
     key: FlowKey,
@@ -2948,7 +2962,7 @@ impl Inference<'_, '_, '_> {
                 let (truthy, falsey) = if matches!(expected, Type::Class(_)) {
                     (expected, inf.into_type(i_s))
                 } else {
-                    split_off_singleton(i_s, &inf.as_cow_type(i_s), &expected)
+                    split_off_singleton_with_type_var(i_s, &inf.as_cow_type(i_s), &expected)
                 };
                 PatternResult {
                     truthy_t: Inferred::from_type(truthy),
