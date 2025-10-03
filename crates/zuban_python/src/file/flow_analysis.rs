@@ -2979,48 +2979,40 @@ impl Inference<'_, '_, '_> {
                 self.find_guards_in_sequence_pattern(inf, sequence_pattern.iter())
             }
             PatternKind::MappingPattern(mapping_pattern) => {
-                FLOW_ANALYSIS.with(|fa| {
-                    for t in inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                        let (new_truthy, new_falsey) = match t {
-                            Type::TypedDict(td) => self
-                                .find_guards_in_typed_dict_for_mapping_pattern(td, mapping_pattern),
-                            Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
-                            _ => {
-                                let key = self.infer_mapping_key(mapping_pattern);
-                                let not_found = Cell::new(false);
-                                let mut executed = t
-                                    .lookup(
-                                        i_s,
-                                        self.file,
-                                        "__getitem__",
-                                        LookupKind::OnlyType,
-                                        &mut ResultContext::Unknown,
-                                        &|_| (),
-                                        &|_| not_found.set(true),
-                                    )
-                                    .into_inferred()
-                                    .execute_with_details(
-                                        i_s,
-                                        &KnownArgsWithCustomAddIssue::new(&key, &|_| {}),
-                                        &mut ResultContext::Unknown,
-                                        OnTypeError::new(&|_, _, _, _| ()),
-                                    );
-                                if not_found.get() {
-                                    // A subclass could always create __getitem__
-                                    executed = Inferred::new_object(i_s.db)
-                                }
-                                self.assign_key_value_to_mapping_pattern(
-                                    t,
-                                    executed,
-                                    mapping_pattern,
+                run_pattern_for_each_type_with_pattern_result(i_s, inf, |t| {
+                    let (new_truthy, new_falsey) = match &t {
+                        Type::TypedDict(td) => {
+                            self.find_guards_in_typed_dict_for_mapping_pattern(td, mapping_pattern)
+                        }
+                        Type::Any(_) => (Frame::new_conditional(), Frame::new_conditional()),
+                        _ => {
+                            let key = self.infer_mapping_key(mapping_pattern);
+                            let not_found = Cell::new(false);
+                            let mut executed = t
+                                .lookup(
+                                    i_s,
+                                    self.file,
+                                    "__getitem__",
+                                    LookupKind::OnlyType,
+                                    &mut ResultContext::Unknown,
+                                    &|_| (),
+                                    &|_| not_found.set(true),
                                 )
+                                .into_inferred()
+                                .execute_with_details(
+                                    i_s,
+                                    &KnownArgsWithCustomAddIssue::new(&key, &|_| {}),
+                                    &mut ResultContext::Unknown,
+                                    OnTypeError::new(&|_, _, _, _| ()),
+                                );
+                            if not_found.get() {
+                                // A subclass could always create __getitem__
+                                executed = Inferred::new_object(i_s.db)
                             }
-                        };
-                    }
-                    PatternResult {
-                        truthy_t: inf.clone(),
-                        falsey_t: inf,
-                    }
+                            self.assign_key_value_to_mapping_pattern(&t, executed, mapping_pattern)
+                        }
+                    };
+                    (t.clone(), t)
                 })
             }
         }
@@ -4750,7 +4742,7 @@ impl Inference<'_, '_, '_> {
     }
 }
 
-fn run_pattern_for_each_type<'x>(
+fn run_pattern_for_each_type(
     i_s: &InferenceState,
     t: Type,
     callback: impl Fn(Type) -> (Type, Type),
@@ -4789,6 +4781,18 @@ fn run_pattern_for_each_type<'x>(
     let (frame, truthy1, falsey1) = run(i_s, iterator, callback);
     FLOW_ANALYSIS.with(|fa| fa.merge_conditional(i_s, frame, Frame::new_conditional()));
     (truthy1, falsey1)
+}
+
+fn run_pattern_for_each_type_with_pattern_result(
+    i_s: &InferenceState,
+    inf: Inferred,
+    callback: impl Fn(Type) -> (Type, Type),
+) -> PatternResult {
+    let (truthy, falsey) = run_pattern_for_each_type(i_s, inf.into_type(i_s), callback);
+    PatternResult {
+        truthy_t: Inferred::from_type(truthy),
+        falsey_t: Inferred::from_type(falsey),
+    }
 }
 
 fn unreachable_pattern() -> (Frame, Frame) {
