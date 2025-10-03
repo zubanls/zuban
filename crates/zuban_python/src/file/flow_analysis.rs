@@ -3265,34 +3265,19 @@ impl Inference<'_, '_, '_> {
         sequence_patterns: impl Iterator<Item = SequencePatternItem<'x>> + Clone,
     ) -> PatternResult {
         let i_s = self.i_s;
-        let mut truthy = Type::Never(NeverCause::Other);
-        let mut falsey = Type::Never(NeverCause::Other);
-        for e in inf
-            .into_type(i_s)
-            .into_iter_with_unpacked_unions(i_s.db, true)
-        {
-            let t = e.type_;
-            let mut assign_from_tuple = |tup| {
-                let (tr, fa) =
-                    self.assign_tup_for_sequence_patterns(tup, sequence_patterns.clone());
-                truthy.union_in_place(tr);
-                falsey.union_in_place(fa);
-            };
+        run_pattern_for_each_type_with_pattern_result(i_s, inf, |t| {
+            let assign_from_tuple =
+                |tup| self.assign_tup_for_sequence_patterns(tup, sequence_patterns.clone());
             match &t {
                 Type::Class(c)
                     if c.link == i_s.db.python_state.str_link()
                         || c.link == i_s.db.python_state.bytes_link()
                         || c.link == i_s.db.python_state.bytearray_link() =>
                 {
-                    falsey.union_in_place(t);
+                    (Type::NEVER, t)
                 }
-                Type::None | Type::Literal(_) | Type::LiteralString { .. } => {
-                    falsey.union_in_place(t)
-                }
-                Type::Any(_) => {
-                    truthy.union_in_place(t.clone());
-                    falsey.union_in_place(t);
-                }
+                Type::None | Type::Literal(_) | Type::LiteralString { .. } => (Type::NEVER, t),
+                Type::Any(_) => (t.clone(), t),
                 Type::Tuple(tup) => assign_from_tuple(tup.clone()),
                 Type::NamedTuple(nt) => assign_from_tuple(nt.as_tuple()),
                 _ => {
@@ -3300,8 +3285,7 @@ impl Inference<'_, '_, '_> {
                     if let Some(cls) = maybe_class
                         && let Some(tup) = cls.maybe_tuple_base(i_s.db)
                     {
-                        assign_from_tuple(tup);
-                        continue;
+                        return assign_from_tuple(tup);
                     }
 
                     if let Some(cls) = maybe_class
@@ -3316,15 +3300,10 @@ impl Inference<'_, '_, '_> {
                             sequence_patterns.clone(),
                         )
                     }
-                    truthy.union_in_place(t.clone());
-                    falsey.union_in_place(t);
+                    (t.clone(), t)
                 }
-            };
-        }
-        PatternResult {
-            truthy_t: Inferred::from_type(truthy),
-            falsey_t: Inferred::from_type(falsey),
-        }
+            }
+        })
     }
 
     fn find_guards_in_typed_dict_for_mapping_pattern(
