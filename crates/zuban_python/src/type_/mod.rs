@@ -1681,6 +1681,12 @@ impl Type {
             _ => false,
         })
     }
+
+    pub fn is_singleton(&self, db: &Database) -> bool {
+        self.for_all_in_union(db, &|t| {
+            matches!(t, Type::Literal(_) | Type::None | Type::EnumMember(_))
+        })
+    }
 }
 
 impl FromIterator<Type> for Type {

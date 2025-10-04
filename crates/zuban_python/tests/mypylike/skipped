@@ -582,28 +582,25 @@ testRejectCovariantArgumentInLambda
 # lambda override inference fails because of context given an instance callable
 testLambdaInOverrideInference
 
-# match statement
-testMatchReachableDottedNames
-# match statement questionable error
+# match statement different error
 testMatchSequencePatternWithInvalidClassPattern
 # match statement type merging
 testMatchMiscNonExhaustiveReturn
-# enum custom eq splitting
-testMatchLiteralPatternEnumCustomEquals-skip
-# tuple falsey side narrowing
-testMatchSequencePatternNegativeNarrowing
-# starred sequence matching
-testMatchNarrowDownWithStarred-skip
 # tuple subject key narrowing
 testMatchSequencePatternNarrowSubjectItems
 testMatchSequencePatternNarrowSubjectItemsRecursive
+# tuple falsey side narrowing
+testMatchSequencePatternNegativeNarrowing
+# enum custom eq splitting
+testMatchLiteralPatternEnumCustomEquals-skip
+# starred sequence matching
+testMatchNarrowDownWithStarred-skip
 # match "Alternative patterns bind different names"
 testMatchOrPatternCapturesMissing
 # match "Multiple assignments to name "x" in pattern"
 testMatchCapturePatternMultipleCaptures
 # match patterns additional narrowings
 testMatchSubjectAssignExprWithGuard
-testMatchNarrowUsingPatternGuardSpecialCase
 # self matching str subclass
 testMatchClassPatternCaptureSelfSubtype
 testMatchAndWithStatementScope

@@ -3008,23 +3008,28 @@ impl Inference<'_, '_, '_> {
     }
 
     fn split_for_dotted_pattern_name(&self, inf: Inferred, dotted_t: &Type) -> PatternResult {
-        let inf_t = inf.as_cow_type(self.i_s);
-        let fallback = || {
-            split_and_intersect(self.i_s, &inf_t, &dotted_t, |issue| {
+        let inf_t = inf.into_type(self.i_s);
+        let fallback = |inf_t| {
+            let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, &dotted_t, |issue| {
                 if self.flags().warn_unreachable {
                     debug!("Error: {issue:?}");
                     // TODO?
                     //self.add_issue(dotted_name.index(), issue)
                 }
-            })
+            });
+            if !truthy.is_singleton(self.i_s.db) {
+                falsey.union_in_place(inf_t)
+            }
+            (truthy, falsey)
         };
         let (truthy, falsey) = match dotted_t {
             Type::EnumMember(member) => {
                 let mut member = member.clone();
                 member.implicit = false;
-                split_off_enum_member(self.i_s, &inf_t, &member, true).unwrap_or_else(fallback)
+                split_off_enum_member(self.i_s, &inf_t, &member, true)
+                    .unwrap_or_else(|| fallback(inf_t))
             }
-            _ => fallback(),
+            _ => fallback(inf_t),
         };
         PatternResult {
             truthy_t: Inferred::from_type(truthy),
