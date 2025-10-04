@@ -2940,17 +2940,7 @@ impl Inference<'_, '_, '_> {
             },
             PatternKind::DottedName(dotted_name) => {
                 let dotted_inf = self.infer_pattern_dotted_name(dotted_name);
-                let inf_t = dotted_inf.as_cow_type(i_s);
-                let (truthy, falsey) =
-                    split_and_intersect(self.i_s, &inf.as_cow_type(i_s), &inf_t, |issue| {
-                        if self.flags().warn_unreachable {
-                            self.add_issue(dotted_name.index(), issue)
-                        }
-                    });
-                PatternResult {
-                    truthy_t: Inferred::from_type(truthy),
-                    falsey_t: Inferred::from_type(falsey),
-                }
+                self.split_for_dotted_pattern_name(inf, &dotted_inf.as_cow_type(i_s))
             }
             PatternKind::ClassPattern(class_pattern) => {
                 self.find_guards_in_class_pattern(inf, subject_key, class_pattern)
@@ -3014,6 +3004,31 @@ impl Inference<'_, '_, '_> {
                     }
                 })
             }
+        }
+    }
+
+    fn split_for_dotted_pattern_name(&self, inf: Inferred, dotted_t: &Type) -> PatternResult {
+        let inf_t = inf.as_cow_type(self.i_s);
+        let fallback = || {
+            split_and_intersect(self.i_s, &inf_t, &dotted_t, |issue| {
+                if self.flags().warn_unreachable {
+                    debug!("Error: {issue:?}");
+                    // TODO?
+                    //self.add_issue(dotted_name.index(), issue)
+                }
+            })
+        };
+        let (truthy, falsey) = match dotted_t {
+            Type::EnumMember(member) => {
+                let mut member = member.clone();
+                member.implicit = false;
+                split_off_enum_member(self.i_s, &inf_t, &member, true).unwrap_or_else(fallback)
+            }
+            _ => fallback(),
+        };
+        PatternResult {
+            truthy_t: Inferred::from_type(truthy),
+            falsey_t: Inferred::from_type(falsey),
         }
     }
 

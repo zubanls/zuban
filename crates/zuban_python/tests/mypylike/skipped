@@ -586,24 +586,15 @@ testLambdaInOverrideInference
 testMatchReachableDottedNames
 # match statement questionable error
 testMatchSequencePatternWithInvalidClassPattern
-# type merging
+# match statement type merging
 testMatchMiscNonExhaustiveReturn
-# enum splitting
-testMatchEnumSingleChoice
-testMatchLiteralPatternEnumNegativeNarrowing
-testMatchLiteralPatternEnumWithTypedAttribute
-testMatchLiteralPatternFunctionalEnum
+# enum custom eq splitting
 testMatchLiteralPatternEnumCustomEquals-skip
-testEnumTypeObjectMember
-testMatchNarrowDownUsingLiteralMatch
-testNonExhaustiveMatchEnumWithFlag
-testNonExhaustiveMatchEnumMultipleMissingMatchesWithFlag
-testExhaustiveMatchEnumWithFlag
 # tuple falsey side narrowing
 testMatchSequencePatternNegativeNarrowing
 # starred sequence matching
 testMatchNarrowDownWithStarred-skip
-# tuple key narrowing
+# tuple subject key narrowing
 testMatchSequencePatternNarrowSubjectItems
 testMatchSequencePatternNarrowSubjectItemsRecursive
 # match "Alternative patterns bind different names"
