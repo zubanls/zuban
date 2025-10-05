@@ -571,6 +571,9 @@ testNewAnalyzerImportStarForwardRef1
 testNewAnalyzerImportStarForwardRef2
 testNewAnalyzerImportOverExistingInCycleStar1
 testNewAnalyzerImportOverExistingInCycleStar2
+# import unreachable should not add an issue?
+testUnreachableAfterToplevelAssertImportThirdParty
+testUnreachableAfterToplevelAssertImportThirdParty2
 
 # lambda with generics
 testInferenceAgainstGenericLambdas
