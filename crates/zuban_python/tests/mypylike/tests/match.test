@@ -253,3 +253,16 @@ def f(m: A, n: B):
             reveal_type(v4)  # N: Revealed type is "str"
         case {"b": v5}:
             reveal_type(v5)  # N: Revealed type is "int"
+
+[case match_subject_keys_tuples_with_parentheses]
+# Copied from testMatchSequencePatternNarrowSubjectItems, but with a tuple that has parens around
+def f(m: int, n: str, o: bool):
+    match (m, n, o):
+        case [3, "foo", True]:
+            reveal_type(m)  # N: Revealed type is "Literal[3]"
+            reveal_type(n)  # N: Revealed type is "Literal['foo']"
+            reveal_type(o)  # N: Revealed type is "Literal[True]"
+        case [a, b, c]:
+            reveal_type(m)  # N: Revealed type is "int"
+            reveal_type(n)  # N: Revealed type is "str"
+            reveal_type(o)  # N: Revealed type is "bool"

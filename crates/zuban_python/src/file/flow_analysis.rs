@@ -2543,18 +2543,21 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         let (subject_expr, case_blocks) = match_stmt.unpack();
-        let unpacked_subject = subject_expr.unpack();
         let (subject_key, inf) = match subject_expr.unpack() {
-            SubjectExprContent::NamedExpression(ne) => {
-                let k = self.key_from_namedexpression(ne);
-                (
+            SubjectExprContent::NamedExpression(ne) => match self.subject_key_named_expr(ne) {
+                Some(InferredSubject::SubjectExprContent(k)) => (
                     k.key.map(|key| SubjectKey::Expr {
                         key,
                         parent_unions: k.parent_unions,
                     }),
                     k.inf,
-                )
-            }
+                ),
+                Some(InferredSubject::TupleKeys(keys)) => (
+                    Some(SubjectKey::Tuple(keys)),
+                    self.infer_named_expression(ne),
+                ),
+                None => (None, self.infer_named_expression(ne)),
+            },
             SubjectExprContent::Tuple(iterator) => (
                 self.subject_key_tuple(iterator.clone())
                     .map(SubjectKey::Tuple),
