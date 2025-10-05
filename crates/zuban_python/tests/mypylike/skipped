@@ -586,9 +586,6 @@ testLambdaInOverrideInference
 testMatchSequencePatternWithInvalidClassPattern
 # match statement type merging
 testMatchMiscNonExhaustiveReturn
-# tuple subject key narrowing
-testMatchSequencePatternNarrowSubjectItems
-testMatchSequencePatternNarrowSubjectItemsRecursive
 # tuple falsey side narrowing
 testMatchSequencePatternNegativeNarrowing
 # enum custom eq splitting

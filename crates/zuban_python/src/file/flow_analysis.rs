@@ -15,8 +15,8 @@ use parsa_python_cst::{
     MappingPattern, MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression,
     NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
     PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
-    SliceType as CSTSliceType, StarPatternContent, SubjectExprContent, Target, Ternary,
-    TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
+    SliceType as CSTSliceType, StarLikeExpression, StarLikeExpressionIterator, StarPatternContent,
+    SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
 };
 
 use crate::{
@@ -2501,6 +2501,41 @@ impl Inference<'_, '_, '_> {
         })
     }
 
+    fn subject_key_named_expr(&self, named_expr: NamedExpression) -> Option<InferredSubject> {
+        if let Some(tup) = named_expr.expression().maybe_tuple() {
+            self.subject_key_tuple(tup.iter())
+                .map(InferredSubject::TupleKeys)
+        } else {
+            Some(InferredSubject::SubjectExprContent(
+                self.key_from_namedexpression(named_expr),
+            ))
+        }
+    }
+
+    fn subject_key_tuple(
+        &self,
+        tuple_items: StarLikeExpressionIterator,
+    ) -> Option<Vec<Option<SubjectKey>>> {
+        let mut keys = vec![];
+        for item in tuple_items {
+            keys.push(match item {
+                StarLikeExpression::NamedExpression(ne) => match self.subject_key_named_expr(ne) {
+                    Some(InferredSubject::SubjectExprContent(r)) => {
+                        r.key.map(|key| SubjectKey::Expr {
+                            key,
+                            parent_unions: r.parent_unions,
+                        })
+                    }
+                    Some(InferredSubject::TupleKeys(keys)) => Some(SubjectKey::Tuple(keys)),
+                    None => None,
+                },
+                StarLikeExpression::StarNamedExpression(_) => return None,
+                _ => unreachable!(),
+            })
+        }
+        Some(keys)
+    }
+
     pub(crate) fn flow_analysis_for_match_stmt(
         &self,
         match_stmt: MatchStmt,
@@ -2508,6 +2543,7 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         let (subject_expr, case_blocks) = match_stmt.unpack();
+        let unpacked_subject = subject_expr.unpack();
         let (subject_key, inf) = match subject_expr.unpack() {
             SubjectExprContent::NamedExpression(ne) => {
                 let k = self.key_from_namedexpression(ne);
@@ -2520,7 +2556,8 @@ impl Inference<'_, '_, '_> {
                 )
             }
             SubjectExprContent::Tuple(iterator) => (
-                None,
+                self.subject_key_tuple(iterator.clone())
+                    .map(SubjectKey::Tuple),
                 self.infer_tuple_iterator(iterator, &mut ResultContext::Unknown),
             ),
         };
@@ -2546,6 +2583,36 @@ impl Inference<'_, '_, '_> {
                     },
                 )
             }
+        }
+    }
+
+    fn narrow_subject(
+        &self,
+        subject_key: Option<&SubjectKey>,
+        frame: &mut Frame,
+        for_type: Cow<Type>,
+    ) {
+        // In this function we make sure that the type accepted by the pattern is narrowed
+        // for subject.
+        if for_type.is_never() {
+            frame.unreachable = true;
+            return;
+        }
+        match subject_key {
+            Some(SubjectKey::Expr { key, parent_unions }) => {
+                frame.add_entry(self.i_s, Entry::new(key.clone(), for_type.into_owned()));
+                self.propagate_parent_unions(frame, parent_unions);
+            }
+            Some(SubjectKey::Tuple(narrowable)) => {
+                if let Type::Tuple(tup) = for_type.as_ref()
+                    && let TupleArgs::FixedLen(given) = &tup.args
+                {
+                    for (given, narrowable) in given.iter().zip(narrowable.iter()) {
+                        self.narrow_subject(narrowable.as_ref(), frame, Cow::Borrowed(given))
+                    }
+                }
+            }
+            None => (),
         }
     }
 
@@ -2577,19 +2644,11 @@ impl Inference<'_, '_, '_> {
             } else {
                 Frame::from_type_without_entry(&falsey_t)
             };
-            let narrow_subject = |frame: &mut Frame, for_type: Cow<Type>| {
-                // In this function we make sure that the type accepted by the pattern is narrowed
-                // for subject.
-                if for_type.is_never() {
-                    frame.unreachable = true;
-                    return;
-                }
-                if let Some(SubjectKey::Expr { key, parent_unions }) = subject_key {
-                    frame.add_entry(self.i_s, Entry::new(key.clone(), for_type.into_owned()));
-                    self.propagate_parent_unions(frame, parent_unions);
-                }
-            };
-            narrow_subject(&mut truthy_frame, frames.truthy_t.as_cow_type(self.i_s));
+            self.narrow_subject(
+                subject_key,
+                &mut truthy_frame,
+                frames.truthy_t.as_cow_type(self.i_s),
+            );
 
             if let Some(guard) = guard {
                 let (guard_truthy, guard_falsey);
@@ -2613,7 +2672,7 @@ impl Inference<'_, '_, '_> {
                     if let Some(found) = guard_truthy.lookup_entry(self.i_s.db, &key) {
                         if let EntryKind::Type(t) = &found.type_ {
                             // We need to rerun this, because the types might have changed
-                            narrow_subject(&mut truthy_frame, Cow::Borrowed(t));
+                            self.narrow_subject(subject_key, &mut truthy_frame, Cow::Borrowed(t));
                         }
                     }
                 }
@@ -2624,7 +2683,11 @@ impl Inference<'_, '_, '_> {
                 if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
                     frames.falsey_t = subject;
                 }
-                narrow_subject(&mut falsey_frame, frames.falsey_t.as_cow_type(self.i_s));
+                self.narrow_subject(
+                    subject_key,
+                    &mut falsey_frame,
+                    frames.falsey_t.as_cow_type(self.i_s),
+                );
             }
             let true_frame = fa.with_frame(truthy_frame, || {
                 self.calc_block_diagnostics(block, class, func)
@@ -4910,11 +4973,17 @@ impl From<Inferred> for TruthyInferred {
     }
 }
 
+enum InferredSubject {
+    SubjectExprContent(KeyWithParentUnions),
+    TupleKeys(Vec<Option<SubjectKey>>),
+}
+
 enum SubjectKey {
     Expr {
         key: FlowKey,
         parent_unions: ParentUnions,
     },
+    Tuple(Vec<Option<SubjectKey>>),
 }
 
 impl Type {
