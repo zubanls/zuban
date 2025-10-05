@@ -814,3 +814,31 @@ class Foo:
                    # E: Argument 2 to "Foo" has incompatible type "int"; expected "str"
         Foo(a, b)
         return cls(a=a, b=b)
+
+[case avoid_dataclass_converter_crash]
+from typing import cast, overload, Any, Callable, Literal, dataclass_transform
+
+def field(converter: Any) -> Any: ...
+
+@dataclass_transform(frozen_default=True, field_specifiers=(field,))
+def frozen[_C](
+    maybe_cls: _C,
+) -> _C: ...
+
+@overload
+
+class Converter[In, Out]:
+    overload
+    def __init__(
+        self,
+        converter: Callable[[In, Any], Out],
+        *,
+        takes_self: Literal[True],
+    ) -> None: ...
+
+import requests
+
+@frozen
+class Thing:
+    foo: int
+    bar: int = field(converter=Converter(lambda _, self: cast("Thing", self).foo, takes_self=True))
