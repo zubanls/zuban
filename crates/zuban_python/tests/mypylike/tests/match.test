@@ -277,3 +277,16 @@ def f2(m: int, n: str, o: bool):
             reveal_type(m)  # N: Revealed type is "int"
             reveal_type(n)  # N: Revealed type is "str"
             reveal_type(o)  # N: Revealed type is "bool"
+
+[case match_tuple_input_two_stars]
+match (int(), str(), bytes()):
+    case [a, *foo, *bar, b]:  # E: Two starred expressions in assignment
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "Any"
+    case [a, *foo, b, *bar]:  # E: Two starred expressions in assignment
+        reveal_type(a)  # N: Revealed type is "Any"
+        reveal_type(b)  # N: Revealed type is "Any"
+    case [a, b, c]:
+        reveal_type(a)  # N: Revealed type is "int"
+        reveal_type(b)  # N: Revealed type is "str"
+        reveal_type(c)  # N: Revealed type is "bytes"

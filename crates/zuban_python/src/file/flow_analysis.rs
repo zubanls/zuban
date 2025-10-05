@@ -3592,9 +3592,12 @@ impl Inference<'_, '_, '_> {
                         after_stars += 1;
                     }
                 }
-                SequencePatternItem::Rest(_) => {
+                SequencePatternItem::Rest(star_pattern) => {
                     if had_starred_pattern {
-                        // TODO two+ stars add issue
+                        self.add_issue(
+                            star_pattern.index(),
+                            IssueKind::MultipleStarredExpressionsInAssignment,
+                        );
                         self.assign_sequence_patterns(&Type::ERROR, sequence_patterns);
                         return (Type::Tuple(tup.clone()), Type::Tuple(tup));
                     }
