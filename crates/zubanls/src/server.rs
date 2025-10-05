@@ -348,7 +348,9 @@ impl<'sender> GlobalState<'sender> {
                     })
                     .collect();
             }
-            config.settings.typeshed_path = self.typeshed_path.clone();
+            if self.typeshed_path.is_some() {
+                config.settings.typeshed_path = self.typeshed_path.clone();
+            }
             config.settings.try_to_find_environment_if_not_defined(
                 &vfs_handler,
                 &first_root,
