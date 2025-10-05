@@ -3201,7 +3201,7 @@ impl Inference<'_, '_, '_> {
             "Check class pattern with intersected type {:?}",
             truthy.format_short(i_s.db)
         );
-        let lookup = |t: &Type, for_node_ref: NodeRef, name: &str| {
+        let lookup = |t: &Type, name: &str| {
             t.lookup(
                 i_s,
                 self.file,
@@ -3218,7 +3218,7 @@ impl Inference<'_, '_, '_> {
         let match_args = OnceCell::new();
         let mut nth_positional = 0;
         let mut find_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
-            let lookup = lookup(&truthy, node_ref, name);
+            let lookup = lookup(&truthy, name);
             let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
                 node_ref.add_issue(
                     i_s,
@@ -3239,7 +3239,7 @@ impl Inference<'_, '_, '_> {
                 ParamPattern::Positional(pat) => {
                     let node_ref = NodeRef::new(self.file, pat.index());
                     if let Some(match_args) = match_args.get_or_init(|| {
-                        let lookup = lookup(&truthy, node_ref, "__match_args__");
+                        let lookup = lookup(&truthy, "__match_args__");
                         let name = lookup.maybe_name();
                         lookup.into_maybe_inferred().map(|inf| {
                             let truthy = inf.as_type(i_s);
