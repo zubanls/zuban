@@ -290,3 +290,13 @@ match (int(), str(), bytes()):
         reveal_type(a)  # N: Revealed type is "int"
         reveal_type(b)  # N: Revealed type is "str"
         reveal_type(c)  # N: Revealed type is "bytes"
+
+[case match_args_invalid]
+class Foo:
+    __match_args__ = "a"  # N: __match_args__ must be a tuple containing string literals for checking of match statements to work
+    a: int
+
+x = Foo()
+match x:
+    case Foo(1): reveal_type(x)  # N: Revealed type is "__main__.Foo"
+    case _: reveal_type(x)  # N: Revealed type is "__main__.Foo"

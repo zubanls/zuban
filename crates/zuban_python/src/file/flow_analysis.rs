@@ -3077,13 +3077,7 @@ impl Inference<'_, '_, '_> {
     fn split_for_dotted_pattern_name(&self, inf: Inferred, dotted_t: &Type) -> PatternResult {
         let inf_t = inf.into_type(self.i_s);
         let fallback = |inf_t| {
-            let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, &dotted_t, |issue| {
-                if self.flags().warn_unreachable {
-                    debug!("Error: {issue:?}");
-                    // TODO?
-                    //self.add_issue(dotted_name.index(), issue)
-                }
-            });
+            let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, &dotted_t, |_| {});
             if !truthy.is_singleton(self.i_s.db) {
                 falsey.union_in_place(inf_t)
             }
@@ -3285,13 +3279,11 @@ impl Inference<'_, '_, '_> {
                                 // rest as potentially unreachable, since an error occured.
                                 return (Type::Never(NeverCause::Other), truthy);
                             }
-                        } else if let Type::Tuple(tup) = match_args
-                            && tup.args.is_any()
-                        {
-                            // This is just matching
-                            break;
                         } else {
-                            todo!()
+                            // If match args are incorrect, we simply assume it's matching, because
+                            // an error should have been added at the point of defining the
+                            // __match_args__
+                            return (truthy.clone(), truthy);
                         }
                     } else if params.clone().count() == 1 && is_self_match_type(i_s.db, &truthy) {
                         self.find_guards_in_pattern(
