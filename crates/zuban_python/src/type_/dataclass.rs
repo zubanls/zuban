@@ -629,6 +629,13 @@ fn field_options_from_args(
     mut options: FieldOptions,
 ) -> FieldOptions {
     let args = SimpleArgs::new(*i_s, file, primary_index, details);
+    let node_ref = NodeRef::new(file, primary_index);
+    if node_ref.point().calculating() {
+        // TODO what should we do here in this recursion?
+        return Default::default();
+    }
+    debug_assert!(!node_ref.point().calculated());
+    node_ref.set_point(Point::new_calculating());
     for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
             arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
@@ -700,6 +707,8 @@ fn field_options_from_args(
             }
         }
     }
+    debug_assert!(node_ref.point().calculating());
+    node_ref.set_point(Point::new_uncalculated());
     options
 }
 

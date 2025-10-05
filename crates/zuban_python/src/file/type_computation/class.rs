@@ -34,7 +34,7 @@ use crate::{
         DataclassOptions, DataclassTransformObj, DbString, Enum, EnumMemberDefinition,
         ExtraItemsType, FunctionKind, GenericClass, NamedTuple, ParamType, ReplaceTypeVarLikes,
         StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict,
-        TypedDictMember, TypedDictMembers, Variance, dataclass_init_func,
+        TypedDictMember, TypedDictMembers, Variance,
     },
     type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
