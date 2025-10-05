@@ -1797,9 +1797,27 @@ fn check_completions() {
             },
           },
           {
+            "kind": CompletionItemKind::FIELD,
+            "label": "__annotations__",
+            "sortText": "00002",
+            "textEdit": {
+              "newText": "__annotations__",
+              "range": {
+                "end": {
+                  "character": 4,
+                  "line": 1
+                },
+                "start": {
+                  "character": 2,
+                  "line": 1
+                }
+              }
+            }
+          },
+          {
             "kind": CompletionItemKind::PROPERTY,
             "label": "__dict__",
-            "sortText": "00002",
+            "sortText": "00003",
             "textEdit": {
               "newText": "__dict__",
               "range": {
@@ -1817,7 +1835,7 @@ fn check_completions() {
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__doc__",
-            "sortText": "00003",
+            "sortText": "00004",
             "textEdit": {
               "newText": "__doc__",
               "range": {
@@ -1835,7 +1853,7 @@ fn check_completions() {
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__file__",
-            "sortText": "00004",
+            "sortText": "00005",
             "textEdit": {
               "newText": "__file__",
               "range": {
@@ -1853,7 +1871,7 @@ fn check_completions() {
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__loader__",
-            "sortText": "00005",
+            "sortText": "00006",
             "textEdit": {
               "newText": "__loader__",
               "range": {
@@ -1871,7 +1889,7 @@ fn check_completions() {
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__name__",
-            "sortText": "00006",
+            "sortText": "00007",
             "textEdit": {
               "newText": "__name__",
               "range": {
@@ -1889,7 +1907,7 @@ fn check_completions() {
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__package__",
-            "sortText": "00007",
+            "sortText": "00008",
             "textEdit": {
               "newText": "__package__",
               "range": {
@@ -1907,7 +1925,7 @@ fn check_completions() {
           {
             "kind": CompletionItemKind::FIELD,
             "label": "__spec__",
-            "sortText": "00008",
+            "sortText": "00009",
             "textEdit": {
               "newText": "__spec__",
               "range": {
