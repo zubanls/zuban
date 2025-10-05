@@ -31,6 +31,7 @@ use crate::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
     },
+    recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, GenericItem,
         NeverCause, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,
@@ -407,10 +408,19 @@ impl<'a> Matcher<'a> {
     }
 
     fn add_unresolved_constraint(&mut self, tv: TypeVarIndexed, constraint: Bound) {
-        let tv_matcher = &mut self.type_var_matchers[tv.matcher_index];
-        tv_matcher.calculating_type_args[tv.type_var_index]
-            .unresolved_transitive_constraints
-            .push(constraint);
+        if let Some(tv_matcher) = self.type_var_matchers.get_mut(tv.matcher_index) {
+            if let Some(calculating_type_arg) =
+                tv_matcher.calculating_type_args.get_mut(tv.type_var_index)
+            {
+                calculating_type_arg
+                    .unresolved_transitive_constraints
+                    .push(constraint)
+            } else {
+                recoverable_error!("A TypeVar was missing for a specific matcher")
+            }
+        } else {
+            recoverable_error!("A matcher was missing for a TypeVar")
+        }
     }
 
     pub fn match_or_add_type_var(
