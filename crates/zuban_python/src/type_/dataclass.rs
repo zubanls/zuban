@@ -31,6 +31,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
+    recoverable_error,
     type_::{CallableLike, ReplaceTypeVarLikes, simplified_union_from_iterators},
     type_helpers::{
         Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
@@ -962,7 +963,12 @@ pub fn ensure_calculated_dataclass(self_: &Arc<Dataclass>, db: &Database) {
         let indent = debug_indent();
         // Cannot use get_or_init, because this might recurse for some reasons (check for
         // example the test testDeferredDataclassInitSignatureSubclass)
-        self_.inits.set(calculate_init_of_dataclass(db, self_)).ok();
+        if let Err(_) = self_.inits.set(calculate_init_of_dataclass(db, self_)) {
+            recoverable_error!(
+                "Looped dataclass initialization for {:?}",
+                self_.class(db).name()
+            );
+        }
         drop(indent);
         debug!("Finished calculating dataclass {}", self_.class(db).name());
     }

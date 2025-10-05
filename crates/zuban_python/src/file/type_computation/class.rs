@@ -668,9 +668,6 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
 
-        if let Some(dataclass) = was_dataclass {
-            dataclass_init_func(&dataclass, db);
-        }
         // Now that the class has been saved, we can use it like an actual class. We have to do
         // some member initialization things with TypedDicts, Enums, etc.
         let class = Class::with_undefined_generics(self.node_ref);

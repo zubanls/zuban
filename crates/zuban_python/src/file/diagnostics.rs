@@ -903,6 +903,11 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+        if let Some(t) = class_infos.undefined_generics_type.get()
+            && let Type::Dataclass(dc) = t.as_ref()
+        {
+            ensure_calculated_dataclass(dc, db);
+        }
 
         let i_s = self.i_s.with_class_context(&c);
         let result = self
