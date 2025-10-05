@@ -2502,13 +2502,14 @@ impl Inference<'_, '_, '_> {
     }
 
     fn subject_key_named_expr(&self, named_expr: NamedExpression) -> Option<InferredSubject> {
-        if let Some(tup) = named_expr.expression().maybe_tuple() {
-            self.subject_key_tuple(tup.iter())
-                .map(InferredSubject::TupleKeys)
-        } else {
-            Some(InferredSubject::SubjectExprContent(
+        match named_expr.expression().maybe_unpacked_atom() {
+            Some(AtomContent::Tuple(tup)) => self
+                .subject_key_tuple(tup.iter())
+                .map(InferredSubject::TupleKeys),
+            Some(AtomContent::NamedExpression(inner)) => self.subject_key_named_expr(inner),
+            _ => Some(InferredSubject::SubjectExprContent(
                 self.key_from_namedexpression(named_expr),
-            ))
+            )),
         }
     }
 
