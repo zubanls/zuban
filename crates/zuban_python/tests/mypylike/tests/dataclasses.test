@@ -815,7 +815,7 @@ class Foo:
         Foo(a, b)
         return cls(a=a, b=b)
 
-[case avoid_dataclass_transform_converter_crash]
+[case avoid_dataclass_transform_converter_crash1]
 from typing import cast, overload, Any, Callable, Literal, dataclass_transform
 
 def field(converter: Any) -> Any: ...
@@ -832,6 +832,29 @@ class Converter[In, Out]:
         self,
         converter: Callable[[In, Any], Out],
     ) -> None: ...
+
+@frozen
+class Thing:
+    foo: int
+    bar: int = field(converter=Converter(lambda _, self: cast("Thing", self).foo))
+
+[case avoid_dataclass_transform_converter_crash2]
+from typing import cast, Callable, Any, dataclass_transform, overload
+
+class Converter[In, Out]:
+    def __init__(
+        self,
+        converter: Callable[[In, Any], Out],
+    ) -> None: ...
+
+@overload
+def field(*, converter: None = ...) -> Any: ...
+@overload
+def field(*, converter: Converter) -> Any: ...
+def field(*, converter: Converter | None = None) -> Any: ...
+
+@dataclass_transform(frozen_default=True, field_specifiers=(field,))
+def frozen[_C](maybe_cls: _C) -> _C: ...
 
 @frozen
 class Thing:

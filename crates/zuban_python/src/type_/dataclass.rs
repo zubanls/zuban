@@ -6,7 +6,7 @@ use std::{
 
 use parsa_python_cst::{
     ArgumentsDetails, AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart,
-    NodeIndex, ParamKind, PrimaryContent, StarExpressionContent,
+    NodeIndex, ParamKind, Primary, PrimaryContent, StarExpressionContent,
 };
 use utils::FastHashMap;
 
@@ -580,44 +580,68 @@ fn calculate_field_arg(
     if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right_side
         && let StarExpressionContent::Expression(expr) = star_exprs.unpack()
         && let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
-        && let PrimaryContent::Execution(details) = primary.second()
     {
-        let left = file.inference(i_s).infer_primary_or_atom(primary.first());
-        if let Some(specifiers) = &options.transform_field_specifiers {
-            for specifier in specifiers.iter() {
-                if left.maybe_saved_link() == Some(*specifier) {
-                    let mut options = FieldOptions::default();
-                    apply_default_options_from_dataclass_transform_field(
-                        i_s,
-                        left,
-                        &mut options,
-                        &SimpleArgs::from_primary(*i_s, file, primary),
-                    );
-                    return field_options_from_args(
-                        i_s,
-                        file,
-                        primary.index(),
-                        details,
-                        true,
-                        options,
-                    );
-                }
-            }
-        } else if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
-            return field_options_from_args(
-                i_s,
-                file,
-                primary.index(),
-                details,
-                false,
-                FieldOptions::default(),
-            );
+        let node_ref = NodeRef::new(file, primary.index());
+        debug_assert!(!node_ref.point().calculated());
+        if node_ref.point().calculating() {
+            // TODO what should we do here in this recursion?
+            return Default::default();
+        }
+        node_ref.set_point(Point::new_calculating());
+        let result = calculate_field_arg_inner(i_s, file, primary, options);
+        debug_assert!(node_ref.point().calculating());
+        node_ref.set_point(Point::new_uncalculated());
+        if let Some(result) = result {
+            return result;
         }
     }
     FieldOptions {
         has_default: right_side.is_some(),
         ..Default::default()
     }
+}
+
+fn calculate_field_arg_inner(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    primary: Primary,
+    options: &DataclassOptions,
+) -> Option<FieldOptions> {
+    let PrimaryContent::Execution(details) = primary.second() else {
+        return None;
+    };
+    let left = file.inference(i_s).infer_primary_or_atom(primary.first());
+    if let Some(specifiers) = &options.transform_field_specifiers {
+        for specifier in specifiers.iter() {
+            if left.maybe_saved_link() == Some(*specifier) {
+                let mut options = FieldOptions::default();
+                apply_default_options_from_dataclass_transform_field(
+                    i_s,
+                    left,
+                    &mut options,
+                    &SimpleArgs::from_primary(*i_s, file, primary),
+                );
+                return Some(field_options_from_args(
+                    i_s,
+                    file,
+                    primary.index(),
+                    details,
+                    true,
+                    options,
+                ));
+            }
+        }
+    } else if left.is_name_defined_in_module(i_s.db, "dataclasses", "field") {
+        return Some(field_options_from_args(
+            i_s,
+            file,
+            primary.index(),
+            details,
+            false,
+            FieldOptions::default(),
+        ));
+    }
+    None
 }
 
 fn field_options_from_args(
@@ -629,13 +653,6 @@ fn field_options_from_args(
     mut options: FieldOptions,
 ) -> FieldOptions {
     let args = SimpleArgs::new(*i_s, file, primary_index, details);
-    let node_ref = NodeRef::new(file, primary_index);
-    if node_ref.point().calculating() {
-        // TODO what should we do here in this recursion?
-        return Default::default();
-    }
-    debug_assert!(!node_ref.point().calculated());
-    node_ref.set_point(Point::new_calculating());
     for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
             arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
@@ -707,8 +724,6 @@ fn field_options_from_args(
             }
         }
     }
-    debug_assert!(node_ref.point().calculating());
-    node_ref.set_point(Point::new_uncalculated());
     options
 }
 
