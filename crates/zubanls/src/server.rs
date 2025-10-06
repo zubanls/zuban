@@ -339,23 +339,19 @@ impl<'sender> GlobalState<'sender> {
             //
             // It's questionable that we want those two things. And maybe there will also be a need
             // for the type checker to understand what the mypy_path originally was.
-            if config.settings.mypy_path.is_empty() {
-                config.settings.mypy_path = self
-                    .roots
-                    .iter()
-                    .map(|p| {
-                        vfs_handler.unchecked_normalized_path(vfs_handler.unchecked_abs_path(p))
-                    })
-                    .collect();
-            }
+            config.settings.mypy_path = self
+                .roots
+                .iter()
+                .map(|p| vfs_handler.unchecked_normalized_path(vfs_handler.unchecked_abs_path(p)))
+                .collect();
             if self.typeshed_path.is_some() {
                 config.settings.typeshed_path = self.typeshed_path.clone();
             }
-            config.settings.try_to_find_environment_if_not_defined(
-                &vfs_handler,
-                &first_root,
-                |n| std::env::var(n),
-            );
+            config
+                .settings
+                .try_to_apply_environment_variables(&vfs_handler, &first_root, |n| {
+                    std::env::var(n)
+                });
 
             let vfs = Box::new(vfs_handler);
             *project = Some(if let Some(recovery) = self.panic_recovery.take() {

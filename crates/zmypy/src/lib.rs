@@ -306,11 +306,9 @@ fn project_from_cli(
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
-    options.settings.try_to_find_environment_if_not_defined(
-        &local_fs,
-        &current_dir,
-        lookup_env_var,
-    );
+    options
+        .settings
+        .try_to_apply_environment_variables(&local_fs, &current_dir, lookup_env_var);
 
     apply_flags(
         &local_fs,
@@ -479,13 +477,10 @@ fn apply_mypy_flags(
             .collect::<Vec<_>>()
     );
 
-    // TODO MYPYPATH=$MYPYPATH:mypy-stubs
-    if project_options.settings.mypy_path.is_empty() {
-        project_options
-            .settings
-            .mypy_path
-            .push(vfs_handler.normalize_rc_path(current_dir));
-    }
+    project_options
+        .settings
+        .mypy_path
+        .push(vfs_handler.normalize_rc_path(current_dir));
 }
 
 #[cfg(test)]
@@ -952,18 +947,12 @@ mod tests {
         if cfg!(target_os = "windows") {
             assert_eq!(
                 d(),
-                [
-                    "hello_zuban\\__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"  [import-not-found]",
-                    "hello_zuban\\hello.py:3: error: \"int\" not callable  [operator]"
-                ]
+                ["src\\hello_zuban\\hello.py:3: error: \"int\" not callable  [operator]"]
             );
         } else {
             assert_eq!(
                 d(),
-                [
-                    "hello_zuban/__init__.py:2: error: Cannot find implementation or library stub for module named \"src\"  [import-not-found]",
-                    "hello_zuban/hello.py:3: error: \"int\" not callable  [operator]"
-                ]
+                ["src/hello_zuban/hello.py:3: error: \"int\" not callable  [operator]"]
             );
         }
     }
@@ -1052,5 +1041,66 @@ mod tests {
             d(&[""]),
             ["m.py:4: note: Revealed type is \"builtins.int\""]
         );
+    }
+
+    #[test]
+    fn test_pythonpath() {
+        logging_config::setup_logging_for_tests();
+
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+                [file pkg1/bar.py]
+                import bar
+                import pkg1
+                import base
+                import doesnotexist
+                import baz
+
+                [file pkg2/baz.py]
+
+                [file base.py]
+
+                [file main.py]
+                import bar
+                import pkg1
+                import base
+                import doesnotexist
+                import baz
+                "#,
+            false,
+        );
+
+        let pth = |dir: &str| {
+            Path::new(test_dir.path())
+                .join(dir)
+                .into_os_string()
+                .into_string()
+                .unwrap()
+        };
+
+        for (var, value) in [
+            ("PYTHONPATH", format!("{}:{}", pth("pkg1"), pth("pkg2"))),
+            ("MYPYPATH", format!("{}:{}", pth("pkg1"), pth("pkg2"))),
+        ] {
+            let d = |file: &str| {
+                diagnostics_with_env_lookup(Cli::parse_from(&["", file]), test_dir.path(), |s| {
+                    match s {
+                        _ if s == var => Ok(value.clone()),
+                        _ => Err(VarError::NotPresent),
+                    }
+                })
+                .unwrap()
+            };
+            assert_eq!(
+                d("main.py"),
+                ["main.py:4: error: Cannot find implementation or library \
+                     stub for module named \"doesnotexist\"  [import-not-found]"]
+            );
+            assert_eq!(
+                d("pkg1/bar.py"),
+                ["bar.py:4: error: Cannot find implementation or library \
+                     stub for module named \"doesnotexist\"  [import-not-found]"]
+            );
+        }
     }
 }

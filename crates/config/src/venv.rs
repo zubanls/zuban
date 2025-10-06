@@ -4,12 +4,32 @@ use vfs::{AbsPath, NormalizedPath, VfsHandler};
 
 use crate::{PythonVersion, Settings, parse_python_ini};
 
+type EnvResult = Result<String, std::env::VarError>;
+
 impl Settings {
+    pub fn try_to_apply_environment_variables(
+        &mut self,
+        vfs_handler: &dyn VfsHandler,
+        base_directory: &AbsPath,
+        lookup_env_var: impl Fn(&str) -> EnvResult,
+    ) {
+        let mut add_to_mypy_path = |lookup: EnvResult| {
+            if let Ok(found_path) = lookup {
+                self.mypy_path.extend(found_path.split(':').map(|p| {
+                    vfs_handler.normalize_rc_path(vfs_handler.absolute_path(base_directory, p))
+                }))
+            }
+        };
+        add_to_mypy_path(lookup_env_var("PYTHONPATH"));
+        add_to_mypy_path(lookup_env_var("MYPYPATH"));
+        self.try_to_find_environment_if_not_defined(vfs_handler, base_directory, lookup_env_var);
+    }
+
     pub fn try_to_find_environment_if_not_defined(
         &mut self,
         vfs_handler: &dyn VfsHandler,
         base_directory: &AbsPath,
-        lookup_env_var: impl Fn(&str) -> Result<String, std::env::VarError>,
+        lookup_env_var: impl Fn(&str) -> EnvResult,
     ) {
         if self.environment.is_some() {
             return;
