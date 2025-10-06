@@ -397,7 +397,8 @@ fn ensure_valid_workspace_edit(
 }
 
 fn to_uri(s: String) -> Uri {
-    Uri::from_str(&s).unwrap()
+    Uri::from_str(&s)
+        .unwrap_or_else(|err| panic!("Tried to parse the URI {s}, but failed with {err:?}"))
 }
 
 fn resolve_resource_op(op: &ResourceOp) -> ResourceOperationKind {
