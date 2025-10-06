@@ -418,7 +418,7 @@ impl Default for TypeCheckerFlags {
             implicit_optional: false,
             check_untyped_defs: true,
             ignore_missing_imports: false,
-            follow_untyped_imports: false,
+            follow_untyped_imports: true,
             disallow_untyped_defs: false,
             disallow_untyped_calls: false,
             disallow_untyped_decorators: false,
@@ -487,6 +487,7 @@ impl TypeCheckerFlags {
             use_joins: true,
             warn_unreachable: false,
             warn_no_return: true,
+            follow_untyped_imports: false,
             ..Default::default()
         }
     }

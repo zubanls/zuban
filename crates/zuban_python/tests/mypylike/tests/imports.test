@@ -172,6 +172,7 @@ class D: ...
 
 [case module_finding_with_py_typed]
 # pkgs: modulefinder-site-packages
+# flags: --mypy-compatible
 
 # Test copied from test__packages_with_ns, some parts omitted, because they are not really relevant
 # The results are slightly different. Namespace imports are considered OK.
@@ -643,3 +644,9 @@ from typing import Union, List,  # E: Invalid syntax
 
 class Foo:
     groups: List[str]  # E: Invalid type comment or annotation
+
+[case untyped_imports_default]
+# pkgs: typedpkg_ns_b
+# flags: --no-mypy-compatible
+import typedpkg_ns.b.bbb as b
+b.bf("foo", "bar")  # E: Too many arguments for "bf"
