@@ -4401,7 +4401,7 @@ impl<'db> UnpackedNumber<'db> {
         let code = node.as_code();
         if code.contains('j') || code.contains('J') {
             Self::Complex(Complex::new(node))
-        } else if code.contains('.') {
+        } else if code.contains(['.', 'e', 'E']) {
             Self::Float(Float::new(node))
         } else {
             Self::Int(Int::new(node))
