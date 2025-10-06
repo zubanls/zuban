@@ -439,11 +439,18 @@ create_grammar!(
 );
 
 pub fn parse(code: Box<str>) -> PyTree {
-    // TODO is this really the best way? Especially for refactoring?!
     let mut code = code.to_string();
-    if !code.ends_with('\n') {
-        code += "\n";
+    // TODO is this really the best way? Especially for refactoring?!
+    {
+        if !code.ends_with('\n') {
+            code += "\n";
+        }
+        if code.ends_with("\\\n") {
+            // Must end with a proper newline
+            code += "\n";
+        }
     }
+
     PYTHON_GRAMMAR.parse(code.into())
 }
 
@@ -462,5 +469,12 @@ mod tests {
             root_node.type_(),
             PyNodeType::Nonterminal(NonterminalType::file)
         );
+    }
+
+    #[test]
+    fn test_avoid_crash_from_github_issue_60() {
+        parse("    >\\".into());
+        parse("    >\\\n".into());
+        parse("    >\\\n\n".into());
     }
 }

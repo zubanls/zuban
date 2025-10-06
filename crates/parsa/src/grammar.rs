@@ -564,12 +564,15 @@ impl<'a> Stack<'a> {
             }
 
             *code += &" ".repeat(depth);
-            let node = tree_nodes[index];
+            let Some(node) = tree_nodes.get(index) else {
+                *code += "<tree points to inexistent node>";
+                return;
+            };
             let t = node.type_.remove_error_recovery_bit();
             *code += &format!(
                 "{}{}: {}-{}\n",
                 if node.type_.is_error_recovery() {
-                    "ERROR"
+                    "ERROR "
                 } else {
                     ""
                 },
