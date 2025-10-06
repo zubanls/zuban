@@ -681,6 +681,23 @@ __main__:10: note:     def f(x: int) -> int
 14 | # a
 15 | # b
 
+[case pretty_flag_with_forward_reference]
+# flags: --pretty
+
+
+b: "A" = 1
+# a
+# b
+# c
+
+[out]
+__main__:4: error: Name "A" is not defined
+  |
+2 | 
+3 | 
+4 | b: "A" = 1
+5 | # a
+6 | # b
 [case exclude_start_matching_at_beginning]
 [file out/foo.py]
 1()

@@ -779,7 +779,7 @@ impl<'db> PythonFile {
             .unwrap_or_default();
         let file = self.original_file(db);
         file.newline_indices
-            .numbers_with_lines(self.tree.code(), from_line)
+            .numbers_with_lines(file.tree.code(), from_line)
             .take(line_range.len() + 1 + 2 * add_lines_at_start_and_end)
     }
 }

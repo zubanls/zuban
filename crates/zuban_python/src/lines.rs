@@ -137,7 +137,9 @@ impl NewlineIndices {
             .skip(skip_n_lines)
             .map(move |(line_nr, line_index)| {
                 let line_index = line_index as usize;
-                let mut result = &code[previous..line_index - 1];
+                let Some(mut result) = code.get(previous..line_index - 1) else {
+                    panic!("Wanted to access {previous}..{line_index} for code {code:?}");
+                };
                 if cfg!(windows)
                     && let Some(l) = result.strip_suffix('\r')
                 {
