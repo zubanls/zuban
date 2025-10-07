@@ -698,6 +698,21 @@ __main__:4: error: Name "A" is not defined
 4 | b: "A" = 1
 5 | # a
 6 | # b
+
+[case pretty_flag_with_unicode_no_crash]
+# flags: --pretty
+
+
+x: äää = 1
+
+[out]
+__main__:4: error: Name "äää" is not defined
+  |
+2 | 
+3 | 
+4 | x: äää = 1
+5 |
+
 [case exclude_start_matching_at_beginning]
 [file out/foo.py]
 1()

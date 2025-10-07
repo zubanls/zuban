@@ -2199,12 +2199,12 @@ impl<'db> Diagnostic<'db> {
             // On these lines there are errors, so "underline" them.
             if line_nr >= start_line && line_nr <= end_line {
                 let start_column = if line_nr == start_line {
-                    start.code_points_column()
+                    start.utf8_bytes_column()
                 } else {
                     0
                 };
                 let end_column = if line_nr == end_line {
-                    end.code_points_column()
+                    end.utf8_bytes_column()
                 } else {
                     line.len()
                 };
