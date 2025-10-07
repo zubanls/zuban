@@ -970,7 +970,7 @@ fn int_operations(
         "&" => Some(left & right),
         "^" => Some(left ^ right),
         _ => {
-            recoverable_error!("Expected all operations to be handled for int, also {operand:?}");
+            debug_assert!(matches!(operand, ">" | ">=" | "<" | "<="), "{operand}");
             return None;
         }
     };
