@@ -480,7 +480,6 @@ pub(crate) enum Specific {
     Float,
     Complex,
     Bytes,
-    Int,
     None,
     // Literals are used for things like Literal[42]
     StringLiteral,

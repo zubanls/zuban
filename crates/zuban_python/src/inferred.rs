@@ -2911,7 +2911,6 @@ pub fn specific_to_type<'db>(
             implicit: true,
         })),
         Specific::String => Cow::Owned(i_s.db.python_state.str_type()),
-        Specific::Int => Cow::Owned(i_s.db.python_state.int_type()),
         Specific::Float => Cow::Owned(i_s.db.python_state.float_type()),
         Specific::Bytes => Cow::Owned(i_s.db.python_state.bytes_type()),
         Specific::Complex => Cow::Owned(i_s.db.python_state.complex_type()),
