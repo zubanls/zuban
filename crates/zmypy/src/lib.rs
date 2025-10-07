@@ -231,6 +231,11 @@ pub struct MypyCli {
     pretty: bool,
     #[arg(long)]
     no_pretty: bool,
+    /// Avoid showing the summary for errors
+    #[arg(long, hide = true)]
+    error_summary: bool,
+    #[arg(long)]
+    no_error_summary: bool,
 }
 
 pub fn run(cli: Cli) -> ExitCode {
@@ -260,10 +265,12 @@ fn with_exit_code(
                 .write_colored(&mut stdout.lock(), config)
                 .unwrap()
         }
-        if diagnostics.error_count() > 0 {
-            println!("{}", diagnostics.summary().red().bold());
-        } else {
-            println!("{}", diagnostics.summary().green().bold());
+        if config.error_summary {
+            if diagnostics.error_count() > 0 {
+                println!("{}", diagnostics.summary().red().bold());
+            } else {
+                println!("{}", diagnostics.summary().green().bold());
+            }
         }
         ExitCode::from((diagnostics.error_count() > 0) as u8)
     })
@@ -406,6 +413,7 @@ fn apply_mypy_flags(
     apply!(diagnostic_config, show_error_end, hide_error_end);
     apply!(diagnostic_config, show_error_codes, hide_error_codes);
     apply!(diagnostic_config, pretty, no_pretty);
+    apply!(diagnostic_config, error_summary, no_error_summary);
 
     apply!(flags, allow_redefinition, disallow_redefinition);
     if cli.allow_redefinition_new {

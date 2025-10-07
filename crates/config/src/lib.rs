@@ -25,6 +25,7 @@ pub struct DiagnosticConfig {
     pub show_error_end: bool,
     pub show_column_numbers: bool,
     pub pretty: bool,
+    pub error_summary: bool,
 }
 
 impl Default for DiagnosticConfig {
@@ -34,6 +35,7 @@ impl Default for DiagnosticConfig {
             show_error_end: false,
             show_column_numbers: false,
             pretty: false,
+            error_summary: true,
         }
     }
 }
