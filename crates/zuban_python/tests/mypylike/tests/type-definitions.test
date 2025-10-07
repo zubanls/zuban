@@ -689,3 +689,30 @@ def f(x: A[int]):
     reveal_type(x)  # N: Revealed type is "list[int] | int"
     if isinstance(x, list):
         reveal_type(x[0])  # N: Revealed type is "int"
+
+[case binary_or_is_no_type_definition]
+# From GH #65
+[file config.py]
+from typing import TypedDict
+
+class ConfigDict(TypedDict):
+    env: dict[str, str]
+
+CONFIG: ConfigDict = {
+    'env': {},
+}
+
+[file env.py]
+import os
+MY_ENV = {
+    'PATH': os.environ["PATH"],
+}
+
+[file process.py]
+import os
+from config import CONFIG
+
+def run(env: dict[str, str]):
+    env_vars = os.environ | CONFIG['env']
+    if env is not None:
+        env_vars |= env
