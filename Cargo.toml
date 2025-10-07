@@ -35,6 +35,8 @@ fnv = "*"
 lazy_static = "*"
 lsp-types = { version = "0.97.0", features = ["proposed"]}
 notify = "*"
+num-bigint = "*"
+num-traits = "*"
 regex = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"

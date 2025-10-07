@@ -1866,7 +1866,7 @@ impl Hash for Literal {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum LiteralKind {
     String(DbString),
-    Int(i64), // TODO this does not work for Python ints > usize
+    Int(num_bigint::BigInt),
     Bytes(DbBytes),
     Bool(bool),
 }
@@ -1881,7 +1881,7 @@ pub(crate) enum DbBytes {
 #[derive(PartialEq, Eq, Debug)]
 pub(crate) enum LiteralValue<'db> {
     String(&'db str),
-    Int(i64),
+    Int(&'db num_bigint::BigInt),
     Bytes(Cow<'db, [u8]>),
     Bool(bool),
 }
@@ -1903,7 +1903,7 @@ impl Literal {
 
     pub fn value<'x>(&'x self, db: &'x Database) -> LiteralValue<'x> {
         match &self.kind {
-            LiteralKind::Int(i) => LiteralValue::Int(*i),
+            LiteralKind::Int(i) => LiteralValue::Int(i),
             LiteralKind::String(s) => LiteralValue::String(s.as_str(db)),
             LiteralKind::Bool(b) => LiteralValue::Bool(*b),
             LiteralKind::Bytes(b) => match b {

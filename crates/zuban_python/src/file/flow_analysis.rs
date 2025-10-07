@@ -1469,7 +1469,7 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
         };
         let check_literal = |literal: &Literal| match &literal.kind {
             LiteralKind::Bool(b) => check(*b),
-            LiteralKind::Int(i) => check(*i != 0),
+            LiteralKind::Int(i) => check(*i != 0.into()),
             _ => None,
         };
         let narrow_by_return_literal = |l: LookupDetails| {
@@ -1516,7 +1516,10 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                     };
 
                     if c.link == i_s.db.python_state.int_link() {
-                        Some((t.clone(), Type::Literal(Literal::new(LiteralKind::Int(0)))))
+                        Some((
+                            t.clone(),
+                            Type::Literal(Literal::new(LiteralKind::Int(0.into()))),
+                        ))
                     } else if c.link == i_s.db.python_state.str_link() {
                         Some((
                             t.clone(),
@@ -1532,7 +1535,7 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                     {
                         maybe_specific_bool
                     } else if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
-                        check_literal(&Literal::new(LiteralKind::Int(nt.params().len() as i64)))
+                        check_literal(&Literal::new(LiteralKind::Int(nt.params().len().into())))
                     } else if let Some(maybe_specific_len) =
                         narrow_class_by_return_literal("__len__")
                     {
@@ -5292,7 +5295,7 @@ fn narrow_len(
         kind: LiteralKind::Int(n),
         ..
     }) = other_inf.as_cow_type(i_s).as_ref()
-        && let Ok(n) = (*n).try_into()
+        && let Ok(n) = n.try_into()
     {
         let inf_t = inferred_type_param.as_cow_type(i_s);
         let retain = |full: &Type, negative| {

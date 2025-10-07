@@ -836,7 +836,12 @@ impl LiteralValue<'_> {
         const MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION: usize = 1024 * 16;
         match (self, right) {
             (LiteralValue::Int(l), LiteralValue::Int(r)) => {
-                int_operations(db, l, operand, r, add_issue)
+                if let Ok(l) = l.try_into() {
+                    if let Ok(r) = r.try_into() {
+                        return int_operations(db, l, operand, r, add_issue);
+                    }
+                }
+                None
             }
             (LiteralValue::String(l), LiteralValue::String(r)) => (operand == "+").then(|| {
                 Type::Literal(Literal::new_implicit(LiteralKind::String(
@@ -874,10 +879,10 @@ impl LiteralValue<'_> {
                 bool_operations(db, l, operand, r, add_issue)
             }
             (left, LiteralValue::Bool(b)) => {
-                left.operation(db, operand, LiteralValue::Int(b as i64), add_issue)
+                left.operation(db, operand, LiteralValue::Int(&b.into()), add_issue)
             }
             (LiteralValue::Bool(b), right) => {
-                LiteralValue::Int(b as i64).operation(db, operand, right, add_issue)
+                LiteralValue::Int(&b.into()).operation(db, operand, right, add_issue)
             }
 
             (LiteralValue::Bytes(_), LiteralValue::String(_))
@@ -971,7 +976,7 @@ fn int_operations(
     };
     if let Some(result) = result {
         Some(Type::Literal(Literal::new_implicit(LiteralKind::Int(
-            result,
+            result.into(),
         ))))
     } else {
         // In case of overflows simply return int, we are probably using numbers bigger than i64

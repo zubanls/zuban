@@ -311,3 +311,10 @@ reveal_type(-11<<63)   # N: Revealed type is "int"
 [case avoid_slowdown_for_literal_power]
 reveal_type(3 * 5)  # N: Revealed type is "Literal[15]?"
 reveal_type(2924321745985571 ** 50000000000)  # N: Revealed type is "int"
+
+[case non_i64_literals]
+from typing import Literal
+i: Literal[9223372036854775808]
+
+reveal_type(i)  # N: Revealed type is "Literal[9223372036854775808]"
+reveal_type(i + i)  # N: Revealed type is "int"

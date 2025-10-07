@@ -810,27 +810,28 @@ impl<'db> Int<'db> {
         self.node.as_code()
     }
 
-    pub fn parse(&self) -> Option<i64> {
-        self.parse_as_usize().and_then(|x| x.try_into().ok())
+    pub fn parse(&self) -> Option<num_bigint::BigInt> {
+        self.parse_as_big_uint().and_then(|x| x.try_into().ok())
     }
 
-    pub fn parse_as_usize(&self) -> Option<usize> {
+    pub fn parse_as_big_uint(&self) -> Option<num_bigint::BigUint> {
         let mut to_be_parsed = self.as_code();
         let tmp;
         if to_be_parsed.contains('_') {
             tmp = to_be_parsed.replace('_', "");
             to_be_parsed = &tmp;
         }
+        use num_traits::Num;
         if let Some(stripped) = to_be_parsed.strip_prefix('0') {
             let base = match stripped.as_bytes().first() {
-                None => return Some(0),
+                None => return Some(0usize.into()),
                 Some(b'x' | b'X') => 16,
                 Some(b'o' | b'O') => 8,
                 Some(b'b' | b'B') => 2,
-                Some(b'0') => return Some(0),
+                Some(b'0') => return Some(0usize.into()),
                 _ => unreachable!("{stripped}"),
             };
-            usize::from_str_radix(&stripped[1..], base).ok()
+            num_bigint::BigUint::from_str_radix(&stripped[1..], base).ok()
         } else {
             to_be_parsed.parse().ok()
         }
@@ -1182,9 +1183,9 @@ impl<'db> Expression<'db> {
         }
     }
 
-    pub fn maybe_simple_int(&self) -> Option<usize> {
+    pub fn maybe_simple_int(&self) -> Option<num_bigint::BigUint> {
         match self.maybe_unpacked_atom()? {
-            AtomContent::Int(i) => i.parse_as_usize(),
+            AtomContent::Int(i) => i.parse_as_big_uint(),
             _ => None,
         }
     }

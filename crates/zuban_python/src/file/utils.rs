@@ -446,7 +446,7 @@ impl<'db> Inference<'db, '_, '_> {
         ))
     }
 
-    pub fn parse_int(&self, int: Int) -> Option<i64> {
+    pub fn parse_int(&self, int: Int) -> Option<num_bigint::BigInt> {
         let result = int.parse();
         if result.is_none() {
             debug!("TODO Add diagnostic for unparsable ints?");

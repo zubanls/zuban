@@ -12,5 +12,8 @@ workspace = true
 
 [dependencies]
 parsa_python.workspace = true
-tracing.workspace = true
 utils.workspace = true
+
+num-bigint.workspace = true
+num-traits.workspace = true
+tracing.workspace = true

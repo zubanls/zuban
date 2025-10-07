@@ -1903,10 +1903,7 @@ fn python_version_matches_tuple(
         let Some(AtomContent::Int(n)) = expr.maybe_unpacked_atom() else {
             return Truthiness::Unknown;
         };
-        if let Some(n_in_tup) = n
-            .parse()
-            .and_then(|i| <i64 as TryInto<usize>>::try_into(i).ok())
-        {
+        if let Some(n_in_tup) = n.parse().and_then(|i| i.try_into().ok()) {
             total_order = current.cmp(&n_in_tup);
             if !matches!(total_order, Ordering::Equal) {
                 break; // We already know if it's bigger or smaller
@@ -1939,26 +1936,28 @@ fn python_version_matches_slice(
             let (first, _, third) = slice.unpack();
             if third.is_none() {
                 let from = first.map(|expr| expr.maybe_simple_int());
-                if from != Some(None) {
-                    return python_version_matches_tuple(
-                        settings,
-                        comp,
-                        other,
-                        from.flatten().unwrap_or(0),
-                    );
+                match from {
+                    None => return python_version_matches_tuple(settings, comp, other, 0),
+                    Some(Some(from)) => {
+                        if let Ok(from) = from.try_into() {
+                            return python_version_matches_tuple(settings, comp, other, from);
+                        }
+                    }
+                    Some(None) => (),
                 }
             }
         }
         SliceType::NamedExpression(ne) => {
             if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom()
+                && let Some(big_int) = nth.parse()
+                && big_int == 0.into()
                 && let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom()
-                && nth.parse() == Some(0)
-                && let Some(result) = wanted.parse_as_usize().and_then(|x| {
-                    check_operand_against_total_order(
-                        comp,
-                        settings.python_version_or_default().major.cmp(&x),
-                    )
-                })
+                && let Some(parsed) = wanted.parse_as_big_uint()
+                && let Ok(x) = parsed.try_into()
+                && let Some(result) = check_operand_against_total_order(
+                    comp,
+                    settings.python_version_or_default().major.cmp(&x),
+                )
             {
                 return result.into();
             }
