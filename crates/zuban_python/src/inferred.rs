@@ -503,7 +503,7 @@ impl<'db: 'slf, 'slf> Inferred {
             match node_ref.point().maybe_specific() {
                 Some(Specific::IntLiteral) => {
                     return UnionValue::Single(DbLiteral {
-                        kind: LiteralKind::Int(node_ref.expect_int().parse().unwrap()),
+                        kind: LiteralKind::Int(node_ref.expect_int().parse()),
                         implicit: true,
                     });
                 }
@@ -2889,7 +2889,7 @@ pub fn specific_to_type<'db>(
         Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),
         Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
-            kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
+            kind: LiteralKind::Int(definition.expect_int().parse()),
             implicit: true,
         })),
         Specific::StringLiteral => Cow::Owned(Type::Literal(DbLiteral {

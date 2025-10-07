@@ -504,7 +504,7 @@ impl Inference<'_, '_, '_> {
             StmtLikeContent::AssertStmt(assert_stmt) => {
                 match assert_stmt.unpack().0.maybe_unpacked_atom() {
                     Some(AtomContent::Bool(b)) if b.as_code() == "False" => true,
-                    Some(AtomContent::Int(i)) if i.parse() == Some(0.into()) => true,
+                    Some(AtomContent::Int(i)) if i.parse() == 0.into() => true,
                     _ => false,
                 }
             }

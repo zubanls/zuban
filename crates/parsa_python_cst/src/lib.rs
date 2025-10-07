@@ -810,11 +810,11 @@ impl<'db> Int<'db> {
         self.node.as_code()
     }
 
-    pub fn parse(&self) -> Option<num_bigint::BigInt> {
-        self.parse_as_big_uint().and_then(|x| x.try_into().ok())
+    pub fn parse(&self) -> num_bigint::BigInt {
+        self.parse_as_big_uint().into()
     }
 
-    pub fn parse_as_big_uint(&self) -> Option<num_bigint::BigUint> {
+    pub fn parse_as_big_uint(&self) -> num_bigint::BigUint {
         let mut to_be_parsed = self.as_code();
         let tmp;
         if to_be_parsed.contains('_') {
@@ -824,16 +824,16 @@ impl<'db> Int<'db> {
         use num_traits::Num;
         if let Some(stripped) = to_be_parsed.strip_prefix('0') {
             let base = match stripped.as_bytes().first() {
-                None => return Some(0usize.into()),
+                None => return 0usize.into(),
                 Some(b'x' | b'X') => 16,
                 Some(b'o' | b'O') => 8,
                 Some(b'b' | b'B') => 2,
-                Some(b'0') => return Some(0usize.into()),
+                Some(b'0') => return 0usize.into(),
                 _ => unreachable!("{stripped}"),
             };
-            num_bigint::BigUint::from_str_radix(&stripped[1..], base).ok()
+            num_bigint::BigUint::from_str_radix(&stripped[1..], base).unwrap()
         } else {
-            to_be_parsed.parse().ok()
+            to_be_parsed.parse().unwrap()
         }
     }
 }
@@ -1185,7 +1185,7 @@ impl<'db> Expression<'db> {
 
     pub fn maybe_simple_int(&self) -> Option<num_bigint::BigUint> {
         match self.maybe_unpacked_atom()? {
-            AtomContent::Int(i) => i.parse_as_big_uint(),
+            AtomContent::Int(i) => Some(i.parse_as_big_uint()),
             _ => None,
         }
     }

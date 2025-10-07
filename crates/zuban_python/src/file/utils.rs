@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use parsa_python_cst::{
     DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef,
-    Int, NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
+    NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -444,14 +444,6 @@ impl<'db> Inference<'db, '_, '_> {
             key_t,
             value_t,
         ))
-    }
-
-    pub fn parse_int(&self, int: Int) -> Option<num_bigint::BigInt> {
-        let result = int.parse();
-        if result.is_none() {
-            debug!("TODO Add diagnostic for unparsable ints?");
-        }
-        result
     }
 }
 

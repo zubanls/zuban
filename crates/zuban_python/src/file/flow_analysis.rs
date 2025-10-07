@@ -2925,14 +2925,11 @@ impl Inference<'_, '_, '_> {
                 let (number, is_negated) = signed_number.number_and_is_negated();
                 match number {
                     UnpackedNumber::Int(int) => {
-                        if let Some(mut result) = int.parse() {
-                            if is_negated {
-                                result = -result
-                            }
-                            Type::Literal(Literal::new(LiteralKind::Int(result)))
-                        } else {
-                            db.python_state.float_type()
+                        let mut result = int.parse();
+                        if is_negated {
+                            result = -result
                         }
+                        Type::Literal(Literal::new(LiteralKind::Int(result)))
                     }
                     UnpackedNumber::Float(_) => db.python_state.float_type(),
                     UnpackedNumber::Complex(_) => db.python_state.complex_type(),

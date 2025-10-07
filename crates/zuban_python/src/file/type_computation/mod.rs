@@ -2814,9 +2814,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             match s.named_expr.expression().unpack() {
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
                     let maybe = match atom.unpack() {
-                        AtomContent::Int(i) => Some(LiteralKind::Int(
-                            i.parse().unwrap_or_else(|| unimplemented!()),
-                        )),
+                        AtomContent::Int(i) => Some(LiteralKind::Int(i.parse())),
                         AtomContent::Bytes(b) => Some(LiteralKind::Bytes(
                             if let Some(b) = b.maybe_single_bytes_literal() {
                                 DbBytes::Link(PointLink::new(self.file.file_index, b.index()))
@@ -2885,17 +2883,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         && let ExpressionPart::Atom(atom) = e
                         && let AtomContent::Int(i) = atom.unpack()
                     {
-                        if let Some(mut i) = i.parse() {
-                            if s == "-" {
-                                i = -i;
-                            }
-                            return TypeContent::Type(Type::Literal(Literal {
-                                kind: LiteralKind::Int(i),
-                                implicit: false,
-                            }));
-                        } else {
-                            unimplemented!()
+                        let mut i = i.parse();
+                        if s == "-" {
+                            i = -i;
                         }
+                        return TypeContent::Type(Type::Literal(Literal {
+                            kind: LiteralKind::Int(i),
+                            implicit: false,
+                        }));
                     }
                     return expr_not_allowed(self);
                 }

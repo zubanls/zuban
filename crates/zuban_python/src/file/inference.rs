@@ -3496,12 +3496,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     result
                 };
             }
-            Int(i) => match self.parse_int(i) {
-                Some(_) => {
-                    return check_literal(result_context, i_s, i.index(), Specific::IntLiteral);
-                }
-                None => Specific::Int,
-            },
+            Int(i) => return check_literal(result_context, i_s, i.index(), Specific::IntLiteral),
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
             Strings(strings) => match self.process_str_literal(strings) {

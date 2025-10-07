@@ -1903,7 +1903,7 @@ fn python_version_matches_tuple(
         let Some(AtomContent::Int(n)) = expr.maybe_unpacked_atom() else {
             return Truthiness::Unknown;
         };
-        if let Some(n_in_tup) = n.parse().and_then(|i| i.try_into().ok()) {
+        if let Some(n_in_tup) = n.parse().try_into().ok() {
             total_order = current.cmp(&n_in_tup);
             if !matches!(total_order, Ordering::Equal) {
                 break; // We already know if it's bigger or smaller
@@ -1949,11 +1949,9 @@ fn python_version_matches_slice(
         }
         SliceType::NamedExpression(ne) => {
             if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom()
-                && let Some(big_int) = nth.parse()
-                && big_int == 0.into()
+                && nth.parse() == 0.into()
                 && let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom()
-                && let Some(parsed) = wanted.parse_as_big_uint()
-                && let Ok(x) = parsed.try_into()
+                && let Ok(x) = wanted.parse_as_big_uint().try_into()
                 && let Some(result) = check_operand_against_total_order(
                     comp,
                     settings.python_version_or_default().major.cmp(&x),
