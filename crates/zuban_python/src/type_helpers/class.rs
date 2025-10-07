@@ -30,7 +30,7 @@ use crate::{
     },
     node_ref::NodeRef,
     type_::{
-        AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, FormatStyle,
+        AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, Enum, FormatStyle,
         FunctionOverload, GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple,
         NeverCause, ParamSpecArg, ParamSpecUsage, ReplaceTypeVarLikes, Tuple, TupleArgs, Type,
         TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
@@ -1844,6 +1844,18 @@ impl<'db: 'a, 'a> Class<'a> {
             .as_ref()
         {
             Type::Dataclass(d) => Some(d.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn maybe_enum(&self, db: &Database) -> Option<Arc<Enum>> {
+        match self
+            .maybe_cached_class_infos(db)?
+            .undefined_generics_type
+            .get()?
+            .as_ref()
+        {
+            Type::Enum(e) => Some(e.clone()),
             _ => None,
         }
     }

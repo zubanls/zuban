@@ -300,3 +300,14 @@ x = Foo()
 match x:
     case Foo(1): reveal_type(x)  # N: Revealed type is "__main__.Foo"
     case _: reveal_type(x)  # N: Revealed type is "__main__.Foo"
+
+[case match_simple_self_enum]
+from enum import Enum
+
+class Repository(Enum):
+    Core = 'core'
+
+    def get_repository_list(self) -> list[str]:
+        match self:
+            case Repository.Core:
+                return [Repository.Core.value]

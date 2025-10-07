@@ -1220,6 +1220,21 @@ fn split_off_enum_member(
             }
             Type::None => (),
             _ => {
+                if matches!(sub_t, Type::Self_) {
+                    if let Some(cls) = i_s.current_class() {
+                        if let Some(enum_) = cls.maybe_enum(i_s.db) {
+                            let (_, f) = split_off_enum_member(
+                                i_s,
+                                &Type::Enum(enum_),
+                                enum_member,
+                                abort_on_custom_eq,
+                            )?;
+                            set_truthy();
+                            add(f);
+                            continue;
+                        }
+                    }
+                }
                 if abort_on_custom_eq
                     && matches!(
                         enum_member.enum_.kind(i_s),
