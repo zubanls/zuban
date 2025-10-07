@@ -721,7 +721,7 @@ fn typed_dict_setdefault_internal<'db>(
     let default = match &second_arg {
         Some(second) => match &second.kind {
             ArgKind::Positional(second) => second.infer(&mut ResultContext::Unknown),
-            ArgKind::Keyword(second) if second.key == "detault" => {
+            ArgKind::Keyword(second) if second.key == "default" => {
                 second.infer(&mut ResultContext::Unknown)
             }
             _ => return None,
@@ -740,13 +740,15 @@ fn typed_dict_setdefault_internal<'db>(
                     .is_simple_super_type_of(i_s, &default.as_cow_type(i_s))
                     .bool()
                 {
-                    second_arg.as_ref().unwrap().add_issue(
-                        i_s,
-                        IssueKind::TypedDictSetdefaultWrongDefaultType {
-                            got: default.format_short(i_s),
-                            expected: member.type_.format_short(i_s.db),
-                        },
-                    )
+                    let issue = IssueKind::TypedDictSetdefaultWrongDefaultType {
+                        got: default.format_short(i_s),
+                        expected: member.type_.format_short(i_s.db),
+                    };
+                    if let Some(second_arg) = second_arg.as_ref() {
+                        second_arg.add_issue(i_s, issue)
+                    } else {
+                        args.add_issue(i_s, issue)
+                    }
                 }
                 member.type_.clone()
             } else {

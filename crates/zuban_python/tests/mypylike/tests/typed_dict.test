@@ -919,3 +919,13 @@ class Sub1(Base):
 class Sub2(Base):
     x: NotRequired[ReadOnly[int | str]]  # E: TypedDict member "x" is read only, but the extra_items of the super class are
     y: NotRequired[ReadOnly[int]]  # E: TypedDict member "y" is read only, but the extra_items of the super class are
+
+[case typed_dict_invalid_set_default_no_crash]
+# From GH Issue #62
+from typing import TypedDict
+
+class TD(TypedDict):
+    s: str
+
+d: TD = {}  # E: Missing key "s" for TypedDict "TD"
+d.setdefault('s')  # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "None"; expected "str"
