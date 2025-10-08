@@ -157,3 +157,25 @@ class C1:
 class C2:
     def __init__(self: Proto) -> None:
         super().__init__()
+
+[case avoid_super_crash_with_any_param]
+# See GH #69
+class Base:
+    pass
+
+class C(Base):
+    def fn(self, o) -> None:
+        super(C, o).__init__()
+        reveal_type(super(C, o).__init__)  # N: Revealed type is "def ()"
+
+[case avoid_super_crash_with_type_var_instance]
+# See GH #69
+class Base:
+    pass
+
+class C(Base):
+    def fn[T](self, o: T):
+        super(C, o).__init__()  # E: Unsupported argument 2 for "super"
+
+    def fn2[T](self, o: type[T]):
+        super(C, o).__init__(self)  # E: Unsupported argument 2 for "super"

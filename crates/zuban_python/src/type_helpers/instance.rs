@@ -877,12 +877,25 @@ fn super_instance<'x>(
             (cls, Type::Self_)
         }
         t @ Type::Class(c) => (c.class(i_s.db), t.clone()),
-        t @ Type::TypeVar(_) => {
+        t @ Type::TypeVar(tv) => {
             let Some(cls) = i_s.current_class() else {
                 return Err(Err(IssueKind::SuperUnsupportedArgument {
                     argument_index: 2,
                 }));
             };
+            match tv.type_var.kind(i_s.db) {
+                TypeVarKind::Unrestricted => {
+                    return Err(Err(IssueKind::SuperUnsupportedArgument {
+                        argument_index: 2,
+                    }));
+                }
+                TypeVarKind::Bound(bound) => {
+                    if let err @ Err(_) = super_instance(i_s, bound, fallback) {
+                        return err;
+                    };
+                }
+                TypeVarKind::Constraints(_) => unimplemented!(),
+            }
             (cls, t.clone())
         }
         Type::Any(cause) => {
@@ -897,13 +910,21 @@ fn super_instance<'x>(
                 (cls, full.clone())
             }
             Type::Class(c) => (c.class(i_s.db), full.clone()),
-            Type::TypeVar(_) => {
+            Type::TypeVar(tv) => {
                 let Some(cls) = i_s.current_class() else {
                     return Err(Err(IssueKind::SuperUnsupportedArgument {
                         argument_index: 2,
                     }));
                 };
-                (cls, full.clone())
+                match tv.type_var.kind(i_s.db) {
+                    TypeVarKind::Unrestricted => {
+                        return Err(Err(IssueKind::SuperUnsupportedArgument {
+                            argument_index: 2,
+                        }));
+                    }
+                    // TODO don't we need to verify the bound here?
+                    _ => (cls, full.clone()),
+                }
             }
             Type::Any(cause) => {
                 let Some(cls) = i_s.current_class() else {
