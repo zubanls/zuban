@@ -136,3 +136,19 @@ class X:
 
 reveal_type(x)  # N: Revealed type is "list[__main__.X.C]"
 reveal_type(x[0][0])  # E: Value of type "C" is not indexable # N: Revealed type is "Any"
+
+[case recursive_alias_with_isinstance_and_cast_no_stack_overflow]
+# flags: --strict
+from typing import MutableMapping, MutableSequence, cast, Union
+
+type OT = None | str | int | float | MutableSequence["OT"] | MutableMapping[str, "OT"]
+
+def f(obj: OT) -> bool:
+    r = False
+    if isinstance(obj, MutableMapping):
+        for _, val in obj.items():
+            r = f(cast(OT, val)) or r  # E: Redundant cast to "None | str | int | float | MutableSequence[OT] | MutableMapping[str, OT]"
+    elif isinstance(obj, MutableSequence):
+        for lval in obj:
+            r = f(cast(OT, lval)) or r  # E: Redundant cast to "None | str | int | float | MutableSequence[OT] | MutableMapping[str, OT]"
+    return r

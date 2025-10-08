@@ -7,7 +7,7 @@ use crate::{
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{CouldBeALiteral, Generic, ResultContext},
+    matching::{CouldBeALiteral, Generic, Generics, ResultContext},
     type_::{
         CallableParams, ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType,
         TupleArgs, Type, TypeVarKind, TypedDict, TypedDictGenerics,
@@ -345,23 +345,18 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
         (CallableParams::Never(_), CallableParams::Never(_)) => true,
         _ => false,
     };
+    let matches_generics = |g1: Generics, g2: Generics| {
+        g1.iter(db).zip(g2.iter(db)).all(|(g1, g2)| match (g1, g2) {
+            (Generic::TypeArg(t1), Generic::TypeArg(t2)) => eq(&t1, &t2),
+            (Generic::TypeArgs(ts1), Generic::TypeArgs(ts2)) => tuple_args_eq(&ts1.args, &ts2.args),
+            (Generic::ParamSpecArg(p1), Generic::ParamSpecArg(p2)) => {
+                p1.type_vars == p2.type_vars && params_eq(&p1.params, &p2.params)
+            }
+            _ => false,
+        })
+    };
     let generic_class_eq = |g1: &GenericClass, g2: &GenericClass| {
-        g1.link == g2.link && {
-            g1.class(db)
-                .generics
-                .iter(db)
-                .zip(g2.class(db).generics.iter(db))
-                .all(|(g1, g2)| match (g1, g2) {
-                    (Generic::TypeArg(t1), Generic::TypeArg(t2)) => eq(&t1, &t2),
-                    (Generic::TypeArgs(ts1), Generic::TypeArgs(ts2)) => {
-                        tuple_args_eq(&ts1.args, &ts2.args)
-                    }
-                    (Generic::ParamSpecArg(p1), Generic::ParamSpecArg(p2)) => {
-                        p1.type_vars == p2.type_vars && params_eq(&p1.params, &p2.params)
-                    }
-                    _ => false,
-                })
-        }
+        g1.link == g2.link && { matches_generics(g1.class(db).generics, g2.class(db).generics) }
     };
     match (t1, t2) {
         (Type::Class(g1), Type::Class(g2)) => generic_class_eq(g1, g2),
@@ -388,7 +383,14 @@ fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
         }
         (Type::Type(t1), Type::Type(t2)) => eq(t1, t2),
         (Type::RecursiveType(r1), Type::RecursiveType(r2)) => {
-            eq(r1.calculated_type(db), r2.calculated_type(db))
+            r1.link == r2.link
+                && r1
+                    .generics
+                    .as_ref()
+                    .zip(r2.generics.as_ref())
+                    .is_none_or(|(g1, g2)| {
+                        matches_generics(Generics::List(g1, None), Generics::List(g2, None))
+                    })
         }
         (Type::Literal(l1), Type::Literal(l2)) => l1.value(db) == l2.value(db),
         (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
