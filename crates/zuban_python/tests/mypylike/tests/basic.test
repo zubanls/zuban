@@ -1377,3 +1377,42 @@ try:
     pass
 except* () as e:
     reveal_type(e)  # N: Revealed type is "BaseExceptionGroup[Never]"
+
+[case no_crash_on_aug_assignment_with_same_name]
+import foo
+reveal_type(foo.c)  # N: Revealed type is "Any"
+
+[file foo.py]
+(c  # E: Name "c" is not defined
+) +=c  # E: Name "c" is used before definition  # E: Cannot resolve name "c" (possible cyclic definition)
+
+[case aug_assignment_change_incremental1]
+[file m.py]
+import n
+x = n.a
+x += 1
+
+[file n.py]
+a = 1
+
+[file n.py.2]
+a = ""
+[out]
+==
+m.py:3: error: Unsupported operand types for + ("str" and "int")
+
+[case aug_assignment_change_incremental2]
+[file m.py]
+import n
+x = []
+x += [n.a]
+x += [1]
+
+[file n.py]
+a = 1
+
+[file n.py.2]
+a = ""
+[out]
+==
+m.py:4: error: Argument 1 to "__iadd__" of "list" has incompatible type "list[int]"; expected "Iterable[str]"

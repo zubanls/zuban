@@ -367,6 +367,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.cache_annotation_assignment(node_ref, target, annotation, right_side)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
+                self.set_calculating_on_target(target.clone());
                 self.cache_aug_assign(node_ref, target, aug_assign, right_side)
             }
         }
