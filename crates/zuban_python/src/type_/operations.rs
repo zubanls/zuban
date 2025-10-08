@@ -923,7 +923,7 @@ fn int_operations(
                 add_issue(IssueKind::DivisionByZero);
                 return Some(Type::ERROR);
             } else {
-                Some(py_mod(left, right))
+                py_mod(left, right)
             }
         }
         "**" => match right.try_into() {
@@ -994,13 +994,13 @@ fn py_div_floor(a: i64, b: i64) -> Option<i64> {
     })
 }
 
-fn py_mod(a: i64, b: i64) -> i64 {
-    let r = a % b;
-    if (r != 0) && ((r > 0) != (b > 0)) {
+fn py_mod(a: i64, b: i64) -> Option<i64> {
+    let r = a.checked_rem(b)?;
+    Some(if (r != 0) && ((r > 0) != (b > 0)) {
         r + b
     } else {
         r
-    }
+    })
 }
 
 fn bool_operations(
