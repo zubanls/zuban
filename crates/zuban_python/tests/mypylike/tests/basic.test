@@ -1370,3 +1370,10 @@ def f(x: Any | None) -> None:
 # From GitHub #59
 reveal_type(0e0)  # N: Revealed type is "float"
 reveal_type(0.0e0)  # N: Revealed type is "float"
+
+[case empty_exception_groups_no_crash]
+# See GitHub #68
+try:
+    pass
+except* () as e:
+    reveal_type(e)  # N: Revealed type is "BaseExceptionGroup[Never]"
