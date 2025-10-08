@@ -318,3 +318,9 @@ i: Literal[9223372036854775808]
 
 reveal_type(i)  # N: Revealed type is "Literal[9223372036854775808]"
 reveal_type(i + i)  # N: Revealed type is "int"
+
+[case int_floor_division_should_not_error]
+# See GitHub #71
+reveal_type(-9223372036854775807 // -1)  # N: Revealed type is "Literal[9223372036854775807]?"
+reveal_type(-9223372036854775808 // -1)  # N: Revealed type is "int"
+reveal_type(-9223372036854775809 // -1)  # N: Revealed type is "int"

@@ -915,7 +915,7 @@ fn int_operations(
                 add_issue(IssueKind::DivisionByZero);
                 return Some(Type::ERROR);
             } else {
-                Some(py_div_floor(left, right))
+                py_div_floor(left, right)
             }
         }
         "%" => {
@@ -984,14 +984,14 @@ fn int_operations(
     }
 }
 
-fn py_div_floor(a: i64, b: i64) -> i64 {
-    let q = a / b;
+fn py_div_floor(a: i64, b: i64) -> Option<i64> {
+    let q = a.checked_div(b)?;
     let r = a % b;
-    if (r != 0) && ((r > 0) != (b > 0)) {
+    Some(if (r != 0) && ((r > 0) != (b > 0)) {
         q - 1
     } else {
         q
-    }
+    })
 }
 
 fn py_mod(a: i64, b: i64) -> i64 {
