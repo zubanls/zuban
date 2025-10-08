@@ -966,6 +966,9 @@ fn apply_from_base_config(
         "pretty" => {
             diagnostic_config.pretty = value.as_bool(false)?;
         }
+        "no_error_summary" => {
+            diagnostic_config.error_summary = value.as_bool(true)?;
+        }
         "show_error_context"
         | "show_traceback"
         | "plugins"
