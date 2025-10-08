@@ -860,3 +860,26 @@ def frozen[_C](maybe_cls: _C) -> _C: ...
 class Thing:
     foo: int
     bar: int = field(converter=Converter(lambda _, self: cast("Thing", self).foo))
+
+[case avoid_dataclass_transform_crash_with_weird_generics]
+from typing import Any, Self, TypeVar, dataclass_transform
+
+@dataclass_transform()
+class Concrete: ...
+
+
+class Value[T, S](Concrete):
+    value: T
+    dtype: S
+
+    @classmethod
+    def __coerce__(cls, value: Any) -> Self:
+        raise NotImplementedError
+
+Scalar = Value[int, str]
+
+class Literal[U](Scalar):
+    dtype: U  # E: Incompatible types in assignment (expression has type "U", base class "Value" defined the type as "str")
+
+Literal.__coerce__(1) == Literal(1, "")
+reveal_type(Literal.__coerce__)  # N: Revealed type is "def [U] (value: Any) -> __main__.Literal[U]"

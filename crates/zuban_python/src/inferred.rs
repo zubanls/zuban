@@ -2656,7 +2656,9 @@ pub fn infer_class_method<'db: 'class, 'class>(
             class_ref: class.node_ref,
         };
         class.generics = self_generics;
-        func_class.generics = self_generics;
+        if matches!(func_class.generics, Generics::NotDefinedYet { .. }) {
+            func_class.generics = self_generics;
+        }
     }
 
     proper_classmethod_callable(
