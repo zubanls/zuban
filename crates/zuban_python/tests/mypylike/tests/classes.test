@@ -2096,3 +2096,12 @@ reveal_type(y)  # N: Revealed type is "Any"
 Test().y = ''  # E: "Test" has no attribute "y"
 Test().with_annotation1  # E: "Test" has no attribute "with_annotation1"
 Test().with_annotation2  # E: "Test" has no attribute "with_annotation2"
+
+[case avoid_baseclass_crash_with_any_param]
+# See GH #69
+class Base:
+    pass
+
+class C(Base):
+    def fn(self, o):
+        super(C, o).__init__()

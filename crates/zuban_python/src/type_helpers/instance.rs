@@ -836,45 +836,9 @@ fn execute_super_internal<'db>(
     if let Type::Literal(l) = relevant.as_ref() {
         relevant = Cow::Owned(l.fallback_type(i_s.db));
     };
-    let (cls, bound_to) = match relevant.as_ref() {
-        Type::Self_ => {
-            let cls = i_s.current_class().unwrap();
-            (cls, Type::Self_)
-        }
-        t @ Type::Class(c) => (c.class(i_s.db), t.clone()),
-        t @ Type::TypeVar(_) => {
-            let Some(cls) = i_s.current_class() else {
-                return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
-            };
-            (cls, t.clone())
-        }
-        Type::Any(cause) => {
-            return match fallback(true) {
-                ok @ Ok(_) => ok,
-                Err(_) => Ok(Inferred::new_any(*cause)),
-            };
-        }
-        full @ Type::Type(t) => match t.as_ref() {
-            Type::Self_ => {
-                let cls = i_s.current_class().unwrap();
-                (cls, full.clone())
-            }
-            Type::Class(c) => (c.class(i_s.db), full.clone()),
-            Type::TypeVar(_) => {
-                let Some(cls) = i_s.current_class() else {
-                    return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 });
-                };
-                (cls, full.clone())
-            }
-            Type::Any(cause) => {
-                let Some(cls) = i_s.current_class() else {
-                    return Ok(Inferred::new_any(*cause));
-                };
-                (cls, Type::Type(Arc::new(Type::Self_)))
-            }
-            _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
-        },
-        _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
+    let (cls, bound_to) = match super_instance(i_s, &relevant, fallback) {
+        Ok(result) => result,
+        Err(err) => return err,
     };
     let mro_index = if let Some(first_class) = first_class {
         let mut mro_index = None;
@@ -900,6 +864,65 @@ fn execute_super_internal<'db>(
         1
     };
     success(&cls, bound_to, mro_index)
+}
+
+fn super_instance<'x>(
+    i_s: &'x InferenceState<'_, '_>,
+    relevant: &'x Type,
+    fallback: impl Fn(bool) -> Result<Inferred, IssueKind>,
+) -> Result<(Class<'x>, Type), Result<Inferred, IssueKind>> {
+    Ok(match relevant {
+        Type::Self_ => {
+            let cls = i_s.current_class().unwrap();
+            (cls, Type::Self_)
+        }
+        t @ Type::Class(c) => (c.class(i_s.db), t.clone()),
+        t @ Type::TypeVar(_) => {
+            let Some(cls) = i_s.current_class() else {
+                return Err(Err(IssueKind::SuperUnsupportedArgument {
+                    argument_index: 2,
+                }));
+            };
+            (cls, t.clone())
+        }
+        Type::Any(cause) => {
+            return match fallback(true) {
+                ok @ Ok(_) => Err(ok),
+                Err(_) => Err(Ok(Inferred::new_any(*cause))),
+            };
+        }
+        full @ Type::Type(t) => match t.as_ref() {
+            Type::Self_ => {
+                let cls = i_s.current_class().unwrap();
+                (cls, full.clone())
+            }
+            Type::Class(c) => (c.class(i_s.db), full.clone()),
+            Type::TypeVar(_) => {
+                let Some(cls) = i_s.current_class() else {
+                    return Err(Err(IssueKind::SuperUnsupportedArgument {
+                        argument_index: 2,
+                    }));
+                };
+                (cls, full.clone())
+            }
+            Type::Any(cause) => {
+                let Some(cls) = i_s.current_class() else {
+                    return Err(Ok(Inferred::new_any(*cause)));
+                };
+                (cls, Type::Type(Arc::new(Type::Self_)))
+            }
+            _ => {
+                return Err(Err(IssueKind::SuperUnsupportedArgument {
+                    argument_index: 2,
+                }));
+            }
+        },
+        _ => {
+            return Err(Err(IssueKind::SuperUnsupportedArgument {
+                argument_index: 2,
+            }));
+        }
+    })
 }
 
 pub(crate) fn execute_isinstance<'db>(

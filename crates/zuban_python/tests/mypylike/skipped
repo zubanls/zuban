@@ -13,6 +13,7 @@ testNarrowingTypeVarMultiple
 docs_alias
 docs_property
 
+avoid_baseclass_crash_with_any_param
 # typeshed upgrade
 testTypedDictGet
 testOpenReturnTypeInference
