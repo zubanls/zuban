@@ -4577,7 +4577,10 @@ fn has_base_exception(db: &Database, t: &Type) -> bool {
         Type::Any(_) => false,
         // Gathering the exceptions already makes sure we do not end up with arbitrary types here.
         Type::Never(_) => true,
-        _ => unreachable!(),
+        _ => {
+            recoverable_error!("Expected there to be only classes/Any as base exceptions");
+            false
+        }
     }
 }
 
