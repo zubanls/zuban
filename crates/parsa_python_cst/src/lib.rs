@@ -1,6 +1,7 @@
 mod bytes;
 mod completion;
 mod match_stmt;
+mod signatures;
 mod strings;
 
 use std::{
@@ -24,6 +25,7 @@ use parsa_python::{
     PyNodeType::{self, ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
     PyTree, SearchIterator, SiblingIterator, TerminalType, parse,
 };
+pub use signatures::{SignatureArg, SignatureArgsIterator, SignatureBase};
 pub use strings::PythonString;
 
 pub const NAME_DEF_TO_NAME_DIFFERENCE: u32 = 1;

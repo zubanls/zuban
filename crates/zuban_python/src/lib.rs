@@ -19,6 +19,7 @@ mod node_ref;
 mod params;
 mod python_state;
 mod select_files;
+mod signatures;
 mod sys_path;
 mod type_;
 mod type_helpers;
@@ -34,6 +35,7 @@ pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
 use name::Range;
 use parsa_python_cst::{GotoNode, Tree};
+pub use signatures::{CallSignature, CallSignatures};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
@@ -319,6 +321,17 @@ impl<'project> Document<'project> {
             position,
             filter_with_name_under_cursor,
             on_completion,
+        )
+    }
+
+    pub fn call_signatures(
+        &self,
+        position: InputPosition,
+    ) -> anyhow::Result<Option<CallSignatures<'_>>> {
+        signatures::SignatureResolver::call_signatures(
+            &self.project.db,
+            self.project.db.loaded_python_file(self.file_index),
+            position,
         )
     }
 

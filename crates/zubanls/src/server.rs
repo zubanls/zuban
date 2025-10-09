@@ -400,6 +400,7 @@ impl<'sender> GlobalState<'sender> {
         }
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
         .on_sync_mut::<Completion>(GlobalState::handle_completion)
+        .on_sync_mut::<SignatureHelpRequest>(GlobalState::handle_signature_help)
         .on_sync_mut::<HoverRequest>(GlobalState::handle_hover)
         .on_sync_mut::<GotoDeclaration>(GlobalState::handle_goto_declaration)
         .on_sync_mut::<GotoDefinition>(GlobalState::handle_goto_definition)

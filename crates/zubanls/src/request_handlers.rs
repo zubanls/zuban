@@ -10,8 +10,9 @@ use lsp_types::{
     GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location,
     LocationLink, MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
     Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
-    RenameFile, RenameParams, ResourceOp, ResourceOperationKind, TextDocumentEdit,
-    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri, WorkspaceEdit,
+    RenameFile, RenameParams, ResourceOp, ResourceOperationKind, SignatureHelp,
+    SignatureHelpParams, TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams,
+    TextEdit, Uri, WorkspaceEdit,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -137,6 +138,16 @@ impl GlobalState<'_> {
         }
 
         Ok(Some(CompletionResponse::Array(completions)))
+    }
+
+    pub fn handle_signature_help(
+        &mut self,
+        params: SignatureHelpParams,
+    ) -> anyhow::Result<Option<SignatureHelp>> {
+        let _p = tracing::info_span!("handle_signature_help").entered();
+        let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
+        let help = document.signature_help(pos)?;
+        help
     }
 
     pub fn handle_hover(&mut self, params: HoverParams) -> anyhow::Result<Option<Hover>> {
