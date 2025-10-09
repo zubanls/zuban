@@ -1,5 +1,6 @@
 use std::{borrow::Cow, cell::RefCell, sync::Arc};
 
+use num_bigint::BigInt;
 use parsa_python_cst::{NodeIndex, ParamKind};
 use vfs::FileIndex;
 
@@ -538,7 +539,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn run_on_int_literals(
         &self,
         i_s: &InferenceState,
-        callable: impl Fn(isize) -> Option<Inferred>,
+        callable: impl Fn(&BigInt) -> Option<Inferred>,
     ) -> Option<Inferred> {
         let infer = |i_s: &InferenceState, literal: DbLiteral| {
             if !matches!(literal.kind, LiteralKind::Int(_)) {
@@ -547,10 +548,7 @@ impl<'db: 'slf, 'slf> Inferred {
             let LiteralValue::Int(i) = literal.value(i_s.db) else {
                 unreachable!();
             };
-            let index = isize::try_from(i)
-                .ok()
-                .unwrap_or_else(|| unimplemented!("int too big"));
-            callable(index)
+            callable(i)
         };
         match self.maybe_literal(i_s.db) {
             UnionValue::Single(literal) => infer(i_s, literal),

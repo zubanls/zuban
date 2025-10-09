@@ -1,3 +1,4 @@
+use num_bigint::BigInt;
 use parsa_python_cst::{
     NamedExpression, NodeIndex, Slice as CSTSlice, SliceContent, SliceIterator as CSTSliceIterator,
     SliceType as CSTSliceType, Slices as CSTSlices, StarredExpression,
@@ -197,10 +198,10 @@ impl<'file> Slice<'file> {
     pub fn callback_on_tuple_indexes(
         &self,
         i_s: &InferenceState,
-        callback: impl Fn(Option<isize>, Option<isize>, isize) -> Inferred,
+        callback: impl Fn(Option<&BigInt>, Option<&BigInt>, &BigInt) -> Inferred,
     ) -> Option<Inferred> {
         let (first, second, third) = self.slice.unpack();
-        let infer_third = |start_index, end_index| {
+        let infer_third = |start_index: Option<&BigInt>, end_index: Option<&BigInt>| {
             if let Some(third) = third {
                 // TODO index is not type checked :(
                 infer_index(i_s, self.file, third, |step_index| {
@@ -208,10 +209,10 @@ impl<'file> Slice<'file> {
                 })
             } else {
                 // 1 is the default step size
-                Some(callback(start_index, end_index, 1))
+                Some(callback(start_index, end_index, &1.into()))
             }
         };
-        let infer_second = |start_index| {
+        let infer_second = |start_index: Option<&BigInt>| {
             if let Some(second) = second {
                 infer_index(i_s, self.file, second, |index| {
                     infer_third(start_index, Some(index))

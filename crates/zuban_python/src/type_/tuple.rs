@@ -4,6 +4,8 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
+use num_bigint::BigInt;
+
 use super::{
     ClassGenerics, CustomBehavior, FormatStyle, GenericItem, GenericsList, LookupResult,
     RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage, simplified_union_from_iterators,
@@ -130,6 +132,7 @@ impl Tuple {
     ) -> Inferred {
         // Make sure the get_item part is inferred.
         slice_type.infer(i_s);
+        const ZERO: BigInt = BigInt::ZERO;
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 let index_inf = simple
@@ -157,14 +160,17 @@ impl Tuple {
                         index_inf
                             .run_on_int_literals(i_s, |index| match &self.args {
                                 TupleArgs::FixedLen(ts) => {
-                                    let index = if index < 0 {
+                                    let index: usize = if *index < ZERO {
                                         let index = ts.len() as isize + index;
                                         match index.try_into() {
                                             Ok(index) => index,
                                             Err(_) => return out_of_range(None),
                                         }
                                     } else {
-                                        index as usize
+                                        match index.try_into() {
+                                            Ok(index) => index,
+                                            Err(_) => return out_of_range(None),
+                                        }
                                     };
                                     if let Some(t) = ts.as_ref().get(index) {
                                         Some(Inferred::from_type(t.clone()))
@@ -173,10 +179,12 @@ impl Tuple {
                                     }
                                 }
                                 TupleArgs::WithUnpack(with_unpack) => {
-                                    if index < 0 {
-                                        let index = -index as usize - 1;
+                                    if *index < ZERO {
                                         let after_len = with_unpack.after.len();
                                         let max_len = after_len + with_unpack.before.len();
+                                        let Ok(index) = usize::try_from(-index - 1) else {
+                                            return out_of_range(Some(max_len));
+                                        };
                                         Some(Inferred::from_type(if index >= max_len {
                                             return out_of_range(Some(max_len));
                                         } else if index < after_len {
@@ -201,9 +209,11 @@ impl Tuple {
                                             }
                                         }))
                                     } else {
-                                        let index = index as usize;
                                         let before_len = with_unpack.before.len();
                                         let max_len = before_len + with_unpack.after.len();
+                                        let Ok(index) = usize::try_from(index) else {
+                                            return out_of_range(Some(max_len));
+                                        };
                                         Some(Inferred::from_type(if index >= max_len {
                                             return out_of_range(Some(max_len));
                                         } else if index < before_len {
@@ -245,7 +255,7 @@ impl Tuple {
                 .get_item(i_s, None, slice_type, result_context),
             SliceTypeContent::Slice(slice) => slice
                 .callback_on_tuple_indexes(i_s, |start, end, step| {
-                    if step == 0 {
+                    if *step == ZERO {
                         add_issue(IssueKind::TupleSliceStepCannotBeZero);
                         return Inferred::from_type(Type::Tuple(
                             Self::new_arbitrary_length_with_any_from_error(),
@@ -254,21 +264,21 @@ impl Tuple {
                     let as_fixed_len_tuple = |ts: &[Type]| {
                         Inferred::from_type(Type::Tuple(Tuple::new_fixed_length({
                             let len = ts.len() as isize;
-                            let remove_negative = |i: Option<isize>| {
+                            let remove_negative = |i: Option<&BigInt>| {
                                 Some({
                                     match i? {
-                                        i if i < 0 => i + len,
-                                        i => i,
+                                        i if *i < ZERO => i + len,
+                                        i => i.clone(),
                                     }
                                 })
                             };
-                            let as_skip = |i: Option<isize>| match i {
-                                Some(i) => i.max(0) as usize,
+                            let as_skip = |i: Option<BigInt>| match i {
+                                Some(i) => i.max(ZERO).try_into().unwrap_or(usize::MAX),
                                 None => 0,
                             };
                             let start = remove_negative(start);
                             let end = remove_negative(end);
-                            let (skip_left, skip_right) = if step < 0 {
+                            let (skip_left, skip_right) = if *step < ZERO {
                                 (end.map(|e| e + 1), start.map(|s| len - s - 1))
                             } else {
                                 (start, end.map(|e| len - e))
@@ -278,10 +288,16 @@ impl Tuple {
                                 .skip(as_skip(skip_left))
                                 .rev()
                                 .skip(as_skip(skip_right));
-                            if step < 0 {
-                                iter.step_by(-step as usize).cloned().collect()
+                            // Stepping by usize::MAX is good enough if it's bigger than that
+                            if *step < ZERO {
+                                iter.step_by((-step).try_into().unwrap_or(usize::MAX))
+                                    .cloned()
+                                    .collect()
                             } else {
-                                iter.rev().step_by(step as usize).cloned().collect()
+                                iter.rev()
+                                    .step_by(step.try_into().unwrap_or(usize::MAX))
+                                    .cloned()
+                                    .collect()
                             }
                         })))
                     };
@@ -299,45 +315,48 @@ impl Tuple {
                             // normal fixed length tuple that can have an arbitrary step.
                             let is_same_sign = start
                                 .zip(end)
-                                .map(|(s, e)| s < 0 && e < 0 || s >= 0 && e >= 0)
+                                .map(|(s, e)| *s < ZERO && *e < ZERO || *s >= ZERO && *e >= ZERO)
                                 .unwrap_or(true);
                             if is_same_sign {
-                                let before_len = with_unpack.before.len() as isize;
-                                let after_len = with_unpack.after.len() as isize;
+                                let before_len = with_unpack.before.len().into();
+                                let after_len = with_unpack.after.len().into();
                                 if let Some(end) = end {
-                                    if step < 0 {
-                                        if end < 0 && -end - 1 <= after_len {
+                                    if *step < ZERO {
+                                        if *end < ZERO && -end - 1 <= after_len {
                                             return as_fixed_len_tuple(&with_unpack.after);
                                         }
-                                    } else if end >= 0 && end <= before_len {
+                                    } else if *end >= ZERO && *end <= before_len {
                                         return as_fixed_len_tuple(&with_unpack.before);
                                     }
                                 }
                                 if let Some(start) = start {
-                                    if step < 0 {
-                                        if start >= 0 && start <= before_len {
+                                    if *step < ZERO {
+                                        if *start >= ZERO && *start <= before_len {
                                             return as_fixed_len_tuple(&with_unpack.before);
                                         }
-                                    } else if start < 0 && -start <= after_len {
+                                    } else if *start < ZERO && -start <= after_len {
                                         return as_fixed_len_tuple(&with_unpack.after);
                                     }
                                 }
                             }
 
+                            let zero = ZERO;
                             // These are the normal cases where we skip an or at the start/end.
-                            let out = if step == 1 {
-                                let skip_start = start.unwrap_or(0);
-                                if skip_start < 0 || end.is_some_and(|e| e >= 0) {
+                            let out = if *step == 1.into() {
+                                let skip_start = start.unwrap_or(&zero);
+                                if *skip_start < ZERO || end.is_some_and(|e| *e >= ZERO) {
                                     return ambiguous();
                                 }
-                                let skip_start = skip_start as usize;
-                                let skip_end = -end.unwrap_or(0) as usize;
+                                let skip_end = -end.unwrap_or(&ZERO);
 
-                                if skip_start > with_unpack.before.len()
-                                    || skip_end > with_unpack.after.len()
+                                if *skip_start > with_unpack.before.len().into()
+                                    || skip_end > with_unpack.after.len().into()
                                 {
                                     return ambiguous();
                                 }
+                                // unwrap: A tuple should never exceed usize
+                                let skip_start = skip_start.try_into().unwrap();
+                                let skip_end = skip_end.try_into().unwrap();
                                 WithUnpack {
                                     before: with_unpack
                                         .before
@@ -355,19 +374,21 @@ impl Tuple {
                                         .cloned()
                                         .collect(),
                                 }
-                            } else if step == -1 {
-                                let skip_start = end.unwrap_or(0);
-                                if skip_start < 0 || start.is_some_and(|s| s >= 0) {
+                            } else if *step == (-1).into() {
+                                let skip_start = end.unwrap_or(&zero);
+                                if *skip_start < ZERO || start.is_some_and(|s| *s >= ZERO) {
                                     return ambiguous();
                                 }
-                                let skip_start = skip_start as usize;
-                                let skip_end = -start.unwrap_or(0) as usize;
+                                let skip_end = -start.unwrap_or(&ZERO);
 
-                                if skip_start > with_unpack.before.len()
-                                    || skip_end > with_unpack.after.len()
+                                if *skip_start > with_unpack.before.len().into()
+                                    || skip_end > with_unpack.after.len().into()
                                 {
                                     return ambiguous();
                                 }
+                                // unwrap: A tuple should never exceed usize
+                                let skip_start = skip_start.try_into().unwrap();
+                                let skip_end = skip_end.try_into().unwrap();
                                 WithUnpack {
                                     before: with_unpack
                                         .after
@@ -857,11 +878,13 @@ fn tuple_mul_internal<'db>(
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     match &tuple.args {
         TupleArgs::FixedLen(ts) => first.run_on_int_literals(i_s, |int| {
-            let int = int.max(0) as usize;
-            if int > 10 {
+            let zero = BigInt::ZERO;
+            let int = int.max(&zero);
+            if *int > 10.into() {
                 debug!("TODO Do we really want extremely large tuples?");
                 return None;
             }
+            let int: usize = int.try_into().unwrap();
             Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                 ts.iter().cycle().take(int * ts.len()).cloned().collect(),
             ))))

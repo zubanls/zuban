@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use num_bigint::BigInt;
 use parsa_python_cst::{
     DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef,
     NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
@@ -548,7 +549,7 @@ pub fn infer_index(
     i_s: &InferenceState,
     file: &PythonFile,
     expr: Expression,
-    callable: impl Fn(isize) -> Option<Inferred>,
+    callable: impl Fn(&BigInt) -> Option<Inferred>,
 ) -> Option<Inferred> {
     file.inference(i_s)
         .infer_expression(expr)

@@ -326,3 +326,8 @@ reveal_type(-9223372036854775808 // -1)  # N: Revealed type is "int"
 reveal_type(-9223372036854775809 // -1)  # N: Revealed type is "int"
 reveal_type(-9223372036854775807 % -1)  # N: Revealed type is "Literal[0]?"
 reveal_type(-9223372036854775808 % -1)  # N: Revealed type is "int"
+
+[case very_large_tuple_index_should_not_crash]
+()[184932176815329004701]  # E: Tuple index out of range
+reveal_type((1, 2)[184932176815329004701:])  # N: Revealed type is "tuple[()]"
+reveal_type((1, 2)[:184932176815329004701])  # N: Revealed type is "tuple[Literal[1]?, Literal[2]?]"
