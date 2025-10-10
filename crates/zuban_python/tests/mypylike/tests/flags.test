@@ -760,3 +760,9 @@ def foo[T](x: T) -> T:  # E: Missing return statement
 # flags: --disallow-empty-bodies --disable-error-code empty-body --no-mypy-compatible
 def foo[T](x: T) -> T:
     ...
+
+[case protocol_trivial_type_always_allowed]
+# flags: --disallow-empty-bodies
+from typing import Protocol
+class P(Protocol):
+    def foo(self) -> int: ...

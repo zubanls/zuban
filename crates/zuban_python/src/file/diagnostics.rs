@@ -1553,23 +1553,29 @@ impl Inference<'_, '_, '_> {
                         maybe_add_async()
                     }
                 } else if !is_valid {
-                    self.add_issue(
-                        name_def.index(),
-                        if has_trivial_body {
-                            IssueKind::MissingReturnStatement {
-                                code: if has_trivial_body {
-                                    "empty-body"
-                                } else {
-                                    "return"
+                    if has_trivial_body {
+                        if !is_protocol {
+                            self.add_issue(
+                                name_def.index(),
+                                IssueKind::MissingReturnStatement {
+                                    code: if has_trivial_body {
+                                        "empty-body"
+                                    } else {
+                                        "return"
+                                    },
                                 },
-                            }
-                        } else {
+                            );
+                            maybe_add_async()
+                        }
+                    } else {
+                        self.add_issue(
+                            name_def.index(),
                             IssueKind::IncompatibleImplicitReturn {
                                 expected: ret_type.format_short(i_s.db),
-                            }
-                        },
-                    );
-                    maybe_add_async()
+                            },
+                        );
+                        maybe_add_async()
+                    }
                 }
             }
         }
