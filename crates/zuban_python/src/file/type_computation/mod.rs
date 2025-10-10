@@ -3582,12 +3582,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             TypeLike::TypeParam(tp) => {
                 let name_def = tp.name_def();
-                let Some(ComplexPoint::TypeVarLike(tvl)) =
+                if let Some(ComplexPoint::TypeVarLike(tvl)) =
                     NodeRef::new(node_ref.file, name_def.index()).maybe_complex()
-                else {
-                    unreachable!("Expected a calculated TypeVarLike in TypeParam")
-                };
-                Lookup::TypeVarLike(tvl.clone())
+                {
+                    Lookup::TypeVarLike(tvl.clone())
+                } else {
+                    // This can happen in a syntax error like `class foo[t];`
+                    Lookup::UNKNOWN_REPORTED
+                }
             }
             TypeLike::ParamName(annotation) => Lookup::T(TypeContent::InvalidVariable({
                 let as_base_class_any = annotation
