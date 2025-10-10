@@ -1995,6 +1995,9 @@ impl Inference<'_, '_, '_> {
         }
         let (expr, target) = with_item.unpack();
         let from = NodeRef::new(self.file, expr.index());
+        if let Some(target) = &target {
+            self.set_calculating_on_target(target.clone());
+        }
         let result = self.infer_expression(expr);
         let mut enter_result = result.type_lookup_and_execute_with_attribute_error(
             self.i_s,

@@ -725,3 +725,8 @@ a: """
 
 [out]
 __main__:2: error: Syntax error in type annotation
+
+[case avoid_recursion_problem_in_with]
+with a as a:  # E: Name "a" is used before definition  # E: Cannot resolve name "a" (possible cyclic definition)
+    pass
+[out]

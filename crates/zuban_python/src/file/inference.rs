@@ -265,7 +265,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         None
     }
 
-    fn set_calculating_on_target(&self, target: Target) {
+    pub(super) fn set_calculating_on_target(&self, target: Target) {
         match target {
             Target::Name(name_def) | Target::NameExpression(_, name_def) => {
                 self.set_point(name_def.index(), Point::new_calculating());
