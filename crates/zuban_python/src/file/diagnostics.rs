@@ -1555,8 +1555,18 @@ impl Inference<'_, '_, '_> {
                 } else if !is_valid {
                     self.add_issue(
                         name_def.index(),
-                        IssueKind::IncompatibleImplicitReturn {
-                            expected: ret_type.format_short(i_s.db),
+                        if has_trivial_body {
+                            IssueKind::MissingReturnStatement {
+                                code: if has_trivial_body {
+                                    "empty-body"
+                                } else {
+                                    "return"
+                                },
+                            }
+                        } else {
+                            IssueKind::IncompatibleImplicitReturn {
+                                expected: ret_type.format_short(i_s.db),
+                            }
                         },
                     );
                     maybe_add_async()

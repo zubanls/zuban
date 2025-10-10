@@ -750,3 +750,13 @@ class Test():
     @classmethod
     def setup(cls) -> None:
         pass
+
+[case empty_body_enabled_with_type_vars]
+# flags: --disallow-empty-bodies --no-mypy-compatible
+def foo[T](x: T) -> T:  # E: Missing return statement
+    ...
+
+[case empty_body_disabled_with_type_vars]
+# flags: --disallow-empty-bodies --disable-error-code empty-body --no-mypy-compatible
+def foo[T](x: T) -> T:
+    ...

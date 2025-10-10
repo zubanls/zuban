@@ -307,6 +307,7 @@ impl TestCase<'_, '_> {
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
+        set_reverse_bool_flag(&mut config.allow_empty_bodies, "--disallow-empty-bodies");
         settings.platform = arg_after("--platform");
         settings.mypy_compatible = mypy_compatible;
 
