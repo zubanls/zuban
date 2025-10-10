@@ -433,11 +433,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return TypeContent::UNKNOWN_REPORTED;
                 }
             }
+            // With escapes and other problems, start might be a bit imprecise.
+            let end = (start as usize + f.tree.code().len()).min(self.file.tree.code().len());
             self.file.add_issue(
                 self.i_s,
                 Issue::from_start_stop(
                     start,
-                    start + f.tree.code().len() as CodeIndex,
+                    end as CodeIndex,
                     IssueKind::InvalidSyntaxInTypeAnnotation,
                 ),
             );

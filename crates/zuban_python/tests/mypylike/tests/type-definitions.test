@@ -716,3 +716,12 @@ def run(env: dict[str, str]):
     env_vars = os.environ | CONFIG['env']
     if env is not None:
         env_vars |= env
+
+[case multiline_forward_ref_no_crash]
+# From https://github.com/zubanls/zuban/issues/80
+a: """
+1
+2"""""
+
+[out]
+__main__:2: error: Syntax error in type annotation
