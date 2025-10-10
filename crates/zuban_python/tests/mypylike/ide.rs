@@ -35,7 +35,11 @@ pub struct CompleteArgs {
     #[arg(long)]
     pub filter: Option<Vec<String>>,
     #[arg(long)]
+    pub filter_starts_with: Option<String>,
+    #[arg(long)]
     pub show_kind: bool,
+    #[arg(long)]
+    pub show_range: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -180,17 +184,30 @@ pub(crate) fn find_and_check_ide_tests(
             let test_on_line_nr = line_nr + 2;
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
-                    let mut result = document.complete(position, true, |_, name| {
+                    let mut result = document.complete(position, true, |range, name| {
+                        let mut result = name.label().to_owned();
                         if complete_args.show_kind {
-                            format!("{}:{:?}", name.label(), name.kind())
-                        } else {
-                            name.label().to_owned()
+                            result = format!("{result}:{:?}", name.kind())
                         }
+                        if complete_args.show_range {
+                            let from = (range.0.line_one_based(), range.0.code_points_column());
+                            let to = (range.1.line_one_based(), range.1.code_points_column());
+                            result = format!("{result}:{from:?}-{to:?}")
+                        }
+                        result
                     });
                     if let Some(filter) = complete_args.filter
                         && let Ok(r) = result
                     {
                         result = Ok(r.into_iter().filter(|item| filter.contains(item)).collect());
+                    }
+                    if let Some(filter_starts_with) = complete_args.filter_starts_with
+                        && let Ok(r) = result
+                    {
+                        result = Ok(r
+                            .into_iter()
+                            .filter(|item| item.starts_with(&filter_starts_with))
+                            .collect());
                     }
                     ("complete", result)
                 }

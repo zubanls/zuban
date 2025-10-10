@@ -223,3 +223,14 @@ __main__.py:2:complete -> [NotImplementedError, object]
 __main__.py:5:complete -> [NotImplementedError, object]
 __main__.py:9:complete -> [upper]
 __main__.py:11:complete -> [upper]
+
+[case completion_wrong_ranges_on_empty_lines]
+# type: ignore
+#? complete --filter-starts-with object --show-range
+
+#? complete --show-range
+objec
+
+[out]
+__main__.py:3:complete -> [object:(3, 0)-(3, 0)]
+__main__.py:5:complete -> [object:(5, 0)-(5, 5)]

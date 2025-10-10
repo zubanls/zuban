@@ -306,7 +306,7 @@ impl<'db> RestNode<'db> {
     }
 
     pub fn start(&self) -> CodeIndex {
-        self.node.start()
+        self.node.start().min(self.position)
     }
 
     pub fn is_string(&self) -> bool {
