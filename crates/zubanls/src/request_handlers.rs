@@ -9,10 +9,11 @@ use lsp_types::{
     DocumentHighlightKind, DocumentHighlightParams, FullDocumentDiagnosticReport,
     GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location,
     LocationLink, MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
-    Position, PrepareRenameResponse, ReferenceParams, RelatedFullDocumentDiagnosticReport,
-    RenameFile, RenameParams, ResourceOp, ResourceOperationKind, SignatureHelp,
-    SignatureHelpParams, TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams,
-    TextEdit, Uri, WorkspaceEdit,
+    ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, ReferenceParams,
+    RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
+    ResourceOperationKind, SignatureHelp, SignatureHelpParams, SignatureInformation,
+    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
+    WorkspaceEdit,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -146,8 +147,28 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<SignatureHelp>> {
         let _p = tracing::info_span!("handle_signature_help").entered();
         let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
-        let help = document.signature_help(pos)?;
-        help
+        let signatures = document.call_signatures(pos)?;
+        Ok(signatures.map(|signatures| SignatureHelp {
+            signatures: signatures
+                .into_iterator()
+                .map(|sig| SignatureInformation {
+                    label: sig.label.into_string(),
+                    documentation: None,
+                    parameters: sig.params.map(|params| {
+                        params
+                            .into_iter()
+                            .map(|p| ParameterInformation {
+                                label: ParameterLabel::Simple(p.into_string()),
+                                documentation: None,
+                            })
+                            .collect()
+                    }),
+                    active_parameter: sig.current_param.map(|active| active as u32),
+                })
+                .collect(),
+            active_signature: None,
+            active_parameter: None,
+        }))
     }
 
     pub fn handle_hover(&mut self, params: HoverParams) -> anyhow::Result<Option<Hover>> {
