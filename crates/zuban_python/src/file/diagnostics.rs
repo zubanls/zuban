@@ -443,7 +443,10 @@ impl Inference<'_, '_, '_> {
             }
             StmtLikeContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
             StmtLikeContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
-            StmtLikeContent::DelStmt(d) => self.flow_analysis_for_del_stmt(d.targets()),
+            StmtLikeContent::DelStmt(d) => {
+                self.set_calculating_on_del_targets(d.targets());
+                self.flow_analysis_for_del_stmt(d.targets());
+            }
             StmtLikeContent::TypeAlias(type_alias) => {
                 self.ensure_compute_type_alias_from_syntax(type_alias);
                 self.assign_type_alias_name(type_alias);
@@ -495,6 +498,17 @@ impl Inference<'_, '_, '_> {
             stmt_like.parent_index,
             Point::new_specific(Specific::Analyzed, Locality::Todo),
         );
+    }
+
+    pub fn set_calculating_on_del_targets(&self, del_targets: DelTargets) {
+        for del_target in del_targets.iter() {
+            match del_target {
+                DelTarget::Target(target) => self.set_calculating_on_target(target),
+                DelTarget::DelTargets(del_targets) => {
+                    self.set_calculating_on_del_targets(del_targets)
+                }
+            }
+        }
     }
 
     fn stmt_is_allowed_when_unreachable(&self, s: StmtLikeContent) -> bool {

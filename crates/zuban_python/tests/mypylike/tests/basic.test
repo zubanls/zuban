@@ -831,9 +831,9 @@ class C:
 
     def bar(self) -> None:
         self.cache1 = 1
-        self.cache2 = 1
+        self.cache2 = 1  # E: Cannot determine type of "cache2"
 
-reveal_type(C().cache1)  # N: Revealed type is "Any"
+reveal_type(C().cache1)  # E: Cannot resolve name "C().cache1" (possible cyclic definition) # N: Revealed type is "Any"
 
 [case star_union]
 def f(x: list[bytes] | list[str]):
@@ -1416,3 +1416,11 @@ a = ""
 [out]
 ==
 m.py:4: error: Argument 1 to "__iadd__" of "list" has incompatible type "list[int]"; expected "Iterable[str]"
+
+[case avoid_recursion_problem_in_del]
+# From GH #76
+del a.b, \
+    a
+[out]
+__main__:2: error: Name "a" is used before definition
+__main__:3: error: Name "a" is not defined
