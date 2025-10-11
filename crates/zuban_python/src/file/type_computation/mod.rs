@@ -4358,7 +4358,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Some(Lookup::T(
                 TypeContent::InvalidVariable(_)
                 | TypeContent::Unknown(_)
-                | TypeContent::SpecialCase(_)
                 | TypeContent::Module(_)
                 | TypeContent::Namespace(_),
             )) => false,
