@@ -4352,9 +4352,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             _ => return false,
         };
         match lookup {
+            Some(Lookup::T(TypeContent::SpecialCase(specific))) => {
+                specific.might_be_used_in_alias()
+            }
             Some(Lookup::T(
                 TypeContent::InvalidVariable(_)
                 | TypeContent::Unknown(_)
+                | TypeContent::SpecialCase(_)
                 | TypeContent::Module(_)
                 | TypeContent::Namespace(_),
             )) => false,

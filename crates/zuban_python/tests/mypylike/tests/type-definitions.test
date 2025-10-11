@@ -690,6 +690,63 @@ def f(x: A[int]):
     if isinstance(x, list):
         reveal_type(x[0])  # N: Revealed type is "int"
 
+[case type_alias_no_confusion_with_bitwise_or_operations]
+# From GH #87
+import os
+
+def unrelated(path: str) -> None:
+    assert os.path.isabs(path)
+
+def bar(path: str) -> None:
+    flags = os.O_WRONLY | os.O_CREAT
+
+[case implicit_alias_choices]
+from typing import Any, Never, Annotated, Self, Literal, LiteralString, Union, \
+    Optional, Type, Callable, Tuple, TypeVar
+
+T = TypeVar("T")
+
+X = 1
+a1 = int | Optional[T]
+i1: a1[int]
+a2 = Optional[T] | int
+i2: a2[int]
+a3 = int | X[T]  # E: Value of type "int" is not indexable
+i3: a3[int]  # E: Variable "__main__.a3" is not valid as a type \
+             # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a4 = int | Union[T]
+i4: a4[int]
+
+a5 = int | tuple[T]
+i5: a5[int]
+a6 = int | Tuple[T]
+i6: a6[int]
+
+a7 = int | type[T]
+i7: a7[int]
+a8 = int | Type[T]
+i8: a8[int]
+
+a9 = int | Callable[[T], int]
+i9: a9[int]
+
+a10 = int | Annotated[T, 1]
+i10: a10[int]
+
+a11 = list[T] | LiteralString
+i11: a11[int]
+a12 = list[T] | Literal[1]
+i12: a12[int]
+
+a13 = list[T] | Never
+i13: a13[int]
+a14 = list[T] | Any
+i14: a14[int]
+
+class C:
+    a15 = list[T] | Self  # E: Self type cannot be used in type alias target
+    i15: a15[int]
+
 [case binary_or_is_no_type_definition]
 # From GH #65
 [file config.py]

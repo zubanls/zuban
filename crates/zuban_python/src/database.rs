@@ -585,6 +585,24 @@ impl Specific {
                 | Specific::PartialDefaultDictWithSet
         )
     }
+
+    pub fn might_be_used_in_alias(self) -> bool {
+        matches!(
+            self,
+            Specific::TypingTuple
+                | Specific::TypingCallable
+                | Specific::TypingType
+                | Specific::TypingUnion
+                | Specific::TypingOptional
+                | Specific::TypingAnnotated
+                | Specific::TypingLiteral
+                | Specific::TypingLiteralString
+                | Specific::TypingSelf
+                | Specific::TypingAny
+                | Specific::TypingNeverOrNoReturn
+                | Specific::BuiltinsType
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
