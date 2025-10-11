@@ -554,3 +554,28 @@ if len(foo) > 1:
         reveal_type(foo)  # N: Revealed type is "tuple[int, int]"
     if len(foo) == 3:
         reveal_type(foo)  # N: Revealed type is "tuple[int, int, int]"
+
+[case tuple_invariant_matching_against_any]
+# From GH #89
+from typing import Any, Unpack
+
+async def foo(ops: list[tuple[Any, ...]]) -> None:
+    await bar1(ops)
+    await bar2(ops)
+    await bar3(ops)
+    await bar4(ops)
+
+async def bar1(ops: list[tuple[str, int]]) -> None:
+    await foo(ops)
+
+async def bar2(ops: list[tuple[str, *tuple[str, ...], int]]) -> None:
+    await foo(ops)
+    await bar1(ops)  # E: Argument 1 to "bar1" has incompatible type "list[tuple[str, Unpack[Tuple[str, ...]], int]]"; expected "list[tuple[str, int]]"
+
+async def bar3[*Ts](ops: list[tuple[str, *Ts, int]]) -> None:
+    await foo(ops)
+    await bar1(ops)  # E: Argument 1 to "bar1" has incompatible type "list[tuple[str, Unpack[Ts], int]]"; expected "list[tuple[str, int]]"
+
+async def bar4(ops: list[tuple[int | str, ...]]) -> None:
+    await foo(ops)
+    await bar1(ops)  # E: Argument 1 to "bar1" has incompatible type "list[tuple[int | str, ...]]"; expected "list[tuple[str, int]]"

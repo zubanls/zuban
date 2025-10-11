@@ -551,11 +551,15 @@ impl<'a> Matcher<'a> {
                 );
             }
         }
-        matches!(
-            args2,
-            TupleArgs::WithUnpack(u) if u.before.is_empty() && u.after.is_empty()
-                 && matches!(&u.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
-        )
+        match args2 {
+            TupleArgs::WithUnpack(u) => {
+                u.before.is_empty()
+                    && u.after.is_empty()
+                    && matches!(&u.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
+            }
+            TupleArgs::ArbitraryLen(t) => t.is_any(),
+            TupleArgs::FixedLen(_) => false,
+        }
         .into()
     }
 

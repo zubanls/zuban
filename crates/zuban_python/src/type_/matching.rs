@@ -906,10 +906,10 @@ fn match_tuple_type_arguments_internal(
             match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
         }
         (FixedLen(_), WithUnpack(_)) => Match::new_false(),
-        (FixedLen(_), ArbitraryLen(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
+        (FixedLen(_), ArbitraryLen(t2)) => t2.is_any().into(),
         (ArbitraryLen(t1), FixedLen(ts2)) => {
             if variance == Variance::Invariant {
-                return Match::new_false();
+                return matches!(t1.as_ref(), Type::Any(_)).into();
             }
             ts2.iter()
                 .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
