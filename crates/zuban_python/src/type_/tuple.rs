@@ -1,7 +1,10 @@
 use std::{
     hash::{Hash, Hasher},
     ops::Deref,
-    sync::{Arc, OnceLock},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use num_bigint::BigInt;
@@ -32,16 +35,28 @@ thread_local! {
     static ARBITRARY_TUPLE_FROM_ERROR: Arc<Tuple> = Tuple::new_arbitrary_length(Type::ERROR);
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug)]
 pub(crate) struct Tuple {
     pub args: TupleArgs,
+    calculating_generics: AtomicBool,
     pub(super) tuple_class_generics: OnceLock<GenericsList>,
+}
+
+impl Clone for Tuple {
+    fn clone(&self) -> Self {
+        Tuple {
+            args: self.args.clone(),
+            calculating_generics: AtomicBool::new(false),
+            tuple_class_generics: self.tuple_class_generics.clone(),
+        }
+    }
 }
 
 impl Tuple {
     pub fn new(args: TupleArgs) -> Arc<Self> {
         Arc::new(Self {
             args,
+            calculating_generics: AtomicBool::new(false),
             tuple_class_generics: OnceLock::new(),
         })
     }
@@ -49,6 +64,7 @@ impl Tuple {
     pub fn new_arbitrary_length_with_class_generics(t: Type, generics: GenericsList) -> Arc<Self> {
         Arc::new(Self {
             args: TupleArgs::ArbitraryLen(Arc::new(t)),
+            calculating_generics: AtomicBool::new(false),
             tuple_class_generics: OnceLock::from(generics),
         })
     }
@@ -70,12 +86,15 @@ impl Tuple {
     }
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
+        debug_assert!(!self.calculating_generics.load(Ordering::Relaxed));
         self.tuple_class_generics.get_or_init(|| {
+            self.calculating_generics.store(true, Ordering::Relaxed);
             let t = self
                 .args
                 .simplified_union_of_tuple_entries(&InferenceState::new_in_unknown_file(db))
                 .avoid_implicit_literal(db);
             debug!("Calculated tuple class generics: {}", t.format_short(db));
+            self.calculating_generics.store(false, Ordering::Relaxed);
             GenericsList::new_generics(Arc::new([GenericItem::TypeArg(t)]))
         })
     }
@@ -456,6 +475,8 @@ impl PartialEq for Tuple {
         self.args == other.args
     }
 }
+
+impl Eq for Tuple {}
 
 impl Hash for Tuple {
     fn hash<H: Hasher>(&self, state: &mut H) {

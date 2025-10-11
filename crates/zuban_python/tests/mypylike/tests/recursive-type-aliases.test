@@ -152,3 +152,12 @@ def f(obj: OT) -> bool:
         for lval in obj:
             r = f(cast(OT, lval)) or r  # E: Redundant cast to "None | str | int | float | MutableSequence[OT] | MutableMapping[str, OT]"
     return r
+
+[case recursive_tuple_should_not_hang]
+type T1 = tuple[T1, bool]
+type T2 = tuple[bool, T2]
+
+def f(a: T1):
+    a == a
+def g(a: T2):
+    a == a
