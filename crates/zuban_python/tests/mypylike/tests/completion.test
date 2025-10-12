@@ -234,3 +234,20 @@ objec
 [out]
 __main__.py:3:complete -> [object:(3, 0)-(3, 0)]
 __main__.py:5:complete -> [object:(5, 0)-(5, 5)]
+
+[case completion_wrong_ranges_after_non_empty_line]
+# type: ignore
+
+#? --add-lines 1 complete --filter-starts-with object --show-range
+a = []
+obj
+
+#? --add-lines 1 --codepoint-column 0 complete --filter-starts-with object --show-range
+a = []
+
+#? --add-lines 1 --codepoint-column 5 complete --filter-starts-with object --show-range
+a = []
+
+[out]
+__main__.py:5:complete -> [object:(5, 0)-(5, 3)]
+__main__.py:9:complete -> [object:(9, 0)-(9, 0)]

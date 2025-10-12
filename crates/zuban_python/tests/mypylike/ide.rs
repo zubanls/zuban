@@ -18,6 +18,8 @@ pub struct Cli {
     pub utf16_code_units_column: Option<usize>,
     #[arg(long)]
     pub nth_utf8_byte: Option<usize>,
+    #[arg(long)]
+    pub add_lines: Option<usize>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -104,7 +106,7 @@ pub(crate) fn find_and_check_ide_tests(
     code: &str,
     output: &mut Vec<String>,
 ) {
-    let mut iterator = code.split('\n').enumerate().peekable();
+    let mut iterator = code.split('\n').enumerate();
     while let Some((line_nr, line)) = iterator.next() {
         let rest = line.trim();
         if let Some(after_comment) = rest.strip_prefix("#?") {
@@ -112,8 +114,8 @@ pub(crate) fn find_and_check_ide_tests(
                 Cli::parse_from(std::iter::once("".to_string()).chain(Shlex::new(after_comment)));
             let p = base_path_join(project.vfs_handler(), path);
             let document = project.document(&p).unwrap();
+            let line = line_nr + 1 + cli.add_lines.unwrap_or_default();
             let position = {
-                let line = line_nr + 1;
                 match (
                     cli.codepoint_column,
                     cli.utf8_bytes_column,
@@ -124,7 +126,9 @@ pub(crate) fn find_and_check_ide_tests(
                     (None, None, None, None) => InputPosition::Utf8Bytes {
                         line,
                         column: iterator
-                            .peek()
+                            .clone()
+                            .skip(cli.add_lines.unwrap_or_default())
+                            .next()
                             .expect("Expect a line after #?")
                             .1
                             .trim_end_matches('\r')
@@ -181,7 +185,7 @@ pub(crate) fn find_and_check_ide_tests(
                     )
                 }
             };
-            let test_on_line_nr = line_nr + 2;
+            let test_on_line_nr = line + 1;
             let (kind, out) = match cli.command {
                 Commands::Complete(complete_args) => {
                     let mut result = document.complete(position, true, |range, name| {
@@ -325,9 +329,9 @@ pub(crate) fn find_and_check_ide_tests(
                     } else {
                         out.join("; ")
                     };
-                    format!("{path}:{}:{kind} -> {}", test_on_line_nr, result)
+                    format!("{path}:{test_on_line_nr}:{kind} -> {}", result)
                 }
-                Err(err) => format!("{path}:{}:{kind} -> error: {err}", test_on_line_nr),
+                Err(err) => format!("{path}:{test_on_line_nr}:{kind} -> error: {err}"),
             });
         }
     }
