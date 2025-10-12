@@ -130,6 +130,7 @@ impl GlobalState<'_> {
                 ..Default::default()
             }
         })?;
+        tracing::trace!("Completion results: {completions:?}");
         if completions.is_empty() {
             return Ok(None);
         }

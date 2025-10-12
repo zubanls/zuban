@@ -16,14 +16,15 @@ impl Tree {
         position: CodeIndex,
     ) -> (Scope<'_>, CompletionNode<'_>, RestNode<'_>) {
         let mut leaf = self.0.leaf_by_position(position);
+        let is_control = |n: PyNode| {
+            let next_char = n.as_code().chars().next().unwrap();
+            !next_char.is_alphanumeric() && next_char != '_'
+        };
         if leaf.start() == position
             && let Some(n) = leaf.previous_leaf()
         {
             // Only use the previous leaf if we are not on a control character.
-            if n.end() == position && {
-                let next_char = n.as_code().chars().next().unwrap();
-                next_char.is_alphanumeric() || next_char == '_'
-            } {
+            if n.end() == position && !is_control(n) {
                 leaf = n;
             }
         }
@@ -31,7 +32,18 @@ impl Tree {
             leaf = leaf.next_leaf().unwrap();
         }
         let scope = scope_for_node(leaf);
-        let rest = RestNode::new(self, leaf, position);
+        let rest = RestNode::new(
+            self,
+            if leaf.end() == position
+                && is_control(leaf)
+                && let Some(n) = leaf.next_leaf()
+            {
+                n
+            } else {
+                leaf
+            },
+            position,
+        );
         if position < leaf.start() && leaf.prefix().contains("#") {
             return (scope, CompletionNode::Global, rest);
         }
