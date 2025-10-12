@@ -154,10 +154,34 @@ def f(obj: OT) -> bool:
     return r
 
 [case recursive_tuple_should_not_hang]
+# From GH #85
 type T1 = tuple[T1, bool]
 type T2 = tuple[bool, T2]
+type T3 = str | tuple[bool, T3]
+type T4 = str | tuple[T4, bool]
+type T5 = tuple[T5, bool] | str
+type T6 = tuple[bool, T6] | str
 
 def f(a: T1):
     a == a
+    reveal_type(a[0])  # N: Revealed type is "tuple[..., bool]"
+
 def g(a: T2):
+    reveal_type(a[1])  # N: Revealed type is "tuple[bool, ...]"
+    a == a
+
+def h(a: T3):
+    reveal_type(a[1])  # N: Revealed type is "str | tuple[bool, ...]"
+    a == a
+
+def i(a: T4):
+    reveal_type(a[0])  # N: Revealed type is "str | tuple[..., bool]"
+    a == a
+
+def j(a: T5):
+    reveal_type(a[0])  # N: Revealed type is "tuple[..., bool] | str"
+    a == a
+
+def k(a: T6):
+    reveal_type(a[1])  # N: Revealed type is "tuple[bool, ...] | str"
     a == a

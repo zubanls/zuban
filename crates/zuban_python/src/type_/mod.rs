@@ -529,6 +529,16 @@ impl Type {
         }
     }
 
+    pub fn is_calculating(&self, db: &Database) -> bool {
+        match self {
+            Type::Class(c) => c.class(db).is_calculating_class_infos(),
+            Type::Tuple(tup) => tup.is_calculating(),
+            Type::RecursiveType(r) => r.calculating(db) || r.calculated_type(db).is_calculating(db),
+            Type::Union(u) => u.iter().any(|t| t.is_calculating(db)),
+            _ => false,
+        }
+    }
+
     pub fn is_any(&self) -> bool {
         matches!(self, Type::Any(_))
     }

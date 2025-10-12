@@ -180,13 +180,13 @@ fn merge_simplified_union_type(
                 for (i, current) in new_types.iter().enumerate() {
                     if current.type_.has_any(i_s) {
                         continue;
+                    } else if additional.type_.is_calculating(i_s.db) {
+                        break;
                     }
                     match &current.type_ {
                         Type::RecursiveType(r) if r.generics.is_some() => (),
                         t => {
-                            if let Type::Class(c) = t
-                                && c.class(i_s.db).is_calculating_class_infos()
-                            {
+                            if t.is_calculating(i_s.db) {
                                 if additional_t == t {
                                     continue 'outer;
                                 } else {
