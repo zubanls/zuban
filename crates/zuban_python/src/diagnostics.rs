@@ -2074,14 +2074,12 @@ impl<'db> Diagnostic<'db> {
         let start = self.start_position();
         let end = self.end_position();
         add_part(start.line_one_based());
-        if config.show_column_numbers {
+        if config.show_column_numbers || config.show_error_end {
             add_part(start.code_points_column() + 1);
         }
         if config.show_error_end {
             add_part(end.line_one_based());
-            if config.show_column_numbers {
-                add_part(end.code_points_column() + 1);
-            }
+            add_part(end.code_points_column() + 1);
         }
         MessageFormattingInfos {
             error,
