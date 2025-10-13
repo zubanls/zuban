@@ -136,7 +136,10 @@ impl<'db> CallSignatures<'db> {
                             had_kwargs = true;
                         }
                         SignatureArg::StarArgs => had_star_args = true,
-                        SignatureArg::StarStarKwargs => had_kwargs = true,
+                        SignatureArg::StarStarKwargs => {
+                            for_kwarg = None;
+                            had_kwargs = true
+                        }
                     }
                 }
                 expected_positional += had_star_args as isize;

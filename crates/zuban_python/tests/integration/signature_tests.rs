@@ -106,9 +106,9 @@ fn test_signature_param_position() {
         // TODO (code3, "h(u,1,**", 3),
         (code3, "h(u,**y", 1),
         // TODO (code3, "h(u,x=2,**", 1),
-        // TODO (code3, "h(u,x=2,**y", 1),
+        (code3, "h(u,x=2,**y", 1),
         // TODO (code3, "h(u,v=2,**y", 3),
-        // TODO (code3, "h(u,x=2,**vv", 1),
+        (code3, "h(u,x=2,**vv", 1),
         // *args, **kwargs
         (code4, "i(a,b,c,d", 2),
         (code4, "i(a,b,c,d,e", 2),
