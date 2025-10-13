@@ -22,7 +22,7 @@ fn test_signature_param_position() {
                 column: check_code.len(),
             })
             .unwrap()
-            .unwrap()
+            .unwrap_or_else(|| panic!("Did not find signatures for code: {code:?}"))
             .into_iterator();
         let signature = signatures.next().unwrap();
         assert_eq!(
