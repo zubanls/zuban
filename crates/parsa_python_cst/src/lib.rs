@@ -668,6 +668,8 @@ impl<'db> Name<'db> {
             NameParent::DottedImportName(DottedImportName::new(parent))
         } else if parent.is_type(Nonterminal(dotted_pattern_name)) {
             NameParent::DottedPatternName(DottedPatternName::new(parent))
+        } else if parent.is_type(ErrorNonterminal(kwarg)) {
+            NameParent::Error
         } else {
             assert!(
                 parent.is_type(Nonterminal(fstring_conversion)),
@@ -799,6 +801,7 @@ pub enum NameParent<'db> {
     DottedImportName(DottedImportName<'db>),
     DottedPatternName(DottedPatternName<'db>),
     FStringConversion(FStringConversion<'db>),
+    Error,
 }
 
 pub enum FunctionOrLambda<'db> {
