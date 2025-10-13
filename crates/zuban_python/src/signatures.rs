@@ -120,6 +120,7 @@ impl<'db> CallSignatures<'db> {
                 let mut had_kwargs = false;
                 let mut had_star_args = false;
                 for arg in self.args.clone() {
+                    dbg!(&arg);
                     match arg {
                         SignatureArg::PositionalOrEmptyAfterComma => {
                             expected_positional += 1;
@@ -133,6 +134,13 @@ impl<'db> CallSignatures<'db> {
                         SignatureArg::StarStarKwargs => had_kwargs = true,
                     }
                 }
+                dbg!(
+                    expected_positional,
+                    for_kwarg,
+                    &used_kwargs,
+                    had_kwargs,
+                    had_star_args
+                );
                 if let Some(for_kwarg) = for_kwarg {
                     for (i, param) in params.iter().enumerate() {
                         match &param.type_ {
