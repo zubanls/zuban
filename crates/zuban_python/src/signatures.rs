@@ -119,11 +119,16 @@ impl<'db> CallSignatures<'db> {
                 let mut used_kwargs = vec![];
                 let mut had_kwargs = false;
                 let mut had_star_args = false;
+                let mut potential_keyword_starts_with = None;
                 for arg in self.args.clone() {
-                    dbg!(&arg);
+                    potential_keyword_starts_with = None;
                     match arg {
                         SignatureArg::PositionalOrEmptyAfterComma => {
                             expected_positional += 1;
+                        }
+                        SignatureArg::PositionalOrKeywordName(name) => {
+                            expected_positional += 1;
+                            potential_keyword_starts_with = Some(name)
                         }
                         SignatureArg::Keyword(name) => {
                             used_kwargs.push(name.as_code());
@@ -134,12 +139,14 @@ impl<'db> CallSignatures<'db> {
                         SignatureArg::StarStarKwargs => had_kwargs = true,
                     }
                 }
+                expected_positional += had_star_args as isize;
                 dbg!(
                     expected_positional,
                     for_kwarg,
                     &used_kwargs,
                     had_kwargs,
-                    had_star_args
+                    had_star_args,
+                    potential_keyword_starts_with,
                 );
                 if let Some(for_kwarg) = for_kwarg {
                     for (i, param) in params.iter().enumerate() {
@@ -175,7 +182,7 @@ impl<'db> CallSignatures<'db> {
                                     is_valid_with_arguments = false;
                                 }
                             }
-                            ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_) => {
+                            ParamType::PositionalOrKeyword(_) => {
                                 if let Some(name) = param.name(self.db) {
                                     if used_kwargs.contains(&name) {
                                         continue;
@@ -186,8 +193,20 @@ impl<'db> CallSignatures<'db> {
                                     return Some(i);
                                 }
                             }
+                            ParamType::KeywordOnly(_) => {
+                                if let Some(name) = param.name(self.db) {
+                                    if used_kwargs.contains(&name) {
+                                        continue;
+                                    }
+                                    if let Some(potential) = potential_keyword_starts_with {
+                                        if name.starts_with(potential) {
+                                            return Some(i);
+                                        }
+                                    }
+                                }
+                            }
                             ParamType::Star(_) => {
-                                if had_kwargs {
+                                if !had_kwargs {
                                     return Some(i);
                                 }
                                 //expected_positional = 0;  ?

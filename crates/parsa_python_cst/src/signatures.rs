@@ -5,7 +5,10 @@ use parsa_python::{
     SiblingIterator,
 };
 
-use crate::{ExpressionPart, Name, PrimaryTargetOrAtom, Scope, Tree, completion::scope_for_node};
+use crate::{
+    AtomContent, Expression, ExpressionPart, Name, PrimaryTargetOrAtom, Scope, Tree,
+    completion::scope_for_node,
+};
 
 impl Tree {
     pub fn signature_node(
@@ -105,6 +108,7 @@ pub enum SignatureArgsIterator<'db> {
 #[derive(Debug)]
 pub enum SignatureArg<'db> {
     PositionalOrEmptyAfterComma,
+    PositionalOrKeywordName(&'db str),
     Keyword(Name<'db>),
     StarArgs,
     StarStarKwargs,
@@ -131,6 +135,16 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
                         arg = next;
                     } else {
                         return Some(SignatureArg::PositionalOrEmptyAfterComma);
+                    }
+                }
+                if arg.is_type(Nonterminal(named_expression)) {
+                    let expr = arg.nth_child(0);
+                    if expr.is_type(Nonterminal(expression)) {
+                        if let Some(AtomContent::Name(n)) =
+                            Expression::new(expr).maybe_unpacked_atom()
+                        {
+                            return Some(SignatureArg::PositionalOrKeywordName(n.as_code()));
+                        }
                     }
                 }
                 if arg.is_type(Nonterminal(kwargs)) || arg.is_type(ErrorNonterminal(kwargs)) {
