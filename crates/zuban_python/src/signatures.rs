@@ -108,7 +108,7 @@ pub struct CallSignatures<'db> {
 impl<'db> CallSignatures<'db> {
     pub fn into_iterator(self) -> impl Iterator<Item = CallSignature> {
         self.callables.into_iter().map(move |callable| {
-            let format_data = &FormatData::new_short(self.db);
+            let format_data = &FormatData::new_reveal_type(self.db);
 
             let mut is_valid_with_arguments = true;
             let mut current_param = None;
@@ -252,7 +252,11 @@ impl<'db> CallSignatures<'db> {
                 CallableParams::Never(_) => Some(vec![]),
             };
             CallSignature {
-                label: callable.format_pretty(format_data),
+                label: callable
+                    .format_pretty(format_data)
+                    .strip_prefix("def ")
+                    .unwrap()
+                    .into(),
                 params,
                 is_valid_with_arguments,
                 current_param,

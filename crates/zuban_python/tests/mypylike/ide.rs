@@ -288,7 +288,7 @@ pub(crate) fn find_and_check_ide_tests(
                         output.push(format!("{path}:{test_on_line_nr}:call signatures:",));
                         for signature in result.into_iterator() {
                             output.push(format!(
-                                "- {}, valid with params: {}, on nth param: {:?}",
+                                "- {:?}, valid with params: {:?}, on nth param: {:?}",
                                 signature.label,
                                 signature.is_valid_with_arguments,
                                 signature.current_param
