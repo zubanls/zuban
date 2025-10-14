@@ -13,15 +13,11 @@ fn test_signature_param_position() {
     );
 
     let mut failures = vec![];
-    let mut run = |base_code: &str, check_code: &str, nth_param| {
-        let code = format!("{base_code}\n{check_code}");
-        project.store_in_memory_file(path.clone(), code.clone().into());
+    let mut run_with_code = |code: &str, position: InputPosition, nth_param| {
+        project.store_in_memory_file(path.clone(), code.into());
         let document = project.document(&path).unwrap();
         let mut signatures = document
-            .call_signatures(InputPosition::Utf8Bytes {
-                line: 2,
-                column: check_code.len(),
-            })
+            .call_signatures(position)
             .unwrap()
             .unwrap_or_else(|| panic!("Did not find signatures for code: {code:?}"))
             .into_iterator();
@@ -35,6 +31,16 @@ fn test_signature_param_position() {
             failures.push(err);
         }
         assert!(signatures.next().is_none());
+    };
+    let mut run = |base_code: &str, check_code: &str, nth_param| {
+        let position = InputPosition::Utf8Bytes {
+            line: 1,
+            column: check_code.len(),
+        };
+        let mut code = format!("{base_code}\n{check_code}");
+        run_with_code(&code, position, nth_param);
+        code += ")";
+        run_with_code(&code, position, nth_param);
     };
     macro_rules! signature_test {
         (($base_code:expr, $check_code:expr, None)) => {

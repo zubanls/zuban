@@ -21,14 +21,6 @@ impl Tree {
             leaf = leaf.previous_leaf()?;
         }
         let mut next_stmt = None;
-        /*
-        while leaf.is_error_recovery_node() {
-            if leaf.as_code() == "," {
-                additional_param_count += 1;
-            }
-            leaf = leaf.previous_leaf()?;
-        }
-        */
         let scope = scope_for_node(leaf);
         let mut check_node = leaf;
         loop {
@@ -85,6 +77,8 @@ impl Tree {
                             .map(|node| ErrorStmtSignaturePart::new(node, leaf.index)),
                     },
                 ));
+            } else if maybe_args.as_code() == ")" {
+                return Some((scope, base, SignatureArgsIterator::None));
             } else {
                 debug_assert!(
                     maybe_args.is_type(Nonterminal(comprehension))
