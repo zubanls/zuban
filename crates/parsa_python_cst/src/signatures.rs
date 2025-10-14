@@ -1,6 +1,7 @@
 use parsa_python::{
-    CodeIndex,
+    CodeIndex, NodeIndex,
     NonterminalType::*,
+    PyNode,
     PyNodeType::{ErrorNonterminal, Nonterminal},
     SiblingIterator,
 };
@@ -19,13 +20,15 @@ impl Tree {
         if leaf.start() == position {
             leaf = leaf.previous_leaf()?;
         }
-        let mut additional_param_count = 0;
+        let mut next_stmt = None;
+        /*
         while leaf.is_error_recovery_node() {
             if leaf.as_code() == "," {
                 additional_param_count += 1;
             }
             leaf = leaf.previous_leaf()?;
         }
+        */
         let scope = scope_for_node(leaf);
         let mut check_node = leaf;
         loop {
@@ -40,10 +43,8 @@ impl Tree {
             if check_node.is_type(Nonterminal(stmt)) {
                 return None;
             } else if check_node.is_type(ErrorNonterminal(stmt)) {
+                next_stmt = Some(check_node);
                 check_node = check_node.previous_leaf()?;
-                if check_node.as_code() == "," {
-                    additional_param_count += 1;
-                }
                 continue;
             }
             let mut iterator = check_node.iter_children();
@@ -73,7 +74,8 @@ impl Tree {
                     base,
                     SignatureArgsIterator::Args {
                         args: maybe_args.iter_children(),
-                        additional_param_count,
+                        next_stmt: next_stmt
+                            .map(|node| ErrorStmtSignaturePart::new(node, leaf.index)),
                     },
                 ));
             } else {
@@ -91,7 +93,7 @@ impl Tree {
 pub enum SignatureArgsIterator<'db> {
     Args {
         args: SiblingIterator<'db>,
-        additional_param_count: usize,
+        next_stmt: Option<ErrorStmtSignaturePart<'db>>,
     },
     Comprehension,
     None,
@@ -111,16 +113,9 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Self::Args {
-                args,
-                additional_param_count,
-            } => {
+            Self::Args { args, next_stmt } => {
                 let Some(mut arg) = args.next() else {
-                    if *additional_param_count > 0 {
-                        *additional_param_count -= 1;
-                        return Some(SignatureArg::PositionalOrEmptyAfterComma);
-                    }
-                    return None;
+                    return next_stmt.as_mut().and_then(|next_stmt| next_stmt.next());
                 };
                 if arg.as_code() == "," {
                     if let Some(next) = args.next() {
@@ -140,10 +135,7 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
                     }
                 }
                 if arg.is_type(Nonterminal(kwargs)) || arg.is_type(ErrorNonterminal(kwargs)) {
-                    *self = Self::Args {
-                        args: arg.iter_children(),
-                        additional_param_count: *additional_param_count,
-                    };
+                    *args = arg.iter_children();
                     self.next()
                 } else if arg.is_type(Nonterminal(kwarg)) || arg.is_type(ErrorNonterminal(kwarg)) {
                     Some(SignatureArg::Keyword(Name::new(arg.nth_child(0))))
@@ -171,4 +163,38 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
 pub enum SignatureBase<'db> {
     ExpressionPart(ExpressionPart<'db>),
     PrimaryTargetOrAtom(PrimaryTargetOrAtom<'db>),
+}
+
+#[derive(Debug, Clone)]
+pub struct ErrorStmtSignaturePart<'db> {
+    stmt_: Option<PyNode<'db>>,
+    //iterator_node: PyNode<'db>,
+    last_node: NodeIndex,
+}
+
+impl<'db> ErrorStmtSignaturePart<'db> {
+    fn new(stmt_: PyNode<'db>, last_node: NodeIndex) -> Self {
+        Self {
+            stmt_: Some(stmt_),
+            //iterator_node,
+            last_node,
+        }
+    }
+}
+
+impl<'db> Iterator for ErrorStmtSignaturePart<'db> {
+    type Item = SignatureArg<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let stmt_ = self.stmt_?;
+        if stmt_.index > self.last_node {
+            return None;
+        }
+        let mut result = None;
+        if stmt_.as_code() == "," {
+            result = Some(SignatureArg::PositionalOrEmptyAfterComma)
+        }
+        self.stmt_ = stmt_.next_sibling();
+        result
+    }
 }
