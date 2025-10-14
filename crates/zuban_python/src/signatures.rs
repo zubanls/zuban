@@ -205,6 +205,8 @@ impl<'db> CallSignatures<'db> {
                                         if name.starts_with(potential) {
                                             return Some(i);
                                         }
+                                    } else {
+                                        return Some(i);
                                     }
                                 }
                             }

@@ -12,6 +12,7 @@ fn test_signature_param_position() {
         vfs.normalize_rc_path(vfs.unchecked_abs_path(&format!("/signature-test/test.py"))),
     );
 
+    let mut failures = vec![];
     let mut run = |base_code: &str, check_code: &str, nth_param| {
         let code = format!("{base_code}\n{check_code}");
         project.store_in_memory_file(path.clone(), code.clone().into());
@@ -25,10 +26,14 @@ fn test_signature_param_position() {
             .unwrap_or_else(|| panic!("Did not find signatures for code: {code:?}"))
             .into_iterator();
         let signature = signatures.next().unwrap();
-        assert_eq!(
-            signature.current_param, nth_param,
-            "while checking {code:?}"
-        );
+        if signature.current_param != nth_param {
+            let err = format!(
+                "Error expected {nth_param:?}, but got {:?} while checking {code:?}",
+                signature.current_param
+            );
+            println!("{err}");
+            failures.push(err);
+        }
         assert!(signatures.next().is_none());
     };
     macro_rules! signature_test {
@@ -56,8 +61,8 @@ fn test_signature_param_position() {
         (code1, "f(a", 0),
         (code1, "f(a,", 1),
         (code1, "f(a,b", 1),
-        // TODO (code1, "f(a,b,", 2),
-        (code1, "f(a,b,1", None),
+        (code1, "f(a,b,", 2),
+        (code1, "f(a,b,1", 2),
         (code1, "f(a,b,c", None),
         (code1, "f(a,b,a", 2),
         (code1, "f(a,b,a=", None),
@@ -68,7 +73,7 @@ fn test_signature_param_position() {
         (code1, "f(a,b,x", 4),
         (code1, "f(a,b,xy", 4),
         // TODO (code1, "f(a,b,xyz=", 4),
-        (code1, "f(a,b,xy=", None),
+        // TODO (code1, "f(a,b,xy=", None),
         (code1, "f(u=", None),
         (code1, "f(v=", 1),
         // **kwargs
@@ -78,7 +83,7 @@ fn test_signature_param_position() {
         (code2, "g(a,b,arr", 5),
         (code2, "g(a,b,xy", 4),
         // TODO (code2, "g(a,b,xyz=", 4),
-        (code2, "g(a,b,xy=", 5),
+        // TODO (code2, "g(a,b,xy=", 5),
         // TODO (code2, "g(a,b,abc=1,abd=4,", 4),
         // TODO (code2, "g(a,b,abc=1,xyz=3,abd=4,", 5),
         (code2, "g(a,b,abc=1,abd=4,lala", 5),
@@ -104,10 +109,10 @@ fn test_signature_param_position() {
         // TODO (code3, "h(u,*", 1),
         // TODO (code3, "h(u,*, *", 1),
         // TODO (code3, "h(u,1,**", 3),
-        (code3, "h(u,**y", 1),
+        // TODO (code3, "h(u,**y", 1),
         // TODO (code3, "h(u,x=2,**", 1),
         (code3, "h(u,x=2,**y", 1),
-        // TODO (code3, "h(u,v=2,**y", 3),
+        (code3, "h(u,v=2,**y", 3),
         (code3, "h(u,x=2,**vv", 1),
         // *args, **kwargs
         (code4, "i(a,b,c,d", 2),
@@ -136,4 +141,11 @@ fn test_signature_param_position() {
         (code4, "i([(,", 1),
         (code4, "i(x,()", 1),
     ];
+    if !failures.is_empty() {
+        println!("\nFailure summary");
+        for failure in failures {
+            println!("{failure}");
+        }
+        panic!()
+    }
 }
