@@ -58,13 +58,20 @@ impl Tree {
                 continue;
             }
             let base = ExpressionPart::new(first);
-            if first.is_type(Nonterminal(primary)) || first.is_type(Nonterminal(t_primary)) {
-                first
-            } else {
-                first
-            };
             let Some(maybe_args) = iterator.next() else {
-                return Some((scope, base, SignatureArgsIterator::None));
+                return Some((
+                    scope,
+                    base,
+                    if next_stmt.is_some() {
+                        SignatureArgsIterator::Args {
+                            args: SiblingIterator::new_empty(&first),
+                            next_stmt: next_stmt
+                                .map(|node| ErrorStmtSignaturePart::new(node, leaf.index)),
+                        }
+                    } else {
+                        SignatureArgsIterator::None
+                    },
+                ));
             };
             if maybe_args.is_type(Nonterminal(arguments))
                 || maybe_args.is_type(ErrorNonterminal(arguments))
@@ -208,6 +215,10 @@ impl<'db> Iterator for ErrorStmtSignaturePart<'db> {
     fn next(&mut self) -> Option<Self::Item> {
         for inner in &mut self.inner_stmt_iterator {
             dbg!(inner);
+            if inner.is_type(Nonterminal(star_targets)) {
+                self.inner_stmt_iterator.inner_stmt_iterator = inner.iter_children();
+                return self.next();
+            }
             if inner.as_code() == "," {
                 if let Some(name) = inner.next_leaf() {
                     dbg!(name);
