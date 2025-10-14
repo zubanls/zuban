@@ -24,14 +24,14 @@ impl Tree {
         let scope = scope_for_node(leaf);
         let mut check_node = leaf;
         loop {
-            check_node = dbg!(check_node.parent_until(&[
+            check_node = check_node.parent_until(&[
                 Nonterminal(stmt),
                 ErrorNonterminal(stmt),
                 Nonterminal(primary),
                 ErrorNonterminal(primary),
                 Nonterminal(t_primary),
                 ErrorNonterminal(t_primary),
-            ]))?;
+            ])?;
             if check_node.is_type(Nonterminal(stmt)) {
                 return None;
             } else if check_node.is_type(ErrorNonterminal(stmt)) {
@@ -183,7 +183,6 @@ pub struct ErrorStmtSignaturePart<'db> {
 impl<'db> ErrorStmtSignaturePart<'db> {
     fn new(stmt_: PyNode<'db>, last_node: NodeIndex) -> Self {
         let first_child = stmt_.nth_child(0);
-        dbg!(first_child);
         let inner_stmt_iterator = if first_child.is_type(ErrorNonterminal(simple_stmts)) {
             first_child.nth_child(0).nth_child(0).iter_children()
         } else {

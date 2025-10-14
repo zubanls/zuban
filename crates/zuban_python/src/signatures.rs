@@ -144,13 +144,11 @@ impl<'db> CallSignatures<'db> {
                     }
                 }
                 expected_positional += had_star_args as isize;
-                dbg!(
-                    expected_positional,
-                    for_kwarg,
-                    &used_kwargs,
-                    had_kwargs,
-                    had_star_args,
-                    potential_keyword_starts_with,
+                debug!(
+                    "The call signature arguments are expected_positional: \
+                    {expected_positional:?}, for_kwarg: {for_kwarg:?}, used_kwargs: \
+                    {used_kwargs:?}, had_kwargs: {had_kwargs:?}, potential_keyword_starts_with: \
+                    {potential_keyword_starts_with:?}"
                 );
                 if let Some(for_kwarg) = for_kwarg {
                     for (i, param) in params.iter().enumerate() {
