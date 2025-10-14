@@ -122,6 +122,7 @@ impl<'db> CallSignatures<'db> {
                 let mut potential_keyword_starts_with = None;
                 for arg in self.args.clone() {
                     potential_keyword_starts_with = None;
+                    dbg!(&arg);
                     match arg {
                         SignatureArg::PositionalOrEmptyAfterComma => {
                             expected_positional += 1;

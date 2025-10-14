@@ -81,13 +81,7 @@ impl Tree {
                     maybe_args.is_type(Nonterminal(comprehension))
                         || maybe_args.is_type(ErrorNonterminal(comprehension))
                 );
-                return Some((
-                    scope,
-                    base,
-                    SignatureArgsIterator::Comprehension {
-                        param_count: additional_param_count + 1,
-                    },
-                ));
+                return Some((scope, base, SignatureArgsIterator::Comprehension));
             }
         }
     }
@@ -99,9 +93,7 @@ pub enum SignatureArgsIterator<'db> {
         args: SiblingIterator<'db>,
         additional_param_count: usize,
     },
-    Comprehension {
-        param_count: usize,
-    },
+    Comprehension,
     None,
 }
 
@@ -167,12 +159,9 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
                     Some(SignatureArg::PositionalOrEmptyAfterComma)
                 }
             }
-            Self::Comprehension { param_count } => {
-                if *param_count > 0 {
-                    *param_count -= 1;
-                    return Some(SignatureArg::PositionalOrEmptyAfterComma);
-                }
-                None
+            Self::Comprehension => {
+                *self = Self::None;
+                Some(SignatureArg::PositionalOrEmptyAfterComma)
             }
             Self::None => None,
         }
