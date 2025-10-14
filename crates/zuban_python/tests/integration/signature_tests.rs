@@ -41,6 +41,8 @@ fn test_signature_param_position() {
         run_with_code(&code, position, nth_param);
         code += ")";
         run_with_code(&code, position, nth_param);
+        code += ".someattr = 1";
+        run_with_code(&code, position, nth_param);
     };
     macro_rules! signature_test {
         (($base_code:expr, $check_code:expr, None)) => {
@@ -113,8 +115,8 @@ fn test_signature_param_position() {
         (code3, "h(u,*xxx,*yyy", 1),
         (code3, "h(u,*[]", 1),
         (code3, "h(u,*", 1),
-        // TODO (code3, "h(u,*, *", 1),
-        // TODO (code3, "h(u,1,**", 3),
+        (code3, "h(u,*, *", 2),
+        (code3, "h(u,1,**", 2),
         (code3, "h(u,**y", 1),
         (code3, "h(u,x=2,**", 4),
         (code3, "h(u,x=2,**y", 1),
@@ -136,8 +138,8 @@ fn test_signature_param_position() {
         // Error nodes
         // TODO (code4, "i(1, [a,b", 1),
         // TODO (code4, "i(1, [a,b=,", 2),
-        // TODO (code4, "i(1, [a?b,", 2),
-        // TODO (code4, "i(1, [a?b,*", 2),
+        (code4, "i(1, [a?b,", 2),
+        (code4, "i(1, [a?b,*", 2),
         (code4, "i(?b,*r,c", 1),
         (code4, "i(?*", 0),
         (code4, "i(?**", 0),
