@@ -27,6 +27,7 @@ pub enum Commands {
     Complete(CompleteArgs),
     Goto(GotoArgs),
     Infer(InferArgs),
+    Signatures(SignaturesArgs),
     Documentation(DocumentationArgs),
     References(ReferencesArgs),
     Rename(RenameArgs),
@@ -89,6 +90,9 @@ pub struct RenameArgs {
     #[arg()]
     pub new_name: String,
 }
+
+#[derive(Parser, Debug)]
+pub struct SignaturesArgs {}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -275,6 +279,25 @@ pub(crate) fn find_and_check_ide_tests(
                         ),
                     )
                 }
+                Commands::Signatures(_) => match document.call_signatures(position) {
+                    Ok(None) => {
+                        output.push(format!("{path}:{test_on_line_nr}:call signatures: None"));
+                        continue;
+                    }
+                    Ok(Some(result)) => {
+                        output.push(format!("{path}:{test_on_line_nr}:call signatures:",));
+                        for signature in result.into_iterator() {
+                            output.push(format!(
+                                "- {}, valid with params: {}, on nth param: {:?}",
+                                signature.label,
+                                signature.is_valid_with_arguments,
+                                signature.current_param
+                            ));
+                        }
+                        continue;
+                    }
+                    Err(err) => ("rename", Err(err)),
+                },
                 Commands::Rename(rename) => {
                     match document.references_for_rename(position, &rename.new_name) {
                         Ok(result) => {

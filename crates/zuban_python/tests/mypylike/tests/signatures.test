@@ -1,0 +1,33 @@
+[case overloaded_signatures]
+#? --codepoint-column 5 signatures
+str()
+#? --codepoint-column 5 signatures
+str(b'12', errors='ignore')
+
+[out]
+__main__.py:2:call signatures:
+- def __new__(object: object = ...) -> str, valid with params: true, on nth param: Some(0)
+- def __new__(object: Buffer, encoding: str = ..., errors: str = ...) -> str, valid with params: true, on nth param: Some(0)
+__main__.py:4:call signatures:
+- def __new__(object: object = ...) -> str, valid with params: false, on nth param: None
+- def __new__(object: Buffer, encoding: str = ..., errors: str = ...) -> str, valid with params: true, on nth param: Some(2)
+
+[case union_signatures]
+class A:
+    def __init__(self, x: int): ...
+class B:
+    def __init__(self, y: str): ...
+
+def f(x: type[A] | type[B]):
+    #? --codepoint-column 6 signatures
+    x()  # E: Missing positional argument "x" in call to "A"  # E: Missing positional argument "y" in call to "B"
+    #? --codepoint-column 6 signatures
+    x(1)  # E: Argument 1 to "B" has incompatible type "int"; expected "str"
+
+[out]
+__main__.py:8:call signatures:
+- def __init__(x) -> A, valid with params: true, on nth param: Some(0)
+- def __init__(y) -> B, valid with params: true, on nth param: Some(0)
+__main__.py:10:call signatures:
+- def __init__(x) -> A, valid with params: true, on nth param: Some(0)
+- def __init__(y) -> B, valid with params: true, on nth param: Some(0)

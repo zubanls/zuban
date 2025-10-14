@@ -254,7 +254,7 @@ impl<'db> CallSignatures<'db> {
             CallSignature {
                 label: callable.format_pretty(format_data),
                 params,
-                is_valid_with_arguments: true,
+                is_valid_with_arguments,
                 current_param,
             }
         })
