@@ -191,13 +191,10 @@ impl<'db> ErrorStmtSignaturePart<'db> {
         let first_child = stmt_.nth_child(0);
         dbg!(first_child);
         let inner_stmt_iterator = if first_child.is_type(ErrorNonterminal(simple_stmts)) {
-            dbg!(first_child.nth_child(0).nth_child(0)).iter_children()
+            first_child.nth_child(0).nth_child(0).iter_children()
         } else {
             stmt_.iter_children()
         };
-        for x in inner_stmt_iterator.clone() {
-            dbg!(x);
-        }
 
         Self {
             stmt_: stmt_,
@@ -214,19 +211,20 @@ impl<'db> Iterator for ErrorStmtSignaturePart<'db> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for inner in &mut self.inner_stmt_iterator {
-            dbg!(inner);
             if inner.is_type(Nonterminal(star_targets)) {
                 self.inner_stmt_iterator.inner_stmt_iterator = inner.iter_children();
                 return self.next();
             }
             if inner.as_code() == "," {
                 if let Some(name) = inner.next_leaf() {
-                    dbg!(name);
                     if name.is_type(Terminal(TerminalType::Name)) {
-                        dbg!(name.next_leaf());
                         if let Some(next) = name.next_leaf()
                             && next.as_code() == "="
                         {
+                            if let Some(after_eq) = next.next_sibling() {
+                                self.inner_stmt_iterator.inner_stmt_iterator =
+                                    after_eq.iter_children();
+                            }
                             return Some(SignatureArg::Keyword(Name::new(name)));
                         } else {
                             return Some(SignatureArg::PositionalOrKeywordName(name.as_code()));
