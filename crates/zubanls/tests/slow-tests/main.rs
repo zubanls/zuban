@@ -15,11 +15,12 @@ use lsp_types::{
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
     DocumentHighlightParams, GotoDefinitionParams, HoverParams, NumberOrString,
     PartialResultParams, Position, PositionEncodingKind, ReferenceContext, ReferenceParams,
-    RenameParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
+    RenameParams, SignatureHelpParams, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    WorkDoneProgressParams,
     request::{
         Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration,
         GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest,
-        References, Rename,
+        References, Rename, SignatureHelpRequest,
     },
 };
 
@@ -1942,4 +1943,69 @@ fn check_completions() {
           }
         ]),
     );
+}
+
+#[test]
+#[serial]
+fn check_call_signatures() {
+    let server = Project::with_fixture(r#""#).into_server();
+
+    // Open an in memory file that doesn't otherwise exist
+    let path = "n.py";
+
+    let run = |code: String, column, json| {
+        server.open_in_memory_file(path, &code);
+        let pos = TextDocumentPositionParams::new(server.doc_id("n.py"), Position::new(1, column));
+        server.request_and_expect_json::<SignatureHelpRequest>(
+            SignatureHelpParams {
+                text_document_position_params: pos,
+                work_done_progress_params: Default::default(),
+                context: None,
+            },
+            json,
+        );
+    };
+    let base = "def f(x: int, y: str) -> bytes: ...";
+    run(format!("{base}\nf()"), 0, json!(None::<()>));
+    // run(format!("{base}\nf()"), 1, json!(None::<()>));
+    // run(format!("{base}\nf()"), 3, json!(None::<()>));
+
+    let empty_result = json!({
+      "signatures": [
+        {
+          "activeParameter": 0,
+          "label": "(x: builtins.int, y: builtins.str) -> builtins.bytes",
+          "parameters": [
+            {
+              "label": "x"
+            },
+            {
+              "label": "y"
+            }
+          ]
+        }
+      ]
+    }
+    );
+    run(format!("{base}\nf()"), 2, empty_result.clone());
+    run(format!("{base}\nf("), 2, empty_result);
+
+    let with_y = json!({
+      "signatures": [
+        {
+          "activeParameter": 1,
+          "label": "(x: builtins.int, y: builtins.str) -> builtins.bytes",
+          "parameters": [
+            {
+              "label": "x"
+            },
+            {
+              "label": "y"
+            }
+          ]
+        }
+      ]
+    });
+    run(format!("{base}\nf(y=)"), 4, with_y.clone());
+    run(format!("{base}\nf(y="), 4, with_y);
 }
