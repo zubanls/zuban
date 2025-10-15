@@ -1967,8 +1967,9 @@ fn check_call_signatures() {
     };
     let base = "def f(x: int, y: str) -> bytes: ...";
     run(format!("{base}\nf()"), 0, json!(None::<()>));
-    // run(format!("{base}\nf()"), 1, json!(None::<()>));
-    // run(format!("{base}\nf()"), 3, json!(None::<()>));
+    run(format!("{base}\nf()"), 1, json!(None::<()>));
+    run(format!("{base}\nf()"), 3, json!(None::<()>));
+    run(format!("{base}\nf(1)"), 4, json!(None::<()>));
 
     let empty_result = json!({
       "activeSignature": 0,

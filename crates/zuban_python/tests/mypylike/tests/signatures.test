@@ -1,7 +1,7 @@
 [case overloaded_signatures]
-#? --codepoint-column 5 signatures
+#? --codepoint-column 4 signatures
 str()
-#? --codepoint-column 5 signatures
+#? --codepoint-column 19 signatures
 str(b'12', errors='ignore')
 
 [out]

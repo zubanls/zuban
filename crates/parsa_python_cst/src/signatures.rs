@@ -46,7 +46,7 @@ impl Tree {
             let Some(maybe_paren) = iterator.next() else {
                 continue;
             };
-            if maybe_paren.as_code() != "(" {
+            if maybe_paren.as_code() != "(" || maybe_paren.end() > position {
                 continue;
             }
             let base = ExpressionPart::new(first);
@@ -65,6 +65,9 @@ impl Tree {
                     },
                 ));
             };
+            if iterator.next().is_some_and(|node| node.start() < position) {
+                continue;
+            }
             if maybe_args.is_type(Nonterminal(arguments))
                 || maybe_args.is_type(ErrorNonterminal(arguments))
             {
@@ -78,6 +81,9 @@ impl Tree {
                     },
                 ));
             } else if maybe_args.as_code() == ")" {
+                if maybe_args.start() < position {
+                    continue;
+                }
                 return Some((scope, base, SignatureArgsIterator::None));
             } else {
                 debug_assert!(
