@@ -239,7 +239,10 @@ impl<'db> CallSignatures<'db> {
                                 ParamTypeDetails::UnpackedTuple(tup) => {
                                     tup.format(&FormatData::new_short(db))
                                 }
-                                ParamTypeDetails::UnpackTypedDict(_) => "<UnpackTypedDict>".into(),
+                                ParamTypeDetails::UnpackTypedDict(td) => {
+                                    format!("Unpack[{}]", td.format(&FormatData::new_short(db)))
+                                        .into()
+                                }
                             };
                             if !label.is_empty() {
                                 label += ", ";

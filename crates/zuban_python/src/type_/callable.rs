@@ -123,7 +123,6 @@ pub(crate) enum ParamTypeDetails<'a> {
     Type(&'a Type),
     ParamSpecUsage(&'a ParamSpecUsage),
     UnpackedTuple(Arc<Tuple>),
-    #[expect(dead_code)]
     UnpackTypedDict(Arc<TypedDict>),
 }
 

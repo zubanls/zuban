@@ -72,3 +72,23 @@ __main__.py:11:call signatures:
 - "(x: int, *args: tuple[Unpack[Tuple[str, ...]], int]) -> tuple[int, Unpack[Tuple[str, ...]]]", valid with params: true, on nth param: Some(1)
 __main__.py:13:call signatures:
 - "(x: int, *args: tuple[Unpack[Tuple[str, ...]], int]) -> tuple[int, Unpack[Tuple[str, ...]]]", valid with params: true, on nth param: Some(1)
+
+[case formatting_for_typed_dict_unpack]
+from typing import TypedDict, Unpack
+
+class TD(TypedDict):
+    x: int
+    y: int
+
+def f(**kwargs: Unpack[TD]) -> None: ...
+
+#? --codepoint-column 2 signatures
+f(x=1)  # E: Missing named argument "y" for "f"
+#? --codepoint-column 10 signatures
+f(x=1, y=2)
+
+[out]
+__main__.py:10:call signatures:
+- "(**kwargs: Unpack[TD]) -> None", valid with params: true, on nth param: Some(0)
+__main__.py:12:call signatures:
+- "(**kwargs: Unpack[TD]) -> None", valid with params: true, on nth param: Some(0)
