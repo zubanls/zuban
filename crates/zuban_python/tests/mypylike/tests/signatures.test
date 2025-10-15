@@ -47,3 +47,28 @@ __main__.py:6:call signatures:
 - "(x: int, *args: P, **kwargs: P) -> Callable[P, str]", valid with params: true, on nth param: Some(0)
 __main__.py:8:call signatures:
 - "(x: int, *args: P, **kwargs: P) -> Callable[P, str]", valid with params: true, on nth param: Some(1)
+
+[case tuple_unpack_signatures]
+from typing import Callable
+
+def f[*Ts](x: int, *args: *Ts) -> tuple[int, *Ts]: ...
+def g(x: int, *args: *tuple[*tuple[str, ...], int]) -> tuple[int, *tuple[str, ...]]: ...
+
+#? --codepoint-column 2 signatures
+f(1)
+#? --codepoint-column 9 signatures
+f(1, 2, 3)
+#? --codepoint-column 2 signatures
+g(1, 1)
+#? --codepoint-column 9 signatures
+g(1, "x", 3)
+
+[out]
+__main__.py:7:call signatures:
+- "(x: int, *args: tuple[Unpack[Ts]]) -> tuple[int, Unpack[Ts]]", valid with params: true, on nth param: Some(0)
+__main__.py:9:call signatures:
+- "(x: int, *args: tuple[Unpack[Ts]]) -> tuple[int, Unpack[Ts]]", valid with params: true, on nth param: Some(1)
+__main__.py:11:call signatures:
+- "(x: int, *args: tuple[Unpack[Tuple[str, ...]], int]) -> tuple[int, Unpack[Tuple[str, ...]]]", valid with params: true, on nth param: Some(1)
+__main__.py:13:call signatures:
+- "(x: int, *args: tuple[Unpack[Tuple[str, ...]], int]) -> tuple[int, Unpack[Tuple[str, ...]]]", valid with params: true, on nth param: Some(1)

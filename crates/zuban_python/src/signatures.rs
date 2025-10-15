@@ -7,6 +7,7 @@ use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
+    format_data::FormatData,
     goto::{PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     params::Param as _,
@@ -235,7 +236,9 @@ impl<'db> CallSignatures<'db> {
                             let type_ = match p.type_.details() {
                                 ParamTypeDetails::Type(t) => t.format_short(db),
                                 ParamTypeDetails::ParamSpecUsage(u) => u.param_spec.name(db).into(),
-                                ParamTypeDetails::UnpackedTuple(_) => "<UnpackedTuple>".into(),
+                                ParamTypeDetails::UnpackedTuple(tup) => {
+                                    tup.format(&FormatData::new_short(db))
+                                }
                                 ParamTypeDetails::UnpackTypedDict(_) => "<UnpackTypedDict>".into(),
                             };
                             if !label.is_empty() {
