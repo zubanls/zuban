@@ -4407,7 +4407,11 @@ impl<'db> UnpackedNumber<'db> {
         let code = node.as_code();
         if code.contains('j') || code.contains('J') {
             Self::Complex(Complex::new(node))
-        } else if code.contains(['.', 'e', 'E']) {
+        } else if code.contains(['.', 'e', 'E'])
+            && !code
+                .strip_prefix('0')
+                .is_some_and(|s| s.starts_with(['x', 'X']))
+        {
             Self::Float(Float::new(node))
         } else {
             Self::Int(Int::new(node))

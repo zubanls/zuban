@@ -1424,3 +1424,23 @@ del a.b, \
 [out]
 __main__:2: error: Name "a" is used before definition
 __main__:3: error: Name "a" is not defined
+
+[case e_in_hex_int]
+a1: int = 0x0D
+a2: int = 0x0E
+a3: int = 0x0F
+
+reveal_type(0x0E)  # N: Revealed type is "Literal[14]?"
+
+a4: int = 0x0d
+a5: int = 0x0e
+
+reveal_type(0x0E3)  # N: Revealed type is "Literal[227]?"
+reveal_type(0X0E3)  # N: Revealed type is "Literal[227]?"
+reveal_type(0X0e3)  # N: Revealed type is "Literal[227]?"
+
+reveal_type(0E3)  # N: Revealed type is "float"
+reveal_type(0e3)  # N: Revealed type is "float"
+
+reveal_type(0b1)  # N: Revealed type is "Literal[1]?"
+reveal_type(0xb1)  # N: Revealed type is "Literal[177]?"
