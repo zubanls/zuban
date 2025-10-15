@@ -1971,6 +1971,8 @@ fn check_call_signatures() {
     // run(format!("{base}\nf()"), 3, json!(None::<()>));
 
     let empty_result = json!({
+      "activeSignature": 0,
+      "activeParameter": 0,
       "signatures": [
         {
           "activeParameter": 0,
@@ -1991,6 +1993,8 @@ fn check_call_signatures() {
     run(format!("{base}\nf("), 2, empty_result);
 
     let with_y = json!({
+      "activeSignature": 0,
+      "activeParameter": 1,
       "signatures": [
         {
           "activeParameter": 1,

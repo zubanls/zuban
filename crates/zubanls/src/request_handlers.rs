@@ -149,26 +149,36 @@ impl GlobalState<'_> {
         let _p = tracing::info_span!("handle_signature_help").entered();
         let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
         let signatures = document.call_signatures(pos)?;
+        let mut first_active_signature = None;
+        let mut first_active_parameter = None;
         Ok(signatures.map(|signatures| SignatureHelp {
             signatures: signatures
                 .into_iterator()
-                .map(|sig| SignatureInformation {
-                    label: sig.label.into_string(),
-                    documentation: None,
-                    parameters: sig.params.map(|params| {
-                        params
-                            .into_iter()
-                            .map(|p| ParameterInformation {
-                                label: ParameterLabel::Simple(p.into_string()),
-                                documentation: None,
-                            })
-                            .collect()
-                    }),
-                    active_parameter: sig.current_param.map(|active| active as u32),
+                .enumerate()
+                .map(|(i, sig)| {
+                    let active_parameter = sig.current_param.map(|active| active as u32);
+                    if sig.is_valid_with_arguments && first_active_signature.is_none() {
+                        first_active_signature = Some(i as u32);
+                        first_active_parameter = active_parameter;
+                    }
+                    SignatureInformation {
+                        label: sig.label.into_string(),
+                        documentation: None,
+                        parameters: sig.params.map(|params| {
+                            params
+                                .into_iter()
+                                .map(|p| ParameterInformation {
+                                    label: ParameterLabel::Simple(p.into_string()),
+                                    documentation: None,
+                                })
+                                .collect()
+                        }),
+                        active_parameter,
+                    }
                 })
                 .collect(),
-            active_signature: None,
-            active_parameter: None,
+            active_signature: first_active_signature,
+            active_parameter: first_active_parameter,
         }))
     }
 
