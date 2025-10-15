@@ -7,7 +7,6 @@ use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
-    format_data::FormatData,
     goto::{PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     params::Param as _,
@@ -108,8 +107,6 @@ pub struct CallSignatures<'db> {
 impl<'db> CallSignatures<'db> {
     pub fn into_iterator(self) -> impl Iterator<Item = CallSignature> {
         self.callables.into_iter().map(move |callable| {
-            let format_data = &FormatData::new_reveal_type(self.db);
-
             let mut is_valid_with_arguments = true;
             let mut current_param = None;
 
@@ -224,39 +221,56 @@ impl<'db> CallSignatures<'db> {
                     None
                 }
             };
-            let params = match &callable.params {
+            let (params, params_label) = match &callable.params {
                 CallableParams::Simple(params) => {
                     current_param = calc_current_param(params);
-                    Some(
-                        params
-                            .iter()
-                            .map(|p| {
-                                p.name
-                                    .as_ref()
-                                    .map(|name| name.as_str(self.db).into())
-                                    .unwrap_or_else(|| match p.type_.details() {
-                                        ParamTypeDetails::Type(t) => t.format(format_data),
-                                        ParamTypeDetails::ParamSpecUsage(_) => "<ParamSpec>".into(),
-                                        ParamTypeDetails::UnpackedTuple(_) => {
-                                            "<UnpackedTuple>".into()
-                                        }
-                                        ParamTypeDetails::UnpackTypedDict(_) => {
-                                            "<UnpackTypedDict>".into()
-                                        }
-                                    })
-                            })
-                            .collect(),
-                    )
+                    let mut label = String::new();
+                    // This formatting is a bit different from format_pretty and it's fine to have
+                    // it this way, because the user has different needs here. The signature should
+                    // be as small as possible and generics are probably not that important.
+                    let param_strs = params
+                        .iter()
+                        .map(|p| {
+                            let type_ = match p.type_.details() {
+                                ParamTypeDetails::Type(t) => t.format_short(self.db),
+                                ParamTypeDetails::ParamSpecUsage(_) => "<ParamSpec>".into(),
+                                ParamTypeDetails::UnpackedTuple(_) => "<UnpackedTuple>".into(),
+                                ParamTypeDetails::UnpackTypedDict(_) => "<UnpackTypedDict>".into(),
+                            };
+                            if !label.is_empty() {
+                                label += ", ";
+                            }
+                            match &p.type_ {
+                                ParamType::Star(_) => label.push('*'),
+                                ParamType::StarStar(_) => label += "**",
+                                _ => (),
+                            }
+                            let param_out = if let Some(name) = p.name(self.db) {
+                                label += name;
+                                label += ": ";
+                                label += &type_;
+                                name.into()
+                            } else {
+                                label += &type_;
+                                type_
+                            };
+                            if p.has_default() {
+                                label += " ="
+                            }
+                            param_out
+                        })
+                        .collect();
+                    (Some(param_strs), label)
                 }
-                CallableParams::Any(_) => None,
-                CallableParams::Never(_) => Some(vec![]),
+                CallableParams::Any(_) => (None, "".into()),
+                CallableParams::Never(_) => (Some(vec![]), "*Any, **Any".into()),
             };
             CallSignature {
-                label: callable
-                    .format_pretty(format_data)
-                    .strip_prefix("def ")
-                    .unwrap()
-                    .into(),
+                label: format!(
+                    "({params_label}) -> {}",
+                    callable.return_type.format_short(self.db)
+                )
+                .into_boxed_str(),
                 params,
                 is_valid_with_arguments,
                 current_param,

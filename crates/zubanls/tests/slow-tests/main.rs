@@ -1977,7 +1977,7 @@ fn check_call_signatures() {
       "signatures": [
         {
           "activeParameter": 0,
-          "label": "(x: builtins.int, y: builtins.str) -> builtins.bytes",
+          "label": "(x: int, y: str) -> bytes",
           "parameters": [
             {
               "label": "x"
@@ -1999,7 +1999,7 @@ fn check_call_signatures() {
       "signatures": [
         {
           "activeParameter": 1,
-          "label": "(x: builtins.int, y: builtins.str) -> builtins.bytes",
+          "label": "(x: int, y: str) -> bytes",
           "parameters": [
             {
               "label": "x"
@@ -2013,4 +2013,36 @@ fn check_call_signatures() {
     });
     run(format!("{base}\nf(y=)"), 4, with_y.clone());
     run(format!("{base}\nf(y="), 4, with_y);
+
+    run(
+        format!("\nint(1)"),
+        4,
+        json!({
+          "activeParameter": 0,
+          "activeSignature": 0,
+          "signatures": [
+            {
+              "activeParameter": 0,
+              "label": "(x: str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc =) -> int",
+              "parameters": [
+                {
+                  "label": "x"
+                }
+              ]
+            },
+            {
+              "activeParameter": 0,
+              "label": "(x: str | bytes | bytearray, base: SupportsIndex) -> int",
+              "parameters": [
+                {
+                  "label": "x"
+                },
+                {
+                  "label": "base"
+                }
+              ]
+            }
+          ]
+        }),
+    );
 }
