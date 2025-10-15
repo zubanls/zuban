@@ -92,3 +92,25 @@ __main__.py:10:call signatures:
 - "(**kwargs: Unpack[TD]) -> None", valid with params: true, on nth param: Some(0)
 __main__.py:12:call signatures:
 - "(**kwargs: Unpack[TD]) -> None", valid with params: true, on nth param: Some(0)
+
+[case signatures_param_offsets]
+def f(ä𐍈ä: int, yz: int) -> None: ...
+#? --codepoint-column 2 signatures --show-params-utf16-code-units-range
+f(1, 2)
+#? --codepoint-column 5 signatures --show-params-utf16-code-units-range
+f(1, 2)
+
+#? --codepoint-column 2 signatures --show-params-utf8-byte-range
+f(1, 2)
+#? --codepoint-column 5 signatures --show-params-utf8-byte-range
+f(1, 2)
+
+[out]
+__main__.py:3:call signatures:
+- "(ä𐍈ä: int, yz: int) -> None", valid with params: true, on nth param: Some(0); param offsets: ["(1, 5)", "(12, 14)"]
+__main__.py:5:call signatures:
+- "(ä𐍈ä: int, yz: int) -> None", valid with params: true, on nth param: Some(1); param offsets: ["(1, 5)", "(12, 14)"]
+__main__.py:8:call signatures:
+- "(ä𐍈ä: int, yz: int) -> None", valid with params: true, on nth param: Some(0); param offsets: ["(1, 9)", "(16, 18)"]
+__main__.py:10:call signatures:
+- "(ä𐍈ä: int, yz: int) -> None", valid with params: true, on nth param: Some(1); param offsets: ["(1, 9)", "(16, 18)"]

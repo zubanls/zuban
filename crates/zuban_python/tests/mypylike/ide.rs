@@ -92,7 +92,12 @@ pub struct RenameArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct SignaturesArgs {}
+pub struct SignaturesArgs {
+    #[arg(long)]
+    pub show_params_utf16_code_units_range: bool,
+    #[arg(long)]
+    pub show_params_utf8_byte_range: bool,
+}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -279,7 +284,7 @@ pub(crate) fn find_and_check_ide_tests(
                         ),
                     )
                 }
-                Commands::Signatures(_) => match document.call_signatures(position) {
+                Commands::Signatures(args) => match document.call_signatures(position) {
                     Ok(None) => {
                         output.push(format!("{path}:{test_on_line_nr}:call signatures: None"));
                         continue;
@@ -287,12 +292,40 @@ pub(crate) fn find_and_check_ide_tests(
                     Ok(Some(result)) => {
                         output.push(format!("{path}:{test_on_line_nr}:call signatures:",));
                         for signature in result.into_iterator() {
-                            output.push(format!(
+                            let mut out = format!(
                                 "- {:?}, valid with params: {:?}, on nth param: {:?}",
                                 signature.label,
                                 signature.is_valid_with_arguments,
                                 signature.current_param
-                            ));
+                            );
+                            if args.show_params_utf16_code_units_range {
+                                if let Some(params) = signature.params() {
+                                    out += &format!(
+                                        "; param offsets: {:?}",
+                                        params
+                                            .map(|p| format!(
+                                                "{:?}",
+                                                p.utf16_code_units_name_range()
+                                            ))
+                                            .collect::<Vec<_>>()
+                                    );
+                                } else {
+                                    out += "; no param offsets"
+                                }
+                            }
+                            if args.show_params_utf8_byte_range {
+                                if let Some(params) = signature.params() {
+                                    out += &format!(
+                                        "; param offsets: {:?}",
+                                        params
+                                            .map(|p| format!("{:?}", p.utf8_bytes_name_range))
+                                            .collect::<Vec<_>>()
+                                    );
+                                } else {
+                                    out += "; no param offsets"
+                                }
+                            }
+                            output.push(out);
                         }
                         continue;
                     }

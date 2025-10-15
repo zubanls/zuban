@@ -35,7 +35,7 @@ pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
 use name::Range;
 use parsa_python_cst::{GotoNode, Tree};
-pub use signatures::{CallSignature, CallSignatures};
+pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};

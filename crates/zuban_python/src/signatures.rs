@@ -230,7 +230,8 @@ impl<'db> CallSignatures<'db> {
                     // This formatting is a bit different from format_pretty and it's fine to have
                     // it this way, because the user has different needs here. The signature should
                     // be as small as possible and generics are probably not that important.
-                    let param_strs = params
+                    const PRE_PARAMS_OFFSET: usize = 1;
+                    let param_offsets = params
                         .iter()
                         .map(|p| {
                             let type_ = match p.type_.details() {
@@ -252,14 +253,17 @@ impl<'db> CallSignatures<'db> {
                                 ParamType::StarStar(_) => label += "**",
                                 _ => (),
                             }
+                            let start = label.len();
                             let param_out = if let Some(name) = p.name(db) {
                                 label += name;
+                                let offsets =
+                                    (start + PRE_PARAMS_OFFSET, label.len() + PRE_PARAMS_OFFSET);
                                 label += ": ";
                                 label += &type_;
-                                name.into()
+                                offsets
                             } else {
                                 label += &type_;
-                                type_
+                                (start + PRE_PARAMS_OFFSET, label.len() + PRE_PARAMS_OFFSET)
                             };
                             if p.has_default() {
                                 label += " ="
@@ -267,7 +271,7 @@ impl<'db> CallSignatures<'db> {
                             param_out
                         })
                         .collect();
-                    (Some(param_strs), label)
+                    (Some(param_offsets), label)
                 }
                 CallableParams::Any(_) => (None, "".into()),
                 CallableParams::Never(_) => (Some(vec![]), "*Any, **Any".into()),
@@ -286,9 +290,44 @@ impl<'db> CallSignatures<'db> {
     }
 }
 
+type SignatureLabelRange = (usize, usize);
+
 pub struct CallSignature {
     pub label: Box<str>,
-    pub params: Option<Vec<Box<str>>>,
+    params: Option<Vec<SignatureLabelRange>>,
     pub is_valid_with_arguments: bool,
     pub current_param: Option<usize>,
+}
+
+pub struct SignatureParam<'label> {
+    label: &'label str,
+    pub utf8_bytes_name_range: SignatureLabelRange,
+}
+
+impl CallSignature {
+    pub fn params(&self) -> Option<impl Iterator<Item = SignatureParam<'_>>> {
+        Some(
+            self.params
+                .as_ref()?
+                .iter()
+                .map(|utf8_bytes_range| SignatureParam {
+                    label: &self.label,
+                    utf8_bytes_name_range: *utf8_bytes_range,
+                }),
+        )
+    }
+}
+
+impl<'label> SignatureParam<'label> {
+    pub fn utf16_code_units_name_range(&self) -> SignatureLabelRange {
+        let to_utf16 = |column| self.label[..column].encode_utf16().count();
+        (
+            to_utf16(self.utf8_bytes_name_range.0),
+            to_utf16(self.utf8_bytes_name_range.1),
+        )
+    }
+
+    pub fn name(&self) -> &'label str {
+        &self.label[self.utf8_bytes_name_range.0..self.utf8_bytes_name_range.1]
+    }
 }

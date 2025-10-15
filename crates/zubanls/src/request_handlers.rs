@@ -147,6 +147,7 @@ impl GlobalState<'_> {
         params: SignatureHelpParams,
     ) -> anyhow::Result<Option<SignatureHelp>> {
         let _p = tracing::info_span!("handle_signature_help").entered();
+        let signature_help_label_offsets = self.client_capabilities.signature_help_label_offsets();
         let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
         let signatures = document.call_signatures(pos)?;
         let mut first_active_signature = None;
@@ -162,17 +163,24 @@ impl GlobalState<'_> {
                         first_active_parameter = active_parameter;
                     }
                     SignatureInformation {
-                        label: sig.label.into_string(),
-                        documentation: None,
-                        parameters: sig.params.map(|params| {
+                        parameters: sig.params().map(|params| {
                             params
-                                .into_iter()
                                 .map(|p| ParameterInformation {
-                                    label: ParameterLabel::Simple(p.into_string()),
+                                    label: if signature_help_label_offsets {
+                                        let range = p.utf16_code_units_name_range();
+                                        ParameterLabel::LabelOffsets([
+                                            range.0 as u32,
+                                            range.1 as u32,
+                                        ])
+                                    } else {
+                                        ParameterLabel::Simple(p.name().to_string())
+                                    },
                                     documentation: None,
                                 })
                                 .collect()
                         }),
+                        label: sig.label.into_string(),
+                        documentation: None,
                         active_parameter,
                     }
                 })
