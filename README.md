@@ -13,8 +13,9 @@ completions, goto, references, rename, hover and document highlights.
 Zuban passes over 95% of Mypy’s relevant test suite and offers comprehensive
 support for Python's [type system](https://htmlpreview.github.io/?https://github.com/python/typing/blob/main/conformance/results/results.html).
 
-[Documentation](https://docs.zubanls.com)
-[Website](https://zubanls.com)
+- [Documentation](https://docs.zubanls.com)
+- [Website](https://zubanls.com)
+- [Releases](https://pypi.org/project/zuban/)
 
 ## Installation / Usage
 
