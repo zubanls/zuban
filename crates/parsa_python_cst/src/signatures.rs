@@ -59,6 +59,7 @@ impl Tree {
                             args: SiblingIterator::new_empty(&first),
                             next_stmt: next_stmt
                                 .map(|node| ErrorStmtSignaturePart::new(node, leaf.index)),
+                            until_position: position,
                         }
                     } else {
                         SignatureArgsIterator::None
@@ -78,6 +79,7 @@ impl Tree {
                         args: maybe_args.iter_children(),
                         next_stmt: next_stmt
                             .map(|node| ErrorStmtSignaturePart::new(node, leaf.index)),
+                        until_position: position,
                     },
                 ));
             } else if maybe_args.as_code() == ")" {
@@ -101,6 +103,7 @@ pub enum SignatureArgsIterator<'db> {
     Args {
         args: SiblingIterator<'db>,
         next_stmt: Option<ErrorStmtSignaturePart<'db>>,
+        until_position: CodeIndex,
     },
     Comprehension,
     None,
@@ -120,11 +123,18 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Self::Args { args, next_stmt } => {
+            Self::Args {
+                args,
+                next_stmt,
+                until_position,
+            } => {
                 let Some(mut arg) = args.next() else {
                     return next_stmt.as_mut().and_then(|next_stmt| next_stmt.next());
                 };
                 if arg.as_code() == "," {
+                    if arg.end() > *until_position {
+                        return None;
+                    }
                     if let Some(next) = args.next() {
                         arg = next;
                     } else {

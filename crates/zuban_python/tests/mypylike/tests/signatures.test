@@ -69,7 +69,7 @@ __main__.py:7:call signatures:
 __main__.py:9:call signatures:
 - "(x: int, *args: tuple[Unpack[Ts]]) -> tuple[int, Unpack[Ts]]", valid with params: true, on nth param: Some(1)
 __main__.py:11:call signatures:
-- "(x: int, *args: tuple[Unpack[Tuple[str, ...]], int]) -> tuple[int, Unpack[Tuple[str, ...]]]", valid with params: true, on nth param: Some(1)
+- "(x: int, *args: tuple[Unpack[Tuple[str, ...]], int]) -> tuple[int, Unpack[Tuple[str, ...]]]", valid with params: true, on nth param: Some(0)
 __main__.py:13:call signatures:
 - "(x: int, *args: tuple[Unpack[Tuple[str, ...]], int]) -> tuple[int, Unpack[Tuple[str, ...]]]", valid with params: true, on nth param: Some(1)
 

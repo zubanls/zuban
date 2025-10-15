@@ -38,9 +38,20 @@ fn test_signature_param_position() {
             column: check_code.len(),
         };
         let mut code = format!("{base_code}\n{check_code}");
+        // Run with unclosed parens
         run_with_code(&code, position, nth_param);
+
+        // Add code after with unclosed parens
+        run_with_code(&format!("{code}, ..."), position, nth_param);
+
+        // Add code after with closed parens
+        run_with_code(&format!("{code}, ...)"), position, nth_param);
+
+        // Closed the bracket
         code += ")";
         run_with_code(&code, position, nth_param);
+
+        // Run as a primary target instead of a normal call
         code += ".someattr = 1";
         run_with_code(&code, position, nth_param);
     };
