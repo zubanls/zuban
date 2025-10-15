@@ -4,8 +4,8 @@
 use lsp_types::{
     CompletionOptions, DeclarationCapability, HoverProviderCapability,
     ImplementationProviderCapability, OneOf, PositionEncodingKind, RenameOptions,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
     WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
     WorkspaceServerCapabilities,
 };
@@ -36,8 +36,6 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
             completion_item: None,
             work_done_progress_options: Default::default(),
         }),
-        signature_help_provider: None,
-        /*
         signature_help_provider: Some(SignatureHelpOptions {
             trigger_characters: Some(vec!["(".to_owned(), ",".to_owned(), ")".to_owned()]),
             retrigger_characters: None,
@@ -45,7 +43,6 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 work_done_progress: None,
             },
         }),
-        */
         declaration_provider: Some(DeclarationCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),
         type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),

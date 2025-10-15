@@ -1,8 +1,7 @@
 ---
 source: crates/parsa_python/tests/test_grammar.rs
-assertion_line: 43
+assertion_line: 41
 expression: tree_to_string(tree)
-snapshot_kind: text
 ---
 file: 0-65
  stmt: 1-52
@@ -65,7 +64,7 @@ file: 0-65
                         atom: 37-41
                          Name: 37-41 "asdf"
                         Keyword: 41-42 "("
-                        Error(comprehension): 47-51
+                        arguments: 47-51
                          named_expression: 47-51
                           expression: 47-51
                            atom: 47-51

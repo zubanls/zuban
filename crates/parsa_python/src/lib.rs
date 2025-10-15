@@ -300,7 +300,7 @@ create_grammar!(
     await_primary:? ["await"] primary
     primary:?
           primary "." Name
-        | primary "(" [arguments | comprehension] ")"
+        | primary "(" [comprehension | arguments] ")"
         | primary "[" slices "]"
         | atom
     slices:? ",".(slice | named_expression | starred_expression)+ [","]
@@ -422,7 +422,7 @@ create_grammar!(
     t_primary:?
           (
               t_primary "." Name
-            | t_primary "(" [arguments|comprehension] ")"
+            | t_primary "(" [comprehension | arguments] ")"
             | atom
         ) &("."|"["|"(")
         | t_primary "[" slices "]"
