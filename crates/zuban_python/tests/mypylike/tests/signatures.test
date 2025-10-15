@@ -31,3 +31,19 @@ __main__.py:8:call signatures:
 __main__.py:10:call signatures:
 - "(x: int) -> A", valid with params: true, on nth param: Some(0)
 - "(y: str) -> B", valid with params: true, on nth param: Some(0)
+
+[case param_spec_signatures]
+from typing import Callable
+
+def f[**P](x: int, *args: P.args, **kwargs: P.kwargs) -> Callable[P, str]: ...
+
+#? --codepoint-column 2 signatures
+f(1)
+#? --codepoint-column 9 signatures
+f(1, 2, 3)
+
+[out]
+__main__.py:6:call signatures:
+- "(x: int, *args: P, **kwargs: P) -> Callable[P, str]", valid with params: true, on nth param: Some(0)
+__main__.py:8:call signatures:
+- "(x: int, *args: P, **kwargs: P) -> Callable[P, str]", valid with params: true, on nth param: Some(1)

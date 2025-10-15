@@ -106,6 +106,7 @@ pub struct CallSignatures<'db> {
 
 impl<'db> CallSignatures<'db> {
     pub fn into_iterator(self) -> impl Iterator<Item = CallSignature> {
+        let db = self.db;
         self.callables.into_iter().map(move |callable| {
             let mut is_valid_with_arguments = true;
             let mut current_param = None;
@@ -152,7 +153,7 @@ impl<'db> CallSignatures<'db> {
                         match &param.type_ {
                             ParamType::PositionalOnly(_) | ParamType::Star(_) => continue,
                             ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_) => {
-                                if let Some(name) = param.name(self.db) {
+                                if let Some(name) = param.name(db) {
                                     if name == for_kwarg.as_code() {
                                         return Some(i);
                                     }
@@ -182,7 +183,7 @@ impl<'db> CallSignatures<'db> {
                                 }
                             }
                             ParamType::PositionalOrKeyword(_) => {
-                                if let Some(name) = param.name(self.db) {
+                                if let Some(name) = param.name(db) {
                                     if used_kwargs.contains(&name) {
                                         continue;
                                     }
@@ -193,7 +194,7 @@ impl<'db> CallSignatures<'db> {
                                 }
                             }
                             ParamType::KeywordOnly(_) => {
-                                if let Some(name) = param.name(self.db) {
+                                if let Some(name) = param.name(db) {
                                     if used_kwargs.contains(&name) {
                                         continue;
                                     }
@@ -232,8 +233,8 @@ impl<'db> CallSignatures<'db> {
                         .iter()
                         .map(|p| {
                             let type_ = match p.type_.details() {
-                                ParamTypeDetails::Type(t) => t.format_short(self.db),
-                                ParamTypeDetails::ParamSpecUsage(_) => "<ParamSpec>".into(),
+                                ParamTypeDetails::Type(t) => t.format_short(db),
+                                ParamTypeDetails::ParamSpecUsage(u) => u.param_spec.name(db).into(),
                                 ParamTypeDetails::UnpackedTuple(_) => "<UnpackedTuple>".into(),
                                 ParamTypeDetails::UnpackTypedDict(_) => "<UnpackTypedDict>".into(),
                             };
@@ -245,7 +246,7 @@ impl<'db> CallSignatures<'db> {
                                 ParamType::StarStar(_) => label += "**",
                                 _ => (),
                             }
-                            let param_out = if let Some(name) = p.name(self.db) {
+                            let param_out = if let Some(name) = p.name(db) {
                                 label += name;
                                 label += ": ";
                                 label += &type_;
@@ -268,7 +269,7 @@ impl<'db> CallSignatures<'db> {
             CallSignature {
                 label: format!(
                     "({params_label}) -> {}",
-                    callable.return_type.format_short(self.db)
+                    callable.return_type.format_short(db)
                 )
                 .into_boxed_str(),
                 params,
