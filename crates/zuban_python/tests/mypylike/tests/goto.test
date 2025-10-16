@@ -706,3 +706,47 @@ def evaluate_file(document: str, analysis_config: dict[str, str]
 
 [out]
 __main__.py:2:goto -> builtins.pyi:1157:6:builtins.dict
+
+[case infer_on_param_with_annotation_in_untyped_function]
+class A: ...
+def foo(something):
+    #? infer
+    def b(x: object, y
+        : A): ...
+
+def bar(something):
+    def b(x: object, y: A):
+        #? infer
+        y
+
+def baz(something):
+    def b(x: object, y: A):
+        #? documentation
+        y
+
+def bla(something):
+    def b(x: object, y: A):
+        def c():
+            #? infer
+            y
+[out]
+__main__.py:4:infer -> __main__.py:1:6:__main__.A
+__main__.py:10:infer -> __main__.py:1:6:__main__.A
+__main__.py:15:documentation -> "(param) y: A"
+__main__.py:21:infer -> __main__.py:1:6:__main__.A
+
+[case infer_on_generic_class_in_untyped_function]
+def foo(something):
+    #? --codepoint-column 16 infer --prefer-stubs
+    class X[T: A]:
+        #? --codepoint-column 9 infer --prefer-stubs
+        x: X[T]  # type: ignore
+
+    #? infer --prefer-stubs
+    X().x
+
+class A: ...
+[out]
+__main__.py:3:infer -> __main__.py:10:6:__main__.A
+__main__.py:5:infer -> __main__.py:3:10:__main__.X@3
+__main__.py:8:infer -> __main__.py:3:10:__main__.X@3

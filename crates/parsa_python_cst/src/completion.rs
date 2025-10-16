@@ -275,6 +275,17 @@ pub enum Scope<'db> {
     Lambda(Lambda<'db>),
 }
 
+impl Scope<'_> {
+    pub fn short_debug_info(&self) -> String {
+        match self {
+            Scope::Module => "Module".into(),
+            Scope::Class(c) => format!("class {}", c.name().as_code()),
+            Scope::Function(f) => format!("def {}", f.name().as_code()),
+            Scope::Lambda(_) => "Lambda".into(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum CompletionNode<'db> {
     Attribute {

@@ -6,9 +6,9 @@
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::{
-    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName,
-    NameDefParent, NameImportParent, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, Scope,
+    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, FunctionDef, GotoNode,
+    Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope,
 };
 use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
@@ -30,7 +30,7 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
-    type_helpers::TypeOrClass,
+    type_helpers::{Function, TypeOrClass},
 };
 
 pub(crate) struct PositionalDocument<'db, T> {
@@ -65,8 +65,9 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         let (scope, node) = file.tree.goto_node(position.byte);
         if std::cfg!(debug_assertions) && !matches!(pos, InputPosition::NthUTF8Byte(_)) {
             debug!(
-                "Position for goto-like operation {}->{pos:?} on leaf {node:?}",
+                "Position for goto-like operation {}->{pos:?} on leaf {node:?} in scope {:?}",
                 file.file_path(db),
+                scope.short_debug_info()
             );
         }
         let result = file.ensure_calculated_diagnostics(db);
@@ -217,7 +218,10 @@ pub(crate) fn with_i_s_non_self<'db, R>(
     let had_error = &Cell::new(false);
     let parent_scope = match scope {
         Scope::Module => ParentScope::Module,
-        Scope::Function(f) => ParentScope::Function(f.index()),
+        Scope::Function(f) => {
+            ensure_cached_func(db, file, f);
+            ParentScope::Function(f.index())
+        }
         Scope::Class(c) => ParentScope::Class(c.index()),
         Scope::Lambda(lambda) => {
             return with_i_s_non_self(db, file, lambda.parent_scope(), callback);
@@ -226,6 +230,13 @@ pub(crate) fn with_i_s_non_self<'db, R>(
     InferenceState::run_with_parent_scope(db, file, parent_scope, |i_s| {
         callback(&i_s.with_mode(Mode::AvoidErrors { had_error }))
     })
+}
+
+fn ensure_cached_func(db: &Database, file: &PythonFile, f: FunctionDef) {
+    with_i_s_non_self(db, file, f.parent_scope(), |i_s| {
+        let func = Function::new_with_unknown_parent(db, NodeRef::new(file, f.index()));
+        func.ensure_cached_func(i_s);
+    });
 }
 
 #[derive(Copy, Clone, Debug)]
