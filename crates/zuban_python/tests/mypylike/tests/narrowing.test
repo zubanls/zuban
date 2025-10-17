@@ -1798,3 +1798,19 @@ try:
 except Exception as err:
     print(err)
 err  # E: Trying to read deleted variable "err"
+
+[case async_narrowing]
+# See GH #94
+class A:
+    async def foo(self) -> int | None:
+        return 3
+
+class B:
+    async def foo(self) -> str | None:
+        return "3"
+
+async def test(cls: A | B) -> int | str:
+    result = reveal_type(await cls.foo())  # N: Revealed type is "int | None | str"
+    if result is None:
+        return 0
+    return reveal_type(result)  # N: Revealed type is "int | str"

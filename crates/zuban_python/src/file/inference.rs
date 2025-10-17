@@ -4628,28 +4628,23 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
     }
 }
 
-fn get_generator_return_type(db: &Database, had_issue: &impl Fn(), t: &Type) -> Type {
+fn get_generator_return_type(i_s: &InferenceState, had_issue: &impl Fn(), t: &Type) -> Type {
     match t {
         Type::Class(c) => {
-            if c.link == db.python_state.generator_link() {
-                c.class(db).nth_type_argument(db, 2)
+            if c.link == i_s.db.python_state.generator_link() {
+                c.class(i_s.db).nth_type_argument(i_s.db, 2)
             } else {
                 had_issue();
                 Type::ERROR
             }
         }
         Type::Any(cause) => Type::Any(*cause),
-        Type::Union(union) => Type::Union(UnionType::new(
+        Type::Union(union) => Type::simplified_union_from_iterators(
+            i_s,
             union
-                .entries
                 .iter()
-                .map(|entry| UnionEntry {
-                    type_: get_generator_return_type(db, had_issue, &entry.type_),
-                    format_index: entry.format_index,
-                })
-                .collect(),
-            union.might_have_type_vars,
-        )),
+                .map(|t| get_generator_return_type(i_s, had_issue, &t)),
+        ),
         _ => {
             had_issue();
             Type::ERROR
@@ -4694,7 +4689,7 @@ pub fn await_(
     expect_not_none: bool,
 ) -> Inferred {
     let t = get_generator_return_type(
-        i_s.db,
+        i_s,
         &|| {
             from.add_issue(
                 i_s,

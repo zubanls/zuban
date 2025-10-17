@@ -364,7 +364,7 @@ impl UnionType {
         )
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Type> {
+    pub fn iter(&self) -> impl Iterator<Item = &Type> + Clone {
         self.entries.iter().map(|u| &u.type_)
     }
 
