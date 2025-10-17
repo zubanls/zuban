@@ -110,23 +110,7 @@ impl<'a> ResultContext<'a, '_> {
         {
             return CouldBeALiteral::No;
         }
-        fn could_be_a_literal(type_: &Type) -> CouldBeALiteral {
-            match type_ {
-                Type::Literal(_) | Type::LiteralString { .. } | Type::EnumMember(_) => {
-                    CouldBeALiteral::Yes { implicit: false }
-                }
-                Type::Union(items) => {
-                    for t in items.iter() {
-                        if let x @ CouldBeALiteral::Yes { .. } = could_be_a_literal(t) {
-                            return x;
-                        }
-                    }
-                    CouldBeALiteral::No
-                }
-                _ => CouldBeALiteral::No,
-            }
-        }
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, could_be_a_literal)
+        self.with_type_if_exists_and_replace_type_var_likes(i_s, Type::could_be_a_literal)
             .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
@@ -241,4 +225,23 @@ impl<'a> Iterator for TupleContextIterator<'a> {
 pub(crate) enum CouldBeALiteral {
     Yes { implicit: bool },
     No,
+}
+
+impl Type {
+    fn could_be_a_literal(&self) -> CouldBeALiteral {
+        match self {
+            Type::Literal(_) | Type::LiteralString { .. } | Type::EnumMember(_) => {
+                CouldBeALiteral::Yes { implicit: false }
+            }
+            Type::Union(items) => {
+                for t in items.iter() {
+                    if let x @ CouldBeALiteral::Yes { .. } = t.could_be_a_literal() {
+                        return x;
+                    }
+                }
+                CouldBeALiteral::No
+            }
+            _ => CouldBeALiteral::No,
+        }
+    }
 }
