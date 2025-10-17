@@ -34,8 +34,8 @@ use crate::{
     recoverable_error,
     type_::{CallableLike, ReplaceTypeVarLikes},
     type_helpers::{
-        Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
-        OverloadResult, OverloadedFunction, TypeOrClass,
+        Callable, Class, ClassLookupOptions, InstanceLookupOptions, LookupDetails, OverloadResult,
+        OverloadedFunction, TypeOrClass,
     },
     utils::debug_indent,
 };
@@ -1162,10 +1162,11 @@ pub(crate) fn lookup_on_dataclass<'a>(
         );
     }
     let (result, attr_kind) = lookup_symbol_internal(self_.clone(), i_s, name);
-    if result.is_some() {
+    let class = self_.class(i_s.db);
+    if result.is_some() && !class.lookup_symbol(i_s, name).is_some() {
         return LookupDetails::new(Type::Dataclass(self_.clone()), result, attr_kind);
     }
-    let mut lookup_details = Instance::new(self_.class(i_s.db), None).lookup(
+    let mut lookup_details = class.instance().lookup(
         i_s,
         name,
         InstanceLookupOptions::new(&add_issue)

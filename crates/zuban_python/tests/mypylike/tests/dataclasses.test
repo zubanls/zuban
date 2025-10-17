@@ -883,3 +883,19 @@ class Literal[U](Scalar):
 
 Literal.__coerce__(1) == Literal(1, "")
 reveal_type(Literal.__coerce__)  # N: Revealed type is "def [U] (value: Any) -> __main__.Literal[U]"
+
+[case dataclass_attributes_on_class_are_preferred_over_dataclass]
+# From GH #95
+from dataclasses import dataclass
+
+@dataclass(kw_only=True)
+class Foo:
+    a: int
+    b: str
+    __match_args__ = ("a", "b")
+
+foo = Foo(a=1, b="2")
+
+match foo:
+    case Foo(a, b):
+        pass
