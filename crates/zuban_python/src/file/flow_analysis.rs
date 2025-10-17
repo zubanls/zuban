@@ -2437,6 +2437,7 @@ impl Inference<'_, '_, '_> {
                         if !matches!(
                             except_type,
                             None | Some(ExceptType::ContainsOnlyBaseExceptions)
+                                | Some(ExceptType::HasExceptionGroup)
                         ) {
                             self.add_issue(
                                 except_expr.unwrap().index(),

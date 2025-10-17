@@ -1444,3 +1444,10 @@ reveal_type(0e3)  # N: Revealed type is "float"
 
 reveal_type(0b1)  # N: Revealed type is "Literal[1]?"
 reveal_type(0xb1)  # N: Revealed type is "Literal[177]?"
+
+[case exception_group_is_valid_in_except]
+# From GH #96
+try:
+    1
+except ExceptionGroup:
+    pass
