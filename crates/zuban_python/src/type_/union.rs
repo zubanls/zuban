@@ -30,6 +30,22 @@ impl Type {
         *self =
             std::mem::replace(self, Self::Never(NeverCause::Other)).simplified_union(i_s, other);
     }
+
+    pub fn simplified_union_from_iterators<T: Borrow<Self>>(
+        i_s: &InferenceState,
+        types: impl Iterator<Item = T> + Clone,
+    ) -> Self {
+        let highest_union_format_index = types
+            .clone()
+            .map(|t| t.borrow().highest_union_format_index())
+            .max()
+            .unwrap_or(0);
+        simplified_union_from_iterators_with_format_index(
+            i_s,
+            types.map(|t| t.borrow().clone()).enumerate(),
+            highest_union_format_index,
+        )
+    }
 }
 
 impl TupleArgs {
@@ -89,22 +105,6 @@ impl TupleArgs {
             )),
         }
     }
-}
-
-pub fn simplified_union_from_iterators<T: Borrow<Type>>(
-    i_s: &InferenceState,
-    types: impl Iterator<Item = T> + Clone,
-) -> Type {
-    let highest_union_format_index = types
-        .clone()
-        .map(|t| t.borrow().highest_union_format_index())
-        .max()
-        .unwrap_or(0);
-    simplified_union_from_iterators_with_format_index(
-        i_s,
-        types.map(|t| t.borrow().clone()).enumerate(),
-        highest_union_format_index,
-    )
 }
 
 pub fn simplified_union_from_iterators_with_format_index(

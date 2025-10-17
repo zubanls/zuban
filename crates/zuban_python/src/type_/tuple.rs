@@ -11,8 +11,7 @@ use num_bigint::BigInt;
 
 use super::{
     ClassGenerics, CustomBehavior, FormatStyle, GenericItem, GenericsList, LookupResult,
-    RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage, simplified_union_from_iterators,
-    utils::method_with_fallback,
+    RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage, utils::method_with_fallback,
 };
 use crate::{
     arguments::Args,
@@ -220,7 +219,7 @@ impl Tuple {
                                                     i_s.db.python_state.object_type()
                                                 }
                                                 TupleUnpack::ArbitraryLen(t) => {
-                                                    simplified_union_from_iterators(
+                                                    Type::simplified_union_from_iterators(
                                                         i_s,
                                                         with_unpack
                                                             .before
@@ -249,7 +248,7 @@ impl Tuple {
                                                     i_s.db.python_state.object_type()
                                                 }
                                                 TupleUnpack::ArbitraryLen(t) => {
-                                                    simplified_union_from_iterators(
+                                                    Type::simplified_union_from_iterators(
                                                         i_s,
                                                         std::iter::once(t).chain(
                                                             with_unpack
@@ -700,10 +699,10 @@ impl TupleArgs {
 
     pub fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
         match self {
-            TupleArgs::FixedLen(ts) => simplified_union_from_iterators(i_s, ts.iter()),
+            TupleArgs::FixedLen(ts) => Type::simplified_union_from_iterators(i_s, ts.iter()),
             TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
                 TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
-                TupleUnpack::ArbitraryLen(t) => simplified_union_from_iterators(
+                TupleUnpack::ArbitraryLen(t) => Type::simplified_union_from_iterators(
                     i_s,
                     with_unpack
                         .before

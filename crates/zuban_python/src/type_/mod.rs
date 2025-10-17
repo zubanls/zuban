@@ -64,10 +64,7 @@ pub(crate) use self::{
         check_typed_dict_call, infer_typed_dict_arg, initialize_typed_dict, lookup_on_typed_dict,
         maybe_add_extra_keys_issue,
     },
-    union::{
-        UnionEntry, UnionType, simplified_union_from_iterators,
-        simplified_union_from_iterators_with_format_index,
-    },
+    union::{UnionEntry, UnionType, simplified_union_from_iterators_with_format_index},
 };
 use crate::{
     arguments::Args,

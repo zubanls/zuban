@@ -6,9 +6,7 @@ use crate::{
     database::{ClassKind, Specific},
     debug,
     diagnostics::IssueKind,
-    type_::{
-        ClassGenerics, NeverCause, TupleArgs, TupleUnpack, Type, simplified_union_from_iterators,
-    },
+    type_::{ClassGenerics, NeverCause, TupleArgs, TupleUnpack, Type},
     utils::join_with_commas,
 };
 
@@ -210,7 +208,7 @@ impl Inference<'_, '_, '_> {
         Some(match ts.len() {
             0 => Type::Never(NeverCause::Other),
             1 => ts.into_iter().next().unwrap(),
-            _ => simplified_union_from_iterators(self.i_s, ts.iter()),
+            _ => Type::simplified_union_from_iterators(self.i_s, ts.iter()),
         })
     }
 }

@@ -19,7 +19,7 @@ use crate::{
     inferred::{AttributeKind, Inferred},
     matching::{ErrorStrs, LookupKind, Match, Matcher, MismatchReason, OnTypeError, ResultContext},
     new_class,
-    type_::{StarStarParamType, Tuple, simplified_union_from_iterators},
+    type_::{StarStarParamType, Tuple},
     type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
@@ -613,7 +613,7 @@ impl TypedDict {
 
     pub fn union_of_all_types(&self, i_s: &InferenceState) -> Type {
         let ms = self.members(i_s.db);
-        simplified_union_from_iterators(
+        Type::simplified_union_from_iterators(
             i_s,
             ms.named
                 .iter()

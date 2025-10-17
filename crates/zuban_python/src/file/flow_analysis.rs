@@ -39,7 +39,7 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple,
         NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, TypedDict,
-        UnionType, WithUnpack, lookup_on_enum_instance, simplified_union_from_iterators,
+        UnionType, WithUnpack, lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -4950,7 +4950,7 @@ impl TruthyInferred {
     fn as_cow_type<'slf>(&'slf self, i_s: &InferenceState<'slf, '_>) -> Cow<'slf, Type> {
         match self {
             Self::Simple { inf, .. } => inf.as_cow_type(i_s),
-            Self::Union(infs) => Cow::Owned(simplified_union_from_iterators(
+            Self::Union(infs) => Cow::Owned(Type::simplified_union_from_iterators(
                 i_s,
                 infs.iter().map(|inf| inf.as_cow_type(i_s)),
             )),

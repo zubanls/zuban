@@ -32,7 +32,7 @@ use crate::{
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
-    type_::{CallableLike, ReplaceTypeVarLikes, simplified_union_from_iterators},
+    type_::{CallableLike, ReplaceTypeVarLikes},
     type_helpers::{
         Callable, Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails,
         OverloadResult, OverloadedFunction, TypeOrClass,
@@ -700,7 +700,7 @@ fn field_options_from_args(
                     let mut converter = match result.as_cow_type(i_s).maybe_callable(i_s) {
                         Some(CallableLike::Callable(c)) => c.first_positional_type(),
                         Some(CallableLike::Overload(overload)) => {
-                            Some(simplified_union_from_iterators(
+                            Some(Type::simplified_union_from_iterators(
                                 i_s,
                                 overload.iter_functions().map(|func| {
                                     func.first_positional_type().unwrap_or_else(|| Type::ERROR)
