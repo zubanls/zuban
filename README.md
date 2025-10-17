@@ -35,6 +35,7 @@ If you want Zuban to pick up your dependencies, please activate the virtual env 
 You can install zuban **locally** by running:
 
 ```
+pip install maturin
 git clone --recursive https://github.com/zubanls/zuban
 bash scripts/install-locally.sh
 ```
