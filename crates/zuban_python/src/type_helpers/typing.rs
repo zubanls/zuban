@@ -69,7 +69,7 @@ pub(crate) fn execute_cast<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'
     {
         let t_in = actual.as_cow_type(i_s);
         let t_out = result.as_cow_type(i_s);
-        if is_equal_type(i_s.db, &t_in, &t_out) && !(t_in.is_any()) {
+        if t_in.is_equal_type(i_s.db, &t_out) && !(t_in.is_any()) {
             args.add_issue(
                 i_s,
                 IssueKind::RedundantCast {
@@ -243,7 +243,7 @@ pub(crate) fn execute_assert_type<'db>(
         return Inferred::new_any_from_error();
     };
     let second_type = second.as_cow_type(i_s);
-    if !is_equal_type(i_s.db, &first_type, &second_type) {
+    if !first_type.is_equal_type(i_s.db, &second_type) {
         let mut format_data = FormatData::new_short(i_s.db);
         format_data.hide_implicit_literals = false;
         let mut actual = first_type.format(&format_data);
@@ -258,168 +258,174 @@ pub(crate) fn execute_assert_type<'db>(
     first
 }
 
-fn is_equal_type(db: &Database, t1: &Type, t2: &Type) -> bool {
-    let eq = |t1: &Type, t2: &Type| is_equal_type(db, t1, t2);
-    let all_eq = |ts1: &[Type], ts2: &[Type]| ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2));
-    let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
-        let m1 = td1.members(db);
-        let m2 = td2.members(db);
-        m1.named.len() == m2.named.len()
-            && m1.named.iter().zip(m2.named.iter()).all(|(m1, m2)| {
-                m1.name.as_str(db) == m2.name.as_str(db)
-                    && m1.required == m2.required
-                    && m1.read_only == m2.read_only
-                    && eq(&m1.type_, &m2.type_)
-            })
-            && match (&m1.extra_items, &m2.extra_items) {
-                (None, None) => true,
-                (Some(t1), Some(t2)) => {
-                    is_equal_type(db, &t1.t, &t2.t) && t1.read_only == t2.read_only
+impl Type {
+    fn is_equal_type(&self, db: &Database, other: &Type) -> bool {
+        let eq = |t1: &Type, t2: &Type| t1.is_equal_type(db, t2);
+        let all_eq =
+            |ts1: &[Type], ts2: &[Type]| ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2));
+        let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
+            let m1 = td1.members(db);
+            let m2 = td2.members(db);
+            m1.named.len() == m2.named.len()
+                && m1.named.iter().zip(m2.named.iter()).all(|(m1, m2)| {
+                    m1.name.as_str(db) == m2.name.as_str(db)
+                        && m1.required == m2.required
+                        && m1.read_only == m2.read_only
+                        && eq(&m1.type_, &m2.type_)
+                })
+                && match (&m1.extra_items, &m2.extra_items) {
+                    (None, None) => true,
+                    (Some(t1), Some(t2)) => {
+                        t1.t.is_equal_type(db, &t2.t) && t1.read_only == t2.read_only
+                    }
+                    _ => false,
                 }
-                _ => false,
+        };
+        let tuple_args_eq = |t1: &TupleArgs, t2: &TupleArgs| match (t1, t2) {
+            (TupleArgs::WithUnpack(w1), TupleArgs::WithUnpack(w2)) => {
+                all_eq(&w1.before, &w2.before) && all_eq(&w1.after, &w2.after)
             }
-    };
-    let tuple_args_eq = |t1: &TupleArgs, t2: &TupleArgs| match (t1, t2) {
-        (TupleArgs::WithUnpack(w1), TupleArgs::WithUnpack(w2)) => {
-            all_eq(&w1.before, &w2.before) && all_eq(&w1.after, &w2.after)
-        }
-        (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2)) => all_eq(ts1, ts2),
-        (TupleArgs::ArbitraryLen(t1), TupleArgs::ArbitraryLen(t2)) => eq(t1, t2),
-        _ => false,
-    };
-    let params_eq = |p1: &CallableParams, p2: &CallableParams| match (p1, p2) {
-        (CallableParams::Simple(ps1), CallableParams::Simple(ps2)) => {
-            ps1.iter().zip(ps2.iter()).all(|(p1, p2)| {
-                p1.has_default == p2.has_default
-                    && match (&p1.type_, &p2.type_) {
-                        (ParamType::PositionalOnly(t1), ParamType::PositionalOnly(t2)) => {
-                            eq(t1, t2)
-                        }
-                        (
-                            ParamType::PositionalOrKeyword(t1),
-                            ParamType::PositionalOrKeyword(t2),
-                        )
-                        | (ParamType::KeywordOnly(t1), ParamType::KeywordOnly(t2)) => {
-                            eq(t1, t2)
-                                && match (p1.name.as_ref(), p2.name.as_ref()) {
-                                    (Some(n1), Some(n2)) => n1.as_str(db) == n2.as_str(db),
-                                    // Should these cases even happen?
-                                    (None, None) => true,
-                                    (_, _) => false,
-                                }
-                        }
-                        (ParamType::Star(pt1), ParamType::Star(pt2)) => match (pt1, pt2) {
-                            (StarParamType::ArbitraryLen(t1), StarParamType::ArbitraryLen(t2)) => {
+            (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2)) => all_eq(ts1, ts2),
+            (TupleArgs::ArbitraryLen(t1), TupleArgs::ArbitraryLen(t2)) => eq(t1, t2),
+            _ => false,
+        };
+        let params_eq = |p1: &CallableParams, p2: &CallableParams| match (p1, p2) {
+            (CallableParams::Simple(ps1), CallableParams::Simple(ps2)) => {
+                ps1.iter().zip(ps2.iter()).all(|(p1, p2)| {
+                    p1.has_default == p2.has_default
+                        && match (&p1.type_, &p2.type_) {
+                            (ParamType::PositionalOnly(t1), ParamType::PositionalOnly(t2)) => {
                                 eq(t1, t2)
                             }
                             (
-                                StarParamType::ParamSpecArgs(u1),
-                                StarParamType::ParamSpecArgs(u2),
-                            ) => u1 == u2,
-                            (
-                                StarParamType::UnpackedTuple(tup1),
-                                StarParamType::UnpackedTuple(tup2),
-                            ) => tuple_args_eq(&tup1.args, &tup2.args),
+                                ParamType::PositionalOrKeyword(t1),
+                                ParamType::PositionalOrKeyword(t2),
+                            )
+                            | (ParamType::KeywordOnly(t1), ParamType::KeywordOnly(t2)) => {
+                                eq(t1, t2)
+                                    && match (p1.name.as_ref(), p2.name.as_ref()) {
+                                        (Some(n1), Some(n2)) => n1.as_str(db) == n2.as_str(db),
+                                        // Should these cases even happen?
+                                        (None, None) => true,
+                                        (_, _) => false,
+                                    }
+                            }
+                            (ParamType::Star(pt1), ParamType::Star(pt2)) => match (pt1, pt2) {
+                                (
+                                    StarParamType::ArbitraryLen(t1),
+                                    StarParamType::ArbitraryLen(t2),
+                                ) => eq(t1, t2),
+                                (
+                                    StarParamType::ParamSpecArgs(u1),
+                                    StarParamType::ParamSpecArgs(u2),
+                                ) => u1 == u2,
+                                (
+                                    StarParamType::UnpackedTuple(tup1),
+                                    StarParamType::UnpackedTuple(tup2),
+                                ) => tuple_args_eq(&tup1.args, &tup2.args),
+                                _ => false,
+                            },
+                            (ParamType::StarStar(s1), ParamType::StarStar(s2)) => match (s1, s2) {
+                                (
+                                    StarStarParamType::ValueType(t1),
+                                    StarStarParamType::ValueType(t2),
+                                ) => eq(t1, t2),
+                                (
+                                    StarStarParamType::ParamSpecKwargs(u1),
+                                    StarStarParamType::ParamSpecKwargs(u2),
+                                ) => u1 == u2,
+                                (
+                                    StarStarParamType::UnpackTypedDict(td1),
+                                    StarStarParamType::UnpackTypedDict(td2),
+                                ) => typed_dict_eq(td1, td2),
+                                _ => false,
+                            },
                             _ => false,
-                        },
-                        (ParamType::StarStar(s1), ParamType::StarStar(s2)) => match (s1, s2) {
-                            (
-                                StarStarParamType::ValueType(t1),
-                                StarStarParamType::ValueType(t2),
-                            ) => eq(t1, t2),
-                            (
-                                StarStarParamType::ParamSpecKwargs(u1),
-                                StarStarParamType::ParamSpecKwargs(u2),
-                            ) => u1 == u2,
-                            (
-                                StarStarParamType::UnpackTypedDict(td1),
-                                StarStarParamType::UnpackTypedDict(td2),
-                            ) => typed_dict_eq(td1, td2),
-                            _ => false,
-                        },
-                        _ => false,
-                    }
-            })
-        }
-        (CallableParams::Any(_), CallableParams::Any(_)) => true,
-        (CallableParams::Never(_), CallableParams::Never(_)) => true,
-        _ => false,
-    };
-    let matches_generics = |g1: Generics, g2: Generics| {
-        g1.iter(db).zip(g2.iter(db)).all(|(g1, g2)| match (g1, g2) {
-            (Generic::TypeArg(t1), Generic::TypeArg(t2)) => eq(&t1, &t2),
-            (Generic::TypeArgs(ts1), Generic::TypeArgs(ts2)) => tuple_args_eq(&ts1.args, &ts2.args),
-            (Generic::ParamSpecArg(p1), Generic::ParamSpecArg(p2)) => {
-                p1.type_vars == p2.type_vars && params_eq(&p1.params, &p2.params)
+                        }
+                })
             }
+            (CallableParams::Any(_), CallableParams::Any(_)) => true,
+            (CallableParams::Never(_), CallableParams::Never(_)) => true,
             _ => false,
-        })
-    };
-    let generic_class_eq = |g1: &GenericClass, g2: &GenericClass| {
-        g1.link == g2.link && { matches_generics(g1.class(db).generics, g2.class(db).generics) }
-    };
-    match (t1, t2) {
-        (Type::Class(g1), Type::Class(g2)) => generic_class_eq(g1, g2),
-        (Type::Dataclass(d1), Type::Dataclass(d2)) => generic_class_eq(&d1.class, &d2.class),
-        (Type::Tuple(tup1), Type::Tuple(tup2)) => tuple_args_eq(&tup1.args, &tup2.args),
-        (Type::NamedTuple(nt1), Type::NamedTuple(nt2)) => {
-            tuple_args_eq(&nt1.as_tuple().args, &nt2.as_tuple().args)
-        }
-        (Type::TypedDict(td1), Type::TypedDict(td2)) => typed_dict_eq(td1, td2),
-        (Type::Callable(c1), Type::Callable(c2)) => {
-            eq(&c1.return_type, &c2.return_type)
-                && params_eq(&c1.params, &c2.params)
-                && c1.type_vars == c2.type_vars
-                && {
-                    c1.guard.is_none() && c2.guard.is_none()
-                        || c1
-                            .guard
-                            .as_ref()
-                            .zip(c2.guard.as_ref())
-                            .is_some_and(|(c1, c2)| {
-                                c1.from_type_is && c2.from_type_is && eq(&c1.type_, &c2.type_)
-                            })
+        };
+        let matches_generics = |g1: Generics, g2: Generics| {
+            g1.iter(db).zip(g2.iter(db)).all(|(g1, g2)| match (g1, g2) {
+                (Generic::TypeArg(t1), Generic::TypeArg(t2)) => eq(&t1, &t2),
+                (Generic::TypeArgs(ts1), Generic::TypeArgs(ts2)) => {
+                    tuple_args_eq(&ts1.args, &ts2.args)
                 }
-        }
-        (Type::Type(t1), Type::Type(t2)) => eq(t1, t2),
-        (Type::RecursiveType(r1), Type::RecursiveType(r2)) => {
-            r1.link == r2.link
-                && r1
-                    .generics
-                    .as_ref()
-                    .zip(r2.generics.as_ref())
-                    .is_none_or(|(g1, g2)| {
-                        matches_generics(Generics::List(g1, None), Generics::List(g2, None))
-                    })
-        }
-        (Type::Literal(l1), Type::Literal(l2)) => l1.value(db) == l2.value(db),
-        (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
-            l.implicit && l.fallback_node_ref(db).as_link() == c.link
-        }
-        (Type::LiteralString { .. }, Type::LiteralString { .. }) => true,
-        (Type::Any(_), Type::Any(_)) => true,
-        (Type::Never(_), Type::Never(_)) => true,
-        (Type::Union(u1), Type::Union(u2)) => is_equal_union_or_intersection(
-            db,
-            u1.entries.iter().map(|e| &e.type_),
-            u2.entries.iter().map(|e| &e.type_),
-        ),
-        (Type::Intersection(i1), Type::Intersection(i2)) => {
-            is_equal_union_or_intersection(db, i1.iter_entries(), i2.iter_entries())
-        }
-        (Type::EnumMember(m1), Type::EnumMember(m2)) => {
-            m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
-        }
-        (Type::Any(_), Type::TypeVar(tv)) | (Type::TypeVar(tv), Type::Any(_)) => {
-            match tv.type_var.kind(db) {
-                TypeVarKind::Unrestricted => false,
-                // TODO this should probably match in different ways and check if this is from
-                // untyped defs.
-                TypeVarKind::Bound(bound) => bound.is_any(),
-                TypeVarKind::Constraints(_) => false,
+                (Generic::ParamSpecArg(p1), Generic::ParamSpecArg(p2)) => {
+                    p1.type_vars == p2.type_vars && params_eq(&p1.params, &p2.params)
+                }
+                _ => false,
+            })
+        };
+        let generic_class_eq = |g1: &GenericClass, g2: &GenericClass| {
+            g1.link == g2.link && { matches_generics(g1.class(db).generics, g2.class(db).generics) }
+        };
+        match (self, other) {
+            (Type::Class(g1), Type::Class(g2)) => generic_class_eq(g1, g2),
+            (Type::Dataclass(d1), Type::Dataclass(d2)) => generic_class_eq(&d1.class, &d2.class),
+            (Type::Tuple(tup1), Type::Tuple(tup2)) => tuple_args_eq(&tup1.args, &tup2.args),
+            (Type::NamedTuple(nt1), Type::NamedTuple(nt2)) => {
+                tuple_args_eq(&nt1.as_tuple().args, &nt2.as_tuple().args)
             }
+            (Type::TypedDict(td1), Type::TypedDict(td2)) => typed_dict_eq(td1, td2),
+            (Type::Callable(c1), Type::Callable(c2)) => {
+                eq(&c1.return_type, &c2.return_type)
+                    && params_eq(&c1.params, &c2.params)
+                    && c1.type_vars == c2.type_vars
+                    && {
+                        c1.guard.is_none() && c2.guard.is_none()
+                            || c1
+                                .guard
+                                .as_ref()
+                                .zip(c2.guard.as_ref())
+                                .is_some_and(|(c1, c2)| {
+                                    c1.from_type_is && c2.from_type_is && eq(&c1.type_, &c2.type_)
+                                })
+                    }
+            }
+            (Type::Type(t1), Type::Type(t2)) => eq(t1, t2),
+            (Type::RecursiveType(r1), Type::RecursiveType(r2)) => {
+                r1.link == r2.link
+                    && r1
+                        .generics
+                        .as_ref()
+                        .zip(r2.generics.as_ref())
+                        .is_none_or(|(g1, g2)| {
+                            matches_generics(Generics::List(g1, None), Generics::List(g2, None))
+                        })
+            }
+            (Type::Literal(l1), Type::Literal(l2)) => l1.value(db) == l2.value(db),
+            (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
+                l.implicit && l.fallback_node_ref(db).as_link() == c.link
+            }
+            (Type::LiteralString { .. }, Type::LiteralString { .. }) => true,
+            (Type::Any(_), Type::Any(_)) => true,
+            (Type::Never(_), Type::Never(_)) => true,
+            (Type::Union(u1), Type::Union(u2)) => is_equal_union_or_intersection(
+                db,
+                u1.entries.iter().map(|e| &e.type_),
+                u2.entries.iter().map(|e| &e.type_),
+            ),
+            (Type::Intersection(i1), Type::Intersection(i2)) => {
+                is_equal_union_or_intersection(db, i1.iter_entries(), i2.iter_entries())
+            }
+            (Type::EnumMember(m1), Type::EnumMember(m2)) => {
+                m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
+            }
+            (Type::Any(_), Type::TypeVar(tv)) | (Type::TypeVar(tv), Type::Any(_)) => {
+                match tv.type_var.kind(db) {
+                    TypeVarKind::Unrestricted => false,
+                    // TODO this should probably match in different ways and check if this is from
+                    // untyped defs.
+                    TypeVarKind::Bound(bound) => bound.is_any(),
+                    TypeVarKind::Constraints(_) => false,
+                }
+            }
+            _ => self == other,
         }
-        _ => t1 == t2,
     }
 }
 
@@ -434,7 +440,7 @@ fn is_equal_union_or_intersection<'x>(
     let mut all_second: Vec<_> = ts2.collect();
     'outer: for t1 in ts1 {
         for (i, t2) in all_second.iter().enumerate() {
-            if is_equal_type(db, t1, t2) {
+            if t1.is_equal_type(db, t2) {
                 all_second.remove(i);
                 continue 'outer;
             }
