@@ -757,8 +757,15 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn avoid_implicit_literal(self, i_s: &InferenceState) -> Self {
+        match self.avoid_implicit_literal_cow(i_s) {
+            Cow::Borrowed(_) => self,
+            Cow::Owned(owned) => owned,
+        }
+    }
+
+    pub fn avoid_implicit_literal_cow(&self, i_s: &InferenceState) -> Cow<'_, Self> {
         if i_s.is_calculating_enum_members() {
-            return self;
+            return Cow::Borrowed(self);
         }
         match self.state {
             InferredState::Saved(link) => {
@@ -767,32 +774,32 @@ impl<'db: 'slf, 'slf> Inferred {
                 match point.kind() {
                     PointKind::Specific => match point.specific() {
                         Specific::MaybeSelfParam => {
-                            return Inferred::from_type(
+                            return Cow::Owned(Inferred::from_type(
                                 i_s.current_class().unwrap().as_type(i_s.db),
-                            );
+                            ));
                         }
                         Specific::IntLiteral
                         | Specific::StringLiteral
                         | Specific::BytesLiteral
                         | Specific::BoolLiteral
                         | Specific::AnnotationOrTypeCommentFinal => (),
-                        _ => return self,
+                        _ => return Cow::Borrowed(self),
                     },
                     PointKind::Complex => {
                         if node_ref.maybe_complex().unwrap().maybe_instance().is_none() {
-                            return self;
+                            return Cow::Borrowed(self);
                         }
                     }
-                    _ => return self,
+                    _ => return Cow::Borrowed(self),
                 }
             }
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(_)) => (),
-            _ => return self,
+            _ => return Cow::Borrowed(self),
         }
         if let Some(t) = self.as_cow_type(i_s).maybe_avoid_implicit_literal(i_s.db) {
-            Self::from_type(t)
+            Cow::Owned(Self::from_type(t))
         } else {
-            self
+            Cow::Borrowed(self)
         }
     }
 

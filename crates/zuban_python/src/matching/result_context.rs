@@ -228,7 +228,7 @@ pub(crate) enum CouldBeALiteral {
 }
 
 impl Type {
-    fn could_be_a_literal(&self) -> CouldBeALiteral {
+    pub fn could_be_a_literal(&self) -> CouldBeALiteral {
         match self {
             Type::Literal(_) | Type::LiteralString { .. } | Type::EnumMember(_) => {
                 CouldBeALiteral::Yes { implicit: false }

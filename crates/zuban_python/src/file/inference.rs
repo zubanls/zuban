@@ -434,7 +434,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 },
             };
             self.infer_assignment_right_side(right_side, &mut result_context)
-                .avoid_implicit_literal(self.i_s)
         };
         let n = NodeRef::new(self.file, right_side.index());
         for target in targets {
@@ -1106,7 +1105,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         from,
                         assign_kind,
                         class,
-                        value,
+                        &value.clone().avoid_implicit_literal(i_s),
                         &ancestor_lookup,
                         &ancestor_inf,
                         save,
@@ -1315,7 +1314,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 }
                                 return;
                             }
-                            let new_declaration = value_t.simplified_union(i_s, &Type::None);
+                            let new_declaration = value_t
+                                .avoid_implicit_literal_cow(i_s.db)
+                                .simplified_union(i_s, &Type::None);
                             narrow(
                                 PointLink::new(self.file.file_index, first_index),
                                 &new_declaration,
@@ -1486,6 +1487,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 save(name_def.index(), &original);
                 return;
             }
+            let value = match assign_kind {
+                AssignKind::Normal | AssignKind::Walrus => {
+                    value.avoid_implicit_literal_cow(self.i_s)
+                }
+                _ => Cow::Borrowed(value),
+            };
             if assign_kind.is_normal_assignment() {
                 if let Some(partial) = value.maybe_new_partial(i_s, |t| {
                     set_defaultdict_type(NodeRef::new(self.file, name_def.index()), t)
@@ -1546,7 +1553,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if let Some(value_without_final) = value.remove_final(i_s) {
                 save(name_def.index(), &value_without_final);
             } else {
-                save(name_def.index(), value);
+                save(name_def.index(), &value);
             }
         }
     }
@@ -1910,7 +1917,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     {
                         let partial_flags = point.partial_flags();
                         if !partial_flags.finished {
-                            let value_t = value.as_type(i_s);
+                            let value_t = value.as_type(i_s).avoid_implicit_literal(i_s.db);
                             if specific == Specific::PartialDefaultDict {
                                 let Some(ComplexPoint::TypeInstance(original_value)) = from
                                     .add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF)

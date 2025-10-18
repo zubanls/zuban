@@ -484,7 +484,7 @@ async def check():
         reveal_type(y)  # N: Revealed type is "str"
 
     async for z in g(""):
-        reveal_type(z)  # N: Revealed type is "str | Literal[1]?"
+        reveal_type(z)  # N: Revealed type is "str | int"
 
 [case untyped_async]
 # flags: --no-mypy-compatible

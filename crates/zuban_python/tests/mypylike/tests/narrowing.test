@@ -794,7 +794,7 @@ def bla(x: Animal):
     try:
         x.paws = 3
     except:
-        reveal_type(x.paws)  # N: Revealed type is "str | int"
+        reveal_type(x.paws)  # N: Revealed type is "Literal['']? | Literal[3]?"
 
 [case with_invalidation]
 class Animal:
@@ -817,7 +817,7 @@ def foo(x: Animal):
     with DoesNotSuppress():
         x = Dog()
         x.paws = 3
-    reveal_type(x.paws)  # N: Revealed type is "int"
+    reveal_type(x.paws)  # N: Revealed type is "Literal[3]?"
 
 def bar(x: Animal):
     x = Dog()
@@ -841,7 +841,7 @@ def bla(x: Animal):
     x.paws = ""
     with Suppresses():
         x.paws = 3
-    reveal_type(x.paws)  # N: Revealed type is "str | int"
+    reveal_type(x.paws)  # N: Revealed type is "Literal['']? | Literal[3]?"
 
 
 [case if_invalidation2]
@@ -854,7 +854,7 @@ if bool():
     x = Dog()
     reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 else:
-    reveal_type(x.paws)  # N: Revealed type is "str"
+    reveal_type(x.paws)  # N: Revealed type is "Literal['']?"
 reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 [case if_invalidation3]
@@ -868,7 +868,7 @@ if bool():
     reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 else:
     x.paws = 3
-    reveal_type(x.paws)  # N: Revealed type is "int"
+    reveal_type(x.paws)  # N: Revealed type is "Literal[3]?"
 reveal_type(x.paws)  # N: Revealed type is "int | str | bytes"
 
 [case if_invalidation_nested]
@@ -884,7 +884,7 @@ def foo(x: House):
         x = House()
         reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
     else:
-        reveal_type(x.pet.paws)  # N: Revealed type is "str"
+        reveal_type(x.pet.paws)  # N: Revealed type is "Literal['']?"
     reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
 
 def bar(x: House):
@@ -893,7 +893,7 @@ def bar(x: House):
         x.pet = Dog()
         reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
     else:
-        reveal_type(x.pet.paws)  # N: Revealed type is "str"
+        reveal_type(x.pet.paws)  # N: Revealed type is "Literal['']?"
     reveal_type(x.pet.paws)  # N: Revealed type is "int | str | bytes"
 
 [case loop_invalidation1]
@@ -1814,3 +1814,25 @@ async def test(cls: A | B) -> int | str:
     if result is None:
         return 0
     return reveal_type(result)  # N: Revealed type is "int | str"
+
+[case assignment_to_literal_should_not_avoid_literals]
+# From GH #97
+import enum
+from dataclasses import dataclass
+from typing import Literal, reveal_type
+
+class Color(enum.Enum):
+    red = "red"
+    blue = "blue"
+
+Colors = Literal["red", "blue"]
+
+@dataclass
+class Foo:
+    bar: Colors
+
+def test(foo: Foo, color: Color):
+    foo.bar = reveal_type(color.value)  # N: Revealed type is "Literal['red']? | Literal['blue']?"
+
+def test2(color: Color) -> Colors:
+    return color.value

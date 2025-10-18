@@ -31,7 +31,7 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue, add_attribute_error},
-    matching::{LookupKind, Match, Matcher, OnTypeError, ResultContext},
+    matching::{CouldBeALiteral, LookupKind, Match, Matcher, OnTypeError, ResultContext},
     new_class,
     node_ref::NodeRef,
     recoverable_error,
@@ -1707,6 +1707,20 @@ impl Inference<'_, '_, '_> {
     }
 
     fn narrow_or_widen_target(
+        &self,
+        key: FlowKey,
+        declaration_t: &Type,
+        new_t: &Type,
+        check_for_error: impl FnOnce() -> RedefinitionResult,
+    ) {
+        let new_t = match declaration_t.could_be_a_literal() {
+            CouldBeALiteral::Yes { .. } => Cow::Borrowed(new_t),
+            _ => new_t.avoid_implicit_literal_cow(self.i_s.db),
+        };
+        self.narrow_or_widen_target_internal(key, declaration_t, &new_t, check_for_error)
+    }
+
+    fn narrow_or_widen_target_internal(
         &self,
         key: FlowKey,
         declaration_t: &Type,

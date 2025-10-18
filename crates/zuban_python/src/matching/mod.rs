@@ -452,13 +452,17 @@ impl IteratorContent {
                         let union = if use_joins {
                             Inferred::gather_base_types(i_s, |callable| {
                                 for t in relevant_entries {
-                                    callable(Inferred::from_type(t.clone()));
+                                    callable(Inferred::from_type(
+                                        t.avoid_implicit_literal_cow(i_s.db).into_owned(),
+                                    ));
                                 }
                             })
                         } else {
                             Inferred::gather_simplified_union(i_s, |callable| {
                                 for t in relevant_entries {
-                                    callable(Inferred::from_type(t.clone()));
+                                    callable(Inferred::from_type(
+                                        t.avoid_implicit_literal_cow(i_s.db).into_owned(),
+                                    ));
                                 }
                             })
                         };
