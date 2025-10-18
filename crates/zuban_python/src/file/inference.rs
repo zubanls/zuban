@@ -1232,7 +1232,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     return;
                 }
 
-                if matches!(assign_kind, AssignKind::Annotation { .. }) {
+                if matches!(
+                    assign_kind,
+                    AssignKind::Annotation { .. } | AssignKind::TypeAlias
+                ) {
                     self.check_assignment_type(
                         value,
                         &declaration_t,
@@ -1396,7 +1399,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 )
             );
             let assign_as_new_definition = match assign_kind {
-                AssignKind::Annotation { .. } => true,
+                AssignKind::Annotation { .. } | AssignKind::TypeAlias => true,
                 AssignKind::Import => {
                     // Imports are a bit special since most of the time they are allowed and not
                     // considered a redefinition in Mypy and then there's unresolved imports and
@@ -3786,7 +3789,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             &Inferred::from_type(self.i_s.db.python_state.type_alias_type_type()),
             // This is not an actual annotation but generates similar errors, when e.g. multiple
             // annotation assignments are used for the same name
-            AssignKind::Annotation { specific: None },
+            AssignKind::TypeAlias,
         );
     }
 
@@ -4763,6 +4766,7 @@ pub(crate) enum AssignKind {
     Normal, // a = 1
     Walrus,
     Annotation { specific: Option<Specific> }, // `a: int = 1` or `a = 1 # type: int
+    TypeAlias,
     Import,
     AugAssign, // a += 1
     Pattern,   // case foo:
