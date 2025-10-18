@@ -2370,7 +2370,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         inf: Inferred,
     ) -> (Option<RedefinitionResult>, Inferred) {
         let from = NodeRef::new(self.file, name_def.index());
-        let inf = inf.avoid_implicit_literal(self.i_s);
         let narrowing_result =
             self.assign_to_name_def(name_def, from, &inf, AssignKind::Walrus, |index, value| {
                 value.clone().save_redirect(self.i_s, self.file, index);
