@@ -899,3 +899,16 @@ foo = Foo(a=1, b="2")
 match foo:
     case Foo(a, b):
         pass
+
+[case dataclass__getitem__]
+# From GH #100
+from dataclasses import dataclass
+
+@dataclass
+class Data:
+    def __getitem__(self, value: int) -> str:
+        return ""
+
+data = Data()
+reveal_type(data[1])  # N: Revealed type is "str"
+data[""]  # E: Invalid index type "str" for "Data"; expected type "int"

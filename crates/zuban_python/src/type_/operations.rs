@@ -584,6 +584,13 @@ impl Type {
                     ),
                 _ => not_possible(true),
             },
+            Type::Dataclass(dc) => dc.class(i_s.db).instance().get_item(
+                i_s,
+                slice_type,
+                result_context,
+                self,
+                add_issue,
+            ),
             Type::NewType(new_type) => {
                 new_type
                     .type_
