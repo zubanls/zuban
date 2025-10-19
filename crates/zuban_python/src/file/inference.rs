@@ -1359,6 +1359,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                 ) {
                     name_def_ref.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
+                } else if matches!(assign_kind, AssignKind::Annotation { .. })
+                    // Mypy does not allow assigning two vars in the same scope with x: int
+                    && !self.i_s.db.project.settings.mypy_compatible
+                    && self
+                        .infer_name_of_definition_by_index(first_index)
+                        .as_cow_type(i_s)
+                        .is_equal_type(i_s.db, &value.as_cow_type(i_s))
+                {
+                    return;
                 } else {
                     let mut node_ref = name_def_ref;
                     if self.i_s.db.project.settings.mypy_compatible {

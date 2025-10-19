@@ -259,7 +259,7 @@ pub(crate) fn execute_assert_type<'db>(
 }
 
 impl Type {
-    fn is_equal_type(&self, db: &Database, other: &Type) -> bool {
+    pub fn is_equal_type(&self, db: &Database, other: &Type) -> bool {
         let eq = |t1: &Type, t2: &Type| t1.is_equal_type(db, t2);
         let all_eq =
             |ts1: &[Type], ts2: &[Type]| ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2));

@@ -793,3 +793,51 @@ class c[T:a]:
     pass
 
 class c[a]  # E: Invalid syntax
+
+[case type_redefinition_with_annotations]
+# flags: --no-mypy-compatible
+# Partially from GH #99
+def check1() -> None:
+    if bool():
+        result: str = "low"
+    else:
+        result: str = "high"
+    reveal_type(result)  # N: Revealed type is "str"
+
+def check2() -> None:
+    if bool():
+        result: str = "low"
+    else:
+        result: int = 1  # E: Name "result" already defined on line 12
+    reveal_type(result)  # N: Revealed type is "str"
+
+def check3(result: str) -> None:
+    if bool():
+        result: str = "low"
+    reveal_type(result)  # N: Revealed type is "str"
+
+def check4(result: int) -> None:
+    if bool():
+        result: str = "low"  # E: Name "result" already defined on line 22
+    reveal_type(result)  # N: Revealed type is "int"
+
+def check5() -> None:
+    if bool():
+        result = "low"
+    else:
+        result: str = "high"
+    reveal_type(result)  # N: Revealed type is "str"
+
+def check6() -> None:
+    if bool():
+        result = 1
+    else:
+        result: str = "high"  # E: Name "result" already defined on line 36
+    reveal_type(result)  # N: Revealed type is "int"
+
+def check7() -> None:
+    if bool():
+        result: str = "low"
+    else:
+        result: str = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(result)  # N: Revealed type is "str"

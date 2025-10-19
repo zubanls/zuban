@@ -730,6 +730,17 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn maybe_annotated(&self) -> Option<Annotation<'db>> {
+        let maybe_colon = self.node.next_leaf()?;
+        if maybe_colon.as_code() != ":" {
+            return None;
+        }
+        let maybe_annotated = maybe_colon.parent()?;
+        maybe_annotated
+            .is_type(Nonterminal(annotation))
+            .then(|| Annotation::new(maybe_annotated))
+    }
+
     pub fn is_assignment_annotation_without_definition(&self) -> bool {
         let node = self
             .node
