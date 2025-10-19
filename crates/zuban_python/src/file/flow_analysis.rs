@@ -5639,7 +5639,10 @@ impl ExceptType {
 fn except_type(db: &Database, t: &Type, allow_tuple: bool) -> ExceptType {
     match t {
         Type::Type(t) => {
-            if let Some(cls) = t.maybe_class(db) {
+            if let Some(cls) = t.maybe_class(db).or_else(|| match t.as_ref() {
+                Type::Dataclass(dc) => Some(dc.class(db)),
+                _ => None,
+            }) {
                 if cls.is_base_exception_group(db) {
                     return ExceptType::HasExceptionGroup;
                 } else if cls.is_base_exception(db) {

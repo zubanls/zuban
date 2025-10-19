@@ -912,3 +912,16 @@ class Data:
 data = Data()
 reveal_type(data[1])  # N: Revealed type is "str"
 data[""]  # E: Invalid index type "str" for "Data"; expected type "int"
+
+[case dataclass_as_exceptions]
+# From GH #102
+from dataclasses import dataclass
+
+@dataclass
+class CustomError(Exception):
+    foo: int
+
+try:
+    raise CustomError(foo=3)
+except CustomError:
+    print("Custom error")

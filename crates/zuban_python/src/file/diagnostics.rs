@@ -2279,6 +2279,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
     let check = |cls: Class| cls.incomplete_mro(db) || cls.is_base_exception(db);
     match t {
         Type::Class(c) => check(c.class(db)),
+        Type::Dataclass(dc) => check(dc.class(db)),
         Type::Type(t) => match t.as_ref() {
             Type::Class(c) => {
                 let cls = c.class(db);
