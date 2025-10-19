@@ -1,0 +1,193 @@
+name: Build wheels
+
+env:
+  DEPLOY_DIR: "deploy/pypi/zuban"
+  DEFAULT_ARCH: "x64"
+
+defaults:
+  run:
+    shell: bash
+    working-directory: "deploy/pypi/zuban"
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        default: "3.11"
+        required: false
+        type: string
+
+jobs:
+  build-native:
+    strategy:
+      matrix:
+        t:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            arch: x64
+            test: true
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            arch: arm64
+            test: true
+            # see https://github.com/astral-sh/ruff/issues/3791
+            # and https://github.com/gnzlbg/jemallocator/issues/170#issuecomment-1503228963
+            maturin_docker_options: -e JEMALLOC_SYS_WITH_LG_PAGE=16
+
+          # The macos-15-intel runner still supports x64, see https://github.com/actions/runner-images/issues/13045
+          - os: macos-15-intel
+            target: x86_64
+            arch: x64
+            test: true
+          - os: macos-latest
+            target: aarch64
+            arch: arm64
+            test: true
+
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            arch: x64
+            test: true
+          - os: windows-2022
+            target: i686-pc-windows-msvc
+            arch: x86
+            test: true
+    runs-on: ${{ matrix.t.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - if: ${{ matrix.t.test }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ matrix.t.arch || env.DEFAULT_ARCH }}
+      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
+        with:
+          # The target is needed, because there were issues when reusing
+          # caches, probably related to cross compiling.
+          key: "swatinem-${{ matrix.t.target }}"
+      - name: "Pre-Build"
+        run: ./pre-maturin-build.sh
+      - name: "Build Wheel"
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.t.target }}
+          working-directory: ${{ env.DEPLOY_DIR }}
+          docker-options: ${{ matrix.t.maturin_docker_options }}
+          manylinux: auto
+          args: --release --locked --out dist --ignore-rust-version
+      - name: "Test wheel"
+        if: ${{ matrix.t.test }}
+        run: ./test-maturin-build.sh
+      - name: "Upload wheel as a GitHub Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.t.os }}-${{ matrix.t.target }}
+          path: "${{ env.DEPLOY_DIR }}/dist"
+
+  build-cross:
+    strategy:
+      matrix:
+        t:
+          # manylinux armv7
+          - os: ubuntu-24.04
+            arch: armv7
+            target: armv7-unknown-linux-gnueabihf
+            manylinux: auto
+            test: run-on-arch
+            distro: ubuntu24.04
+            install_cmd: apt-get update && apt-get install -y python3 python3-pip python3-venv
+
+          # manylinux x86 (i686)
+          - os: ubuntu-24.04
+            arch: x86
+            target: i686-unknown-linux-gnu
+            manylinux: auto
+            test: container
+            image: i386/python:${{ inputs.python_version }}-slim-trixie
+            install_cmd: apt-get install -y bash
+
+          # musllinux armv7 / aarch64 (arm64) / x64 / x86 (i686)
+          - os: ubuntu-24.04
+            arch: armv7
+            target: armv7-unknown-linux-musleabihf
+            manylinux: musllinux_1_2
+            test: run-on-arch
+            distro: alpine_latest
+            install_cmd: apk add python3 py3-pip bash
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            # see https://github.com/astral-sh/ruff/issues/3791
+            # and https://github.com/gnzlbg/jemallocator/issues/170#issuecomment-1503228963
+            maturin_docker_options: -e JEMALLOC_SYS_WITH_LG_PAGE=16
+            manylinux: musllinux_1_2
+            test: container
+            image: python:${{ inputs.python_version }}-alpine
+            install_cmd: apk add bash
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+            manylinux: musllinux_1_2
+            test: container
+            image: python:${{ inputs.python_version }}-alpine
+            install_cmd: apk add bash
+          - os: ubuntu-24.04
+            target: i686-unknown-linux-musl
+            manylinux: musllinux_1_2
+            test: container
+            image: i386/python:${{ inputs.python_version }}-alpine
+            install_cmd: apk add bash
+
+    runs-on: ${{ matrix.t.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
+        with:
+          # The target is needed, because there were issues when reusing
+          # caches, probably related to cross compiling.
+          key: "swatinem-${{ matrix.t.target }}"
+      - name: "Pre-Build"
+        run: ./pre-maturin-build.sh
+      - name: "Build Wheel"
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.t.target }}
+          working-directory: ${{ env.DEPLOY_DIR }}
+          docker-options: ${{ matrix.t.maturin_docker_options }}
+          manylinux: ${{ matrix.t.manylinux }}
+          args: --release --locked --out dist --ignore-rust-version
+      - name: "Test wheel (run-on-arch)"
+        if: matrix.t.test == 'run-on-arch'
+        uses: uraimo/run-on-arch-action@v3
+        with:
+          arch: ${{ matrix.t.arch }}
+          distro: ${{ matrix.t.distro }}
+          githubToken: ${{ github.token }}
+          install: |
+            ${{ matrix.t.install_cmd }}
+          run: |
+            cd ${{ env.DEPLOY_DIR }}
+            python3 -m venv venv
+            . ./venv/bin/activate
+            ./test-maturin-build.sh
+      - name: "Test wheel (container)"
+        if: matrix.t.test == 'container'
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.t.image }}
+          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          run: |
+            ${{ matrix.t.install_cmd }}
+            cd ${{ env.DEPLOY_DIR }}
+            python3 -m venv venv
+            . ./venv/bin/activate
+            ./test-maturin-build.sh
+      - name: "Upload wheel as a GitHub Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.t.os }}-${{ matrix.t.target }}
+          path: "${{ env.DEPLOY_DIR }}/dist"
