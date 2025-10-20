@@ -1128,7 +1128,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
-                    let r = if self.allow_redefinitions_in_specific_scope()
+                    let r = if (self.allow_redefinitions_in_specific_scope()
+                        || matches!(*current_t, Type::None))
                         && NodeRef::from_link(self.i_s.db, first_name_link)
                             .point()
                             .can_be_redefined()

@@ -332,10 +332,11 @@ testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
 
-# Make x an Optional if else contains `x = None`
+# Make x an Optional if else contains `x = None` (mostly implemented, but slightly different in Mypy)
 testOptionalBackwards1
-testOptionalBackwards2
-testOptionalBackwards4
+testPerFileStrictOptionalBasic
+testPerFileStrictOptionalBasicPyProjectTOML
+optional_backwards_global
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
 

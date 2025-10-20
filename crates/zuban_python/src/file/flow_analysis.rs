@@ -1618,14 +1618,12 @@ impl Inference<'_, '_, '_> {
 
     #[inline]
     pub fn add_initial_name_definition(&self, name: NameDef) {
-        if self.allow_redefinitions_in_specific_scope() {
-            FLOW_ANALYSIS.with(|fa| {
-                fa.add_initial_name_definition(
-                    self.i_s.db,
-                    PointLink::new(self.file.file_index, name.name_index()),
-                )
-            })
-        }
+        FLOW_ANALYSIS.with(|fa| {
+            fa.add_initial_name_definition(
+                self.i_s.db,
+                PointLink::new(self.file.file_index, name.name_index()),
+            )
+        })
     }
 
     pub fn maybe_lookup_narrowed_name(
