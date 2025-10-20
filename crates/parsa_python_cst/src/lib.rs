@@ -1537,10 +1537,9 @@ impl<'db> WhileStmt<'db> {
 
 impl<'db> WithStmt<'db> {
     pub fn unpack(&self) -> (WithItems<'db>, Block<'db>) {
-        // with_stmt: "with" with_items  ":" block
+        // with_stmt: "with" with_items block ":"
         let mut iterator = self.node.iter_children().skip(1);
         let with = WithItems::new(iterator.next().unwrap());
-        iterator.next();
         (with, Block::new(iterator.next().unwrap()))
     }
 }

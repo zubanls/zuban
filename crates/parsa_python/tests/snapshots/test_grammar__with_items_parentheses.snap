@@ -1,12 +1,13 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
 expression: tree_to_string(tree)
 ---
 file: 0-116
  stmt: 1-24
   with_stmt: 1-24
    Keyword: 1-5 "with"
-   with_items: 6-18
+   with_items: 6-19
     Keyword: 6-7 "("
     with_item: 7-17
      expression: 7-10
@@ -16,7 +17,7 @@ file: 0-116
      name_def: 14-17
       Name: 14-17 "bar"
     Keyword: 17-18 ")"
-   Keyword: 18-19 ":"
+    Keyword: 18-19 ":"
    block: 20-24
     simple_stmts: 20-24
      simple_stmt: 20-23
@@ -28,7 +29,7 @@ file: 0-116
  stmt: 24-52
   with_stmt: 24-52
    Keyword: 24-28 "with"
-   with_items: 29-46
+   with_items: 29-47
     Keyword: 29-30 "("
     with_item: 30-40
      expression: 30-33
@@ -43,7 +44,7 @@ file: 0-116
       atom: 42-45
        Name: 42-45 "baz"
     Keyword: 45-46 ")"
-   Keyword: 46-47 ":"
+    Keyword: 46-47 ":"
    block: 48-52
     simple_stmts: 48-52
      simple_stmt: 48-51
@@ -55,22 +56,19 @@ file: 0-116
  stmt: 52-70
   with_stmt: 52-70
    Keyword: 52-56 "with"
-   with_items: 57-64
-    with_item: 57-64
-     expression: 57-64
-      atom: 57-64
-       Keyword: 57-58 "("
-       named_expression: 58-63
-        expression: 58-63
-         atom: 58-63
-          Keyword: 58-59 "("
-          named_expression: 59-62
-           expression: 59-62
-            atom: 59-62
-             Name: 59-62 "foo"
-          Keyword: 62-63 ")"
-       Keyword: 63-64 ")"
-   Keyword: 64-65 ":"
+   with_items: 57-65
+    Keyword: 57-58 "("
+    with_item: 58-63
+     expression: 58-63
+      atom: 58-63
+       Keyword: 58-59 "("
+       named_expression: 59-62
+        expression: 59-62
+         atom: 59-62
+          Name: 59-62 "foo"
+       Keyword: 62-63 ")"
+    Keyword: 63-64 ")"
+    Keyword: 64-65 ":"
    block: 66-70
     simple_stmts: 66-70
      simple_stmt: 66-69
@@ -82,7 +80,7 @@ file: 0-116
  stmt: 70-96
   with_stmt: 70-96
    Keyword: 70-74 "with"
-   with_items: 75-90
+   with_items: 75-91
     with_item: 75-90
      expression: 75-90
       atom: 75-90
@@ -102,7 +100,7 @@ file: 0-116
           atom: 87-89
            Number: 87-89 "42"
        Keyword: 89-90 ")"
-   Keyword: 90-91 ":"
+    Keyword: 90-91 ":"
    block: 92-96
     simple_stmts: 92-96
      simple_stmt: 92-95
@@ -114,7 +112,7 @@ file: 0-116
  stmt: 96-116
   with_stmt: 96-116
    Keyword: 96-100 "with"
-   with_items: 101-110
+   with_items: 101-111
     with_item: 101-110
      expression: 101-110
       atom: 101-110
@@ -126,7 +124,7 @@ file: 0-116
           atom: 108-109
            Name: 108-109 "y"
        Keyword: 109-110 ")"
-   Keyword: 110-111 ":"
+    Keyword: 110-111 ":"
    block: 112-116
     simple_stmts: 112-116
      simple_stmt: 112-115
@@ -136,4 +134,3 @@ file: 0-116
          Keyword: 112-115 "..."
      Newline: 115-116 "\n"
  Endmarker: 116-116 ""
-
