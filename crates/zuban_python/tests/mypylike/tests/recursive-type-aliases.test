@@ -185,3 +185,18 @@ def j(a: T5):
 def k(a: T6):
     reveal_type(a[1])  # N: Revealed type is "tuple[bool, ...] | str"
     a == a
+
+[case recursive_types_and_unions_context_for_set]
+# From GH #108
+from typing import Mapping, TypeAlias, Union
+
+IncEx: TypeAlias = Union[
+    set[int],
+    set[str],
+    Mapping[int, Union["IncEx", bool]],
+    Mapping[str, Union["IncEx", bool]],
+]
+
+def foo(a: IncEx | None) -> None: ...
+
+foo(a={"foo"})

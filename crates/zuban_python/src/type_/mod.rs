@@ -437,6 +437,45 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter>
     }
 }
 
+struct RecursiveTypeIterator<'a, Iter> {
+    db: &'a Database,
+    include_never: bool,
+    current_recursive_type: Option<Box<dyn Iterator<Item = &'a Type> + 'a>>,
+    types: TypeRefIterator<'a, Iter>,
+}
+
+impl<'a, Iter> RecursiveTypeIterator<'a, Iter> {
+    fn new(db: &'a Database, include_never: bool, types: TypeRefIterator<'a, Iter>) -> Self {
+        Self {
+            db,
+            include_never,
+            current_recursive_type: None,
+            types,
+        }
+    }
+}
+
+impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for RecursiveTypeIterator<'a, Iter> {
+    type Item = &'a Type;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(rec) = self.current_recursive_type.as_mut() {
+            if let next @ Some(_) = rec.next() {
+                return next;
+            }
+        }
+        let next = self.types.next()?;
+        if matches!(next, Type::RecursiveType(_)) {
+            self.current_recursive_type = Some(Box::new(
+                next.iter_with_unpacked_unions_and_maybe_include_never(self.db, self.include_never),
+            ));
+            self.next()
+        } else {
+            Some(next)
+        }
+    }
+}
+
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -618,14 +657,20 @@ impl Type {
         db: &'a Database,
         include_never: bool,
     ) -> impl Iterator<Item = &'a Type> {
-        match self {
-            Type::Union(items) => TypeRefIterator::Union(items.iter()),
-            Type::Never(_) if !include_never => TypeRefIterator::Finished,
-            Type::RecursiveType(rec) => rec
-                .calculated_type(db)
-                .iter_with_unpacked_unions_and_maybe_include_never(db, include_never),
-            t => TypeRefIterator::Single(t),
-        }
+        RecursiveTypeIterator::new(
+            db,
+            include_never,
+            match self {
+                Type::Union(items) => TypeRefIterator::Union(items.iter()),
+                Type::Never(_) if !include_never => TypeRefIterator::Finished,
+                Type::RecursiveType(rec) => {
+                    return rec
+                        .calculated_type(db)
+                        .iter_with_unpacked_unions_and_maybe_include_never(db, include_never);
+                }
+                t => TypeRefIterator::Single(t),
+            },
+        )
     }
 
     pub fn retain_in_union(&self, mut maybe_retain: impl FnMut(&Self) -> bool) -> Type {
