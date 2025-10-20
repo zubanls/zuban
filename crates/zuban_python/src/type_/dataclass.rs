@@ -791,23 +791,28 @@ pub(crate) fn dataclasses_replace<'db>(
                 let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
                 let mut params: Vec<_> = replace_func.expect_simple_params().into();
                 for param in params.iter_mut() {
-                    let t = param.type_.maybe_type().unwrap();
-                    param.type_ = ParamType::KeywordOnly(t.clone());
                     // All normal dataclass arguments are optional, because they can be
                     // overridden or just be left in place. However this is different for
                     // InitVars, which always need to be there. To check if something is an
                     // InitVar, we use this hack and check if the attribute exists on the
                     // dataclass. If not, it's an InitVar.
-                    if lookup_on_dataclass(
-                        dataclass,
-                        i_s,
-                        |issue| args.add_issue(i_s, issue),
-                        param.name.as_ref().unwrap().as_str(i_s.db),
-                    )
-                    .lookup
-                    .is_some()
-                    {
-                        param.has_default = true;
+                    if let Some(name) = param.name.as_ref() {
+                        // All params that have no name should be *args, **kwargs in case of an
+                        // incomplete MRO.
+
+                        let t = param.type_.maybe_type().unwrap();
+                        param.type_ = ParamType::KeywordOnly(t.clone());
+                        if lookup_on_dataclass(
+                            dataclass,
+                            i_s,
+                            |issue| args.add_issue(i_s, issue),
+                            name.as_str(i_s.db),
+                        )
+                        .lookup
+                        .is_some()
+                        {
+                            param.has_default = true;
+                        }
                     }
                 }
                 params.insert(

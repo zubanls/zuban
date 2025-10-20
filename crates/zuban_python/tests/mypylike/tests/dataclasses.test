@@ -925,3 +925,18 @@ try:
     raise CustomError(foo=3)
 except CustomError:
     print("Custom error")
+
+[case dataclass_replace_on_incomplete_mro]
+# From GH #105
+from dataclasses import replace, dataclass
+
+@dataclass
+class A(X):  # E: Name "X" is not defined
+    x: int
+
+def f(a: A):
+    replace(a, x=2)
+    replace(a, x="")  # E: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
+    # Fine as well since we don't know the full MRO
+    replace(a, y="")
+    replace(a, y=1, z=3)
