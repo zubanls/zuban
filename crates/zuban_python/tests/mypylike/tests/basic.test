@@ -1463,3 +1463,13 @@ typing_extensions.OrderedDict
 # From GH #106
 import typing_extensions
 typing_extensions.OrderedDict
+
+[case with_multi_simple_contexts]
+# From GH #109
+import contextlib
+
+with (
+    contextlib.suppress(Exception),
+    contextlib.suppress(Exception),
+):
+    pass
