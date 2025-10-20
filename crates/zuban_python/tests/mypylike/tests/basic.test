@@ -1451,3 +1451,15 @@ try:
     1
 except ExceptionGroup:
     pass
+
+[case python310_with_typing_extensions_should_not_crash]
+# flags: --python-version 3.10
+# From GH #106
+import typing_extensions
+typing_extensions.OrderedDict
+
+[case python308_with_typing_extensions_should_not_crash]
+# flags: --python-version 3.8
+# From GH #106
+import typing_extensions
+typing_extensions.OrderedDict

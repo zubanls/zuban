@@ -506,6 +506,7 @@ impl PythonState {
                 let func_index = name_index - NAME_TO_FUNCTION_DIFF;
                 let file = module(db);
                 let node_ref = NodeRef::new(file, func_index);
+
                 if node_ref.maybe_function().is_some() {
                     if !is_func {
                         panic!(
@@ -516,6 +517,12 @@ impl PythonState {
                     Function::new(node_ref, None)
                         .ensure_cached_func(&InferenceState::new(db, file));
                     update(db, Some(func_index))
+                } else if NodeRef::new(file, name_index)
+                    .maybe_import_of_name_in_symbol_table()
+                    .is_some()
+                {
+                    // This is not a proper identifier, it's an import, for now assign None
+                    update(db, None);
                 } else {
                     panic!(
                         "It's not possible to cache the index for the alias {}.{name}",
@@ -763,12 +770,26 @@ impl PythonState {
         // Some cases "Special" types need to be precalculated, because their names are overwritten.
         {
             let legacy_new_type = legacy_new_type(db);
-            let mut cache_without_saving_in_typing =
-                |name| cache_index(db, |db| db.python_state.typing(), name, |_, _| (), true);
+            let mut cache_without_saving_in_typing = |name| {
+                cache_index(db, |db| db.python_state.typing(), name, |_, _| (), true);
+                cache_index(
+                    db,
+                    |db| db.python_state.typing_extensions(),
+                    name,
+                    |_, _| (),
+                    true,
+                );
+            };
             cache_without_saving_in_typing("dataclass_transform");
             cache_without_saving_in_typing("assert_type");
             if legacy_new_type {
-                cache_without_saving_in_typing("NewType");
+                cache_index(
+                    db,
+                    |db| db.python_state.typing(),
+                    "NewType",
+                    |_, _| (),
+                    true,
+                );
             }
             let mut cache_without_saving_mypy_extensions = |name| {
                 cache_index(
@@ -1325,7 +1346,7 @@ fn typing_changes(
     set_typing_inference(t, "TypeIs", Specific::TypingTypeIs);
     set_typing_inference(t, "Self", Specific::TypingSelf);
     set_typing_inference(t, "TypeAliasType", Specific::TypingTypeAliasType);
-    setup_type_alias(typing_extensions, "final", typing, "final");
+    setup_type_alias(t, "final", typing, "final");
     set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
     set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
     set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
