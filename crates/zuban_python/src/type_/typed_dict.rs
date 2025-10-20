@@ -1116,22 +1116,33 @@ pub(crate) fn initialize_typed_dict<'db>(
 ) -> Inferred {
     let mut iterator = args.iter(i_s.mode);
     let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);
-    if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
+    if let Some(first_arg) = iterator.next()
+        && !first_arg.is_keyword_argument()
+    {
         if let Some(next_arg) = iterator.next() {
             next_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         }
-        let InferredArg::Inferred(x) = first_arg.infer(&mut ResultContext::WithMatcher {
+        let InferredArg::Inferred(arg_inf) = first_arg.infer(&mut ResultContext::WithMatcher {
             matcher: &mut matcher,
             type_: &Type::TypedDict(typed_dict.clone()),
         }) else {
             first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         };
-        if !matches!(x.as_cow_type(i_s).as_ref(), Type::TypedDict(td) if td.defined_at == typed_dict.defined_at)
-        {
-            first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
-            return Inferred::new_any_from_error();
+        match arg_inf.as_cow_type(i_s).as_ref() {
+            Type::TypedDict(arg_td) => {
+                if arg_td.defined_at != typed_dict.defined_at {
+                    if !typed_dict.matches(i_s, &mut matcher, arg_td, false).bool() {
+                        first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
+                        return Inferred::new_any_from_error();
+                    }
+                }
+            }
+            _ => {
+                first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
+                return Inferred::new_any_from_error();
+            }
         }
     } else {
         check_typed_dict_call(i_s, &mut matcher, typed_dict.clone(), args);

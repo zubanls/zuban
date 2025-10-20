@@ -929,3 +929,27 @@ class TD(TypedDict):
 
 d: TD = {}  # E: Missing key "s" for TypedDict "TD"
 d.setdefault('s')  # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "None"; expected "str"
+
+[case typed_dict_positional_initialization]
+from typing import TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: float
+
+some_person: dict = {"name": "David", "age": 21.3}
+p1 = Person(some_person)  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
+
+class PersonType(TypedDict):
+    name: str
+    age: float
+
+some_person2: PersonType = {"name": "David", "age": 21.3}
+p2 = Person(some_person2)
+
+class NonPersonType(TypedDict):
+    name: str
+
+non_person: NonPersonType = {"name": "David", "age": 21.3}  # E: Extra key "age" for TypedDict "NonPersonType"
+# TODO: This error message feels a bit weird
+p3 = Person(non_person)  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
