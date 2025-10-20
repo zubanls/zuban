@@ -1314,14 +1314,18 @@ pub(crate) fn execute_type_of_type<'db>(
             Inferred::from_type(Type::NewType(n.clone()))
         }
         Type::Self_ => {
-            let cls = i_s.current_class().unwrap();
-            // Type check initialization
-            if let Some(dataclass) = cls.maybe_dataclass(i_s.db) {
-                dataclass_initialize(&dataclass, i_s, args, result_context, on_type_error);
+            if let Some(cls) = i_s.current_class() {
+                // Type check initialization
+                if let Some(dataclass) = cls.maybe_dataclass(i_s.db) {
+                    dataclass_initialize(&dataclass, i_s, args, result_context, on_type_error);
+                } else {
+                    cls.execute(i_s, args, result_context, on_type_error, true);
+                }
+                Inferred::from_type(Type::Self_)
             } else {
-                cls.execute(i_s, args, result_context, on_type_error, true);
+                recoverable_error!("Had no context class in type[Self]");
+                Inferred::new_any_from_error()
             }
-            Inferred::from_type(Type::Self_)
         }
         Type::Any(cause) => Inferred::new_any(*cause),
         Type::Dataclass(d) => dataclass_initialize(d, i_s, args, result_context, on_type_error),
