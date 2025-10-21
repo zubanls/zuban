@@ -11,12 +11,12 @@ use parsa_python_cst::{NodeIndex, Tree};
 use rayon::prelude::*;
 use vfs::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, InvalidationResult, LocalFS,
-    NormalizedPath, PathWithScheme, Vfs, VfsHandler, Workspace, WorkspaceKind,
+    NormalizedPath, PathWithScheme, Vfs, VfsFile as _, VfsHandler, Workspace, WorkspaceKind,
 };
 
 use crate::{
     ProjectOptions, debug,
-    file::{ClassNodeRef, File, PythonFile},
+    file::{ClassNodeRef, File, PythonFile, SuperFile},
     lines::split_lines,
     node_ref::NodeRef,
     python_state::PythonState,
@@ -1213,18 +1213,38 @@ impl Database {
             })
     }
 
-    pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) -> FileIndex {
+    pub fn store_in_memory_file(
+        &mut self,
+        path: PathWithScheme,
+        code: Box<str>,
+        parent: Option<FileIndex>,
+    ) -> FileIndex {
+        if let Some(parent) = parent
+            && let Some(in_mem_file) = self.vfs.in_memory_file(&path)
+            && let Some(file) = self.vfs.file_mut(in_mem_file)
+        {
+            let super_file = file.super_file.map(|sup| sup.file);
+            if super_file != Some(parent) {
+                file.super_file = Some(SuperFile {
+                    file: parent,
+                    offset: None,
+                });
+                file.invalidate_references_to(super_file)
+            }
+        }
         let (file_index, invalidation) = self.vfs.store_in_memory_file(
             self.project.flags.case_sensitive,
             path,
             code,
             |file_index, file_entry, new_code| {
-                PythonFile::from_file_entry_and_code(
+                let mut file = PythonFile::from_file_entry_and_code(
                     &self.project,
                     file_index,
                     file_entry,
                     new_code,
-                )
+                );
+                file.super_file = parent.map(|file| SuperFile { file, offset: None });
+                file
             },
         );
         self.handle_invalidation(invalidation);

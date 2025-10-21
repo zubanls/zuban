@@ -94,7 +94,23 @@ impl Project {
     pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}
 
     pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
-        self.db.store_in_memory_file(path, code);
+        self.db.store_in_memory_file(path, code, None);
+    }
+
+    pub fn store_in_memory_file_with_parent(
+        &mut self,
+        path: PathWithScheme,
+        code: Box<str>,
+        parent: &PathWithScheme,
+    ) -> Result<(), String> {
+        let Some(parent) = self.db.vfs.in_memory_file(parent) else {
+            return Err(format!(
+                "Parent with path {} does not exist when storing an in memory file",
+                parent.as_uri()
+            ));
+        };
+        self.db.store_in_memory_file(path, code, Some(parent));
+        Ok(())
     }
 
     pub fn code_of_in_memory_file(&mut self, path: &PathWithScheme) -> Option<&str> {

@@ -74,9 +74,10 @@ impl ComplexValues {
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct SuperFile {
-    file: FileIndex,
-    // This is is the offset where the sub file starts
-    offset: CodeIndex,
+    pub file: FileIndex,
+    // This is is the offset where the sub file starts if it's in the same file
+    // It might also be part of a notebook and therefore be different files with different URIs.
+    pub offset: Option<CodeIndex>,
 }
 
 impl SuperFile {
@@ -147,10 +148,12 @@ impl File for PythonFile {
         db: &'db Database,
         byte: CodeIndex,
     ) -> PositionInfos<'db> {
-        if let Some(super_file) = self.super_file {
+        if let Some(super_file) = self.super_file
+            && let Some(offset) = super_file.offset
+        {
             super_file
                 .file(db)
-                .byte_to_position_infos(db, super_file.offset + byte)
+                .byte_to_position_infos(db, offset + byte)
         } else {
             self.newline_indices.position_infos(self.tree.code(), byte)
         }
@@ -443,7 +446,7 @@ impl<'db> PythonFile {
             );
             file.super_file = Some(SuperFile {
                 file: self.file_index,
-                offset: start,
+                offset: Some(start),
             });
             file
         });
