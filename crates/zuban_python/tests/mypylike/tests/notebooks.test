@@ -1,0 +1,11 @@
+[case basic_notebook]
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+reveal_type(x)  # N: Revealed type is "int"
+
+[file c.py]
+# parent: b.py
+reveal_type(x)  # N: Revealed type is "int"

@@ -665,13 +665,25 @@ fn initialize_and_return_wanted_output(
         add_inline_errors(&mut wanted, p, code, from_mypy_test_suite);
         // testAbstractClassSubclasses
         let p = base_path_join(local_fs, path);
-        project.store_in_memory_file(p, code.into());
+        if let Some(parent) = maybe_parent(local_fs, code) {
+            project
+                .store_in_memory_file_with_parent(p, code.into(), &parent)
+                .unwrap();
+        } else {
+            project.store_in_memory_file(p, code.into());
+        }
     }
     for line in &mut wanted {
         replace_unions(line);
         replace_optional(line);
     }
     wanted
+}
+
+fn maybe_parent(local_fs: &SimpleLocalFS, code: &str) -> Option<PathWithScheme> {
+    let parent = code.strip_prefix("# parent: ")?;
+    let path = &parent[0..parent.find(['\n', '\r'])?];
+    Some(base_path_join(local_fs, path))
 }
 
 fn add_inline_errors(wanted: &mut Vec<String>, path: &str, code: &str, from_mypy_test_suite: bool) {

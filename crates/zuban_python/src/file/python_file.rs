@@ -84,6 +84,10 @@ impl SuperFile {
     pub fn file<'db>(&self, db: &'db Database) -> &'db PythonFile {
         db.loaded_python_file(self.file)
     }
+
+    pub fn is_part_of_parent(&self) -> bool {
+        self.offset.is_some()
+    }
 }
 
 pub(crate) struct PythonFile {
@@ -160,7 +164,10 @@ impl File for PythonFile {
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
-        if self.super_file.is_none() {
+        if self
+            .super_file
+            .is_none_or(|super_file| !super_file.is_part_of_parent())
+        {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
             let result = self.ensure_calculated_diagnostics(db);
@@ -759,8 +766,10 @@ impl<'db> PythonFile {
 
     pub fn original_file(&'db self, db: &'db Database) -> &'db Self {
         match self.super_file {
-            Some(super_file) => db.loaded_python_file(super_file.file).original_file(db),
-            None => self,
+            Some(super_file) if super_file.is_part_of_parent() => {
+                db.loaded_python_file(super_file.file).original_file(db)
+            }
+            _ => self,
         }
     }
 
