@@ -5,16 +5,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  PYTHON_VERSION: "3.11"
-  DEPLOY_DIR: "deploy/pypi/zuban"
-  DEFAULT_ARCH: "x64"
-
-defaults:
-  run:
-    shell: bash
-    working-directory: "deploy/pypi/zuban"
-
 permissions:
     id-token: write
     contents: read
@@ -34,74 +24,8 @@ jobs:
 
   build:
     needs: [tests]
-    strategy:
-      matrix:
-        t:
-          - os: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
-            test: true
-          - os: ubuntu-24.04
-            target: i686-unknown-linux-gnu
-            test: false
-
-          - os: ubuntu-24.04
-            target: aarch64-unknown-linux-gnu
-            test: false
-            # see https://github.com/astral-sh/ruff/issues/3791
-            # and https://github.com/gnzlbg/jemallocator/issues/170#issuecomment-1503228963
-            maturin_docker_options: -e JEMALLOC_SYS_WITH_LG_PAGE=16
-          - os: ubuntu-24.04
-            target: armv7-unknown-linux-gnueabihf
-            test: false
-
-          - os: macos-latest
-            target: x86_64
-            test: false
-          - os: macos-latest
-            target: aarch64
-            test: true
-
-          - os: windows-2022
-            target: x86_64-pc-windows-msvc
-            test: true
-          - os: windows-2022
-            target: i686-pc-windows-msvc
-            arch: x86
-            test: true
-    runs-on: ${{ matrix.t.os }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          persist-credentials: false
-      - if: ${{ matrix.t.test }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: ${{ matrix.t.arch || env.DEFAULT_ARCH }}
-      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
-        with:
-            # The target is needed, because there were issues when reusing
-            # caches, probably related to cross compiling.
-            key: "swatinem-${{ matrix.t.target }}"
-      - name: "Pre-Build"
-        run: ./pre-maturin-build.sh
-      - name: "Build Wheel"
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.t.target }}
-          working-directory: ${{ env.DEPLOY_DIR }}
-          docker-options: ${{ matrix.platform.maturin_docker_options }}
-          manylinux: auto
-          args: --release --locked --out dist --ignore-rust-version
-      - name: "Test wheel"
-        if: ${{ matrix.t.test }}
-        run: ./test-maturin-build.sh
-      - name: "Upload wheel as a GitHub Artifact"
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-${{ matrix.t.os }}-${{ matrix.t.target }}
-          path: "${{ env.DEPLOY_DIR }}/dist"
+    uses: ./.github/workflows/wheels.yml
+    secrets: inherit
 
   publish:
     needs: [build]
