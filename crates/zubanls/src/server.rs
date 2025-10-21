@@ -22,6 +22,7 @@ use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _}
 use zuban_python::{Mode, PanicRecovery, Project};
 
 use crate::capabilities::{ClientCapabilities, server_capabilities};
+use crate::notebooks::Notebooks;
 use crate::notification_handlers::TestPanic;
 use crate::panic_hooks;
 
@@ -212,6 +213,7 @@ pub(crate) struct GlobalState<'sender> {
     panic_recovery: Option<PanicRecovery>,
     pub sent_diagnostic_count: usize,
     changed_in_memory_files: Arc<RwLock<Vec<PathWithScheme>>>,
+    pub notebooks: Notebooks,
     pub shutdown_requested: bool,
 }
 
@@ -231,6 +233,7 @@ impl<'sender> GlobalState<'sender> {
             project: None,
             panic_recovery: None,
             changed_in_memory_files: Default::default(),
+            notebooks: Default::default(),
             sent_diagnostic_count: 0,
             shutdown_requested: false,
         }
