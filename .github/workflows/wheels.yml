@@ -25,11 +25,9 @@ jobs:
           - os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             arch: x64
-            test: true
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             arch: arm64
-            test: true
             # see https://github.com/astral-sh/ruff/issues/3791
             # and https://github.com/gnzlbg/jemallocator/issues/170#issuecomment-1503228963
             maturin_docker_options: -e JEMALLOC_SYS_WITH_LG_PAGE=16
@@ -38,28 +36,23 @@ jobs:
           - os: macos-15-intel
             target: x86_64
             arch: x64
-            test: true
           - os: macos-latest
             target: aarch64
             arch: arm64
-            test: true
 
           - os: windows-2022
             target: x86_64-pc-windows-msvc
             arch: x64
-            test: true
           - os: windows-2022
             target: i686-pc-windows-msvc
             arch: x86
-            test: true
     runs-on: ${{ matrix.t.os }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: false
-      - if: ${{ matrix.t.test }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
           architecture: ${{ matrix.t.arch || env.DEFAULT_ARCH }}
@@ -79,7 +72,6 @@ jobs:
           manylinux: auto
           args: --release --locked --out dist --ignore-rust-version
       - name: "Test wheel"
-        if: ${{ matrix.t.test }}
         run: ./test-maturin-build.sh
       - name: "Upload wheel as a GitHub Artifact"
         uses: actions/upload-artifact@v4
