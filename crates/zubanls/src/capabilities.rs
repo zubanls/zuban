@@ -3,8 +3,9 @@
 //! Advertises the capabilities of the LSP Server.
 use lsp_types::{
     CompletionOptions, DeclarationCapability, HoverProviderCapability,
-    ImplementationProviderCapability, OneOf, PositionEncodingKind, RenameOptions,
-    ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    ImplementationProviderCapability, NotebookCellSelector, NotebookDocumentSyncOptions,
+    NotebookSelector, OneOf, PositionEncodingKind, RenameOptions, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
     WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
     WorkspaceServerCapabilities,
@@ -22,7 +23,15 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 save: None, // Currently not needed
             },
         )),
-        notebook_document_sync: None,
+        notebook_document_sync: Some(OneOf::Left(NotebookDocumentSyncOptions {
+            notebook_selector: vec![NotebookSelector::ByCells {
+                notebook: None,
+                cells: vec![NotebookCellSelector {
+                    language: "python".into(),
+                }],
+            }],
+            save: None,
+        })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: None, // TODO
