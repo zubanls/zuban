@@ -1,0 +1,27 @@
+name: Debug wheels
+
+on:
+  workflow_dispatch:
+
+jobs:
+  wheels:
+    uses: ./.github/workflows/wheels.yml
+    secrets: inherit
+
+  list-wheels:
+    needs: [wheels]
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    steps:
+      - name: "Download Wheels from GitHub Artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: wheels
+          merge-multiple: true
+      - name: List all builded wheels
+        run:
+            ls -alh wheels/
