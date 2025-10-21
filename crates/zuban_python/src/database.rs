@@ -1247,6 +1247,9 @@ impl Database {
                 file
             },
         );
+        if let Some(parent) = parent {
+            self.vfs.file_entry(parent).add_invalidation(file_index);
+        }
         self.handle_invalidation(invalidation);
         file_index
     }

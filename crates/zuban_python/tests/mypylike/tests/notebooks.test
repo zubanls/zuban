@@ -9,3 +9,52 @@ reveal_type(x)  # N: Revealed type is "int"
 [file c.py]
 # parent: b.py
 reveal_type(x)  # N: Revealed type is "int"
+
+[case notebook_file_creation_deletion]
+# flags: --allow-redefinition
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+reveal_type(x)
+
+[file b.py.3]
+# parent: a.py
+x = ""
+
+[file b.py.4]
+# parent: a.py
+
+[file c.py.2]
+# parent: b.py
+reveal_type(x)
+
+[out]
+b.py:2: note: Revealed type is "int"
+==
+b.py:2: note: Revealed type is "int"
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: note: Revealed type is "str"
+==
+c.py:2: note: Revealed type is "int"
+
+[case notebook_parent_file_missing_in_subsequent]
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+
+[file b.py.2]
+
+[file c.py]
+# parent: b.py
+reveal_type(x)
+
+[out]
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: error: Name "x" is not defined
+c.py:2: note: Revealed type is "Any"
