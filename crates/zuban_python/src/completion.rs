@@ -231,6 +231,9 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
 
     fn add_global_module_completions(&mut self, file: &'db PythonFile) {
         self.add_specific_module_completions(file, false, false, &mut HashSet::default());
+        if let Some(super_file) = &file.super_file {
+            self.add_global_module_completions(self.infos.db.loaded_python_file(super_file.file))
+        }
     }
 
     fn add_namespace_completions(&mut self, namespace: &Namespace) {
