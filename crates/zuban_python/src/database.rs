@@ -1248,7 +1248,12 @@ impl Database {
             },
         );
         if let Some(parent) = parent {
-            self.vfs.file_entry(parent).add_invalidation(file_index);
+            // self.vfs.file_entry(parent).add_invalidation(file_index);
+            self.vfs
+                .file_mut(parent)
+                .unwrap()
+                .sub_files
+                .add_separate_file(file_index)
         }
         self.handle_invalidation(invalidation);
         file_index
@@ -1295,6 +1300,20 @@ impl Database {
     }
 
     pub fn close_in_memory_file(&mut self, path: &PathWithScheme) -> Result<(), &'static str> {
+        if let Some(in_mem) = self.vfs.in_memory_file(path) {
+            for separate_file in self
+                .vfs
+                .file_mut(in_mem)
+                .unwrap()
+                .sub_files
+                .take_separate_files()
+            {
+                // Avoid an invalid pointer to a non-existing super file
+                if let Some(f) = self.vfs.file_mut(separate_file) {
+                    f.super_file = None;
+                }
+            }
+        }
         let result = self.vfs.close_in_memory_file(
             self.project.flags.case_sensitive,
             path,

@@ -100,7 +100,7 @@ pub(crate) struct PythonFile {
     pub issues: Diagnostics,
     pub star_imports: Box<[StarImport]>,
     pub all_imports: Box<[NodeIndex]>,
-    sub_files: SubFiles,
+    pub sub_files: SubFiles,
     pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
@@ -110,26 +110,40 @@ pub(crate) struct PythonFile {
     newline_indices: NewlineIndices,
 }
 
-#[derive(Default)]
-struct SubFiles {
-    in_same_file: RwLock<HashMap<CodeIndex, FileIndex>>,
+#[derive(Default, Clone)]
+struct InnerSubFiles {
+    in_same_file: HashMap<CodeIndex, FileIndex>,
+    separate_files: Vec<FileIndex>,
 }
+
+#[derive(Default)]
+pub(crate) struct SubFiles(RwLock<InnerSubFiles>);
 
 impl SubFiles {
     fn lookup_sub_file_at_position(&self, start: CodeIndex) -> Option<FileIndex> {
-        self.in_same_file.read().unwrap().get(&start).copied()
+        self.0.read().unwrap().in_same_file.get(&start).copied()
     }
 
     fn save_sub_file_at_position(&self, start: CodeIndex, file_index: FileIndex) {
-        self.in_same_file.write().unwrap().insert(start, file_index);
+        self.0
+            .write()
+            .unwrap()
+            .in_same_file
+            .insert(start, file_index);
+    }
+
+    pub fn add_separate_file(&self, sub_file: FileIndex) {
+        self.0.write().unwrap().separate_files.push(sub_file);
+    }
+
+    pub fn take_separate_files(&mut self) -> Vec<FileIndex> {
+        std::mem::take(&mut self.0.get_mut().unwrap().separate_files)
     }
 }
 
 impl Clone for SubFiles {
     fn clone(&self) -> Self {
-        Self {
-            in_same_file: RwLock::new(self.in_same_file.read().unwrap().clone()),
-        }
+        Self(RwLock::new(self.0.read().unwrap().clone()))
     }
 }
 
@@ -204,7 +218,7 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
-        for (_, file_index) in self.sub_files.in_same_file.read().unwrap().iter() {
+        for (_, file_index) in self.sub_files.0.read().unwrap().in_same_file.iter() {
             let file = db.loaded_python_file(*file_index);
             vec.extend(file.diagnostics(db).into_vec().into_iter());
         }

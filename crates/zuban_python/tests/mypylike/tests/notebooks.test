@@ -59,6 +59,60 @@ c.py:2: note: Revealed type is "int"
 c.py:2: error: Name "x" is not defined
 c.py:2: note: Revealed type is "Any"
 
+[case notebook_parent_file_deleted1]
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+
+[delete b.py.2]
+
+[file c.py]
+# parent: b.py
+reveal_type(x)
+
+[out]
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: error: Name "x" is not defined
+c.py:2: note: Revealed type is "Any"
+
+[case notebook_parent_file_deleted2]
+[file a.py]
+x = 1
+
+[delete a.py.2]
+
+[file b.py]
+# parent: a.py
+reveal_type(x)
+
+[out]
+b.py:2: note: Revealed type is "int"
+==
+b.py:2: error: Name "x" is not defined
+b.py:2: note: Revealed type is "Any"
+
+[case notebook_parent_file_deleted3]
+[file a.py]
+x = 1
+
+[delete a.py.2]
+
+[file b.py]
+# parent: a.py
+
+[file c.py]
+# parent: b.py
+reveal_type(x)
+
+[out]
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: error: Name "x" is not defined
+c.py:2: note: Revealed type is "Any"
+
 [case notebook_file_definition_in_sub_file]
 # flags: --allow-redefinition
 [file a.py]
