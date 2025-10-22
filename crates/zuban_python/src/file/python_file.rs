@@ -110,40 +110,36 @@ pub(crate) struct PythonFile {
     newline_indices: NewlineIndices,
 }
 
-#[derive(Default, Clone)]
-struct InnerSubFiles {
-    in_same_file: HashMap<CodeIndex, FileIndex>,
+#[derive(Default)]
+pub(crate) struct SubFiles {
+    in_same_file: RwLock<HashMap<CodeIndex, FileIndex>>,
     separate_files: Vec<FileIndex>,
 }
 
-#[derive(Default)]
-pub(crate) struct SubFiles(RwLock<InnerSubFiles>);
-
 impl SubFiles {
     fn lookup_sub_file_at_position(&self, start: CodeIndex) -> Option<FileIndex> {
-        self.0.read().unwrap().in_same_file.get(&start).copied()
+        self.in_same_file.read().unwrap().get(&start).copied()
     }
 
     fn save_sub_file_at_position(&self, start: CodeIndex, file_index: FileIndex) {
-        self.0
-            .write()
-            .unwrap()
-            .in_same_file
-            .insert(start, file_index);
+        self.in_same_file.write().unwrap().insert(start, file_index);
     }
 
-    pub fn add_separate_file(&self, sub_file: FileIndex) {
-        self.0.write().unwrap().separate_files.push(sub_file);
+    pub fn add_separate_file(&mut self, sub_file: FileIndex) {
+        self.separate_files.push(sub_file);
     }
 
     pub fn take_separate_files(&mut self) -> Vec<FileIndex> {
-        std::mem::take(&mut self.0.get_mut().unwrap().separate_files)
+        std::mem::take(&mut self.separate_files)
     }
 }
 
 impl Clone for SubFiles {
     fn clone(&self) -> Self {
-        Self(RwLock::new(self.0.read().unwrap().clone()))
+        Self {
+            in_same_file: RwLock::new(self.in_same_file.read().unwrap().clone()),
+            separate_files: self.separate_files.clone(),
+        }
     }
 }
 
@@ -218,7 +214,7 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
-        for (_, file_index) in self.sub_files.0.read().unwrap().in_same_file.iter() {
+        for (_, file_index) in self.sub_files.in_same_file.read().unwrap().iter() {
             let file = db.loaded_python_file(*file_index);
             vec.extend(file.diagnostics(db).into_vec().into_iter());
         }
