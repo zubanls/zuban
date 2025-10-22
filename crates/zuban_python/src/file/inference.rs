@@ -1128,11 +1128,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             |first_name_link, declaration_t| {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
-                    let r = if (self.allow_redefinitions_in_specific_scope()
-                        || matches!(*current_t, Type::None))
-                        && NodeRef::from_link(self.i_s.db, first_name_link)
+                    let allow_redefinitions = self.allow_redefinitions_in_specific_scope();
+                    let r = if (allow_redefinitions || matches!(*current_t, Type::None))
+                        && (NodeRef::from_link(self.i_s.db, first_name_link)
                             .point()
                             .can_be_redefined()
+                            // Star imports are defined in different files
+                            || first_name_link.file != self.file.file_index
+                                && allow_redefinitions)
                     {
                         RedefinitionResult::RedefinitionAllowed
                     } else {
@@ -1497,7 +1500,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                     StarImportResult::AnyDueToError => (),
                 };
-                save(name_def.index(), &original);
+
+                save(
+                    name_def.index(),
+                    if self.allow_redefinitions_in_specific_scope() {
+                        self.add_star_import_to_base_narrowing(name_def, original);
+                        value
+                    } else {
+                        &original
+                    },
+                );
                 return;
             }
             let value = match assign_kind {

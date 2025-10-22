@@ -36,7 +36,7 @@ b.py:2: note: Revealed type is "int"
 b.py:2: note: Revealed type is "int"
 c.py:2: note: Revealed type is "int"
 ==
-c.py:2: note: Revealed type is "str"
+c.py:2: note: Revealed type is "Literal['']?"
 ==
 c.py:2: note: Revealed type is "int"
 

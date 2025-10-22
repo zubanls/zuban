@@ -18,7 +18,6 @@ super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
 notebook_file_creation_deletion
-star_imports_allow_redefinition
 
 # typeshed upgrade
 testTypedDictGet
