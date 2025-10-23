@@ -275,6 +275,10 @@ impl<F: VfsFile> Vfs<F> {
         self.files.get(index.0 as usize).unwrap().file()
     }
 
+    pub fn file_mut(&mut self, index: FileIndex) -> Option<&mut F> {
+        self.file_state_mut(index).file_mut()
+    }
+
     pub fn file_path(&self, index: FileIndex) -> &PathWithScheme {
         &self.file_state(index).path
     }

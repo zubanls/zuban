@@ -1,0 +1,264 @@
+[case basic_notebook]
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+reveal_type(x)  # N: Revealed type is "int"
+
+[file c.py]
+# parent: b.py
+reveal_type(x)  # N: Revealed type is "int"
+
+[case notebook_file_creation_deletion]
+# flags: --allow-redefinition
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+reveal_type(x)
+
+[file b.py.3]
+# parent: a.py
+x = ""
+
+[file b.py.4]
+# parent: a.py
+
+[file c.py.2]
+# parent: b.py
+reveal_type(x)
+
+[out]
+b.py:2: note: Revealed type is "int"
+==
+b.py:2: note: Revealed type is "int"
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: note: Revealed type is "Literal['']?"
+==
+c.py:2: note: Revealed type is "int"
+
+[case notebook_parent_file_missing_in_subsequent]
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+
+[file b.py.2]
+
+[file c.py]
+# parent: b.py
+reveal_type(x)
+
+[out]
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: error: Name "x" is not defined
+c.py:2: note: Revealed type is "Any"
+
+[case notebook_parent_file_deleted1]
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+
+[delete b.py.2]
+
+[file c.py]
+# parent: b.py
+reveal_type(x)
+
+[out]
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: error: Name "x" is not defined
+c.py:2: note: Revealed type is "Any"
+
+[case notebook_parent_file_deleted2]
+[file a.py]
+x = 1
+
+[delete a.py.2]
+
+[file b.py]
+# parent: a.py
+reveal_type(x)
+
+[out]
+b.py:2: note: Revealed type is "int"
+==
+b.py:2: error: Name "x" is not defined
+b.py:2: note: Revealed type is "Any"
+
+[case notebook_parent_file_deleted3]
+[file a.py]
+x = 1
+
+[delete a.py.2]
+
+[file b.py]
+# parent: a.py
+
+[file c.py]
+# parent: b.py
+reveal_type(x)
+
+[out]
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: error: Name "x" is not defined
+c.py:2: note: Revealed type is "Any"
+
+[case notebook_file_definition_in_sub_file]
+# flags: --allow-redefinition
+[file a.py]
+[file a.py.2]
+x = ""
+
+[file b.py]
+# parent: a.py
+x = 1
+
+[file b.py.3]
+# parent: a.py
+
+[file c.py]
+# parent: b.py
+reveal_type(x)
+
+[out]
+c.py:2: note: Revealed type is "int"
+==
+c.py:2: note: Revealed type is "Literal[1]?"
+==
+c.py:2: note: Revealed type is "str"
+
+[case notebook_goto]
+[file a.py]
+class Abcdef:
+    "heyho"
+    x = 1
+[file b.py]
+# parent: a.py
+#? goto
+Abcdef
+#? goto
+Abcdef.x
+#? infer
+Abcdef
+#? documentation
+Abcdef
+
+[file c.py]
+# parent: b.py
+#? goto
+Abcdef
+#? goto
+Abcdef.x
+#? infer
+Abcdef
+#? documentation
+Abcdef
+
+# Invalid code
+#? --codepoint-column 0 goto
+Abcdef.
+
+[out]
+c.py:13: error: Invalid syntax
+c.py:3:goto -> a.py:1:6:a.Abcdef
+c.py:5:goto -> a.py:3:4:a.Abcdef.x
+c.py:7:infer -> a.py:1:6:a.Abcdef
+c.py:9:documentation -> "(class) Abcdef\n---\nheyho"
+c.py:13:goto -> a.py:1:6:a.Abcdef
+b.py:3:goto -> a.py:1:6:a.Abcdef
+b.py:5:goto -> a.py:3:4:a.Abcdef.x
+b.py:7:infer -> a.py:1:6:a.Abcdef
+b.py:9:documentation -> "(class) Abcdef\n---\nheyho"
+
+[case notebook_completion]
+[file a.py]
+abcdefg = ""
+[file a.py.2]
+
+[file b.py]
+# parent: a.py
+[file b.py.3]
+# parent: a.py
+class abcdefg:
+    upper_nope = 1
+
+[file c.py]
+# parent: b.py
+# type: ignore
+
+#? complete
+abcde
+#? complete
+abcdefg.uppe
+#? complete --filter-starts-with upper
+abcdefg.
+[out]
+c.py:9: error: Invalid syntax
+c.py:5:complete -> [abcdefg]
+c.py:7:complete -> [upper]
+c.py:9:complete -> [upper]
+==
+c.py:9: error: Invalid syntax
+c.py:5:complete -> []
+c.py:7:complete -> []
+c.py:9:complete -> []
+==
+c.py:9: error: Invalid syntax
+c.py:5:complete -> [abcdefg]
+c.py:7:complete -> [upper_nope]
+c.py:9:complete -> [upper_nope]
+
+[case notebook_signatures]
+[file a.py]
+def xyz(x: int, y: str) -> None: ...
+
+[file b.py]
+# parent: a.py
+
+#? signatures
+xyz(
+
+[out]
+b.py:4: error: Invalid syntax
+b.py:4:call signatures:
+- "(x: int, y: str) -> None", valid with params: true, on nth param: Some(0)
+
+[case notebook_references]
+[file a.py]
+x = 1
+
+[file b.py]
+# parent: a.py
+
+x = 2
+
+[file b.py.3]
+# parent: a.py
+
+[file c.py]
+# parent: b.py
+x = 3
+#? references
+x
+
+[file c.py.2]
+# parent: b.py
+#? references
+x
+
+[out]
+c.py:4:references -> c.py:2:0; c.py:4:0
+==
+c.py:3:references -> b.py:3:0; c.py:3:0
+==
+c.py:3:references -> a.py:1:0; c.py:3:0

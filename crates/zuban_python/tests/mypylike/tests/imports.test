@@ -531,6 +531,7 @@ else:
 [file m.py]
 
 [case type_alias_overrides_star_import]
+# flags: --disallow-redefinition
 from m import *
 type X = str  # E: Incompatible types in assignment (expression has type "TypeAliasType", variable has type "type[C]")
 
@@ -650,3 +651,39 @@ class Foo:
 # flags: --no-mypy-compatible
 import typedpkg_ns.b.bbb as b
 b.bf("foo", "bar")  # E: Too many arguments for "bf"
+
+[case star_imports_allow_redefinition1]
+# flags: --allow-redefinition
+from m import *
+x = int()
+
+if bool():
+    y = int()
+    reveal_type(y)  # N: Revealed type is "int"
+else:
+    reveal_type(y)  # N: Revealed type is "str"
+
+reveal_type(x)  # N: Revealed type is "int"
+reveal_type(y)  # N: Revealed type is "int | str"
+
+[file m.py]
+x = str()
+y = str()
+
+[case star_imports_allow_redefinition2]
+# flags: --allow-redefinition
+from m import *
+x = int()
+
+if bool():
+    y = int()
+    reveal_type(y)  # N: Revealed type is "int"
+else:
+    reveal_type(y)  # N: Revealed type is "str"
+
+reveal_type(x)  # N: Revealed type is "int"
+reveal_type(y)  # N: Revealed type is "int | str"
+
+[file m.py]
+x: str = str()
+y: str = str()

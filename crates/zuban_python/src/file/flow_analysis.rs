@@ -4851,6 +4851,23 @@ impl Inference<'_, '_, '_> {
     pub fn has_frames(&self) -> bool {
         !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
     }
+
+    pub fn add_star_import_to_base_narrowing(&self, name_def: NameDef, original: Inferred) {
+        // This is a bit weird and probably only correct in most cases, not in all
+        FLOW_ANALYSIS.with(|fa| {
+            let mut frames = fa.frames.borrow_mut();
+            if frames.len() > 1
+                && let Some(frame) = frames.first_mut()
+            {
+                let key = self.key_from_name_def(name_def);
+                if frame.lookup_entry(self.i_s.db, &key).is_none() {
+                    let mut entry = Entry::new(key, original.as_type(self.i_s));
+                    entry.widens = true;
+                    frame.entries.push(entry)
+                }
+            }
+        })
+    }
 }
 
 fn run_pattern_for_each_type(

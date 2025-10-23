@@ -74,14 +74,19 @@ impl ComplexValues {
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct SuperFile {
-    file: FileIndex,
-    // This is is the offset where the sub file starts
-    offset: CodeIndex,
+    pub file: FileIndex,
+    // This is is the offset where the sub file starts if it's in the same file
+    // It might also be part of a notebook and therefore be different files with different URIs.
+    pub offset: Option<CodeIndex>,
 }
 
 impl SuperFile {
     pub fn file<'db>(&self, db: &'db Database) -> &'db PythonFile {
         db.loaded_python_file(self.file)
+    }
+
+    pub fn is_part_of_parent(&self) -> bool {
+        self.offset.is_some()
     }
 }
 
@@ -95,14 +100,47 @@ pub(crate) struct PythonFile {
     pub issues: Diagnostics,
     pub star_imports: Box<[StarImport]>,
     pub all_imports: Box<[NodeIndex]>,
-    sub_files: RwLock<HashMap<CodeIndex, FileIndex>>,
+    pub sub_files: SubFiles,
     pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
     pub ignore_type_errors: bool,
     flags: Option<FinalizedTypeCheckerFlags>,
     pub(super) delayed_diagnostics: RwLock<VecDeque<DelayedDiagnostic>>,
 
-    newline_indices: NewlineIndices,
+    pub newline_indices: NewlineIndices,
+}
+
+#[derive(Default)]
+pub(crate) struct SubFiles {
+    in_same_file: RwLock<HashMap<CodeIndex, FileIndex>>,
+    separate_files: Vec<FileIndex>,
+}
+
+impl SubFiles {
+    fn lookup_sub_file_at_position(&self, start: CodeIndex) -> Option<FileIndex> {
+        self.in_same_file.read().unwrap().get(&start).copied()
+    }
+
+    fn save_sub_file_at_position(&self, start: CodeIndex, file_index: FileIndex) {
+        self.in_same_file.write().unwrap().insert(start, file_index);
+    }
+
+    pub fn add_separate_file(&mut self, sub_file: FileIndex) {
+        self.separate_files.push(sub_file);
+    }
+
+    pub fn take_separate_files(&mut self) -> Vec<FileIndex> {
+        std::mem::take(&mut self.separate_files)
+    }
+}
+
+impl Clone for SubFiles {
+    fn clone(&self) -> Self {
+        Self {
+            in_same_file: RwLock::new(self.in_same_file.read().unwrap().clone()),
+            separate_files: self.separate_files.clone(),
+        }
+    }
 }
 
 impl Clone for PythonFile {
@@ -117,7 +155,7 @@ impl Clone for PythonFile {
             issues: self.issues.clone(),
             star_imports: self.star_imports.clone(),
             all_imports: self.all_imports.clone(),
-            sub_files: RwLock::new(self.sub_files.read().unwrap().clone()),
+            sub_files: self.sub_files.clone(),
             super_file: self.super_file,
             stub_cache: self.stub_cache.clone(),
             ignore_type_errors: self.ignore_type_errors,
@@ -147,17 +185,22 @@ impl File for PythonFile {
         db: &'db Database,
         byte: CodeIndex,
     ) -> PositionInfos<'db> {
-        if let Some(super_file) = self.super_file {
+        if let Some(super_file) = self.super_file
+            && let Some(offset) = super_file.offset
+        {
             super_file
                 .file(db)
-                .byte_to_position_infos(db, super_file.offset + byte)
+                .byte_to_position_infos(db, offset + byte)
         } else {
             self.newline_indices.position_infos(self.tree.code(), byte)
         }
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
-        if self.super_file.is_none() {
+        if self
+            .super_file
+            .is_none_or(|super_file| !super_file.is_part_of_parent())
+        {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
             let result = self.ensure_calculated_diagnostics(db);
@@ -171,7 +214,7 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
-        for (_, file_index) in self.sub_files.read().unwrap().iter() {
+        for (_, file_index) in self.sub_files.in_same_file.read().unwrap().iter() {
             let file = db.loaded_python_file(*file_index);
             vec.extend(file.diagnostics(db).into_vec().into_iter());
         }
@@ -423,7 +466,7 @@ impl<'db> PythonFile {
         start: CodeIndex,
         code: Cow<str>,
     ) -> &'db Self {
-        if let Some(&sub_file_index) = self.sub_files.read().unwrap().get(&start) {
+        if let Some(sub_file_index) = self.sub_files.lookup_sub_file_at_position(start) {
             return db.loaded_python_file(sub_file_index);
         }
         // TODO should probably not need a newline
@@ -443,12 +486,13 @@ impl<'db> PythonFile {
             );
             file.super_file = Some(SuperFile {
                 file: self.file_index,
-                offset: start,
+                offset: Some(start),
             });
             file
         });
         // TODO just saving this in the cache and forgetting about it is a bad idea
-        self.sub_files.write().unwrap().insert(start, f.file_index);
+        self.sub_files
+            .save_sub_file_at_position(start, f.file_index);
         f
     }
     pub(super) fn ensure_forward_reference_file(
@@ -756,8 +800,10 @@ impl<'db> PythonFile {
 
     pub fn original_file(&'db self, db: &'db Database) -> &'db Self {
         match self.super_file {
-            Some(super_file) => db.loaded_python_file(super_file.file).original_file(db),
-            None => self,
+            Some(super_file) if super_file.is_part_of_parent() => {
+                db.loaded_python_file(super_file.file).original_file(db)
+            }
+            _ => self,
         }
     }
 

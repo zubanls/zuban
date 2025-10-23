@@ -777,6 +777,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             // This sub file currently means we're in a type definition.
             // Here we prefer modules, which is a debatable choice.
             let super_file = super_file.file(self.i_s.db);
+            super_file
+                .file_entry(self.i_s.db)
+                .add_invalidation(self.file.file_index());
             if let Some(name_ref) = super_file.lookup_symbol(name) {
                 return Some(StarImportResult::Link(name_ref.as_link()));
             }

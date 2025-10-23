@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -eu -o pipefail -x
 
-pip install dist/zuban-*.whl --force-reinstall
+pip install zuban --no-index --find-links dist/ --force-reinstall
 zuban --help

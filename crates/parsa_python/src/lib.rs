@@ -167,8 +167,8 @@ create_grammar!(
     // With statement
     // --------------
 
-    with_stmt: "with" with_items ":" block
-    with_items: "(" ",".with_item+ ","? ")" | ",".with_item+
+    with_stmt: "with" with_items block
+    with_items: "(" ",".with_item+ ","? ")" ":" | ",".with_item+ ":"
     with_item: expression ["as" star_target]
 
     // Try statement

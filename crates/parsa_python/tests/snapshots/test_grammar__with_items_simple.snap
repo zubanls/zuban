@@ -1,12 +1,13 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
 expression: tree_to_string(tree)
 ---
 file: 0-48
  stmt: 1-22
   with_stmt: 1-22
    Keyword: 1-5 "with"
-   with_items: 6-16
+   with_items: 6-17
     with_item: 6-16
      expression: 6-9
       atom: 6-9
@@ -14,7 +15,7 @@ file: 0-48
      Keyword: 10-12 "as"
      name_def: 13-16
       Name: 13-16 "bar"
-   Keyword: 16-17 ":"
+    Keyword: 16-17 ":"
    block: 18-22
     simple_stmts: 18-22
      simple_stmt: 18-21
@@ -26,7 +27,7 @@ file: 0-48
  stmt: 22-48
   with_stmt: 22-48
    Keyword: 22-26 "with"
-   with_items: 27-42
+   with_items: 27-43
     with_item: 27-37
      expression: 27-30
       atom: 27-30
@@ -39,7 +40,7 @@ file: 0-48
      expression: 39-42
       atom: 39-42
        Name: 39-42 "baz"
-   Keyword: 42-43 ":"
+    Keyword: 42-43 ":"
    block: 44-48
     simple_stmts: 44-48
      simple_stmt: 44-47
@@ -49,4 +50,3 @@ file: 0-48
          Keyword: 44-47 "..."
      Newline: 47-48 "\n"
  Endmarker: 48-48 ""
-
