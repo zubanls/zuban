@@ -116,7 +116,8 @@ impl Project {
             content_changes,
             to_input_position,
         )?;
-        self.db.store_in_memory_file(path, code.into(), None);
+        self.db
+            .store_in_memory_file(path, code.into(), file.super_file.map(|s| s.file));
         Ok(())
     }
 
