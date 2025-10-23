@@ -13,6 +13,7 @@ mod imports;
 mod inference_state;
 mod inferred;
 mod lines;
+mod lsp_utils;
 mod matching;
 mod name;
 mod node_ref;
@@ -33,6 +34,7 @@ use completion::CompletionResolver;
 pub use completion::{Completion, CompletionItemKind};
 pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
+use lsp_types::Position;
 use name::Range;
 use parsa_python_cst::{GotoNode, Tree};
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
@@ -95,6 +97,27 @@ impl Project {
 
     pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
         self.db.store_in_memory_file(path, code, None);
+    }
+
+    pub fn store_file_with_lsp_changes(
+        &mut self,
+        path: PathWithScheme,
+        content_changes: Vec<lsp_types::TextDocumentContentChangeEvent>,
+        to_input_position: impl Fn(Position) -> InputPosition,
+    ) -> anyhow::Result<()> {
+        let Some(index) = self.db.vfs.in_memory_file(&path) else {
+            bail!("Missing loaded file for {path:?} while trying to store LSP changes")
+        };
+        let file = self.db.loaded_python_file(index);
+        let old_code = file.tree.code();
+        let code = lsp_utils::apply_document_changes(
+            old_code,
+            &file.newline_indices,
+            content_changes,
+            to_input_position,
+        )?;
+        self.db.store_in_memory_file(path, code.into(), None);
+        Ok(())
     }
 
     pub fn store_in_memory_file_with_parent(

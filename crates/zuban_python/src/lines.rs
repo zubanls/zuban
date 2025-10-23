@@ -1,5 +1,6 @@
 use std::sync::OnceLock;
 
+use anyhow::bail;
 use parsa_python_cst::CodeIndex;
 use regex::Regex;
 
@@ -31,6 +32,18 @@ impl NewlineIndices {
         })
     }
 
+    pub fn line_column_to_safe_byte(
+        &self,
+        code: &str,
+        input: InputPosition,
+    ) -> anyhow::Result<CodeIndex> {
+        let pos = self.line_column_to_byte(code, input)?;
+        if pos.column_out_of_bounds {
+            bail!("Columns are out of bounds");
+        }
+        Ok(pos.byte)
+    }
+
     pub fn line_column_to_byte(
         &self,
         code: &str,
@@ -48,7 +61,8 @@ impl NewlineIndices {
                     });
                 }
                 anyhow::bail!(
-                    "File has only {} lines, but line {line} is requested",
+                    "File has only {} lines, but line {} is requested",
+                    line + 1,
                     lines.len() + 1
                 );
             };

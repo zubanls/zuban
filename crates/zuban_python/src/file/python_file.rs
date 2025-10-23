@@ -107,7 +107,7 @@ pub(crate) struct PythonFile {
     flags: Option<FinalizedTypeCheckerFlags>,
     pub(super) delayed_diagnostics: RwLock<VecDeque<DelayedDiagnostic>>,
 
-    newline_indices: NewlineIndices,
+    pub newline_indices: NewlineIndices,
 }
 
 #[derive(Default)]
