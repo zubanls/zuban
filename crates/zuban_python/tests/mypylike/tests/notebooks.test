@@ -234,31 +234,31 @@ b.py:4:call signatures:
 - "(x: int, y: str) -> None", valid with params: true, on nth param: Some(0)
 
 [case notebook_references]
-[file a.py]
+[file a.notebook]
 x = 1
 
-[file b.py]
-# parent: a.py
+[file b.notebook]
+# parent: a.notebook
 
 x = 2
 
-[file b.py.3]
-# parent: a.py
+[file b.notebook.3]
+# parent: a.notebook
 
-[file c.py]
-# parent: b.py
+[file c.notebook]
+# parent: b.notebook
 x = 3
 #? references
 x
 
-[file c.py.2]
-# parent: b.py
+[file c.notebook.2]
+# parent: b.notebook
 #? references
 x
 
 [out]
-c.py:4:references -> c.py:2:0; c.py:4:0
+c.notebook:4:references -> c.notebook:2:0; c.notebook:4:0
 ==
-c.py:3:references -> b.py:3:0; c.py:3:0
+c.notebook:3:references -> b.notebook:3:0; c.notebook:3:0
 ==
-c.py:3:references -> a.py:1:0; c.py:3:0
+c.notebook:3:references -> a.notebook:1:0; c.notebook:3:0

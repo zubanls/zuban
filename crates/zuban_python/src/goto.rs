@@ -714,7 +714,14 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
         for entries in workspaces_entries {
             entries.walk_entries(&*db.vfs.handler, &mut |_, dir_entry| {
                 if let DirectoryEntry::File(file) = dir_entry {
-                    maybe_check_file(file)
+                    if file.name.ends_with(".py")
+                        || file.name.ends_with(".pyi")
+                        // We only want to check Python files, but loaded notebooks sometimes have
+                        // different endings.
+                        || file.get_file_index().is_some()
+                    {
+                        maybe_check_file(file)
+                    }
                 }
                 true
             });
