@@ -31,24 +31,12 @@ impl GlobalState<'_> {
         text_document: VersionedTextDocumentIdentifier,
         content_changes: Vec<TextDocumentContentChangeEvent>,
     ) -> anyhow::Result<()> {
-        /*
-         * TODO do something like this (check rust-analyzer as a reference)
-        let Some(code) = self.project().code_of_in_memory_file(path) else {
-            bail!("Should be an in memory file, because we have opened it before")
-        };
-        let code = apply_document_changes(encoding, code, params.content_changes);
-        */
-        let len = content_changes.len();
-        let Some(change) = content_changes.into_iter().next() else {
-            bail!("Expected there to be at least one config change")
-        };
-        if len != 1 || change.range.is_some() || change.range_length.is_some() {
-            bail!(
-                "Expected there to be exactly one content change, because we \
-                   don't support TextDocumentSyncKind::INCREMENTAL yet"
-            )
-        }
-        self.store_in_memory_file(text_document.uri, change.text.into())
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let project = self.project();
+        let path = Self::uri_to_path(project, text_document.uri)?;
+        tracing::info!("Changing document {}", path.as_uri());
+        project
+            .store_file_with_lsp_changes(path, content_changes, |pos| encoding.input_position(pos))
     }
 
     fn store_in_memory_file(&mut self, uri: lsp_types::Uri, code: Box<str>) -> anyhow::Result<()> {
@@ -64,14 +52,14 @@ impl GlobalState<'_> {
         path: PathWithScheme,
         code: Box<str>,
         parent: Option<PathWithScheme>,
-    ) {
+    ) -> anyhow::Result<()> {
         let project = self.project();
         tracing::info!("Loading {}", path.as_uri());
         if let Some(parent) = parent {
-            // project.store_in_memory_file_with_parent(path, code, parent);
-            todo!()
+            project.store_in_memory_file_with_parent(path, code, &parent)
         } else {
             project.store_in_memory_file(path, code);
+            Ok(())
         }
     }
 
@@ -130,7 +118,7 @@ impl GlobalState<'_> {
                 path.clone(),
                 start_at_nth_cell + i,
             )?;
-            self.store_in_memory_file_with_parent(path, doc_item.text.into(), maybe_parent);
+            self.store_in_memory_file_with_parent(path, doc_item.text.into(), maybe_parent)?;
         }
         Ok(())
     }
@@ -199,7 +187,7 @@ impl GlobalState<'_> {
                     .unwrap();
                 // TODO this is not optimal, we should probably not clone the code again for an
                 // entry that is already there.
-                self.store_in_memory_file_with_parent(child, code, Some(parent));
+                self.store_in_memory_file_with_parent(child, code, Some(parent))?;
             }
         }
         if let Some(metadata_change) = cells.data {

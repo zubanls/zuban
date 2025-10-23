@@ -125,12 +125,12 @@ impl Project {
         path: PathWithScheme,
         code: Box<str>,
         parent: &PathWithScheme,
-    ) -> Result<(), String> {
+    ) -> anyhow::Result<()> {
         let Some(parent) = self.db.vfs.in_memory_file(parent) else {
-            return Err(format!(
+            bail!(
                 "Parent with path {} does not exist when storing an in memory file",
                 parent.as_uri()
-            ));
+            );
         };
         self.db.store_in_memory_file(path, code, Some(parent));
         Ok(())
