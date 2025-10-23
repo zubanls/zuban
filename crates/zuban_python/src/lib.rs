@@ -562,39 +562,10 @@ pub enum InputPosition {
 
 /*
 impl<'a> Script<'a> {
-    fn leaf(&self, position: Position) -> Leaf {
-        let pos = self.to_byte_position(position);
-        let leaf = self.file().leaf(&self.project.db, pos);
-        debug!("File {}", self.file().file_path(&self.project.db));
-        debug!("Position {position:?} is on leaf {leaf:?}");
-        leaf
-    }
-
     pub fn search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
     pub fn complete_search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
-    pub fn signatures(&self, _position: Position) {}
     pub fn context(&self, _position: Position) {}
-
-    pub fn extract_variable(
-        &self,
-        _position: Position,
-        _new_name: &str,
-        _until_line: Option<usize>,
-        _until_column: Option<usize>,
-    ) {
-    }
-    pub fn extract_function(
-        &self,
-        _position: Position,
-        _new_name: &str,
-        _until_line: Option<usize>,
-        _until_column: Option<usize>,
-    ) {
-    }
-    pub fn inline(&self, _position: Position) {}
-
-    pub fn selection_ranges() {
-    }
+    pub fn selection_ranges() {}
 }
 */
 
