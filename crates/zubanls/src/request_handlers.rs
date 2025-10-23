@@ -307,16 +307,13 @@ impl GlobalState<'_> {
 
     fn document_with_pos(
         &mut self,
-        position: TextDocumentPositionParams,
+        text_position: TextDocumentPositionParams,
     ) -> anyhow::Result<(Document<'_>, InputPosition)> {
-        let line = position.position.line as usize;
-        let column = position.position.character as usize;
-        let pos = match self.client_capabilities.negotiated_encoding() {
-            NegotiatedEncoding::UTF8 => InputPosition::Utf8Bytes { line, column },
-            NegotiatedEncoding::UTF16 => InputPosition::Utf16CodeUnits { line, column },
-            NegotiatedEncoding::UTF32 => InputPosition::CodePoints { line, column },
-        };
-        Ok((self.document(position.text_document)?, pos))
+        let pos = self
+            .client_capabilities
+            .negotiated_encoding()
+            .input_position(text_position.position);
+        Ok((self.document(text_position.text_document)?, pos))
     }
 
     pub fn handle_references(

@@ -8,11 +8,17 @@ use std::{
 };
 
 use lsp_types::{
-    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
-    PartialResultParams, TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
-    Uri, VersionedTextDocumentIdentifier, WorkDoneProgressParams,
-    notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument},
+    DidChangeNotebookDocumentParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenNotebookDocumentParams, DidOpenTextDocumentParams, DocumentDiagnosticParams,
+    DocumentDiagnosticReport, DocumentDiagnosticReportResult, NotebookCell, NotebookCellKind,
+    NotebookDocument, NotebookDocumentCellChange, NotebookDocumentChangeEvent,
+    NotebookDocumentChangeTextContent, PartialResultParams, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, TextDocumentItem, Uri, VersionedNotebookDocumentIdentifier,
+    VersionedTextDocumentIdentifier, WorkDoneProgressParams,
+    notification::{
+        DidChangeNotebookDocument, DidChangeTextDocument, DidCloseTextDocument,
+        DidOpenNotebookDocument, DidOpenTextDocument,
+    },
     request::DocumentDiagnosticRequest,
 };
 use serde::Serialize;
@@ -21,6 +27,8 @@ use test_utils::{TestDir, write_files_from_fixture};
 use zubanls::GLOBAL_NOTIFY_EVENT_COUNTER;
 
 use crate::connection::{Connection, path_to_uri};
+
+const NOTEBOOK_NAME: &str = "nb.ipynb";
 
 lazy_static::lazy_static! {
     static ref FILE_SYSTEM_LOCK: Mutex<()> = Mutex::default();
@@ -118,10 +126,14 @@ impl Drop for Server {
 }
 
 impl Server {
-    pub(crate) fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
+    pub(crate) fn uri_from_rel_path(&self, rel_path: &str) -> Uri {
         let path = join(&self.tmp_dir.path_for_uri(), rel_path);
+        path_to_uri(&path)
+    }
+
+    pub(crate) fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
         TextDocumentIdentifier {
-            uri: path_to_uri(&path),
+            uri: self.uri_from_rel_path(rel_path),
         }
     }
 
@@ -316,6 +328,72 @@ impl Server {
     pub fn close_in_memory_file(&self, path: &str) {
         self.notify::<DidCloseTextDocument>(DidCloseTextDocumentParams {
             text_document: self.doc_id(path),
+        });
+    }
+
+    fn notebook_uri(&self) -> Uri {
+        self.uri_from_rel_path(NOTEBOOK_NAME)
+    }
+
+    pub fn notebook_cell_uri(&self, nth: usize) -> Uri {
+        self.uri_from_rel_path(&format!("{NOTEBOOK_NAME}/{nth}"))
+    }
+
+    pub fn open_notebook_with_cells(&self, cells: &[&str]) {
+        self.notify::<DidOpenNotebookDocument>(DidOpenNotebookDocumentParams {
+            notebook_document: NotebookDocument {
+                uri: self.notebook_uri(),
+                notebook_type: "jupyter-notebook".into(),
+                version: 0,
+                metadata: None,
+                cells: cells
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| NotebookCell {
+                        kind: NotebookCellKind::Code,
+                        document: self.notebook_cell_uri(i),
+                        metadata: None,
+                        execution_summary: None,
+                    })
+                    .collect(),
+            },
+            cell_text_documents: cells
+                .iter()
+                .enumerate()
+                .map(|(i, code)| TextDocumentItem {
+                    uri: self.notebook_cell_uri(i),
+                    language_id: "python".into(),
+                    version: 1,
+                    text: (*code).into(),
+                })
+                .collect(),
+        });
+    }
+
+    pub fn change_notebook_cell(
+        &self,
+        nth_cell: usize,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) {
+        self.notify::<DidChangeNotebookDocument>(DidChangeNotebookDocumentParams {
+            notebook_document: VersionedNotebookDocumentIdentifier {
+                version: 0,
+                uri: self.notebook_uri(),
+            },
+            change: NotebookDocumentChangeEvent {
+                metadata: None,
+                cells: Some(NotebookDocumentCellChange {
+                    structure: None,
+                    data: None,
+                    text_content: Some(vec![NotebookDocumentChangeTextContent {
+                        document: VersionedTextDocumentIdentifier {
+                            uri: self.notebook_cell_uri(nth_cell),
+                            version: 2,
+                        },
+                        changes,
+                    }]),
+                }),
+            },
         });
     }
 

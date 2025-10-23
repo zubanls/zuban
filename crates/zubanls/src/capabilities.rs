@@ -3,12 +3,14 @@
 //! Advertises the capabilities of the LSP Server.
 use lsp_types::{
     CompletionOptions, DeclarationCapability, HoverProviderCapability,
-    ImplementationProviderCapability, OneOf, PositionEncodingKind, RenameOptions,
-    ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    ImplementationProviderCapability, NotebookCellSelector, NotebookDocumentSyncOptions,
+    NotebookSelector, OneOf, Position, PositionEncodingKind, RenameOptions, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
     WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
     WorkspaceServerCapabilities,
 };
+use zuban_python::InputPosition;
 
 pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> ServerCapabilities {
     ServerCapabilities {
@@ -16,13 +18,21 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         text_document_sync: Some(TextDocumentSyncCapability::Options(
             TextDocumentSyncOptions {
                 open_close: Some(true),
-                change: Some(TextDocumentSyncKind::FULL),
+                change: Some(TextDocumentSyncKind::INCREMENTAL),
                 will_save: None,
                 will_save_wait_until: None,
                 save: None, // Currently not needed
             },
         )),
-        notebook_document_sync: None,
+        notebook_document_sync: Some(OneOf::Left(NotebookDocumentSyncOptions {
+            notebook_selector: vec![NotebookSelector::ByCells {
+                notebook: None,
+                cells: vec![NotebookCellSelector {
+                    language: "python".into(),
+                }],
+            }],
+            save: None,
+        })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: None, // TODO
@@ -337,6 +347,18 @@ impl From<NegotiatedEncoding> for PositionEncodingKind {
             NegotiatedEncoding::UTF8 => PositionEncodingKind::UTF8,
             NegotiatedEncoding::UTF16 => PositionEncodingKind::UTF16,
             NegotiatedEncoding::UTF32 => PositionEncodingKind::UTF32,
+        }
+    }
+}
+
+impl NegotiatedEncoding {
+    pub fn input_position(&self, position: Position) -> InputPosition {
+        let line = position.line as usize;
+        let column = position.character as usize;
+        match self {
+            Self::UTF8 => InputPosition::Utf8Bytes { line, column },
+            Self::UTF16 => InputPosition::Utf16CodeUnits { line, column },
+            Self::UTF32 => InputPosition::CodePoints { line, column },
         }
     }
 }
