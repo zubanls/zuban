@@ -28,6 +28,14 @@ pub(crate) fn diagnostics_for_relevant_files<'db>(
         .unwrap_or_default())
 }
 
+pub(crate) fn all_typechecked_files<'db>(
+    db: &'db Database,
+) -> Vec<(Arc<FileEntry>, PathWithScheme)> {
+    let mut selector = FileSelector::new(db);
+    selector.search_all_typechecked_files();
+    selector.to_be_loaded
+}
+
 fn should_skip(flags: &TypeCheckerFlags, rel_path: &str) -> bool {
     if !rel_path.ends_with(".py") && !rel_path.ends_with(".pyi") {
         return true;
@@ -43,13 +51,17 @@ struct FileSelector<'db> {
 }
 
 impl<'db> FileSelector<'db> {
-    fn find_files(db: &'db Database) -> anyhow::Result<Vec<&'db PythonFile>> {
-        let mut selector = Self {
+    fn new(db: &'db Database) -> Self {
+        Self {
             db,
             to_be_loaded: vec![],
             file_indexes: Default::default(),
             added_file: false,
-        };
+        }
+    }
+
+    fn find_files(db: &'db Database) -> anyhow::Result<Vec<&'db PythonFile>> {
+        let mut selector = Self::new(db);
         selector.search_in_workspaces()?;
         let loaded_file_entries: Mutex<FastHashSet<ArcPtrWrapper>> = Mutex::new(
             selector
@@ -91,15 +103,19 @@ impl<'db> FileSelector<'db> {
         Ok(vec)
     }
 
+    fn search_all_typechecked_files(&mut self) {
+        for entries in self.db.vfs.workspaces.entries_to_type_check() {
+            self.handle_entries(entries)
+        }
+    }
+
     fn search_in_workspaces(&mut self) -> anyhow::Result<()> {
         // In case there are no files provided we simply scan everything. This might not be
         // efficient in some cases, but people can easily just scan the parts they wish.
         let check_files = &self.db.project.settings.files_or_directories_to_check;
         let vfs_handler = &*self.db.vfs.handler;
         if check_files.is_empty() {
-            for entries in self.db.vfs.workspaces.entries_to_type_check() {
-                self.handle_entries(entries)
-            }
+            self.search_all_typechecked_files();
             if !self.added_file {
                 anyhow::bail!("No Python files found to check")
             }

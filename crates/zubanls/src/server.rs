@@ -416,6 +416,8 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<DocumentHighlightRequest>(GlobalState::handle_document_highlight)
         .on_sync_mut::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_sync_mut::<Rename>(GlobalState::rename)
+        .on_sync_mut::<DocumentSymbolRequest>(GlobalState::document_symbols)
+        .on_sync_mut::<WorkspaceSymbolRequest>(GlobalState::workspace_symbols)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
     }

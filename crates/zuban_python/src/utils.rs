@@ -121,7 +121,7 @@ pub(crate) struct SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &NodeIndex)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&str, &NodeIndex)> {
         // This should only ever be called on a table that is not still mutated.
         self.symbols.iter().map(|(k, v)| (k.as_str(), v))
     }

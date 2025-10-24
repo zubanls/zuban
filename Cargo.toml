@@ -37,6 +37,7 @@ lsp-types = { version = "0.97.0", features = ["proposed"]}
 notify = "*"
 num-bigint = "*"
 num-traits = "*"
+rayon = "*"
 regex = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"

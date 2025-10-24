@@ -1,8 +1,9 @@
 use std::path::Path;
 
+use lsp_types::SymbolKind;
 use utils::FastHashSet;
 use vfs::PathWithScheme;
-use zuban_python::{Document, GotoGoal, InputPosition, Project, ReferencesGoal, SymbolKind};
+use zuban_python::{Document, GotoGoal, InputPosition, Project, ReferencesGoal};
 
 use crate::Filter;
 
@@ -128,7 +129,7 @@ impl TestFile<'_> {
                     let actual = document
                         .get()
                         .goto(position, goal, follow_imports, |name| {
-                            if name.kind() == SymbolKind::Module {
+                            if name.lsp_kind() == SymbolKind::MODULE {
                                 format!("module {}", name.qualified_name())
                             } else {
                                 name.target_range_code()

@@ -36,7 +36,8 @@ pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
 use lsp_types::Position;
 use name::Range;
-use parsa_python_cst::{GotoNode, Tree};
+use parsa_python_cst::{GotoNode, Scope, Tree};
+use rayon::prelude::*;
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
@@ -49,7 +50,9 @@ use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
 use matching::invalidate_protocol_cache;
-pub use name::{Name, SymbolKind, ValueName};
+pub use name::{Name, NameSymbol, ValueName};
+
+use crate::select_files::all_typechecked_files;
 
 pub struct Project {
     db: Database,
@@ -91,9 +94,30 @@ impl Project {
         }
     }
 
-    pub fn search(&self, _string: &str, _all_scopes: bool) {}
-
-    pub fn complete_search(&self, _string: &str, _all_scopes: bool) {}
+    pub fn workspace_documents(&self) -> impl ParallelIterator<Item = Document<'_>> {
+        all_typechecked_files(&self.db)
+            .into_par_iter()
+            .filter_map(|(entry, _)| {
+                let file_index = self.db.load_file_from_workspace(&entry, false)?;
+                Some(Document {
+                    project: self,
+                    file_index,
+                })
+            })
+        /*
+        .filter_map(|(entry, _)| {
+            let new_index = self.db.load_file_from_workspace(&entry, false)?;
+            let file = self.db.loaded_python_file(new_index);
+            Some(NameSymbol::symbol_iterator_from_symbol_table(
+                &self.db,
+                file,
+                Scope::Module,
+                &file.symbol_table,
+            ))
+        })
+        .flatten_iter()
+        */
+    }
 
     pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
         self.db.store_in_memory_file(path, code, None);
@@ -478,6 +502,16 @@ impl<'project> Document<'project> {
             file.byte_to_position_infos(&self.project.db, name.start()),
             file.byte_to_position_infos(&self.project.db, name.end()),
         )))
+    }
+
+    pub fn symbols(&self) -> impl ExactSizeIterator<Item = NameSymbol<'_>> {
+        let python_file = self.project.db.loaded_python_file(self.file_index);
+        NameSymbol::symbol_iterator_from_symbol_table(
+            &self.project.db,
+            python_file,
+            Scope::Module,
+            &python_file.symbol_table,
+        )
     }
 }
 

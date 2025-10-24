@@ -59,8 +59,8 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         implementation_provider: Some(ImplementationProviderCapability::Simple(true)),
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
-        document_symbol_provider: None,             // TODO
-        workspace_symbol_provider: None,            // TODO
+        document_symbol_provider: Some(OneOf::Left(true)),
+        workspace_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: None,                 // TODO
         code_lens_provider: None,                   // TODO
         document_formatting_provider: None,         // TODO

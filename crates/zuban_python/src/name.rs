@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 
-use parsa_python_cst::{ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, Scope};
+use lsp_types::SymbolKind;
+use parsa_python_cst::{
+    ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, NodeIndex, Scope, TypeLike,
+};
 use vfs::NormalizedPath;
 
 use crate::{
@@ -13,6 +16,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{LookupResult, Type},
     type_helpers::Class,
+    utils::SymbolTable,
 };
 
 pub type Range<'a> = (PositionInfos<'a>, PositionInfos<'a>);
@@ -150,11 +154,11 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
 
-    pub fn kind(&self) -> SymbolKind {
+    pub fn lsp_kind(&self) -> SymbolKind {
         match self {
-            Name::TreeName(_) => SymbolKind::Object,
-            Name::ModuleName(_) => SymbolKind::Module,
-            Name::NodeName(_) => SymbolKind::Object,
+            Name::TreeName(tree_name) => tree_name.lsp_kind(),
+            Name::ModuleName(_) => SymbolKind::MODULE,
+            Name::NodeName(_) => SymbolKind::OBJECT,
         }
     }
 
@@ -179,6 +183,7 @@ impl<'db, 'x> Name<'db, 'x> {
             }
         }
     }
+
     // Can e.g. be the full name
     pub fn target_range(&self) -> Range<'_> {
         match self {
@@ -395,6 +400,35 @@ impl<'db> TreeName<'db> {
         }
     }
 
+    fn lsp_kind(&self) -> SymbolKind {
+        let Some(name_def) = self.cst_name.name_def() else {
+            return SymbolKind::OBJECT;
+        };
+        match name_def.expect_type() {
+            TypeLike::Assignment(_) => match self.parent_scope {
+                Scope::Class(_) => SymbolKind::FIELD,
+                _ => SymbolKind::VARIABLE,
+            },
+            TypeLike::ClassDef(_) => SymbolKind::CLASS,
+            TypeLike::Function(_) => match self.parent_scope {
+                Scope::Class(_) => {
+                    if name_def.as_code() == "__init__" {
+                        SymbolKind::CONSTRUCTOR
+                    } else {
+                        SymbolKind::METHOD
+                    }
+                }
+                _ => SymbolKind::FUNCTION,
+            },
+            TypeLike::TypeAlias(_) => SymbolKind::INTERFACE,
+            TypeLike::TypeParam(_) => SymbolKind::TYPE_PARAMETER,
+            TypeLike::ImportFromAsName(_)
+            | TypeLike::DottedAsName(_)
+            | TypeLike::ParamName(_)
+            | TypeLike::Other => SymbolKind::VARIABLE,
+        }
+    }
+
     pub(crate) fn with_parent_scope(
         db: &'db Database,
         file: &'db PythonFile,
@@ -437,34 +471,36 @@ pub struct ModuleName<'db> {
     pub(crate) file: &'db PythonFile,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum SymbolKind {
-    Unknown = 0,
-    // Taken from LSP, unused kinds are commented
-    //File = 1,
-    Module = 2,
-    Namespace = 3,
-    //Package = 4,
-    Class = 5,
-    Method = 6,
-    Property = 7,
-    Field = 8,
-    //Constructor = 9,
-    //Enum = 10,
-    //Interface = 11,
-    Function = 12,
-    //Variable = 13,
-    Constant = 14,
-    String = 15,
-    Number = 16,
-    Bool = 17,
-    Array = 18,
-    Object = 19, // From JavaScript objects -> Basically an instance
-    //Key = 20,
-    Null = 21,
-    //EnumMember = 22,
-    //Struct = 23,
-    //Event = 24,
-    //Operator = 25,
-    TypeParameter = 26,
+pub struct NameSymbol<'db> {
+    db: &'db Database,
+    file: &'db PythonFile,
+    parent_scope: Scope<'db>,
+    pub symbol: &'db str,
+    node_index: NodeIndex,
+}
+
+impl<'db> NameSymbol<'db> {
+    pub(crate) fn symbol_iterator_from_symbol_table(
+        db: &'db Database,
+        file: &'db PythonFile,
+        parent_scope: Scope<'db>,
+        symbol_table: &'db SymbolTable,
+    ) -> impl ExactSizeIterator<Item = Self> {
+        symbol_table.iter().map(move |(symbol, &node_index)| Self {
+            db,
+            file,
+            parent_scope,
+            symbol,
+            node_index,
+        })
+    }
+
+    pub fn as_name(&self) -> Name<'db, 'static> {
+        Name::TreeName(TreeName {
+            db: self.db,
+            file: self.file,
+            parent_scope: self.parent_scope,
+            cst_name: NodeRef::new(self.file, self.node_index).expect_name(),
+        })
+    }
 }

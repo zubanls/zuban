@@ -2102,6 +2102,7 @@ dependencies = [
  "lsp-server",
  "lsp-types",
  "notify",
+ "rayon",
  "serde",
  "serde_json",
  "serial_test",

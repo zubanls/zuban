@@ -6,21 +6,23 @@ use lsp_types::{
     CompletionItem, CompletionParams, CompletionResponse, CompletionTextEdit, Diagnostic,
     DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlight,
-    DocumentHighlightKind, DocumentHighlightParams, FullDocumentDiagnosticReport,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location,
-    LocationLink, MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
+    DocumentHighlightKind, DocumentHighlightParams, DocumentSymbol, DocumentSymbolParams,
+    DocumentSymbolResponse, FullDocumentDiagnosticReport, GotoDefinitionParams,
+    GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, LocationLink,
+    MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
     ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, ReferenceParams,
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
     ResourceOperationKind, SignatureHelp, SignatureHelpParams, SignatureInformation,
     TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
-    WorkspaceEdit,
+    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
     },
 };
+use rayon::prelude::*;
 use zuban_python::{
-    Document, GotoGoal, InputPosition, Name, PositionInfos, ReferencesGoal, Severity,
+    Document, GotoGoal, InputPosition, Name, NameSymbol, PositionInfos, ReferencesGoal, Severity,
 };
 
 use crate::{
@@ -280,12 +282,7 @@ impl GlobalState<'_> {
         let has_location_link_support = self.client_capabilities.location_link();
         let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
         let response = if has_location_link_support {
-            let result = run_for_location(document, pos, &|name| {
-                Location::new(
-                    Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
-                    Self::to_range(encoding, name.name_range()),
-                )
-            })?;
+            let result = run_for_location(document, pos, &|name| lsp_location(encoding, name))?;
             if result.is_empty() {
                 return Ok(None);
             }
@@ -424,6 +421,92 @@ impl GlobalState<'_> {
         })
     }
 
+    pub fn document_symbols(
+        &mut self,
+        params: DocumentSymbolParams,
+    ) -> anyhow::Result<Option<DocumentSymbolResponse>> {
+        tracing::info!(
+            "Requested document symbols for {}",
+            params.text_document.uri.as_str(),
+        );
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let hierarchical_symbols = self.client_capabilities.hierarchical_symbols();
+        if !hierarchical_symbols {
+            // This is not supported for now, VSCode supports doesn't do it that way and until I
+            // find a client that does I won't implement it.
+            return Ok(None);
+        }
+
+        let document = self.document(params.text_document)?;
+        Ok(Some(DocumentSymbolResponse::Nested(
+            Self::nested_doc_symbols(encoding, document.symbols()),
+        )))
+    }
+
+    fn nested_doc_symbols<'x>(
+        encoding: NegotiatedEncoding,
+        symbols: impl Iterator<Item = NameSymbol<'x>>,
+    ) -> Vec<DocumentSymbol> {
+        symbols
+            .map(|symbol| {
+                let name = symbol.as_name();
+                #[expect(deprecated)]
+                DocumentSymbol {
+                    name: symbol.symbol.into(),
+                    detail: None,
+                    kind: name.lsp_kind(),
+                    tags: None,
+                    deprecated: None,
+                    range: Self::to_range(encoding, name.target_range()),
+                    selection_range: Self::to_range(encoding, name.name_range()),
+                    children: None, // TODO
+                }
+            })
+            .collect()
+    }
+
+    fn nested_workspace_doc_symbols<'x>(
+        encoding: NegotiatedEncoding,
+        symbols: impl Iterator<Item = NameSymbol<'x>>,
+        query: &str,
+        add: &mut impl FnMut(WorkspaceSymbol),
+    ) {
+        for symbol in symbols {
+            if symbol.symbol.contains(query) {
+                let name = symbol.as_name();
+                add(WorkspaceSymbol {
+                    name: symbol.symbol.into(),
+                    kind: name.lsp_kind(),
+                    tags: None,
+                    container_name: None, // TODO
+                    location: OneOf::Left(lsp_location(encoding, name)),
+                    data: None,
+                });
+            }
+        }
+    }
+
+    pub fn workspace_symbols(
+        &mut self,
+        params: WorkspaceSymbolParams,
+    ) -> anyhow::Result<Option<WorkspaceSymbolResponse>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let symbols = self
+            .project()
+            .workspace_documents()
+            .map(|doc| {
+                let symbols = doc.symbols();
+                let mut out = Vec::with_capacity(symbols.len());
+                Self::nested_workspace_doc_symbols(encoding, symbols, &params.query, &mut |s| {
+                    out.push(s)
+                });
+                out
+            })
+            .flatten_iter()
+            .collect();
+        Ok(Some(WorkspaceSymbolResponse::Nested(symbols)))
+    }
+
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {
         self.shutdown_requested = true;
         Ok(())
@@ -477,4 +560,11 @@ fn resource_ops_supported(
     }
 
     Ok(())
+}
+
+fn lsp_location(encoding: NegotiatedEncoding, name: Name) -> Location {
+    Location::new(
+        Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+        GlobalState::to_range(encoding, name.name_range()),
+    )
 }
