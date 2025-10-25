@@ -30,10 +30,16 @@ pub(crate) fn diagnostics_for_relevant_files<'db>(
 
 pub(crate) fn all_typechecked_files<'db>(
     db: &'db Database,
-) -> Vec<(Arc<FileEntry>, PathWithScheme)> {
+) -> (
+    FastHashSet<FileIndex>,
+    Vec<(Arc<FileEntry>, PathWithScheme)>,
+) {
     let mut selector = FileSelector::new(db);
     selector.search_all_typechecked_files();
-    selector.to_be_loaded
+    (
+        selector.file_indexes.into_inner().unwrap(),
+        selector.to_be_loaded,
+    )
 }
 
 fn should_skip(flags: &TypeCheckerFlags, rel_path: &str) -> bool {

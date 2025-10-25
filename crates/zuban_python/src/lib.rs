@@ -95,14 +95,17 @@ impl Project {
     }
 
     pub fn workspace_documents(&self) -> impl ParallelIterator<Item = Document<'_>> {
-        all_typechecked_files(&self.db)
+        let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
+        known_file_indexes
             .into_par_iter()
-            .filter_map(|(entry, _)| {
-                let file_index = self.db.load_file_from_workspace(&entry, false)?;
-                Some(Document {
-                    project: self,
-                    file_index,
-                })
+            .chain(
+                files_to_be_loaded
+                    .into_par_iter()
+                    .filter_map(|(entry, _)| self.db.load_file_from_workspace(&entry, false)),
+            )
+            .map(|file_index| Document {
+                project: self,
+                file_index,
             })
         /*
         .filter_map(|(entry, _)| {
