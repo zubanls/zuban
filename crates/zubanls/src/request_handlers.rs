@@ -12,7 +12,7 @@ use lsp_types::{
     MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
     ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, ReferenceParams,
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
-    ResourceOperationKind, SignatureHelp, SignatureHelpParams, SignatureInformation,
+    ResourceOperationKind, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
     TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
     WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
     request::{
@@ -450,16 +450,23 @@ impl GlobalState<'_> {
         symbols
             .map(|symbol| {
                 let name = symbol.as_name();
+                let kind = name.lsp_kind();
+                let children = if kind == SymbolKind::CLASS {
+                    name.class_symbols()
+                        .map(|sym| Self::nested_doc_symbols(encoding, sym))
+                } else {
+                    None
+                };
                 #[expect(deprecated)]
                 DocumentSymbol {
                     name: symbol.symbol.into(),
                     detail: None,
-                    kind: name.lsp_kind(),
+                    kind,
                     tags: None,
                     deprecated: None,
                     range: Self::to_range(encoding, name.target_range()),
                     selection_range: Self::to_range(encoding, name.name_range()),
-                    children: None, // TODO
+                    children,
                 }
             })
             .collect()
@@ -474,9 +481,15 @@ impl GlobalState<'_> {
         for symbol in symbols {
             if symbol.symbol.contains(query) {
                 let name = symbol.as_name();
+                let kind = name.lsp_kind();
+                if kind == SymbolKind::CLASS
+                    && let Some(child_symbols) = name.class_symbols()
+                {
+                    Self::nested_workspace_doc_symbols(encoding, child_symbols, query, add);
+                }
                 add(WorkspaceSymbol {
                     name: symbol.symbol.into(),
-                    kind: name.lsp_kind(),
+                    kind,
                     tags: None,
                     container_name: None, // TODO
                     location: OneOf::Left(lsp_location(encoding, name)),

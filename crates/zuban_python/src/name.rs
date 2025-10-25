@@ -298,6 +298,22 @@ impl<'db, 'x> Name<'db, 'x> {
         }
         result
     }
+
+    pub fn class_symbols(&self) -> Option<impl ExactSizeIterator<Item = NameSymbol<'db>>> {
+        match self {
+            Self::TreeName(tree_name) => {
+                let cls = tree_name.cst_name.name_def()?.maybe_name_of_class()?;
+                let cls_storage = ClassNodeRef::new(tree_name.file, cls.index()).class_storage();
+                Some(NameSymbol::symbol_iterator_from_symbol_table(
+                    &tree_name.db,
+                    tree_name.file,
+                    Scope::Class(cls),
+                    &cls_storage.class_symbol_table,
+                ))
+            }
+            _ => None,
+        }
+    }
 }
 
 enum FileOrClass<'a> {
