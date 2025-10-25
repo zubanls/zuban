@@ -13,14 +13,15 @@ use lsp_server::Response;
 use lsp_types::{
     CompletionItemKind, CompletionParams, DiagnosticServerCapabilities, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
-    DocumentHighlightParams, GotoDefinitionParams, HoverParams, NumberOrString,
-    PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext, ReferenceParams,
-    RenameParams, SignatureHelpParams, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceSymbolParams,
+    DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, HoverParams,
+    NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
+    ReferenceParams, RenameParams, SignatureHelpParams, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
+    WorkspaceSymbolParams,
     request::{
-        Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration,
-        GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest,
-        References, Rename, SignatureHelpRequest, WorkspaceSymbolRequest,
+        Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, DocumentSymbolRequest,
+        GotoDeclaration, GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest,
+        PrepareRenameRequest, References, Rename, SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -2339,6 +2340,249 @@ fn test_symbols() {
               },
               "name": "Alias"
             }
+        ]),
+    );
+
+    server.request_and_expect_json::<DocumentSymbolRequest>(
+        DocumentSymbolParams {
+            text_document: server.doc_id("foo.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([
+            {
+              "kind": 13,
+              "name": "b",
+              "range": {
+                "end": {
+                  "character": 6,
+                  "line": 1
+                },
+                "start": {
+                  "character": 0,
+                  "line": 1
+                }
+              },
+              "selectionRange": {
+                "end": {
+                  "character": 1,
+                  "line": 1
+                },
+                "start": {
+                  "character": 0,
+                  "line": 1
+                }
+              }
+            },
+            {
+              "kind": 13,
+              "name": "a",
+              "range": {
+                "end": {
+                  "character": 10,
+                  "line": 0
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0
+                }
+              },
+              "selectionRange": {
+                "end": {
+                  "character": 1,
+                  "line": 0
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0
+                }
+              }
+            },
+            {
+              "children": [
+                {
+                  "detail": "X",
+                  "kind": 8,
+                  "name": "x",
+                  "range": {
+                    "end": {
+                      "character": 10,
+                      "line": 5
+                    },
+                    "start": {
+                      "character": 4,
+                      "line": 5
+                    }
+                  },
+                  "selectionRange": {
+                    "end": {
+                      "character": 5,
+                      "line": 5
+                    },
+                    "start": {
+                      "character": 4,
+                      "line": 5
+                    }
+                  }
+                },
+                {
+                  "detail": "X",
+                  "kind": 6,
+                  "name": "f",
+                  "range": {
+                    "end": {
+                      "character": 4,
+                      "line": 10
+                    },
+                    "start": {
+                      "character": 4,
+                      "line": 7
+                    }
+                  },
+                  "selectionRange": {
+                    "end": {
+                      "character": 9,
+                      "line": 7
+                    },
+                    "start": {
+                      "character": 8,
+                      "line": 7
+                    }
+                  }
+                },
+                {
+                  "children": [
+                    {
+                      "detail": "X.Y",
+                      "kind": 6,
+                      "name": "g",
+                      "range": {
+                        "end": {
+                          "character": 0,
+                          "line": 12
+                        },
+                        "start": {
+                          "character": 8,
+                          "line": 11
+                        }
+                      },
+                      "selectionRange": {
+                        "end": {
+                          "character": 13,
+                          "line": 11
+                        },
+                        "start": {
+                          "character": 12,
+                          "line": 11
+                        }
+                      }
+                    }
+                  ],
+                  "detail": "X",
+                  "kind": 5,
+                  "name": "Y",
+                  "range": {
+                    "end": {
+                      "character": 0,
+                      "line": 13
+                    },
+                    "start": {
+                      "character": 4,
+                      "line": 10
+                    }
+                  },
+                  "selectionRange": {
+                    "end": {
+                      "character": 11,
+                      "line": 10
+                    },
+                    "start": {
+                      "character": 10,
+                      "line": 10
+                    }
+                  }
+                }
+              ],
+              "kind": 5,
+              "name": "X",
+              "range": {
+                "end": {
+                  "character": 0,
+                  "line": 13
+                },
+                "start": {
+                  "character": 0,
+                  "line": 4
+                }
+              },
+              "selectionRange": {
+                "end": {
+                  "character": 7,
+                  "line": 4
+                },
+                "start": {
+                  "character": 6,
+                  "line": 4
+                }
+              }
+            },
+            {
+              "kind": 11,
+              "name": "Alias",
+              "range": {
+                "end": {
+                  "character": 16,
+                  "line": 2
+                },
+                "start": {
+                  "character": 0,
+                  "line": 2
+                }
+              },
+              "selectionRange": {
+                "end": {
+                  "character": 10,
+                  "line": 2
+                },
+                "start": {
+                  "character": 5,
+                  "line": 2
+                }
+              }
+            }
+        ]),
+    );
+    server.request_and_expect_json::<DocumentSymbolRequest>(
+        DocumentSymbolParams {
+            text_document: server.doc_id("bar.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([
+          {
+            "kind": 13,
+            "name": "x",
+            "range": {
+              "end": {
+                "character": 5,
+                "line": 0
+              },
+              "start": {
+                "character": 0,
+                "line": 0
+              }
+            },
+            "selectionRange": {
+              "end": {
+                "character": 1,
+                "line": 0
+              },
+              "start": {
+                "character": 0,
+                "line": 0
+              }
+            }
+          }
         ]),
     );
 }

@@ -107,19 +107,6 @@ impl Project {
                 project: self,
                 file_index,
             })
-        /*
-        .filter_map(|(entry, _)| {
-            let new_index = self.db.load_file_from_workspace(&entry, false)?;
-            let file = self.db.loaded_python_file(new_index);
-            Some(NameSymbol::symbol_iterator_from_symbol_table(
-                &self.db,
-                file,
-                Scope::Module,
-                &file.symbol_table,
-            ))
-        })
-        .flatten_iter()
-        */
     }
 
     pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
