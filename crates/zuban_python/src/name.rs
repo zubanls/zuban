@@ -134,18 +134,36 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
 
-    pub fn qualified_name_of_parent_without_file(&self) -> Option<String> {
+    pub fn simple_qualified_name_of_parent_without_file(&self) -> Option<String> {
         match self {
             Name::TreeName(n) => {
-                let parent_scope = match n.parent_scope {
-                    Scope::Module => ParentScope::Module,
-                    Scope::Class(class_def) => ParentScope::Class(class_def.index()),
-                    Scope::Function(function_def) => ParentScope::Function(function_def.index()),
-                    Scope::Lambda(_) => {
-                        return None;
+                fn qualified(file: &PythonFile, scope: Scope) -> Option<String> {
+                    match scope {
+                        Scope::Class(class_def) => {
+                            let parent_scope = ClassNodeRef::new(file, class_def.index())
+                                .class_storage()
+                                .parent_scope;
+                            let name = class_def.name().as_code();
+                            match parent_scope {
+                                ParentScope::Module => Some(name.into()),
+                                ParentScope::Function(_) => None,
+                                ParentScope::Class(cls_index) => {
+                                    let parent = qualified(
+                                        file,
+                                        Scope::Class(
+                                            ClassNodeRef::new(file, cls_index)
+                                                .maybe_class()
+                                                .unwrap(),
+                                        ),
+                                    )?;
+                                    Some(format!("{parent}.{name}"))
+                                }
+                            }
+                        }
+                        Scope::Function(_) | Scope::Module | Scope::Lambda(_) => None,
                     }
-                };
-                parent_scope.qualified_name_of_parent_without_file(n.db, n.file)
+                }
+                qualified(n.file, n.parent_scope)
             }
             Name::ModuleName(_) | Name::NodeName(_) => None,
         }

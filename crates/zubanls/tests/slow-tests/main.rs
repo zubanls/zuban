@@ -16,11 +16,11 @@ use lsp_types::{
     DocumentHighlightParams, GotoDefinitionParams, HoverParams, NumberOrString,
     PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext, ReferenceParams,
     RenameParams, SignatureHelpParams, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri, WorkDoneProgressParams,
+    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceSymbolParams,
     request::{
         Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, GotoDeclaration,
         GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest,
-        References, Rename, SignatureHelpRequest,
+        References, Rename, SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -726,7 +726,7 @@ fn check_panic_recovery() {
         ""()
         "#,
     )
-    .into_server_detailed(None);
+    .into_server();
 
     // Open an in memory file that doesn't otherwise exist, also add a forward reference that might
     // create an additional file and potential issues with panic recovery.
@@ -761,7 +761,7 @@ fn check_panic_recovery_with_push_diagnostics() {
         "#,
     )
     .with_push_diagnostics()
-    .into_server_detailed(None);
+    .into_server();
 
     const NOT_CALLABLE: &str = r#""int" not callable"#;
     // Open an in memory file that doesn't otherwise exist
@@ -2123,4 +2123,222 @@ fn check_notebook_cell_change() {
         }],
     );
     expect_result();
+}
+
+#[test]
+#[serial]
+fn test_symbols() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        a: int = 1
+        b = ""
+        type Alias = int
+
+        class X:
+            x: int
+
+            def f(self, param: int) -> None:
+                func_var: int = 1
+
+            class Y:
+                def g(self, param: int) -> None: ...
+
+        [file bar.py]
+        x = 1
+        "#,
+    )
+    .into_server();
+
+    let foo_py = server.doc_id("foo.py").uri;
+    let bar_py = server.doc_id("bar.py").uri;
+
+    server.request_and_expect_json::<WorkspaceSymbolRequest>(
+        WorkspaceSymbolParams::default(),
+        json!([
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 0,
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0,
+                }
+              },
+              "uri": bar_py,
+            },
+            "name": "x"
+          },
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 1,
+                },
+                "start": {
+                  "character": 0,
+                  "line": 1,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "b"
+          },
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 0,
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "a"
+          },
+          {
+            "containerName": "X",
+            "kind": 8,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 5,
+                  "line": 5,
+                },
+                "start": {
+                  "character": 4,
+                  "line": 5,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "x"
+          },
+          {
+            "containerName": "X.Y",
+            "kind": 6,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 13,
+                  "line": 11,
+                },
+                "start": {
+                  "character": 12,
+                  "line": 11,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "g"
+          },
+          {
+            "containerName": "X",
+            "kind": 5,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 11,
+                  "line": 10,
+                },
+                "start": {
+                  "character": 10,
+                  "line": 10,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "Y"
+          },
+          {
+            "containerName": "X",
+            "kind": 6,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 9,
+                  "line": 7,
+                },
+                "start": {
+                  "character": 8,
+                  "line": 7,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "f"
+          },
+          {
+            "kind": 5,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 4,
+                },
+                "start": {
+                  "character": 6,
+                  "line": 4,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "X"
+          },
+          {
+            "kind": 11,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 10,
+                  "line": 2,
+                },
+                "start": {
+                  "character": 5,
+                  "line": 2,
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "Alias"
+          }
+        ]),
+    );
+
+    server.request_and_expect_json::<WorkspaceSymbolRequest>(
+        WorkspaceSymbolParams {
+            query: "lia".to_string(),
+            ..Default::default()
+        },
+        json!([
+            {
+              "kind": 11,
+              "location": {
+                "range": {
+                  "end": {
+                    "line": 2,
+                    "character": 10,
+                  },
+                  "start": {
+                    "line": 2,
+                    "character": 5,
+                  }
+                },
+                "uri": foo_py,
+              },
+              "name": "Alias"
+            }
+        ]),
+    );
 }
