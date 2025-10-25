@@ -15,7 +15,7 @@ use lsp_types::{
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
     DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, HoverParams,
     NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
-    ReferenceParams, RenameParams, SignatureHelpParams, TextDocumentContentChangeEvent,
+    ReferenceParams, RenameParams, SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent,
     TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
     WorkspaceSymbolParams,
     request::{
@@ -2158,16 +2158,16 @@ fn test_symbols() {
         WorkspaceSymbolParams::default(),
         json!([
           {
-            "kind": 13,
+            "kind": SymbolKind::VARIABLE,
             "location": {
               "range": {
                 "end": {
-                  "character": 1,
                   "line": 0,
+                  "character": 1,
                 },
                 "start": {
-                  "character": 0,
                   "line": 0,
+                  "character": 0,
                 }
               },
               "uri": bar_py,
@@ -2175,16 +2175,16 @@ fn test_symbols() {
             "name": "x"
           },
           {
-            "kind": 13,
+            "kind": SymbolKind::VARIABLE,
             "location": {
               "range": {
                 "end": {
-                  "character": 1,
                   "line": 1,
+                  "character": 1,
                 },
                 "start": {
-                  "character": 0,
                   "line": 1,
+                  "character": 0,
                 }
               },
               "uri": foo_py,
@@ -2192,16 +2192,16 @@ fn test_symbols() {
             "name": "b"
           },
           {
-            "kind": 13,
+            "kind": SymbolKind::VARIABLE,
             "location": {
               "range": {
                 "end": {
-                  "character": 1,
                   "line": 0,
+                  "character": 1,
                 },
                 "start": {
-                  "character": 0,
                   "line": 0,
+                  "character": 0,
                 }
               },
               "uri": foo_py,
@@ -2210,16 +2210,16 @@ fn test_symbols() {
           },
           {
             "containerName": "X",
-            "kind": 8,
+            "kind": SymbolKind::FIELD,
             "location": {
               "range": {
                 "end": {
-                  "character": 5,
                   "line": 5,
+                  "character": 5,
                 },
                 "start": {
-                  "character": 4,
                   "line": 5,
+                  "character": 4,
                 }
               },
               "uri": foo_py,
@@ -2228,16 +2228,16 @@ fn test_symbols() {
           },
           {
             "containerName": "X.Y",
-            "kind": 6,
+            "kind": SymbolKind::METHOD,
             "location": {
               "range": {
                 "end": {
-                  "character": 13,
                   "line": 11,
+                  "character": 13,
                 },
                 "start": {
-                  "character": 12,
                   "line": 11,
+                  "character": 12,
                 }
               },
               "uri": foo_py,
@@ -2246,16 +2246,16 @@ fn test_symbols() {
           },
           {
             "containerName": "X",
-            "kind": 5,
+            "kind": SymbolKind::CLASS,
             "location": {
               "range": {
                 "end": {
-                  "character": 11,
                   "line": 10,
+                  "character": 11,
                 },
                 "start": {
-                  "character": 10,
                   "line": 10,
+                  "character": 10,
                 }
               },
               "uri": foo_py,
@@ -2264,16 +2264,16 @@ fn test_symbols() {
           },
           {
             "containerName": "X",
-            "kind": 6,
+            "kind": SymbolKind::METHOD,
             "location": {
               "range": {
                 "end": {
-                  "character": 9,
                   "line": 7,
+                  "character": 9,
                 },
                 "start": {
-                  "character": 8,
                   "line": 7,
+                  "character": 8,
                 }
               },
               "uri": foo_py,
@@ -2281,16 +2281,16 @@ fn test_symbols() {
             "name": "f"
           },
           {
-            "kind": 5,
+            "kind": SymbolKind::CLASS,
             "location": {
               "range": {
                 "end": {
-                  "character": 7,
                   "line": 4,
+                  "character": 7,
                 },
                 "start": {
-                  "character": 6,
                   "line": 4,
+                  "character": 6,
                 }
               },
               "uri": foo_py,
@@ -2298,16 +2298,16 @@ fn test_symbols() {
             "name": "X"
           },
           {
-            "kind": 11,
+            "kind": SymbolKind::INTERFACE,
             "location": {
               "range": {
                 "end": {
-                  "character": 10,
                   "line": 2,
+                  "character": 10,
                 },
                 "start": {
-                  "character": 5,
                   "line": 2,
+                  "character": 5,
                 }
               },
               "uri": foo_py,
@@ -2324,7 +2324,7 @@ fn test_symbols() {
         },
         json!([
             {
-              "kind": 11,
+              "kind": SymbolKind::INTERFACE,
               "location": {
                 "range": {
                   "end": {
@@ -2351,50 +2351,50 @@ fn test_symbols() {
         },
         json!([
             {
-              "kind": 13,
+              "kind": SymbolKind::VARIABLE,
               "name": "b",
               "range": {
                 "end": {
+                  "line": 1,
                   "character": 6,
-                  "line": 1
                 },
                 "start": {
+                  "line": 1,
                   "character": 0,
-                  "line": 1
                 }
               },
               "selectionRange": {
                 "end": {
+                  "line": 1,
                   "character": 1,
-                  "line": 1
                 },
                 "start": {
+                  "line": 1,
                   "character": 0,
-                  "line": 1
                 }
               }
             },
             {
-              "kind": 13,
+              "kind": SymbolKind::VARIABLE,
               "name": "a",
               "range": {
                 "end": {
+                  "line": 0,
                   "character": 10,
-                  "line": 0
                 },
                 "start": {
+                  "line": 0,
                   "character": 0,
-                  "line": 0
                 }
               },
               "selectionRange": {
                 "end": {
+                  "line": 0,
                   "character": 1,
-                  "line": 0
                 },
                 "start": {
+                  "line": 0,
                   "character": 0,
-                  "line": 0
                 }
               }
             },
@@ -2402,51 +2402,51 @@ fn test_symbols() {
               "children": [
                 {
                   "detail": "X",
-                  "kind": 8,
+                  "kind": SymbolKind::FIELD,
                   "name": "x",
                   "range": {
                     "end": {
+                      "line": 5,
                       "character": 10,
-                      "line": 5
                     },
                     "start": {
+                      "line": 5,
                       "character": 4,
-                      "line": 5
                     }
                   },
                   "selectionRange": {
                     "end": {
+                      "line": 5,
                       "character": 5,
-                      "line": 5
                     },
                     "start": {
+                      "line": 5,
                       "character": 4,
-                      "line": 5
                     }
                   }
                 },
                 {
                   "detail": "X",
-                  "kind": 6,
+                  "kind": SymbolKind::METHOD,
                   "name": "f",
                   "range": {
                     "end": {
+                      "line": 10,
                       "character": 4,
-                      "line": 10
                     },
                     "start": {
+                      "line": 7,
                       "character": 4,
-                      "line": 7
                     }
                   },
                   "selectionRange": {
                     "end": {
+                      "line": 7,
                       "character": 9,
-                      "line": 7
                     },
                     "start": {
+                      "line": 7,
                       "character": 8,
-                      "line": 7
                     }
                   }
                 },
@@ -2454,99 +2454,99 @@ fn test_symbols() {
                   "children": [
                     {
                       "detail": "X.Y",
-                      "kind": 6,
+                      "kind": SymbolKind::METHOD,
                       "name": "g",
                       "range": {
                         "end": {
+                          "line": 12,
                           "character": 0,
-                          "line": 12
                         },
                         "start": {
+                          "line": 11,
                           "character": 8,
-                          "line": 11
                         }
                       },
                       "selectionRange": {
                         "end": {
+                          "line": 11,
                           "character": 13,
-                          "line": 11
                         },
                         "start": {
+                          "line": 11,
                           "character": 12,
-                          "line": 11
                         }
                       }
                     }
                   ],
                   "detail": "X",
-                  "kind": 5,
+                  "kind": SymbolKind::CLASS,
                   "name": "Y",
                   "range": {
                     "end": {
+                      "line": 13,
                       "character": 0,
-                      "line": 13
                     },
                     "start": {
+                      "line": 10,
                       "character": 4,
-                      "line": 10
                     }
                   },
                   "selectionRange": {
                     "end": {
+                      "line": 10,
                       "character": 11,
-                      "line": 10
                     },
                     "start": {
+                      "line": 10,
                       "character": 10,
-                      "line": 10
                     }
                   }
                 }
               ],
-              "kind": 5,
+              "kind": SymbolKind::CLASS,
               "name": "X",
               "range": {
                 "end": {
+                  "line": 13,
                   "character": 0,
-                  "line": 13
                 },
                 "start": {
+                  "line": 4,
                   "character": 0,
-                  "line": 4
                 }
               },
               "selectionRange": {
                 "end": {
+                  "line": 4,
                   "character": 7,
-                  "line": 4
                 },
                 "start": {
+                  "line": 4,
                   "character": 6,
-                  "line": 4
                 }
               }
             },
             {
-              "kind": 11,
+              "kind": SymbolKind::INTERFACE,
               "name": "Alias",
               "range": {
                 "end": {
+                  "line": 2,
                   "character": 16,
-                  "line": 2
                 },
                 "start": {
+                  "line": 2,
                   "character": 0,
-                  "line": 2
                 }
               },
               "selectionRange": {
                 "end": {
+                  "line": 2,
                   "character": 10,
-                  "line": 2
                 },
                 "start": {
+                  "line": 2,
                   "character": 5,
-                  "line": 2
                 }
               }
             }
@@ -2560,26 +2560,26 @@ fn test_symbols() {
         },
         json!([
           {
-            "kind": 13,
+            "kind": SymbolKind::VARIABLE,
             "name": "x",
             "range": {
               "end": {
+                "line": 0,
                 "character": 5,
-                "line": 0
               },
               "start": {
+                "line": 0,
                 "character": 0,
-                "line": 0
               }
             },
             "selectionRange": {
               "end": {
+                "line": 0,
                 "character": 1,
-                "line": 0
               },
               "start": {
+                "line": 0,
                 "character": 0,
-                "line": 0
               }
             }
           }
