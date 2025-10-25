@@ -460,7 +460,7 @@ impl GlobalState<'_> {
                 #[expect(deprecated)]
                 DocumentSymbol {
                     name: symbol.symbol.into(),
-                    detail: None,
+                    detail: name.qualified_name_of_parent_without_file(),
                     kind,
                     tags: None,
                     deprecated: None,
@@ -491,7 +491,7 @@ impl GlobalState<'_> {
                     name: symbol.symbol.into(),
                     kind,
                     tags: None,
-                    container_name: None, // TODO
+                    container_name: name.qualified_name_of_parent_without_file(),
                     location: OneOf::Left(lsp_location(encoding, name)),
                     data: None,
                 });

@@ -1576,6 +1576,25 @@ impl ParentScope {
         }
     }
 
+    pub fn qualified_name_of_parent_without_file(
+        self,
+        db: &Database,
+        file: &PythonFile,
+    ) -> Option<String> {
+        match self {
+            ParentScope::Module => None,
+            ParentScope::Class(node_index) => {
+                let parent_class =
+                    Class::with_self_generics(db, ClassNodeRef::new(file, node_index));
+                Some(parent_class.qualified_name(db))
+            }
+            ParentScope::Function(func) => {
+                // TODO I think this should exist properly
+                None
+            }
+        }
+    }
+
     pub fn qualified_name_for_unreachable_scope(
         db: &Database,
         defined_at: NodeRef,

@@ -134,6 +134,23 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
 
+    pub fn qualified_name_of_parent_without_file(&self) -> Option<String> {
+        match self {
+            Name::TreeName(n) => {
+                let parent_scope = match n.parent_scope {
+                    Scope::Module => ParentScope::Module,
+                    Scope::Class(class_def) => ParentScope::Class(class_def.index()),
+                    Scope::Function(function_def) => ParentScope::Function(function_def.index()),
+                    Scope::Lambda(_) => {
+                        return None;
+                    }
+                };
+                parent_scope.qualified_name_of_parent_without_file(n.db, n.file)
+            }
+            Name::ModuleName(_) | Name::NodeName(_) => None,
+        }
+    }
+
     pub fn qualified_name_of_file(&self) -> String {
         self.file().qualified_name(self.db())
     }
