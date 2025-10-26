@@ -55,27 +55,25 @@ jobs:
             test: native
 
           # manylinux armv7 / x86 (i686)
-          - os: ubuntu-24.04
-            arch: armv7
+          - os: ubuntu-24.04-arm
             target: armv7-unknown-linux-gnueabihf
-            test: run-on-arch
-            distro: ubuntu24.04
-            install_cmd: apt-get update && apt-get install -y python3 python3-pip python3-venv
+            test: container
+            image: python:${{ inputs.python_version }}-slim-trixie
+            docker_options: --platform linux/arm/v7
           - os: ubuntu-24.04
-            arch: x86
             target: i686-unknown-linux-gnu
             test: container
-            image: i386/python:${{ inputs.python_version }}-slim-trixie
-            install_cmd: apt-get install -y bash
+            image: python:${{ inputs.python_version }}-slim-trixie
+            docker_options: --platform linux/i386
 
-          # musllinux armv7 / aarch64 (arm64) / x64 / x86 (i686)
-          - os: ubuntu-24.04
-            arch: armv7
+          # musllinux armv7 / aarch64 (arm64) / x64 (amd64) / x86 (i686)
+          - os: ubuntu-24.04-arm
             target: armv7-unknown-linux-musleabihf
             manylinux: musllinux_1_2
-            test: run-on-arch
-            distro: alpine_latest
-            install_cmd: apk add python3 py3-pip bash
+            test: container
+            image: python:${{ inputs.python_version }}-alpine
+            docker_options: --platform linux/arm/v7
+            install_cmd: apk add bash
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
             # see https://github.com/astral-sh/ruff/issues/3791
@@ -84,18 +82,21 @@ jobs:
             manylinux: musllinux_1_2
             test: container
             image: python:${{ inputs.python_version }}-alpine
+            docker_options: --platform linux/arm64
             install_cmd: apk add bash
           - os: ubuntu-24.04
             target: x86_64-unknown-linux-musl
             manylinux: musllinux_1_2
             test: container
             image: python:${{ inputs.python_version }}-alpine
+            docker_options: --platform linux/amd64
             install_cmd: apk add bash
           - os: ubuntu-24.04
             target: i686-unknown-linux-musl
             manylinux: musllinux_1_2
             test: container
-            image: i386/python:${{ inputs.python_version }}-alpine
+            image: python:${{ inputs.python_version }}-alpine
+            docker_options: --platform linux/i386
             install_cmd: apk add bash
     runs-on: ${{ matrix.t.os }}
     steps:
@@ -118,40 +119,31 @@ jobs:
           docker-options: ${{ matrix.t.maturin_docker_options }}
           manylinux: ${{ matrix.t.manylinux || 'auto' }}
           args: --release --locked --out dist --ignore-rust-version
-      - uses: actions/setup-python@v5
+
+      - name: "Setup Python ${{ inputs.python_version }} (native)"
+        uses: actions/setup-python@v5
         if: matrix.t.test == 'native'
         with:
           python-version: ${{ inputs.python_version }}
           architecture: ${{ matrix.t.arch || env.DEFAULT_ARCH }}
       - name: "Test wheel (native)"
         if: matrix.t.test == 'native'
-        run: ./test-maturin-build.sh
-      - name: "Test wheel (run-on-arch)"
-        if: matrix.t.test == 'run-on-arch'
-        uses: uraimo/run-on-arch-action@v3
-        with:
-          arch: ${{ matrix.t.arch }}
-          distro: ${{ matrix.t.distro }}
-          githubToken: ${{ github.token }}
-          install: |
-            ${{ matrix.t.install_cmd }}
-          run: |
-            cd ${{ env.DEPLOY_DIR }}
-            python3 -m venv venv
-            . ./venv/bin/activate
-            ./test-maturin-build.sh
+        run: |
+          ./test-maturin-build.sh
+
       - name: "Test wheel (container)"
         if: matrix.t.test == 'container'
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.t.image }}
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          options: -v ${{ github.workspace }}:/workspace -w /workspace ${{ matrix.t.docker_options }}
           run: |
             ${{ matrix.t.install_cmd }}
             cd ${{ env.DEPLOY_DIR }}
             python3 -m venv venv
             . ./venv/bin/activate
             ./test-maturin-build.sh
+
       - name: "Upload wheel as a GitHub Artifact"
         uses: actions/upload-artifact@v4
         with:
