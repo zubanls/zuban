@@ -255,6 +255,7 @@ def f(y: type[Y], d: type[D], dinst: D):
 Semantic tokens for full range
 - 2:24:dataclass -> function:definition,declaration
 - 4:6:Y -> class:definition,declaration
+- 5:1:dataclass -> function:none
 - 6:6:D -> class:definition,declaration
 - 7:4:dattr -> variable:definition,declaration
 - 7:11:int -> class:none
@@ -317,3 +318,18 @@ Semantic tokens for full range
 - 2:16:int -> class:none
 - 3:5:Y -> variable:definition
 - 3:9:X -> variable:none
+
+[case namespace_semantic_tokens]
+#? semantic-tokens
+import namespace
+from namespace import foo
+
+namespace
+
+[file namespace/foo.py]
+
+[out]
+Semantic tokens for full range
+- 2:7:namespace -> namespace:definition,declaration
+- 3:22:foo -> namespace:definition,declaration
+- 5:0:namespace -> namespace:none

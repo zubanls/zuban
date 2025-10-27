@@ -89,8 +89,7 @@ impl<'project> Document<'project> {
             Type::Type(_) => Some(SemanticTokenType::CLASS),
             Type::Enum(_) => todo!(),
             Type::EnumMember(enum_member) => todo!(),
-            Type::Module(file_index) => todo!(),
-            Type::Namespace(namespace) => todo!(),
+            Type::Module(_) | Type::Namespace(_) => Some(SemanticTokenType::NAMESPACE),
             Type::Callable(_) | Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
                 todo!() //Some(SemanticTokenType::FUNCTION)
             }
