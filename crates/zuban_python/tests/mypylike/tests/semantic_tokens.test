@@ -166,3 +166,142 @@ y = None
 Semantic tokens for full range
 - 2:0:x -> variable:definition
 - 4:0:y -> variable:definition
+
+[case class_enum_semantic_tokens]
+#? semantic-tokens
+from enum import Enum
+from typing import Literal
+
+class E(Enum):
+    X = "X"
+
+E.X
+
+def f(e: E, e2: type[E], e3: Literal[E.X]):
+    e
+    e2
+    e3
+
+[out]
+Semantic tokens for full range
+- 2:17:Enum -> class:definition,declaration
+- 3:19:Literal -> class:definition,declaration
+- 5:6:E -> class:definition,declaration
+- 5:8:Enum -> class:none
+- 6:4:X -> class:definition
+- 8:0:E -> class:none
+- 10:4:f -> function:definition,declaration
+- 10:6:e -> class:definition,declaration
+- 10:9:E -> class:none
+- 10:12:e2 -> class:definition,declaration
+- 10:16:type -> class:none
+- 10:21:E -> class:none
+- 10:25:e3 -> class:definition,declaration
+- 10:29:Literal -> class:none
+- 10:37:E -> class:none
+- 11:4:e -> class:none
+- 12:4:e2 -> class:none
+- 13:4:e3 -> class:none
+
+[case functional_enum_semantic_tokens]
+#? semantic-tokens
+from enum import Enum
+from typing import Literal
+
+E = Enum("E", "X")
+
+E.X
+
+def f(e: E, e2: type[E], e3: Literal[E.X]):
+    e
+    e2
+    e3
+
+[out]
+Semantic tokens for full range
+- 2:17:Enum -> class:definition,declaration
+- 3:19:Literal -> class:definition,declaration
+- 5:0:E -> class:definition
+- 5:4:Enum -> class:none
+- 7:0:E -> class:none
+- 9:4:f -> function:definition,declaration
+- 9:6:e -> class:definition,declaration
+- 9:9:E -> class:none
+- 9:12:e2 -> class:definition,declaration
+- 9:16:type -> class:none
+- 9:21:E -> class:none
+- 9:25:e3 -> class:definition,declaration
+- 9:29:Literal -> class:none
+- 9:37:E -> class:none
+- 10:4:e -> class:none
+- 11:4:e2 -> class:none
+- 12:4:e3 -> class:none
+
+[case type_of_class_semantic_tokens]
+#? semantic-tokens
+from dataclasses import dataclass
+
+class Y: pass
+@dataclass
+class D:
+    dattr: int
+
+def f(y: type[Y], d: type[D], dinst: D):
+    y
+    d
+    dinst
+
+[out]
+Semantic tokens for full range
+- 2:24:dataclass -> function:definition,declaration
+- 4:6:Y -> class:definition,declaration
+- 6:6:D -> class:definition,declaration
+- 7:4:dattr -> variable:definition,declaration
+- 7:11:int -> class:none
+- 9:4:f -> function:definition,declaration
+- 9:6:y -> class:definition,declaration
+- 9:9:type -> class:none
+- 9:14:Y -> class:none
+- 9:18:d -> class:definition,declaration
+- 9:21:type -> class:none
+- 9:26:D -> class:none
+- 9:30:dinst -> class:definition,declaration
+- 9:37:D -> class:none
+- 10:4:y -> class:none
+- 11:4:d -> class:none
+- 12:4:dinst -> class:none
+
+[case overload_semantic_tokens]
+#? semantic-tokens
+from typing import overload
+@overload
+def x() -> None: ...
+@overload
+def x(a: None) -> None: ...
+def x(a = None) -> None: ...
+
+x
+
+[out]
+Semantic tokens for full range
+- 2:19:overload -> function:definition,declaration
+- 3:1:overload -> function:none
+- 4:4:x -> function:definition,declaration
+- 5:1:overload -> function:none
+- 6:4:x -> function:definition,declaration
+- 6:6:a -> variable:definition,declaration
+- 7:4:x -> function:definition,declaration
+- 7:6:a -> variable:definition
+- 9:0:x -> function:none
+
+[case type_of_class_semantic_tokens2]
+#? semantic-tokens
+x: type[str]
+x
+
+[out]
+Semantic tokens for full range
+- 2:0:x -> class:definition,declaration
+- 2:3:type -> class:none
+- 2:8:str -> class:none
+- 3:0:x -> class:none

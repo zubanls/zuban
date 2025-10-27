@@ -6,7 +6,7 @@ use parsa_python_cst::{CodeIndex, Name as CstName, NodeIndex};
 use crate::{
     Document, InputPosition, PositionInfos,
     database::{ComplexPoint, Database, Point, PointKind, Specific},
-    file::{File as _, PythonFile},
+    file::{File as _, PythonFile, use_cached_annotation_or_type_comment},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::Type,
@@ -85,44 +85,49 @@ impl<'project> Document<'project> {
         p: Point,
     ) -> Option<(SemanticTokenType, SemanticTokenProperties)> {
         let mut properties = SemanticTokenProperties::default();
+        let with_t = |t: &Type| match t {
+            Type::Type(_) => Some(SemanticTokenType::CLASS),
+            Type::Enum(_) => todo!(),
+            Type::EnumMember(enum_member) => todo!(),
+            Type::Module(file_index) => todo!(),
+            Type::Namespace(namespace) => todo!(),
+            Type::Callable(_) | Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
+                todo!() //Some(SemanticTokenType::FUNCTION)
+            }
+            Type::Any(_) | Type::Never(_) => None,
+            _ => Some(SemanticTokenType::VARIABLE),
+        };
+
         let lsp_type = match p.kind() {
             PointKind::Specific => match p.specific() {
                 Specific::Function => Some(SemanticTokenType::FUNCTION),
-                Specific::MaybeSelfParam => Some(SemanticTokenType::VARIABLE),
+                Specific::Param | Specific::MaybeSelfParam => Some(SemanticTokenType::VARIABLE),
+                Specific::OverloadUnreachable => Some(SemanticTokenType::FUNCTION),
                 specific => {
-                    if specific.is_annotation_or_type_comment() || specific.is_partial() {
+                    if specific.is_partial() {
                         Some(SemanticTokenType::VARIABLE)
+                    } else if specific.is_annotation_or_type_comment() {
+                        let t = use_cached_annotation_or_type_comment(
+                            &InferenceState::new(&self.project.db, node_ref.file),
+                            node_ref,
+                        );
+                        with_t(&t)
                     } else {
                         Some(SemanticTokenType::CLASS)
                     }
                 }
             },
-            PointKind::Complex => {
-                let with_t = |t: &Type| match t {
-                    Type::Type(_) => todo!(),
-                    Type::Enum(_) => todo!(),
-                    Type::EnumMember(enum_member) => todo!(),
-                    Type::Module(file_index) => todo!(),
-                    Type::Namespace(namespace) => todo!(),
-                    Type::Callable(_) | Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
-                        todo!() //Some(SemanticTokenType::FUNCTION)
-                    }
-                    Type::Any(_) | Type::Never(_) => None,
-                    _ => Some(SemanticTokenType::VARIABLE),
-                };
-
-                match node_ref.file.complex_points.get(p.complex_index()) {
-                    ComplexPoint::TypeInstance(t) => with_t(t),
-                    ComplexPoint::IndirectFinal(t) => with_t(t),
-                    ComplexPoint::WidenedType(w) => with_t(&w.widened),
-                    ComplexPoint::Class(_)
-                    | ComplexPoint::NamedTupleDefinition(_)
-                    | ComplexPoint::TypedDictDefinition(_) => Some(SemanticTokenType::CLASS),
-                    ComplexPoint::FunctionOverload(_) => todo!(), //Some(SemanticTokenType::FUNCTION),
-                    _ => None,
-                    ComplexPoint::TypeAlias(alias) => todo!(),
-                }
-            }
+            PointKind::Complex => match node_ref.file.complex_points.get(p.complex_index()) {
+                ComplexPoint::TypeInstance(t) => with_t(t),
+                ComplexPoint::IndirectFinal(t) => with_t(t),
+                ComplexPoint::WidenedType(w) => with_t(&w.widened),
+                ComplexPoint::Class(_)
+                | ComplexPoint::NamedTupleDefinition(_)
+                | ComplexPoint::TypedDictDefinition(_) => Some(SemanticTokenType::CLASS),
+                ComplexPoint::FunctionOverload(_) => Some(SemanticTokenType::FUNCTION),
+                _ => None,
+                ComplexPoint::TypeAlias(alias) => todo!(),
+            },
             PointKind::FileReference => Some(SemanticTokenType::NAMESPACE),
             PointKind::Redirect => unreachable!("We have already followed all redirects"),
         }?;
