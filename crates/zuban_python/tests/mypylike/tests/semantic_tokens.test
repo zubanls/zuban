@@ -305,3 +305,15 @@ Semantic tokens for full range
 - 2:3:type -> class:none
 - 2:8:str -> class:none
 - 3:0:x -> class:none
+
+[case type_alias_semantic_tokens]
+#? semantic-tokens
+type X = None | int
+type Y = X
+
+[out]
+Semantic tokens for full range
+- 2:5:X -> variable:definition
+- 2:16:int -> class:none
+- 3:5:Y -> variable:definition
+- 3:9:X -> variable:none

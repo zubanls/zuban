@@ -126,7 +126,6 @@ impl<'project> Document<'project> {
                 | ComplexPoint::TypedDictDefinition(_) => Some(SemanticTokenType::CLASS),
                 ComplexPoint::FunctionOverload(_) => Some(SemanticTokenType::FUNCTION),
                 _ => None,
-                ComplexPoint::TypeAlias(alias) => todo!(),
             },
             PointKind::FileReference => Some(SemanticTokenType::NAMESPACE),
             PointKind::Redirect => unreachable!("We have already followed all redirects"),
