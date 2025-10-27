@@ -1,12 +1,15 @@
 use anyhow::bail;
 
 use lsp_types::SemanticTokenType;
-use parsa_python_cst::{CodeIndex, Name as CstName, NodeIndex};
+use parsa_python_cst::{CodeIndex, Name as CstName};
 
 use crate::{
     Document, InputPosition, PositionInfos,
     database::{ComplexPoint, Database, Point, PointKind, Specific},
-    file::{File as _, PythonFile, use_cached_annotation_or_type_comment},
+    file::{
+        ClassNodeRef, File as _, PythonFile, use_cached_annotation_or_type_comment,
+        use_cached_param_annotation_type,
+    },
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::Type,
@@ -86,9 +89,12 @@ impl<'project> Document<'project> {
     ) -> Option<(SemanticTokenType, SemanticTokenProperties)> {
         let mut properties = SemanticTokenProperties::default();
         let with_t = |t: &Type| match t {
-            Type::Type(_) => Some(SemanticTokenType::CLASS),
-            Type::Enum(_) => todo!(),
-            Type::EnumMember(enum_member) => todo!(),
+            Type::Type(inner) => match inner.as_ref() {
+                Type::Enum(_) => Some(SemanticTokenType::ENUM),
+                _ => Some(SemanticTokenType::CLASS),
+            },
+            Type::Enum(_) => Some(SemanticTokenType::ENUM),
+            Type::EnumMember(_) => Some(SemanticTokenType::ENUM_MEMBER),
             Type::Module(_) | Type::Namespace(_) => Some(SemanticTokenType::NAMESPACE),
             Type::Callable(_) | Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
                 todo!() //Some(SemanticTokenType::FUNCTION)
@@ -97,17 +103,26 @@ impl<'project> Document<'project> {
             _ => Some(SemanticTokenType::VARIABLE),
         };
 
+        let db = &self.project.db;
         let lsp_type = match p.kind() {
             PointKind::Specific => match p.specific() {
                 Specific::Function => Some(SemanticTokenType::FUNCTION),
-                Specific::Param | Specific::MaybeSelfParam => Some(SemanticTokenType::VARIABLE),
+                Specific::Param => {
+                    if let Some(annotation) = node_ref.expect_name_def().maybe_param_annotation() {
+                        let t = use_cached_param_annotation_type(db, node_ref.file, annotation);
+                        with_t(&t)
+                    } else {
+                        Some(SemanticTokenType::VARIABLE)
+                    }
+                }
+                Specific::MaybeSelfParam => Some(SemanticTokenType::VARIABLE),
                 Specific::OverloadUnreachable => Some(SemanticTokenType::FUNCTION),
                 specific => {
                     if specific.is_partial() {
                         Some(SemanticTokenType::VARIABLE)
                     } else if specific.is_annotation_or_type_comment() {
                         let t = use_cached_annotation_or_type_comment(
-                            &InferenceState::new(&self.project.db, node_ref.file),
+                            &InferenceState::new(db, node_ref.file),
                             node_ref,
                         );
                         with_t(&t)
@@ -120,9 +135,20 @@ impl<'project> Document<'project> {
                 ComplexPoint::TypeInstance(t) => with_t(t),
                 ComplexPoint::IndirectFinal(t) => with_t(t),
                 ComplexPoint::WidenedType(w) => with_t(&w.widened),
-                ComplexPoint::Class(_)
-                | ComplexPoint::NamedTupleDefinition(_)
-                | ComplexPoint::TypedDictDefinition(_) => Some(SemanticTokenType::CLASS),
+                ComplexPoint::Class(_) => {
+                    if let Some(class_infos) =
+                        ClassNodeRef::from_node_ref(node_ref).maybe_cached_class_infos(db)
+                        && let Some(t) = class_infos.undefined_generics_type.get()
+                        && matches!(t.as_ref(), Type::Enum(_))
+                    {
+                        Some(SemanticTokenType::ENUM)
+                    } else {
+                        Some(SemanticTokenType::CLASS)
+                    }
+                }
+                ComplexPoint::NamedTupleDefinition(_) | ComplexPoint::TypedDictDefinition(_) => {
+                    Some(SemanticTokenType::CLASS)
+                }
                 ComplexPoint::FunctionOverload(_) => Some(SemanticTokenType::FUNCTION),
                 _ => None,
             },
