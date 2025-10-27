@@ -8,7 +8,6 @@ use crate::{
     database::{Database, Specific},
     file::{File as _, PythonFile},
     inference_state::InferenceState,
-    utils::join_with_commas,
 };
 
 impl<'project> Document<'project> {
@@ -50,7 +49,7 @@ impl<'project> Document<'project> {
             })()?;
             if let Some(name_def) = name.name_def() {
                 properties.definition = true;
-                properties.declaration = name_def.name_can_be_overwritten();
+                properties.declaration = !name_def.name_can_be_overwritten();
             }
             Some(SemanticToken {
                 db,
@@ -107,7 +106,11 @@ impl<'db> SemanticToken<'db> {
         if pretty.is_empty() {
             "none".into()
         } else {
-            join_with_commas(pretty.into_iter())
+            pretty
+                .into_iter()
+                .collect::<Vec<&str>>()
+                .as_slice()
+                .join(",")
         }
     }
 }

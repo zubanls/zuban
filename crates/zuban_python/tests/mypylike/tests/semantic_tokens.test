@@ -14,7 +14,7 @@ C().method()
 
 [out]
 Semantic tokens for full range
-- 5:8:method -> function:definition
+- 5:8:method -> function:definition,declaration
 - 6:13:method -> function:none
 - 7:13:method -> function:none
 - 9:2:method -> function:none
