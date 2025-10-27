@@ -420,6 +420,11 @@ macro_rules! create_struct {
             }
 
             #[inline]
+            pub fn len(&self) -> CodeIndex {
+                self.node.length()
+            }
+
+            #[inline]
             pub fn end(&self) -> CodeIndex {
                 self.node.end()
             }

@@ -31,6 +31,7 @@ pub enum Commands {
     Documentation(DocumentationArgs),
     References(ReferencesArgs),
     Rename(RenameArgs),
+    SemanticTokens(SemanticTokensArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -98,6 +99,9 @@ pub struct SignaturesArgs {
     #[arg(long)]
     pub show_params_utf8_byte_range: bool,
 }
+
+#[derive(Parser, Debug)]
+pub struct SemanticTokensArgs {}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -373,6 +377,26 @@ pub(crate) fn find_and_check_ide_tests(
                             continue;
                         }
                         Err(err) => ("rename", Err(err)),
+                    }
+                }
+                Commands::SemanticTokens(_) => {
+                    let range = None;
+                    match document.semantic_tokens(range) {
+                        Ok(tokens) => {
+                            output.push("Semantic tokens for full range".to_string());
+                            for token in tokens {
+                                let pos = token.position();
+                                output.push(format!(
+                                    "- {}:{}:{} -> {:?}",
+                                    pos.line_one_based(),
+                                    pos.code_points_column(),
+                                    token.len(),
+                                    token.lsp_type,
+                                ));
+                            }
+                            continue;
+                        }
+                        Err(err) => ("semantic tokens", Err(err)),
                     }
                 }
             };

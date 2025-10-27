@@ -4,9 +4,11 @@
 use lsp_types::{
     CompletionOptions, DeclarationCapability, HoverProviderCapability,
     ImplementationProviderCapability, NotebookCellSelector, NotebookDocumentSyncOptions,
-    NotebookSelector, OneOf, Position, PositionEncodingKind, RenameOptions, ServerCapabilities,
-    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    NotebookSelector, OneOf, Position, PositionEncodingKind, RenameOptions, SemanticTokenModifier,
+    SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelpOptions,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
     WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
     WorkspaceServerCapabilities,
 };
@@ -49,9 +51,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         signature_help_provider: Some(SignatureHelpOptions {
             trigger_characters: Some(vec!["(".to_owned(), ",".to_owned(), ")".to_owned()]),
             retrigger_characters: None,
-            work_done_progress_options: WorkDoneProgressOptions {
-                work_done_progress: None,
-            },
+            work_done_progress_options: Default::default(),
         }),
         declaration_provider: Some(DeclarationCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),
@@ -85,14 +85,23 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 did_create: None,
                 will_create: None,
                 did_rename: None,
-                // TODO do we need this?
                 will_rename: None,
                 did_delete: None,
                 will_delete: None,
             }),
         }),
-        call_hierarchy_provider: None,  // TODO
-        semantic_tokens_provider: None, // TODO
+        call_hierarchy_provider: None, // TODO
+        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
+            SemanticTokensOptions {
+                work_done_progress_options: Default::default(),
+                legend: SemanticTokensLegend {
+                    token_types: crate::semantic_tokens::SUPPORTED_TYPES.to_vec(),
+                    token_modifiers: crate::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
+                },
+                range: Some(true),
+                full: Some(SemanticTokensFullOptions::Bool(true)),
+            },
+        )),
         moniker_provider: None,
         inlay_hint_provider: None, // TODO
         inline_value_provider: None,
@@ -103,9 +112,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 inter_file_dependencies: true,
                 // FIXME
                 workspace_diagnostics: false,
-                work_done_progress_options: WorkDoneProgressOptions {
-                    work_done_progress: None,
-                },
+                work_done_progress_options: Default::default(),
             },
         )),
         inline_completion_provider: None,
