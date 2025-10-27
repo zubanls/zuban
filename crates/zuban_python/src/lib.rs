@@ -20,6 +20,7 @@ mod node_ref;
 mod params;
 mod python_state;
 mod select_files;
+mod semantic_tokens;
 mod signatures;
 mod sys_path;
 mod type_;
@@ -34,9 +35,9 @@ use completion::CompletionResolver;
 pub use completion::{Completion, CompletionItemKind};
 pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
-use lsp_types::{Position, SemanticTokenType};
+use lsp_types::Position;
 use name::Range;
-use parsa_python_cst::{CodeIndex, GotoNode, Name as CstName, Scope, Tree};
+use parsa_python_cst::{GotoNode, Scope, Tree};
 use rayon::prelude::*;
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
@@ -51,8 +52,9 @@ use inferred::Inferred;
 pub use lines::PositionInfos;
 use matching::invalidate_protocol_cache;
 pub use name::{Name, NameSymbol, ValueName};
+pub use semantic_tokens::SemanticToken;
 
-use crate::{file::PythonFile, select_files::all_typechecked_files};
+use crate::select_files::all_typechecked_files;
 
 pub struct Project {
     db: Database,
@@ -471,43 +473,6 @@ impl<'project> Document<'project> {
         }))
     }
 
-    pub fn semantic_tokens(
-        &self,
-        range: Option<(InputPosition, InputPosition)>,
-    ) -> anyhow::Result<impl Iterator<Item = SemanticToken<'_>>> {
-        let file = self.project.db.loaded_python_file(self.file_index);
-        let tree = &file.tree;
-        let (start, end) = if let Some((start_input, end_input)) = range {
-            let start = file.line_column_to_byte(start_input)?;
-            let end = file.line_column_to_byte(end_input)?;
-            if start.column_out_of_bounds {
-                bail!("Start position {start_input:?} is out of scope");
-            }
-            if end.column_out_of_bounds {
-                bail!("End position {end_input:?} is out of scope");
-            }
-            (start.byte, end.byte)
-        } else {
-            (0, u32::MAX)
-        };
-        let db = &self.project.db;
-        let result = file.ensure_calculated_diagnostics(db);
-        debug_assert!(result.is_ok());
-        Ok(tree.filter_all_names().filter_map(move |name| {
-            if name.end() < start || name.start() > end {
-                return None;
-            }
-            // TODO
-            let lsp_type = SemanticTokenType::CLASS;
-            Some(SemanticToken {
-                db,
-                file,
-                name,
-                lsp_type,
-            })
-        }))
-    }
-
     pub fn is_valid_rename_location(
         &self,
         position: InputPosition,
@@ -619,23 +584,6 @@ pub enum InputPosition {
     Utf8Bytes { line: usize, column: usize },
     Utf16CodeUnits { line: usize, column: usize },
     CodePoints { line: usize, column: usize },
-}
-
-pub struct SemanticToken<'db> {
-    db: &'db Database,
-    file: &'db PythonFile,
-    name: CstName<'db>,
-    pub lsp_type: lsp_types::SemanticTokenType,
-}
-
-impl<'db> SemanticToken<'db> {
-    pub fn position(&self) -> PositionInfos<'db> {
-        self.file.byte_to_position_infos(self.db, self.name.start())
-    }
-
-    pub fn len(&self) -> CodeIndex {
-        self.name.len()
-    }
 }
 
 /*

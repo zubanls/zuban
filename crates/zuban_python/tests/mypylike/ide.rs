@@ -387,11 +387,12 @@ pub(crate) fn find_and_check_ide_tests(
                             for token in tokens {
                                 let pos = token.position();
                                 output.push(format!(
-                                    "- {}:{}:{} -> {:?}",
+                                    "- {}:{}:{} -> {}:{}",
                                     pos.line_one_based(),
                                     pos.code_points_column(),
-                                    token.len(),
-                                    token.lsp_type,
+                                    token.content(),
+                                    token.lsp_type.as_str(),
+                                    token.pretty_properties(),
                                 ));
                             }
                             continue;
