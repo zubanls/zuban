@@ -29,7 +29,7 @@ use zuban_python::{
 
 use crate::{
     capabilities::{ClientCapabilities, NegotiatedEncoding},
-    semantic_tokens::{self, SemanticTokensBuilder},
+    semantic_tokens::SemanticTokensBuilder,
     server::{GlobalState, LspError},
 };
 
@@ -548,12 +548,11 @@ impl GlobalState<'_> {
             )
         });
         for semantic_token in document.semantic_tokens(range)? {
-            let modifier_bitset = 0;
             builder.push(
                 Self::to_position(encoding, semantic_token.position()),
                 semantic_token.len(),
-                semantic_tokens::type_index(semantic_token.lsp_type),
-                modifier_bitset,
+                semantic_token.lsp_type,
+                semantic_token.properties,
             );
         }
         Ok(builder.build())

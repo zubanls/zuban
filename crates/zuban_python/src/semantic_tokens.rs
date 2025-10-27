@@ -38,7 +38,8 @@ impl<'project> Document<'project> {
             if name.end() < start || name.start() > end {
                 return None;
             }
-            let properties = SemanticTokenProperties::default();
+            let mut properties = SemanticTokenProperties::default();
+
             let lsp_type = (|| {
                 let inference = file.inference(&i_s);
                 let inf = inference.check_point_cache(name.index())?;
@@ -47,6 +48,10 @@ impl<'project> Document<'project> {
                     _ => None,
                 }
             })()?;
+            if let Some(name_def) = name.name_def() {
+                properties.definition = true;
+                properties.declaration = name_def.name_can_be_overwritten();
+            }
             Some(SemanticToken {
                 db,
                 file,
@@ -82,15 +87,23 @@ impl<'db> SemanticToken<'db> {
     pub fn pretty_properties(&self) -> String {
         let mut pretty = vec![];
         let p = &self.properties;
-        if p.in_stdlib {
-            pretty.push("in_stdlib")
+
+        macro_rules! add {
+            ($name:ident) => {
+                if p.$name {
+                    pretty.push(stringify!($name).trim_end_matches('_'))
+                }
+            };
         }
-        if p.final_ {
-            pretty.push("final")
-        }
-        if p.read_only {
-            pretty.push("read_only")
-        }
+        add!(definition);
+        add!(declaration);
+        add!(in_stdlib);
+        add!(read_only);
+        add!(deprecated);
+        add!(abstract_);
+        add!(async_);
+        add!(static_);
+
         if pretty.is_empty() {
             "none".into()
         } else {
@@ -101,7 +114,12 @@ impl<'db> SemanticToken<'db> {
 
 #[derive(Default)]
 pub struct SemanticTokenProperties {
-    in_stdlib: bool,
-    final_: bool,
-    read_only: bool,
+    pub definition: bool,
+    pub declaration: bool,
+    pub in_stdlib: bool,
+    pub read_only: bool,
+    pub static_: bool,
+    pub deprecated: bool,
+    pub abstract_: bool,
+    pub async_: bool,
 }

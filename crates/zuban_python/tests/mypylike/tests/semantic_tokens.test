@@ -1,11 +1,9 @@
-[case class_simple_semantic_tokens_typed]
+[case method_simple_semantic_tokens_typed]
 # type: ignore
 #? semantic-tokens
 
 class C:
     def method(self) -> None:
-        self.attr = 1
-        self.attr()
         self.method
         self.method()
 
@@ -13,8 +11,33 @@ C.method
 C.method()
 C().method
 C().method()
+
+[out]
+Semantic tokens for full range
+- 5:8:method -> function:definition
+- 6:13:method -> function:none
+- 7:13:method -> function:none
+- 9:2:method -> function:none
+- 10:2:method -> function:none
+- 11:4:method -> function:none
+- 12:4:method -> function:none
+
+[case self_attr_simple_semantic_tokens_typed]
+# type: ignore
+#? semantic-tokens
+
+class C:
+    def method(self) -> None:
+        self.attr = 1
+        self.attr()
+        self.attr()
+        self.declared_attr: int = 1
+        self.declared_attr
+
 C.attr
+C.declared_attr
 C().attr
+C().declared_attr
 
 [out]
 Semantic tokens for full range

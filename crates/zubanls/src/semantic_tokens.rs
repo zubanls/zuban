@@ -6,6 +6,7 @@ use std::ops;
 use lsp_types::{
     Position, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
 };
+use zuban_python::SemanticTokenProperties;
 
 macro_rules! define_semantic_token_types {
     (
@@ -101,6 +102,10 @@ macro_rules! define_semantic_token_modifiers {
 }
 
 define_semantic_token_modifiers![
+    // If you add a modifier here, make sure you patch up the following things:
+    // - Check SemanticTokensBuilder
+    // - Check SemanticTokenProperties in zuban_python and the pretty_properties
+    // - Make sure you test it
     standard {
         DECLARATION,
         DEFINITION,
@@ -109,8 +114,8 @@ define_semantic_token_modifiers![
         DEPRECATED,
         ABSTRACT,
         ASYNC,
-        MODIFICATION,
-        DOCUMENTATION,
+        // MODIFICATION,
+        // DOCUMENTATION,
         DEFAULT_LIBRARY,
     }
     custom {
@@ -163,9 +168,24 @@ impl SemanticTokensBuilder {
         &mut self,
         start: Position,
         token_len: u32,
-        token_index: u32,
-        modifier_bitset: u32,
+        type_: SemanticTokenType,
+        props: SemanticTokenProperties,
     ) {
+        let mut token_modifiers_bitset = ModifierSet::default();
+        let mut add = |property, modifier| {
+            if property {
+                token_modifiers_bitset |= modifier;
+            }
+        };
+        add(props.definition, modifiers::DEFINITION);
+        add(props.declaration, modifiers::DECLARATION);
+        add(props.in_stdlib, modifiers::DEFAULT_LIBRARY);
+        add(props.read_only, modifiers::READONLY);
+        add(props.static_, modifiers::STATIC);
+        add(props.deprecated, modifiers::DEPRECATED);
+        add(props.async_, modifiers::ASYNC);
+        add(props.abstract_, modifiers::ABSTRACT);
+
         let mut push_line = start.line;
         let mut push_char = start.character;
 
@@ -180,8 +200,8 @@ impl SemanticTokensBuilder {
             delta_line: push_line,
             delta_start: push_char,
             length: token_len,
-            token_type: token_index,
-            token_modifiers_bitset: modifier_bitset,
+            token_type: type_index(type_),
+            token_modifiers_bitset: token_modifiers_bitset.0,
         };
 
         self.data.push(token);
@@ -198,6 +218,6 @@ impl SemanticTokensBuilder {
     }
 }
 
-pub(crate) fn type_index(ty: SemanticTokenType) -> u32 {
+fn type_index(ty: SemanticTokenType) -> u32 {
     SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
 }

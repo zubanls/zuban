@@ -52,7 +52,7 @@ use inferred::Inferred;
 pub use lines::PositionInfos;
 use matching::invalidate_protocol_cache;
 pub use name::{Name, NameSymbol, ValueName};
-pub use semantic_tokens::SemanticToken;
+pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
 use crate::select_files::all_typechecked_files;
 
