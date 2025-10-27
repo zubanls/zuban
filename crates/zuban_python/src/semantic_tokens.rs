@@ -88,22 +88,18 @@ impl<'project> Document<'project> {
         let lsp_type = match p.kind() {
             PointKind::Specific => match p.specific() {
                 Specific::Function => Some(SemanticTokenType::FUNCTION),
+                Specific::MaybeSelfParam => Some(SemanticTokenType::VARIABLE),
                 specific => {
-                    if specific.is_annotation_or_type_comment() {
+                    if specific.is_annotation_or_type_comment() || specific.is_partial() {
                         Some(SemanticTokenType::VARIABLE)
-                    } else if specific.might_be_used_in_alias() {
-                        todo!()
                     } else {
-                        None
+                        Some(SemanticTokenType::CLASS)
                     }
                 }
             },
             PointKind::Complex => {
                 let with_t = |t: &Type| match t {
                     Type::Type(_) => todo!(),
-                    Type::Tuple(tuple) => todo!(),
-                    Type::Dataclass(dataclass) => todo!(),
-                    Type::TypedDict(typed_dict) => todo!(),
                     Type::Enum(_) => todo!(),
                     Type::EnumMember(enum_member) => todo!(),
                     Type::Module(file_index) => todo!(),
@@ -127,8 +123,8 @@ impl<'project> Document<'project> {
                     ComplexPoint::TypeAlias(alias) => todo!(),
                 }
             }
-            PointKind::FileReference => todo!(),
-            PointKind::Redirect => unreachable!(),
+            PointKind::FileReference => Some(SemanticTokenType::NAMESPACE),
+            PointKind::Redirect => unreachable!("We have already followed all redirects"),
         }?;
         Some((lsp_type, properties))
     }
