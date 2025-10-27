@@ -603,6 +603,17 @@ impl Specific {
                 | Specific::BuiltinsType
         )
     }
+
+    pub fn is_annotation_or_type_comment(self) -> bool {
+        matches!(
+            self,
+            Specific::AnnotationOrTypeCommentSimpleClassInstance
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                | Specific::AnnotationOrTypeCommentWithTypeVars
+                | Specific::AnnotationOrTypeCommentClassVar
+                | Specific::AnnotationOrTypeCommentFinal
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

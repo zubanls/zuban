@@ -1,13 +1,15 @@
 use anyhow::bail;
 
 use lsp_types::SemanticTokenType;
-use parsa_python_cst::{CodeIndex, Name as CstName};
+use parsa_python_cst::{CodeIndex, Name as CstName, NodeIndex};
 
 use crate::{
     Document, InputPosition, PositionInfos,
-    database::{Database, Specific},
+    database::{ComplexPoint, Database, Point, PointKind, Specific},
     file::{File as _, PythonFile},
     inference_state::InferenceState,
+    node_ref::NodeRef,
+    type_::Type,
 };
 
 impl<'project> Document<'project> {
@@ -32,21 +34,13 @@ impl<'project> Document<'project> {
         };
         let result = file.ensure_calculated_diagnostics(db);
         debug_assert!(result.is_ok());
-        let i_s = InferenceState::new(db, file);
         Ok(file.tree.filter_all_names().filter_map(move |name| {
             if name.end() < start || name.start() > end {
                 return None;
             }
-            let mut properties = SemanticTokenProperties::default();
 
-            let lsp_type = (|| {
-                let inference = file.inference(&i_s);
-                let inf = inference.check_point_cache(name.index())?;
-                match inf.maybe_specific(db) {
-                    Some(Specific::Function) => Some(SemanticTokenType::FUNCTION),
-                    _ => None,
-                }
-            })()?;
+            let (p, node_ref) = self.try_to_follow_point(NodeRef::new(file, name.index()))?;
+            let (lsp_type, mut properties) = self.resolved_node_ref_to_lsp_type(node_ref, p)?;
             if let Some(name_def) = name.name_def() {
                 properties.definition = true;
                 properties.declaration = !name_def.name_can_be_overwritten();
@@ -59,6 +53,84 @@ impl<'project> Document<'project> {
                 properties,
             })
         }))
+    }
+
+    fn try_to_follow_point(
+        &self,
+        node_ref: NodeRef<'project>,
+    ) -> Option<(Point, NodeRef<'project>)> {
+        let p = node_ref.point();
+        if !p.calculated() {
+            return None;
+        }
+        match p.kind() {
+            PointKind::Redirect => {
+                self.try_to_follow_point(p.as_redirected_node_ref(&self.project.db))
+            }
+            PointKind::Specific
+                if matches!(
+                    p.specific(),
+                    Specific::FirstNameOfNameDef | Specific::NameOfNameDef
+                ) =>
+            {
+                self.try_to_follow_point(node_ref.name_def_ref_of_name())
+            }
+            _ => Some((p, node_ref)),
+        }
+    }
+
+    fn resolved_node_ref_to_lsp_type(
+        &self,
+        node_ref: NodeRef,
+        p: Point,
+    ) -> Option<(SemanticTokenType, SemanticTokenProperties)> {
+        let mut properties = SemanticTokenProperties::default();
+        let lsp_type = match p.kind() {
+            PointKind::Specific => match p.specific() {
+                Specific::Function => Some(SemanticTokenType::FUNCTION),
+                specific => {
+                    if specific.is_annotation_or_type_comment() {
+                        Some(SemanticTokenType::VARIABLE)
+                    } else if specific.might_be_used_in_alias() {
+                        todo!()
+                    } else {
+                        None
+                    }
+                }
+            },
+            PointKind::Complex => {
+                let with_t = |t: &Type| match t {
+                    Type::Type(_) => todo!(),
+                    Type::Tuple(tuple) => todo!(),
+                    Type::Dataclass(dataclass) => todo!(),
+                    Type::TypedDict(typed_dict) => todo!(),
+                    Type::Enum(_) => todo!(),
+                    Type::EnumMember(enum_member) => todo!(),
+                    Type::Module(file_index) => todo!(),
+                    Type::Namespace(namespace) => todo!(),
+                    Type::Callable(_) | Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
+                        todo!() //Some(SemanticTokenType::FUNCTION)
+                    }
+                    Type::Any(_) | Type::Never(_) => None,
+                    _ => Some(SemanticTokenType::VARIABLE),
+                };
+
+                match node_ref.file.complex_points.get(p.complex_index()) {
+                    ComplexPoint::TypeInstance(t) => with_t(t),
+                    ComplexPoint::IndirectFinal(t) => with_t(t),
+                    ComplexPoint::WidenedType(w) => with_t(&w.widened),
+                    ComplexPoint::Class(_)
+                    | ComplexPoint::NamedTupleDefinition(_)
+                    | ComplexPoint::TypedDictDefinition(_) => Some(SemanticTokenType::CLASS),
+                    ComplexPoint::FunctionOverload(_) => todo!(), //Some(SemanticTokenType::FUNCTION),
+                    _ => None,
+                    ComplexPoint::TypeAlias(alias) => todo!(),
+                }
+            }
+            PointKind::FileReference => todo!(),
+            PointKind::Redirect => unreachable!(),
+        }?;
+        Some((lsp_type, properties))
     }
 }
 
