@@ -200,6 +200,10 @@ impl<'file> NodeRef<'file> {
         ImportFrom::by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn expect_function(&self) -> FunctionDef<'file> {
+        FunctionDef::by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn maybe_expression(&self) -> Option<Expression<'file>> {
         Expression::maybe_by_index(&self.file.tree, self.node_index)
     }

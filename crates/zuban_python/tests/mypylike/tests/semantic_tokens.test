@@ -334,3 +334,35 @@ Semantic tokens for full range
 - 2:7:namespace -> namespace:definition,declaration
 - 3:22:foo -> namespace:definition,declaration
 - 5:0:namespace -> namespace:none
+
+[case async_modifiers_semantic_tokens]
+#? semantic-tokens
+async def foo(): ...
+
+@decorator  # E: Name "decorator" is not defined
+async def bar(): ...
+
+from typing import final
+
+class Some:
+    @final
+    async def baz(self): ...
+
+foo
+bar
+Some.baz
+Some().baz
+
+[out]
+Semantic tokens for full range
+- 2:10:foo -> function:definition,declaration,async
+- 7:19:final -> function:definition,declaration
+- 9:6:Some -> class:definition,declaration
+- 10:5:final -> function:none
+- 11:14:baz -> function:definition,declaration,read_only,async
+- 11:18:self -> variable:definition
+- 13:0:foo -> function:async
+- 15:0:Some -> class:none
+- 15:5:baz -> function:read_only,async
+- 16:0:Some -> class:none
+- 16:7:baz -> function:read_only,async

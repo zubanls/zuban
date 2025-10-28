@@ -88,7 +88,8 @@ impl<'project> Document<'project> {
         p: Point,
     ) -> Option<(SemanticTokenType, SemanticTokenProperties)> {
         let mut properties = SemanticTokenProperties::default();
-        let with_t = |t: &Type| match t {
+        let db = &self.project.db;
+        let mut with_t = |t: &Type| match t {
             Type::Type(inner) => match inner.as_ref() {
                 Type::Enum(_) => Some(SemanticTokenType::ENUM),
                 _ => Some(SemanticTokenType::CLASS),
@@ -96,17 +97,34 @@ impl<'project> Document<'project> {
             Type::Enum(_) => Some(SemanticTokenType::ENUM),
             Type::EnumMember(_) => Some(SemanticTokenType::ENUM_MEMBER),
             Type::Module(_) | Type::Namespace(_) => Some(SemanticTokenType::NAMESPACE),
-            Type::Callable(_) | Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
+            Type::Callable(c) => {
+                if let Some(func) = NodeRef::from_link(db, c.defined_at).maybe_function()
+                    && func.parent().is_async()
+                {
+                    properties.async_ = true
+                }
+                if c.is_final {
+                    properties.read_only = true;
+                }
+
+                Some(SemanticTokenType::FUNCTION)
+            }
+            Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
                 todo!() //Some(SemanticTokenType::FUNCTION)
             }
             Type::Any(_) | Type::Never(_) => None,
             _ => Some(SemanticTokenType::VARIABLE),
         };
 
-        let db = &self.project.db;
         let lsp_type = match p.kind() {
             PointKind::Specific => match p.specific() {
-                Specific::Function => Some(SemanticTokenType::FUNCTION),
+                Specific::AnyDueToError => None,
+                Specific::Function => {
+                    if node_ref.expect_function().parent().is_async() {
+                        properties.async_ = true;
+                    }
+                    Some(SemanticTokenType::FUNCTION)
+                }
                 Specific::Param => {
                     if let Some(annotation) = node_ref.expect_name_def().maybe_param_annotation() {
                         let t = use_cached_param_annotation_type(db, node_ref.file, annotation);
@@ -216,7 +234,7 @@ impl<'db> SemanticToken<'db> {
 pub struct SemanticTokenProperties {
     pub definition: bool,
     pub declaration: bool,
-    pub in_stdlib: bool,
+    pub in_stdlib: bool, // TODO this is currently unused
     pub read_only: bool,
     pub static_: bool,
     pub deprecated: bool,

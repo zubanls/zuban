@@ -2450,6 +2450,12 @@ pub enum FunctionParent<'db> {
     Normal,
 }
 
+impl FunctionParent<'_> {
+    pub fn is_async(&self) -> bool {
+        matches!(self, Self::Async | Self::DecoratedAsync(_))
+    }
+}
+
 impl<'db> FunctionDefParameters<'db> {
     pub fn iter(&self) -> ParamIterator<'db> {
         // function_def_parameters: "(" [parameters] ")"
