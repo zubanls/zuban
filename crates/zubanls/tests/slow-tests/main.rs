@@ -15,13 +15,14 @@ use lsp_types::{
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
     DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, HoverParams,
     NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
-    ReferenceParams, RenameParams, SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
-    WorkspaceSymbolParams,
+    ReferenceParams, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
+    SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceSymbolParams,
     request::{
         Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, DocumentSymbolRequest,
         GotoDeclaration, GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest,
-        PrepareRenameRequest, References, Rename, SignatureHelpRequest, WorkspaceSymbolRequest,
+        PrepareRenameRequest, References, Rename, SemanticTokensFullRequest,
+        SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -2584,5 +2585,105 @@ fn test_symbols() {
             }
           }
         ]),
+    );
+}
+
+#[test]
+#[serial]
+fn test_semantic_tokens() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        class A:
+            @property
+            def foo(self): ...
+            def bar(self): ...
+
+        A().foo
+        "#,
+    )
+    .into_server();
+
+    server.request_and_expect_json::<SemanticTokensFullRequest>(
+        SemanticTokensParams {
+            text_document: server.doc_id("foo.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!({
+          "data": [
+            0,
+            6,
+            1,
+            2,
+            3,
+            1,
+            5,
+            8,
+            2,
+            0,
+            1,
+            8,
+            3,
+            9,
+            7,
+            0,
+            4,
+            4,
+            8,
+            2,
+            1,
+            8,
+            3,
+            12,
+            3,
+            0,
+            4,
+            4,
+            8,
+            2,
+            2,
+            0,
+            1,
+            2,
+            0,
+            0,
+            4,
+            3,
+            9,
+            4
+          ]
+        }),
+    );
+    server.request_and_expect_json::<SemanticTokensRangeRequest>(
+        SemanticTokensRangeParams {
+            text_document: server.doc_id("foo.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+            range: Range {
+                start: Position {
+                    line: 3,
+                    character: 0,
+                },
+                end: Position {
+                    line: 4,
+                    character: 0,
+                },
+            },
+        },
+        json!({
+          "data": [
+            3,
+            8,
+            3,
+            12,
+            3,
+            0,
+            4,
+            4,
+            8,
+            2
+          ]
+        }),
     );
 }

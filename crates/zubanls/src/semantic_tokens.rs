@@ -42,26 +42,31 @@ macro_rules! define_semantic_token_types {
 }
 
 define_semantic_token_types![
+    // Some of these are unused, but that shouldn't really matter.
     standard {
-        COMMENT,
-        DECORATOR,
-        ENUM_MEMBER,
-        ENUM,
-        FUNCTION,
-        INTERFACE,
-        KEYWORD,
-        MACRO,
-        METHOD,
         NAMESPACE,
-        NUMBER,
-        OPERATOR,
-        PARAMETER,
-        PROPERTY,
-        STRING,
+        TYPE,
+        CLASS,
+        ENUM,
+        INTERFACE,
         STRUCT,
         TYPE_PARAMETER,
+        PARAMETER,
         VARIABLE,
-        TYPE,
+        PROPERTY,
+        ENUM_MEMBER,
+        EVENT,
+        FUNCTION,
+        METHOD,
+        MACRO,
+        KEYWORD,
+        MODIFIER,
+        COMMENT,
+        STRING,
+        NUMBER,
+        REGEXP,
+        OPERATOR,
+        DECORATOR,
     }
 
     custom {
@@ -219,5 +224,8 @@ impl SemanticTokensBuilder {
 }
 
 fn type_index(ty: SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
+    SUPPORTED_TYPES
+        .iter()
+        .position(|it| *it == ty)
+        .unwrap_or_else(|| unreachable!("Did not find semantic token type {ty:?}")) as u32
 }
