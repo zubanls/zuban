@@ -366,3 +366,89 @@ Semantic tokens for full range
 - 15:5:baz -> function:read_only,async
 - 16:0:Some -> class:none
 - 16:7:baz -> function:read_only,async
+
+[case staticmethod_semantic_tokens]
+#? semantic-tokens
+class C:
+    @staticmethod
+    def foo(x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:staticmethod -> class:none
+- 4:8:foo -> function:definition,declaration,static
+- 4:12:x -> variable:definition
+- 6:0:C -> class:none
+- 6:2:foo -> function:static
+- 7:0:C -> class:none
+- 7:4:foo -> function:static
+
+[case classmethod_semantic_tokens]
+#? semantic-tokens
+class C:
+    @classmethod
+    def foo(x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:classmethod -> class:none
+- 4:8:foo -> function:definition,declaration,static
+- 4:12:x -> variable:definition
+- 6:0:C -> class:none
+- 6:2:foo -> function:static
+- 7:0:C -> class:none
+- 7:4:foo -> function:static
+
+[case readonly_property_semantic_tokens]
+#? semantic-tokens
+class C:
+    @property
+    def foo(x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:property -> class:none
+- 4:8:foo -> property:definition,declaration,read_only
+- 4:12:x -> variable:definition
+- 6:0:C -> class:none
+- 6:2:foo -> property:read_only
+- 7:0:C -> class:none
+- 7:4:foo -> property:read_only
+
+[case readwrite_property_semantic_tokens]
+#? semantic-tokens
+class C:
+    @property
+    def foo(self): ...
+    @foo.setter
+    def foo(self, x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:property -> class:none
+- 4:8:foo -> property:definition,declaration
+- 4:12:self -> variable:definition
+- 5:5:foo -> property:none
+- 6:8:foo -> function:definition,declaration
+- 6:12:self -> variable:definition
+- 6:18:x -> variable:definition
+- 8:0:C -> class:none
+- 8:2:foo -> property:none
+- 9:0:C -> class:none
+- 9:4:foo -> property:none

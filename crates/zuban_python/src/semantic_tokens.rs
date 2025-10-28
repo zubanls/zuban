@@ -12,7 +12,7 @@ use crate::{
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
-    type_::Type,
+    type_::{FunctionKind, Type},
 };
 
 impl<'project> Document<'project> {
@@ -106,8 +106,17 @@ impl<'project> Document<'project> {
                 if c.is_final {
                     properties.read_only = true;
                 }
-
-                Some(SemanticTokenType::FUNCTION)
+                Some(match &c.kind {
+                    FunctionKind::Function { .. } => SemanticTokenType::FUNCTION,
+                    FunctionKind::Property { setter_type, .. } => {
+                        properties.read_only = setter_type.is_none();
+                        SemanticTokenType::PROPERTY
+                    }
+                    FunctionKind::Classmethod { .. } | FunctionKind::Staticmethod => {
+                        properties.static_ = true;
+                        SemanticTokenType::FUNCTION
+                    }
+                })
             }
             Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
                 todo!() //Some(SemanticTokenType::FUNCTION)
