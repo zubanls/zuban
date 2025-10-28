@@ -12,11 +12,11 @@ use lsp_types::{
     MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
     ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, ReferenceParams,
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
-    ResourceOperationKind, SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SignatureHelp, SignatureHelpParams,
-    SignatureInformation, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextEdit, Uri, WorkspaceEdit, WorkspaceSymbol,
-    WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
+    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
+    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -565,6 +565,37 @@ impl GlobalState<'_> {
         Ok(Some(SemanticTokensRangeResult::Tokens(
             self.semantic_tokens_internal(params.text_document, Some(params.range))?,
         )))
+    }
+
+    pub fn selection_ranges(
+        &mut self,
+        params: SelectionRangeParams,
+    ) -> anyhow::Result<Option<Vec<SelectionRange>>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let document = self.document(params.text_document)?;
+        fn range_iterator_to_selection_range<'x>(
+            encoding: NegotiatedEncoding,
+            mut ranges: impl Iterator<Item = (PositionInfos<'x>, PositionInfos<'x>)>,
+        ) -> Option<SelectionRange> {
+            let next_range = ranges.next()?;
+            Some(SelectionRange {
+                range: GlobalState::to_range(encoding, next_range),
+                parent: range_iterator_to_selection_range(encoding, ranges).map(Box::new),
+            })
+        }
+        Ok(Some(
+            params
+                .positions
+                .into_iter()
+                .map(|pos| {
+                    Ok(range_iterator_to_selection_range(
+                        encoding,
+                        document.selection_ranges(encoding.input_position(pos))?,
+                    )
+                    .unwrap())
+                })?
+                .collect(),
+        ))
     }
 
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {

@@ -1,13 +1,13 @@
 mod bytes;
 mod completion;
 mod match_stmt;
+mod selection_ranges;
 mod signatures;
 mod strings;
 
 use std::{
     borrow::Cow,
     iter::{Skip, StepBy},
-    ops::Range,
     str::from_utf8,
 };
 
@@ -25,6 +25,7 @@ use parsa_python::{
     PyNodeType::{self, ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
     PyTree, SearchIterator, SiblingIterator, TerminalType, parse,
 };
+pub use selection_ranges::Range;
 pub use signatures::{SignatureArg, SignatureArgsIterator, SignatureBase};
 pub use strings::PythonString;
 
@@ -963,7 +964,7 @@ impl<'db> List<'db> {
             StarLikeExpressionIterator::Empty
         }
     }
-    pub fn node_index_range(&self) -> Range<NodeIndex> {
+    pub fn node_index_range(&self) -> std::ops::Range<NodeIndex> {
         let mut iterator = self.node.iter_children();
         let first = iterator.next().unwrap().index;
         let second = iterator.next().unwrap();

@@ -1,0 +1,14 @@
+[case selection_ranges_basic]
+
+def f(x):
+    #? --codepoint-column 9 selection-ranges
+    str(x + 1)
+
+[out]
+__main__.py:4: Selection Ranges:
+- 4:8 - 4:9
+- 4:8 - 4:13
+- 4:4 - 4:14
+- 4:4 - 5:0
+- 2:0 - 6:0
+- 1:0 - 6:0

@@ -20,6 +20,7 @@ mod node_ref;
 mod params;
 mod python_state;
 mod select_files;
+mod selection_ranges;
 mod semantic_tokens;
 mod signatures;
 mod sys_path;

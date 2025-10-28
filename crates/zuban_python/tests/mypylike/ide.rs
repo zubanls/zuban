@@ -32,6 +32,7 @@ pub enum Commands {
     References(ReferencesArgs),
     Rename(RenameArgs),
     SemanticTokens(SemanticTokensArgs),
+    SelectionRanges(SelectionRangeArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -105,6 +106,9 @@ pub struct SemanticTokensArgs {
     #[arg(long)]
     pub until_line: Option<usize>,
 }
+
+#[derive(Parser, Debug)]
+pub struct SelectionRangeArgs {}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -411,6 +415,22 @@ pub(crate) fn find_and_check_ide_tests(
                         Err(err) => ("semantic tokens", Err(err)),
                     }
                 }
+                Commands::SelectionRanges(_) => match document.selection_ranges(position) {
+                    Ok(ranges) => {
+                        output.push(format!("{path}:{test_on_line_nr}: Selection Ranges:"));
+                        for (start, end) in ranges {
+                            output.push(format!(
+                                "- {}:{} - {}:{}",
+                                start.line_one_based(),
+                                start.code_points_column(),
+                                end.line_one_based(),
+                                end.code_points_column(),
+                            ));
+                        }
+                        continue;
+                    }
+                    Err(err) => ("selection-ranges", Err(err)),
+                },
             };
             output.push(match out {
                 Ok(out) => {

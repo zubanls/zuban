@@ -4,8 +4,9 @@
 use lsp_types::{
     CompletionOptions, DeclarationCapability, HoverProviderCapability,
     ImplementationProviderCapability, NotebookCellSelector, NotebookDocumentSyncOptions,
-    NotebookSelector, OneOf, Position, PositionEncodingKind, RenameOptions, SemanticTokenModifier,
-    SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    NotebookSelector, OneOf, Position, PositionEncodingKind, RenameOptions,
+    SelectionRangeProviderCapability, SemanticTokenModifier, SemanticTokenType,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelpOptions,
     TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
     TypeDefinitionProviderCapability, WorkDoneProgressOptions,
@@ -61,13 +62,13 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
         workspace_symbol_provider: Some(OneOf::Left(true)),
-        code_action_provider: None,                 // TODO
-        code_lens_provider: None,                   // TODO
-        document_formatting_provider: None,         // TODO
-        document_range_formatting_provider: None,   // TODO
-        document_on_type_formatting_provider: None, // TODO?
-        selection_range_provider: None,             // TODO
-        folding_range_provider: None,               // TODO
+        code_action_provider: None, // TODO
+        code_lens_provider: None,
+        document_formatting_provider: None,       // TODO
+        document_range_formatting_provider: None, // TODO
+        document_on_type_formatting_provider: None,
+        selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
+        folding_range_provider: None, // TODO
         rename_provider: Some(OneOf::Right(RenameOptions {
             prepare_provider: Some(true),
             work_done_progress_options: Default::default(),
