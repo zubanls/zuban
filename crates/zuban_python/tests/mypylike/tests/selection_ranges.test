@@ -15,9 +15,64 @@ __main__.py:4: Selection Ranges:
 - 4:4 - 5:0
 - 2:0 - 9:0
 - 1:0 - 9:0
-__main__.py:7: Selection Ranges:
+
 - 7:8 - 7:13
 - 7:4 - 7:14
 - 7:4 - 8:0
 - 2:0 - 9:0
 - 1:0 - 9:0
+
+[case selection_ranges_in_between_nodes]
+
+def f(x):
+    1
+
+    #? selection-ranges
+    
+    1
+#? --codepoint-column 9 selection-ranges
+
+1
+[out]
+__main__.py:6: Selection Ranges:
+- 2:0 - 10:0
+- 1:0 - 11:0
+__main__.py:9: Selection Ranges:
+- 2:0 - 10:0
+- 1:0 - 11:0
+
+[case selection_ranges_with_class]
+
+#? --codepoint-column 9 selection-ranges
+class C[T](list[T]):
+    pass
+
+#? --codepoint-column 16 selection-ranges
+class D[T](list[T]):
+    pass
+
+    def f(x):
+        #? --codepoint-column 22 selection-ranges
+        with open("asdf"):
+            pass
+
+1
+[out]
+__main__.py:3: Selection Ranges:
+- 3:8 - 3:9
+- 3:7 - 3:10
+- 3:0 - 7:0
+- 1:0 - 16:0
+__main__.py:7: Selection Ranges:
+- 7:16 - 7:17
+- 7:11 - 7:18
+- 7:0 - 15:0
+- 1:0 - 16:0
+__main__.py:12: Selection Ranges:
+- 12:18 - 12:24
+- 12:13 - 12:25
+- 12:13 - 12:26
+- 12:8 - 15:0
+- 10:4 - 15:0
+- 7:0 - 15:0
+- 1:0 - 16:0

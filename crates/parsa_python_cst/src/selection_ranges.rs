@@ -11,6 +11,13 @@ pub struct Range {
 impl Tree {
     fn initial_node_for_selection_ranges(&self, position: CodeIndex) -> PyNode<'_> {
         let mut node = self.0.leaf_by_position(position);
+        if node.start() == position
+            && node.type_() == PyNodeType::Keyword
+            && let Some(previous) = node.previous_leaf()
+            && previous.end() == position
+        {
+            node = previous
+        }
         fn is_pos_in_node(node: PyNode, position: CodeIndex) -> bool {
             node.start() <= position && node.end() >= position
         }
