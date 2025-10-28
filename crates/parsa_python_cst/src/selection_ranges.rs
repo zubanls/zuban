@@ -67,6 +67,7 @@ impl Iterator for SelectionRanges<'_> {
                 | TerminalType::Dedent
                 | TerminalType::ErrorDedent,
             )
+            | PyNodeType::Keyword
             | PyNodeType::Nonterminal(kwargs | block | simple_stmt | stmt) => self.next(),
             _ => {
                 self.previous = Some(range);
