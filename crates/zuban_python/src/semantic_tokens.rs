@@ -103,9 +103,9 @@ impl<'project> Document<'project> {
                 {
                     properties.async_ = true
                 }
-                if c.is_final {
-                    properties.read_only = true;
-                }
+                properties.read_only = c.is_final;
+                properties.deprecated = c.deprecated_reason.is_some();
+                properties.abstract_ = c.is_abstract;
                 Some(match &c.kind {
                     FunctionKind::Function { .. } => SemanticTokenType::FUNCTION,
                     FunctionKind::Property { setter_type, .. } => {

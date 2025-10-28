@@ -452,3 +452,41 @@ Semantic tokens for full range
 - 8:2:foo -> property:none
 - 9:0:C -> class:none
 - 9:4:foo -> property:none
+
+[case deprecated_semantic_tokens]
+from typing_extensions import deprecated
+#? semantic-tokens
+@deprecated("something")
+def foo(): ...
+
+foo
+
+[out]
+Semantic tokens for full range
+- 1:30:deprecated -> class:definition,declaration
+- 3:1:deprecated -> class:none
+- 4:4:foo -> function:definition,declaration,deprecated
+- 6:0:foo -> function:deprecated
+
+[case abstractmethod_semantic_tokens]
+from abc import abstractmethod
+#? semantic-tokens
+
+class C:
+    @abstractmethod
+    def f(self): ...
+
+C.f
+C().f  # E: Cannot instantiate abstract class "C" with abstract attribute "f"
+
+[out]
+Semantic tokens for full range
+- 1:16:abstractmethod -> function:definition,declaration
+- 4:6:C -> class:definition,declaration
+- 5:5:abstractmethod -> function:none
+- 6:8:f -> function:definition,declaration,abstract
+- 6:10:self -> variable:definition
+- 8:0:C -> class:none
+- 8:2:f -> function:abstract
+- 9:0:C -> class:none
+- 9:4:f -> function:abstract
