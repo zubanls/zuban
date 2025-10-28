@@ -101,7 +101,10 @@ pub struct SignaturesArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct SemanticTokensArgs {}
+pub struct SemanticTokensArgs {
+    #[arg(long)]
+    pub until_line: Option<usize>,
+}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -379,8 +382,16 @@ pub(crate) fn find_and_check_ide_tests(
                         Err(err) => ("rename", Err(err)),
                     }
                 }
-                Commands::SemanticTokens(_) => {
-                    let range = None;
+                Commands::SemanticTokens(args) => {
+                    let range = args.until_line.map(|until_line| {
+                        (
+                            position,
+                            InputPosition::CodePoints {
+                                line: until_line - 1,
+                                column: 0,
+                            },
+                        )
+                    });
                     match document.semantic_tokens(range) {
                         Ok(tokens) => {
                             output.push("Semantic tokens for full range".to_string());

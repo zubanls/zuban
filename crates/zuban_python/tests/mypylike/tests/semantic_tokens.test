@@ -1,3 +1,18 @@
+[case semantic_tokens_with_range]
+
+a = 1
+def foo(): ...
+#? semantic-tokens --until-line 6
+type
+foo
+a
+foo
+
+[out]
+Semantic tokens for full range
+- 5:0:type -> class:none
+- 6:0:foo -> function:none
+
 [case method_simple_semantic_tokens_typed]
 # type: ignore
 #? semantic-tokens
