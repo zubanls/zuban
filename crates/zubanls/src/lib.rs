@@ -3,6 +3,7 @@ mod notebooks;
 mod notification_handlers;
 mod panic_hooks;
 mod request_handlers;
+mod semantic_tokens;
 mod server;
 
 pub use crate::server::{

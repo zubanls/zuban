@@ -4,7 +4,7 @@ use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
 use lsp_types::{
     DiagnosticClientCapabilities, DocumentSymbolClientCapabilities, InitializeResult,
-    TextDocumentClientCapabilities, Uri, WorkspaceFolder,
+    ServerCapabilities, TextDocumentClientCapabilities, Uri, WorkspaceFolder,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -27,6 +27,7 @@ pub(crate) struct Connection {
     client: lsp_server::Connection,
     server_thread: Option<std::thread::JoinHandle<()>>,
     request_id_counter: Cell<i32>,
+    pub server_capabilities: Option<ServerCapabilities>,
 }
 
 impl Connection {
@@ -44,6 +45,7 @@ impl Connection {
             client: connection2,
             server_thread,
             request_id_counter: Cell::new(0),
+            server_capabilities: None,
         }
     }
 
@@ -52,8 +54,9 @@ impl Connection {
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
     ) -> Self {
-        let slf = Self::new();
-        slf.initialize(roots, position_encodings, pull_diagnostics);
+        let mut slf = Self::new();
+        let response = slf.initialize(roots, position_encodings, pull_diagnostics);
+        slf.server_capabilities = Some(response.capabilities);
         slf
     }
 

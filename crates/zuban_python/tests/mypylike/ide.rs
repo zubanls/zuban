@@ -31,6 +31,7 @@ pub enum Commands {
     Documentation(DocumentationArgs),
     References(ReferencesArgs),
     Rename(RenameArgs),
+    SemanticTokens(SemanticTokensArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -97,6 +98,12 @@ pub struct SignaturesArgs {
     pub show_params_utf16_code_units_range: bool,
     #[arg(long)]
     pub show_params_utf8_byte_range: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct SemanticTokensArgs {
+    #[arg(long)]
+    pub until_line: Option<usize>,
 }
 
 impl CommonGotoInferArgs {
@@ -373,6 +380,35 @@ pub(crate) fn find_and_check_ide_tests(
                             continue;
                         }
                         Err(err) => ("rename", Err(err)),
+                    }
+                }
+                Commands::SemanticTokens(args) => {
+                    let range = args.until_line.map(|until_line| {
+                        (
+                            position,
+                            InputPosition::CodePoints {
+                                line: until_line - 1,
+                                column: 0,
+                            },
+                        )
+                    });
+                    match document.semantic_tokens(range) {
+                        Ok(tokens) => {
+                            output.push("Semantic tokens for full range".to_string());
+                            for token in tokens {
+                                let pos = token.position();
+                                output.push(format!(
+                                    "- {}:{}:{} -> {}:{}",
+                                    pos.line_one_based(),
+                                    pos.code_points_column(),
+                                    token.content(),
+                                    token.lsp_type.as_str(),
+                                    token.pretty_properties(),
+                                ));
+                            }
+                            continue;
+                        }
+                        Err(err) => ("semantic tokens", Err(err)),
                     }
                 }
             };

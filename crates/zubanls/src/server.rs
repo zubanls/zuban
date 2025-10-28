@@ -418,6 +418,8 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<Rename>(GlobalState::rename)
         .on_sync_mut::<DocumentSymbolRequest>(GlobalState::document_symbols)
         .on_sync_mut::<WorkspaceSymbolRequest>(GlobalState::workspace_symbols)
+        .on_sync_mut::<SemanticTokensFullRequest>(GlobalState::semantic_tokens)
+        .on_sync_mut::<SemanticTokensRangeRequest>(GlobalState::semantic_tokens_with_range)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
     }

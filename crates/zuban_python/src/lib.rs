@@ -20,6 +20,7 @@ mod node_ref;
 mod params;
 mod python_state;
 mod select_files;
+mod semantic_tokens;
 mod signatures;
 mod sys_path;
 mod type_;
@@ -51,6 +52,7 @@ use inferred::Inferred;
 pub use lines::PositionInfos;
 use matching::invalidate_protocol_cache;
 pub use name::{Name, NameSymbol, ValueName};
+pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
 use crate::select_files::all_typechecked_files;
 
@@ -589,7 +591,6 @@ impl<'a> Script<'a> {
     pub fn search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
     pub fn complete_search(&self, _text: String, _all_scopes: bool, _fuzzy: bool) {}
     pub fn context(&self, _position: Position) {}
-    pub fn selection_ranges() {}
 }
 */
 

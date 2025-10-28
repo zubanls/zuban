@@ -981,11 +981,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ))
                             };
                         }
-                        specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                        | Specific::AnnotationOrTypeCommentClassVar
-                        | Specific::AnnotationOrTypeCommentFinal) => {
+                        specific if specific.is_annotation_or_type_comment() => {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             let is_remapped = matches!(
                                 specific,

@@ -1,0 +1,543 @@
+[case semantic_tokens_with_range]
+
+a = 1
+def foo(): ...
+#? semantic-tokens --until-line 6
+type
+foo
+a
+foo
+
+[out]
+Semantic tokens for full range
+- 5:0:type -> class:none
+- 6:0:foo -> function:none
+
+[case method_simple_semantic_tokens_typed]
+# type: ignore
+#? semantic-tokens
+
+class C:
+    def method(self) -> None:
+        self.method
+        self.method()
+
+C.method
+C.method()
+C().method
+C().method()
+
+[out]
+Semantic tokens for full range
+- 4:6:C -> class:definition,declaration
+- 5:8:method -> function:definition,declaration
+- 5:15:self -> variable:definition
+- 6:8:self -> variable:none
+- 6:13:method -> function:none
+- 7:8:self -> variable:none
+- 7:13:method -> function:none
+- 9:0:C -> class:none
+- 9:2:method -> function:none
+- 10:0:C -> class:none
+- 10:2:method -> function:none
+- 11:0:C -> class:none
+- 11:4:method -> function:none
+- 12:0:C -> class:none
+- 12:4:method -> function:none
+
+[case method_simple_semantic_tokens_untyped_no_mypy_compatible]
+# type: ignore
+# flags: --no-mypy-compatible
+#? semantic-tokens
+
+class C:
+    def method(self):
+        self.method
+        self.method()
+
+C.method
+C.method()
+C().method
+C().method()
+
+[out]
+Semantic tokens for full range
+- 5:6:C -> class:definition,declaration
+- 6:8:method -> function:definition,declaration
+- 6:15:self -> variable:definition
+- 7:8:self -> variable:none
+- 7:13:method -> function:none
+- 8:8:self -> variable:none
+- 8:13:method -> function:none
+- 10:0:C -> class:none
+- 10:2:method -> function:none
+- 11:0:C -> class:none
+- 11:2:method -> function:none
+- 12:0:C -> class:none
+- 12:4:method -> function:none
+- 13:0:C -> class:none
+- 13:4:method -> function:none
+
+[case method_simple_semantic_tokens_untyped_mypy_compatible]
+# type: ignore
+# flags: --mypy-compatible
+#? semantic-tokens
+
+class C:
+    def method(self):
+        self.method
+        self.method()
+
+C.method
+C.method()
+C().method
+C().method()
+
+[out]
+Semantic tokens for full range
+- 5:6:C -> class:definition,declaration
+- 6:8:method -> function:definition,declaration
+- 6:15:self -> variable:definition
+- 7:8:self -> variable:none
+- 8:8:self -> variable:none
+- 10:0:C -> class:none
+- 10:2:method -> function:none
+- 11:0:C -> class:none
+- 11:2:method -> function:none
+- 12:0:C -> class:none
+- 12:4:method -> function:none
+- 13:0:C -> class:none
+- 13:4:method -> function:none
+
+[case self_attr_simple_semantic_tokens_typed]
+# type: ignore
+#? semantic-tokens
+
+class C:
+    def method(self) -> None:
+        self.attr = 1
+        self.attr
+        self.attr()
+        self.declared_attr: int = 1
+        self.declared_attr
+
+C.attr
+C.declared_attr
+C().attr
+C().declared_attr
+
+[out]
+Semantic tokens for full range
+- 4:6:C -> class:definition,declaration
+- 5:8:method -> function:definition,declaration
+- 5:15:self -> variable:definition
+- 6:8:self -> variable:none
+- 6:13:attr -> variable:definition
+- 7:8:self -> variable:none
+- 7:13:attr -> variable:none
+- 8:8:self -> variable:none
+- 8:13:attr -> variable:none
+- 9:8:self -> variable:none
+- 9:13:declared_attr -> variable:definition
+- 9:28:int -> class:none
+- 10:8:self -> variable:none
+- 10:13:declared_attr -> variable:none
+- 12:0:C -> class:none
+- 13:0:C -> class:none
+- 14:0:C -> class:none
+- 14:4:attr -> variable:none
+- 15:0:C -> class:none
+- 15:4:declared_attr -> variable:none
+
+[case typing_module_semantic_tokens]
+#? semantic-tokens
+import typing
+from typing import Optional, Any, ParamSpec
+
+P = ParamSpec('P')
+typing.Callable[P, None]
+zz: Optional[Any]
+
+[out]
+Semantic tokens for full range
+- 2:7:typing -> namespace:definition,declaration
+- 3:19:Optional -> class:definition,declaration
+- 3:29:Any -> class:definition,declaration
+- 3:34:ParamSpec -> class:definition,declaration
+- 5:4:ParamSpec -> class:none
+- 6:0:typing -> namespace:none
+- 6:7:Callable -> class:none
+- 7:0:zz -> variable:definition,declaration
+- 7:4:Optional -> class:none
+- 7:13:Any -> class:none
+
+[case partial_semantic_tokens]
+# flags: --only-language-server
+#? semantic-tokens
+x = None
+x = 1
+y = None
+
+[out]
+Semantic tokens for full range
+- 3:0:x -> variable:definition
+- 4:0:x -> variable:definition
+- 5:0:y -> variable:definition
+
+[case class_enum_semantic_tokens]
+#? semantic-tokens
+from enum import Enum
+from typing import Literal
+
+class E(Enum):
+    X = "X"
+
+E.X
+
+def f(e: E, e2: type[E], e3: Literal[E.X]):
+    e
+    e2
+    e3
+
+[out]
+Semantic tokens for full range
+- 2:17:Enum -> class:definition,declaration
+- 3:19:Literal -> class:definition,declaration
+- 5:6:E -> enum:definition,declaration
+- 5:8:Enum -> class:none
+- 6:4:X -> class:definition
+- 8:0:E -> enum:none
+- 10:4:f -> function:definition,declaration
+- 10:6:e -> enum:definition,declaration
+- 10:9:E -> enum:none
+- 10:12:e2 -> enum:definition,declaration
+- 10:16:type -> class:none
+- 10:21:E -> enum:none
+- 10:25:e3 -> enumMember:definition,declaration
+- 10:29:Literal -> class:none
+- 10:37:E -> enum:none
+- 11:4:e -> enum:none
+- 12:4:e2 -> enum:none
+- 13:4:e3 -> enumMember:none
+
+
+[case functional_enum_semantic_tokens]
+#? semantic-tokens
+from enum import Enum
+from typing import Literal
+
+E = Enum("E", "X")
+
+E.X
+
+def f(e: E, e2: type[E], e3: Literal[E.X]):
+    e
+    e2
+    e3
+
+[out]
+Semantic tokens for full range
+- 2:17:Enum -> class:definition,declaration
+- 3:19:Literal -> class:definition,declaration
+- 5:0:E -> enum:definition
+- 5:4:Enum -> class:none
+- 7:0:E -> enum:none
+- 9:4:f -> function:definition,declaration
+- 9:6:e -> enum:definition,declaration
+- 9:9:E -> enum:none
+- 9:12:e2 -> enum:definition,declaration
+- 9:16:type -> class:none
+- 9:21:E -> enum:none
+- 9:25:e3 -> enumMember:definition,declaration
+- 9:29:Literal -> class:none
+- 9:37:E -> enum:none
+- 10:4:e -> enum:none
+- 11:4:e2 -> enum:none
+- 12:4:e3 -> enumMember:none
+
+[case type_of_class_semantic_tokens]
+#? semantic-tokens
+from dataclasses import dataclass
+
+class Y: pass
+@dataclass
+class D:
+    dattr: int
+
+def f(y: type[Y], d: type[D], dinst: D):
+    y
+    d
+    dinst
+
+[out]
+Semantic tokens for full range
+- 2:24:dataclass -> function:definition,declaration
+- 4:6:Y -> class:definition,declaration
+- 5:1:dataclass -> function:none
+- 6:6:D -> class:definition,declaration
+- 7:4:dattr -> variable:definition,declaration
+- 7:11:int -> class:none
+- 9:4:f -> function:definition,declaration
+- 9:6:y -> class:definition,declaration
+- 9:9:type -> class:none
+- 9:14:Y -> class:none
+- 9:18:d -> class:definition,declaration
+- 9:21:type -> class:none
+- 9:26:D -> class:none
+- 9:30:dinst -> variable:definition,declaration
+- 9:37:D -> class:none
+- 10:4:y -> class:none
+- 11:4:d -> class:none
+- 12:4:dinst -> variable:none
+
+[case overload_semantic_tokens]
+#? semantic-tokens
+from typing import overload
+@overload
+def x() -> None: ...
+@overload
+def x(a: None) -> None: ...
+def x(a = None) -> None: ...
+
+x
+
+[out]
+Semantic tokens for full range
+- 2:19:overload -> function:definition,declaration
+- 3:1:overload -> function:none
+- 4:4:x -> function:definition,declaration
+- 5:1:overload -> function:none
+- 6:4:x -> function:definition,declaration
+- 6:6:a -> variable:definition,declaration
+- 7:4:x -> function:definition,declaration
+- 7:6:a -> variable:definition
+- 9:0:x -> function:none
+
+[case type_of_class_semantic_tokens2]
+#? semantic-tokens
+x: type[str]
+x
+
+[out]
+Semantic tokens for full range
+- 2:0:x -> class:definition,declaration
+- 2:3:type -> class:none
+- 2:8:str -> class:none
+- 3:0:x -> class:none
+
+[case type_alias_semantic_tokens]
+#? semantic-tokens
+type X = None | int
+type Y = X
+
+[out]
+Semantic tokens for full range
+- 2:5:X -> variable:definition
+- 2:16:int -> class:none
+- 3:5:Y -> variable:definition
+- 3:9:X -> variable:none
+
+[case namespace_semantic_tokens]
+#? semantic-tokens
+import namespace
+from namespace import foo
+
+namespace
+
+[file namespace/foo.py]
+
+[out]
+Semantic tokens for full range
+- 2:7:namespace -> namespace:definition,declaration
+- 3:22:foo -> namespace:definition,declaration
+- 5:0:namespace -> namespace:none
+
+[case async_modifiers_semantic_tokens]
+#? semantic-tokens
+async def foo(): ...
+
+@decorator  # E: Name "decorator" is not defined
+async def bar(): ...
+
+from typing import final
+
+class Some:
+    @final
+    async def baz(self): ...
+
+foo
+bar
+Some.baz
+Some().baz
+
+[out]
+Semantic tokens for full range
+- 2:10:foo -> function:definition,declaration,async
+- 7:19:final -> function:definition,declaration
+- 9:6:Some -> class:definition,declaration
+- 10:5:final -> function:none
+- 11:14:baz -> function:definition,declaration,read_only,async
+- 11:18:self -> variable:definition
+- 13:0:foo -> function:async
+- 15:0:Some -> class:none
+- 15:5:baz -> function:read_only,async
+- 16:0:Some -> class:none
+- 16:7:baz -> function:read_only,async
+
+[case staticmethod_semantic_tokens]
+#? semantic-tokens
+class C:
+    @staticmethod
+    def foo(x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:staticmethod -> class:none
+- 4:8:foo -> function:definition,declaration,static
+- 4:12:x -> variable:definition
+- 6:0:C -> class:none
+- 6:2:foo -> function:static
+- 7:0:C -> class:none
+- 7:4:foo -> function:static
+
+[case classmethod_semantic_tokens]
+#? semantic-tokens
+class C:
+    @classmethod
+    def foo(x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:classmethod -> class:none
+- 4:8:foo -> function:definition,declaration,static
+- 4:12:x -> variable:definition
+- 6:0:C -> class:none
+- 6:2:foo -> function:static
+- 7:0:C -> class:none
+- 7:4:foo -> function:static
+
+[case readonly_property_semantic_tokens]
+#? semantic-tokens
+class C:
+    @property
+    def foo(x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:property -> class:none
+- 4:8:foo -> property:definition,declaration,read_only
+- 4:12:x -> variable:definition
+- 6:0:C -> class:none
+- 6:2:foo -> property:read_only
+- 7:0:C -> class:none
+- 7:4:foo -> property:read_only
+
+[case readwrite_property_semantic_tokens]
+#? semantic-tokens
+class C:
+    @property
+    def foo(self): ...
+    @foo.setter
+    def foo(self, x): ...
+
+C.foo
+C().foo
+
+[out]
+Semantic tokens for full range
+- 2:6:C -> class:definition,declaration
+- 3:5:property -> class:none
+- 4:8:foo -> property:definition,declaration
+- 4:12:self -> variable:definition
+- 5:5:foo -> property:none
+- 6:8:foo -> function:definition,declaration
+- 6:12:self -> variable:definition
+- 6:18:x -> variable:definition
+- 8:0:C -> class:none
+- 8:2:foo -> property:none
+- 9:0:C -> class:none
+- 9:4:foo -> property:none
+
+[case deprecated_semantic_tokens]
+from typing_extensions import deprecated
+#? semantic-tokens
+@deprecated("something")
+def foo(): ...
+
+foo
+
+[out]
+Semantic tokens for full range
+- 1:30:deprecated -> class:definition,declaration
+- 3:1:deprecated -> class:none
+- 4:4:foo -> function:definition,declaration,deprecated
+- 6:0:foo -> function:deprecated
+
+[case abstractmethod_semantic_tokens]
+from abc import abstractmethod
+#? semantic-tokens
+
+class C:
+    @abstractmethod
+    def f(self): ...
+
+C.f
+C().f  # E: Cannot instantiate abstract class "C" with abstract attribute "f"
+
+[out]
+Semantic tokens for full range
+- 1:16:abstractmethod -> function:definition,declaration
+- 4:6:C -> class:definition,declaration
+- 5:5:abstractmethod -> function:none
+- 6:8:f -> function:definition,declaration,abstract
+- 6:10:self -> variable:definition
+- 8:0:C -> class:none
+- 8:2:f -> function:abstract
+- 9:0:C -> class:none
+- 9:4:f -> function:abstract
+
+[case overloaded_method_semantic_tokens]
+#? semantic-tokens
+from typing import overload
+class C[T]:
+    @overload
+    def f(self: C[int]) -> None: ...
+    @overload
+    def f(self: C[str]) -> None: ...
+    def f(self) -> None: ...
+
+x = C().f
+x
+
+[out]
+Semantic tokens for full range
+- 2:19:overload -> function:definition,declaration
+- 3:6:C -> class:definition,declaration
+- 4:5:overload -> function:none
+- 5:8:f -> function:definition,declaration
+- 5:10:self -> variable:definition,declaration
+- 5:16:C -> class:none
+- 5:18:int -> class:none
+- 6:5:overload -> function:none
+- 7:8:f -> function:definition,declaration
+- 7:10:self -> variable:definition,declaration
+- 7:16:C -> class:none
+- 7:18:str -> class:none
+- 8:8:f -> function:definition,declaration
+- 8:10:self -> variable:definition
+- 10:0:x -> function:definition
+- 10:4:C -> class:none
+- 10:8:f -> function:none
+- 11:0:x -> function:none

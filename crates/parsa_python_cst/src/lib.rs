@@ -420,6 +420,11 @@ macro_rules! create_struct {
             }
 
             #[inline]
+            pub fn len(&self) -> CodeIndex {
+                self.node.length()
+            }
+
+            #[inline]
             pub fn end(&self) -> CodeIndex {
                 self.node.end()
             }
@@ -2443,6 +2448,12 @@ pub enum FunctionParent<'db> {
     Async,
     DecoratedAsync(Decorated<'db>),
     Normal,
+}
+
+impl FunctionParent<'_> {
+    pub fn is_async(&self) -> bool {
+        matches!(self, Self::Async | Self::DecoratedAsync(_))
+    }
 }
 
 impl<'db> FunctionDefParameters<'db> {

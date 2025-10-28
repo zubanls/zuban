@@ -107,7 +107,7 @@ impl<'a> Project<'a> {
 
 pub(crate) struct Server {
     pub tmp_dir: TestDir,
-    connection: Connection,
+    pub connection: Connection,
     version_incrementor: Cell<i32>,
 }
 

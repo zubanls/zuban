@@ -10,11 +10,13 @@ use lsp_types::{
     DocumentSymbolResponse, FullDocumentDiagnosticReport, GotoDefinitionParams,
     GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, LocationLink,
     MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
-    ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, ReferenceParams,
+    ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, ReferenceParams,
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
-    ResourceOperationKind, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
-    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
-    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    ResourceOperationKind, SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SignatureHelp, SignatureHelpParams,
+    SignatureInformation, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentPositionParams, TextEdit, Uri, WorkspaceEdit, WorkspaceSymbol,
+    WorkspaceSymbolParams, WorkspaceSymbolResponse,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -27,6 +29,7 @@ use zuban_python::{
 
 use crate::{
     capabilities::{ClientCapabilities, NegotiatedEncoding},
+    semantic_tokens::SemanticTokensBuilder,
     server::{GlobalState, LspError},
 };
 
@@ -54,21 +57,22 @@ impl GlobalState<'_> {
         ))
     }
 
+    fn to_position(encoding: NegotiatedEncoding, pos: PositionInfos) -> lsp_types::Position {
+        let column = match encoding {
+            NegotiatedEncoding::UTF8 => pos.utf8_bytes_column(),
+            NegotiatedEncoding::UTF16 => pos.utf16_code_units_column(),
+            NegotiatedEncoding::UTF32 => pos.code_points_column(),
+        };
+        Position::new(pos.line_zero_based() as u32, column as u32)
+    }
+
     fn to_range(
         encoding: NegotiatedEncoding,
         range: (PositionInfos, PositionInfos),
     ) -> lsp_types::Range {
-        let to_lsp_position = |pos: zuban_python::PositionInfos| {
-            let column = match encoding {
-                NegotiatedEncoding::UTF8 => pos.utf8_bytes_column(),
-                NegotiatedEncoding::UTF16 => pos.utf16_code_units_column(),
-                NegotiatedEncoding::UTF32 => pos.code_points_column(),
-            };
-            Position::new(pos.line_zero_based() as u32, column as u32)
-        };
         lsp_types::Range {
-            start: to_lsp_position(range.0),
-            end: to_lsp_position(range.1),
+            start: Self::to_position(encoding, range.0),
+            end: Self::to_position(encoding, range.1),
         }
     }
 
@@ -518,6 +522,49 @@ impl GlobalState<'_> {
             .flatten_iter()
             .collect();
         Ok(Some(WorkspaceSymbolResponse::Nested(symbols)))
+    }
+
+    pub fn semantic_tokens(
+        &mut self,
+        params: SemanticTokensParams,
+    ) -> anyhow::Result<Option<SemanticTokensResult>> {
+        Ok(Some(SemanticTokensResult::Tokens(
+            self.semantic_tokens_internal(params.text_document, None)?,
+        )))
+    }
+
+    fn semantic_tokens_internal(
+        &mut self,
+        document: TextDocumentIdentifier,
+        range: Option<Range>,
+    ) -> anyhow::Result<SemanticTokens> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let document = self.document(document)?;
+        let mut builder = SemanticTokensBuilder::new();
+        let range = range.map(|range| {
+            (
+                encoding.input_position(range.start),
+                encoding.input_position(range.end),
+            )
+        });
+        for semantic_token in document.semantic_tokens(range)? {
+            builder.push(
+                Self::to_position(encoding, semantic_token.position()),
+                semantic_token.len(),
+                semantic_token.lsp_type,
+                semantic_token.properties,
+            );
+        }
+        Ok(builder.build())
+    }
+
+    pub fn semantic_tokens_with_range(
+        &mut self,
+        params: SemanticTokensRangeParams,
+    ) -> anyhow::Result<Option<SemanticTokensRangeResult>> {
+        Ok(Some(SemanticTokensRangeResult::Tokens(
+            self.semantic_tokens_internal(params.text_document, Some(params.range))?,
+        )))
     }
 
     pub(crate) fn handle_shutdown(&mut self, _: ()) -> anyhow::Result<()> {

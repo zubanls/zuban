@@ -15,13 +15,15 @@ use lsp_types::{
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
     DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, HoverParams,
     NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
-    ReferenceParams, RenameParams, SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, TextDocumentPositionParams, Uri, WorkDoneProgressParams,
-    WorkspaceSymbolParams,
+    ReferenceParams, RenameParams, SemanticToken, SemanticTokenType, SemanticTokens,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensServerCapabilities,
+    SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceSymbolParams,
     request::{
         Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, DocumentSymbolRequest,
         GotoDeclaration, GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest,
-        PrepareRenameRequest, References, Rename, SignatureHelpRequest, WorkspaceSymbolRequest,
+        PrepareRenameRequest, References, Rename, SemanticTokensFullRequest,
+        SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -29,6 +31,7 @@ mod connection;
 mod support;
 
 use connection::Connection;
+use serde::Deserialize as _;
 use serde_json::json;
 // It is very unfortunate, but we need to tag every test in this crate, to avoid having set_hook
 // overwritten by the thread spawning? test setup? I'm not sure what it is exactly, but I have seen
@@ -2584,5 +2587,147 @@ fn test_symbols() {
             }
           }
         ]),
+    );
+}
+
+#[test]
+#[serial]
+fn test_semantic_tokens() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        class A:
+            @property
+            def foo(self): ...
+            def f2(self): ...
+
+        A().foo
+        "#,
+    )
+    .into_server();
+
+    let server_capabilites = server.connection.server_capabilities.as_ref().unwrap();
+    let legend = match server_capabilites
+        .semantic_tokens_provider
+        .as_ref()
+        .unwrap()
+    {
+        SemanticTokensServerCapabilities::SemanticTokensOptions(opts) => &opts.legend,
+        SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(..) => unreachable!(),
+    };
+    let tok_to_u32 = |tok: SemanticTokenType| {
+        legend
+            .token_types
+            .iter()
+            .position(|from_server| tok == *from_server)
+            .unwrap() as u32
+    };
+
+    let json = server
+        .connection
+        .request_with_expected_response::<SemanticTokensFullRequest>(SemanticTokensParams {
+            text_document: server.doc_id("foo.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        });
+    let tokens = SemanticTokens::deserialize(json).unwrap();
+    assert_eq!(
+        tokens.data,
+        vec![
+            SemanticToken {
+                delta_line: 0,
+                delta_start: 6,
+                length: 1,
+                token_type: tok_to_u32(SemanticTokenType::CLASS),
+                token_modifiers_bitset: 3
+            },
+            SemanticToken {
+                delta_line: 1,
+                delta_start: 5,
+                length: 8,
+                token_type: tok_to_u32(SemanticTokenType::CLASS),
+                token_modifiers_bitset: 0
+            },
+            SemanticToken {
+                delta_line: 1,
+                delta_start: 8,
+                length: 3,
+                token_type: tok_to_u32(SemanticTokenType::PROPERTY),
+                token_modifiers_bitset: 7
+            },
+            SemanticToken {
+                delta_line: 0,
+                delta_start: 4,
+                length: 4,
+                token_type: tok_to_u32(SemanticTokenType::VARIABLE),
+                token_modifiers_bitset: 2
+            },
+            SemanticToken {
+                delta_line: 1,
+                delta_start: 8,
+                length: 2,
+                token_type: tok_to_u32(SemanticTokenType::FUNCTION),
+                token_modifiers_bitset: 3
+            },
+            SemanticToken {
+                delta_line: 0,
+                delta_start: 3,
+                length: 4,
+                token_type: tok_to_u32(SemanticTokenType::VARIABLE),
+                token_modifiers_bitset: 2
+            },
+            SemanticToken {
+                delta_line: 2,
+                delta_start: 0,
+                length: 1,
+                token_type: tok_to_u32(SemanticTokenType::CLASS),
+                token_modifiers_bitset: 0
+            },
+            SemanticToken {
+                delta_line: 0,
+                delta_start: 4,
+                length: 3,
+                token_type: tok_to_u32(SemanticTokenType::PROPERTY),
+                token_modifiers_bitset: 4
+            }
+        ]
+    );
+
+    let json = server
+        .connection
+        .request_with_expected_response::<SemanticTokensRangeRequest>(SemanticTokensRangeParams {
+            text_document: server.doc_id("foo.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+            range: Range {
+                start: Position {
+                    line: 2,
+                    character: 0,
+                },
+                end: Position {
+                    line: 3,
+                    character: 0,
+                },
+            },
+        });
+    let tokens = SemanticTokens::deserialize(json).unwrap();
+    assert_eq!(
+        tokens.data,
+        vec![
+            SemanticToken {
+                delta_line: 2,
+                delta_start: 8,
+                length: 3,
+                token_type: tok_to_u32(SemanticTokenType::PROPERTY),
+                token_modifiers_bitset: 7
+            },
+            SemanticToken {
+                delta_line: 0,
+                delta_start: 4,
+                length: 4,
+                token_type: tok_to_u32(SemanticTokenType::VARIABLE),
+                token_modifiers_bitset: 2
+            }
+        ]
     );
 }

@@ -3686,14 +3686,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if cfg!(debug_assertions) {
             let point = self.file.points.get(annotation.index());
             debug_assert!(
-                matches!(
-                    point.specific(),
-                    Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                        | Specific::AnnotationOrTypeCommentClassVar
-                        | Specific::AnnotationOrTypeCommentFinal
-                ),
+                point.specific().is_annotation_or_type_comment(),
                 "{point:?}"
             );
         }
@@ -3704,14 +3697,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if cfg!(debug_assertions) {
             let point = self.file.points.get(annotation.index());
             debug_assert!(
-                matches!(
-                    point.specific(),
-                    Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                        | Specific::AnnotationOrTypeCommentClassVar
-                        | Specific::AnnotationOrTypeCommentFinal
-                ),
+                point.specific().is_annotation_or_type_comment(),
                 "{point:?}"
             );
         }
@@ -4809,14 +4795,12 @@ pub(crate) fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
     i_s: &InferenceState<'db, '_>,
     definition: NodeRef<'file>,
 ) -> Cow<'file, Type> {
-    debug_assert!(matches!(
-        definition.point().specific(),
-        Specific::AnnotationOrTypeCommentSimpleClassInstance
-            | Specific::AnnotationOrTypeCommentWithoutTypeVars
-            | Specific::AnnotationOrTypeCommentWithTypeVars
-            | Specific::AnnotationOrTypeCommentClassVar
-            | Specific::AnnotationOrTypeCommentFinal
-    ));
+    debug_assert!(
+        definition
+            .point()
+            .specific()
+            .is_annotation_or_type_comment()
+    );
     let n = definition.add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64);
     let maybe_starred = match n.maybe_expression() {
         Some(expr) => Err(expr),

@@ -367,6 +367,8 @@ impl TestCase<'_, '_> {
         let steps = calculate_steps(Some(self.file_name), self.code);
         if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
             || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
+            || steps.flags.contains(&"--only-language-server")
+                && !matches!(projects.mode, Mode::LanguageServer)
         {
             return Ok(false);
         }
