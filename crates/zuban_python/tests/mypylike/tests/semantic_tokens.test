@@ -157,6 +157,7 @@ Semantic tokens for full range
 - 7:13:Any -> class:none
 
 [case partial_semantic_tokens]
+# flags: --only-language-server
 #? semantic-tokens
 x = None
 x = 1
@@ -164,8 +165,9 @@ y = None
 
 [out]
 Semantic tokens for full range
-- 2:0:x -> variable:definition
-- 4:0:y -> variable:definition
+- 3:0:x -> variable:definition
+- 4:0:x -> variable:definition
+- 5:0:y -> variable:definition
 
 [case class_enum_semantic_tokens]
 #? semantic-tokens
