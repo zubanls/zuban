@@ -15,14 +15,15 @@ use lsp_types::{
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
     DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, HoverParams,
     NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
-    ReferenceParams, RenameParams, SemanticToken, SemanticTokenType, SemanticTokens,
-    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensServerCapabilities,
-    SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceSymbolParams,
+    ReferenceParams, RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType,
+    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    WorkDoneProgressParams, WorkspaceSymbolParams,
     request::{
         Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, DocumentSymbolRequest,
         GotoDeclaration, GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest,
-        PrepareRenameRequest, References, Rename, SemanticTokensFullRequest,
+        PrepareRenameRequest, References, Rename, SelectionRangeRequest, SemanticTokensFullRequest,
         SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
@@ -2592,7 +2593,7 @@ fn test_symbols() {
 
 #[test]
 #[serial]
-fn test_semantic_tokens() {
+fn test_semantic_tokens_and_selection_ranges() {
     let server = Project::with_fixture(
         r#"
         [file foo.py]
@@ -2729,5 +2730,121 @@ fn test_semantic_tokens() {
                 token_modifiers_bitset: 2
             }
         ]
+    );
+
+    server.request_and_expect_json::<SelectionRangeRequest>(
+        SelectionRangeParams {
+            text_document: server.doc_id("foo.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+            positions: vec![
+                Position {
+                    line: 4,
+                    character: 0,
+                },
+                Position {
+                    line: 5,
+                    character: 7,
+                },
+            ],
+        },
+        json!([
+          {
+            "parent": {
+              "parent": {
+                "parent": {
+                  "range": {
+                    "end": {
+                      "character": 0,
+                      "line": 6
+                    },
+                    "start": {
+                      "character": 0,
+                      "line": 0
+                    }
+                  }
+                },
+                "range": {
+                  "end": {
+                    "character": 0,
+                    "line": 5
+                  },
+                  "start": {
+                    "character": 0,
+                    "line": 0
+                  }
+                }
+              },
+              "range": {
+                "end": {
+                  "character": 0,
+                  "line": 4
+                },
+                "start": {
+                  "character": 4,
+                  "line": 3
+                }
+              }
+            },
+            "range": {
+              "end": {
+                "character": 0,
+                "line": 4
+              },
+              "start": {
+                "character": 21,
+                "line": 3
+              }
+            }
+          },
+          {
+            "parent": {
+              "parent": {
+                "parent": {
+                  "range": {
+                    "end": {
+                      "character": 0,
+                      "line": 6
+                    },
+                    "start": {
+                      "character": 0,
+                      "line": 0
+                    }
+                  }
+                },
+                "range": {
+                  "end": {
+                    "character": 0,
+                    "line": 6
+                  },
+                  "start": {
+                    "character": 0,
+                    "line": 5
+                  }
+                }
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 5
+                },
+                "start": {
+                  "character": 0,
+                  "line": 5
+                }
+              }
+            },
+            "range": {
+              "end": {
+                "character": 7,
+                "line": 5
+              },
+              "start": {
+                "character": 4,
+                "line": 5
+              }
+            }
+          }
+        ]),
     );
 }

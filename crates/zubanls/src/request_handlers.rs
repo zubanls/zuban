@@ -593,8 +593,8 @@ impl GlobalState<'_> {
                         document.selection_ranges(encoding.input_position(pos))?,
                     )
                     .unwrap())
-                })?
-                .collect(),
+                })
+                .collect::<anyhow::Result<_>>()?,
         ))
     }
 

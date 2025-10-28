@@ -12,7 +12,7 @@ impl Tree {
     fn initial_node_for_selection_ranges(&self, position: CodeIndex) -> PyNode<'_> {
         let mut node = self.0.leaf_by_position(position);
         if node.start() == position
-            && node.type_() == PyNodeType::Keyword
+            && (node.type_() == PyNodeType::Keyword || node.as_code() == "\n")
             && let Some(previous) = node.previous_leaf()
             && previous.end() == position
         {
