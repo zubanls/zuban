@@ -490,3 +490,37 @@ Semantic tokens for full range
 - 8:2:f -> function:abstract
 - 9:0:C -> class:none
 - 9:4:f -> function:abstract
+
+[case overloaded_method_semantic_tokens]
+#? semantic-tokens
+from typing import overload
+class C[T]:
+    @overload
+    def f(self: C[int]) -> None: ...
+    @overload
+    def f(self: C[str]) -> None: ...
+    def f(self) -> None: ...
+
+x = C().f
+x
+
+[out]
+Semantic tokens for full range
+- 2:19:overload -> function:definition,declaration
+- 3:6:C -> class:definition,declaration
+- 4:5:overload -> function:none
+- 5:8:f -> function:definition,declaration
+- 5:10:self -> variable:definition,declaration
+- 5:16:C -> class:none
+- 5:18:int -> class:none
+- 6:5:overload -> function:none
+- 7:8:f -> function:definition,declaration
+- 7:10:self -> variable:definition,declaration
+- 7:16:C -> class:none
+- 7:18:str -> class:none
+- 8:8:f -> function:definition,declaration
+- 8:10:self -> variable:definition
+- 10:0:x -> function:definition
+- 10:4:C -> class:none
+- 10:8:f -> function:none
+- 11:0:x -> function:none

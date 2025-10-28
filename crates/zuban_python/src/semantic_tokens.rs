@@ -119,7 +119,7 @@ impl<'project> Document<'project> {
                 })
             }
             Type::CustomBehavior(_) | Type::FunctionOverload(_) => {
-                todo!() //Some(SemanticTokenType::FUNCTION)
+                Some(SemanticTokenType::FUNCTION)
             }
             Type::Any(_) | Type::Never(_) => None,
             _ => Some(SemanticTokenType::VARIABLE),
