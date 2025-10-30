@@ -33,7 +33,7 @@ mod support;
 
 use connection::Connection;
 use serde::Deserialize as _;
-use serde_json::json;
+use serde_json::{Value, json};
 // It is very unfortunate, but we need to tag every test in this crate, to avoid having set_hook
 // overwritten by the thread spawning? test setup? I'm not sure what it is exactly, but I have seen
 // cases where the panic hook disappeared from tests and would be reverted to the default one,
@@ -1286,7 +1286,10 @@ fn check_goto_likes() {
 
     // Open an in memory file that doesn't otherwise exist
     let path = "n.py";
-    server.open_in_memory_file(path, "from m import d\nd\ninvalid_reference_for_rename");
+    server.open_in_memory_file(
+        path,
+        "from m import d\nd\ninvalid_reference_for_rename\nimport pathlib",
+    );
 
     let mpy = server.doc_id("m.py").uri;
     let mpyi = server.doc_id("m.pyi").uri;
@@ -1362,6 +1365,24 @@ fn check_goto_likes() {
             },
         }]),
     );
+
+    // Goto Definition on a target in Windows that should not lead to a path with a question mark start, see #118
+    if cfg!(windows) {
+        let result = server
+            .connection
+            .request_with_expected_response::<GotoDefinition>(GotoDefinitionParams {
+                text_document_position_params: TextDocumentPositionParams::new(
+                    server.doc_id("n.py"),
+                    Position::new(3, 10),
+                ),
+                work_done_progress_params: Default::default(),
+                partial_result_params: Default::default(),
+            });
+        let Value::String(uri) = &result[0]["targetUri"] else {
+            panic!("Expected an entry with an URI: {result:?}");
+        };
+        assert!(!uri.starts_with("file://///?"));
+    }
 
     // Goto Implementation
     server.request_and_expect_json::<GotoImplementation>(

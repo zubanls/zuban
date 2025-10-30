@@ -853,7 +853,12 @@ impl PathWithScheme {
 
     pub fn as_uri(&self) -> String {
         if cfg!(windows) && **self.scheme == *"file" {
-            return format!("{}:///{}", self.scheme, self.path.replace('\\', "/"));
+            let replaced = self
+                .path
+                .strip_prefix(r"\\?")
+                .unwrap_or(&self.path)
+                .replace('\\', "/");
+            return format!("{}:///{replaced}", self.scheme);
         }
         format!("{}://{}", self.scheme, self.path)
     }
