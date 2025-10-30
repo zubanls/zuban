@@ -185,6 +185,7 @@ pub fn run_server_with_custom_connection(
         typeshed_path,
     );
     global_state.event_loop(&connection.receiver)?;
+    tracing::info!("Server loop ended");
     cleanup()?;
     tracing::info!("Server did successfully shut down");
     Ok(())
@@ -194,8 +195,12 @@ pub fn run_server() -> anyhow::Result<()> {
     // TODO reenable this in the alpha in some form
     //licensing::verify_license_in_config_dir()?;
 
-    let (connection, io_threads) = Connection::stdio();
-    run_server_with_custom_connection(connection, None, || Ok(io_threads.join()?))
+    let (connection, _io_threads) = Connection::stdio();
+    run_server_with_custom_connection(connection, None, || {
+        // This used to be a join, but that seems to never join in VSCode, no idea why.
+        //Ok(io_threads.join()?)
+        Ok(())
+    })
 }
 
 struct NotificationDispatcher<'a, 'sender> {
@@ -428,6 +433,7 @@ impl<'sender> GlobalState<'sender> {
     fn on_lsp_message_and_return_on_shutdown(&mut self, msg: Message) -> bool {
         // It is a bit questionable that we use AssertUnwindSafe here. But the data is mostly in
         // self.project and will be cleaned up if it panics.
+        tracing::trace!("New LSP message: {msg:?}");
         let mut was_message = None;
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             use lsp_types::notification::Notification;
