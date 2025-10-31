@@ -927,14 +927,23 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match pr {
             PointResolution::NameDef { node_ref, .. } => {
                 let name_def = node_ref.expect_name_def();
-                if let TypeLike::ClassDef(class_def) = name_def.expect_type() {
-                    let class_node_ref = ClassNodeRef::new(node_ref.file, class_def.index());
-                    cache_class_name(node_ref, class_def);
-                    class_node_ref.ensure_cached_class_infos(&InferenceState::new(
-                        self.i_s.db,
-                        node_ref.file,
-                    ));
-                    return PreClassCalculationLookup::Class(class_node_ref);
+                match name_def.expect_type() {
+                    TypeLike::ClassDef(class_def) => {
+                        let class_node_ref = ClassNodeRef::new(node_ref.file, class_def.index());
+                        cache_class_name(node_ref, class_def);
+                        class_node_ref.ensure_cached_class_infos(&InferenceState::new(
+                            self.i_s.db,
+                            node_ref.file,
+                        ));
+                        return PreClassCalculationLookup::Class(class_node_ref);
+                    }
+                    TypeLike::ImportFromAsName(imp_name) => {
+                        // TODO this is probably not a good idea to match this by string
+                        if name_def.as_code() == "Literal" {
+                            return PreClassCalculationLookup::Literal;
+                        }
+                    }
+                    _ => (),
                 }
             }
             PointResolution::Inferred(inferred) => {
@@ -1045,6 +1054,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 }
 
+#[derive(Debug)]
 enum PreClassCalculationLookup<'file> {
     Module(&'file PythonFile),
     #[expect(dead_code)]

@@ -331,3 +331,18 @@ reveal_type(-9223372036854775808 % -1)  # N: Revealed type is "int"
 ()[184932176815329004701]  # E: Tuple index out of range
 reveal_type((1, 2)[184932176815329004701:])  # N: Revealed type is "tuple[()]"
 reveal_type((1, 2)[:184932176815329004701])  # N: Revealed type is "tuple[Literal[1]?, Literal[2]?]"
+
+[case literal_is_never_a_name_that_should_be_resolved]
+# From GH #121
+[file app.py]
+from driver import send_key
+
+send_key('a')
+
+[file driver.py]
+from typing import Literal
+
+Key = Literal['a']
+
+def send_key(key: Key) -> None:
+    pass
