@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    AbsPath, DirectoryEntry, Entries, FileEntry, NormalizedPath, Parent, PathWithScheme, VfsHandler,
+    AbsPath, DirectoryEntry, Entries, NormalizedPath, Parent, PathWithScheme, VfsHandler, Workspace,
 };
 
 pub type SimpleLocalFS = LocalFS<Box<dyn Fn(PathWithScheme) + Sync + Send>>;
@@ -71,12 +71,18 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
         }
     }
 
-    fn read_and_watch_dir(&self, _path: &str, _parent: Parent) -> Entries {
-        Entries::from_vec(Vec::new())
+    fn read_and_watch_dir(
+        &self,
+        _workspaces: &[Arc<Workspace>],
+        _path: &str,
+        _parent: Parent,
+    ) -> Entries {
+        Entries::default()
     }
 
     fn read_and_watch_entry(
         &self,
+        _workspaces: &[Arc<Workspace>],
         _path: &str,
         _parent: Parent,
         _replace_name: &str,
@@ -86,20 +92,6 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
 
     fn separator(&self) -> char {
         self.separator
-    }
-
-    fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
-        if path.is_empty() {
-            return (path, None);
-        }
-        let bytes = path.as_bytes();
-        if let Some(pos) = bytes.iter().position(|b| *b == b'/' || *b == b'\\') {
-            let (head, tail) = path.split_at(pos);
-            let tail = &tail[1..];
-            (head, if tail.is_empty() { None } else { Some(tail) })
-        } else {
-            (path, None)
-        }
     }
 
     fn join(&self, path: &AbsPath, name: &str) -> Arc<AbsPath> {

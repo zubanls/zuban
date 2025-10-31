@@ -2,6 +2,27 @@
 
 resolver = "2"
 members = ["crates/*"]
+# The playground embeds files from the typeshed submodule and is built explicitly with
+# wasm-pack. Keep the regular native build independent of that optional setup.
+default-members = [
+    "crates/cli_args",
+    "crates/config",
+    "crates/licensing",
+    "crates/logging_config",
+    "crates/parsa",
+    "crates/parsa_python",
+    "crates/parsa_python_cst",
+    "crates/primer",
+    "crates/scripts",
+    "crates/test_utils",
+    "crates/utils",
+    "crates/vfs",
+    "crates/zmypy",
+    "crates/zuban",
+    "crates/zuban_benchmark",
+    "crates/zuban_python",
+    "crates/zubanls",
+]
 
 [workspace.package]
 version = "0.9.0"

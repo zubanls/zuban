@@ -1,56 +1,67 @@
 use std::{any::Any, panic::AssertUnwindSafe};
 
 use anyhow::Context;
-use config::{ProjectOptions, Settings, TypeCheckerFlags};
+use config::{Mode, ProjectOptions, Settings, TypeCheckerFlags};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use vfs::{GlobAbsPath, InMemoryFs, PathWithScheme, VfsHandler};
 use wasm_bindgen::prelude::*;
-use zuban_python::{Mode, PlaygroundDiagnostic, Project, Severity};
+use zuban_python::{PlaygroundDiagnostic, Project, RunCause, Severity};
 
 const MAIN_FILE: &str = "main.py";
 
 const TYPESHED_FILES: &[(&str, &str)] = &[
-    ("typeshed/stdlib/builtins.pyi", include_str!("../typeshed/stdlib/builtins.pyi")),
-    ("typeshed/stdlib/typing.pyi", include_str!("../typeshed/stdlib/typing.pyi")),
-    ("typeshed/stdlib/types.pyi", include_str!("../typeshed/stdlib/types.pyi")),
-    ("typeshed/stdlib/abc.pyi", include_str!("../typeshed/stdlib/abc.pyi")),
+    (
+        "typeshed/stdlib/builtins.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/builtins.pyi"),
+    ),
+    (
+        "typeshed/stdlib/typing.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/typing.pyi"),
+    ),
+    (
+        "typeshed/stdlib/types.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/types.pyi"),
+    ),
+    (
+        "typeshed/stdlib/abc.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/abc.pyi"),
+    ),
     (
         "typeshed/stdlib/_typeshed/__init__.pyi",
-        include_str!("../typeshed/stdlib/_typeshed/__init__.pyi"),
+        include_str!("../../../third_party/typeshed/stdlib/_typeshed/__init__.pyi"),
     ),
     (
         "typeshed/stdlib/collections/__init__.pyi",
-        include_str!("../typeshed/stdlib/collections/__init__.pyi"),
+        include_str!("../../../third_party/typeshed/stdlib/collections/__init__.pyi"),
     ),
     (
         "typeshed/stdlib/_collections_abc.pyi",
-        include_str!("../typeshed/stdlib/_collections_abc.pyi"),
+        include_str!("../../../third_party/typeshed/stdlib/_collections_abc.pyi"),
     ),
     (
         "typeshed/stdlib/dataclasses.pyi",
-        include_str!("../typeshed/stdlib/dataclasses.pyi"),
+        include_str!("../../../third_party/typeshed/stdlib/dataclasses.pyi"),
     ),
     (
         "typeshed/stdlib/typing_extensions.pyi",
-        include_str!("../typeshed/stdlib/typing_extensions.pyi"),
+        include_str!("../../../third_party/typeshed/stdlib/typing_extensions.pyi"),
     ),
-    ("typeshed/stdlib/enum.pyi", include_str!("../typeshed/stdlib/enum.pyi")),
+    (
+        "typeshed/stdlib/enum.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/enum.pyi"),
+    ),
     (
         "typeshed/stdlib/functools.pyi",
-        include_str!("../typeshed/stdlib/functools.pyi"),
+        include_str!("../../../third_party/typeshed/stdlib/functools.pyi"),
     ),
     (
         "typeshed/stdlib/warnings.pyi",
-        include_str!("../typeshed/stdlib/warnings.pyi"),
+        include_str!("../../../third_party/typeshed/stdlib/warnings.pyi"),
     ),
     (
         "typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
-        include_str!("../typeshed/stubs/mypy-extensions/mypy_extensions.pyi"),
-    ),
-    (
-        "typeshed/stubs/typing_extensions/typing_extensions.pyi",
-        include_str!("../typeshed/stubs/typing_extensions/typing_extensions.pyi"),
+        include_str!("../../../third_party/typeshed/stubs/mypy-extensions/mypy_extensions.pyi"),
     ),
 ];
 
@@ -99,12 +110,12 @@ fn run_internal(code: &str) -> anyhow::Result<PlaygroundResponse> {
 
 fn evaluate_mode(code: &str, mypy: bool) -> anyhow::Result<Vec<JsDiagnostic>> {
     let fs = prepare_filesystem();
-    let typeshed_root = fs.normalize_uncheck_abs_path("typeshed");
+    let typeshed_root = fs.normalize_unchecked_abs_path("typeshed");
     let cwd = fs.unchecked_abs_path("");
     let glob = GlobAbsPath::new(&fs, &cwd, MAIN_FILE)?;
 
     let mut settings = Settings::default();
-    settings.mypy_compatible = mypy;
+    settings.mode = if mypy { Mode::Mypy } else { Mode::Default };
     settings.add_global_packages_default = false;
     settings.typeshed_path = Some(typeshed_root);
     settings.files_or_directories_to_check = vec![glob];
@@ -116,9 +127,9 @@ fn evaluate_mode(code: &str, mypy: bool) -> anyhow::Result<Vec<JsDiagnostic>> {
     };
 
     let options = ProjectOptions::new(settings, flags);
-    let mut project = Project::new(Box::new(fs.clone()), options, Mode::TypeCheckingOnly);
+    let mut project = Project::new(Box::new(fs.clone()), options, RunCause::TypeChecking);
 
-    let main_path = PathWithScheme::with_file_scheme(fs.normalize_uncheck_abs_path(MAIN_FILE));
+    let main_path = PathWithScheme::with_file_scheme(fs.normalize_unchecked_abs_path(MAIN_FILE));
     let main_code = code.to_owned();
     fs.set_file(MAIN_FILE, main_code.clone());
 

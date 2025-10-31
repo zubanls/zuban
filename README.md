@@ -1,5 +1,17 @@
 # Zuban
 
+build the playground
+
+```
+git submodule update --init --recursive third_party/typeshed
+wasm-pack build crates/playground_wasm --target web --no-default-features --features playground-single
+python -m http.server
+```
+
+visit <http://localhost:8000/crates/playground_wasm/web/index.html>
+
+---
+
 Zuban is a high-performance Python Language Server and type checker implemented
 in Rust, by the author of [Jedi](https://github.com/davidhalter/jedi).
 Zuban is 20–200× faster than Mypy, while using roughly half the memory and CPU

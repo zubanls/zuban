@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, Parent, PathWithScheme, VfsHandler,
-    WatcherReceiver,
+    WatcherReceiver, Workspace,
 };
 
 #[derive(Clone, Default)]
@@ -32,7 +32,11 @@ impl InMemoryFs {
 
     pub fn set_file<S: AsRef<str>, C: Into<String>>(&self, path: S, contents: C) {
         let key = normalize_key(path.as_ref());
-        self.inner.files.write().unwrap().insert(key, contents.into());
+        self.inner
+            .files
+            .write()
+            .unwrap()
+            .insert(key, contents.into());
     }
 
     pub fn remove_file<S: AsRef<str>>(&self, path: S) {
@@ -74,7 +78,12 @@ impl VfsHandler for InMemoryFs {
 
     fn on_invalidated_in_memory_file(&self, _path: PathWithScheme) {}
 
-    fn read_and_watch_dir(&self, path: &str, parent: Parent) -> Entries {
+    fn read_and_watch_dir(
+        &self,
+        _workspaces: &[Arc<Workspace>],
+        path: &str,
+        parent: Parent,
+    ) -> Entries {
         let base = normalize_key(path);
         let mut file_children = Vec::new();
         let mut dir_children: BTreeSet<String> = BTreeSet::new();
@@ -113,24 +122,29 @@ impl VfsHandler for InMemoryFs {
 
         file_children.sort();
 
-        let mut entries = Vec::with_capacity(dir_children.len() + file_children.len());
+        let entries = Entries::default();
+        let mut entries_map = entries.borrow_mut();
         for dir in dir_children {
-            entries.push(DirectoryEntry::Directory(Directory::new(
-                parent.clone(),
-                dir.into_boxed_str(),
-            )));
+            let name: Arc<str> = dir.into();
+            entries_map.insert(
+                name.clone(),
+                DirectoryEntry::Directory(Directory::new(parent.clone(), name)),
+            );
         }
         for file in file_children {
-            entries.push(DirectoryEntry::File(FileEntry::new(
-                parent.clone(),
-                file.into_boxed_str(),
-            )));
+            let name: Arc<str> = file.into();
+            entries_map.insert(
+                name.clone(),
+                DirectoryEntry::File(FileEntry::new(parent.clone(), name)),
+            );
         }
-        Entries::from_vec(entries)
+        drop(entries_map);
+        entries
     }
 
     fn read_and_watch_entry(
         &self,
+        _workspaces: &[Arc<Workspace>],
         path: &str,
         parent: Parent,
         replace_name: &str,
@@ -155,20 +169,6 @@ impl VfsHandler for InMemoryFs {
 
     fn separator(&self) -> char {
         self.separator()
-    }
-
-    fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
-        if path.is_empty() {
-            return (path, None);
-        }
-        let bytes = path.as_bytes();
-        if let Some(pos) = bytes.iter().position(|b| *b == b'/' || *b == b'\\') {
-            let (head, tail) = path.split_at(pos);
-            let tail = &tail[1..];
-            (head, if tail.is_empty() { None } else { Some(tail) })
-        } else {
-            (path, None)
-        }
     }
 
     fn join(&self, path: &AbsPath, name: &str) -> Arc<AbsPath> {

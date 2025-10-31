@@ -4,120 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Zuban Playground</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        margin: 0;
-        padding: 1.5rem;
-        background: #0f172a;
-        color: #e2e8f0;
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: 1.5rem;
-      }
-
-      textarea {
-        width: 100%;
-        min-height: 260px;
-        background: #1e293b;
-        color: #f8fafc;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 1rem;
-        font-size: 0.95rem;
-        font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        resize: vertical;
-      }
-
-      .controls {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-      }
-
-      button {
-        background: #38bdf8;
-        color: #0f172a;
-        border: none;
-        border-radius: 6px;
-        padding: 0.55rem 1.2rem;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      button:disabled {
-        opacity: 0.6;
-        cursor: progress;
-      }
-
-      .result-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1rem;
-      }
-
-      .panel {
-        background: #111827;
-        border-radius: 10px;
-        padding: 1rem;
-        border: 1px solid #1e293b;
-        min-height: 180px;
-      }
-
-      .panel h2 {
-        margin: 0 0 0.75rem;
-        font-size: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .diag {
-        border-left: 3px solid #38bdf8;
-        padding-left: 0.75rem;
-        margin-bottom: 0.9rem;
-      }
-
-      .diag:last-child {
-        margin-bottom: 0;
-      }
-
-      .diag pre {
-        background: #0f172a;
-        padding: 0.5rem;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        overflow-x: auto;
-      }
-
-      .muted {
-        color: #94a3b8;
-        font-size: 0.85rem;
-      }
-
-      .badge {
-        background: rgba(56, 189, 248, 0.2);
-        color: #38bdf8;
-        border-radius: 999px;
-        padding: 0.2rem 0.55rem;
-        font-size: 0.75rem;
-      }
-    </style>
   </head>
   <body>
     <header>
       <h1>Zuban Web Playground</h1>
-      <p class="muted">
+      <p>
         Type Python code below and compare Pyright-like vs. Mypy-compatible diagnostics, powered by Zuban compiled to WebAssembly.
       </p>
     </header>
 
-    <textarea id="code" spellcheck="false">from dataclasses import dataclass
+    <textarea id="code" cols="100" rows="20" spellcheck="false">from dataclasses import dataclass
 
 @dataclass
 class User:
@@ -132,25 +28,25 @@ def show(user: User) -> None:
 show(User("Alice", "thirty"))
 </textarea>
 
-    <div class="controls">
+    <div>
       <button id="run">Run diagnostics</button>
-      <span id="status" class="muted"></span>
+      <span id="status"></span>
     </div>
 
-    <div class="result-grid">
-      <section class="panel" id="pyright-panel">
+    <div>
+      <section>
         <h2>
           Pyright mode
-          <span class="badge" id="pyright-count">0 issues</span>
+          <span id="pyright-count">0 issues</span>
         </h2>
-        <div class="panel-body" id="pyright"></div>
+        <div id="pyright"></div>
       </section>
-      <section class="panel" id="mypy-panel">
+      <section>
         <h2>
           Mypy-compatible mode
-          <span class="badge" id="mypy-count">0 issues</span>
+          <span id="mypy-count">0 issues</span>
         </h2>
-        <div class="panel-body" id="mypy"></div>
+        <div id="mypy"></div>
       </section>
     </div>
 
@@ -178,7 +74,6 @@ show(User("Alice", "thirty"))
 
         if (!diagnostics.length) {
           const ok = document.createElement("p");
-          ok.className = "muted";
           ok.textContent = "No diagnostics";
           container.appendChild(ok);
           return;
@@ -186,7 +81,6 @@ show(User("Alice", "thirty"))
 
         diagnostics.forEach((diag) => {
           const wrapper = document.createElement("div");
-          wrapper.className = "diag";
 
           const heading = document.createElement("p");
           heading.innerHTML = `<strong>${diag.severity.toUpperCase()}</strong> · ${diag.code} · line ${diag.start.line}`;
@@ -204,7 +98,6 @@ show(User("Alice", "thirty"))
 
           diag.notes.forEach((note) => {
             const noteEl = document.createElement("p");
-            noteEl.className = "muted";
             noteEl.textContent = note;
             wrapper.appendChild(noteEl);
           });

@@ -150,7 +150,7 @@ impl Project {
             .chain(
                 files_to_be_loaded
                     .into_iter()
-                    .filter_map(|(entry, _)| self.db.load_file_from_workspace(&entry, false)),
+                    .filter_map(|(entry, _)| self.db.load_file_index_from_workspace(&entry, false)),
             )
             .map(|file_index| Document {
                 project: self,
@@ -166,9 +166,7 @@ impl Project {
         &mut self,
         file_index: FileIndex,
     ) -> Box<[diagnostics::Diagnostic<'_>]> {
-        self.db
-            .loaded_python_file(file_index)
-            .diagnostics(&self.db)
+        self.db.loaded_python_file(file_index).diagnostics(&self.db)
     }
 
     #[cfg(feature = "playground-single")]
@@ -177,7 +175,12 @@ impl Project {
         path: PathWithScheme,
         code: Box<str>,
     ) -> FileIndex {
-        self.db.store_in_memory_file(path, code, None)
+        let stored_path = path.clone();
+        self.db.store_in_memory_file(path, code, None);
+        self.db
+            .vfs
+            .in_memory_file(&stored_path)
+            .expect("a regular in-memory file should have a file index")
     }
 
     pub fn store_file_with_lsp_changes(

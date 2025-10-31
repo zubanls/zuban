@@ -12,10 +12,10 @@ use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler, WorkspaceKind};
 #[cfg(feature = "playground-single")]
 use vfs::{NormalizedPath, VfsHandler, WorkspaceKind};
 
-#[cfg(not(feature = "playground-single"))]
-use crate::{PythonVersion, Settings};
 #[cfg(feature = "playground-single")]
 use crate::Settings;
+#[cfg(not(feature = "playground-single"))]
+use crate::{PythonVersion, Settings};
 
 #[cfg(feature = "playground-single")]
 pub(crate) fn create_sys_path(
