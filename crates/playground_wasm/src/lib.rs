@@ -48,10 +48,6 @@ const TYPESHED_FILES: &[(&str, &str)] = &[
         "typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
         include_str!("../typeshed/stubs/mypy-extensions/mypy_extensions.pyi"),
     ),
-    (
-        "typeshed/stubs/typing_extensions/typing_extensions.pyi",
-        include_str!("../typeshed/stubs/typing_extensions/typing_extensions.pyi"),
-    ),
 ];
 
 static PANIC_HOOK: Lazy<()> = Lazy::new(|| {
