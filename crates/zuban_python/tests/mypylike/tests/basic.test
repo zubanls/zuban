@@ -1473,3 +1473,13 @@ with (
     contextlib.suppress(Exception),
 ):
     pass
+
+[case avoid_recursion_with_decorator]
+# From GH #123
+@f  # E: Name "f" is used before definition  # E: Cannot resolve name "f" (possible cyclic definition)
+def f():
+    pass
+
+@g  # E: Name "g" is used before definition  # E: Cannot resolve name "g" (possible cyclic definition)
+def g() -> int:
+    pass

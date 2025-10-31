@@ -455,6 +455,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn cache_func_with_name_def(&self, i_s: &InferenceState, name_def: NodeRef) {
         if !name_def.point().calculated() {
+            name_def.set_point(Point::new_calculating());
             self.ensure_cached_func(i_s);
             name_def.set_point(Point::new_redirect(
                 self.node_ref.file_index(),
