@@ -4157,6 +4157,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             if let (Some(except_expr), _) = except.unpack() {
                                 let (expr, name_def) = except_expr.unpack();
                                 if let Some(name_def) = name_def {
+                                    NodeRef::new(self.file, name_def.index())
+                                        .set_point(Point::new_calculating());
                                     let inf = self.infer_expression(expr);
                                     Inferred::from_type(instantiate_except(
                                         self.i_s,
@@ -4175,6 +4177,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             let (except_expr, _) = except_star.unpack();
                             let (expr, name_def) = except_expr.unpack();
                             if let Some(name_def) = name_def {
+                                NodeRef::new(self.file, name_def.index())
+                                    .set_point(Point::new_calculating());
                                 let inf = self.infer_expression(expr);
                                 Inferred::from_type(
                                     self.instantiate_except_star(

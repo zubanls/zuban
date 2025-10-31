@@ -1483,3 +1483,15 @@ def f():
 @g  # E: Name "g" is used before definition  # E: Cannot resolve name "g" (possible cyclic definition)
 def g() -> int:
     pass
+
+[case avoid_recursion_with_exception_name_reuse]
+# From GH #130
+try:
+    pass
+except e as e:  # E: Cannot resolve name "e" (possible cyclic definition)
+    pass
+
+try:
+    pass
+except *f as f:  # E: Cannot resolve name "f" (possible cyclic definition)
+    pass
