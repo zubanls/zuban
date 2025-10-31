@@ -937,7 +937,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         ));
                         return PreClassCalculationLookup::Class(class_node_ref);
                     }
-                    TypeLike::ImportFromAsName(imp_name) => {
+                    TypeLike::ImportFromAsName(_) => {
                         // TODO this is probably not a good idea to match this by string
                         if name_def.as_code() == "Literal" {
                             return PreClassCalculationLookup::Literal;
