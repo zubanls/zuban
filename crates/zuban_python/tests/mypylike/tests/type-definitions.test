@@ -841,3 +841,11 @@ def check7() -> None:
     else:
         result: str = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     reveal_type(result)  # N: Revealed type is "str"
+
+[case multiple_type_var_tuples_with_syntax_no_crash]
+# From GH #131
+class C[*T, *U, *V]():  # E: Can only use one TypeVarTuple in type params \
+                        # E: Can only use one TypeVarTuple in type params
+    pass
+
+C[int]

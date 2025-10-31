@@ -4280,7 +4280,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             };
             if let TypeVarLike::TypeVarTuple(_) = type_var_like {
                 type_var_tuple_count += 1;
-                if !allow_multi_type_var_tuples && type_var_tuple_count == 2 {
+                if !allow_multi_type_var_tuples && type_var_tuple_count >= 2 {
                     self.add_type_issue(
                         name_def.index(),
                         IssueKind::MultipleTypeVarTupleDisallowedInTypeParams {
