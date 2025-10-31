@@ -867,7 +867,12 @@ impl LiteralValue<'_> {
                     Type::LiteralString { implicit: true }
                 } else {
                     Type::Literal(Literal::new_implicit(LiteralKind::String(
-                        DbString::ArcStr(repeat_n(s, n).collect::<String>().into()),
+                        if s.is_empty() {
+                            // repeat_n is really slow on an empty string.
+                            DbString::Static("")
+                        } else {
+                            DbString::ArcStr(repeat_n(s, n).collect::<String>().into())
+                        },
                     )))
                 }
             }),

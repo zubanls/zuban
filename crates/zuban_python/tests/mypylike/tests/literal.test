@@ -346,3 +346,7 @@ Key = Literal['a']
 
 def send_key(key: Key) -> None:
     pass
+
+[case avoid_slowdown_with_string_multiplication]
+# From GH #133
+10_000_000_000 * ""
