@@ -11,7 +11,7 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
-vfs.workspace = true
+vfs = { workspace = true, features = ["watch"] }
 
 anyhow.workspace = true
 clap.workspace = true

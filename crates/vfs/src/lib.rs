@@ -1,7 +1,11 @@
 // Some parts are copied from rust-analyzer
 
 mod glob_abs_path;
+#[cfg(feature = "watch")]
 mod local_fs;
+#[cfg(not(feature = "watch"))]
+mod local_fs_stub;
+mod memory;
 mod normalized_path;
 mod path;
 mod tree;
@@ -14,10 +18,13 @@ use std::{
     sync::Arc,
 };
 
-use crossbeam_channel::Receiver;
-
+#[cfg(feature = "watch")]
 pub use glob_abs_path::GlobAbsPath;
+#[cfg(feature = "watch")]
 pub use local_fs::{LocalFS, SimpleLocalFS};
+#[cfg(not(feature = "watch"))]
+pub use local_fs_stub::{LocalFS, SimpleLocalFS};
+pub use memory::InMemoryFs;
 pub use normalized_path::NormalizedPath;
 pub use path::AbsPath;
 pub use tree::{
@@ -26,14 +33,21 @@ pub use tree::{
 pub use vfs::{InvalidationResult, PathWithScheme, Vfs, VfsFile, VfsPanicRecovery};
 pub use workspaces::{Workspace, WorkspaceKind, Workspaces, WorkspacesBuilder};
 
+#[cfg(feature = "watch")]
 pub type NotifyEvent = notify::Result<notify::Event>;
+#[cfg(feature = "watch")]
+pub type WatcherReceiver = crossbeam_channel::Receiver<NotifyEvent>;
+#[cfg(not(feature = "watch"))]
+pub type NotifyEvent = ();
+#[cfg(not(feature = "watch"))]
+pub type WatcherReceiver = ();
 
 /// Interface for reading and watching files.                                  
 pub trait VfsHandler: Sync + Send {
     /// Load the content of the given file, returning [`None`] if it does not  
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String>;
-    fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
+    fn notify_receiver(&self) -> Option<&WatcherReceiver>;
     fn on_invalidated_in_memory_file(&self, path: PathWithScheme);
     fn read_and_watch_dir(
         &self,
