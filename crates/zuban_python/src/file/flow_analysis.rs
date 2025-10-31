@@ -1732,7 +1732,10 @@ impl Inference<'_, '_, '_> {
             // Still check for stuff like Final reassignments
             check_for_error();
             // Remove the key
-            FLOW_ANALYSIS.with(|fa| fa.remove_key(self.i_s, &key));
+            FLOW_ANALYSIS.with(|fa| {
+                fa.remove_key(self.i_s, &key);
+                invalidate_child_entries(&mut fa.tos_frame().entries, self.i_s.db, &key);
+            });
             return;
         }
         let error_result = if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
