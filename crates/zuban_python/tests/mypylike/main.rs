@@ -372,6 +372,7 @@ impl TestCase<'_, '_> {
         {
             return Ok(false);
         }
+        let no_typecheck = steps.flags.contains(&"--no-typecheck");
         let local_fs = SimpleLocalFS::without_watcher();
         let (mut project, diagnostic_config) =
             self.initialize_flags(projects, &local_fs, mypy_compatible, &steps);
@@ -434,36 +435,40 @@ impl TestCase<'_, '_> {
                 default_panic(info);
             }));
 
-            let diagnostics: Vec<_> = project
-                .diagnostics()
-                .unwrap()
-                .issues
-                .iter()
-                .filter_map(|d| {
-                    if is_semanal_test && !d.is_mypy_semanal_error() {
-                        return None;
-                    }
-                    (!is_parse_test || d.mypy_error_code() == "syntax").then(|| {
-                        let mut s = d.as_string(&diagnostic_config);
-                        if s.starts_with("__main__.py:") {
-                            s = s.replace("__main__.py:", "__main__:");
+            let diagnostics: Vec<_> = if no_typecheck {
+                vec![]
+            } else {
+                project
+                    .diagnostics()
+                    .unwrap()
+                    .issues
+                    .iter()
+                    .filter_map(|d| {
+                        if is_semanal_test && !d.is_mypy_semanal_error() {
+                            return None;
                         }
-                        if cfg!(target_os = "windows") {
-                            // TODO this only checks the first line, but with notes there may
-                            // be multiple lines.
-                            let colon = s.find(":").unwrap();
-                            let to_change = &mut s[..colon];
-                            // Safety: OK because we only modify ASCII
-                            for b in unsafe { to_change.as_bytes_mut() } {
-                                if *b == b'\\' {
-                                    *b = b'/'
+                        (!is_parse_test || d.mypy_error_code() == "syntax").then(|| {
+                            let mut s = d.as_string(&diagnostic_config);
+                            if s.starts_with("__main__.py:") {
+                                s = s.replace("__main__.py:", "__main__:");
+                            }
+                            if cfg!(target_os = "windows") {
+                                // TODO this only checks the first line, but with notes there may
+                                // be multiple lines.
+                                let colon = s.find(":").unwrap();
+                                let to_change = &mut s[..colon];
+                                // Safety: OK because we only modify ASCII
+                                for b in unsafe { to_change.as_bytes_mut() } {
+                                    if *b == b'\\' {
+                                        *b = b'/'
+                                    }
                                 }
                             }
-                        }
-                        s
+                            s
+                        })
                     })
-                })
-                .collect();
+                    .collect()
+            };
 
             let _ = std::panic::take_hook();
 

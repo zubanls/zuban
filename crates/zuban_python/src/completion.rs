@@ -213,8 +213,9 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
     fn add_import_result_completions(&mut self, import_result: Option<ImportResult>) {
         match import_result {
             Some(ImportResult::File(file_index)) => {
-                let file = self.infos.db.loaded_python_file(file_index);
-                self.add_submodule_completions(file)
+                if let Ok(file) = self.infos.db.ensure_file_for_file_index(file_index) {
+                    self.add_submodule_completions(file)
+                }
             }
             Some(ImportResult::Namespace(namespace)) => self.add_namespace_completions(&namespace),
             None | Some(ImportResult::PyTypedMissing) => (),
