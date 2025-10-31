@@ -15,7 +15,11 @@ utils.workspace = true
 
 anyhow.workspace = true
 tracing.workspace = true
-crossbeam-channel.workspace = true
-notify.workspace = true
+crossbeam-channel = { workspace = true, optional = true }
+notify = { workspace = true, optional = true }
 glob = "*"
-same-file = "*"
+same-file = { version = "*", optional = true }
+
+[features]
+default = ["watch"]
+watch = ["dep:notify", "dep:same-file", "dep:crossbeam-channel"]
