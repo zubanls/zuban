@@ -1484,7 +1484,7 @@ def f():
 def g() -> int:
     pass
 
-[case avoid_recursion_with_exception_name_reuse]
+[case avoid_recursion_with_exception_name_reuse1]
 # From GH #130
 try:
     pass
@@ -1494,4 +1494,23 @@ except e as e:  # E: Cannot resolve name "e" (possible cyclic definition)
 try:
     pass
 except *f as f:  # E: Cannot resolve name "f" (possible cyclic definition)
+    pass
+
+[case avoid_recursion_with_exception_name_reuse2]
+# From GH #132
+try:
+    pass
+except E as e:  # E: Name "E" is used before definition \
+                # E: Cannot resolve name "e" (possible cyclic definition)
+    pass
+except e as E:
+    pass
+
+try:
+    pass
+except *F as f:  # E: Name "F" is used before definition \
+                # E: Cannot resolve name "f" (possible cyclic definition) \
+                # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+    pass
+except *f as F:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
