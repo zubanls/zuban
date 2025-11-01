@@ -51,6 +51,11 @@ impl Type {
                 }
             }
             Type::Type(t2) => return t2.overlaps_type_of_type_against_other(i_s, matcher, self),
+            Type::Self_ => {
+                if let Some(t) = i_s.current_type() {
+                    return self.overlaps_internal(i_s, matcher, &t);
+                }
+            }
             _ => (),
         }
 
@@ -83,6 +88,11 @@ impl Type {
                 }
             }
             Type::TypedDict(td) => return td.overlaps(i_s, matcher, self, other),
+            Type::Self_ => {
+                if let Some(t) = i_s.current_type() {
+                    return t.overlaps_internal(i_s, matcher, other);
+                }
+            }
             _ => (),
         };
         self.is_sub_type_of(i_s, matcher, other).bool()

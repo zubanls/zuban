@@ -5,7 +5,7 @@ use crate::{
     database::{Database, ParentScope},
     file::{ClassNodeRef, PythonFile, TypeVarCallbackReturn},
     node_ref::NodeRef,
-    type_::{CallableContent, TypeVarLike},
+    type_::{CallableContent, Type, TypeVarLike},
     type_helpers::{Class, Function},
 };
 
@@ -172,6 +172,12 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             Context::Function(func) => Some(func),
             _ => None,
         }
+    }
+
+    pub(crate) fn current_type(&self) -> Option<Type> {
+        self.context
+            .current_class(self.db)
+            .map(|c| c.as_type(self.db))
     }
 
     pub(crate) fn current_class(&self) -> Option<Class<'a>>

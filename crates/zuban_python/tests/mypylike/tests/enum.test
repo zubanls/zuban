@@ -298,3 +298,16 @@ from enum import Enum
 
 class GEnum(Enum):
     value_nick: str
+
+[case enum_comparison_with_member_with_strict_equality]
+# flags: --strict
+from enum import Enum
+
+class PartitionTable(Enum):
+    GPT = 'gpt'
+
+    def is_gpt(self) -> bool:
+        return self == PartitionTable.GPT
+
+    def is_gpt2(self) -> bool:
+        return PartitionTable.GPT == self
