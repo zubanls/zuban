@@ -83,7 +83,13 @@ impl Default for Settings {
 
 impl Settings {
     pub fn computed_platform(&self) -> &str {
-        self.platform.as_deref().unwrap_or("posix")
+        self.platform.as_deref().unwrap_or(if cfg!(windows) {
+            "win32"
+        } else if cfg!(any(target_os = "macos", target_os = "ios")) {
+            "darwin"
+        } else {
+            "linux"
+        })
     }
 
     pub fn python_version_or_default(&self) -> PythonVersion {
