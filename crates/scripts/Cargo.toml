@@ -14,4 +14,4 @@ workspace = true
 
 [dependencies]
 parsa_python.workspace = true
-zuban_python.workspace = true
+zuban_python = { workspace = true, features = ["parallel", "fs-watch"] }

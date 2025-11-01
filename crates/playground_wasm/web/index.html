@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zuban Playground</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 1.5rem;
+        background: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 260px;
+        background: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1rem;
+        font-size: 0.95rem;
+        font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        resize: vertical;
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      button {
+        background: #38bdf8;
+        color: #0f172a;
+        border: none;
+        border-radius: 6px;
+        padding: 0.55rem 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+      }
+
+      .panel {
+        background: #111827;
+        border-radius: 10px;
+        padding: 1rem;
+        border: 1px solid #1e293b;
+        min-height: 180px;
+      }
+
+      .panel h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .diag {
+        border-left: 3px solid #38bdf8;
+        padding-left: 0.75rem;
+        margin-bottom: 0.9rem;
+      }
+
+      .diag:last-child {
+        margin-bottom: 0;
+      }
+
+      .diag pre {
+        background: #0f172a;
+        padding: 0.5rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        overflow-x: auto;
+      }
+
+      .muted {
+        color: #94a3b8;
+        font-size: 0.85rem;
+      }
+
+      .badge {
+        background: rgba(56, 189, 248, 0.2);
+        color: #38bdf8;
+        border-radius: 999px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Zuban Web Playground</h1>
+      <p class="muted">
+        Type Python code below and compare Pyright-like vs. Mypy-compatible diagnostics, powered by Zuban compiled to WebAssembly.
+      </p>
+    </header>
+
+    <textarea id="code" spellcheck="false">from dataclasses import dataclass
+
+@dataclass
+class User:
+    name: str
+    age: int
+
+def show(user: User) -> None:
+    print(user.name.upper())
+    reveal_type(user.age)
+    print(len(user))  # deliberate error
+
+show(User("Alice", "thirty"))
+</textarea>
+
+    <div class="controls">
+      <button id="run">Run diagnostics</button>
+      <span id="status" class="muted"></span>
+    </div>
+
+    <div class="result-grid">
+      <section class="panel" id="pyright-panel">
+        <h2>
+          Pyright mode
+          <span class="badge" id="pyright-count">0 issues</span>
+        </h2>
+        <div class="panel-body" id="pyright"></div>
+      </section>
+      <section class="panel" id="mypy-panel">
+        <h2>
+          Mypy-compatible mode
+          <span class="badge" id="mypy-count">0 issues</span>
+        </h2>
+        <div class="panel-body" id="mypy"></div>
+      </section>
+    </div>
+
+    <script type="module">
+      import init, { run_check } from "../pkg/playground_wasm.js";
+
+      const codeEl = document.getElementById("code");
+      const runBtn = document.getElementById("run");
+      const statusEl = document.getElementById("status");
+      const panels = {
+        pyright: document.getElementById("pyright"),
+        mypy: document.getElementById("mypy"),
+      };
+      const counters = {
+        pyright: document.getElementById("pyright-count"),
+        mypy: document.getElementById("mypy-count"),
+      };
+
+      const formatCount = (value) => `${value} ${value === 1 ? "issue" : "issues"}`;
+
+      const renderDiagnostics = (kind, diagnostics) => {
+        const container = panels[kind];
+        container.innerHTML = "";
+        counters[kind].textContent = formatCount(diagnostics.length);
+
+        if (!diagnostics.length) {
+          const ok = document.createElement("p");
+          ok.className = "muted";
+          ok.textContent = "No diagnostics";
+          container.appendChild(ok);
+          return;
+        }
+
+        diagnostics.forEach((diag) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "diag";
+
+          const heading = document.createElement("p");
+          heading.innerHTML = `<strong>${diag.severity.toUpperCase()}</strong> · ${diag.code} · line ${diag.start.line}`;
+          wrapper.appendChild(heading);
+
+          const message = document.createElement("p");
+          message.textContent = diag.message;
+          wrapper.appendChild(message);
+
+          if (diag.snippet.trim()) {
+            const pre = document.createElement("pre");
+            pre.textContent = diag.snippet.trim();
+            wrapper.appendChild(pre);
+          }
+
+          diag.notes.forEach((note) => {
+            const noteEl = document.createElement("p");
+            noteEl.className = "muted";
+            noteEl.textContent = note;
+            wrapper.appendChild(noteEl);
+          });
+
+          container.appendChild(wrapper);
+        });
+      };
+
+      let wasmReady = false;
+      const ensureWasm = async () => {
+        if (!wasmReady) {
+          statusEl.textContent = "Loading WebAssembly bundle…";
+          await init();
+          wasmReady = true;
+          statusEl.textContent = "";
+        }
+      };
+
+      const runDiagnostics = async () => {
+        await ensureWasm();
+        runBtn.disabled = true;
+        statusEl.textContent = "Analyzing…";
+        try {
+          const result = await run_check(codeEl.value);
+          renderDiagnostics("pyright", result.pyright);
+          renderDiagnostics("mypy", result.mypy);
+          statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        } catch (err) {
+          statusEl.textContent = String(err);
+        } finally {
+          runBtn.disabled = false;
+        }
+      };
+
+      const debounce = (fn, delay = 450) => {
+        let timer;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), delay);
+        };
+      };
+
+      const debouncedRun = debounce(runDiagnostics, 500);
+
+      runBtn.addEventListener("click", runDiagnostics);
+      codeEl.addEventListener("input", debouncedRun);
+
+      runDiagnostics();
+    </script>
+  </body>
+</html>

@@ -509,10 +509,8 @@ impl PythonState {
 
                 if node_ref.maybe_function().is_some() {
                     if !is_func {
-                        panic!(
-                            "Expected a class for {}.{name}",
-                            module(db).qualified_name(db)
-                        )
+                        update(db, None);
+                        return;
                     }
                     Function::new(node_ref, None)
                         .ensure_cached_func(&InferenceState::new(db, file));
@@ -524,10 +522,7 @@ impl PythonState {
                     // This is not a proper identifier, it's an import, for now assign None
                     update(db, None);
                 } else {
-                    panic!(
-                        "It's not possible to cache the index for the alias {}.{name}",
-                        module(db).qualified_name(db)
-                    )
+                    update(db, None);
                 }
             }
         }
@@ -542,8 +537,7 @@ impl PythonState {
                     |db| db.python_state.$module_name(),
                     $name,
                     |db, new_index| {
-                        db.python_state.$attr_name =
-                            new_index.unwrap_or_else(|| panic!("Expected {}", $name));
+                        db.python_state.$attr_name = new_index.unwrap_or(0);
                     },
                     $is_func,
                 );
@@ -1217,6 +1211,9 @@ impl PythonState {
             Specific::MypyExtensionsKwArg => self.mypy_extensions_kw_arg_func,
             _ => unreachable!(),
         };
+        if node_index == 0 {
+            return Inferred::new_invalid_type_definition();
+        }
         let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
         func.ensure_cached_func(&InferenceState::new(db, func.file));
         Inferred::from_saved_node_ref(func.node_ref.into())
@@ -1388,8 +1385,9 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
 }
 
 fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
-    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
-    NodeRef::new(file, node_index).insert_type(Type::CustomBehavior(custom));
+    if let Some(node_index) = file.symbol_table.lookup_symbol(name) {
+        NodeRef::new(file, node_index).insert_type(Type::CustomBehavior(custom));
+    }
 }
 
 /* TODO remove?
@@ -1411,21 +1409,27 @@ fn set_custom_behavior_method(
 */
 
 fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, target_name: &str) {
-    let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
+    let Some(node_index) = typing.symbol_table.lookup_symbol(name) else {
+        return;
+    };
+    let Some(target_node_index) = target_file.symbol_table.lookup_symbol(target_name) else {
+        return;
+    };
     debug_assert_eq!(
         typing.points.get(node_index).specific(),
         Specific::FirstNameOfNameDef
     );
     debug_assert_eq!(typing.points.get(node_index).node_index(), node_index);
-    let target_node_index = target_file.symbol_table.lookup_symbol(target_name).unwrap();
     typing.points.set(
-        node_index, // Set it on name
+        node_index,
         Point::new_redirect(target_file.file_index, target_node_index, Locality::File),
     );
 }
 
 fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific) -> NodeIndex {
-    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    let Some(node_index) = file.symbol_table.lookup_symbol(name) else {
+        return 0;
+    };
     let name_def_node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
     // Act on the name def index and not the name.
     file.points.set(

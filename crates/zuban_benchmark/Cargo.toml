@@ -14,9 +14,9 @@ workspace = true
 criterion = "*"
 utils.workspace = true
 parsa_python_cst.workspace = true
-zuban_python.workspace = true
+zuban_python = { workspace = true, features = ["parallel", "fs-watch"] }
 config.workspace = true
-vfs.workspace = true
+vfs = { workspace = true, features = ["watch"] }
 test_utils.workspace = true
 
 [[bench]]
