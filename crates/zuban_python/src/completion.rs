@@ -391,8 +391,8 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
 
     fn add_for_mro(&mut self, i_s: &InferenceState, t: &Type, is_instance: bool) {
         if let Type::Self_ = t {
-            if let Some(cls) = i_s.current_class() {
-                self.add_for_mro(i_s, &cls.as_type(i_s.db), is_instance)
+            if let Some(t) = i_s.current_type() {
+                self.add_for_mro(i_s, &t, is_instance)
             } else {
                 recoverable_error!("TODO caught Self that is not within a class");
             }

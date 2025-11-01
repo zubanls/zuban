@@ -774,9 +774,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 match point.kind() {
                     PointKind::Specific => match point.specific() {
                         Specific::MaybeSelfParam => {
-                            return Cow::Owned(Inferred::from_type(
-                                i_s.current_class().unwrap().as_type(i_s.db),
-                            ));
+                            return Cow::Owned(Inferred::from_type(i_s.current_type().unwrap()));
                         }
                         Specific::IntLiteral
                         | Specific::StringLiteral

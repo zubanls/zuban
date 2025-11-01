@@ -965,8 +965,8 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             debug!("TODO implement goto for custom behavior");
         }
         Type::Self_ => {
-            if let Some(cls) = i_s.current_class() {
-                type_to_name(i_s, &cls.as_type(db), add)
+            if let Some(t) = i_s.current_type() {
+                type_to_name(i_s, &t, add)
             } else {
                 recoverable_error!("Could not find the current class for Self");
             }
