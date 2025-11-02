@@ -269,6 +269,27 @@ impl Tree {
                         GotoNode::Name(Name::new(left))
                     }
                 }
+                TerminalType::Operator => {
+                    let expression_node = left.parent_until(&[
+                        Nonterminal(sum),
+                        Nonterminal(term),
+                        Nonterminal(factor),
+                        Nonterminal(power),
+                        Nonterminal(shift_expr),
+                        Nonterminal(bitwise_or),
+                        Nonterminal(bitwise_xor),
+                        Nonterminal(bitwise_and),
+                        Nonterminal(conjunction),
+                        Nonterminal(disjunction),
+                        Nonterminal(inversion),
+                        Nonterminal(comparison),
+                    ]);
+                    if let Some(node) = expression_node {
+                        GotoNode::ExpressionPart(ExpressionPart::new(node))
+                    } else {
+                        GotoNode::None
+                    }
+                }
                 _ => GotoNode::None,
             },
             PyNodeType::Keyword => {
@@ -279,6 +300,10 @@ impl Tree {
                     GotoNode::PrimaryTarget(PrimaryTarget::new(parent))
                 } else if parent.is_type(Nonterminal(atom)) {
                     GotoNode::Atom(Atom::new(parent))
+                } else if parent.is_type(Nonterminal(comp_op)) {
+                    let comparison_node = parent.parent().unwrap();
+                    debug_assert!(comparison_node.is_type(Nonterminal(comparison)));
+                    GotoNode::ExpressionPart(ExpressionPart::new(comparison_node))
                 } else {
                     GotoNode::None
                 }
@@ -4751,6 +4776,7 @@ pub enum GotoNode<'db> {
     },
     Primary(Primary<'db>),
     PrimaryTarget(PrimaryTarget<'db>),
+    ExpressionPart(ExpressionPart<'db>),
     GlobalName(NameDef<'db>),
     NonlocalName(NameDef<'db>),
     Atom(Atom<'db>),
@@ -4770,6 +4796,7 @@ impl<'db> GotoNode<'db> {
                 PrimaryContent::Attribute(name) => name,
                 _ => return None,
             },
+            GotoNode::ExpressionPart(_) => return None,
             GotoNode::GlobalName(n) | GotoNode::NonlocalName(n) => n.name(),
             GotoNode::Atom(_) | GotoNode::None => return None,
         })

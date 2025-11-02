@@ -173,3 +173,11 @@ __main__.py:15:documentation -> "(function) def classm(cls) -> int\n---\nclassm 
 __main__.py:17:documentation -> "(function) def classm(cls) -> int\n---\nclassm doc"
 __main__.py:19:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
 __main__.py:21:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
+
+[case docs_operator_equality]
+def foo(a: int, b: int):
+    #? --codepoint-column 7 documentation
+    a == b
+
+[out]
+__main__.py:3:documentation -> "(class) bool"

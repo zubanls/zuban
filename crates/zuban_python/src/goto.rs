@@ -6,8 +6,8 @@
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::{
-    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, FunctionDef, GotoNode,
-    Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
+    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, ExpressionPart, FunctionDef,
+    GotoNode, Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
     PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope,
 };
 use utils::FastHashSet;
@@ -80,7 +80,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         })
     }
 
-    fn infer_position(&self) -> Option<Inferred> {
+    pub(crate) fn infer_position(&self) -> Option<Inferred> {
         let result = match self.node {
             GotoNode::Name(name) => self.infer_name(name),
             GotoNode::ImportFromAsName { import_as_name, .. } => {
@@ -88,6 +88,9 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             }
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::PrimaryTarget(target) => self.infer_primary_target(target),
+            GotoNode::ExpressionPart(expression_part) => {
+                Some(self.infer_expression_part(expression_part))
+            }
             GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 self.infer_name(name_def.name())
@@ -164,6 +167,14 @@ impl<'db, T> PositionalDocument<'db, T> {
             self.file
                 .inference(i_s)
                 .infer_primary(primary, &mut ResultContext::ExpectUnused)
+        })
+    }
+
+    pub fn infer_expression_part(&self, expression_part: ExpressionPart) -> Inferred {
+        self.with_i_s(|i_s| {
+            self.file
+                .inference(i_s)
+                .infer_expression_part(expression_part)
         })
     }
 
@@ -279,6 +290,7 @@ impl<'db, C> GotoResolver<'db, C> {
             GotoNode::ImportFromAsName { on_name, .. } => on_name.index(),
             GotoNode::Primary(primary) => primary.index(),
             GotoNode::PrimaryTarget(primary_target) => primary_target.index(),
+            GotoNode::ExpressionPart(expression_part) => expression_part.index(),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => name_def.index(),
             GotoNode::Atom(atom) => atom.index(),
             GotoNode::None => return None,
@@ -484,7 +496,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     )))])
                 }
             }
-            GotoNode::Atom(_) | GotoNode::None => None,
+            GotoNode::ExpressionPart(_) | GotoNode::Atom(_) | GotoNode::None => None,
         }
     }
     fn goto_primary_attr(
