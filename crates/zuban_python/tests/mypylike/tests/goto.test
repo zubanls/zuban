@@ -750,3 +750,169 @@ class A: ...
 __main__.py:3:infer -> __main__.py:10:6:__main__.A
 __main__.py:5:infer -> __main__.py:3:10:__main__.X@3
 __main__.py:8:infer -> __main__.py:3:10:__main__.X@3
+
+[case goto_on_operator]
+# flags: --no-typecheck
+
+import x
+
+def incomplete(a: x.X, b: x.X):
+    #? --codepoint-column 7 goto
+    a ==
+    #? --codepoint-column 7 goto
+    a !=
+    #? --codepoint-column 7 goto
+    a >
+    #? --codepoint-column 7 goto
+    a >=
+    #? --codepoint-column 7 goto
+    a <
+    #? --codepoint-column 7 goto
+    a <=
+
+    #? --codepoint-column 7 goto
+    a ^
+    #? --codepoint-column 7 goto
+    a |
+    #? --codepoint-column 7 goto
+    a &
+
+    #? --codepoint-column 7 goto
+    a +
+    #? --codepoint-column 7 goto
+    a -
+    #? --codepoint-column 7 goto
+    a *
+    #? --codepoint-column 7 goto
+    a /
+    #? --codepoint-column 7 goto
+    a //
+    #? --codepoint-column 7 goto
+    a %
+    #? --codepoint-column 7 goto
+    a <<
+    #? --codepoint-column 7 goto
+    a >>
+    #? --codepoint-column 7 goto
+    a **
+    #? --codepoint-column 7 goto
+    a @
+
+def complete(a: x.X, b: x.X):
+    #? --codepoint-column 7 goto
+    a == a
+    #? --codepoint-column 7 goto
+    a != a
+    #? --codepoint-column 7 goto
+    a > a
+    #? --codepoint-column 7 goto
+    a >= a
+    #? --codepoint-column 7 goto
+    a < a
+    #? --codepoint-column 7 goto
+    a <= a
+
+    #? --codepoint-column 7 goto
+    a ^ a
+    #? --codepoint-column 7 goto
+    a | a
+    #? --codepoint-column 7 goto
+    a & a
+
+    #? --codepoint-column 7 goto
+    a + a
+    #? --codepoint-column 7 goto
+    a - a
+    #? --codepoint-column 7 goto
+    a * a
+    #? --codepoint-column 7 goto
+    a / a
+    #? --codepoint-column 7 goto
+    a // a
+    #? --codepoint-column 7 goto
+    a % a
+    #? --codepoint-column 7 goto
+    a << a
+    #? --codepoint-column 7 goto
+    a >> a
+    #? --codepoint-column 7 goto
+    a ** a
+    #? --codepoint-column 7 goto
+    a @ a
+
+    #? --codepoint-column 4 goto
+    -a
+    #? --codepoint-column 4 goto
+    +a
+    #? --codepoint-column 4 goto
+    ~a
+
+[file x.pyi]
+class X:
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __le__(self, other: object) -> bool: ...
+    def __ge__(self, other: object) -> bool: ...
+    def __lt__(self, other: object) -> bool: ...
+    def __gt__(self, other: object) -> bool: ...
+
+    def __and__(self, other: X) -> X: ...
+    def __or__(self, other: X) -> X: ...
+    def __xor__(self, other: X) -> X: ...
+
+    def __add__(self, other: X) -> X: ...
+    def __sub__(self, other: X) -> X: ...
+    def __mul__(self, other: X) -> X: ...
+    def __truediv__(self, other: X) -> X: ...
+    def __floordiv__(self, other: X) -> X: ...
+    def __mod__(self, other: X) -> X: ...
+    def __lshift__(self, other: int) -> X: ...
+    def __rshift__(self, other: int) -> X: ...
+    def __pow__(self, other: X) -> X: ...
+    def __matmul__(self, other: X) -> X: ...
+
+    def __pos__(self, other: X) -> X: ...
+    def __neg__(self, other: X) -> X: ...
+    def __invert__(self, other: X) -> X: ...
+[out]
+__main__.py:7:goto -> x.pyi:2:8:x.X.__eq__
+__main__.py:9:goto -> x.pyi:3:8:x.X.__ne__
+__main__.py:11:goto -> x.pyi:7:8:x.X.__gt__
+__main__.py:13:goto -> x.pyi:5:8:x.X.__ge__
+__main__.py:15:goto -> x.pyi:6:8:x.X.__lt__
+__main__.py:17:goto -> x.pyi:4:8:x.X.__le__
+__main__.py:20:goto -> x.pyi:11:8:x.X.__xor__
+__main__.py:22:goto -> x.pyi:10:8:x.X.__or__
+__main__.py:24:goto -> x.pyi:9:8:x.X.__and__
+__main__.py:27:goto -> x.pyi:13:8:x.X.__add__
+__main__.py:29:goto -> x.pyi:14:8:x.X.__sub__
+__main__.py:31:goto -> x.pyi:15:8:x.X.__mul__
+__main__.py:33:goto -> x.pyi:16:8:x.X.__truediv__
+__main__.py:35:goto -> x.pyi:17:8:x.X.__floordiv__
+__main__.py:37:goto -> x.pyi:18:8:x.X.__mod__
+__main__.py:39:goto -> x.pyi:19:8:x.X.__lshift__
+__main__.py:41:goto -> x.pyi:20:8:x.X.__rshift__
+__main__.py:43:goto -> x.pyi:21:8:x.X.__pow__
+__main__.py:45:goto -> x.pyi:22:8:x.X.__matmul__
+__main__.py:49:goto -> x.pyi:2:8:x.X.__eq__
+__main__.py:51:goto -> x.pyi:3:8:x.X.__ne__
+__main__.py:53:goto -> x.pyi:7:8:x.X.__gt__
+__main__.py:55:goto -> x.pyi:5:8:x.X.__ge__
+__main__.py:57:goto -> x.pyi:6:8:x.X.__lt__
+__main__.py:59:goto -> x.pyi:4:8:x.X.__le__
+__main__.py:62:goto -> x.pyi:11:8:x.X.__xor__
+__main__.py:64:goto -> x.pyi:10:8:x.X.__or__
+__main__.py:66:goto -> x.pyi:9:8:x.X.__and__
+__main__.py:69:goto -> x.pyi:13:8:x.X.__add__
+__main__.py:71:goto -> x.pyi:14:8:x.X.__sub__
+__main__.py:73:goto -> x.pyi:15:8:x.X.__mul__
+__main__.py:75:goto -> x.pyi:16:8:x.X.__truediv__
+__main__.py:77:goto -> x.pyi:17:8:x.X.__floordiv__
+__main__.py:79:goto -> x.pyi:18:8:x.X.__mod__
+__main__.py:81:goto -> x.pyi:19:8:x.X.__lshift__
+__main__.py:83:goto -> x.pyi:20:8:x.X.__rshift__
+__main__.py:85:goto -> x.pyi:21:8:x.X.__pow__
+__main__.py:87:goto -> x.pyi:22:8:x.X.__matmul__
+__main__.py:90:goto -> x.pyi:25:8:x.X.__neg__
+__main__.py:92:goto -> x.pyi:24:8:x.X.__pos__
+__main__.py:94:goto -> x.pyi:26:8:x.X.__invert__

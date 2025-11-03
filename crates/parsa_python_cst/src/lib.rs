@@ -280,7 +280,52 @@ impl Tree {
                 } else if parent.is_type(Nonterminal(atom)) {
                     GotoNode::Atom(Atom::new(parent))
                 } else {
-                    GotoNode::None
+                    (|| {
+                        let previous = if parent.is_type(Nonterminal(comp_op)) {
+                            left.parent().unwrap().previous_sibling()
+                        } else {
+                            left.previous_sibling()
+                        };
+                        let magic_method = match left.as_code() {
+                            "==" => "__eq__",
+                            "!=" => "__ne__",
+                            "<" => "__lt__",
+                            ">" => "__gt__",
+                            "<=" => "__le__",
+                            ">=" => "__ge__",
+
+                            "|" => "__or__",
+                            "&" => "__and__",
+                            "^" => "__xor__",
+
+                            "+" if previous.is_none() => "__pos__",
+                            "-" if previous.is_none() => "__neg__",
+                            "~" if previous.is_none() => "__invert__",
+
+                            "+" => "__add__",
+                            "-" => "__sub__",
+                            "*" => "__mul__",
+                            "/" => "__truediv__",
+                            "//" => "__floordiv__",
+                            "%" => "__mod__",
+                            ">>" => "__rshift__",
+                            "<<" => "__lshift__",
+                            "**" => "__pow__",
+                            "@" => "__matmul__",
+                            _ => return GotoNode::None,
+                        };
+                        if let Some(first) = previous.or_else(|| left.next_sibling())
+                            && let Some(first) = ExpressionPart::maybe_new(first)
+                        {
+                            GotoNode::Operator {
+                                first,
+                                magic_method,
+                                operator: Keyword::new(left),
+                            }
+                        } else {
+                            GotoNode::None
+                        }
+                    })()
                 }
             }
             PyNodeType::ErrorKeyword => GotoNode::None,
@@ -1305,8 +1350,12 @@ macro_rules! for_each_expr_part {
 
 impl<'db> ExpressionPart<'db> {
     fn new(node: PyNode<'db>) -> Self {
+        Self::maybe_new(node).unwrap()
+    }
+
+    fn maybe_new(node: PyNode<'db>) -> Option<Self> {
         // Sorted by how often they probably appear
-        if node.is_type(Nonterminal(atom)) {
+        Some(if node.is_type(Nonterminal(atom)) {
             Self::Atom(Atom::new(node))
         } else if node.is_type(Nonterminal(primary)) {
             Self::Primary(Primary::new(node))
@@ -1337,8 +1386,8 @@ impl<'db> ExpressionPart<'db> {
         } else if node.is_type(Nonterminal(disjunction)) {
             Self::Disjunction(Disjunction::new(node))
         } else {
-            unreachable!()
-        }
+            return None;
+        })
     }
 
     for_each_expr_part!(index, NodeIndex);
@@ -3342,7 +3391,7 @@ impl<'db> BitwiseXor<'db> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct OpInfos {
     pub operand: &'static str,
     pub magic_method: &'static str,
@@ -4751,6 +4800,11 @@ pub enum GotoNode<'db> {
     },
     Primary(Primary<'db>),
     PrimaryTarget(PrimaryTarget<'db>),
+    Operator {
+        first: ExpressionPart<'db>,
+        magic_method: &'static str,
+        operator: Keyword<'db>,
+    },
     GlobalName(NameDef<'db>),
     NonlocalName(NameDef<'db>),
     Atom(Atom<'db>),
@@ -4770,6 +4824,7 @@ impl<'db> GotoNode<'db> {
                 PrimaryContent::Attribute(name) => name,
                 _ => return None,
             },
+            GotoNode::Operator { .. } => return None,
             GotoNode::GlobalName(n) | GotoNode::NonlocalName(n) => n.name(),
             GotoNode::Atom(_) | GotoNode::None => return None,
         })

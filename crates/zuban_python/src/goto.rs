@@ -80,6 +80,24 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         })
     }
 
+    fn lookup_without_errors(
+        &self,
+        i_s: &InferenceState,
+        t: &Type,
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        t.lookup(
+            i_s,
+            self.file,
+            name,
+            kind,
+            &mut ResultContext::Unknown,
+            &|_issue| (),
+            &|_t_of_attr_error| (),
+        )
+    }
+
     fn infer_position(&self) -> Option<Inferred> {
         let result = match self.node {
             GotoNode::Name(name) => self.infer_name(name),
@@ -88,6 +106,23 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             }
             GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
             GotoNode::PrimaryTarget(target) => self.infer_primary_target(target),
+            GotoNode::Operator {
+                first,
+                magic_method,
+                ..
+            } => self.with_i_s(|i_s| {
+                self.lookup_without_errors(
+                    i_s,
+                    &self
+                        .file
+                        .inference(i_s)
+                        .infer_expression_part(first)
+                        .as_cow_type(i_s),
+                    magic_method,
+                    LookupKind::OnlyType,
+                )
+                .into_maybe_inferred()
+            }),
             GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 self.infer_name(name_def.name())
@@ -279,6 +314,7 @@ impl<'db, C> GotoResolver<'db, C> {
             GotoNode::ImportFromAsName { on_name, .. } => on_name.index(),
             GotoNode::Primary(primary) => primary.index(),
             GotoNode::PrimaryTarget(primary_target) => primary_target.index(),
+            GotoNode::Operator { operator, .. } => operator.index(),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => name_def.index(),
             GotoNode::Atom(atom) => atom.index(),
             GotoNode::None => return None,
@@ -484,7 +520,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     )))])
                 }
             }
-            GotoNode::Atom(_) | GotoNode::None => None,
+            GotoNode::Operator { .. } | GotoNode::Atom(_) | GotoNode::None => None,
         }
     }
     fn goto_primary_attr(
@@ -498,15 +534,9 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         let db = self.infos.db;
         with_i_s_non_self(db, self.infos.file, self.infos.scope, |i_s| {
             for t in unpack_union_types(db, base.as_cow_type(i_s)).iter_with_unpacked_unions(db) {
-                let lookup = t.lookup(
-                    i_s,
-                    self.infos.file,
-                    name,
-                    LookupKind::Normal,
-                    &mut ResultContext::Unknown,
-                    &|_issue| (),
-                    &|_t_of_attr_error| (),
-                );
+                let lookup = self
+                    .infos
+                    .lookup_without_errors(i_s, t, name, LookupKind::Normal);
                 match lookup {
                     LookupResult::GotoName { name, .. } => {
                         if let Some(result) = self.check_node_ref_and_maybe_follow_import(
