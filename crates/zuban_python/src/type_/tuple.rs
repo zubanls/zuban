@@ -698,8 +698,13 @@ impl TupleArgs {
     }
 
     pub fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
+        // We avoid implicit literals, because it would otherwise be very slow to calculate the
+        // generics of a tuple with entries 1-1000 (exponential blowup).
         match self {
-            TupleArgs::FixedLen(ts) => Type::simplified_union_from_iterators(i_s, ts.iter()),
+            TupleArgs::FixedLen(ts) => Type::simplified_union_from_iterators(
+                i_s,
+                ts.iter().map(|t| t.avoid_implicit_literal_cow(i_s.db)),
+            ),
             TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
                 TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
                 TupleUnpack::ArbitraryLen(t) => Type::simplified_union_from_iterators(
@@ -708,7 +713,8 @@ impl TupleArgs {
                         .before
                         .iter()
                         .chain(std::iter::once(t))
-                        .chain(with_unpack.after.iter()),
+                        .chain(with_unpack.after.iter())
+                        .map(|t| t.avoid_implicit_literal_cow(i_s.db)),
                 ),
             },
             TupleArgs::ArbitraryLen(t) => (**t).clone(),
