@@ -1514,3 +1514,11 @@ except *F as f:  # E: Name "F" is used before definition \
     pass
 except *f as F:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
+
+[case avoid_crash_with_del]
+# From GH #138
+i  # E: Name "i" is used before definition
+del a[i], i  # E: Name "a" is not defined \
+             # E: Name "i" is used before definition \
+             # E: Cannot resolve name "i" (possible cyclic definition) \
+             # E: Name "i" is not defined

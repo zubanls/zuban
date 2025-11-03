@@ -4212,6 +4212,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // Errors are raised in the proper places anyway, see test
                 // `del_stmt_inference_of_self_name`.
                 debug!("Assigning Any to del_stmt, because it wasn't properly type checked");
+                name_def.set_point(Point::new_calculating());
                 self.assign_any_to_del_stmts(del_stmt.targets());
             }
             DefiningStmt::Lambda(_)
