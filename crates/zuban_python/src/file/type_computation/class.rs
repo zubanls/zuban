@@ -2017,8 +2017,17 @@ fn maybe_dataclass_transform_func(
     func: FuncNodeRef,
 ) -> Option<DataclassTransformObj> {
     let decorated = func.node().maybe_decorated()?;
+    {
+        let func_point = func.point();
+        if func_point.calculating() {
+            return None;
+        } else if !func_point.calculated() {
+            func.set_point(Point::new_calculating())
+        }
+    }
     Function::new_with_unknown_parent(db, *func)
         .ensure_cached_func(&InferenceState::new(db, func.file));
+    debug_assert!(func.point().calculated());
     if let Some(ComplexPoint::FunctionOverload(overload)) = func.maybe_complex() {
         overload.dataclass_transform.clone()
     } else {

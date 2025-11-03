@@ -1522,3 +1522,14 @@ del a[i], i  # E: Name "a" is not defined \
              # E: Name "i" is used before definition \
              # E: Cannot resolve name "i" (possible cyclic definition) \
              # E: Name "i" is not defined
+             #
+
+[case avoid_crash_with_recursive_decorator]
+# From GH #140
+@fn  # E: "C" not callable  # E: Name "fn" is used before definition
+class C():
+    pass
+
+@C  # E: Too many arguments for "C"
+def fn():
+    pass
