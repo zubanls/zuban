@@ -1734,7 +1734,9 @@ impl Inference<'_, '_, '_> {
             // Remove the key
             FLOW_ANALYSIS.with(|fa| {
                 fa.remove_key(self.i_s, &key);
-                invalidate_child_entries(&mut fa.tos_frame().entries, self.i_s.db, &key);
+                if let Some(mut tos_frame) = fa.maybe_tos_frame() {
+                    invalidate_child_entries(&mut tos_frame.entries, self.i_s.db, &key);
+                }
             });
             return;
         }
