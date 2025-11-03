@@ -1854,3 +1854,26 @@ if TYPE_CHECKING:
     reveal_type(data["a"])  # N: Revealed type is "Any"
 assert data["a"] is True
 assert data["b"] is True
+
+[case and_narrowing_with_if]
+# From GH #143
+from typing import NotRequired, TypedDict
+
+class Domain(TypedDict):
+    id: str
+
+class Token(TypedDict):
+    id: str
+    domain: NotRequired[Domain]
+
+class AuthResult:
+    def __init__(self, token: Token):
+        self._token = token
+
+    @property
+    def _domain(self) -> Domain | None:
+        return self._token.get('domain')
+
+    @property
+    def domain_id(self) -> str | None:
+        return self._domain and self._domain['id']

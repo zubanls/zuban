@@ -953,3 +953,24 @@ class NonPersonType(TypedDict):
 non_person: NonPersonType = {"name": "David", "age": 21.3}  # E: Extra key "age" for TypedDict "NonPersonType"
 # TODO: This error message feels a bit weird
 p3 = Person(non_person)  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
+
+[case typeddict_truthiness]
+# flags: --warn-unreachable
+from typing import TypedDict, NotRequired
+
+class X(TypedDict):
+    x: int
+
+class Y(TypedDict):
+    y: NotRequired[int]
+
+def f(x: X, y: Y):
+    if x:
+        1
+    else:
+        1  # E: Statement is unreachable
+
+    if y:
+        1
+    else:
+        1

@@ -590,6 +590,11 @@ impl TypedDict {
             && ms.named.iter().all(|m| !m.required && !m.read_only)
     }
 
+    pub fn has_required_members(&self, db: &Database) -> bool {
+        let ms = self.members(db);
+        ms.named.iter().any(|m| m.required)
+    }
+
     pub fn can_be_overwritten_with(&self, i_s: &InferenceState) -> Option<&Type> {
         let ms = self.members(i_s.db);
         let e_t = ms.extra_items.as_ref()?;
