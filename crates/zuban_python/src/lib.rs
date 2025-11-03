@@ -397,15 +397,13 @@ impl<'project> Document<'project> {
         position: InputPosition,
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
-        let types = std::cell::RefCell::new(Vec::new());
-        let positional_document = self.positional_document(position)?;
-        let fallback_inferred = positional_document.infer_position();
+        let mut types = vec![];
         let mut resolver = GotoResolver::new(
-            positional_document,
+            self.positional_document(position)?,
             GotoGoal::Indifferent,
             |n: ValueName| {
                 if !only_docstrings {
-                    types.borrow_mut().push(
+                    types.push(
                         n.maybe_pretty_function_type()
                             .unwrap_or_else(|| n.type_description())
                             .into_string(),
@@ -416,17 +414,7 @@ impl<'project> Document<'project> {
         );
         let mut results = resolver.infer_definition();
         if results.is_empty() {
-            if let (Some(inf), false) = (fallback_inferred.as_ref(), only_docstrings) {
-                let fallback_type = resolver
-                    .infos
-                    .with_i_s(|i_s| inf.format_short(i_s).into_string());
-                if !fallback_type.is_empty() {
-                    types.borrow_mut().push(fallback_type);
-                }
-            }
-            if results.is_empty() && types.borrow().is_empty() {
-                return Ok(None);
-            }
+            return Ok(None);
         }
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
@@ -439,7 +427,6 @@ impl<'project> Document<'project> {
         let on_name = resolver.infos.node.on_name();
         let declaration_kinds = resolver.goto(true);
         results.retain(|doc| !doc.is_empty());
-        let mut types = types.into_inner();
 
         let docs = results.join("\n\n");
         let documentation = if only_docstrings {
