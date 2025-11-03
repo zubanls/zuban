@@ -281,10 +281,26 @@ impl Tree {
                     GotoNode::Atom(Atom::new(parent))
                 } else {
                     (|| {
-                        let previous = if parent.is_type(Nonterminal(comp_op)) {
+                        let previous = if parent.is_type(Nonterminal(comp_op))
+                            || parent.is_type(Nonterminal(augassign))
+                        {
                             left.parent().unwrap().previous_sibling()
                         } else {
                             left.previous_sibling()
+                        };
+                        let inplace = |inplace_magic_method, normal_magic_method| {
+                            if let Some(previous) = previous
+                                && previous.is_type(Nonterminal(single_target))
+                            {
+                                GotoNode::AugAssignOperator {
+                                    operator: Keyword::new(left),
+                                    target: Target::new_single_target(previous),
+                                    inplace_magic_method,
+                                    normal_magic_method,
+                                }
+                            } else {
+                                GotoNode::None
+                            }
                         };
                         let magic_method = match left.as_code() {
                             "==" => "__eq__",
@@ -312,6 +328,20 @@ impl Tree {
                             "<<" => "__lshift__",
                             "**" => "__pow__",
                             "@" => "__matmul__",
+
+                            "|=" => return inplace("__ior__", "__or__"),
+                            "&=" => return inplace("__iand__", "__and__"),
+                            "^=" => return inplace("__ixor__", "__xor__"),
+                            "+=" => return inplace("__iadd__", "__add__"),
+                            "-=" => return inplace("__isub__", "__sub__"),
+                            "*=" => return inplace("__imul__", "__mul__"),
+                            "/=" => return inplace("__itruediv__", "__truediv__"),
+                            "//=" => return inplace("__ifloordiv__", "__floordiv__"),
+                            "%=" => return inplace("__imod__", "__mod__"),
+                            ">>=" => return inplace("__irshift__", "__rshift__"),
+                            "<<=" => return inplace("__ilshift__", "__lshift__"),
+                            "**=" => return inplace("__ipow__", "__pow__"),
+                            "@=" => return inplace("__imatmul__", "__matmul__"),
                             _ => return GotoNode::None,
                         };
                         if let Some(first) = previous.or_else(|| left.next_sibling())
@@ -541,7 +571,6 @@ create_nonterminal_structs!(
     Walrus: walrus
 
     Assignment: assignment
-    SingleTarget: single_target
     AugAssign: augassign
 
     ImportFrom: import_from
@@ -4791,7 +4820,7 @@ impl<'db> Expressions<'db> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum GotoNode<'db> {
     Name(Name<'db>),
     ImportFromAsName {
@@ -4803,6 +4832,12 @@ pub enum GotoNode<'db> {
     Operator {
         first: ExpressionPart<'db>,
         magic_method: &'static str,
+        operator: Keyword<'db>,
+    },
+    AugAssignOperator {
+        target: Target<'db>,
+        inplace_magic_method: &'static str,
+        normal_magic_method: &'static str,
         operator: Keyword<'db>,
     },
     GlobalName(NameDef<'db>),
@@ -4824,9 +4859,11 @@ impl<'db> GotoNode<'db> {
                 PrimaryContent::Attribute(name) => name,
                 _ => return None,
             },
-            GotoNode::Operator { .. } => return None,
             GotoNode::GlobalName(n) | GotoNode::NonlocalName(n) => n.name(),
-            GotoNode::Atom(_) | GotoNode::None => return None,
+            GotoNode::Atom(_)
+            | GotoNode::None
+            | GotoNode::Operator { .. }
+            | GotoNode::AugAssignOperator { .. } => return None,
         })
     }
 }

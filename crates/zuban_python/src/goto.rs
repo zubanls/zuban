@@ -99,13 +99,13 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     }
 
     fn infer_position(&self) -> Option<Inferred> {
-        let result = match self.node {
-            GotoNode::Name(name) => self.infer_name(name),
+        let result = match &self.node {
+            GotoNode::Name(name) => self.infer_name(*name),
             GotoNode::ImportFromAsName { import_as_name, .. } => {
                 self.infer_name(import_as_name.name_def().name())
             }
-            GotoNode::Primary(primary) => Some(self.infer_primary(primary)),
-            GotoNode::PrimaryTarget(target) => self.infer_primary_target(target),
+            GotoNode::Primary(primary) => Some(self.infer_primary(*primary)),
+            GotoNode::PrimaryTarget(target) => self.infer_primary_target(*target),
             GotoNode::Operator {
                 first,
                 magic_method,
@@ -116,14 +116,35 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                     &self
                         .file
                         .inference(i_s)
-                        .infer_expression_part(first)
+                        .infer_expression_part(*first)
                         .as_cow_type(i_s),
                     magic_method,
                     LookupKind::OnlyType,
                 )
                 .into_maybe_inferred()
             }),
-            GotoNode::Atom(atom) => Some(self.infer_atom(atom)),
+            GotoNode::AugAssignOperator {
+                target,
+                inplace_magic_method,
+                normal_magic_method,
+                ..
+            } => self.with_i_s(|i_s| {
+                let lookup = |method| {
+                    self.lookup_without_errors(
+                        i_s,
+                        &self
+                            .file
+                            .inference(i_s)
+                            .infer_target(target.clone(), true)?
+                            .as_cow_type(i_s),
+                        method,
+                        LookupKind::OnlyType,
+                    )
+                    .into_maybe_inferred()
+                };
+                lookup(inplace_magic_method).or_else(|| lookup(normal_magic_method))
+            }),
+            GotoNode::Atom(atom) => Some(self.infer_atom(*atom)),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 self.infer_name(name_def.name())
             }
@@ -314,7 +335,9 @@ impl<'db, C> GotoResolver<'db, C> {
             GotoNode::ImportFromAsName { on_name, .. } => on_name.index(),
             GotoNode::Primary(primary) => primary.index(),
             GotoNode::PrimaryTarget(primary_target) => primary_target.index(),
-            GotoNode::Operator { operator, .. } => operator.index(),
+            GotoNode::Operator { operator, .. } | GotoNode::AugAssignOperator { operator, .. } => {
+                operator.index()
+            }
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => name_def.index(),
             GotoNode::Atom(atom) => atom.index(),
             GotoNode::None => return None,
@@ -426,7 +449,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     fn goto_name(&mut self, follow_imports: bool, check_inferred_attrs: bool) -> Option<Vec<T>> {
         let db = self.infos.db;
         let file = self.infos.file;
-        let node = self.infos.node;
+        let node = self.infos.node.clone();
         let mut lookup_on_name = |name: CSTName| {
             let p = file.points.get(name.index());
             if p.calculated() {
@@ -520,7 +543,10 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     )))])
                 }
             }
-            GotoNode::Operator { .. } | GotoNode::Atom(_) | GotoNode::None => None,
+            GotoNode::Operator { .. }
+            | GotoNode::AugAssignOperator { .. }
+            | GotoNode::Atom(_)
+            | GotoNode::None => None,
         }
     }
     fn goto_primary_attr(
@@ -595,7 +621,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
 
         //  1. Find the original definition
 
-        GotoResolver::new2(self.infos, GotoGoal::Indifferent, |n| {
+        GotoResolver::new2(self.infos.clone(), GotoGoal::Indifferent, |n| {
             follow_goto_if_necessary(n, &mut |name| {
                 if !self.definitions.is_empty() {
                     // This is an import, definitions were already added

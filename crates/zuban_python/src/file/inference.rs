@@ -850,7 +850,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         self.infer_yield_from_details(yield_from).1
     }
 
-    fn infer_target(&self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
+    pub fn infer_target(&self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
         match target {
             Target::Name(name_def) => self.infer_name_target(name_def, from_aug_assign),
             Target::NameExpression(primary_target, _) => {
