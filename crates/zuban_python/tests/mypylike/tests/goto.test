@@ -847,6 +847,9 @@ def complete(a: x.X, b: x.X):
     #? --codepoint-column 4 goto
     ~a
 
+    #? --codepoint-column 4 infer
+    ~a
+
 [file x.pyi]
 class X:
     def __eq__(self, other: object) -> bool: ...
@@ -916,3 +919,4 @@ __main__.py:87:goto -> x.pyi:22:8:x.X.__matmul__
 __main__.py:90:goto -> x.pyi:25:8:x.X.__neg__
 __main__.py:92:goto -> x.pyi:24:8:x.X.__pos__
 __main__.py:94:goto -> x.pyi:26:8:x.X.__invert__
+__main__.py:97:infer -> x.pyi:26:8:x.X.__invert__
