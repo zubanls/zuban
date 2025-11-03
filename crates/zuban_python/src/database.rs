@@ -845,9 +845,11 @@ impl TypeAlias {
     }
 
     pub fn is_recursive(&self) -> bool {
-        match self.state.get().unwrap() {
-            TypeAliasState::Invalid => unreachable!(),
-            TypeAliasState::Valid(a) => a.is_recursive,
+        match self.state.get() {
+            Some(TypeAliasState::Invalid) => unreachable!(),
+            Some(TypeAliasState::Valid(a)) => a.is_recursive,
+            // This can happen with invalid recursive aliases like type T[U: T] = T[Any]
+            None => true,
         }
     }
 

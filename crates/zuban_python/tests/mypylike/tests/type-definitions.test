@@ -849,3 +849,8 @@ class C[*T, *U, *V]():  # E: Can only use one TypeVarTuple in type params \
     pass
 
 C[int]
+
+[case type_alias_recursion_should_no_crash]
+# From GH #144
+from typing import Any
+type T[U: T] = T[Any]  # E: Invalid recursive alias: a union item of itself
