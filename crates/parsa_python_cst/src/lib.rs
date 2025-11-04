@@ -368,9 +368,18 @@ impl Tree {
         &'x self,
         start_at_code_index: Option<CodeIndex>,
     ) -> impl Iterator<Item = Name<'x>> {
-        // TODO use start_at_code_index
+        let start_at_node_index = if let Some(start_at_code_index) = start_at_code_index {
+            let mut leaf = self.0.leaf_by_position(start_at_code_index);
+            if start_at_code_index == leaf.start() {
+                leaf = leaf.previous_leaf().unwrap_or(leaf);
+            }
+            leaf.index as usize
+        } else {
+            0
+        };
         self.0
             .nodes()
+            .skip(start_at_node_index)
             .filter(|&n| n.is_type(Terminal(TerminalType::Name)))
             .map(Name::new)
     }
