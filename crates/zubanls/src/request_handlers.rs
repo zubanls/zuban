@@ -1,8 +1,9 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::bail;
 use lsp_server::ErrorCode;
 use lsp_types::{
+    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionResponse,
     CompletionItem, CompletionParams, CompletionResponse, CompletionTextEdit, Diagnostic,
     DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlight,
@@ -359,6 +360,48 @@ impl GlobalState<'_> {
             return Ok(None);
         }
         Ok(Some(result))
+    }
+
+    pub fn code_actions(
+        &mut self,
+        params: CodeActionParams,
+    ) -> anyhow::Result<Option<CodeActionResponse>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let uri = params.text_document.uri.clone();
+        let document = self.document(params.text_document)?;
+        let actions = document.code_actions(
+            encoding.input_position(params.range.start),
+            Some(encoding.input_position(params.range.end)),
+        )?;
+        if actions.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(
+            actions
+                .into_iter()
+                .map(|action| {
+                    CodeActionOrCommand::CodeAction(CodeAction {
+                        title: action.title,
+                        kind: Some(CodeActionKind::QUICKFIX),
+                        diagnostics: None,
+                        edit: Some(WorkspaceEdit::new(HashMap::from_iter([(
+                            uri.clone(),
+                            vec![TextEdit {
+                                range: Self::to_range(
+                                    encoding,
+                                    (action.start_of_change, action.end_of_change),
+                                ),
+                                new_text: action.replacement,
+                            }],
+                        )]))),
+                        command: None,
+                        is_preferred: None,
+                        disabled: None,
+                        data: None,
+                    })
+                })
+                .collect(),
+        ))
     }
 
     pub fn prepare_rename(

@@ -713,7 +713,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
     fn find_references_in_file(&mut self, file: &'db PythonFile, search_name: &str) {
         let result = file.ensure_calculated_diagnostics(self.infos.db);
         debug_assert!(result.is_ok());
-        for name in file.tree.filter_all_names() {
+        for name in file.tree.filter_all_names(None) {
             if name.as_code() == search_name {
                 let mut add_all_names = false;
                 GotoResolver::new(

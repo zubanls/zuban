@@ -210,6 +210,7 @@ fn utf16_to_utf8_byte_offset(s: &str, utf16_pos: usize) -> anyhow::Result<BytePo
     })
 }
 
+#[derive(Copy, Clone)]
 pub(crate) struct BytePositionInfos {
     pub byte: CodeIndex,
     pub column_out_of_bounds: bool,

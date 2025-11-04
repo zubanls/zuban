@@ -419,6 +419,7 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<GotoImplementation>(GlobalState::handle_goto_implementation)
         .on_sync_mut::<References>(GlobalState::handle_references)
         .on_sync_mut::<DocumentHighlightRequest>(GlobalState::handle_document_highlight)
+        .on_sync_mut::<CodeActionRequest>(GlobalState::code_actions)
         .on_sync_mut::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_sync_mut::<Rename>(GlobalState::rename)
         .on_sync_mut::<DocumentSymbolRequest>(GlobalState::document_symbols)

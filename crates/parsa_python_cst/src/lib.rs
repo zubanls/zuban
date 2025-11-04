@@ -364,7 +364,11 @@ impl Tree {
         (scope_for_node(left), goto_node)
     }
 
-    pub fn filter_all_names<'x>(&'x self) -> impl Iterator<Item = Name<'x>> {
+    pub fn filter_all_names<'x>(
+        &'x self,
+        start_at_code_index: Option<CodeIndex>,
+    ) -> impl Iterator<Item = Name<'x>> {
+        // TODO use start_at_code_index
         self.0
             .nodes()
             .filter(|&n| n.is_type(Terminal(TerminalType::Name)))

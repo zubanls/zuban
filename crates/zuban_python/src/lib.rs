@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
 mod arguments;
+mod code_actions;
 mod completion;
 mod database;
 mod diagnostics;
@@ -43,6 +44,7 @@ use rayon::prelude::*;
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
+pub use code_actions::CodeAction;
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 pub use database::Mode;
 use database::{Database, PythonProject};

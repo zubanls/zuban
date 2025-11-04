@@ -37,25 +37,28 @@ impl<'project> Document<'project> {
         };
         let result = file.ensure_calculated_diagnostics(db);
         debug_assert!(result.is_ok());
-        Ok(file.tree.filter_all_names().filter_map(move |name| {
-            if name.end() < start || name.start() > end {
-                return None;
-            }
+        Ok(file
+            .tree
+            .filter_all_names(Some(start))
+            .filter_map(move |name| {
+                if name.end() < start || name.start() > end {
+                    return None;
+                }
 
-            let (p, node_ref) = self.try_to_follow_point(NodeRef::new(file, name.index()))?;
-            let (lsp_type, mut properties) = self.resolved_node_ref_to_lsp_type(node_ref, p)?;
-            if let Some(name_def) = name.name_def() {
-                properties.definition = true;
-                properties.declaration = !name_def.name_can_be_overwritten();
-            }
-            Some(SemanticToken {
-                db,
-                file,
-                name,
-                lsp_type,
-                properties,
-            })
-        }))
+                let (p, node_ref) = self.try_to_follow_point(NodeRef::new(file, name.index()))?;
+                let (lsp_type, mut properties) = self.resolved_node_ref_to_lsp_type(node_ref, p)?;
+                if let Some(name_def) = name.name_def() {
+                    properties.definition = true;
+                    properties.declaration = !name_def.name_can_be_overwritten();
+                }
+                Some(SemanticToken {
+                    db,
+                    file,
+                    name,
+                    lsp_type,
+                    properties,
+                })
+            }))
     }
 
     fn try_to_follow_point(
