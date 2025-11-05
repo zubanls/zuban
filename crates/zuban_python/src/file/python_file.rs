@@ -90,6 +90,12 @@ impl SuperFile {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct FileImport {
+    pub node_index: NodeIndex,
+    pub in_global_scope: bool,
+}
+
 pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
@@ -99,7 +105,7 @@ pub(crate) struct PythonFile {
     pub file_index: FileIndex,
     pub issues: Diagnostics,
     pub star_imports: Box<[StarImport]>,
-    pub all_imports: Box<[NodeIndex]>,
+    pub all_imports: Box<[FileImport]>,
     pub sub_files: SubFiles,
     pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
@@ -356,7 +362,7 @@ impl<'db> PythonFile {
         let flags = flags.map(|flags| flags.finalize());
         let complex_points = Default::default();
         let star_imports: RefCell<Vec<StarImport>> = Default::default();
-        let all_imports: RefCell<Vec<NodeIndex>> = Default::default();
+        let all_imports: RefCell<Vec<FileImport>> = Default::default();
         let symbol_table = NameBinder::with_global_binder(
             DbInfos {
                 // TODO this does not use flags of the super file. Is this an issue?

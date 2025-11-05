@@ -10,7 +10,10 @@ use crate::{
     },
     debug,
     diagnostics::{Diagnostics, Issue, IssueKind},
-    file::{ComplexValues, python_file::StarImport},
+    file::{
+        ComplexValues,
+        python_file::{FileImport, StarImport},
+    },
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::StringSlice,
     utils::SymbolTable,
@@ -69,7 +72,7 @@ pub(crate) struct DbInfos<'db> {
     pub complex_points: &'db ComplexValues,
     pub issues: &'db Diagnostics,
     pub star_imports: &'db RefCell<Vec<StarImport>>,
-    pub all_imports: &'db RefCell<Vec<NodeIndex>>,
+    pub all_imports: &'db RefCell<Vec<FileImport>>,
     pub file_index: FileIndex,
     pub is_stub: bool,
 }
@@ -483,7 +486,10 @@ impl<'db> NameBinder<'db> {
                     }
                 }
                 StmtLikeContent::ImportFrom(import) => {
-                    self.db_infos.all_imports.borrow_mut().push(import.index());
+                    self.db_infos.all_imports.borrow_mut().push(FileImport {
+                        node_index: import.index(),
+                        in_global_scope: self.in_global_scope(),
+                    });
                     match import.unpack_targets() {
                         ImportFromTargets::Star(star) => {
                             self.following_nodes_need_flow_analysis = true;
@@ -501,7 +507,10 @@ impl<'db> NameBinder<'db> {
                     };
                 }
                 StmtLikeContent::ImportName(i) => {
-                    self.db_infos.all_imports.borrow_mut().push(i.index());
+                    self.db_infos.all_imports.borrow_mut().push(FileImport {
+                        node_index: i.index(),
+                        in_global_scope: self.in_global_scope(),
+                    });
                     for dotted in i.iter_dotted_as_names() {
                         match dotted.unpack() {
                             DottedAsNameContent::Simple(name_def, _)

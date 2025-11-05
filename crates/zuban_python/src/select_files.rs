@@ -251,17 +251,21 @@ fn find_imports_and_preload_files(
     loaded_file_entries: &Mutex<FastHashSet<ArcPtrWrapper>>,
 ) {
     let mut need_to_load_files = FastHashSet::default();
-    for node_index in &file.all_imports {
-        file.find_potential_import_for_import_node_index(db, *node_index, |on_file| match on_file {
-            ImportResult::File(file_index) => {
-                let ptr = ArcPtrWrapper(Arc::as_ptr(db.vfs.file_entry(file_index)));
-                if loaded_file_entries.lock().unwrap().insert(ptr) {
-                    need_to_load_files.insert(file_index);
+    for imp in &file.all_imports {
+        file.find_potential_import_for_import_node_index(
+            db,
+            imp.node_index,
+            |on_file| match on_file {
+                ImportResult::File(file_index) => {
+                    let ptr = ArcPtrWrapper(Arc::as_ptr(db.vfs.file_entry(file_index)));
+                    if loaded_file_entries.lock().unwrap().insert(ptr) {
+                        need_to_load_files.insert(file_index);
+                    }
                 }
-            }
-            ImportResult::Namespace(_) => (),
-            ImportResult::PyTypedMissing => (),
-        })
+                ImportResult::Namespace(_) => (),
+                ImportResult::PyTypedMissing => (),
+            },
+        )
     }
     need_to_load_files.into_par_iter().for_each(|file_index| {
         if let Ok(_file) = db.ensure_file_for_file_index(file_index) {
