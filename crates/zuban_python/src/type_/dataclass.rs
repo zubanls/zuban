@@ -992,7 +992,11 @@ pub fn ensure_calculated_dataclass(self_: &Arc<Dataclass>, db: &Database) {
         let indent = debug_indent();
         // Cannot use get_or_init, because this might recurse for some reasons (check for
         // example the test testDeferredDataclassInitSignatureSubclass)
-        if let Err(_) = self_.inits.set(calculate_init_of_dataclass(db, self_)) {
+        if self_
+            .inits
+            .set(calculate_init_of_dataclass(db, self_))
+            .is_err()
+        {
             recoverable_error!(
                 "Looped dataclass initialization for {:?}",
                 self_.class(db).name()

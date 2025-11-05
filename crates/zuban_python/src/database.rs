@@ -67,6 +67,8 @@ const PARTIAL_FINISHED_MASK: u32 = 1 << PARTIAL_FINISHED_INDEX;
 const CALCULATED_OR_REDIRECT_LIKE_KIND_OR_REST_MASK: u32 = IS_ANALIZED_MASK | KIND_MASK | REST_MASK;
 const REDIRECT_KIND_VALUE: u32 = (PointKind::Redirect as u32) << KIND_BIT_INDEX;
 
+pub type DeferredTypedDictMembers = (Arc<TypedDict>, TypedDictArgs);
+
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
 pub(crate) struct Point {
     flags: u32,
@@ -759,7 +761,7 @@ pub(super) struct TypedDictArgs {
 #[derive(Debug)]
 pub(crate) struct TypedDictDefinition {
     pub type_: Arc<Type>,
-    pub deferred_subclass_member_initializations: Box<RwLock<Vec<(Arc<TypedDict>, TypedDictArgs)>>>,
+    pub deferred_subclass_member_initializations: Box<RwLock<Vec<DeferredTypedDictMembers>>>,
     pub initialization_args: TypedDictArgs,
 }
 
@@ -1518,9 +1520,11 @@ fn add_workspace_and_check_for_pth_files(
         let mut pth_files = vec![];
         for dir_entry in &last.entries.iter() {
             if let DirectoryEntry::File(file_entry) = dir_entry
-                && file_entry.name.ends_with(".pth") && !file_entry.name.starts_with('.') {
-                    pth_files.push(file_entry.clone())
-                }
+                && file_entry.name.ends_with(".pth")
+                && !file_entry.name.starts_with('.')
+            {
+                pth_files.push(file_entry.clone())
+            }
         }
         if !pth_files.is_empty() {
             let workspace_path = last.root_path.clone();

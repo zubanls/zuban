@@ -1222,17 +1222,18 @@ fn split_off_enum_member(
             _ => {
                 if matches!(sub_t, Type::Self_)
                     && let Some(cls) = i_s.current_class()
-                        && let Some(enum_) = cls.maybe_enum(i_s.db) {
-                            let (_, f) = split_off_enum_member(
-                                i_s,
-                                &Type::Enum(enum_),
-                                enum_member,
-                                abort_on_custom_eq,
-                            )?;
-                            set_truthy();
-                            add(f);
-                            continue;
-                        }
+                    && let Some(enum_) = cls.maybe_enum(i_s.db)
+                {
+                    let (_, f) = split_off_enum_member(
+                        i_s,
+                        &Type::Enum(enum_),
+                        enum_member,
+                        abort_on_custom_eq,
+                    )?;
+                    set_truthy();
+                    add(f);
+                    continue;
+                }
                 if abort_on_custom_eq
                     && matches!(
                         enum_member.enum_.kind(i_s),
@@ -2705,15 +2706,17 @@ impl Inference<'_, '_, '_> {
                 for name_def in name_def.into_iter().chain(as_name_def.into_iter()) {
                     let key = self.key_from_name_def(name_def);
                     if let Some(found) = guard_falsey.lookup_entry(self.i_s.db, &key)
-                        && let EntryKind::Type(t) = &found.type_ {
-                            frames.falsey_t = Inferred::from_type(t.clone());
-                            input_for_next_case_should_be_rewritten = false;
-                        }
+                        && let EntryKind::Type(t) = &found.type_
+                    {
+                        frames.falsey_t = Inferred::from_type(t.clone());
+                        input_for_next_case_should_be_rewritten = false;
+                    }
                     if let Some(found) = guard_truthy.lookup_entry(self.i_s.db, &key)
-                        && let EntryKind::Type(t) = &found.type_ {
-                            // We need to rerun this, because the types might have changed
-                            self.narrow_subject(subject_key, &mut truthy_frame, Cow::Borrowed(t));
-                        }
+                        && let EntryKind::Type(t) = &found.type_
+                    {
+                        // We need to rerun this, because the types might have changed
+                        self.narrow_subject(subject_key, &mut truthy_frame, Cow::Borrowed(t));
+                    }
                 }
 
                 truthy_frame = merge_and(self.i_s, truthy_frame, guard_truthy);
@@ -3175,13 +3178,14 @@ impl Inference<'_, '_, '_> {
                     && !matches!(
                         c.generics,
                         ClassGenerics::None | ClassGenerics::NotDefinedYet
-                    ) {
-                        self.add_issue(dotted.index(), IssueKind::ClassPatternCannotParametrized);
-                        return PatternResult {
-                            truthy_t: Inferred::new_never(NeverCause::Other),
-                            falsey_t: inf,
-                        };
-                    }
+                    )
+                {
+                    self.add_issue(dotted.index(), IssueKind::ClassPatternCannotParametrized);
+                    return PatternResult {
+                        truthy_t: Inferred::new_never(NeverCause::Other),
+                        falsey_t: inf,
+                    };
+                }
                 t.as_ref()
             }
             Type::Any(_) => {
@@ -4878,7 +4882,7 @@ fn run_pattern_for_each_type(
     t: Type,
     callback: impl Fn(Type) -> (Type, Type),
 ) -> (Type, Type) {
-    fn run<'x>(
+    fn run(
         i_s: &InferenceState,
         mut iterator: std::iter::Peekable<impl Iterator<Item = Type>>,
         callback: impl Fn(Type) -> (Type, Type),

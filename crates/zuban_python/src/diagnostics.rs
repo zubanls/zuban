@@ -738,13 +738,13 @@ impl<'db> Diagnostic<'db> {
     }
 
     fn is_note(&self) -> bool {
-        match &self.issue.kind {
+        matches!(
+            &self.issue.kind,
             IssueKind::Note(_)
-            | IssueKind::InvariantNote { .. }
-            | IssueKind::AnnotationInUntypedFunction
-            | IssueKind::InvalidDunderMatchArgs => true,
-            _ => false,
-        }
+                | IssueKind::InvariantNote { .. }
+                | IssueKind::AnnotationInUntypedFunction
+                | IssueKind::InvalidDunderMatchArgs
+        )
     }
 
     fn code_under_issue(&self) -> &'db str {

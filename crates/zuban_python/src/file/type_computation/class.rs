@@ -13,9 +13,9 @@ use utils::FastHashSet;
 
 use crate::{
     database::{
-        BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointLink, ProtocolMember, Specific, TypedDictArgs,
-        TypedDictDefinition,
+        BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database,
+        DeferredTypedDictMembers, Locality, MetaclassState, ParentScope, Point, PointLink,
+        ProtocolMember, Specific, TypedDictArgs, TypedDictDefinition,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -1523,11 +1523,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     }
 }
 
-fn initialize_typed_dict_members(
-    db: &Database,
-    cls: &Class,
-    td_infos: (Arc<TypedDict>, TypedDictArgs),
-) {
+fn initialize_typed_dict_members(db: &Database, cls: &Class, td_infos: DeferredTypedDictMembers) {
     let typed_dict_definition = cls.maybe_typed_dict_definition().unwrap();
     let mut typed_dict_members = TypedDictMemberGatherer::default();
     let mut extra_items = None;
