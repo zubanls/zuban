@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use parsa_python_cst::NameParent;
+use parsa_python_cst::{Name, NameParent};
 use rayon::prelude::*;
 use vfs::{Directory, DirectoryEntry, Entries, FileEntry};
 
@@ -37,28 +37,13 @@ impl<'project> Document<'project> {
             if node_ref.point().maybe_calculated_and_specific() == Some(Specific::AnyDueToError)
                 && matches!(name.parent(), NameParent::Atom { .. })
             {
-                let name = name.as_code();
-                for potential in ImportFinder::find_importable_name(db, name) {
-                    // It's probably very rare, but we never want duplicate titles
-
-                    let title = potential.title(db, name);
+                let name_str = name.as_code();
+                for potential in ImportFinder::find_importable_name(db, name_str) {
+                    let title = potential.title(db, name_str);
                     debug!("New potential auto import: {title}");
+                    // It's probably very rare, but we never want duplicate titles
                     if !actions.iter().any(|action| action.title == title) {
-                        let pos = potential.file.byte_to_position_infos(db, 0);
-                        actions.push(CodeAction {
-                            title,
-                            start_of_change: pos,
-                            end_of_change: pos,
-                            replacement: if potential.needs_additional_name {
-                                format!(
-                                    "from {} import {}\n",
-                                    potential.file.qualified_name(db),
-                                    name
-                                )
-                            } else {
-                                format!("import {}\n", potential.file.qualified_name(db))
-                            },
-                        })
+                        actions.push(create_import_code_action(db, file, potential, title, name))
                     }
                 }
             }
@@ -160,5 +145,46 @@ impl<'db> ImportFinder<'db> {
             })
         }
         has_symbol
+    }
+}
+
+fn create_import_code_action<'db>(
+    db: &'db Database,
+    from_file: &'db PythonFile,
+    potential: PotentialImport,
+    title: String,
+    name: Name,
+) -> CodeAction<'db> {
+    if potential.needs_additional_name {
+        // Try to find an import that matches
+        for imp in &from_file.all_imports {
+            if imp.in_global_scope && imp.node_index < name.index() {
+                if let Some(imp) = NodeRef::new(from_file, imp.node_index).maybe_import_from() {
+                    let pos = from_file.byte_to_position_infos(db, imp.end());
+                    return CodeAction {
+                        title,
+                        start_of_change: pos,
+                        end_of_change: pos,
+                        replacement: format!(", {}", name.as_code()),
+                    };
+                }
+            }
+        }
+    }
+
+    let pos = from_file.byte_to_position_infos(db, 0);
+    CodeAction {
+        title,
+        start_of_change: pos,
+        end_of_change: pos,
+        replacement: if potential.needs_additional_name {
+            format!(
+                "from {} import {}\n",
+                potential.file.qualified_name(db),
+                name.as_code()
+            )
+        } else {
+            format!("import {}\n", potential.file.qualified_name(db))
+        },
     }
 }

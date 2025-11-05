@@ -228,6 +228,10 @@ impl<'file> NodeRef<'file> {
         FunctionDef::maybe_by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn maybe_import_from(&self) -> Option<ImportFrom<'file>> {
+        ImportFrom::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn maybe_import_of_name_in_symbol_table(&self) -> Option<NameImportParent<'file>> {
         self.expect_name().name_def().unwrap().maybe_import()
     }

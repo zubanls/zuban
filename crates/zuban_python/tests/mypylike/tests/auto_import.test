@@ -49,3 +49,23 @@ baz = 1
 __main__.py:5: Code Actions:
 - Import `x.foo`: 1:0-1:0 replaced with: "from x import foo\n"
 - Import `x`: 1:0-1:0 replaced with: "import x\n"
+
+[case auto_import_add_name_to_from1]
+# flags: --no-typecheck
+from x import a
+#? code-actions
+b
+
+def f() -> None:
+    #? code-actions
+    b
+
+[file x.py]
+a = 1
+b = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `x.b`: 2:15-2:15 replaced with: ", b"
+__main__.py:8: Code Actions:
+- Import `x.b`: 2:15-2:15 replaced with: ", b"
