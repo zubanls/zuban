@@ -202,8 +202,8 @@ impl<'db> SemanticToken<'db> {
         self.file.byte_to_position_infos(self.db, self.name.start())
     }
 
-    pub fn len(&self) -> CodeIndex {
-        self.name.len()
+    pub fn length(&self) -> CodeIndex {
+        self.name.length()
     }
 
     pub fn content(&self) -> &'db str {

@@ -593,7 +593,7 @@ impl GlobalState<'_> {
         for semantic_token in document.semantic_tokens(range)? {
             builder.push(
                 Self::to_position(encoding, semantic_token.position()),
-                semantic_token.len(),
+                semantic_token.length(),
                 semantic_token.lsp_type,
                 semantic_token.properties,
             );

@@ -509,7 +509,7 @@ macro_rules! create_struct {
             }
 
             #[inline]
-            pub fn len(&self) -> CodeIndex {
+            pub fn length(&self) -> CodeIndex {
                 self.node.length()
             }
 
