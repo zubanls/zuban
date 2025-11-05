@@ -41,7 +41,8 @@ impl<'project> Document<'project> {
                 for potential in ImportFinder::find_importable_name(db, name) {
                     // It's probably very rare, but we never want duplicate titles
 
-                    let title = format!("Import `{}`", potential.file.qualified_name(db));
+                    let title = potential.title(db, name);
+                    debug!("New potential auto import: {title}");
                     if !actions.iter().any(|action| action.title == title) {
                         let pos = potential.file.byte_to_position_infos(db, 0);
                         actions.push(CodeAction {
@@ -86,6 +87,17 @@ struct ImportFinder<'db> {
 struct PotentialImport<'db> {
     file: &'db PythonFile,
     needs_additional_name: bool,
+}
+
+impl PotentialImport<'_> {
+    fn title(&self, db: &Database, name: &str) -> String {
+        let (dot, rest) = if self.needs_additional_name {
+            (".", name)
+        } else {
+            ("", "")
+        };
+        format!("Import `{}{dot}{rest}`", self.file.qualified_name(db))
+    }
 }
 
 impl<'db> ImportFinder<'db> {
