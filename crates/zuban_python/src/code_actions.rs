@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use parsa_python_cst::{Name, NameParent};
+use parsa_python_cst::{Name, NameParent, Scope};
 use rayon::prelude::*;
 use vfs::{Directory, DirectoryEntry, Entries, FileEntry};
 
@@ -159,7 +159,10 @@ fn create_import_code_action<'db>(
     if potential.needs_additional_name {
         // Try to find an import that matches
         for imp in &from_file.all_imports {
-            if imp.in_global_scope && imp.node_index < name.index() {
+            let is_reachable = || {
+                imp.node_index < name.index() || matches!(name.parent_scope(), Scope::Function(_))
+            };
+            if imp.in_global_scope && is_reachable() {
                 if let Some(imp) = NodeRef::new(from_file, imp.node_index).maybe_import_from() {
                     if matches!(
                         from_file.import_from_first_part_without_loading_file(db, imp),

@@ -75,3 +75,30 @@ __main__.py:4: Code Actions:
 __main__.py:8: Code Actions:
 - Import `x.b`: 2:15-2:15 replaced with: ", b"
 - Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
+
+[case auto_import_add_name_to_from2]
+# flags: --no-typecheck
+#? code-actions
+b
+
+def f() -> None:
+    #? code-actions
+    b
+
+from x import a
+
+[file x.py]
+a = 1
+b = 1
+
+[file y.py]
+a = 1
+b = 1
+
+[out]
+__main__.py:3: Code Actions:
+- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
+- Import `x.b`: 1:0-1:0 replaced with: "from x import b\n"
+__main__.py:7: Code Actions:
+- Import `x.b`: 9:15-9:15 replaced with: ", b"
+- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
