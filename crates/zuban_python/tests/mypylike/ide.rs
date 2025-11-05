@@ -33,6 +33,7 @@ pub enum Commands {
     Rename(RenameArgs),
     SemanticTokens(SemanticTokensArgs),
     SelectionRanges(SelectionRangeArgs),
+    CodeActions(CodeActionArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -109,6 +110,12 @@ pub struct SemanticTokensArgs {
 
 #[derive(Parser, Debug)]
 pub struct SelectionRangeArgs {}
+
+#[derive(Parser, Debug)]
+pub struct CodeActionArgs {
+    #[arg(long)]
+    pub until_line: Option<usize>,
+}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -431,6 +438,31 @@ pub(crate) fn find_and_check_ide_tests(
                     }
                     Err(err) => ("selection-ranges", Err(err)),
                 },
+                Commands::CodeActions(args) => {
+                    let until = args.until_line.map(|until_line| InputPosition::CodePoints {
+                        line: until_line - 1,
+                        column: 0,
+                    });
+                    match document.code_actions(position, until) {
+                        Ok(actions) => {
+                            let end = if actions.is_empty() { " []" } else { "" };
+                            output.push(format!("{path}:{test_on_line_nr}: Code Actions:{end}"));
+                            for action in actions {
+                                output.push(format!(
+                                    "- {}: {}:{}-{}:{} replaced with: {:?}",
+                                    action.title,
+                                    action.start_of_change.line_one_based(),
+                                    action.start_of_change.code_points_column(),
+                                    action.end_of_change.line_one_based(),
+                                    action.end_of_change.code_points_column(),
+                                    action.replacement,
+                                ));
+                            }
+                            continue;
+                        }
+                        Err(err) => ("code-actions", Err(err)),
+                    }
+                }
             };
             output.push(match out {
                 Ok(out) => {

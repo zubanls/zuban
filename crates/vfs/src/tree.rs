@@ -264,7 +264,7 @@ impl Entries {
         Self(RwLock::from(vec))
     }
 
-    fn borrow(&self) -> RwLockReadGuard<'_, Vec<DirectoryEntry>> {
+    pub fn borrow(&self) -> RwLockReadGuard<'_, Vec<DirectoryEntry>> {
         self.0.read().unwrap()
     }
 
