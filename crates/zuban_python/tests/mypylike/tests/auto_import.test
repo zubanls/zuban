@@ -169,3 +169,26 @@ test2.py:6: Code Actions:
 - Import `x.c`: 3:5-3:5 replaced with: ", c"
 test3.py:6: Code Actions:
 - Import `x.c`: 3:6-3:6 replaced with: " c"
+
+[case auto_import_of_module_in_namespaces]
+# flags: --no-typecheck
+
+#? code-actions
+foo
+
+[file bar/baz/foo.py]
+[out]
+__main__.py:4: Code Actions:
+- Import `bar.baz.foo`: 1:0-1:0 replaced with: "from bar.baz import foo\n"
+
+[case auto_import_of_nested_module]
+# flags: --no-typecheck
+
+#? code-actions
+foo
+
+[file bar/__init__.py]
+[file bar/foo.py]
+[out]
+__main__.py:4: Code Actions:
+- Import `bar.foo`: 1:0-1:0 replaced with: "from bar import foo\n"

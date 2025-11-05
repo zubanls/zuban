@@ -760,7 +760,7 @@ impl<'db> PythonFile {
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), true);
+        let (name, parent_dir) = self.name_and_parent_dir(db);
         if let Some(parent_dir) = parent_dir {
             dotted_path_from_dir(&parent_dir) + "." + name
         } else {
@@ -769,7 +769,7 @@ impl<'db> PythonFile {
     }
 
     pub fn name(&self, db: &'db Database) -> &'db str {
-        let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), true);
+        let (name, _) = self.name_and_parent_dir(db);
         name.strip_suffix(STUBS_SUFFIX).unwrap_or(name)
     }
 

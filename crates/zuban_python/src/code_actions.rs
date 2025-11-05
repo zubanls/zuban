@@ -8,7 +8,7 @@ use crate::{
     Document, InputPosition, PositionInfos,
     database::{Database, Specific},
     debug,
-    file::{File as _, PythonFile},
+    file::{File as _, PythonFile, dotted_path_from_dir},
     imports::ImportResult,
     node_ref::NodeRef,
 };
@@ -195,7 +195,15 @@ fn create_import_code_action<'db>(
                 name.as_code()
             )
         } else {
-            format!("import {}\n", potential.file.qualified_name(db))
+            if let (_, Some(parent_dir)) = potential.file.name_and_parent_dir(db) {
+                format!(
+                    "from {} import {}\n",
+                    dotted_path_from_dir(&parent_dir),
+                    name.as_code()
+                )
+            } else {
+                format!("import {}\n", potential.file.qualified_name(db))
+            }
         },
     }
 }
