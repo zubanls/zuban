@@ -940,3 +940,19 @@ def f(a: A):
     # Fine as well since we don't know the full MRO
     replace(a, y="")
     replace(a, y=1, z=3)
+
+[case nested_dataclass]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+
+    @dataclass
+    class B:
+        pass
+
+    class C:
+        pass
+
+def foo(val: A.B, val2: A.C) -> None:
+    pass

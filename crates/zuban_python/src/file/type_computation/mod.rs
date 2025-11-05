@@ -1676,6 +1676,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let cls = ClassInitializer::from_link(db, class_link);
                 self.check_attribute_on_class(cls, primary, name)
             }
+            TypeContent::Dataclass(dataclass) => {
+                let cls = ClassInitializer::from_node_ref(dataclass.class.node_ref(db));
+                self.check_attribute_on_class(cls, primary, name)
+            }
             TypeContent::Type(t) => match t {
                 Type::Any(cause) => TypeContent::Type(Type::Any(cause)),
                 Type::Enum(e) => match Enum::lookup(&e, db, name.as_str(), false) {

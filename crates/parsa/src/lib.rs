@@ -823,12 +823,13 @@ macro_rules! create_grammar {
                         return node
                     }
                 }
-                // This only ever happens if we have an empty file that only has one leaf.
-                let node = self.node(nodes.len() as $crate::NodeIndex - 1, &nodes.last().unwrap());
-                // This should be something like an Endmarker, otherwise the parser doesn't really
-                // work.
-                debug_assert!(node.is_leaf());
-                node
+                // This only ever happens if we are in an empty file or before the first leaf.
+                for (i, node) in nodes.iter().enumerate() {
+                    if node.type_.is_leaf() {
+                        return self.node(i as $crate::NodeIndex, node);
+                    }
+                }
+                unreachable!("There should always be a leaf")
             }
         }
 
