@@ -1764,9 +1764,7 @@ impl<'db> Diagnostic<'db> {
             ExpectedTypeInClassPattern { got } => format!(
                 r#"Expected type in class pattern; found "{got}""#
             ),
-            ClassPatternCannotParametrized => format!(
-                r#"Class pattern class must not be a type alias with type parameters"#
-            ),
+            ClassPatternCannotParametrized => r#"Class pattern class must not be a type alias with type parameters"#.to_string(),
             ClassPatternHasNoAttribute { class, attribute } => format!(
                 r#"Class "{class}" has no attribute "{attribute}""#
             ),
@@ -2141,7 +2139,7 @@ impl<'db> Diagnostic<'db> {
             write!(writer, "{with_code}")?;
         }
         for note in &opts.additional_notes {
-            write!(writer, "\n")?;
+            writeln!(writer)?;
             fmt_line(writer, "note", note)?;
         }
         writeln!(writer)?;
@@ -2216,7 +2214,7 @@ impl<'db> Diagnostic<'db> {
                 if end_column < line.len() {
                     write!(writer, "{}", &line[end_column..])?;
                 }
-                write!(writer, "\n")?;
+                writeln!(writer)?;
 
                 //writeln!(writer, "{}", format!("{:^>chars$}", "|", chars = x).bright_red());
             } else {

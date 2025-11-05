@@ -1912,7 +1912,7 @@ fn python_version_matches_tuple(
         let Some(AtomContent::Int(n)) = expr.maybe_unpacked_atom() else {
             return Truthiness::Unknown;
         };
-        if let Some(n_in_tup) = n.parse().try_into().ok() {
+        if let Ok(n_in_tup) = n.parse().try_into() {
             total_order = current.cmp(&n_in_tup);
             if !matches!(total_order, Ordering::Equal) {
                 break; // We already know if it's bigger or smaller

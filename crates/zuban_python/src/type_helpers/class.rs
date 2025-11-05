@@ -1188,8 +1188,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn find_relevant_constructor(&self, i_s: &InferenceState<'db, '_>) -> ClassConstructor<'_> {
-        if !i_s.db.project.settings.mypy_compatible {
-            if let MetaclassState::Some(metaclass) = self.use_cached_class_infos(i_s.db).metaclass {
+        if !i_s.db.project.settings.mypy_compatible
+            && let MetaclassState::Some(metaclass) = self.use_cached_class_infos(i_s.db).metaclass {
                 let meta = Class::from_non_generic_link(i_s.db, metaclass);
                 let lookup = meta.instance().lookup(
                     i_s,
@@ -1226,7 +1226,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
             }
-        }
         let (__init__, init_class, init_mro_index) = self
             .lookup_and_class_and_maybe_ignore_self_internal(
                 i_s,

@@ -143,13 +143,12 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
                 }
                 if arg.is_type(Nonterminal(named_expression)) {
                     let expr = arg.nth_child(0);
-                    if expr.is_type(Nonterminal(expression)) {
-                        if let Some(AtomContent::Name(n)) =
+                    if expr.is_type(Nonterminal(expression))
+                        && let Some(AtomContent::Name(n)) =
                             Expression::new(expr).maybe_unpacked_atom()
                         {
                             return Some(SignatureArg::PositionalOrKeywordName(n.as_code()));
                         }
-                    }
                 }
                 if arg.is_type(Nonterminal(kwargs)) || arg.is_type(ErrorNonterminal(kwargs)) {
                     *args = arg.iter_children();
@@ -206,7 +205,7 @@ impl<'db> ErrorStmtSignaturePart<'db> {
         };
 
         Self {
-            stmt_: stmt_,
+            stmt_,
             inner_stmt_iterator: ErrorInnerStmtSignaturePart {
                 inner_stmt_iterator,
                 last_node,
@@ -225,8 +224,8 @@ impl<'db> Iterator for ErrorStmtSignaturePart<'db> {
                 return self.next();
             }
             if inner.as_code() == "," {
-                if let Some(name) = inner.next_leaf() {
-                    if name.is_type(Terminal(TerminalType::Name)) {
+                if let Some(name) = inner.next_leaf()
+                    && name.is_type(Terminal(TerminalType::Name)) {
                         if let Some(next) = name.next_leaf()
                             && next.as_code() == "="
                         {
@@ -239,7 +238,6 @@ impl<'db> Iterator for ErrorStmtSignaturePart<'db> {
                             return Some(SignatureArg::PositionalOrKeywordName(name.as_code()));
                         }
                     }
-                }
                 return Some(SignatureArg::PositionalOrEmptyAfterComma);
             }
         }

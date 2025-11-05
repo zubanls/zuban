@@ -522,11 +522,11 @@ impl TypedDict {
                     return Match::new_false();
                 }
                 if m1.read_only {
-                    matches &= m1.type_.is_super_type_of(i_s, matcher, &m2.type_);
+                    matches &= m1.type_.is_super_type_of(i_s, matcher, m2.type_);
                 } else {
                     // When matching mutable fields, the type must be the exact same, because
                     // modifications propagate from one to the other TypedDict.
-                    matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
+                    matches &= m1.type_.is_same_type(i_s, matcher, m2.type_);
                 }
             } else if !read_only || m1.required {
                 return Match::new_false();
@@ -623,7 +623,7 @@ impl TypedDict {
             ms.named
                 .iter()
                 .map(|m| &m.type_)
-                .chain(ms.extra_items.as_ref().map(|t| &t.t).into_iter()),
+                .chain(ms.extra_items.as_ref().map(|t| &t.t)),
         )
     }
 }
@@ -655,7 +655,6 @@ pub fn rc_typed_dict_as_callable(db: &Database, slf: Arc<TypedDict>) -> Callable
                         e.t.clone(),
                     )))
                 }))
-                .into_iter()
                 .collect()
         }),
         Type::TypedDict(slf.clone()),
@@ -1137,12 +1136,11 @@ pub(crate) fn initialize_typed_dict<'db>(
         };
         match arg_inf.as_cow_type(i_s).as_ref() {
             Type::TypedDict(arg_td) => {
-                if arg_td.defined_at != typed_dict.defined_at {
-                    if !typed_dict.matches(i_s, &mut matcher, arg_td, false).bool() {
+                if arg_td.defined_at != typed_dict.defined_at
+                    && !typed_dict.matches(i_s, &mut matcher, arg_td, false).bool() {
                         first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
                         return Inferred::new_any_from_error();
                     }
-                }
             }
             _ => {
                 first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
@@ -1216,7 +1214,7 @@ pub(crate) fn lookup_on_typed_dict<'a>(
         "values" if td.has_extra_items(i_s.db) => {
             let return_type = new_class!(
                 i_s.db.python_state.list_link(),
-                td.union_of_all_types(i_s).into(),
+                td.union_of_all_types(i_s),
             );
             return as_callable_without_params(i_s.db, td, "values", return_type);
         }
@@ -1248,7 +1246,7 @@ pub(crate) fn infer_typed_dict_arg(
 ) {
     if let Some(member) = typed_dict.find_entry(i_s.db, key) {
         let inferred = infer(&mut ResultContext::WithMatcher {
-            type_: &member.type_,
+            type_: member.type_,
             matcher,
         });
 

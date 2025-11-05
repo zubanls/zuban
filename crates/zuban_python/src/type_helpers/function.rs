@@ -1031,14 +1031,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 PropertyModifier::Setter(mut setter_type) => {
                     for dec in iterator {
-                        match infer_decorator_details(i_s, file, dec, true) {
-                            InferredDecorator::Deprecated(deprecated_reason) => {
-                                setter_type = Arc::new(PropertySetter {
-                                    deprecated_reason: Some(deprecated_reason),
-                                    ..setter_type.as_ref().clone()
-                                });
-                            }
-                            _ => (),
+                        if let InferredDecorator::Deprecated(deprecated_reason) = infer_decorator_details(i_s, file, dec, true) {
+                            setter_type = Arc::new(PropertySetter {
+                                deprecated_reason: Some(deprecated_reason),
+                                ..setter_type.as_ref().clone()
+                            });
                         }
                     }
                     callable.kind = FunctionKind::Property {
@@ -1808,7 +1805,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 )
             } else {
                 // The mypy-compatible case
-                return Inferred::new_any(AnyCause::Unannotated);
+                Inferred::new_any(AnyCause::Unannotated)
             }
         }
     }

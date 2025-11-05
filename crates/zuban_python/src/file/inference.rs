@@ -1371,7 +1371,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         .as_cow_type(i_s)
                         .is_equal_type(i_s.db, &value.as_cow_type(i_s))
                 {
-                    return;
                 } else {
                     let mut node_ref = name_def_ref;
                     if self.i_s.db.project.settings.mypy_compatible {
@@ -1894,9 +1893,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Target::NameExpression(primary_target, name_def) => {
                 if self.is_self(primary_target.first()) {
                     // TODO The func should ALWAYS exist, this is just a bug at the moment.
-                    if let Some(func) = i_s.current_function() {
-                        if let FirstParamKind::Self_ = func.first_param_kind(self.i_s) {
-                            if let Some(in_class) = func.parent_class(self.i_s.db) {
+                    if let Some(func) = i_s.current_function()
+                        && let FirstParamKind::Self_ = func.first_param_kind(self.i_s)
+                            && let Some(in_class) = func.parent_class(self.i_s.db) {
                                 self.check_self_assign(
                                     in_class,
                                     primary_target,
@@ -1908,8 +1907,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 );
                                 return;
                             }
-                        }
-                    }
                 }
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 self.check_assign_arbitrary_named_expr(
@@ -2988,8 +2985,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 LookupKind::OnlyType,
                 &|issue| from.add_issue(i_s, issue),
                 &mut |l_type, lookup_result| {
-                    if op_infos.operand == "%" && l_type.is_allowed_as_literal_string(false) {
-                        if right
+                    if op_infos.operand == "%" && l_type.is_allowed_as_literal_string(false)
+                        && right
                             .as_cow_type(i_s)
                             .is_literal_string_only_argument_for_string_percent_formatting()
                         {
@@ -2998,7 +2995,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             }));
                             return;
                         }
-                    }
 
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -4017,12 +4013,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             t = Type::Type(Arc::new(t))
                         }
                         Inferred::from_type(t)
+                    } else if is_classmethod {
+                        Inferred::from_type(self.i_s.db.python_state.type_of_self.clone())
                     } else {
-                        if is_classmethod {
-                            Inferred::from_type(self.i_s.db.python_state.type_of_self.clone())
-                        } else {
-                            Inferred::new_saved(self.file, node_index)
-                        }
+                        Inferred::new_saved(self.file, node_index)
                     }
                 };
 
@@ -4525,13 +4519,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             && let PrimaryContent::Execution(exec) = primary.second()
         {
             let args = SimpleArgs::new(*self.i_s, self.file, primary.index(), exec);
-            if let Some(arg) = args.iter(self.i_s.mode).next() {
-                if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown) {
-                    if let Some(s) = inf.maybe_string_literal(self.i_s) {
+            if let Some(arg) = args.iter(self.i_s.mode).next()
+                && let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown)
+                    && let Some(s) = inf.maybe_string_literal(self.i_s) {
                         return Arc::new(s.as_str(self.i_s.db).into());
                     }
-                }
-            }
         }
         Arc::new("<Could not infer deprecated reason>".into())
     }
@@ -4685,7 +4677,7 @@ fn get_generator_return_type(i_s: &InferenceState, had_issue: &impl Fn(), t: &Ty
             i_s,
             union
                 .iter()
-                .map(|t| get_generator_return_type(i_s, had_issue, &t)),
+                .map(|t| get_generator_return_type(i_s, had_issue, t)),
         ),
         _ => {
             had_issue();

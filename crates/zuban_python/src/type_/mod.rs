@@ -459,11 +459,10 @@ impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for RecursiveTypeIterator<'a,
     type Item = &'a Type;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(rec) = self.current_recursive_type.as_mut() {
-            if let next @ Some(_) = rec.next() {
+        if let Some(rec) = self.current_recursive_type.as_mut()
+            && let next @ Some(_) = rec.next() {
                 return next;
             }
-        }
         let next = self.types.next()?;
         if matches!(next, Type::RecursiveType(_)) {
             self.current_recursive_type = Some(Box::new(

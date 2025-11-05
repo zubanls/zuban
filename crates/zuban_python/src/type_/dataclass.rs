@@ -703,7 +703,7 @@ fn field_options_from_args(
                             Some(Type::simplified_union_from_iterators(
                                 i_s,
                                 overload.iter_functions().map(|func| {
-                                    func.first_positional_type().unwrap_or_else(|| Type::ERROR)
+                                    func.first_positional_type().unwrap_or(Type::ERROR)
                                 }),
                             ))
                         }

@@ -1592,7 +1592,7 @@ fn initialize_typed_dict_members(
     }
     if let Some(new) = file
         .name_resolution_for_types(i_s)
-        .compute_class_typed_dict_extra_items(&initialization_args)
+        .compute_class_typed_dict_extra_items(initialization_args)
     {
         if let Some(old) = &extra_items {
             // Closed was already handled above
@@ -1654,7 +1654,7 @@ fn find_stmt_typed_dict_types(
                         i_s,
                         file.name_resolution_for_types(i_s)
                             .compute_class_typed_dict_member(
-                                &initialization_args,
+                                initialization_args,
                                 StringSlice::from_name(file.file_index, name_def.name()),
                                 annot,
                             ),

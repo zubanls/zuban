@@ -1517,11 +1517,10 @@ fn add_workspace_and_check_for_pth_files(
         let last = vfs.workspaces.iter().next_back().unwrap();
         let mut pth_files = vec![];
         for dir_entry in &last.entries.iter() {
-            if let DirectoryEntry::File(file_entry) = dir_entry {
-                if file_entry.name.ends_with(".pth") && !file_entry.name.starts_with('.') {
+            if let DirectoryEntry::File(file_entry) = dir_entry
+                && file_entry.name.ends_with(".pth") && !file_entry.name.starts_with('.') {
                     pth_files.push(file_entry.clone())
                 }
-            }
         }
         if !pth_files.is_empty() {
             let workspace_path = last.root_path.clone();
@@ -1531,7 +1530,7 @@ fn add_workspace_and_check_for_pth_files(
                 if let Some(content) = vfs.handler.read_and_watch_file(&pth_path) {
                     for line in split_lines(&content) {
                         let line = line.trim_end();
-                        if line == ""
+                        if line.is_empty()
                             || line.starts_with("#")
                             || line.starts_with("import ")
                             || line.starts_with("import\t")

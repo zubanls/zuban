@@ -1460,8 +1460,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         };
-        if self.i_s.db.project.flags.disallow_deprecated {
-            if let TypeContent::Class { node_ref, .. } = &result {
+        if self.i_s.db.project.flags.disallow_deprecated
+            && let TypeContent::Class { node_ref, .. } = &result {
                 let on_name = match node.maybe_unpacked_atom() {
                     Some(AtomContent::Name(name)) => Some(NodeRef::new(self.file, name.index())),
                     _ => None,
@@ -1470,7 +1470,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.add_issue_for_index(node.index(), issue)
                 })
             }
-        }
         result
     }
 
@@ -3557,8 +3556,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let lookup = name_resolution.point_resolution_to_type_name_lookup(
                     name_resolution.resolve_import_from_name_def_without_narrowing(from_as_name),
                 );
-                if i_s.db.project.flags.disallow_deprecated {
-                    if let Lookup::T(TypeContent::Class {
+                if i_s.db.project.flags.disallow_deprecated
+                    && let Lookup::T(TypeContent::Class {
                         node_ref: class_node_ref,
                         ..
                     }) = &lookup
@@ -3567,7 +3566,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             node_ref.add_type_issue(i_s.db, issue)
                         });
                     }
-                }
                 lookup
             }
             TypeLike::DottedAsName(dotted_as_name) => {

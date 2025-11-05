@@ -170,7 +170,7 @@ impl Inference<'_, '_, '_> {
                                     IssueKind::IssubcclassWithProtocolNonMethodMembers {
                                         protocol: class.name().into(),
                                         non_method_members: join_with_commas(
-                                            non_method_protocol_members.into_iter(),
+                                            non_method_protocol_members,
                                         )
                                         .into(),
                                     },

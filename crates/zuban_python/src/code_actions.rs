@@ -107,15 +107,13 @@ impl<'db> ImportFinder<'db> {
         if let Some(entry) = entries
             .search("__init__.pyi")
             .or_else(|| entries.search("__init__.py"))
-        {
-            if let DirectoryEntry::File(__init__) = &*entry
+            && let DirectoryEntry::File(__init__) = &*entry
                 && self.find_importable_name_in_file_entry(__init__)
             {
                 // If we find a name in __init__.py, we should probably not be looking up the other
                 // imports.
                 return;
             }
-        }
         entries.borrow().par_iter().for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
                 self.find_importable_name_in_file_entry(entry);
@@ -162,9 +160,9 @@ fn create_import_code_action<'db>(
             let is_reachable = || {
                 imp.node_index < name.index() || matches!(name.parent_scope(), Scope::Function(_))
             };
-            if imp.in_global_scope && is_reachable() {
-                if let Some(imp) = NodeRef::new(from_file, imp.node_index).maybe_import_from() {
-                    if matches!(
+            if imp.in_global_scope && is_reachable()
+                && let Some(imp) = NodeRef::new(from_file, imp.node_index).maybe_import_from()
+                    && matches!(
                         from_file.import_from_first_part_without_loading_file(db, imp),
                         Some(ImportResult::File(i)) if i == potential.file.file_index
                     ) {
@@ -178,8 +176,6 @@ fn create_import_code_action<'db>(
                             replacement: insertion.addition,
                         };
                     }
-                }
-            }
         }
     }
 
@@ -194,16 +190,14 @@ fn create_import_code_action<'db>(
                 potential.file.qualified_name(db),
                 name.as_code()
             )
+        } else if let (_, Some(parent_dir)) = potential.file.name_and_parent_dir(db) {
+            format!(
+                "from {} import {}\n",
+                dotted_path_from_dir(&parent_dir),
+                name.as_code()
+            )
         } else {
-            if let (_, Some(parent_dir)) = potential.file.name_and_parent_dir(db) {
-                format!(
-                    "from {} import {}\n",
-                    dotted_path_from_dir(&parent_dir),
-                    name.as_code()
-                )
-            } else {
-                format!("import {}\n", potential.file.qualified_name(db))
-            }
+            format!("import {}\n", potential.file.qualified_name(db))
         },
     }
 }

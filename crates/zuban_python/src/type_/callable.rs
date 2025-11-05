@@ -837,7 +837,7 @@ impl CallableContent {
             .name
             .as_ref()
             .map(|n| n.as_str(db))
-            .unwrap_or_else(|| "<nameless>".into());
+            .unwrap_or_else(|| "<nameless>");
         let file = db.loaded_python_file(self.defined_at.file);
         let base = file.qualified_name(db);
         match self.class_name {

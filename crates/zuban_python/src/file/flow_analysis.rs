@@ -1220,9 +1220,9 @@ fn split_off_enum_member(
             }
             Type::None => (),
             _ => {
-                if matches!(sub_t, Type::Self_) {
-                    if let Some(cls) = i_s.current_class() {
-                        if let Some(enum_) = cls.maybe_enum(i_s.db) {
+                if matches!(sub_t, Type::Self_)
+                    && let Some(cls) = i_s.current_class()
+                        && let Some(enum_) = cls.maybe_enum(i_s.db) {
                             let (_, f) = split_off_enum_member(
                                 i_s,
                                 &Type::Enum(enum_),
@@ -1233,8 +1233,6 @@ fn split_off_enum_member(
                             add(f);
                             continue;
                         }
-                    }
-                }
                 if abort_on_custom_eq
                     && matches!(
                         enum_member.enum_.kind(i_s),
@@ -2706,18 +2704,16 @@ impl Inference<'_, '_, '_> {
                 let (name_def, as_name_def) = case_pattern.maybe_simple_name_assignments();
                 for name_def in name_def.into_iter().chain(as_name_def.into_iter()) {
                     let key = self.key_from_name_def(name_def);
-                    if let Some(found) = guard_falsey.lookup_entry(self.i_s.db, &key) {
-                        if let EntryKind::Type(t) = &found.type_ {
+                    if let Some(found) = guard_falsey.lookup_entry(self.i_s.db, &key)
+                        && let EntryKind::Type(t) = &found.type_ {
                             frames.falsey_t = Inferred::from_type(t.clone());
                             input_for_next_case_should_be_rewritten = false;
                         }
-                    }
-                    if let Some(found) = guard_truthy.lookup_entry(self.i_s.db, &key) {
-                        if let EntryKind::Type(t) = &found.type_ {
+                    if let Some(found) = guard_truthy.lookup_entry(self.i_s.db, &key)
+                        && let EntryKind::Type(t) = &found.type_ {
                             // We need to rerun this, because the types might have changed
                             self.narrow_subject(subject_key, &mut truthy_frame, Cow::Borrowed(t));
                         }
-                    }
                 }
 
                 truthy_frame = merge_and(self.i_s, truthy_frame, guard_truthy);
@@ -3019,7 +3015,7 @@ impl Inference<'_, '_, '_> {
 
     fn assign_to_pattern_name(&self, name_def: NameDef, inf: &Inferred) {
         let from = NodeRef::new(self.file, name_def.index());
-        self.assign_to_name_def_simple(name_def, from, &inf, AssignKind::Pattern);
+        self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Pattern);
     }
 
     fn find_guards_in_pattern_kind(
@@ -3113,7 +3109,7 @@ impl Inference<'_, '_, '_> {
     fn split_for_dotted_pattern_name(&self, inf: Inferred, dotted_t: &Type) -> PatternResult {
         let inf_t = inf.into_type(self.i_s);
         let fallback = |inf_t| {
-            let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, &dotted_t, |_| {});
+            let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, dotted_t, |_| {});
             if !truthy.is_singleton(self.i_s.db) {
                 falsey.union_in_place(inf_t)
             }
@@ -3175,8 +3171,8 @@ impl Inference<'_, '_, '_> {
         let inferred_target = inferred_target.as_cow_type(i_s);
         let target_t = match inferred_target.as_ref() {
             Type::Type(t) => {
-                if let Type::Class(c) = &**t {
-                    if !matches!(
+                if let Type::Class(c) = &**t
+                    && !matches!(
                         c.generics,
                         ClassGenerics::None | ClassGenerics::NotDefinedYet
                     ) {
@@ -3186,7 +3182,6 @@ impl Inference<'_, '_, '_> {
                             falsey_t: inf,
                         };
                     }
-                }
                 t.as_ref()
             }
             Type::Any(_) => {
@@ -3209,7 +3204,7 @@ impl Inference<'_, '_, '_> {
             }
         };
         let inf_type = inf.as_cow_type(i_s);
-        let (truthy, falsey) = split_and_intersect(self.i_s, &inf_type, &target_t, |issue| {
+        let (truthy, falsey) = split_and_intersect(self.i_s, &inf_type, target_t, |issue| {
             debug!("Intersection for class target not possible: {issue:?}");
         });
         let (mut truthy, falsey_new) = run_pattern_for_each_type(self.i_s, truthy, |t| {
@@ -3603,7 +3598,7 @@ impl Inference<'_, '_, '_> {
             TupleArgs::WithUnpack(u) => u.before.len() + u.after.len(),
             TupleArgs::FixedLen(items) => items.len(),
             TupleArgs::ArbitraryLen(t) => {
-                self.assign_sequence_patterns(&t, sequence_patterns);
+                self.assign_sequence_patterns(t, sequence_patterns);
                 return (Type::Tuple(tup.clone()), Type::Tuple(tup));
             }
         };
@@ -4496,7 +4491,7 @@ impl Inference<'_, '_, '_> {
                         let mut false_only_count = 0;
                         for str_literal in &str_literals {
                             // TODO extra_items: handle?
-                            if let Some(m) = td.find_member(db, *str_literal) {
+                            if let Some(m) = td.find_member(db, str_literal) {
                                 if m.required {
                                     true_only_count += 1;
                                 }

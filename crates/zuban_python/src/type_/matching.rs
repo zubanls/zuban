@@ -736,8 +736,8 @@ impl Type {
                             .nth_type_argument(i_s.db, 1)
                             .is_same_type(i_s, matcher, got_value);
                     }
-                } else if class1.node_ref == i_s.db.python_state.mapping_node_ref() {
-                    if td.has_extra_items(i_s.db) {
+                } else if class1.node_ref == i_s.db.python_state.mapping_node_ref()
+                    && td.has_extra_items(i_s.db) {
                         return class1.nth_type_argument(i_s.db, 0).is_same_type(
                             i_s,
                             matcher,
@@ -748,7 +748,6 @@ impl Type {
                             &td.union_of_all_types(i_s),
                         );
                     }
-                }
                 Match::new_false()
             }
             _ => Match::new_false(),

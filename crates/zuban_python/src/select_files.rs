@@ -28,8 +28,8 @@ pub(crate) fn diagnostics_for_relevant_files<'db>(
         .unwrap_or_default())
 }
 
-pub(crate) fn all_typechecked_files<'db>(
-    db: &'db Database,
+pub(crate) fn all_typechecked_files(
+    db: &Database,
 ) -> (
     FastHashSet<FileIndex>,
     Vec<(Arc<FileEntry>, PathWithScheme)>,

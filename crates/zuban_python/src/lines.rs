@@ -134,7 +134,7 @@ impl NewlineIndices {
             previous = line_indexes
                 .get(skip_n_lines - 1)
                 .copied()
-                .unwrap_or_else(|| line_indexes.len() as CodeIndex) as usize;
+                .unwrap_or(line_indexes.len() as CodeIndex) as usize;
         }
         line_indexes
             .iter()
@@ -144,8 +144,7 @@ impl NewlineIndices {
                     (*last as usize != code.len()).then(|| code.len() as CodeIndex + 1)
                 } else {
                     Some(code.len() as CodeIndex + 1)
-                }
-                .into_iter(),
+                },
             )
             .enumerate()
             .skip(skip_n_lines)

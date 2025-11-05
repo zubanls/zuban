@@ -843,11 +843,10 @@ impl LiteralValue<'_> {
         const MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION: usize = 1024 * 16;
         match (self, right) {
             (LiteralValue::Int(l), LiteralValue::Int(r)) => {
-                if let Ok(l) = l.try_into() {
-                    if let Ok(r) = r.try_into() {
+                if let Ok(l) = l.try_into()
+                    && let Ok(r) = r.try_into() {
                         return int_operations(db, l, operand, r, add_issue);
                     }
-                }
                 None
             }
             (LiteralValue::String(l), LiteralValue::String(r)) => (operand == "+").then(|| {

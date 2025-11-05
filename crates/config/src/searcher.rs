@@ -153,8 +153,8 @@ fn find_mypy_config_file_in_dir(
         diagnostic_config: DiagnosticConfig::default(),
         config_path,
     };
-    if let Some(pyproject_toml) = pyproject_toml {
-        if let Some(config) = pyproject_toml
+    if let Some(pyproject_toml) = pyproject_toml
+        && let Some(config) = pyproject_toml
             .get("tool")
             .and_then(|item| item.get("zuban"))
         {
@@ -173,7 +173,6 @@ fn find_mypy_config_file_in_dir(
                 true,
             )?
         }
-    }
     Ok(end_result.unwrap_or_else(|| {
         tracing::info!("No relevant config found");
         default_config(None)

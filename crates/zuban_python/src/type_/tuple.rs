@@ -538,8 +538,8 @@ impl WithUnpack {
             self.before
                 .iter()
                 .map(|t| t.format(format_data))
-                .chain(self.unpack.format(format_data).map(|s| s.into()))
-                .chain(self.after.iter().map(|t| t.format(format_data).into())),
+                .chain(self.unpack.format(format_data).map(|s| s))
+                .chain(self.after.iter().map(|t| t.format(format_data))),
         )
         .into()
     }
