@@ -762,6 +762,11 @@ impl<'db> PythonFile {
         }
     }
 
+    pub fn name(&self, db: &'db Database) -> &'db str {
+        let (name, parent_dir) = name_and_parent_dir(self.file_entry(db), true);
+        name.strip_suffix(STUBS_SUFFIX).unwrap_or(name)
+    }
+
     pub fn flags<'x>(&'x self, db: &'x Database) -> &'x FinalizedTypeCheckerFlags {
         self.maybe_more_specific_flags(db)
             .unwrap_or(&db.project.flags)

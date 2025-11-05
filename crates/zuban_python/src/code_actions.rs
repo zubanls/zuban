@@ -38,21 +38,25 @@ impl<'project> Document<'project> {
                 && matches!(name.parent(), NameParent::Atom { .. })
             {
                 let name = name.as_code();
-                for file in ImportFinder::find_importable_name(db, name) {
+                for potential in ImportFinder::find_importable_name(db, name) {
                     // It's probably very rare, but we never want duplicate titles
 
-                    let title = format!("Import `{}`", file.qualified_name(db));
+                    let title = format!("Import `{}`", potential.file.qualified_name(db));
                     if !actions.iter().any(|action| action.title == title) {
-                        let pos = file.byte_to_position_infos(db, 0);
+                        let pos = potential.file.byte_to_position_infos(db, 0);
                         actions.push(CodeAction {
                             title,
                             start_of_change: pos,
                             end_of_change: pos,
-                            replacement: format!(
-                                "from {} import {}",
-                                file.qualified_name(db),
-                                name
-                            ),
+                            replacement: if potential.needs_additional_name {
+                                format!(
+                                    "from {} import {}\n",
+                                    potential.file.qualified_name(db),
+                                    name
+                                )
+                            } else {
+                                format!("import {}\n", potential.file.qualified_name(db))
+                            },
                         })
                     }
                 }
@@ -76,11 +80,16 @@ pub struct CodeAction<'db> {
 struct ImportFinder<'db> {
     db: &'db Database,
     name: &'db str,
-    found: Mutex<Vec<&'db PythonFile>>,
+    found: Mutex<Vec<PotentialImport<'db>>>,
+}
+
+struct PotentialImport<'db> {
+    file: &'db PythonFile,
+    needs_additional_name: bool,
 }
 
 impl<'db> ImportFinder<'db> {
-    fn find_importable_name(db: &'db Database, name: &'db str) -> Vec<&'db PythonFile> {
+    fn find_importable_name(db: &'db Database, name: &'db str) -> Vec<PotentialImport<'db>> {
         let slf = ImportFinder {
             db,
             name,
@@ -124,16 +133,19 @@ impl<'db> ImportFinder<'db> {
         let Some(file_index) = self.db.load_file_from_workspace(entry, false) else {
             return false;
         };
-        let has_symbol = self
-            .db
-            .loaded_python_file(file_index)
-            .lookup_symbol(self.name)
-            .is_some();
+        let file = self.db.loaded_python_file(file_index);
+        if file.name(self.db) == self.name {
+            self.found.lock().unwrap().push(PotentialImport {
+                file,
+                needs_additional_name: false,
+            })
+        }
+        let has_symbol = file.lookup_symbol(self.name).is_some();
         if has_symbol {
-            self.found
-                .lock()
-                .unwrap()
-                .push(self.db.loaded_python_file(file_index))
+            self.found.lock().unwrap().push(PotentialImport {
+                file,
+                needs_additional_name: true,
+            })
         }
         has_symbol
     }
