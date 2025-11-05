@@ -3092,6 +3092,46 @@ impl<'db> ImportFrom<'db> {
         }
         unreachable!()
     }
+
+    pub fn insertion_point_for_new_name(&self, new_name: &str) -> InsertionPointForImportFrom {
+        for node in self.node.iter_children().skip(3) {
+            if node.is_type(Nonterminal(import_from_targets)) {
+                let first = node.nth_child(0);
+                if first.as_code() == "(" {
+                    let second_last = node
+                        .iter_children()
+                        .fold((None, None), |(_, curr), next| (curr, Some(next)))
+                        .0
+                        .unwrap();
+                    let mut insertion_code_index = second_last.end();
+                    let mut addition = String::new();
+                    if second_last.as_code() == "," {
+                        if second_last.suffix().starts_with(" ") {
+                            insertion_code_index += 1;
+                        } else {
+                            addition.push(' ');
+                        }
+                    } else {
+                        addition += ", ";
+                    }
+                    addition += new_name;
+                    return InsertionPointForImportFrom {
+                        insertion_code_index,
+                        addition,
+                    };
+                };
+            }
+        }
+        InsertionPointForImportFrom {
+            insertion_code_index: self.end(),
+            addition: format!(", {new_name}"),
+        }
+    }
+}
+
+pub struct InsertionPointForImportFrom {
+    pub insertion_code_index: CodeIndex,
+    pub addition: String,
 }
 
 pub enum ImportFromTargets<'db> {

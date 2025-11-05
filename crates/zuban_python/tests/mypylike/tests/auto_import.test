@@ -102,3 +102,70 @@ __main__.py:3: Code Actions:
 __main__.py:7: Code Actions:
 - Import `x.b`: 9:15-9:15 replaced with: ", b"
 - Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
+
+[case auto_import_with_parens]
+# flags: --no-typecheck
+from x import (a, b)
+#? code-actions
+c
+
+[file test2.py]
+from x import (a, b,)
+#? code-actions
+c
+
+[file test3.py]
+from x import (a, b, )
+#? code-actions
+c
+
+[file x.py]
+a = 1
+b = 1
+c = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `x.c`: 2:19-2:19 replaced with: ", c"
+test2.py:3: Code Actions:
+- Import `x.c`: 1:20-1:20 replaced with: " c"
+test3.py:3: Code Actions:
+- Import `x.c`: 1:21-1:21 replaced with: "c"
+
+[case auto_import_with_parens_multiline]
+# flags: --no-typecheck
+[file test1.py]
+from x import (
+    a, b
+    )
+#? code-actions
+c
+
+[file test2.py]
+from x import (
+    a,
+    b
+)
+#? code-actions
+c
+
+[file test3.py]
+from x import (
+    a,
+    b,
+)
+#? code-actions
+c
+
+[file x.py]
+a = 1
+b = 1
+c = 1
+
+[out]
+test1.py:5: Code Actions:
+- Import `x.c`: 2:8-2:8 replaced with: ", c"
+test2.py:6: Code Actions:
+- Import `x.c`: 3:5-3:5 replaced with: ", c"
+test3.py:6: Code Actions:
+- Import `x.c`: 3:6-3:6 replaced with: " c"

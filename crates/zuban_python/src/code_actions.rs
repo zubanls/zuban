@@ -168,12 +168,14 @@ fn create_import_code_action<'db>(
                         from_file.import_from_first_part_without_loading_file(db, imp),
                         Some(ImportResult::File(i)) if i == potential.file.file_index
                     ) {
-                        let pos = from_file.byte_to_position_infos(db, imp.end());
+                        let insertion = imp.insertion_point_for_new_name(name.as_code());
+                        let pos =
+                            from_file.byte_to_position_infos(db, insertion.insertion_code_index);
                         return CodeAction {
                             title,
                             start_of_change: pos,
                             end_of_change: pos,
-                            replacement: format!(", {}", name.as_code()),
+                            replacement: insertion.addition,
                         };
                     }
                 }
