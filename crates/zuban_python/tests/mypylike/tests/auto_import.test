@@ -64,8 +64,14 @@ def f() -> None:
 a = 1
 b = 1
 
+[file y.py]
+a = 1
+b = 1
+
 [out]
 __main__.py:4: Code Actions:
+- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
 - Import `x.b`: 2:15-2:15 replaced with: ", b"
 __main__.py:8: Code Actions:
 - Import `x.b`: 2:15-2:15 replaced with: ", b"
+- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"

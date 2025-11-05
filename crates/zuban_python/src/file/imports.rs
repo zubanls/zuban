@@ -165,7 +165,7 @@ impl PythonFile {
             .ensured_loaded_file(db)
     }
 
-    pub(super) fn import_from_first_part_without_loading_file(
+    pub fn import_from_first_part_without_loading_file(
         &self,
         db: &Database,
         import_from: ImportFrom,

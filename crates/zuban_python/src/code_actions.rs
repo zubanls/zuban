@@ -9,6 +9,7 @@ use crate::{
     database::{Database, Specific},
     debug,
     file::{File as _, PythonFile},
+    imports::ImportResult,
     node_ref::NodeRef,
 };
 
@@ -160,13 +161,18 @@ fn create_import_code_action<'db>(
         for imp in &from_file.all_imports {
             if imp.in_global_scope && imp.node_index < name.index() {
                 if let Some(imp) = NodeRef::new(from_file, imp.node_index).maybe_import_from() {
-                    let pos = from_file.byte_to_position_infos(db, imp.end());
-                    return CodeAction {
-                        title,
-                        start_of_change: pos,
-                        end_of_change: pos,
-                        replacement: format!(", {}", name.as_code()),
-                    };
+                    if matches!(
+                        from_file.import_from_first_part_without_loading_file(db, imp),
+                        Some(ImportResult::File(i)) if i == potential.file.file_index
+                    ) {
+                        let pos = from_file.byte_to_position_infos(db, imp.end());
+                        return CodeAction {
+                            title,
+                            start_of_change: pos,
+                            end_of_change: pos,
+                            replacement: format!(", {}", name.as_code()),
+                        };
+                    }
                 }
             }
         }
