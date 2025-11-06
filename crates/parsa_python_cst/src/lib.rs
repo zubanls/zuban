@@ -1,7 +1,7 @@
 mod bytes;
 mod completion;
 mod match_stmt;
-mod selection_ranges;
+mod ranges;
 mod signatures;
 mod strings;
 
@@ -25,7 +25,7 @@ use parsa_python::{
     PyNodeType::{self, ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
     PyTree, SearchIterator, SiblingIterator, TerminalType, parse,
 };
-pub use selection_ranges::Range;
+pub use ranges::Range;
 pub use signatures::{SignatureArg, SignatureArgsIterator, SignatureBase};
 pub use strings::PythonString;
 
