@@ -13,9 +13,9 @@ foo = 1
 __main__:3: error: Name "foo" is not defined
 __main__:6: error: Name "x" is not defined
 __main__.py:3: Code Actions:
-- Import `x.foo`: 1:0-1:0 replaced with: "from x import foo\n"
+- Import `x.foo`: 3:0-3:0 replaced with: "from x import foo\n"
 __main__.py:6: Code Actions:
-- Import `x`: 1:0-1:0 replaced with: "import x\n"
+- Import `x`: 3:0-3:0 replaced with: "import x\n"
 
 [case auto_import_with_selection_should_have_single_import_for_repeats]
 # flags: --no-typecheck
@@ -29,7 +29,7 @@ foo = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `x.foo`: 1:0-1:0 replaced with: "from x import foo\n"
+- Import `x.foo`: 4:0-4:0 replaced with: "from x import foo\n"
 
 [case auto_import_with_range]
 # flags: --no-typecheck
@@ -47,8 +47,8 @@ baz = 1
 
 [out]
 __main__.py:5: Code Actions:
-- Import `x.foo`: 1:0-1:0 replaced with: "from x import foo\n"
-- Import `x`: 1:0-1:0 replaced with: "import x\n"
+- Import `x.foo`: 3:0-3:0 replaced with: "from x import foo\n"
+- Import `x`: 3:0-3:0 replaced with: "import x\n"
 
 [case auto_import_add_name_to_from1]
 # flags: --no-typecheck
@@ -70,11 +70,11 @@ b = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
 - Import `x.b`: 2:15-2:15 replaced with: ", b"
 __main__.py:8: Code Actions:
 - Import `x.b`: 2:15-2:15 replaced with: ", b"
-- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
 
 [case auto_import_add_name_to_from2]
 # flags: --no-typecheck
@@ -97,11 +97,11 @@ b = 1
 
 [out]
 __main__.py:3: Code Actions:
-- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
-- Import `x.b`: 1:0-1:0 replaced with: "from x import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
+- Import `x.b`: 3:0-3:0 replaced with: "from x import b\n"
 __main__.py:7: Code Actions:
 - Import `x.b`: 9:15-9:15 replaced with: ", b"
-- Import `y.b`: 1:0-1:0 replaced with: "from y import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
 
 [case auto_import_with_parens]
 # flags: --no-typecheck
@@ -179,7 +179,7 @@ foo
 [file bar/baz/foo.py]
 [out]
 __main__.py:4: Code Actions:
-- Import `bar.baz.foo`: 1:0-1:0 replaced with: "from bar.baz import foo\n"
+- Import `bar.baz.foo`: 4:0-4:0 replaced with: "from bar.baz import foo\n"
 
 [case auto_import_of_nested_module]
 # flags: --no-typecheck
@@ -191,4 +191,60 @@ foo
 [file bar/foo.py]
 [out]
 __main__.py:4: Code Actions:
-- Import `bar.foo`: 1:0-1:0 replaced with: "from bar import foo\n"
+- Import `bar.foo`: 4:0-4:0 replaced with: "from bar import foo\n"
+
+[case auto_import_positions_with_docstrings]
+# flags: --no-typecheck
+[file test1.py]
+"hello"
+
+#? code-actions
+foo
+
+[file test2.py]
+"""
+hello
+"""
+
+#? code-actions
+foo
+
+[file test3.py]
+"""
+hello
+"""
+
+import bar
+#? code-actions
+foo
+
+[file x.py]
+foo = 1
+
+[out]
+test1.py:4: Code Actions:
+- Import `x.foo`: 2:0-2:0 replaced with: "from x import foo\n"
+test2.py:6: Code Actions:
+- Import `x.foo`: 4:0-4:0 replaced with: "from x import foo\n"
+test3.py:7: Code Actions:
+- Import `x.foo`: 6:0-6:0 replaced with: "from x import foo\n"
+
+[case auto_import_before_if]
+# flags: --no-typecheck
+"""
+hello
+"""
+from typing import TYPE_CHECKING
+# a
+if TYPE_CHECKING
+    import typing
+# b
+
+#? code-actions
+foo
+[file x.py]
+foo = 1
+
+[out]
+__main__.py:12: Code Actions:
+- Import `x.foo`: 6:0-6:0 replaced with: "from x import foo\n"

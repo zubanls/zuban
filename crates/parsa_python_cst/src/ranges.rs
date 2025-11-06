@@ -1,6 +1,12 @@
-use parsa_python::{CodeIndex, NonterminalType::*, PyNode, PyNodeType, TerminalType};
+use parsa_python::{
+    CodeIndex,
+    NonterminalType::*,
+    PyNode,
+    PyNodeType::{self, Nonterminal},
+    TerminalType,
+};
 
-use crate::Tree;
+use crate::{StarExpressions, Tree};
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Range {
@@ -44,6 +50,59 @@ impl Tree {
             previous: None,
         }
     }
+
+    pub fn initial_imports_end_code_index(&self) -> CodeIndex {
+        for (i, n) in self.0.root_node().iter_children().enumerate() {
+            let is_import = || {
+                if !n.is_type(Nonterminal(stmt)) {
+                    return false;
+                }
+                let first = n.nth_child(0);
+                if !first.is_type(Nonterminal(simple_stmts)) {
+                    return false;
+                }
+                for simp in first.iter_children().step_by(2) {
+                    if simp.is_type(Nonterminal(simple_stmt)) {
+                        let maybe_imp = simp.nth_child(0);
+                        if maybe_imp.is_type(Nonterminal(star_expressions)) {
+                            if i == 0
+                                && StarExpressions::new(maybe_imp)
+                                    .maybe_simple_expression()
+                                    .and_then(|expr| expr.maybe_string())
+                                    .is_some()
+                            {
+                                return true;
+                            }
+                        }
+                        if !maybe_imp.is_type(Nonterminal(import_from))
+                            && !maybe_imp.is_type(Nonterminal(import_name))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                true
+            };
+            if !is_import() {
+                let prefix = n.prefix_to_previous_leaf();
+                let mut last_newline = 0;
+                if n.previous_sibling().is_none() {
+                    // We want to preserve comments at the start of the file and will therefore
+                    // only remove whitespace.
+                    for (i, byte) in prefix.bytes().enumerate() {
+                        if byte == b'\n' {
+                            last_newline = i;
+                        } else if !byte.is_ascii_whitespace() {
+                            return n.start() - last_newline as CodeIndex;
+                        }
+                    }
+                }
+                dbg!(prefix);
+                return n.start() - prefix.len() as CodeIndex;
+            }
+        }
+        self.root().end()
+    }
 }
 
 struct SelectionRanges<'tree> {
@@ -69,7 +128,7 @@ impl Iterator for SelectionRanges<'_> {
                 return self.next();
             }
         }
-        if let PyNodeType::Nonterminal(stmt) = type_ {
+        if let Nonterminal(stmt) = type_ {
             let before_node_code = &self.code[..node.start() as usize];
             if let Some(prefix_n) = before_node_code.rfind('\n') {
                 // Set the start to after the newline, this is also how Pylance does it and seems
@@ -86,7 +145,7 @@ impl Iterator for SelectionRanges<'_> {
                 | TerminalType::ErrorDedent,
             )
             | PyNodeType::Keyword
-            | PyNodeType::Nonterminal(kwargs | block | simple_stmts) => self.next(),
+            | Nonterminal(kwargs | block | simple_stmts) => self.next(),
             _ => {
                 self.previous = Some(range);
                 Some(range)

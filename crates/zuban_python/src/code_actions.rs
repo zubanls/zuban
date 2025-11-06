@@ -108,12 +108,12 @@ impl<'db> ImportFinder<'db> {
             .search("__init__.pyi")
             .or_else(|| entries.search("__init__.py"))
             && let DirectoryEntry::File(__init__) = &*entry
-                && self.find_importable_name_in_file_entry(__init__)
-            {
-                // If we find a name in __init__.py, we should probably not be looking up the other
-                // imports.
-                return;
-            }
+            && self.find_importable_name_in_file_entry(__init__)
+        {
+            // If we find a name in __init__.py, we should probably not be looking up the other
+            // imports.
+            return;
+        }
         entries.borrow().par_iter().for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
                 self.find_importable_name_in_file_entry(entry);
@@ -160,26 +160,27 @@ fn create_import_code_action<'db>(
             let is_reachable = || {
                 imp.node_index < name.index() || matches!(name.parent_scope(), Scope::Function(_))
             };
-            if imp.in_global_scope && is_reachable()
+            if imp.in_global_scope
+                && is_reachable()
                 && let Some(imp) = NodeRef::new(from_file, imp.node_index).maybe_import_from()
-                    && matches!(
-                        from_file.import_from_first_part_without_loading_file(db, imp),
-                        Some(ImportResult::File(i)) if i == potential.file.file_index
-                    ) {
-                        let insertion = imp.insertion_point_for_new_name(name.as_code());
-                        let pos =
-                            from_file.byte_to_position_infos(db, insertion.insertion_code_index);
-                        return CodeAction {
-                            title,
-                            start_of_change: pos,
-                            end_of_change: pos,
-                            replacement: insertion.addition,
-                        };
-                    }
+                && matches!(
+                    from_file.import_from_first_part_without_loading_file(db, imp),
+                    Some(ImportResult::File(i)) if i == potential.file.file_index
+                )
+            {
+                let insertion = imp.insertion_point_for_new_name(name.as_code());
+                let pos = from_file.byte_to_position_infos(db, insertion.insertion_code_index);
+                return CodeAction {
+                    title,
+                    start_of_change: pos,
+                    end_of_change: pos,
+                    replacement: insertion.addition,
+                };
+            }
         }
     }
 
-    let pos = from_file.byte_to_position_infos(db, 0);
+    let pos = from_file.byte_to_position_infos(db, from_file.tree.initial_imports_end_code_index());
     CodeAction {
         title,
         start_of_change: pos,
