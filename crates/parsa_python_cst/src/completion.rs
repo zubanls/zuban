@@ -44,9 +44,6 @@ impl Tree {
             },
             position,
         );
-        if position < leaf.start() && leaf.prefix().contains("#") {
-            return (scope, CompletionNode::Global, rest);
-        }
         if let Some(previous) = leaf.previous_leaf() {
             match previous.as_code() {
                 "." => {

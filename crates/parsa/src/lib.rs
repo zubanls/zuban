@@ -169,15 +169,22 @@ macro_rules! __create_node {
                 self.code_slice(start, start + self.internal_node.length)
             }
 
-            pub fn prefix(&self) -> &'a str {
-                let start;
-                if self.index == 0 {
-                    start = 0;
-                } else {
-                    start = self.internal_tree.nodes[self.index as usize - 1].start_index;
+            pub fn prefix_to_previous_leaf(&self) -> &'a str {
+                let mut start = 0;
+                for node in self.internal_tree.nodes[..self.index as usize].iter().rev() {
+                    if node.type_.is_leaf() {
+                        start = node.start_index + node.length;
+                        break
+                    }
+                    if node.start_index >= self.internal_node.start_index + self.internal_node.length {
+                        let start = self.internal_node.start_index + self.internal_node.length;
+                        return self.code_slice(
+                            start,
+                            node.start_index,
+                        );
+                    }
                 }
-                let string = self.code_slice(start, self.internal_node.start_index);
-                string
+                self.code_slice(start, self.internal_node.start_index)
             }
 
             pub fn suffix(&self) -> &'a str {
