@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use parsa_python_cst::{Name, NameParent, Scope};
+use parsa_python_cst::{CodeIndex, Name, NameParent, Scope};
 use rayon::prelude::*;
 use vfs::{Directory, DirectoryEntry, Entries, FileEntry};
 
@@ -8,9 +8,10 @@ use crate::{
     Document, InputPosition, PositionInfos,
     database::{Database, Specific},
     debug,
-    file::{File as _, PythonFile, dotted_path_from_dir},
+    file::{File as _, FileImport, PythonFile, dotted_path_from_dir},
     imports::ImportResult,
     node_ref::NodeRef,
+    recoverable_error,
 };
 
 impl<'project> Document<'project> {
@@ -180,25 +181,112 @@ fn create_import_code_action<'db>(
         }
     }
 
-    let pos = from_file.byte_to_position_infos(db, from_file.tree.initial_imports_end_code_index());
+    let mut replacement = if potential.needs_additional_name {
+        format!(
+            "from {} import {}\n",
+            potential.file.qualified_name(db),
+            name.as_code()
+        )
+    } else if let (_, Some(parent_dir)) = potential.file.name_and_parent_dir(db) {
+        format!(
+            "from {} import {}\n",
+            dotted_path_from_dir(&parent_dir),
+            name.as_code()
+        )
+    } else {
+        format!("import {}\n", potential.file.qualified_name(db))
+    };
+    let pos = from_file.byte_to_position_infos(
+        db,
+        position_for_import(db, from_file, potential, &mut replacement),
+    );
     CodeAction {
         title,
         start_of_change: pos,
         end_of_change: pos,
-        replacement: if potential.needs_additional_name {
-            format!(
-                "from {} import {}\n",
-                potential.file.qualified_name(db),
-                name.as_code()
-            )
-        } else if let (_, Some(parent_dir)) = potential.file.name_and_parent_dir(db) {
-            format!(
-                "from {} import {}\n",
-                dotted_path_from_dir(&parent_dir),
-                name.as_code()
-            )
+        replacement,
+    }
+}
+
+fn position_for_import<'db>(
+    db: &'db Database,
+    from_file: &'db PythonFile,
+    potential: PotentialImport,
+    replacement: &mut String,
+) -> CodeIndex {
+    let end_of_imports = from_file.tree.initial_imports_end_code_index();
+    let auto_import_kind = file_to_kind(db, potential.file);
+    let mut previous_match = None;
+    for imp in from_file.all_imports.iter() {
+        let node_ref = NodeRef::new(from_file, imp.node_index);
+        if node_ref.node_start_position() >= end_of_imports {
+            break;
+        }
+        if let Some(kind) = imp.kind_for_auto_imports(db, from_file) {
+            let newline_end_after_import = || {
+                let end = node_ref.node_end_position();
+                if let Some(newline_index) = from_file.tree.code()[end as usize..].find('\n') {
+                    end + newline_index as CodeIndex + 1
+                } else {
+                    recoverable_error!("An import should always have a newline afterwards");
+                    end
+                }
+            };
+            if kind > auto_import_kind {
+                return if let Some((_, prev)) = previous_match {
+                    prev
+                } else {
+                    replacement.insert(0, '\n');
+                    newline_end_after_import()
+                };
+            }
+            previous_match = Some((kind, newline_end_after_import()));
+        }
+    }
+    if let Some((kind, prev)) = previous_match {
+        if kind < auto_import_kind {
+            replacement.insert(0, '\n');
+        }
+        prev
+    } else {
+        end_of_imports
+    }
+}
+
+#[derive(PartialOrd, PartialEq)]
+enum ImportKind {
+    Typeshed,
+    ThirdParty,
+    Project,
+}
+
+fn file_to_kind(db: &Database, file: &PythonFile) -> ImportKind {
+    match &file.file_entry(db).parent.workspace().kind {
+        vfs::WorkspaceKind::TypeChecking | vfs::WorkspaceKind::Fallback => ImportKind::Project,
+        vfs::WorkspaceKind::SitePackages => ImportKind::ThirdParty,
+        vfs::WorkspaceKind::Typeshed => ImportKind::Typeshed,
+    }
+}
+
+impl FileImport {
+    fn kind_for_auto_imports(&self, db: &Database, file: &PythonFile) -> Option<ImportKind> {
+        let from_file_index = |file_index| file_to_kind(db, db.loaded_python_file(file_index));
+        let node_ref = NodeRef::new(file, self.node_index);
+        if let Some(import_from) = node_ref.maybe_import_from() {
+            match file.import_from_first_part_without_loading_file(db, import_from)? {
+                ImportResult::File(file_index) => Some(from_file_index(file_index)),
+                _ => None,
+            }
         } else {
-            format!("import {}\n", potential.file.qualified_name(db))
-        },
+            // We just use the first file that can be loaded, because this is a heuristic anyway.
+            for dotted in node_ref.expect_import_name().iter_dotted_as_names() {
+                if let Some(ImportResult::File(file_index)) =
+                    file.cache_dotted_as_name_import(db, dotted)
+                {
+                    return Some(from_file_index(file_index));
+                }
+            }
+            None
+        }
     }
 }

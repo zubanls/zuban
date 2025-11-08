@@ -247,4 +247,18 @@ foo = 1
 
 [out]
 __main__.py:12: Code Actions:
-- Import `x.foo`: 6:0-6:0 replaced with: "from x import foo\n"
+- Import `x.foo`: 6:0-6:0 replaced with: "\nfrom x import foo\n"
+
+[case auto_import_groups_std_group]
+# flags: --no-typecheck
+
+from typing import TYPE_CHECKING
+
+#? code-actions
+foo
+[file x.py]
+foo = 1
+
+[out]
+__main__.py:6: Code Actions:
+- Import `x.foo`: 4:0-4:0 replaced with: "\nfrom x import foo\n"

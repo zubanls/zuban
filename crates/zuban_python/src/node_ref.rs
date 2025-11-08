@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_cst::{
     Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
-    Int, NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NameDefParent, NameImportParent,
+    ImportName, Int, NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NameDefParent, NameImportParent,
     NamedExpression, NodeIndex, Primary, PrimaryTarget, Scope, Slices, StarExpression,
     StarStarExpression, StarredExpression, StringLiteral,
 };
@@ -198,6 +198,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn expect_import_from(&self) -> ImportFrom<'file> {
         ImportFrom::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_import_name(&self) -> ImportName<'file> {
+        ImportName::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn expect_function(&self) -> FunctionDef<'file> {

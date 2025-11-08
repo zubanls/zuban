@@ -97,7 +97,6 @@ impl Tree {
                         }
                     }
                 }
-                dbg!(prefix);
                 return n.start() - prefix.len() as CodeIndex;
             }
         }

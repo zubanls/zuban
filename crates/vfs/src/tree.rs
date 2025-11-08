@@ -70,9 +70,13 @@ impl Parent {
     }
 
     pub fn workspace_path(&self) -> Arc<NormalizedPath> {
+        self.workspace().root_path.clone()
+    }
+
+    pub fn workspace(&self) -> Arc<Workspace> {
         match self {
-            Self::Directory(dir) => dir.upgrade().unwrap().parent.workspace_path(),
-            Self::Workspace(workspace) => workspace.upgrade().unwrap().root_path.clone(),
+            Self::Directory(dir) => dir.upgrade().unwrap().parent.workspace(),
+            Self::Workspace(workspace) => workspace.upgrade().unwrap(),
         }
     }
 
