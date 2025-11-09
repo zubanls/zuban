@@ -63,7 +63,6 @@ pub struct Settings {
 }
 
 impl Default for Settings {
-    // PythonVersion::new(3, 13)
     fn default() -> Self {
         Self {
             platform: None,
@@ -94,7 +93,7 @@ impl Settings {
 
     pub fn python_version_or_default(&self) -> PythonVersion {
         self.python_version
-            .unwrap_or_else(|| PythonVersion::new(3, 13))
+            .unwrap_or_else(|| PythonVersion::new(3, 14))
     }
 
     pub fn apply_python_executable(
