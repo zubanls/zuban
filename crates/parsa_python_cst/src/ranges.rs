@@ -89,7 +89,7 @@ impl Tree {
                 if n.previous_sibling().is_none() {
                     // We want to preserve comments at the start of the file and will therefore
                     // only remove whitespace.
-                    for (i, byte) in prefix.bytes().enumerate() {
+                    for (i, byte) in prefix.bytes().rev().enumerate() {
                         if byte == b'\n' {
                             last_newline = i;
                         } else if !byte.is_ascii_whitespace() {
@@ -150,5 +150,18 @@ impl Iterator for SelectionRanges<'_> {
                 Some(range)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_initial_imports_with_carriage_return() {
+        let code = "\r\n# x\r\nx\r\n";
+        let parsed = Tree::parse(code.into());
+        debug_assert_eq!(parsed.initial_imports_end_code_index(), 7);
+        let parsed = Tree::parse(code.replace('\r', "").into());
+        debug_assert_eq!(parsed.initial_imports_end_code_index(), 5);
     }
 }

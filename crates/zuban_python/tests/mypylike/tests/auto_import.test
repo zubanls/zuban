@@ -47,8 +47,8 @@ baz = 1
 
 [out]
 __main__.py:5: Code Actions:
-- Import `x.foo`: 3:0-3:0 replaced with: "from x import foo\n"
-- Import `x`: 3:0-3:0 replaced with: "import x\n"
+- Import `x.foo`: 2:0-2:0 replaced with: "from x import foo\n"
+- Import `x`: 2:0-2:0 replaced with: "import x\n"
 
 [case auto_import_add_name_to_from1]
 # flags: --no-typecheck
