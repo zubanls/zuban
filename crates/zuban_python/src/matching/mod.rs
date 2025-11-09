@@ -487,13 +487,13 @@ impl IteratorContent {
                             TupleUnpack::ArbitraryLen(t) => {
                                 let mut result = Type::Never(NeverCause::Other);
                                 for entry in unpack.before.iter().skip(*before_index) {
-                                    result = result
-                                        .gather_types_maybe_with_joins(i_s, entry, use_joins);
+                                    result =
+                                        result.gather_types_maybe_with_joins(i_s, entry, use_joins);
                                 }
                                 result = result.gather_types_maybe_with_joins(i_s, t, use_joins);
                                 for entry in unpack.after.iter().rev().skip(after).rev() {
-                                    result = result
-                                        .gather_types_maybe_with_joins(i_s, entry, use_joins);
+                                    result =
+                                        result.gather_types_maybe_with_joins(i_s, entry, use_joins);
                                 }
                                 result
                             }

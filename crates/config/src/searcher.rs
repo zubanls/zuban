@@ -157,22 +157,22 @@ fn find_mypy_config_file_in_dir(
         && let Some(config) = pyproject_toml
             .get("tool")
             .and_then(|item| item.get("zuban"))
-        {
-            if end_result.is_none() {
-                end_result = Some(default_config(Some(
-                    vfs.absolute_path(dir, PYPROJECT_TOML_NAME),
-                )));
-            }
-            let found = end_result.as_mut().unwrap();
-            found.project_options.apply_pyproject_table(
-                vfs,
-                dir,
-                found.config_path.as_ref().unwrap(),
-                &mut found.diagnostic_config,
-                config,
-                true,
-            )?
+    {
+        if end_result.is_none() {
+            end_result = Some(default_config(Some(
+                vfs.absolute_path(dir, PYPROJECT_TOML_NAME),
+            )));
         }
+        let found = end_result.as_mut().unwrap();
+        found.project_options.apply_pyproject_table(
+            vfs,
+            dir,
+            found.config_path.as_ref().unwrap(),
+            &mut found.diagnostic_config,
+            config,
+            true,
+        )?
+    }
     Ok(end_result.unwrap_or_else(|| {
         tracing::info!("No relevant config found");
         default_config(None)

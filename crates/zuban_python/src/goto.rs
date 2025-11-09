@@ -152,12 +152,12 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         };
         if let Some(result) = &result
             && let Some(node_ref) = result.maybe_saved_node_ref(self.db)
-                && node_ref.point().maybe_calculated_and_specific() == Some(Specific::SimpleGeneric)
-            {
-                return Some(Inferred::from_type(
-                    expect_class_or_simple_generic(self.db, node_ref).into_owned(),
-                ));
-            }
+            && node_ref.point().maybe_calculated_and_specific() == Some(Specific::SimpleGeneric)
+        {
+            return Some(Inferred::from_type(
+                expect_class_or_simple_generic(self.db, node_ref).into_owned(),
+            ));
+        }
         result
     }
 }
@@ -774,9 +774,9 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                         // We only want to check Python files, but loaded notebooks sometimes have
                         // different endings.
                         || file.get_file_index().is_some())
-                    {
-                        maybe_check_file(file)
-                    }
+                {
+                    maybe_check_file(file)
+                }
                 true
             });
         }

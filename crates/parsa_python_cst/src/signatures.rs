@@ -146,9 +146,9 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
                     if expr.is_type(Nonterminal(expression))
                         && let Some(AtomContent::Name(n)) =
                             Expression::new(expr).maybe_unpacked_atom()
-                        {
-                            return Some(SignatureArg::PositionalOrKeywordName(n.as_code()));
-                        }
+                    {
+                        return Some(SignatureArg::PositionalOrKeywordName(n.as_code()));
+                    }
                 }
                 if arg.is_type(Nonterminal(kwargs)) || arg.is_type(ErrorNonterminal(kwargs)) {
                     *args = arg.iter_children();
@@ -225,19 +225,19 @@ impl<'db> Iterator for ErrorStmtSignaturePart<'db> {
             }
             if inner.as_code() == "," {
                 if let Some(name) = inner.next_leaf()
-                    && name.is_type(Terminal(TerminalType::Name)) {
-                        if let Some(next) = name.next_leaf()
-                            && next.as_code() == "="
-                        {
-                            if let Some(after_eq) = next.next_sibling() {
-                                self.inner_stmt_iterator.inner_stmt_iterator =
-                                    after_eq.iter_children();
-                            }
-                            return Some(SignatureArg::Keyword(Name::new(name)));
-                        } else {
-                            return Some(SignatureArg::PositionalOrKeywordName(name.as_code()));
+                    && name.is_type(Terminal(TerminalType::Name))
+                {
+                    if let Some(next) = name.next_leaf()
+                        && next.as_code() == "="
+                    {
+                        if let Some(after_eq) = next.next_sibling() {
+                            self.inner_stmt_iterator.inner_stmt_iterator = after_eq.iter_children();
                         }
+                        return Some(SignatureArg::Keyword(Name::new(name)));
+                    } else {
+                        return Some(SignatureArg::PositionalOrKeywordName(name.as_code()));
                     }
+                }
                 return Some(SignatureArg::PositionalOrEmptyAfterComma);
             }
         }

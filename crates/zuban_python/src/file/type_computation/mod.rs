@@ -1461,15 +1461,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         };
         if self.i_s.db.project.flags.disallow_deprecated
-            && let TypeContent::Class { node_ref, .. } = &result {
-                let on_name = match node.maybe_unpacked_atom() {
-                    Some(AtomContent::Name(name)) => Some(NodeRef::new(self.file, name.index())),
-                    _ => None,
-                };
-                node_ref.add_issue_if_deprecated(self.i_s.db, on_name, |issue| {
-                    self.add_issue_for_index(node.index(), issue)
-                })
-            }
+            && let TypeContent::Class { node_ref, .. } = &result
+        {
+            let on_name = match node.maybe_unpacked_atom() {
+                Some(AtomContent::Name(name)) => Some(NodeRef::new(self.file, name.index())),
+                _ => None,
+            };
+            node_ref.add_issue_if_deprecated(self.i_s.db, on_name, |issue| {
+                self.add_issue_for_index(node.index(), issue)
+            })
+        }
         result
     }
 
@@ -3561,11 +3562,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         node_ref: class_node_ref,
                         ..
                     }) = &lookup
-                    {
-                        class_node_ref.add_issue_if_deprecated(i_s.db, None, |issue| {
-                            node_ref.add_type_issue(i_s.db, issue)
-                        });
-                    }
+                {
+                    class_node_ref.add_issue_if_deprecated(i_s.db, None, |issue| {
+                        node_ref.add_type_issue(i_s.db, issue)
+                    });
+                }
                 lookup
             }
             TypeLike::DottedAsName(dotted_as_name) => {

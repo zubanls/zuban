@@ -1137,10 +1137,11 @@ pub(crate) fn initialize_typed_dict<'db>(
         match arg_inf.as_cow_type(i_s).as_ref() {
             Type::TypedDict(arg_td) => {
                 if arg_td.defined_at != typed_dict.defined_at
-                    && !typed_dict.matches(i_s, &mut matcher, arg_td, false).bool() {
-                        first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
-                        return Inferred::new_any_from_error();
-                    }
+                    && !typed_dict.matches(i_s, &mut matcher, arg_td, false).bool()
+                {
+                    first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
+                    return Inferred::new_any_from_error();
+                }
             }
             _ => {
                 first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
@@ -1212,10 +1213,8 @@ pub(crate) fn lookup_on_typed_dict<'a>(
             return as_callable_without_params(i_s.db, td, "items", return_type);
         }
         "values" if td.has_extra_items(i_s.db) => {
-            let return_type = new_class!(
-                i_s.db.python_state.list_link(),
-                td.union_of_all_types(i_s),
-            );
+            let return_type =
+                new_class!(i_s.db.python_state.list_link(), td.union_of_all_types(i_s),);
             return as_callable_without_params(i_s.db, td, "values", return_type);
         }
         _ => {

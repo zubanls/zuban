@@ -1031,7 +1031,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 PropertyModifier::Setter(mut setter_type) => {
                     for dec in iterator {
-                        if let InferredDecorator::Deprecated(deprecated_reason) = infer_decorator_details(i_s, file, dec, true) {
+                        if let InferredDecorator::Deprecated(deprecated_reason) =
+                            infer_decorator_details(i_s, file, dec, true)
+                        {
                             setter_type = Arc::new(PropertySetter {
                                 deprecated_reason: Some(deprecated_reason),
                                 ..setter_type.as_ref().clone()

@@ -501,10 +501,9 @@ impl TypeCheckerFlags {
     }
 
     pub fn finalize(mut self) -> FinalizedTypeCheckerFlags {
-        if !self.disallow_deprecated
-            && self.enabled_error_codes.iter().any(|s| s == "deprecated") {
-                self.disallow_deprecated = true;
-            }
+        if !self.disallow_deprecated && self.enabled_error_codes.iter().any(|s| s == "deprecated") {
+            self.disallow_deprecated = true;
+        }
         FinalizedTypeCheckerFlags(self)
     }
 }

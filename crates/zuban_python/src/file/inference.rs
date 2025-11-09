@@ -1895,18 +1895,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // TODO The func should ALWAYS exist, this is just a bug at the moment.
                     if let Some(func) = i_s.current_function()
                         && let FirstParamKind::Self_ = func.first_param_kind(self.i_s)
-                            && let Some(in_class) = func.parent_class(self.i_s.db) {
-                                self.check_self_assign(
-                                    in_class,
-                                    primary_target,
-                                    name_def,
-                                    from,
-                                    value,
-                                    assign_kind,
-                                    save,
-                                );
-                                return;
-                            }
+                        && let Some(in_class) = func.parent_class(self.i_s.db)
+                    {
+                        self.check_self_assign(
+                            in_class,
+                            primary_target,
+                            name_def,
+                            from,
+                            value,
+                            assign_kind,
+                            save,
+                        );
+                        return;
+                    }
                 }
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 self.check_assign_arbitrary_named_expr(
@@ -2985,16 +2986,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 LookupKind::OnlyType,
                 &|issue| from.add_issue(i_s, issue),
                 &mut |l_type, lookup_result| {
-                    if op_infos.operand == "%" && l_type.is_allowed_as_literal_string(false)
+                    if op_infos.operand == "%"
+                        && l_type.is_allowed_as_literal_string(false)
                         && right
                             .as_cow_type(i_s)
                             .is_literal_string_only_argument_for_string_percent_formatting()
-                        {
-                            add_to_union(Inferred::from_type(Type::LiteralString {
-                                implicit: true,
-                            }));
-                            return;
-                        }
+                    {
+                        add_to_union(Inferred::from_type(Type::LiteralString { implicit: true }));
+                        return;
+                    }
 
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
@@ -4521,9 +4521,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let args = SimpleArgs::new(*self.i_s, self.file, primary.index(), exec);
             if let Some(arg) = args.iter(self.i_s.mode).next()
                 && let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown)
-                    && let Some(s) = inf.maybe_string_literal(self.i_s) {
-                        return Arc::new(s.as_str(self.i_s.db).into());
-                    }
+                && let Some(s) = inf.maybe_string_literal(self.i_s)
+            {
+                return Arc::new(s.as_str(self.i_s.db).into());
+            }
         }
         Arc::new("<Could not infer deprecated reason>".into())
     }

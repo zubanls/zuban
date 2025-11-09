@@ -155,9 +155,10 @@ impl<'db> CallSignatures<'db> {
                             ParamType::PositionalOnly(_) | ParamType::Star(_) => continue,
                             ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_) => {
                                 if let Some(name) = param.name(db)
-                                    && name == for_kwarg.as_code() {
-                                        return Some(i);
-                                    }
+                                    && name == for_kwarg.as_code()
+                                {
+                                    return Some(i);
+                                }
                             }
                             ParamType::StarStar(_) => {
                                 return Some(i);
@@ -184,9 +185,10 @@ impl<'db> CallSignatures<'db> {
                             }
                             ParamType::PositionalOrKeyword(_) => {
                                 if let Some(name) = param.name(db)
-                                    && used_kwargs.contains(&name) {
-                                        continue;
-                                    }
+                                    && used_kwargs.contains(&name)
+                                {
+                                    continue;
+                                }
                                 expected_positional -= 1;
                                 if expected_positional <= 0 {
                                     return Some(i);

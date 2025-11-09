@@ -844,9 +844,10 @@ impl LiteralValue<'_> {
         match (self, right) {
             (LiteralValue::Int(l), LiteralValue::Int(r)) => {
                 if let Ok(l) = l.try_into()
-                    && let Ok(r) = r.try_into() {
-                        return int_operations(db, l, operand, r, add_issue);
-                    }
+                    && let Ok(r) = r.try_into()
+                {
+                    return int_operations(db, l, operand, r, add_issue);
+                }
                 None
             }
             (LiteralValue::String(l), LiteralValue::String(r)) => (operand == "+").then(|| {

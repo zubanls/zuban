@@ -139,13 +139,11 @@ impl NewlineIndices {
         line_indexes
             .iter()
             .copied()
-            .chain(
-                if let Some(last) = line_indexes.last() {
-                    (*last as usize != code.len()).then(|| code.len() as CodeIndex + 1)
-                } else {
-                    Some(code.len() as CodeIndex + 1)
-                },
-            )
+            .chain(if let Some(last) = line_indexes.last() {
+                (*last as usize != code.len()).then(|| code.len() as CodeIndex + 1)
+            } else {
+                Some(code.len() as CodeIndex + 1)
+            })
             .enumerate()
             .skip(skip_n_lines)
             .map(move |(line_nr, line_index)| {

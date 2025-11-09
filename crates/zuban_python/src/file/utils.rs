@@ -668,10 +668,10 @@ pub fn should_add_deprecated(
     let Some(on_name) = on_name else { return false };
     if on_name.file.file_index == func_or_class.file.file_index
         && on_name.node_index >= func_or_class.node_index
-            && on_name.node_end_position() < func_or_class.node_end_position()
-        {
-            return true;
-        }
+        && on_name.node_end_position() < func_or_class.node_end_position()
+    {
+        return true;
+    }
     (|| {
         let redirect = on_name.maybe_redirect(db)?;
         if redirect.file.file_index != on_name.file.file_index {
