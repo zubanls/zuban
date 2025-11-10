@@ -2,7 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use parsa_python_cst::{CodeIndex, Name, NameParent, Scope};
 use rayon::prelude::*;
-use vfs::{Directory, DirectoryEntry, Entries, FileEntry};
+use utils::FastHashMap;
+use vfs::{Directory, DirectoryEntry, Entries, FileEntry, WorkspaceKind};
 
 use crate::{
     Document, InputPosition, PositionInfos,
@@ -55,6 +56,36 @@ impl<'project> Document<'project> {
             file.file_path(db),
         );
         Ok(actions)
+    }
+
+    pub fn typeshed_symbols(&self) -> FastHashMap<&'_ str, Vec<&'_ str>> {
+        let found: Mutex<FastHashMap<_, _>> = Default::default();
+        let db = &self.project.db;
+        for workspace in db.vfs.workspaces.iter() {
+            if matches!(&workspace.kind, WorkspaceKind::TypeChecking) {
+                on_each_file_in_entries(db, &workspace.entries, &|entry| {
+                    // sd
+                    let file_index = db.load_file_from_workspace(entry, false).unwrap();
+                    // Builtins are already reachable
+                    if file_index == db.python_state.builtins().file_index {
+                        return;
+                    }
+                    let file = db.loaded_python_file(file_index);
+                    let path = file.file_path(db);
+                    let stdlib_path = &path[path.rfind("stdlib").unwrap()..];
+                    let entries = file
+                        .symbol_table
+                        .iter()
+                        .filter_map(|(name, &node_index)| {
+                            // TODO
+                            Some(name)
+                        })
+                        .collect();
+                    assert!(found.lock().unwrap().insert(stdlib_path, entries).is_none());
+                })
+            }
+        }
+        found.into_inner().unwrap()
     }
 }
 
@@ -146,6 +177,20 @@ impl<'db> ImportFinder<'db> {
         }
         has_symbol
     }
+}
+
+fn on_each_file_in_entries(
+    db: &Database,
+    entries: &Entries,
+    on_entry: &(impl Fn(&Arc<FileEntry>) + Sync + Send),
+) {
+    entries.borrow().par_iter().for_each(|entry| match entry {
+        DirectoryEntry::File(entry) => on_entry(entry),
+        DirectoryEntry::MissingEntry(_) => (),
+        DirectoryEntry::Directory(dir) => {
+            on_each_file_in_entries(db, Directory::entries(&*db.vfs.handler, dir), on_entry)
+        }
+    })
 }
 
 fn create_import_code_action<'db>(

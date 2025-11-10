@@ -1672,6 +1672,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
 
 [[package]]
+name = "typeshed_symbols"
+version = "0.2.2"
+
+[[package]]
+name = "typeshed_symbols_generator"
+version = "0.2.2"
+dependencies = [
+ "config",
+ "zuban_python",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
