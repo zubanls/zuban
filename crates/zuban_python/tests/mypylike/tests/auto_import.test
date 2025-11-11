@@ -295,3 +295,35 @@ foo = 1
 __main__.py:4: Code Actions:
 - Import `y.foo`: 4:0-4:0 replaced with: "from y import foo\n"
 - Import `x.foo`: 4:0-4:0 replaced with: "from x import foo\n"
+
+[case auto_import_with_dunder_init_reexport]
+# flags: --no-typecheck
+
+#? code-actions
+complete_pls
+
+[file x/__init__.py]
+from x.y import complete_pls
+
+[file x/y.py]
+complete_pls = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n"
+
+[case auto_import_with_dunder_init_relative]
+# flags: --no-typecheck
+
+#? code-actions
+complete_pls
+
+[file x/__init__.py]
+from .y import complete_pls
+
+[file x/y.py]
+complete_pls = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n"

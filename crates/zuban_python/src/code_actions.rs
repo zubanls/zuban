@@ -5,7 +5,9 @@ use std::{
 };
 
 use config::ProjectOptions;
-use parsa_python_cst::{CodeIndex, Name, NameParent, Scope};
+use parsa_python_cst::{
+    CodeIndex, DottedImportName, DottedImportNameContent, Name, NameImportParent, NameParent, Scope,
+};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use utils::FastHashMap;
@@ -125,14 +127,21 @@ impl<'db> ImportFinder<'db> {
             // imports.
             return;
         }
-        entries.borrow().par_iter().for_each(|entry| match entry {
+        let entries: Vec<_> = entries
+            .borrow()
+            .iter()
+            .filter_map(|dir_entry| match dir_entry {
+                DirectoryEntry::MissingEntry(_) => None,
+                e => Some(e.clone()),
+            })
+            .collect();
+        entries.into_par_iter().for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
-                self.find_importable_name_in_file_entry(entry);
+                self.find_importable_name_in_file_entry(&entry);
             }
-            DirectoryEntry::MissingEntry(_) => (),
-            DirectoryEntry::Directory(dir) => {
-                self.find_importable_name_in_entries(Directory::entries(&*self.db.vfs.handler, dir))
-            }
+            DirectoryEntry::MissingEntry(_) => unreachable!("Removed above"),
+            DirectoryEntry::Directory(dir) => self
+                .find_importable_name_in_entries(Directory::entries(&*self.db.vfs.handler, &dir)),
         })
     }
 
@@ -148,7 +157,20 @@ impl<'db> ImportFinder<'db> {
             })
         }
         if let Some(symbol) = file.lookup_symbol(self.name) {
-            if is_private_import_and_not_in_dunder_all(self.db, symbol) {
+            if is_private_import_and_not_in_dunder_all(self.db, symbol, |imp| match imp {
+                NameImportParent::ImportFromAsName(from_as_name) => from_as_name
+                    .import_from()
+                    .is_some_and(|import_from| match import_from.level_with_dotted_name() {
+                        (0, Some(imp)) => {
+                            let (_, is_package) = file.file_entry_and_is_package(self.db);
+                            !(is_package || has_import_of_file(self.db, file, imp))
+                        }
+                        (1, _) => false, // Imports from the same package are not private
+                        // Levels bigger than two should not be public
+                        _ => true,
+                    }),
+                NameImportParent::DottedAsName(_) => true,
+            }) {
                 return false;
             }
             self.found.lock().unwrap().push(PotentialImport {
@@ -161,18 +183,19 @@ impl<'db> ImportFinder<'db> {
     }
 }
 
-fn on_each_file_in_entries(
-    db: &Database,
-    entries: &Entries,
-    on_entry: &(impl Fn(&Arc<FileEntry>) + Sync + Send),
-) {
-    entries.borrow().par_iter().for_each(|entry| match entry {
-        DirectoryEntry::File(entry) => on_entry(entry),
-        DirectoryEntry::MissingEntry(_) => (),
-        DirectoryEntry::Directory(dir) => {
-            on_each_file_in_entries(db, Directory::entries(&*db.vfs.handler, dir), on_entry)
-        }
-    })
+fn all_recursive_file_entries(db: &Database, entries: &Entries) -> Vec<Arc<FileEntry>> {
+    fn recurse(db: &Database, found: &mut Vec<Arc<FileEntry>>, entries: &Entries) {
+        entries.borrow().iter().for_each(|entry| match entry {
+            DirectoryEntry::File(entry) => found.push(entry.clone()),
+            DirectoryEntry::MissingEntry(_) => (),
+            DirectoryEntry::Directory(dir) => {
+                recurse(db, found, Directory::entries(&*db.vfs.handler, dir))
+            }
+        })
+    }
+    let mut found = vec![];
+    recurse(db, &mut found, entries);
+    found
 }
 
 fn create_import_code_action<'db>(
@@ -365,28 +388,31 @@ impl TypeshedSymbols {
         let found: Mutex<Self> = Default::default();
         for workspace in db.vfs.workspaces.iter() {
             if matches!(&workspace.kind, WorkspaceKind::TypeChecking) {
-                on_each_file_in_entries(db, &workspace.entries, &|entry| {
-                    // sd
-                    let file_index = db.load_file_from_workspace(entry, false).unwrap();
-                    // Builtins are already reachable
-                    if file_index == db.python_state.builtins().file_index {
-                        return;
-                    }
-                    let file = db.loaded_python_file(file_index);
-                    let path = file.file_path(db);
+                all_recursive_file_entries(db, &workspace.entries)
+                    .par_iter()
+                    .for_each(|entry| {
+                        let file_index = db.load_file_from_workspace(entry, false).unwrap();
+                        // Builtins are already reachable
+                        if file_index == db.python_state.builtins().file_index {
+                            return;
+                        }
+                        let file = db.loaded_python_file(file_index);
+                        let path = file.file_path(db);
 
-                    let mut found = found.lock().unwrap();
-                    let index = found.files.len() as u32;
-                    found.files.push((**path).to_string());
-                    for (name, &node_index) in file.symbol_table.iter() {
-                        match found.symbols.entry(name.to_string()) {
-                            Entry::Occupied(mut occupied) => occupied.get_mut().insert_last(index),
-                            Entry::Vacant(vacant) => {
-                                vacant.insert_entry(SingleLinkedList::new(index));
+                        let mut found = found.lock().unwrap();
+                        let index = found.files.len() as u32;
+                        found.files.push((**path).to_string());
+                        for (name, &node_index) in file.symbol_table.iter() {
+                            match found.symbols.entry(name.to_string()) {
+                                Entry::Occupied(mut occupied) => {
+                                    occupied.get_mut().insert_last(index)
+                                }
+                                Entry::Vacant(vacant) => {
+                                    vacant.insert_entry(SingleLinkedList::new(index));
+                                }
                             }
                         }
-                    }
-                })
+                    })
             }
         }
         found.into_inner().unwrap()
@@ -427,5 +453,22 @@ impl<T> SingleLinkedList<T> {
             current = next;
         }
         current.next = Some(Box::new(Self { value, next: None }));
+    }
+}
+
+fn has_import_of_file(db: &Database, file: &PythonFile, dotted: DottedImportName) -> bool {
+    if let DottedImportNameContent::DottedName(dotted_inner, _) = dotted.unpack()
+        && has_import_of_file(db, file, dotted_inner)
+    {
+        return true;
+    };
+    if let Some(result) = file.cache_import_dotted_name(db, dotted, None) {
+        match result {
+            ImportResult::File(file_index) => file_index == file.file_index,
+            ImportResult::Namespace(_) => false,
+            ImportResult::PyTypedMissing => false,
+        }
+    } else {
+        false
     }
 }
