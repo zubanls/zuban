@@ -294,21 +294,25 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
             return p;
         }
     } else {
-        let lib_folder = env_folder.join("lib");
-        // The lib folder typically contains a Python specific folder called "python3.8" or
-        // python3.13", corresponding to the Python version. Here we try to find the package.
-        for folder in lib_folder.read_dir().unwrap_or_else(|err| {
-            panic!(
-                "The Python environment lib folder {lib_folder:?} should be readable ({err}).
-                    You might want to set ZUBAN_TYPESHED."
-            )
-        }) {
-            let folder = folder.unwrap_or_else(|err| {
-                panic!("The lib folder {lib_folder:?} should be readable ({err})")
-            });
-            let p = folder.path();
-            if let Some(found) = maybe_has_zuban(&p) {
-                return found;
+        // On Fedora / Redhat based systems with 64-bit architectures, Zuban is installed
+        // in the lib64 directory. We should look there as well.
+        let lib_folders = vec![env_folder.join("lib"), env_folder.join("lib64")];
+        for lib_folder in &lib_folders {
+            // The lib folder typically contains a Python specific folder called "python3.8" or
+            // python3.13", corresponding to the Python version. Here we try to find the package.
+            for folder in lib_folder.read_dir().unwrap_or_else(|err| {
+                panic!(
+                    "The Python environment lib folder {lib_folder:?} should be readable ({err}).
+                        You might want to set ZUBAN_TYPESHED."
+                )
+            }) {
+                let folder = folder.unwrap_or_else(|err| {
+                    panic!("The lib folder {lib_folder:?} should be readable ({err})")
+                });
+                let p = folder.path();
+                if let Some(found) = maybe_has_zuban(&p) {
+                    return found;
+                }
             }
         }
     }
