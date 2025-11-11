@@ -453,7 +453,13 @@ impl TypeshedSymbols {
                     .for_each(|entry| {
                         let file_index = db.load_file_from_workspace(entry, false).unwrap();
                         // Builtins are already reachable
-                        if file_index == db.python_state.builtins().file_index {
+                        if file_index == db.python_state.builtins().file_index
+                            // Underscored modules are private
+                            || entry.name.starts_with("_")
+                            // For now disable typing_extensions, because it essentially contains
+                            // the almost exact same items as typing.pyi
+                            || entry.name.as_ref() == "typing_extensions.pyi"
+                        {
                             return;
                         }
                         let file = db.loaded_python_file(file_index);
@@ -464,6 +470,13 @@ impl TypeshedSymbols {
                             path: (**file.file_path(db)).to_string(),
                         });
                         for (name, &node_index) in file.symbol_table.iter() {
+                            if is_private_import_and_not_in_dunder_all(
+                                db,
+                                NodeRef::new(file, node_index),
+                                |_| true,
+                            ) {
+                                continue;
+                            }
                             match found.symbols_to_files.entry(name.to_string()) {
                                 Entry::Occupied(mut occupied) => {
                                     occupied.get_mut().insert_last(index)

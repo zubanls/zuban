@@ -249,7 +249,7 @@ completepls = 1
 __main__.py:12: Code Actions:
 - Import `x.completepls`: 6:0-6:0 replaced with: "\nfrom x import completepls\n"
 
-[case auto_import_groups_std_group]
+[case auto_import_groups_project_group]
 # flags: --no-typecheck
 
 from typing import TYPE_CHECKING
@@ -262,6 +262,36 @@ completepls = 1
 [out]
 __main__.py:6: Code Actions:
 - Import `x.completepls`: 4:0-4:0 replaced with: "\nfrom x import completepls\n"
+
+[case auto_import_groups_stdlib_group1]
+# flags: --no-typecheck
+
+from pathlib import Path
+
+#? code-actions
+ParamSpec
+
+[out]
+__main__.py:6: Code Actions:
+- Import `typing.ParamSpec`: 4:0-4:0 replaced with: "from typing import ParamSpec\n"
+- Import `ast.ParamSpec`: 4:0-4:0 replaced with: "from ast import ParamSpec\n"
+
+[case auto_import_groups_stdlib_group2]
+# flags: --no-typecheck
+
+from pathlib import Path
+
+import x
+
+#? code-actions
+TypeVar
+
+[file x.py]
+
+[out]
+__main__.py:8: Code Actions:
+- Import `typing.TypeVar`: 4:0-4:0 replaced with: "from typing import TypeVar\n"
+- Import `ast.TypeVar`: 4:0-4:0 replaced with: "from ast import TypeVar\n"
 
 [case auto_import_do_not_add_imports]
 # flags: --no-typecheck
