@@ -10,8 +10,9 @@ use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
 use rayon::prelude::*;
 use vfs::{
-    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, InvalidationResult, LocalFS,
-    NormalizedPath, PathWithScheme, Vfs, VfsFile as _, VfsHandler, Workspace, WorkspaceKind,
+    AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex,
+    InvalidationResult, LocalFS, NormalizedPath, PathWithScheme, Vfs, VfsFile as _, VfsHandler,
+    Workspace, WorkspaceKind,
 };
 
 use crate::{
@@ -1193,6 +1194,16 @@ impl Database {
 
     pub fn file_path(&self, index: FileIndex) -> &NormalizedPath {
         self.vfs.file_path(index).path()
+    }
+
+    pub fn file_by_file_path(&self, path: &PathWithScheme) -> Option<FileIndex> {
+        let DirOrFile::File(file_entry) = self
+            .vfs
+            .search_path(self.project.flags.case_sensitive, path)?
+        else {
+            return None;
+        };
+        self.load_file_from_workspace(&file_entry, false)
     }
 
     pub fn load_sub_file(

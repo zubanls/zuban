@@ -42,7 +42,7 @@ use name::Range;
 use parsa_python_cst::{GotoNode, Scope, Tree};
 use rayon::prelude::*;
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
-use vfs::{AbsPath, DirOrFile, FileIndex, LocalFS, PathWithScheme, VfsHandler};
+use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 pub use code_actions::CodeAction;
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
@@ -221,15 +221,7 @@ impl Project {
     }
 
     pub fn document(&mut self, path: &PathWithScheme) -> Option<Document<'_>> {
-        let DirOrFile::File(file_entry) = self
-            .db
-            .vfs
-            .search_path(self.db.project.flags.case_sensitive, path)?
-        else {
-            return None;
-        };
-
-        let file_index = self.db.load_file_from_workspace(&file_entry, false)?;
+        let file_index = self.db.file_by_file_path(path)?;
         tracing::debug!("Looking at document #{file_index} for {}", path.as_uri());
         Some(Document {
             project: self,

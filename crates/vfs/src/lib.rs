@@ -78,7 +78,7 @@ pub trait VfsHandler: Sync + Send {
         }
     }
 
-    fn normalize_uncheck_abs_path(&self, path: &str) -> Arc<NormalizedPath> {
+    fn normalize_unchecked_abs_path(&self, path: &str) -> Arc<NormalizedPath> {
         self.normalize_rc_path(self.unchecked_abs_path(path))
     }
 

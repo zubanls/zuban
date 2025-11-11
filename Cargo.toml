@@ -40,7 +40,7 @@ num-bigint = "*"
 num-traits = "*"
 rayon = "*"
 regex = "*"
-serde = { version = "*", features = ["derive", "rc"] }
+serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 shellexpand = "*"
 toml_edit = "*"

@@ -11,7 +11,7 @@ use parsa_python_cst::{
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use utils::FastHashMap;
-use vfs::{Directory, DirectoryEntry, Entries, FileEntry, NormalizedPath, WorkspaceKind};
+use vfs::{Directory, DirectoryEntry, Entries, FileEntry, PathWithScheme, WorkspaceKind};
 
 use crate::{
     Document, InputPosition, Mode, PositionInfos, Project,
@@ -107,11 +107,33 @@ impl<'db> ImportFinder<'db> {
             found: Default::default(),
         };
         for workspace in db.vfs.workspaces.iter() {
-            if !workspace.is_type_checked() {
-                // TODO support this
-                continue;
-            }
-            slf.find_importable_name_in_entries(&workspace.entries)
+            match &workspace.kind {
+                WorkspaceKind::TypeChecking => {
+                    slf.find_importable_name_in_entries(&workspace.entries)
+                }
+                WorkspaceKind::SitePackages => (), // TODO !
+                WorkspaceKind::Typeshed => {
+                    let symbols = TypeshedSymbols::cached(db);
+                    let mut found = slf.found.lock().unwrap();
+                    for typeshed_file in symbols.lookup(name) {
+                        let path = db
+                            .vfs
+                            .handler
+                            .normalize_unchecked_abs_path(&typeshed_file.path);
+                        if let Some(file_index) =
+                            db.file_by_file_path(&PathWithScheme::with_file_scheme(path))
+                        {
+                            found.push(PotentialImport {
+                                file: db.loaded_python_file(file_index),
+                                needs_additional_name: true,
+                            });
+                        }
+                    }
+                }
+                // These are not reachable via normal sys path and we should therefore not add this
+                // to the auto imports
+                WorkspaceKind::Fallback => (),
+            };
         }
         slf.found.into_inner().unwrap()
     }
@@ -342,21 +364,37 @@ impl FileImport {
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
+struct TypeshedFile {
+    // This should probably be an Arc<NormalizedPath>, but I'm not sure how to
+    // deserialize that.
+    path: String,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
 struct TypeshedSymbols {
-    files: Vec<String>,
+    files: Vec<TypeshedFile>,
     // The value is the vec of a file index in the typeshed symbols.
     // It's a linked list not a Vec, because most of the time there's only one definition for a
     // name.
-    symbols: FastHashMap<String, SingleLinkedList<u32>>,
+    symbols_to_files: FastHashMap<String, SingleLinkedList<u32>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct VersionedTypeshedSymbols {
+    version: usize,
+    typeshed_path: String,
+    symbols: TypeshedSymbols,
 }
 
 impl TypeshedSymbols {
-    fn cached() -> &'static Self {
+    fn cached(db: &Database) -> &'static Self {
         static CELL: OnceLock<TypeshedSymbols> = OnceLock::new();
+        const TYPESHED_CACHE_VERSION: usize = 1;
         CELL.get_or_init(|| {
             let cache = || {
-                let project =
-                    Project::without_watcher(ProjectOptions::default(), Mode::LanguageServer);
+                let mut options = ProjectOptions::default();
+                options.settings.typeshed_path = db.project.settings.typeshed_path.clone();
+                let project = Project::without_watcher(options, Mode::LanguageServer);
                 Self::generate_typeshed_symbols(&project.db)
             };
 
@@ -366,10 +404,31 @@ impl TypeshedSymbols {
             {
                 const CACHE_FILE_NAME: &'static str = "typeshed.cache";
                 let file = cache_dir.join(CACHE_FILE_NAME);
-                if let Some(cached) = load_cache(&file) {
-                    return cached;
+                let typeshed_path =
+                    db.project
+                        .settings
+                        .typeshed_path
+                        .clone()
+                        .unwrap_or_else(|| {
+                            for workspace in db.vfs.workspaces.iter() {
+                                if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
+                                    return workspace.root_path.clone();
+                                }
+                            }
+                            unreachable!("There should always be a typeshed workspace kind")
+                        });
+                if let Some(cached) = load_cache::<VersionedTypeshedSymbols>(&file)
+                    && cached.version == TYPESHED_CACHE_VERSION
+                    && *cached.typeshed_path.as_str() == ***typeshed_path
+                {
+                    return cached.symbols;
                 }
-                let result = cache();
+                let result = VersionedTypeshedSymbols {
+                    version: TYPESHED_CACHE_VERSION,
+                    typeshed_path: typeshed_path.to_string(),
+                    symbols: cache(),
+                };
+                /* TODO
                 match utils::serialize_binary(&result) {
                     Ok(bytes) => {
                         if let Err(err) = std::fs::write(file, bytes) {
@@ -378,7 +437,8 @@ impl TypeshedSymbols {
                     }
                     Err(err) => tracing::error!("Could not serialize typeshed.cache: {err:?}"),
                 };
-                return result;
+                */
+                return result.symbols;
             }
             cache()
         })
@@ -387,7 +447,7 @@ impl TypeshedSymbols {
     fn generate_typeshed_symbols(db: &Database) -> Self {
         let found: Mutex<Self> = Default::default();
         for workspace in db.vfs.workspaces.iter() {
-            if matches!(&workspace.kind, WorkspaceKind::TypeChecking) {
+            if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
                 all_recursive_file_entries(db, &workspace.entries)
                     .par_iter()
                     .for_each(|entry| {
@@ -397,13 +457,14 @@ impl TypeshedSymbols {
                             return;
                         }
                         let file = db.loaded_python_file(file_index);
-                        let path = file.file_path(db);
 
                         let mut found = found.lock().unwrap();
                         let index = found.files.len() as u32;
-                        found.files.push((**path).to_string());
+                        found.files.push(TypeshedFile {
+                            path: (**file.file_path(db)).to_string(),
+                        });
                         for (name, &node_index) in file.symbol_table.iter() {
-                            match found.symbols.entry(name.to_string()) {
+                            match found.symbols_to_files.entry(name.to_string()) {
                                 Entry::Occupied(mut occupied) => {
                                     occupied.get_mut().insert_last(index)
                                 }
@@ -416,6 +477,14 @@ impl TypeshedSymbols {
             }
         }
         found.into_inner().unwrap()
+    }
+
+    fn lookup(&self, name: &str) -> impl Iterator<Item = &'_ TypeshedFile> {
+        self.symbols_to_files
+            .get(name)
+            .map(|lst| lst.iter().map(|&index| &self.files[index as usize]))
+            .into_iter()
+            .flatten()
     }
 }
 
@@ -453,6 +522,25 @@ impl<T> SingleLinkedList<T> {
             current = next;
         }
         current.next = Some(Box::new(Self { value, next: None }));
+    }
+
+    fn iter(&self) -> SingleLinkedListIter<'_, T> {
+        SingleLinkedListIter { next: Some(self) }
+    }
+}
+
+pub struct SingleLinkedListIter<'a, T> {
+    next: Option<&'a SingleLinkedList<T>>,
+}
+
+impl<'a, T> Iterator for SingleLinkedListIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.map(|node| {
+            self.next = node.next.as_deref();
+            &node.value
+        })
     }
 }
 

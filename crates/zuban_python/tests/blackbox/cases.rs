@@ -70,7 +70,7 @@ impl TestFile<'_> {
     pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize, usize) {
         let path = project
             .vfs_handler()
-            .normalize_uncheck_abs_path(self.path.to_str().unwrap());
+            .normalize_unchecked_abs_path(self.path.to_str().unwrap());
         let path_with_scheme = PathWithScheme::with_file_scheme(path.clone());
         let mut document = DocumentKeeper::Uninitialized(project, path_with_scheme);
         let cases = self.find_test_cases();

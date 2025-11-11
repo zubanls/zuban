@@ -1,19 +1,19 @@
 [case auto_import_our_own_mods]
 
 #? code-actions
-foo
+completepls
 
 #? --codepoint-column 0 code-actions
-x.foo
+x.completepls
 
 [file x.py]
-foo = 1
+completepls = 1
 
 [out]
-__main__:3: error: Name "foo" is not defined
+__main__:3: error: Name "completepls" is not defined
 __main__:6: error: Name "x" is not defined
 __main__.py:3: Code Actions:
-- Import `x.foo`: 3:0-3:0 replaced with: "from x import foo\n"
+- Import `x.completepls`: 3:0-3:0 replaced with: "from x import completepls\n"
 __main__.py:6: Code Actions:
 - Import `x`: 3:0-3:0 replaced with: "import x\n"
 
@@ -21,33 +21,33 @@ __main__.py:6: Code Actions:
 # flags: --no-typecheck
 
 #? code-actions --until-line 6
-foo
-foo
+completepls
+completepls
 
 [file x.py]
-foo = 1
+completepls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `x.foo`: 4:0-4:0 replaced with: "from x import foo\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n"
 
 [case auto_import_with_range]
 # flags: --no-typecheck
 
 bar
 #? code-actions --until-line 6
-foo
+completepls
 x
 baz
 
 [file x.py]
-foo = 1
+completepls = 1
 bar = 1
 baz = 1
 
 [out]
 __main__.py:5: Code Actions:
-- Import `x.foo`: 2:0-2:0 replaced with: "from x import foo\n"
+- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n"
 - Import `x`: 2:0-2:0 replaced with: "import x\n"
 
 [case auto_import_add_name_to_from1]
@@ -107,30 +107,30 @@ __main__.py:7: Code Actions:
 # flags: --no-typecheck
 from x import (a, b)
 #? code-actions
-c
+completeme
 
 [file test2.py]
 from x import (a, b,)
 #? code-actions
-c
+completeme
 
 [file test3.py]
 from x import (a, b, )
 #? code-actions
-c
+completeme
 
 [file x.py]
 a = 1
 b = 1
-c = 1
+completeme = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `x.c`: 2:19-2:19 replaced with: ", c"
+- Import `x.completeme`: 2:19-2:19 replaced with: ", completeme"
 test2.py:3: Code Actions:
-- Import `x.c`: 1:20-1:20 replaced with: " c"
+- Import `x.completeme`: 1:20-1:20 replaced with: " completeme"
 test3.py:3: Code Actions:
-- Import `x.c`: 1:21-1:21 replaced with: "c"
+- Import `x.completeme`: 1:21-1:21 replaced with: "completeme"
 
 [case auto_import_with_parens_multiline]
 # flags: --no-typecheck
@@ -139,7 +139,7 @@ from x import (
     a, b
     )
 #? code-actions
-c
+completeme
 
 [file test2.py]
 from x import (
@@ -147,7 +147,7 @@ from x import (
     b
 )
 #? code-actions
-c
+completeme
 
 [file test3.py]
 from x import (
@@ -155,43 +155,43 @@ from x import (
     b,
 )
 #? code-actions
-c
+completeme
 
 [file x.py]
 a = 1
 b = 1
-c = 1
+completeme = 1
 
 [out]
 test1.py:5: Code Actions:
-- Import `x.c`: 2:8-2:8 replaced with: ", c"
+- Import `x.completeme`: 2:8-2:8 replaced with: ", completeme"
 test2.py:6: Code Actions:
-- Import `x.c`: 3:5-3:5 replaced with: ", c"
+- Import `x.completeme`: 3:5-3:5 replaced with: ", completeme"
 test3.py:6: Code Actions:
-- Import `x.c`: 3:6-3:6 replaced with: " c"
+- Import `x.completeme`: 3:6-3:6 replaced with: " completeme"
 
 [case auto_import_of_module_in_namespaces]
 # flags: --no-typecheck
 
 #? code-actions
-foo
+completepls
 
-[file bar/baz/foo.py]
+[file bar/baz/completepls.py]
 [out]
 __main__.py:4: Code Actions:
-- Import `bar.baz.foo`: 4:0-4:0 replaced with: "from bar.baz import foo\n"
+- Import `bar.baz.completepls`: 4:0-4:0 replaced with: "from bar.baz import completepls\n"
 
 [case auto_import_of_nested_module]
 # flags: --no-typecheck
 
 #? code-actions
-foo
+completepls
 
 [file bar/__init__.py]
-[file bar/foo.py]
+[file bar/completepls.py]
 [out]
 __main__.py:4: Code Actions:
-- Import `bar.foo`: 4:0-4:0 replaced with: "from bar import foo\n"
+- Import `bar.completepls`: 4:0-4:0 replaced with: "from bar import completepls\n"
 
 [case auto_import_positions_with_docstrings]
 # flags: --no-typecheck
@@ -199,7 +199,7 @@ __main__.py:4: Code Actions:
 "hello"
 
 #? code-actions
-foo
+completepls
 
 [file test2.py]
 """
@@ -207,7 +207,7 @@ hello
 """
 
 #? code-actions
-foo
+completepls
 
 [file test3.py]
 """
@@ -216,18 +216,18 @@ hello
 
 import bar
 #? code-actions
-foo
+completepls
 
 [file x.py]
-foo = 1
+completepls = 1
 
 [out]
 test1.py:4: Code Actions:
-- Import `x.foo`: 2:0-2:0 replaced with: "from x import foo\n"
+- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n"
 test2.py:6: Code Actions:
-- Import `x.foo`: 4:0-4:0 replaced with: "from x import foo\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n"
 test3.py:7: Code Actions:
-- Import `x.foo`: 6:0-6:0 replaced with: "from x import foo\n"
+- Import `x.completepls`: 6:0-6:0 replaced with: "from x import completepls\n"
 
 [case auto_import_before_if]
 # flags: --no-typecheck
@@ -241,13 +241,13 @@ if TYPE_CHECKING
 # b
 
 #? code-actions
-foo
+completepls
 [file x.py]
-foo = 1
+completepls = 1
 
 [out]
 __main__.py:12: Code Actions:
-- Import `x.foo`: 6:0-6:0 replaced with: "\nfrom x import foo\n"
+- Import `x.completepls`: 6:0-6:0 replaced with: "\nfrom x import completepls\n"
 
 [case auto_import_groups_std_group]
 # flags: --no-typecheck
@@ -255,46 +255,46 @@ __main__.py:12: Code Actions:
 from typing import TYPE_CHECKING
 
 #? code-actions
-foo
+completepls
 [file x.py]
-foo = 1
+completepls = 1
 
 [out]
 __main__.py:6: Code Actions:
-- Import `x.foo`: 4:0-4:0 replaced with: "\nfrom x import foo\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "\nfrom x import completepls\n"
 
 [case auto_import_do_not_add_imports]
 # flags: --no-typecheck
 
 #? code-actions
-foo
+completepls
 
 [file x.py]
-from y import foo
+from y import completepls
 
 [file y.py]
-foo = 1
+completepls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `y.foo`: 4:0-4:0 replaced with: "from y import foo\n"
+- Import `y.completepls`: 4:0-4:0 replaced with: "from y import completepls\n"
 
 [case auto_import_with_reexport]
 # flags: --no-typecheck
 
 #? code-actions
-foo
+completepls
 
 [file x.py]
-from y import foo as foo
+from y import completepls as completepls
 
 [file y.py]
-foo = 1
+completepls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `y.foo`: 4:0-4:0 replaced with: "from y import foo\n"
-- Import `x.foo`: 4:0-4:0 replaced with: "from x import foo\n"
+- Import `y.completepls`: 4:0-4:0 replaced with: "from y import completepls\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n"
 
 [case auto_import_with_dunder_init_reexport]
 # flags: --no-typecheck
