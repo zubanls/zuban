@@ -12,12 +12,27 @@ use std::{
 };
 
 use fnv::{FnvHashMap, FnvHashSet};
+use serde::{Deserialize, Serialize};
 
 pub type FastHashMap<K, V> = FnvHashMap<K, V>;
 pub type FastHashSet<T> = FnvHashSet<T>;
 
 pub fn config_dir_path() -> Option<PathBuf> {
     dirs::config_dir().map(|p| p.join("zuban"))
+}
+
+pub fn deserialize_binary<'a, T>(bytes: &'a [u8]) -> postcard::Result<T>
+where
+    T: Deserialize<'a>,
+{
+    postcard::from_bytes(bytes)
+}
+
+pub fn serialize_binary<T>(value: &T) -> postcard::Result<Vec<u8>>
+where
+    T: ?Sized + Serialize,
+{
+    postcard::to_stdvec(value)
 }
 
 pub struct InsertOnlyVec<T: ?Sized> {

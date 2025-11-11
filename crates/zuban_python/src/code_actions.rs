@@ -1,12 +1,18 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::hash_map::Entry,
+    path::Path,
+    sync::{Arc, Mutex, OnceLock},
+};
 
+use config::ProjectOptions;
 use parsa_python_cst::{CodeIndex, Name, NameParent, Scope};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use utils::FastHashMap;
-use vfs::{Directory, DirectoryEntry, Entries, FileEntry, WorkspaceKind};
+use vfs::{Directory, DirectoryEntry, Entries, FileEntry, NormalizedPath, WorkspaceKind};
 
 use crate::{
-    Document, InputPosition, PositionInfos,
+    Document, InputPosition, Mode, PositionInfos, Project,
     database::{Database, Specific},
     debug,
     file::{File as _, FileImport, PythonFile, dotted_path_from_dir},
@@ -56,36 +62,6 @@ impl<'project> Document<'project> {
             file.file_path(db),
         );
         Ok(actions)
-    }
-
-    pub fn typeshed_symbols(&self) -> FastHashMap<&'_ str, Vec<&'_ str>> {
-        let found: Mutex<FastHashMap<_, _>> = Default::default();
-        let db = &self.project.db;
-        for workspace in db.vfs.workspaces.iter() {
-            if matches!(&workspace.kind, WorkspaceKind::TypeChecking) {
-                on_each_file_in_entries(db, &workspace.entries, &|entry| {
-                    // sd
-                    let file_index = db.load_file_from_workspace(entry, false).unwrap();
-                    // Builtins are already reachable
-                    if file_index == db.python_state.builtins().file_index {
-                        return;
-                    }
-                    let file = db.loaded_python_file(file_index);
-                    let path = file.file_path(db);
-                    let stdlib_path = &path[path.rfind("stdlib").unwrap()..];
-                    let entries = file
-                        .symbol_table
-                        .iter()
-                        .filter_map(|(name, &node_index)| {
-                            // TODO
-                            Some(name)
-                        })
-                        .collect();
-                    assert!(found.lock().unwrap().insert(stdlib_path, entries).is_none());
-                })
-            }
-        }
-        found.into_inner().unwrap()
     }
 }
 
@@ -333,5 +309,117 @@ impl FileImport {
             }
             None
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+struct TypeshedSymbols {
+    files: Vec<String>,
+    // The value is the vec of a file index in the typeshed symbols.
+    // It's a linked list not a Vec, because most of the time there's only one definition for a
+    // name.
+    symbols: FastHashMap<String, SingleLinkedList<u32>>,
+}
+
+impl TypeshedSymbols {
+    fn cached() -> &'static Self {
+        static CELL: OnceLock<TypeshedSymbols> = OnceLock::new();
+        CELL.get_or_init(|| {
+            let cache = || {
+                let project =
+                    Project::without_watcher(ProjectOptions::default(), Mode::LanguageServer);
+                Self::generate_typeshed_symbols(&project.db)
+            };
+
+            let cache_dir = dirs::cache_dir().map(|c| c.join("zuban"));
+            if let Some(cache_dir) = cache_dir
+                && std::fs::create_dir_all(&cache_dir).is_ok()
+            {
+                const CACHE_FILE_NAME: &'static str = "typeshed.cache";
+                let file = cache_dir.join(CACHE_FILE_NAME);
+                if let Some(cached) = load_cache(&file) {
+                    return cached;
+                }
+                let result = cache();
+                match utils::serialize_binary(&result) {
+                    Ok(bytes) => {
+                        if let Err(err) = std::fs::write(file, bytes) {
+                            tracing::error!("Could not save typeshed.cache: {err:?}");
+                        }
+                    }
+                    Err(err) => tracing::error!("Could not serialize typeshed.cache: {err:?}"),
+                };
+                return result;
+            }
+            cache()
+        })
+    }
+
+    fn generate_typeshed_symbols(db: &Database) -> Self {
+        let found: Mutex<Self> = Default::default();
+        for workspace in db.vfs.workspaces.iter() {
+            if matches!(&workspace.kind, WorkspaceKind::TypeChecking) {
+                on_each_file_in_entries(db, &workspace.entries, &|entry| {
+                    // sd
+                    let file_index = db.load_file_from_workspace(entry, false).unwrap();
+                    // Builtins are already reachable
+                    if file_index == db.python_state.builtins().file_index {
+                        return;
+                    }
+                    let file = db.loaded_python_file(file_index);
+                    let path = file.file_path(db);
+
+                    let mut found = found.lock().unwrap();
+                    let index = found.files.len() as u32;
+                    found.files.push((**path).to_string());
+                    for (name, &node_index) in file.symbol_table.iter() {
+                        match found.symbols.entry(name.to_string()) {
+                            Entry::Occupied(mut occupied) => occupied.get_mut().insert_last(index),
+                            Entry::Vacant(vacant) => {
+                                vacant.insert_entry(SingleLinkedList::new(index));
+                            }
+                        }
+                    }
+                })
+            }
+        }
+        found.into_inner().unwrap()
+    }
+}
+
+fn load_cache<T: for<'a> Deserialize<'a>>(path: &Path) -> Option<T> {
+    match std::fs::read(path) {
+        //Some(result),
+        Ok(bytes) => match utils::deserialize_binary(&bytes) {
+            Ok(result) => Some(result),
+            Err(err) => {
+                tracing::warn!("Tried to deserialize the typeshed cache, but got: {err:?}");
+                None
+            }
+        },
+        Err(err) => {
+            tracing::info!("Tried reading typeshed cache, got: {err:?}");
+            None
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SingleLinkedList<T> {
+    value: T,
+    next: Option<Box<Self>>,
+}
+
+impl<T> SingleLinkedList<T> {
+    fn new(value: T) -> Self {
+        Self { value, next: None }
+    }
+
+    fn insert_last(&mut self, value: T) {
+        let mut current = self;
+        while let Some(ref mut next) = current.next {
+            current = next;
+        }
+        current.next = Some(Box::new(Self { value, next: None }));
     }
 }

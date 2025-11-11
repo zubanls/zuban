@@ -13,3 +13,5 @@ workspace = true
 [dependencies]
 fnv.workspace = true
 dirs.workspace = true
+serde.workspace = true
+postcard = { version = "*", features = ["use-std"] }
