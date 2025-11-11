@@ -262,3 +262,36 @@ foo = 1
 [out]
 __main__.py:6: Code Actions:
 - Import `x.foo`: 4:0-4:0 replaced with: "\nfrom x import foo\n"
+
+[case auto_import_do_not_add_imports]
+# flags: --no-typecheck
+
+#? code-actions
+foo
+
+[file x.py]
+from y import foo
+
+[file y.py]
+foo = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `y.foo`: 4:0-4:0 replaced with: "from y import foo\n"
+
+[case auto_import_with_reexport]
+# flags: --no-typecheck
+
+#? code-actions
+foo
+
+[file x.py]
+from y import foo as foo
+
+[file y.py]
+foo = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `y.foo`: 4:0-4:0 replaced with: "from y import foo\n"
+- Import `x.foo`: 4:0-4:0 replaced with: "from x import foo\n"

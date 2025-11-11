@@ -20,7 +20,7 @@ pub(crate) use name_binder::{
     FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
     func_parent_scope,
 };
-pub(crate) use name_resolution::is_reexport_issue;
+pub(crate) use name_resolution::{is_private_import_and_not_in_dunder_all, is_reexport_issue};
 pub(crate) use python_file::{
     ComplexValues, FileImport, OtherDefinitionIterator, PythonFile, SuperFile, dotted_path_from_dir,
 };

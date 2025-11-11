@@ -15,7 +15,10 @@ use crate::{
     Document, InputPosition, Mode, PositionInfos, Project,
     database::{Database, Specific},
     debug,
-    file::{File as _, FileImport, PythonFile, dotted_path_from_dir},
+    file::{
+        File as _, FileImport, PythonFile, dotted_path_from_dir,
+        is_private_import_and_not_in_dunder_all,
+    },
     imports::ImportResult,
     node_ref::NodeRef,
     recoverable_error,
@@ -144,14 +147,17 @@ impl<'db> ImportFinder<'db> {
                 needs_additional_name: false,
             })
         }
-        let has_symbol = file.lookup_symbol(self.name).is_some();
-        if has_symbol {
+        if let Some(symbol) = file.lookup_symbol(self.name) {
+            if is_private_import_and_not_in_dunder_all(self.db, symbol) {
+                return false;
+            }
             self.found.lock().unwrap().push(PotentialImport {
                 file,
                 needs_additional_name: true,
-            })
+            });
+            return true;
         }
-        has_symbol
+        false
     }
 }
 
