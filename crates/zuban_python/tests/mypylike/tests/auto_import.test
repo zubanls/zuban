@@ -329,6 +329,29 @@ __main__.py:8: Code Actions:
 - Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "\nfrom with_star_imports import no_star_import\n\n"
 __main__.py:10: Code Actions: []
 
+[case auto_import_same_symbol_in_all_groups]
+# pkgs: with_star_imports
+# flags: --no-typecheck --no-mypy-compatible
+
+[file test1.py]
+import typing
+import with_star_imports
+import y
+
+#? code-actions
+MIMEMessage
+
+[file x.py]
+MIMEMessage = 1
+
+[file y.py]
+
+[out]
+test1.py:6: Code Actions:
+- Import `x.MIMEMessage`: 4:0-4:0 replaced with: "from x import MIMEMessage\n"
+- Import `email.mime.message.MIMEMessage`: 2:0-2:0 replaced with: "\nfrom email.mime.message import MIMEMessage\n\n"
+- Import `with_star_imports.MIMEMessage`: 3:0-3:0 replaced with: "\nfrom with_star_imports import MIMEMessage\n\n"
+
 [case auto_import_do_not_add_imports]
 # flags: --no-typecheck
 

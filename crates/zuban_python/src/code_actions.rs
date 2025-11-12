@@ -160,6 +160,8 @@ impl<'db> ImportFinder<'db> {
         if in_package {
             if let Some(entry) = entries
                 .search("__init__.pyi")
+                .filter(|x| !matches!(&**x, DirectoryEntry::MissingEntry(_)))
+                .and_then(|x| Some(x))
                 .or_else(|| entries.search("__init__.py"))
                 && let DirectoryEntry::File(__init__) = &*entry
                 && self.find_importable_name_in_file_entry(__init__)
@@ -305,7 +307,7 @@ fn create_import_code_action<'db>(
     } else {
         "\n"
     };
-    let mut replacement = if potential.needs_additional_name {
+    let replacement = if potential.needs_additional_name {
         format!(
             "{newlines_at_start}from {} import {}\n{additional_newline_needed}",
             potential.file.qualified_name(db),
@@ -393,21 +395,22 @@ fn file_to_kind(db: &Database, file: &PythonFile) -> ImportKind {
 }
 
 impl FileImport {
-    fn kind_for_auto_imports(&self, db: &Database, file: &PythonFile) -> Option<ImportKind> {
-        let from_file_index = |file_index| file_to_kind(db, db.loaded_python_file(file_index));
-        let node_ref = NodeRef::new(file, self.node_index);
-        if let Some(import_from) = node_ref.maybe_import_from() {
-            match file.import_from_first_part_without_loading_file(db, import_from)? {
-                ImportResult::File(file_index) => Some(from_file_index(file_index)),
-                _ => None,
+    fn kind_for_auto_imports(&self, db: &Database, from_file: &PythonFile) -> Option<ImportKind> {
+        let check = |imp_result: Option<ImportResult>| match imp_result? {
+            ImportResult::File(file_index) => {
+                Some(file_to_kind(db, db.loaded_python_file(file_index)))
             }
+            ImportResult::PyTypedMissing => Some(ImportKind::ThirdParty),
+            ImportResult::Namespace(_) => None,
+        };
+        let node_ref = NodeRef::new(from_file, self.node_index);
+        if let Some(import_from) = node_ref.maybe_import_from() {
+            check(from_file.import_from_first_part_without_loading_file(db, import_from))
         } else {
             // We just use the first file that can be loaded, because this is a heuristic anyway.
             for dotted in node_ref.expect_import_name().iter_dotted_as_names() {
-                if let Some(ImportResult::File(file_index)) =
-                    file.cache_dotted_as_name_import(db, dotted)
-                {
-                    return Some(from_file_index(file_index));
+                if let Some(result) = check(from_file.cache_dotted_as_name_import(db, dotted)) {
+                    return Some(result);
                 }
             }
             None
