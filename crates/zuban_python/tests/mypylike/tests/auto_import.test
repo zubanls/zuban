@@ -470,3 +470,34 @@ typing.typing
 __main__.py:4: Code Actions: []
 __main__.py:7: Code Actions:
 - Import `typing`: 4:0-4:0 replaced with: "import typing\n"
+
+[case auto_import_typeshed_nested_files]
+# flags: --no-typecheck
+
+#? code-actions
+message_from_string
+
+#? code-actions
+message
+
+#? code-actions
+MIMEPart
+
+#? code-actions
+MIMEMessage
+
+#? code-actions
+mime
+
+[out]
+__main__.py:4: Code Actions:
+- Import `email.message_from_string`: 4:0-4:0 replaced with: "from email import message_from_string\n"
+__main__.py:7: Code Actions:
+- Import `email.message`: 4:0-4:0 replaced with: "from email import message\n"
+- Import `email.mime.message`: 4:0-4:0 replaced with: "from email.mime import message\n"
+__main__.py:10: Code Actions:
+- Import `email.message.MIMEPart`: 4:0-4:0 replaced with: "from email.message import MIMEPart\n"
+__main__.py:13: Code Actions:
+- Import `email.mime.message.MIMEMessage`: 4:0-4:0 replaced with: "from email.mime.message import MIMEMessage\n"
+__main__.py:16: Code Actions:
+- Import `email.mime`: 4:0-4:0 replaced with: "from email import mime\n"

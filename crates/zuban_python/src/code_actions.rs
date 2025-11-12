@@ -238,8 +238,9 @@ fn all_recursive_public_typeshed_file_entries(
         entries.borrow().iter().for_each(|entry| {
             match entry {
                 DirectoryEntry::File(entry) => {
-                    // Underscored modules are private
-                    if entry.name.starts_with('_') {
+                    // Underscored modules are private, while dunder modules are not like
+                    // __init__.pyi
+                    if entry.name.starts_with('_') && !entry.name.starts_with("__") {
                         return;
                     }
                     found.push(entry.clone())
@@ -503,11 +504,39 @@ impl TypeshedSymbols {
                         found.files.push(TypeshedFile {
                             path: (**file.file_path(db)).to_string(),
                         });
-                        if matches!(entry.parent, Parent::Workspace(_)) {
-                            let result = found
-                                .toplevel_import_names
-                                .insert(file.name(db).to_string(), index);
-                            debug_assert!(result.is_none());
+                        let insert_symbol = |found: &mut Self, name: &str| match found
+                            .symbols_to_files
+                            .entry(name.to_string())
+                        {
+                            Entry::Occupied(mut occupied) => occupied.get_mut().insert_last(index),
+                            Entry::Vacant(vacant) => {
+                                vacant.insert_entry(SingleLinkedList::new(index));
+                            }
+                        };
+                        match &entry.parent {
+                            Parent::Directory(dir) => {
+                                let dir = dir.upgrade().unwrap();
+                                if entry.name.as_ref() == "__init__.pyi" {
+                                    Directory::entries(&*db.vfs.handler, &dir)
+                                        .borrow()
+                                        .iter()
+                                        .for_each(|dir_entry| {
+                                            let name = dir_entry.name();
+                                            if name != "__init__.pyi" {
+                                                insert_symbol(
+                                                    &mut found,
+                                                    name.trim_end_matches(".pyi"),
+                                                )
+                                            }
+                                        })
+                                }
+                            }
+                            Parent::Workspace(_) => {
+                                let result = found
+                                    .toplevel_import_names
+                                    .insert(file.name(db).to_string(), index);
+                                debug_assert!(result.is_none());
+                            }
                         }
                         let builtins = db.python_state.builtins();
                         // Builtins are already reachable
@@ -526,14 +555,7 @@ impl TypeshedSymbols {
                             ) {
                                 continue;
                             }
-                            match found.symbols_to_files.entry(name.to_string()) {
-                                Entry::Occupied(mut occupied) => {
-                                    occupied.get_mut().insert_last(index)
-                                }
-                                Entry::Vacant(vacant) => {
-                                    vacant.insert_entry(SingleLinkedList::new(index));
-                                }
-                            }
+                            insert_symbol(&mut found, name)
                         }
                     })
             }
