@@ -359,11 +359,11 @@ fn position_for_import<'db>(
                 }
             };
             if kind > auto_import_kind {
-                newlines_at_start.push('\n');
                 return if let Some((_, prev)) = previous_match {
+                    newlines_at_start.push('\n');
                     prev
                 } else {
-                    newline_end_after_import()
+                    node_ref.node_start_position()
                 };
             }
             previous_match = Some((kind, newline_end_after_import()));

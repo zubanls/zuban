@@ -329,6 +329,20 @@ __main__.py:8: Code Actions:
 - Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "\nfrom with_star_imports import no_star_import\n\n"
 __main__.py:10: Code Actions: []
 
+[case auto_import_typing_group_before_package_import]
+# flags: --no-typecheck
+
+import x
+#? code-actions
+ParamSpec
+
+[file x.py]
+
+[out]
+__main__.py:5: Code Actions:
+- Import `ast.ParamSpec`: 3:0-3:0 replaced with: "from ast import ParamSpec\n\n"
+- Import `typing.ParamSpec`: 3:0-3:0 replaced with: "from typing import ParamSpec\n\n"
+
 [case auto_import_same_symbol_in_all_groups]
 # pkgs: with_star_imports
 # flags: --no-typecheck
