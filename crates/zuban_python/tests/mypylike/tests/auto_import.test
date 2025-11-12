@@ -319,12 +319,15 @@ import x
 
 #? code-actions
 no_star_import
+#? code-actions
+from_star_import_not_public
 
 [file x.py]
 
 [out]
 __main__.py:8: Code Actions:
 - Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n"
+__main__.py:10: Code Actions: []
 
 [case auto_import_do_not_add_imports]
 # flags: --no-typecheck

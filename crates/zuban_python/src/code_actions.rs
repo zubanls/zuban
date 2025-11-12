@@ -109,7 +109,7 @@ impl<'db> ImportFinder<'db> {
         for workspace in db.vfs.workspaces.iter() {
             match &workspace.kind {
                 WorkspaceKind::TypeChecking => {
-                    slf.find_importable_name_in_entries(&workspace.entries)
+                    slf.find_importable_name_in_entries(&workspace.entries, false, true)
                 }
                 WorkspaceKind::SitePackages => {
                     if ***workspace.root_path == *"/usr/lib/python3.12" {
@@ -117,7 +117,7 @@ impl<'db> ImportFinder<'db> {
                         // TODO handle this case properly
                         continue;
                     }
-                    slf.find_importable_name_in_entries(&workspace.entries)
+                    slf.find_importable_name_in_entries(&workspace.entries, false, false)
                 }
                 WorkspaceKind::Typeshed => {
                     let symbols = TypeshedSymbols::cached(db);
@@ -145,16 +145,25 @@ impl<'db> ImportFinder<'db> {
         slf.found.into_inner().unwrap()
     }
 
-    fn find_importable_name_in_entries(&self, entries: &Entries) {
-        if let Some(entry) = entries
-            .search("__init__.pyi")
-            .or_else(|| entries.search("__init__.py"))
-            && let DirectoryEntry::File(__init__) = &*entry
-            && self.find_importable_name_in_file_entry(__init__)
-        {
-            // If we find a name in __init__.py, we should probably not be looking up the other
-            // imports.
-            return;
+    fn find_importable_name_in_entries(
+        &self,
+        entries: &Entries,
+        in_package: bool,
+        add_submodules: bool,
+    ) {
+        if in_package {
+            if let Some(entry) = entries
+                .search("__init__.pyi")
+                .or_else(|| entries.search("__init__.py"))
+                && let DirectoryEntry::File(__init__) = &*entry
+                && self.find_importable_name_in_file_entry(__init__)
+            {
+                // If we find a name in __init__.py, we should probably not be looking up the other
+                // imports.
+                return;
+            } else if !add_submodules {
+                return;
+            }
         }
         let entries: Vec<_> = entries
             .borrow()
@@ -169,8 +178,11 @@ impl<'db> ImportFinder<'db> {
                 self.find_importable_name_in_file_entry(&entry);
             }
             DirectoryEntry::MissingEntry(_) => unreachable!("Removed above"),
-            DirectoryEntry::Directory(dir) => self
-                .find_importable_name_in_entries(Directory::entries(&*self.db.vfs.handler, &dir)),
+            DirectoryEntry::Directory(dir) => self.find_importable_name_in_entries(
+                Directory::entries(&*self.db.vfs.handler, &dir),
+                true,
+                add_submodules,
+            ),
         })
     }
 
