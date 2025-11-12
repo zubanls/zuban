@@ -13,9 +13,9 @@ completepls = 1
 __main__:3: error: Name "completepls" is not defined
 __main__:6: error: Name "x" is not defined
 __main__.py:3: Code Actions:
-- Import `x.completepls`: 3:0-3:0 replaced with: "from x import completepls\n"
+- Import `x.completepls`: 3:0-3:0 replaced with: "from x import completepls\n\n"
 __main__.py:6: Code Actions:
-- Import `x`: 3:0-3:0 replaced with: "import x\n"
+- Import `x`: 3:0-3:0 replaced with: "import x\n\n"
 
 [case auto_import_with_selection_should_have_single_import_for_repeats]
 # flags: --no-typecheck
@@ -29,7 +29,7 @@ completepls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n\n"
 
 [case auto_import_with_range]
 # flags: --no-typecheck
@@ -47,8 +47,8 @@ baz = 1
 
 [out]
 __main__.py:5: Code Actions:
-- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n"
-- Import `x`: 2:0-2:0 replaced with: "import x\n"
+- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n\n"
+- Import `x`: 2:0-2:0 replaced with: "import x\n\n"
 
 [case auto_import_add_name_to_from1]
 # flags: --no-typecheck
@@ -70,11 +70,11 @@ b = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n\n"
 - Import `x.b`: 2:15-2:15 replaced with: ", b"
 __main__.py:8: Code Actions:
 - Import `x.b`: 2:15-2:15 replaced with: ", b"
-- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n\n"
 
 [case auto_import_add_name_to_from2]
 # flags: --no-typecheck
@@ -97,11 +97,11 @@ b = 1
 
 [out]
 __main__.py:3: Code Actions:
-- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
-- Import `x.b`: 3:0-3:0 replaced with: "from x import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n\n"
+- Import `x.b`: 3:0-3:0 replaced with: "from x import b\n\n"
 __main__.py:7: Code Actions:
 - Import `x.b`: 9:15-9:15 replaced with: ", b"
-- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n"
+- Import `y.b`: 3:0-3:0 replaced with: "from y import b\n\n"
 
 [case auto_import_with_parens]
 # flags: --no-typecheck
@@ -179,7 +179,7 @@ completepls
 [file bar/baz/completepls.py]
 [out]
 __main__.py:4: Code Actions:
-- Import `bar.baz.completepls`: 4:0-4:0 replaced with: "from bar.baz import completepls\n"
+- Import `bar.baz.completepls`: 4:0-4:0 replaced with: "from bar.baz import completepls\n\n"
 
 [case auto_import_of_nested_module]
 # flags: --no-typecheck
@@ -191,7 +191,7 @@ completepls
 [file bar/completepls.py]
 [out]
 __main__.py:4: Code Actions:
-- Import `bar.completepls`: 4:0-4:0 replaced with: "from bar import completepls\n"
+- Import `bar.completepls`: 4:0-4:0 replaced with: "from bar import completepls\n\n"
 
 [case auto_import_positions_with_docstrings]
 # flags: --no-typecheck
@@ -223,11 +223,11 @@ completepls = 1
 
 [out]
 test1.py:4: Code Actions:
-- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n"
+- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n\n"
 test2.py:6: Code Actions:
-- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n\n"
 test3.py:7: Code Actions:
-- Import `x.completepls`: 6:0-6:0 replaced with: "from x import completepls\n"
+- Import `x.completepls`: 6:0-6:0 replaced with: "from x import completepls\n\n"
 
 [case auto_import_before_if]
 # flags: --no-typecheck
@@ -247,7 +247,7 @@ completepls = 1
 
 [out]
 __main__.py:12: Code Actions:
-- Import `x.completepls`: 6:0-6:0 replaced with: "\nfrom x import completepls\n"
+- Import `x.completepls`: 6:0-6:0 replaced with: "\nfrom x import completepls\n\n"
 
 [case auto_import_groups_project_group]
 # flags: --no-typecheck
@@ -261,7 +261,7 @@ completepls = 1
 
 [out]
 __main__.py:6: Code Actions:
-- Import `x.completepls`: 4:0-4:0 replaced with: "\nfrom x import completepls\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "\nfrom x import completepls\n\n"
 
 [case auto_import_groups_stdlib_group1]
 # flags: --no-typecheck
@@ -273,8 +273,8 @@ ParamSpec
 
 [out]
 __main__.py:6: Code Actions:
-- Import `typing.ParamSpec`: 4:0-4:0 replaced with: "from typing import ParamSpec\n"
-- Import `ast.ParamSpec`: 4:0-4:0 replaced with: "from ast import ParamSpec\n"
+- Import `typing.ParamSpec`: 4:0-4:0 replaced with: "from typing import ParamSpec\n\n"
+- Import `ast.ParamSpec`: 4:0-4:0 replaced with: "from ast import ParamSpec\n\n"
 
 [case auto_import_groups_stdlib_group2]
 # flags: --no-typecheck
@@ -290,8 +290,8 @@ TypeVar
 
 [out]
 __main__.py:8: Code Actions:
-- Import `typing.TypeVar`: 4:0-4:0 replaced with: "from typing import TypeVar\n"
-- Import `ast.TypeVar`: 4:0-4:0 replaced with: "from ast import TypeVar\n"
+- Import `typing.TypeVar`: 4:0-4:0 replaced with: "from typing import TypeVar\n\n"
+- Import `ast.TypeVar`: 4:0-4:0 replaced with: "from ast import TypeVar\n\n"
 
 [case auto_import_groups_third_party_group1]
 # pkgs: with_star_imports
@@ -308,7 +308,7 @@ no_star_import
 
 [out]
 __main__.py:9: Code Actions:
-- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n"
+- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n\n"
 
 [case auto_import_groups_third_party_group2]
 # pkgs: with_star_imports
@@ -326,7 +326,7 @@ from_star_import_not_public
 
 [out]
 __main__.py:8: Code Actions:
-- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n"
+- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n\n"
 __main__.py:10: Code Actions: []
 
 [case auto_import_do_not_add_imports]
@@ -343,7 +343,7 @@ completepls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `y.completepls`: 4:0-4:0 replaced with: "from y import completepls\n"
+- Import `y.completepls`: 4:0-4:0 replaced with: "from y import completepls\n\n"
 
 [case auto_import_with_reexport]
 # flags: --no-typecheck
@@ -359,8 +359,8 @@ completepls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `y.completepls`: 4:0-4:0 replaced with: "from y import completepls\n"
-- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n"
+- Import `y.completepls`: 4:0-4:0 replaced with: "from y import completepls\n\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n\n"
 
 [case auto_import_with_dunder_init_reexport]
 # flags: --no-typecheck
@@ -376,7 +376,7 @@ complete_pls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n"
+- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n\n"
 
 [case auto_import_with_dunder_init_relative]
 # flags: --no-typecheck
@@ -392,7 +392,7 @@ complete_pls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n"
+- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n\n"
 
 [case auto_import_with_dunder_init_relative_nested]
 # flags: --no-typecheck
@@ -411,7 +411,7 @@ complete_pls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n"
+- Import `x.complete_pls`: 4:0-4:0 replaced with: "from x import complete_pls\n\n"
 
 [case auto_import_with_dunder_init_relative_should_not_use]
 # flags: --no-typecheck
@@ -427,7 +427,7 @@ complete_pls = 1
 
 [out]
 __main__.py:4: Code Actions:
-- Import `y.complete_pls`: 4:0-4:0 replaced with: "from y import complete_pls\n"
+- Import `y.complete_pls`: 4:0-4:0 replaced with: "from y import complete_pls\n\n"
 
 [case auto_import_dont_use_private_typeshed_symbols]
 # flags: --no-typecheck
@@ -455,7 +455,7 @@ __main__.py:7: Code Actions: []
 __main__.py:9: Code Actions: []
 __main__.py:13: Code Actions: []
 __main__.py:18: Code Actions:
-- Import `ast.PyCF_ALLOW_TOP_LEVEL_AWAIT`: 5:0-5:0 replaced with: "from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT\n"
+- Import `ast.PyCF_ALLOW_TOP_LEVEL_AWAIT`: 5:0-5:0 replaced with: "from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT\n\n"
 
 [case auto_import_typeshed_toplevel_name]
 # flags: --no-typecheck
@@ -469,7 +469,7 @@ typing.typing
 [out]
 __main__.py:4: Code Actions: []
 __main__.py:7: Code Actions:
-- Import `typing`: 4:0-4:0 replaced with: "import typing\n"
+- Import `typing`: 4:0-4:0 replaced with: "import typing\n\n"
 
 [case auto_import_typeshed_nested_files]
 # flags: --no-typecheck
@@ -491,13 +491,13 @@ mime
 
 [out]
 __main__.py:4: Code Actions:
-- Import `email.message_from_string`: 4:0-4:0 replaced with: "from email import message_from_string\n"
+- Import `email.message_from_string`: 4:0-4:0 replaced with: "from email import message_from_string\n\n"
 __main__.py:7: Code Actions:
-- Import `email.message`: 4:0-4:0 replaced with: "from email import message\n"
-- Import `email.mime.message`: 4:0-4:0 replaced with: "from email.mime import message\n"
+- Import `email.message`: 4:0-4:0 replaced with: "from email import message\n\n"
+- Import `email.mime.message`: 4:0-4:0 replaced with: "from email.mime import message\n\n"
 __main__.py:10: Code Actions:
-- Import `email.message.MIMEPart`: 4:0-4:0 replaced with: "from email.message import MIMEPart\n"
+- Import `email.message.MIMEPart`: 4:0-4:0 replaced with: "from email.message import MIMEPart\n\n"
 __main__.py:13: Code Actions:
-- Import `email.mime.message.MIMEMessage`: 4:0-4:0 replaced with: "from email.mime.message import MIMEMessage\n"
+- Import `email.mime.message.MIMEMessage`: 4:0-4:0 replaced with: "from email.mime.message import MIMEMessage\n\n"
 __main__.py:16: Code Actions:
-- Import `email.mime`: 4:0-4:0 replaced with: "from email import mime\n"
+- Import `email.mime`: 4:0-4:0 replaced with: "from email import mime\n\n"

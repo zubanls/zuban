@@ -296,18 +296,18 @@ fn create_import_code_action<'db>(
 
     let mut replacement = if potential.needs_additional_name {
         format!(
-            "from {} import {}\n",
+            "from {} import {}\n\n",
             potential.file.qualified_name(db),
             name.as_code()
         )
     } else if let (_, Some(parent_dir)) = potential.file.name_and_parent_dir(db) {
         format!(
-            "from {} import {}\n",
+            "from {} import {}\n\n",
             dotted_path_from_dir(&parent_dir),
             name.as_code()
         )
     } else {
-        format!("import {}\n", potential.file.qualified_name(db))
+        format!("import {}\n\n", potential.file.qualified_name(db))
     };
     let pos = from_file.byte_to_position_infos(
         db,
