@@ -355,16 +355,57 @@ import y
 #? code-actions
 MIMEMessage
 
+[file test2.py]
+import typing
+
+import with_star_imports
+
+import y
+
+#? code-actions
+MIMEMessage
+
+[file test3.py]
+from typing import ParamSpec
+from with_star_imports.x import undefined
+from y import y
+
+#? code-actions
+MIMEMessage
+
+[file test4.py]
+from typing import ParamSpec
+
+from with_star_imports.x import undefined
+
+from y import y
+
+#? code-actions
+MIMEMessage
+
 [file x.py]
 MIMEMessage = 1
 
 [file y.py]
+y = 1
 
 [out]
 test1.py:6: Code Actions:
 - Import `email.mime.message.MIMEMessage`: 2:0-2:0 replaced with: "from email.mime.message import MIMEMessage\n\n"
 - Import `with_star_imports.MIMEMessage`: 3:0-3:0 replaced with: "from with_star_imports import MIMEMessage\n\n"
 - Import `x.MIMEMessage`: 4:0-4:0 replaced with: "from x import MIMEMessage\n"
+test2.py:8: Code Actions:
+- Import `email.mime.message.MIMEMessage`: 2:0-2:0 replaced with: "from email.mime.message import MIMEMessage\n"
+- Import `with_star_imports.MIMEMessage`: 4:0-4:0 replaced with: "from with_star_imports import MIMEMessage\n"
+- Import `x.MIMEMessage`: 6:0-6:0 replaced with: "from x import MIMEMessage\n"
+test3.py:6: Code Actions:
+- Import `email.mime.message.MIMEMessage`: 2:0-2:0 replaced with: "from email.mime.message import MIMEMessage\n\n"
+- Import `with_star_imports.MIMEMessage`: 3:0-3:0 replaced with: "from with_star_imports import MIMEMessage\n\n"
+- Import `x.MIMEMessage`: 4:0-4:0 replaced with: "from x import MIMEMessage\n"
+test4.py:8: Code Actions:
+- Import `email.mime.message.MIMEMessage`: 2:0-2:0 replaced with: "from email.mime.message import MIMEMessage\n"
+- Import `with_star_imports.MIMEMessage`: 4:0-4:0 replaced with: "from with_star_imports import MIMEMessage\n"
+- Import `x.MIMEMessage`: 6:0-6:0 replaced with: "from x import MIMEMessage\n"
 
 [case auto_import_do_not_add_imports]
 # flags: --no-typecheck
