@@ -357,10 +357,10 @@ fn position_for_import<'db>(
                 }
             };
             if kind > auto_import_kind {
+                newlines_at_start.push('\n');
                 return if let Some((_, prev)) = previous_match {
                     prev
                 } else {
-                    newlines_at_start.push('\n');
                     newline_end_after_import()
                 };
             }
