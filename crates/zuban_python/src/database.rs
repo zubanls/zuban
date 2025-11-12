@@ -1121,6 +1121,9 @@ impl Database {
         };
 
         for p in &new_db.project.sys_path {
+            if self.project.sys_path.contains(p) {
+                continue;
+            }
             new_db
                 .vfs
                 .add_workspace(p.clone(), WorkspaceKind::SitePackages)

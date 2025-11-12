@@ -113,7 +113,6 @@ impl<'db> ImportFinder<'db> {
                 }
                 WorkspaceKind::SitePackages => {
                     if ***workspace.root_path == *"/usr/lib/python3.12" {
-                        dbg!(&workspace.root_path);
                         // TODO handle this case properly
                         continue;
                     }
@@ -538,7 +537,6 @@ impl TypeshedSymbols {
                                 debug_assert!(result.is_none());
                             }
                         }
-                        let builtins = db.python_state.builtins();
                         // Builtins are already reachable
                         if file_index == db.python_state.builtins().file_index
                             // For now disable typing_extensions, because it essentially contains
