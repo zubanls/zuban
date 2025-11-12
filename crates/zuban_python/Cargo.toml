@@ -13,7 +13,7 @@ workspace = true
 [dependencies]
 parsa_python_cst.workspace = true
 utils.workspace = true
-vfs.workspace = true
+vfs = { workspace = true, default-features = false }
 
 anyhow.workspace = true
 colored.workspace = true
@@ -27,8 +27,8 @@ serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 lsp-types.workspace = true
-rayon.workspace = true
-which = "*"
+rayon = { workspace = true, optional = true }
+which = { version = "*", optional = true }
 
 [dev-dependencies]
 clap.workspace = true
@@ -37,6 +37,10 @@ logging_config.workspace = true
 shlex = "*"
 
 [features]
+default = ["parallel", "fs-watch"]
+parallel = ["dep:rayon"]
+fs-watch = ["vfs/watch", "dep:which"]
+playground-single = []
 zuban_debug = []
 
 [[test]]

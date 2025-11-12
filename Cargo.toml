@@ -21,9 +21,9 @@ parsa_python_cst = { path = "./crates/parsa_python_cst" }
 test_utils = { path = "./crates/test_utils" }
 typeshed_symbols = { path = "./crates/typeshed_symbols" }
 utils = { path = "./crates/utils" }
-vfs = { path = "./crates/vfs" }
+vfs = { path = "./crates/vfs", default-features = false }
 zmypy = { path = "./crates/zmypy" }
-zuban_python = { path = "./crates/zuban_python" }
+zuban_python = { path = "./crates/zuban_python", default-features = false }
 zubanls = { path = "./crates/zubanls" }
 
 # General third party dependencies

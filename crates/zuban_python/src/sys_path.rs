@@ -1,12 +1,31 @@
+#[cfg(not(feature = "playground-single"))]
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
 
+#[cfg(feature = "playground-single")]
+use std::sync::Arc;
+
+#[cfg(not(feature = "playground-single"))]
 use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler};
+#[cfg(feature = "playground-single")]
+use vfs::{NormalizedPath, VfsHandler};
 
+#[cfg(not(feature = "playground-single"))]
 use crate::{PythonVersion, Settings};
+#[cfg(feature = "playground-single")]
+use crate::Settings;
 
+#[cfg(feature = "playground-single")]
+pub(crate) fn create_sys_path(
+    _handler: &dyn VfsHandler,
+    _settings: &Settings,
+) -> Vec<Arc<NormalizedPath>> {
+    Vec::new()
+}
+
+#[cfg(not(feature = "playground-single"))]
 pub(crate) fn create_sys_path(
     handler: &dyn VfsHandler,
     settings: &Settings,
@@ -48,6 +67,7 @@ pub(crate) fn create_sys_path(
     sys_path
 }
 
+#[cfg(not(feature = "playground-single"))]
 fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -> PathBuf {
     if cfg!(windows) {
         let direct_site_packages = environment.as_ref().join("site-packages");
@@ -85,6 +105,7 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
     }
 }
 
+#[cfg(not(feature = "playground-single"))]
 fn add_editable_src_packages(
     handler: &dyn VfsHandler,
     sys_path: &mut Vec<Arc<NormalizedPath>>,
@@ -100,6 +121,7 @@ fn add_editable_src_packages(
     }
 }
 
+#[cfg(not(feature = "playground-single"))]
 fn lib_path(settings: &Settings) -> Option<String> {
     let check = |path: String| {
         let os_path = Path::new(&path).join("os.py");
@@ -244,6 +266,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
     }
 }
 
+#[cfg(not(feature = "playground-single"))]
 pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
     let mut executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
@@ -313,4 +336,9 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
         }
     }
     panic!("Did not find a typeshed folder in {env_folder:?}")
+}
+
+#[cfg(feature = "playground-single")]
+pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
+    panic!("typeshed_path_from_executable should not be called in playground mode")
 }

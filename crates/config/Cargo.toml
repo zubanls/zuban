@@ -11,7 +11,7 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
-vfs.workspace = true
+vfs = { workspace = true, features = ["watch"] }
 
 anyhow.workspace = true
 rust-ini = { version = "0.21.0", features = ["inline-comment"], git = "https://github.com/davidhalter-archive/rust-ini.git", branch="indented-multiline-values" }
