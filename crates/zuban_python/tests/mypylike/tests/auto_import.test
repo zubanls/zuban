@@ -47,8 +47,8 @@ baz = 1
 
 [out]
 __main__.py:5: Code Actions:
-- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n\n"
-- Import `x`: 2:0-2:0 replaced with: "import x\n\n"
+- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n"
+- Import `x`: 2:0-2:0 replaced with: "import x\n"
 
 [case auto_import_add_name_to_from1]
 # flags: --no-typecheck
@@ -223,9 +223,9 @@ completepls = 1
 
 [out]
 test1.py:4: Code Actions:
-- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n\n"
+- Import `x.completepls`: 2:0-2:0 replaced with: "from x import completepls\n"
 test2.py:6: Code Actions:
-- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n"
 test3.py:7: Code Actions:
 - Import `x.completepls`: 6:0-6:0 replaced with: "from x import completepls\n\n"
 
@@ -261,7 +261,7 @@ completepls = 1
 
 [out]
 __main__.py:6: Code Actions:
-- Import `x.completepls`: 4:0-4:0 replaced with: "\nfrom x import completepls\n\n"
+- Import `x.completepls`: 4:0-4:0 replaced with: "\nfrom x import completepls\n"
 
 [case auto_import_groups_stdlib_group1]
 # flags: --no-typecheck
@@ -273,8 +273,8 @@ ParamSpec
 
 [out]
 __main__.py:6: Code Actions:
-- Import `typing.ParamSpec`: 4:0-4:0 replaced with: "from typing import ParamSpec\n\n"
-- Import `ast.ParamSpec`: 4:0-4:0 replaced with: "from ast import ParamSpec\n\n"
+- Import `typing.ParamSpec`: 4:0-4:0 replaced with: "from typing import ParamSpec\n"
+- Import `ast.ParamSpec`: 4:0-4:0 replaced with: "from ast import ParamSpec\n"
 
 [case auto_import_groups_stdlib_group2]
 # flags: --no-typecheck
@@ -290,8 +290,8 @@ TypeVar
 
 [out]
 __main__.py:8: Code Actions:
-- Import `typing.TypeVar`: 4:0-4:0 replaced with: "from typing import TypeVar\n\n"
-- Import `ast.TypeVar`: 4:0-4:0 replaced with: "from ast import TypeVar\n\n"
+- Import `typing.TypeVar`: 4:0-4:0 replaced with: "from typing import TypeVar\n"
+- Import `ast.TypeVar`: 4:0-4:0 replaced with: "from ast import TypeVar\n"
 
 [case auto_import_groups_third_party_group1]
 # pkgs: with_star_imports
@@ -308,7 +308,7 @@ no_star_import
 
 [out]
 __main__.py:9: Code Actions:
-- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n\n"
+- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n"
 
 [case auto_import_groups_third_party_group2]
 # pkgs: with_star_imports

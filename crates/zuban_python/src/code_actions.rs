@@ -83,6 +83,7 @@ struct ImportFinder<'db> {
     found: Mutex<Vec<PotentialImport<'db>>>,
 }
 
+#[derive(Clone, Copy)]
 struct PotentialImport<'db> {
     file: &'db PythonFile,
     needs_additional_name: bool,
@@ -294,25 +295,35 @@ fn create_import_code_action<'db>(
         }
     }
 
+    let mut newlines_at_start = String::default();
+    let pos = position_for_import(db, from_file, potential, &mut newlines_at_start);
+    let additional_newline_needed = if matches!(
+        from_file.tree.code().as_bytes().get(pos as usize),
+        Some(b'\n' | b'\r')
+    ) {
+        ""
+    } else {
+        "\n"
+    };
     let mut replacement = if potential.needs_additional_name {
         format!(
-            "from {} import {}\n\n",
+            "{newlines_at_start}from {} import {}\n{additional_newline_needed}",
             potential.file.qualified_name(db),
             name.as_code()
         )
     } else if let (_, Some(parent_dir)) = potential.file.name_and_parent_dir(db) {
         format!(
-            "from {} import {}\n\n",
+            "{newlines_at_start}from {} import {}\n{additional_newline_needed}",
             dotted_path_from_dir(&parent_dir),
             name.as_code()
         )
     } else {
-        format!("import {}\n\n", potential.file.qualified_name(db))
+        format!(
+            "{newlines_at_start}import {}\n{additional_newline_needed}",
+            potential.file.qualified_name(db)
+        )
     };
-    let pos = from_file.byte_to_position_infos(
-        db,
-        position_for_import(db, from_file, potential, &mut replacement),
-    );
+    let pos = from_file.byte_to_position_infos(db, pos);
     CodeAction {
         title,
         start_of_change: pos,
@@ -325,7 +336,7 @@ fn position_for_import<'db>(
     db: &'db Database,
     from_file: &'db PythonFile,
     potential: PotentialImport,
-    replacement: &mut String,
+    newlines_at_start: &mut String,
 ) -> CodeIndex {
     let end_of_imports = from_file.tree.initial_imports_end_code_index();
     let auto_import_kind = file_to_kind(db, potential.file);
@@ -349,7 +360,7 @@ fn position_for_import<'db>(
                 return if let Some((_, prev)) = previous_match {
                     prev
                 } else {
-                    replacement.insert(0, '\n');
+                    newlines_at_start.push('\n');
                     newline_end_after_import()
                 };
             }
@@ -358,7 +369,7 @@ fn position_for_import<'db>(
     }
     if let Some((kind, prev)) = previous_match {
         if kind < auto_import_kind {
-            replacement.insert(0, '\n');
+            newlines_at_start.push('\n');
         }
         prev
     } else {
