@@ -224,13 +224,29 @@ impl<'db> ImportFinder<'db> {
     }
 }
 
-fn all_recursive_file_entries(db: &Database, entries: &Entries) -> Vec<Arc<FileEntry>> {
+fn all_recursive_public_typeshed_file_entries(
+    db: &Database,
+    entries: &Entries,
+) -> Vec<Arc<FileEntry>> {
     fn recurse(db: &Database, found: &mut Vec<Arc<FileEntry>>, entries: &Entries) {
-        entries.borrow().iter().for_each(|entry| match entry {
-            DirectoryEntry::File(entry) => found.push(entry.clone()),
-            DirectoryEntry::MissingEntry(_) => (),
-            DirectoryEntry::Directory(dir) => {
-                recurse(db, found, Directory::entries(&*db.vfs.handler, dir))
+        entries.borrow().iter().for_each(|entry| {
+            match entry {
+                DirectoryEntry::File(entry) => {
+                    // Underscored modules are private
+                    if entry.name.starts_with('_') {
+                        return;
+                    }
+                    found.push(entry.clone())
+                }
+                DirectoryEntry::MissingEntry(_) => (),
+                DirectoryEntry::Directory(dir) => {
+                    // Underscored packages are private
+                    // There's a directory in stdlib called @tests
+                    if dir.name.starts_with('_') || dir.name.starts_with('@') {
+                        return;
+                    }
+                    recurse(db, found, Directory::entries(&*db.vfs.handler, dir))
+                }
             }
         })
     }
@@ -467,14 +483,12 @@ impl TypeshedSymbols {
         let found: Mutex<Self> = Default::default();
         for workspace in db.vfs.workspaces.iter() {
             if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
-                all_recursive_file_entries(db, &workspace.entries)
+                all_recursive_public_typeshed_file_entries(db, &workspace.entries)
                     .par_iter()
                     .for_each(|entry| {
                         let file_index = db.load_file_from_workspace(entry, false).unwrap();
                         // Builtins are already reachable
                         if file_index == db.python_state.builtins().file_index
-                            // Underscored modules are private
-                            || entry.name.starts_with("_")
                             // For now disable typing_extensions, because it essentially contains
                             // the almost exact same items as typing.pyi
                             || entry.name.as_ref() == "typing_extensions.pyi"

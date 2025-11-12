@@ -428,3 +428,30 @@ complete_pls = 1
 [out]
 __main__.py:4: Code Actions:
 - Import `y.complete_pls`: 4:0-4:0 replaced with: "from y import complete_pls\n"
+
+[case auto_import_dont_use_private_typeshed_symbols]
+# flags: --no-typecheck
+
+# From stdlib/_typeshed
+#? code-actions
+IdentityFunction
+#? code-actions
+SupportsNext
+#? code-actions
+LoaderProtocol
+
+# From stdlib/@tests/test_cases/builtins/check_dict.py
+#? code-actions
+test_dict_dot_or
+
+# This exists both in _ast.py and ast.py, but should only be imported for the
+# latter
+#? code-actions
+PyCF_ALLOW_TOP_LEVEL_AWAIT
+
+[out]
+__main__.py:5: Code Actions: []
+__main__.py:7: Code Actions: []
+__main__.py:9: Code Actions: []
+__main__.py:13: Code Actions: []
+- Import `ast.PyCF_ALLOW_TOP_LEVEL_AWAIT`: 5:0-5:0 replaced with: "from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT\n"
