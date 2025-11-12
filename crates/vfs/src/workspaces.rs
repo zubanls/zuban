@@ -208,10 +208,10 @@ impl Workspaces {
                         *file = Arc::new(new_file);
                     }
                     DirectoryEntry::MissingEntry { .. } => (),
-                    DirectoryEntry::Directory(dir) => {
-                        let mut new = dir.as_ref().clone();
-                        new.parent = Parent::Directory(Arc::downgrade(dir));
-                        *dir = clone_inner_rcs(vfs, new);
+                    DirectoryEntry::Directory(inner_dir) => {
+                        let mut new = inner_dir.as_ref().clone();
+                        new.parent = Parent::Directory(Arc::downgrade(&dir));
+                        *inner_dir = clone_inner_rcs(vfs, new);
                     }
                 }
             }
