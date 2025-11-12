@@ -111,7 +111,14 @@ impl<'db> ImportFinder<'db> {
                 WorkspaceKind::TypeChecking => {
                     slf.find_importable_name_in_entries(&workspace.entries)
                 }
-                WorkspaceKind::SitePackages => (), // TODO !
+                WorkspaceKind::SitePackages => {
+                    if ***workspace.root_path == *"/usr/lib/python3.12" {
+                        dbg!(&workspace.root_path);
+                        // TODO handle this case properly
+                        continue;
+                    }
+                    slf.find_importable_name_in_entries(&workspace.entries)
+                }
                 WorkspaceKind::Typeshed => {
                     let symbols = TypeshedSymbols::cached(db);
                     let mut found = slf.found.lock().unwrap();

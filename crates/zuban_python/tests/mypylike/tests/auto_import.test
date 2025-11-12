@@ -293,6 +293,39 @@ __main__.py:8: Code Actions:
 - Import `typing.TypeVar`: 4:0-4:0 replaced with: "from typing import TypeVar\n"
 - Import `ast.TypeVar`: 4:0-4:0 replaced with: "from ast import TypeVar\n"
 
+[case auto_import_groups_third_party_group1]
+# pkgs: with_star_imports
+# flags: --no-typecheck
+
+from pathlib import Path
+
+import x
+
+#? code-actions
+no_star_import
+
+[file x.py]
+
+[out]
+__main__.py:9: Code Actions:
+- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n"
+
+[case auto_import_groups_third_party_group2]
+# pkgs: with_star_imports
+# flags: --no-typecheck
+
+from pathlib import Path
+import x
+
+#? code-actions
+no_star_import
+
+[file x.py]
+
+[out]
+__main__.py:8: Code Actions:
+- Import `with_star_imports.no_star_import`: 5:0-5:0 replaced with: "from with_star_imports import no_star_import\n"
+
 [case auto_import_do_not_add_imports]
 # flags: --no-typecheck
 

@@ -73,6 +73,7 @@ thread_local! {
 }
 
 const MYPY_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/mypy/test-data/packages/";
+const OUR_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/packages/";
 
 lazy_static::lazy_static! {
     static ref CASE: Regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\r?\n").unwrap();
@@ -199,11 +200,19 @@ impl TestCase<'_, '_> {
         let first_line = self.code.split('\n').next().unwrap();
         if let Some(suffix) = first_line.strip_prefix("# pkgs:") {
             let current_dir = local_fs.current_dir();
-            let folder = local_fs.join(&current_dir, MYPY_TEST_DATA_PACKAGES_FOLDER);
+            let mypy_folder = local_fs.join(&current_dir, MYPY_TEST_DATA_PACKAGES_FOLDER);
+            let our_folder = local_fs.join(&current_dir, OUR_TEST_DATA_PACKAGES_FOLDER);
             settings.prepended_site_packages.extend(
                 suffix
                     .split([';', ','])
-                    .map(|s| local_fs.normalize_rc_path(local_fs.join(&folder, s.trim()))),
+                    .map(|s| {
+                        [
+                            local_fs.normalize_rc_path(local_fs.join(&mypy_folder, s.trim())),
+                            local_fs.normalize_rc_path(local_fs.join(&our_folder, s.trim())),
+                        ]
+                        .into_iter()
+                    })
+                    .flatten(),
             );
         };
 
