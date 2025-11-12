@@ -1925,9 +1925,10 @@ impl<'db: 'slf, 'slf> Inferred {
         }
 
         match self.maybe_saved_specific(db)? {
-            Specific::AnyDueToError | Specific::Cycle | Specific::InvalidTypeDefinition => {
-                Some(AnyCause::FromError)
-            }
+            Specific::AnyDueToError
+            | Specific::Cycle
+            | Specific::InvalidTypeDefinition
+            | Specific::PyTypedMissing => Some(AnyCause::FromError),
             Specific::AnnotationOrTypeCommentWithoutTypeVars => Some(AnyCause::FromError),
             Specific::ModuleNotFound => Some(AnyCause::ModuleNotFound),
             _ => None,
@@ -2886,7 +2887,9 @@ pub fn specific_to_type<'db>(
     specific: Specific,
 ) -> Cow<'db, Type> {
     match specific {
-        Specific::AnyDueToError | Specific::InvalidTypeDefinition => Cow::Borrowed(&Type::ERROR),
+        Specific::AnyDueToError | Specific::InvalidTypeDefinition | Specific::PyTypedMissing => {
+            Cow::Borrowed(&Type::ERROR)
+        }
         Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),
         Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {

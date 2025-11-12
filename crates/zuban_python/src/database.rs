@@ -471,6 +471,7 @@ pub(crate) enum Specific {
     AnyDueToError,
     InvalidTypeDefinition,
     ModuleNotFound,
+    PyTypedMissing,
     IfBranchAlwaysReachableInNameBinder,
     IfBranchAlwaysReachableInTypeCheckingBlock, // For if TYPE_CHECKING:
     IfBranchAfterAlwaysReachableInNameBinder,

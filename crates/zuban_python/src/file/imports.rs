@@ -444,7 +444,7 @@ fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
         }
         Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
         Some(ImportResult::PyTypedMissing) => node_ref.set_point(Point::new_specific(
-            Specific::AnyDueToError,
+            Specific::PyTypedMissing,
             Locality::Complex,
         )),
         None => node_ref.set_point(Point::new_specific(
@@ -458,11 +458,15 @@ fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
     match p.kind() {
         PointKind::FileReference => Some(ImportResult::File(p.file_index())),
         PointKind::Specific => {
-            debug_assert!(matches!(
-                p.specific(),
-                Specific::AnyDueToError | Specific::ModuleNotFound
-            ));
-            None
+            if p.specific() == Specific::PyTypedMissing {
+                Some(ImportResult::PyTypedMissing)
+            } else {
+                debug_assert!(matches!(
+                    p.specific(),
+                    Specific::AnyDueToError | Specific::ModuleNotFound
+                ));
+                None
+            }
         }
         PointKind::Complex => match node_ref.maybe_type().unwrap() {
             Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
