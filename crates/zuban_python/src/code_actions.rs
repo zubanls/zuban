@@ -11,7 +11,7 @@ use parsa_python_cst::{
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use utils::FastHashMap;
-use vfs::{Directory, DirectoryEntry, Entries, FileEntry, PathWithScheme, WorkspaceKind};
+use vfs::{Directory, DirectoryEntry, Entries, FileEntry, Parent, PathWithScheme, WorkspaceKind};
 
 use crate::{
     Document, InputPosition, Mode, PositionInfos, Project,
@@ -122,7 +122,7 @@ impl<'db> ImportFinder<'db> {
                 WorkspaceKind::Typeshed => {
                     let symbols = TypeshedSymbols::cached(db);
                     let mut found = slf.found.lock().unwrap();
-                    for typeshed_file in symbols.lookup(name) {
+                    let mut try_to_add = |typeshed_file: &TypeshedFile, needs_additional_name| {
                         let path = db
                             .vfs
                             .handler
@@ -132,9 +132,15 @@ impl<'db> ImportFinder<'db> {
                         {
                             found.push(PotentialImport {
                                 file: db.loaded_python_file(file_index),
-                                needs_additional_name: true,
+                                needs_additional_name,
                             });
                         }
+                    };
+                    for typeshed_file in symbols.lookup(name) {
+                        try_to_add(typeshed_file, true)
+                    }
+                    if let Some(typeshed_file) = symbols.lookup_top_level_file(name) {
+                        try_to_add(typeshed_file, false)
                     }
                 }
                 // These are not reachable via normal sys path and we should therefore not add this
@@ -405,13 +411,16 @@ struct TypeshedFile {
     path: String,
 }
 
+type TypeshedFileIndex = u32;
+
 #[derive(Serialize, Deserialize, Default, Debug)]
 struct TypeshedSymbols {
     files: Vec<TypeshedFile>,
+    toplevel_import_names: FastHashMap<String, TypeshedFileIndex>,
     // The value is the vec of a file index in the typeshed symbols.
     // It's a linked list not a Vec, because most of the time there's only one definition for a
     // name.
-    symbols_to_files: FastHashMap<String, SingleLinkedList<u32>>,
+    symbols_to_files: FastHashMap<String, SingleLinkedList<TypeshedFileIndex>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -487,6 +496,20 @@ impl TypeshedSymbols {
                     .par_iter()
                     .for_each(|entry| {
                         let file_index = db.load_file_from_workspace(entry, false).unwrap();
+                        let file = db.loaded_python_file(file_index);
+
+                        let mut found = found.lock().unwrap();
+                        let index = found.files.len() as u32;
+                        found.files.push(TypeshedFile {
+                            path: (**file.file_path(db)).to_string(),
+                        });
+                        if matches!(entry.parent, Parent::Workspace(_)) {
+                            let result = found
+                                .toplevel_import_names
+                                .insert(file.name(db).to_string(), index);
+                            debug_assert!(result.is_none());
+                        }
+                        let builtins = db.python_state.builtins();
                         // Builtins are already reachable
                         if file_index == db.python_state.builtins().file_index
                             // For now disable typing_extensions, because it essentially contains
@@ -495,13 +518,6 @@ impl TypeshedSymbols {
                         {
                             return;
                         }
-                        let file = db.loaded_python_file(file_index);
-
-                        let mut found = found.lock().unwrap();
-                        let index = found.files.len() as u32;
-                        found.files.push(TypeshedFile {
-                            path: (**file.file_path(db)).to_string(),
-                        });
                         for (name, &node_index) in file.symbol_table.iter() {
                             if is_private_import_and_not_in_dunder_all(
                                 db,
@@ -531,6 +547,11 @@ impl TypeshedSymbols {
             .map(|lst| lst.iter().map(|&index| &self.files[index as usize]))
             .into_iter()
             .flatten()
+    }
+
+    fn lookup_top_level_file(&self, name: &str) -> Option<&'_ TypeshedFile> {
+        let index = self.toplevel_import_names.get(name)?;
+        Some(&self.files[*index as usize])
     }
 }
 

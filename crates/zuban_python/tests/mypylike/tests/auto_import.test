@@ -454,4 +454,19 @@ __main__.py:5: Code Actions: []
 __main__.py:7: Code Actions: []
 __main__.py:9: Code Actions: []
 __main__.py:13: Code Actions: []
+__main__.py:18: Code Actions:
 - Import `ast.PyCF_ALLOW_TOP_LEVEL_AWAIT`: 5:0-5:0 replaced with: "from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT\n"
+
+[case auto_import_typeshed_toplevel_name]
+# flags: --no-typecheck
+
+#? code-actions
+typing.typing
+
+#? --codepoint-column 0 code-actions
+typing.typing
+
+[out]
+__main__.py:4: Code Actions: []
+__main__.py:7: Code Actions:
+- Import `typing`: 4:0-4:0 replaced with: "import typing\n"
