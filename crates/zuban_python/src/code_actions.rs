@@ -488,7 +488,6 @@ impl TypeshedSymbols {
                     typeshed_path: typeshed_path.to_string(),
                     symbols: cache(),
                 };
-                /* TODO
                 match utils::serialize_binary(&result) {
                     Ok(bytes) => {
                         if let Err(err) = std::fs::write(file, bytes) {
@@ -497,7 +496,6 @@ impl TypeshedSymbols {
                     }
                     Err(err) => tracing::error!("Could not serialize typeshed.cache: {err:?}"),
                 };
-                */
                 return result.symbols;
             }
             cache()
