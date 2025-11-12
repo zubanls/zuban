@@ -349,6 +349,16 @@ fn position_for_import<'db>(
             break;
         }
         if let Some(kind) = imp.kind_for_auto_imports(db, from_file) {
+            if kind > auto_import_kind {
+                return if let Some((previous_kind, prev)) = previous_match {
+                    if previous_kind < auto_import_kind {
+                        newlines_at_start.push('\n');
+                    }
+                    prev
+                } else {
+                    node_ref.node_start_position()
+                };
+            }
             let newline_end_after_import = || {
                 let end = node_ref.node_end_position();
                 if let Some(newline_index) = from_file.tree.code()[end as usize..].find('\n') {
@@ -358,14 +368,6 @@ fn position_for_import<'db>(
                     end
                 }
             };
-            if kind > auto_import_kind {
-                return if let Some((_, prev)) = previous_match {
-                    newlines_at_start.push('\n');
-                    prev
-                } else {
-                    node_ref.node_start_position()
-                };
-            }
             previous_match = Some((kind, newline_end_after_import()));
         }
     }

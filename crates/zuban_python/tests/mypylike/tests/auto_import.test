@@ -290,8 +290,8 @@ TypeVar
 
 [out]
 __main__.py:8: Code Actions:
-- Import `typing.TypeVar`: 4:0-4:0 replaced with: "\nfrom typing import TypeVar\n"
-- Import `ast.TypeVar`: 4:0-4:0 replaced with: "\nfrom ast import TypeVar\n"
+- Import `typing.TypeVar`: 4:0-4:0 replaced with: "from typing import TypeVar\n"
+- Import `ast.TypeVar`: 4:0-4:0 replaced with: "from ast import TypeVar\n"
 
 [case auto_import_groups_third_party_group1]
 # pkgs: with_star_imports
@@ -362,8 +362,8 @@ MIMEMessage = 1
 
 [out]
 test1.py:6: Code Actions:
-- Import `email.mime.message.MIMEMessage`: 2:0-2:0 replaced with: "\nfrom email.mime.message import MIMEMessage\n\n"
-- Import `with_star_imports.MIMEMessage`: 3:0-3:0 replaced with: "\nfrom with_star_imports import MIMEMessage\n\n"
+- Import `email.mime.message.MIMEMessage`: 2:0-2:0 replaced with: "from email.mime.message import MIMEMessage\n\n"
+- Import `with_star_imports.MIMEMessage`: 3:0-3:0 replaced with: "from with_star_imports import MIMEMessage\n\n"
 - Import `x.MIMEMessage`: 4:0-4:0 replaced with: "from x import MIMEMessage\n"
 
 [case auto_import_do_not_add_imports]
