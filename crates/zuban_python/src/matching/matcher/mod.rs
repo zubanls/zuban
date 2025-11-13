@@ -33,7 +33,7 @@ use crate::{
     },
     recoverable_error,
     type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, DbString, GenericItem,
+        AnyCause, CallableContent, CallableParam, CallableParams, DbString, Enum, GenericItem,
         NeverCause, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,
         StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
@@ -275,6 +275,17 @@ impl<'a> Matcher<'a> {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
+        let check_enum = |e: &Enum| {
+            if let Some(cls) = i_s.current_class() {
+                (e.class == cls.as_link()).into()
+            } else {
+                recoverable_error!(
+                    "Tried to match Self against enum, but current_class was not available"
+                );
+                Match::new_false()
+            }
+            //
+        };
         match value_type {
             Type::Self_ => {
                 if let Some(func_like) = self.func_like
@@ -293,17 +304,23 @@ impl<'a> Matcher<'a> {
                     if let Some(replace_self) = self.replace_self {
                         return replace_self().simple_matches(i_s, value_type, variance);
                     }
-                    if self.func_like.is_none_or(|c| c.is_callable()) {
-                        // In case we are working within a function, Self is bound already.
-                        if let Some(class) = value_type.maybe_class(i_s.db)
-                            && class.use_cached_class_infos(i_s.db).is_final
-                            && let Some(current) = i_s.current_class()
-                            && current.node_ref == class.node_ref
-                        {
-                            return Match::new_true();
+                    match value_type {
+                        Type::Enum(e) => check_enum(e),
+                        Type::EnumMember(m) => check_enum(&m.enum_),
+                        _ => {
+                            if self.func_like.is_none_or(|c| c.is_callable()) {
+                                // In case we are working within a function, Self is bound already.
+                                if let Some(class) = value_type.maybe_class(i_s.db)
+                                    && class.use_cached_class_infos(i_s.db).is_final
+                                    && let Some(current) = i_s.current_class()
+                                    && current.node_ref == class.node_ref
+                                {
+                                    return Match::new_true();
+                                }
+                            }
+                            Match::new_false()
                         }
                     }
-                    Match::new_false()
                 }
             }
         }
