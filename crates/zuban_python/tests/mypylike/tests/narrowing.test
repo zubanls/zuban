@@ -1877,3 +1877,20 @@ class AuthResult:
     @property
     def domain_id(self) -> str | None:
         return self._domain and self._domain['id']
+
+[case narrowing_isinstance_unions]
+# flags: --warn-unreachable
+# From GH #151
+class A:
+    pass
+
+class B(A):
+    pass
+
+obj: A | None = B()
+
+if isinstance(obj, B | None):
+    if obj is None:
+        print('obj is None')
+    else:
+        print('obj is B')

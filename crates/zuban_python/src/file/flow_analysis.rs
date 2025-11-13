@@ -5556,7 +5556,11 @@ fn split_and_intersect(
                         matched_with_any = false;
                         matched = true;
                     }
-                    Match::False { .. } => (),
+                    Match::False { .. } => {
+                        if isinstance_t.is_sub_type_of(i_s, matcher, t).bool() {
+                            true_type.simplified_union_in_place(i_s, isinstance_t);
+                        }
+                    }
                 }
             }
             if matched {
