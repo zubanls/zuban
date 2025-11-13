@@ -760,7 +760,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 continue;
             }
             let in_mod = self.i_s.in_module_context();
-            let in_same_scope = star_import.scope == 0 && in_mod || !in_mod;
+            let in_same_scope = star_import.scope == 0 || !in_mod;
             if in_same_scope && node_index.is_some_and(|n| n < star_import.star_node) {
                 continue;
             }
