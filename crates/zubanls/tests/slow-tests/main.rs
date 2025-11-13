@@ -2896,7 +2896,7 @@ fn test_auto_imports_code_actions() {
         r#"
         [file foo.py]
         import types
-        typing
+        MIMEMessage
         "#,
     )
     .into_server();
@@ -2915,7 +2915,7 @@ fn test_auto_imports_code_actions() {
             "changes": {
               foo.uri.as_str(): [
                 {
-                  "newText": "import typing\n\n",
+                  "newText": "from email.mime.message import MIMEMessage\n\n",
                   "range": {
                     "start": {
                       "line": 1,
@@ -2931,7 +2931,7 @@ fn test_auto_imports_code_actions() {
             }
           },
           "kind": "quickfix",
-          "title": "Import `typing`"
+          "title": "Import `email.mime.message.MIMEMessage`"
         }]),
     )
 }

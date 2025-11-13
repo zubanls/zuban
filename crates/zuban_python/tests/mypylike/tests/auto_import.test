@@ -579,3 +579,51 @@ __main__.py:13: Code Actions:
 - Import `email.mime.message.MIMEMessage`: 4:0-4:0 replaced with: "from email.mime.message import MIMEMessage\n\n"
 __main__.py:16: Code Actions:
 - Import `email.mime`: 4:0-4:0 replaced with: "from email import mime\n\n"
+
+[case auto_import_follow_star_imports_in_same_project_have_no_effect]
+# flags: --no-typecheck
+
+#? code-actions
+complete_pls
+#? code-actions
+Path
+
+[file x/__init__.py]
+from y import *
+from pathlib import *
+
+[file y.py]
+complete_pls = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `y.complete_pls`: 4:0-4:0 replaced with: "from y import complete_pls\n\n"
+__main__.py:6: Code Actions:
+- Import `zipfile.Path`: 4:0-4:0 replaced with: "from zipfile import Path\n\n"
+- Import `pathlib.Path`: 4:0-4:0 replaced with: "from pathlib import Path\n\n"
+
+[case auto_import_star_imports_of_site_package]
+# pkgs: with_star_imports
+# flags: --no-typecheck
+
+import typing
+
+#? code-actions
+from_star_import
+#? code-actions
+from_star_import2
+#? code-actions
+from_star_import_not_public
+#? code-actions
+Path
+
+[out]
+__main__.py:7: Code Actions:
+- Import `with_star_imports.from_star_import`: 5:0-5:0 replaced with: "\nfrom with_star_imports import from_star_import\n"
+__main__.py:9: Code Actions:
+- Import `with_star_imports.from_star_import2`: 5:0-5:0 replaced with: "\nfrom with_star_imports import from_star_import2\n"
+__main__.py:11: Code Actions: []
+__main__.py:13: Code Actions:
+- Import `zipfile.Path`: 5:0-5:0 replaced with: "from zipfile import Path\n"
+- Import `pathlib.Path`: 5:0-5:0 replaced with: "from pathlib import Path\n"
+- Import `with_star_imports.Path`: 5:0-5:0 replaced with: "\nfrom with_star_imports import Path\n"

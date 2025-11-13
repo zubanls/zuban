@@ -22,6 +22,7 @@ use crate::{
         is_private_import_and_not_in_dunder_all,
     },
     imports::ImportResult,
+    inference_state::InferenceState,
     node_ref::NodeRef,
     recoverable_error,
 };
@@ -158,15 +159,21 @@ impl<'db> ImportFinder<'db> {
             if let Some(entry) = entries
                 .search("__init__.pyi")
                 .filter(|x| !matches!(&**x, DirectoryEntry::MissingEntry(_)))
-                .and_then(|x| Some(x))
                 .or_else(|| entries.search("__init__.py"))
                 && let DirectoryEntry::File(__init__) = &*entry
-                && self.find_importable_name_in_file_entry(__init__)
             {
-                // If we find a name in __init__.py, we should probably not be looking up the other
-                // imports.
-                return;
-            } else if !add_submodules {
+                // We have to make sure to drop the entry otherwise star import finding can cause
+                // deadlocks, because the entries are modified there (missing entries are added).
+                let __init__ = __init__.clone();
+                drop(entry);
+
+                if self.find_importable_name_in_file_entry(&__init__, !add_submodules) {
+                    // If we find a name in __init__.py, we should probably not be looking up the other
+                    // imports.
+                    return;
+                }
+            }
+            if !add_submodules {
                 return;
             }
         }
@@ -180,7 +187,7 @@ impl<'db> ImportFinder<'db> {
             .collect();
         entries.into_par_iter().for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
-                self.find_importable_name_in_file_entry(&entry);
+                self.find_importable_name_in_file_entry(&entry, false);
             }
             DirectoryEntry::MissingEntry(_) => unreachable!("Removed above"),
             DirectoryEntry::Directory(dir) => self.find_importable_name_in_entries(
@@ -191,7 +198,11 @@ impl<'db> ImportFinder<'db> {
         })
     }
 
-    fn find_importable_name_in_file_entry(&self, entry: &Arc<FileEntry>) -> bool {
+    fn find_importable_name_in_file_entry(
+        &self,
+        entry: &Arc<FileEntry>,
+        add_star_imports: bool,
+    ) -> bool {
         let Some(file_index) = self.db.load_file_from_workspace(entry, false) else {
             return false;
         };
@@ -224,6 +235,18 @@ impl<'db> ImportFinder<'db> {
                 needs_additional_name: true,
             });
             return true;
+        } else if add_star_imports {
+            if file
+                .name_resolution_for_types(&InferenceState::new(self.db, file))
+                .lookup_from_star_import(self.name, false)
+                .is_some()
+            {
+                self.found.lock().unwrap().push(PotentialImport {
+                    file,
+                    needs_additional_name: true,
+                });
+                return true;
+            }
         }
         false
     }
