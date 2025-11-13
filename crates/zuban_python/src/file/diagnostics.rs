@@ -2280,11 +2280,11 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
     match t {
         Type::Class(c) => check(c.class(db)),
         Type::Dataclass(dc) => check(dc.class(db)),
-        Type::Type(t) => match t.as_ref() {
-            Type::Class(c) => {
-                let cls = c.class(db);
-                cls.execute(
+        Type::Type(inner_t) => {
+            let check_type_of_class = |cls: Class| {
+                t.execute(
                     i_s,
+                    None,
                     &NoArgs::new(from),
                     &mut ResultContext::Unknown,
                     OnTypeError::new(&|_, _, _, _| {
@@ -2292,12 +2292,15 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                             "Type errors should not be possible, because there are no params"
                         )
                     }),
-                    false,
                 );
                 check(cls)
+            };
+            match inner_t.as_ref() {
+                Type::Class(c) => check_type_of_class(c.class(db)),
+                Type::Dataclass(dc) => check_type_of_class(dc.class(db)),
+                _ => true,
             }
-            _ => false,
-        },
+        }
         Type::Any(_) | Type::Never(_) => true,
         Type::Union(union) => union
             .iter()

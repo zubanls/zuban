@@ -913,7 +913,7 @@ data = Data()
 reveal_type(data[1])  # N: Revealed type is "str"
 data[""]  # E: Invalid index type "str" for "Data"; expected type "int"
 
-[case dataclass_as_exceptions]
+[case dataclass_as_exceptions1]
 # From GH #102
 from dataclasses import dataclass
 
@@ -925,6 +925,24 @@ try:
     raise CustomError(foo=3)
 except CustomError:
     print("Custom error")
+    raise CustomError  # E: Missing positional argument "foo" in call to "CustomError"
+
+[case dataclass_as_exceptions2]
+# From GH #153
+import dataclasses
+
+@dataclasses.dataclass
+class CustomError(Exception):
+    pass
+
+def foo() -> None:
+    raise KeyError
+
+def bar() -> None:
+    raise CustomError
+
+def baz() -> None:
+    raise CustomError()
 
 [case dataclass_replace_on_incomplete_mro]
 # From GH #105
