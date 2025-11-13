@@ -1023,9 +1023,11 @@ impl<'db> Diagnostic<'db> {
             ModuleNotFound{module_name} => {
                 if let Some(types_package) = has_known_types_package(module_name) {
                     additional_notes.push(format!("Hint: \"python3 -m pip install {types_package}\""));
-                    additional_notes.push(
-                        r#"(or run "mypy --install-types" to install all missing stub packages)"#.to_string()
-                    );
+                    if self.db.project.settings.mypy_compatible {
+                        additional_notes.push(
+                            r#"(or run "mypy --install-types" to install all missing stub packages)"#.to_string()
+                        );
+                    }
                     format!("Library stubs not installed for \"{module_name}\"")
                 } else {
                     format!("Cannot find implementation or library stub for module named {module_name:?}")

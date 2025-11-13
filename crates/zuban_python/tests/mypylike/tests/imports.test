@@ -117,11 +117,17 @@ foo.X
 __all__ = ()
 class X: ...
 
-[case import_code]
-# flags: --show-error-codes
+[case import_code_mypy_compatible]
+# flags: --show-error-codes --mypy-compatible
 import lxml  # E: Library stubs not installed for "lxml"  [import-untyped] \
              # N: Hint: "python3 -m pip install lxml-stubs" \
              # N: (or run "mypy --install-types" to install all missing stub packages)
+import undefined   # E: Cannot find implementation or library stub for module named "undefined"  [import-not-found]
+
+[case import_code_mypy_no_compatible]
+# flags: --show-error-codes --no-mypy-compatible
+import lxml  # E: Library stubs not installed for "lxml"  [import-untyped] \
+             # N: Hint: "python3 -m pip install lxml-stubs"
 import undefined   # E: Cannot find implementation or library stub for module named "undefined"  [import-not-found]
 
 [case inference_with_star_import_in_def]
