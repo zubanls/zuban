@@ -1832,7 +1832,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     i_s,
                     IssueKind::DoesNotReturnAValue(self.diagnostic_string().into()),
                 );
-                return Inferred::new_any_from_error();
+                // Not sure why Mypy returns any here, but we probably shouldn't. See also
+                // discussion in Github #150
+                if i_s.db.project.settings.mypy_compatible {
+                    return Inferred::new_any_from_error();
+                }
             }
         } else if self.is_async() {
             let return_type = calculated_type_vars.into_return_type(

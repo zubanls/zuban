@@ -405,3 +405,13 @@ def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None:
 def one(x: str) -> int: ...
 @expects_int_first  # OK
 def four(*args: int) -> int: ...
+
+[case function_no_return_should_not_result_in_any_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# From GH #150, see also the discussion there, Mypy returns Any, Pyright None
+from typing import assert_type
+
+def foo() -> None: ...
+
+val = foo()  # E: "foo" does not return a value (it only ever returns None)
+assert_type(val, None)
