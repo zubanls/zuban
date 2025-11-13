@@ -113,12 +113,9 @@ impl<'db> ImportFinder<'db> {
                     slf.find_importable_name_in_entries(&workspace.entries, false, true)
                 }
                 WorkspaceKind::SitePackages => {
-                    if ***workspace.root_path == *"/usr/lib/python3.12" {
-                        // TODO handle this case properly
-                        continue;
-                    }
                     slf.find_importable_name_in_entries(&workspace.entries, false, false)
                 }
+                WorkspaceKind::PythonStdLib => (), // Already added as part of typeshed
                 WorkspaceKind::Typeshed => {
                     let symbols = TypeshedSymbols::cached(db);
                     let mut found = slf.found.lock().unwrap();
@@ -383,7 +380,7 @@ fn position_for_import<'db>(
 
 #[derive(PartialOrd, PartialEq)]
 enum ImportKind {
-    Typeshed,
+    StdLib,
     ThirdParty,
     Project,
 }
@@ -392,7 +389,7 @@ fn file_to_kind(db: &Database, file: &PythonFile) -> ImportKind {
     match &file.file_entry(db).parent.workspace().kind {
         vfs::WorkspaceKind::TypeChecking | vfs::WorkspaceKind::Fallback => ImportKind::Project,
         vfs::WorkspaceKind::SitePackages => ImportKind::ThirdParty,
-        vfs::WorkspaceKind::Typeshed => ImportKind::Typeshed,
+        vfs::WorkspaceKind::Typeshed | vfs::WorkspaceKind::PythonStdLib => ImportKind::StdLib,
     }
 }
 

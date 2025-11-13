@@ -1058,8 +1058,8 @@ impl Database {
             )
         }
 
-        for p in &project.sys_path {
-            add_workspace_and_check_for_pth_files(&mut vfs, p.clone(), recovery.is_some());
+        for (kind, p) in &project.sys_path {
+            add_workspace_and_check_for_pth_files(&mut vfs, p.clone(), recovery.is_some(), *kind);
         }
         // This AbsPath is not really an absolute path, it's just a fallback so anything can be
         // part of it.
@@ -1121,13 +1121,11 @@ impl Database {
             project,
         };
 
-        for p in &new_db.project.sys_path {
-            if self.project.sys_path.contains(p) {
+        for (kind, p1) in &new_db.project.sys_path {
+            if self.project.sys_path.iter().any(|(_, p2)| p1 == p2) {
                 continue;
             }
-            new_db
-                .vfs
-                .add_workspace(p.clone(), WorkspaceKind::SitePackages)
+            new_db.vfs.add_workspace(p1.clone(), *kind)
         }
 
         let mut set_pointer = |pointer_ref: &mut *const PythonFile, name, is_package| {
@@ -1518,6 +1516,7 @@ fn add_workspace_and_check_for_pth_files(
     vfs: &mut Vfs<PythonFile>,
     path: Arc<NormalizedPath>,
     is_recovery: bool,
+    kind: WorkspaceKind,
 ) {
     if vfs
         .workspaces
@@ -1527,7 +1526,7 @@ fn add_workspace_and_check_for_pth_files(
         // The workspaces already contains the path
         return;
     }
-    vfs.add_workspace(path, WorkspaceKind::SitePackages);
+    vfs.add_workspace(path, kind);
     if !is_recovery {
         // Imitate the logic for .pth files. Copied some of the logic from site.py from the Python
         // standard library.
@@ -1560,7 +1559,12 @@ fn add_workspace_and_check_for_pth_files(
                             .handler
                             .normalize_rc_path(vfs.handler.absolute_path(&workspace_path, line));
                         tracing::info!("Add entry {path} in .pth file: {}", pth_path.as_uri());
-                        add_workspace_and_check_for_pth_files(vfs, path, is_recovery)
+                        add_workspace_and_check_for_pth_files(
+                            vfs,
+                            path,
+                            is_recovery,
+                            WorkspaceKind::SitePackages,
+                        )
                     }
                 }
             }
@@ -1570,7 +1574,7 @@ fn add_workspace_and_check_for_pth_files(
 
 #[derive(Debug)]
 pub(crate) struct PythonProject {
-    pub sys_path: Vec<Arc<NormalizedPath>>,
+    pub sys_path: Vec<(WorkspaceKind, Arc<NormalizedPath>)>,
     pub settings: Settings,
     pub flags: FinalizedTypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,

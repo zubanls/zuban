@@ -3,22 +3,27 @@ use std::{
     sync::Arc,
 };
 
-use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler};
+use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler, WorkspaceKind};
 
 use crate::{PythonVersion, Settings};
 
 pub(crate) fn create_sys_path(
     handler: &dyn VfsHandler,
     settings: &Settings,
-) -> Vec<Arc<NormalizedPath>> {
+) -> Vec<(WorkspaceKind, Arc<NormalizedPath>)> {
     let mut sys_path = vec![];
 
-    sys_path.extend(settings.prepended_site_packages.iter().cloned());
+    sys_path.extend(
+        settings
+            .prepended_site_packages
+            .iter()
+            .map(|p| (WorkspaceKind::SitePackages, p.clone())),
+    );
 
     let new_unchecked = |p: &str| handler.unchecked_normalized_path(handler.unchecked_abs_path(p));
     if let Some(path) = lib_path(settings) {
         tracing::info!("Decided to use {path} as the Python lib folder");
-        sys_path.push(new_unchecked(&path));
+        sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&path)));
     } else {
         tracing::warn!("Did not find a Python lib folder (on Linux e.g. /usr/lib/python3.12)");
     }
@@ -28,9 +33,14 @@ pub(crate) fn create_sys_path(
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
         let p = site_packages_path_from_venv(env, settings.python_version_or_default());
-        sys_path.push(new_unchecked(p.to_str().expect(
-            "Should never happen, because we only put together valid unicode paths",
-        )));
+        sys_path.push((
+            WorkspaceKind::SitePackages,
+            new_unchecked(
+                p.to_str().expect(
+                    "Should never happen, because we only put together valid unicode paths",
+                ),
+            ),
+        ));
         add_editable_src_packages(handler, &mut sys_path, env);
     } else {
         // TODO use a real sys path
@@ -42,7 +52,7 @@ pub(crate) fn create_sys_path(
         // TODO maybe add /usr/local/lib/python3.12/dist-packages
         let p = "/usr/lib/python3/dist-packages";
         if std::fs::exists(p).is_ok_and(|found| found) {
-            sys_path.push(new_unchecked(p));
+            sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)));
         }
     }
     sys_path
@@ -87,7 +97,7 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
 
 fn add_editable_src_packages(
     handler: &dyn VfsHandler,
-    sys_path: &mut Vec<Arc<NormalizedPath>>,
+    sys_path: &mut Vec<(WorkspaceKind, Arc<NormalizedPath>)>,
     env: &NormalizedPath,
 ) {
     let Ok(entries) = env.as_ref().join("src").read_dir() else {
@@ -95,7 +105,10 @@ fn add_editable_src_packages(
     };
     for entry in entries.flatten() {
         if let Some(path) = entry.path().to_str() {
-            sys_path.push(handler.normalize_rc_path(handler.unchecked_abs_path(path)))
+            sys_path.push((
+                WorkspaceKind::SitePackages,
+                handler.normalize_rc_path(handler.unchecked_abs_path(path)),
+            ))
         }
     }
 }

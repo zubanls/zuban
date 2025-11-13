@@ -16,6 +16,8 @@ pub enum WorkspaceKind {
     Fallback,
     SitePackages,
     Typeshed,
+    // This is not really relevant for type checking, because it's covered by Typeshed
+    PythonStdLib,
 }
 
 #[derive(Debug, Default, Clone)]
