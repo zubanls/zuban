@@ -307,23 +307,45 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
             return p;
         }
     } else {
-        let lib_folder = env_folder.join("lib");
         // The lib folder typically contains a Python specific folder called "python3.8" or
         // python3.13", corresponding to the Python version. Here we try to find the package.
-        for folder in lib_folder.read_dir().unwrap_or_else(|err| {
-            panic!(
-                "The Python environment lib folder {lib_folder:?} should be readable ({err}).
-                    You might want to set ZUBAN_TYPESHED."
-            )
-        }) {
-            let folder = folder.unwrap_or_else(|err| {
-                panic!("The lib folder {lib_folder:?} should be readable ({err})")
-            });
-            let p = folder.path();
-            if let Some(found) = maybe_has_zuban(&p) {
+        let result = search_typeshed_dir_in_unix(env_folder.join("lib"), maybe_has_zuban);
+        if let Ok(Some(result)) = result {
+            return result;
+        }
+        if cfg!(target_os = "linux") {
+            // On Fedora / Redhat based systems with 64-bit architectures, Zuban is installed
+            // in the lib64 directory. We should look there as well.
+            if let Ok(Some(found)) =
+                search_typeshed_dir_in_unix(env_folder.join("lib64"), maybe_has_zuban)
+            {
                 return found;
             }
         }
+        if let Err(err) = result {
+            panic!("{err}")
+        }
     }
     panic!("Did not find a typeshed folder in {env_folder:?}")
+}
+
+fn search_typeshed_dir_in_unix(
+    lib_folder: PathBuf,
+    maybe_has_zuban: impl Fn(&Path) -> Option<Arc<NormalizedPath>>,
+) -> anyhow::Result<Option<Arc<NormalizedPath>>> {
+    for folder in lib_folder.read_dir().map_err(|err| {
+        anyhow::anyhow!(
+            "The Python environment lib folder {lib_folder:?} should be readable ({err}).
+                You might want to set ZUBAN_TYPESHED."
+        )
+    })? {
+        let folder = folder.map_err(|err| {
+            anyhow::anyhow!("The lib folder {lib_folder:?} should be readable ({err})")
+        })?;
+        let p = folder.path();
+        if let Some(found) = maybe_has_zuban(&p) {
+            return Ok(Some(found));
+        }
+    }
+    Ok(None)
 }
