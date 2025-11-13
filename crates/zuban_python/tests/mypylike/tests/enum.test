@@ -312,12 +312,38 @@ class PartitionTable(Enum):
     def is_gpt2(self) -> bool:
         return PartitionTable.GPT == self
 
-[case enum_classmethods]
+[case enum_classmethods_final]
 # From GH #154
 import enum
 from typing import TYPE_CHECKING, Self, final
 
 @final
+class MyEnum(enum.StrEnum):
+    FOO = "foo"
+
+    @classmethod
+    def build(cls) -> Self:
+        if TYPE_CHECKING:
+            reveal_type(cls.FOO)  # N: Revealed type is "Literal[__main__.MyEnum.FOO]?"
+            reveal_type(MyEnum.FOO)  # N: Revealed type is "Literal[__main__.MyEnum.FOO]?"
+        return cls.FOO
+
+    @classmethod
+    def build2(cls) -> Self:
+        if TYPE_CHECKING:
+            reveal_type(cls.FOO)  # N: Revealed type is "Literal[__main__.MyEnum.FOO]?"
+            reveal_type(MyEnum.FOO)  # N: Revealed type is "Literal[__main__.MyEnum.FOO]?"
+        return MyEnum.FOO
+
+    @classmethod
+    def cast(cls, value: str) -> Self:
+        return cls(value)
+
+[case enum_classmethods_non_final]
+# From GH #154
+import enum
+from typing import TYPE_CHECKING, Self, final
+
 class MyEnum(enum.StrEnum):
     FOO = "foo"
 
