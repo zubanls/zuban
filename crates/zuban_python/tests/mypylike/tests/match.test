@@ -311,3 +311,9 @@ class Repository(Enum):
         match self:
             case Repository.Core:
                 return [Repository.Core.value]
+
+[case match_should_not_recurse]
+# From GH #147
+match a:  # E: Name "a" is used before definition
+    case a:
+        pass

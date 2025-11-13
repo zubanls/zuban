@@ -3018,7 +3018,12 @@ impl Inference<'_, '_, '_> {
 
     fn assign_to_pattern_name(&self, name_def: NameDef, inf: &Inferred) {
         let from = NodeRef::new(self.file, name_def.index());
-        self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Pattern);
+        // In almost all cases the point should not have been calculated. A calculated point
+        // probably means that the name has been accessed illegally and we therefore do not have to
+        // assign.
+        if !from.point().calculated() {
+            self.assign_to_name_def_simple(name_def, from, inf, AssignKind::Pattern);
+        }
     }
 
     fn find_guards_in_pattern_kind(
