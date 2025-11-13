@@ -1346,6 +1346,8 @@ pub(crate) fn execute_type_of_type<'db>(
                 // Type check initialization
                 if let Some(dataclass) = cls.maybe_dataclass(i_s.db) {
                     dataclass_initialize(&dataclass, i_s, args, result_context, on_type_error);
+                } else if let Some(e) = cls.maybe_enum(i_s.db) {
+                    execute_type_of_type(i_s, args, result_context, on_type_error, &Type::Enum(e));
                 } else {
                     cls.execute(i_s, args, result_context, on_type_error, true);
                 }
