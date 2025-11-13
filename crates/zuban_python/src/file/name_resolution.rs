@@ -483,6 +483,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 );
                 let resolve = |r: &NameResolution<'db, 'file, '_>| {
                     let new_p = r.point(next_node_index);
+                    if new_p.calculating() {
+                        // I'm not sure if this is the best return here, and if it should be
+                        // handled here, but it seems to work.
+                        return PointResolution::Inferred(Inferred::new_any_from_error());
+                    }
                     r.resolve_point_internal(
                         next_node_index,
                         new_p,

@@ -1515,6 +1515,24 @@ except *F as f:  # E: Name "F" is used before definition \
 except *f as F:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
 
+[case avoid_recursion_with_exception_name_reuse3]
+# From GH #148
+try:
+    pass
+except E as _:  # E: Name "E" is used before definition \
+                # E: Cannot resolve name "E" (possible cyclic definition) \
+                # E: Cannot resolve name "_" (possible cyclic definition) \
+                # E: Cannot resolve name "_" (possible cyclic definition)
+    pass
+except E as __:  # E: Name "E" is used before definition \
+                 # E: Cannot resolve name "__" (possible cyclic definition)
+    pass
+except e as E:  # E: Name "e" is used before definition \
+                # E: Cannot resolve name "E" (possible cyclic definition)
+    pass
+except ___ as e:  # E: Name "___" is not defined
+    pass
+
 [case avoid_crash_with_del]
 # From GH #138
 i  # E: Name "i" is used before definition
