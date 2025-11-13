@@ -2,10 +2,10 @@
 
 //! Advertises the capabilities of the LSP Server.
 use lsp_types::{
-    CompletionOptions, DeclarationCapability, HoverProviderCapability,
-    ImplementationProviderCapability, NotebookCellSelector, NotebookDocumentSyncOptions,
-    NotebookSelector, OneOf, Position, PositionEncodingKind, RenameOptions,
-    SelectionRangeProviderCapability, SemanticTokenModifier, SemanticTokenType,
+    CodeActionProviderCapability, CompletionOptions, DeclarationCapability,
+    HoverProviderCapability, ImplementationProviderCapability, NotebookCellSelector,
+    NotebookDocumentSyncOptions, NotebookSelector, OneOf, Position, PositionEncodingKind,
+    RenameOptions, SelectionRangeProviderCapability, SemanticTokenModifier, SemanticTokenType,
     SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelpOptions,
     TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
@@ -62,7 +62,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
         workspace_symbol_provider: Some(OneOf::Left(true)),
-        code_action_provider: None, // TODO
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         code_lens_provider: None,
         document_formatting_provider: None,       // TODO
         document_range_formatting_provider: None, // TODO

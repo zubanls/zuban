@@ -11,20 +11,21 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    CompletionItemKind, CompletionParams, DiagnosticServerCapabilities, DocumentDiagnosticParams,
-    DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlightKind,
-    DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, HoverParams,
-    NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
-    ReferenceParams, RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType,
-    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
+    CodeActionParams, CompletionItemKind, CompletionParams, DiagnosticServerCapabilities,
+    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
+    DocumentHighlightKind, DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams,
+    HoverParams, NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range,
+    ReferenceContext, ReferenceParams, RenameParams, SelectionRangeParams, SemanticToken,
+    SemanticTokenType, SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
     SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
     TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
     WorkDoneProgressParams, WorkspaceSymbolParams,
     request::{
-        Completion, DocumentDiagnosticRequest, DocumentHighlightRequest, DocumentSymbolRequest,
-        GotoDeclaration, GotoDefinition, GotoImplementation, GotoTypeDefinition, HoverRequest,
-        PrepareRenameRequest, References, Rename, SelectionRangeRequest, SemanticTokensFullRequest,
-        SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceSymbolRequest,
+        CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
+        DocumentSymbolRequest, GotoDeclaration, GotoDefinition, GotoImplementation,
+        GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References, Rename,
+        SelectionRangeRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
+        SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -2886,4 +2887,51 @@ fn test_semantic_tokens_and_selection_ranges() {
           }
         ]),
     );
+}
+
+#[test]
+#[serial]
+fn test_auto_imports_code_actions() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        import types
+        typing
+        "#,
+    )
+    .into_server();
+
+    let foo = server.doc_id("foo.py");
+    server.request_and_expect_json::<CodeActionRequest>(
+        CodeActionParams {
+            text_document: foo.clone(),
+            range: Range::new(Position::new(1, 1), Position::new(1, 3)),
+            context: Default::default(),
+            partial_result_params: Default::default(),
+            work_done_progress_params: Default::default(),
+        },
+        json!([{
+          "edit": {
+            "changes": {
+              foo.uri.as_str(): [
+                {
+                  "newText": "import typing\n\n",
+                  "range": {
+                    "start": {
+                      "line": 1,
+                      "character": 0,
+                    },
+                    "end": {
+                      "line": 1,
+                      "character": 0,
+                    },
+                  }
+                }
+              ]
+            }
+          },
+          "kind": "quickfix",
+          "title": "Import `typing`"
+        }]),
+    )
 }
