@@ -1183,13 +1183,20 @@ pub(crate) fn attribute_access_of_type(
                 );
                 return;
             };
-            current_class.lookup(
-                i_s,
-                name,
-                ClassLookupOptions::new(&add_issue)
-                    .with_kind(kind)
-                    .with_as_type_type(&|| Type::Type(in_type.clone())),
-            )
+            let class_infos = current_class.use_cached_class_infos(i_s.db);
+            if let Some(t) = class_infos.undefined_generics_type.get()
+                && let Type::Enum(e) = t.as_ref()
+            {
+                lookup_on_enum_class(i_s, add_issue, &in_type, e, name, kind)
+            } else {
+                current_class.lookup(
+                    i_s,
+                    name,
+                    ClassLookupOptions::new(&add_issue)
+                        .with_kind(kind)
+                        .with_as_type_type(&|| Type::Type(in_type.clone())),
+                )
+            }
         }
         Type::Any(cause) => i_s
             .db
