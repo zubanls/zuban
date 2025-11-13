@@ -611,13 +611,17 @@ impl Type {
                 result_context,
                 add_issue,
             ),
-            Type::Self_ => i_s.current_class().unwrap().instance().get_item(
-                i_s,
-                slice_type,
-                result_context,
-                self,
-                add_issue,
-            ),
+            Type::Self_ => {
+                let Some(current_class) = i_s.current_class() else {
+                    recoverable_error!(
+                        "Self getitem without current_class, you should probably report this"
+                    );
+                    return Inferred::new_any_from_error();
+                };
+                current_class
+                    .instance()
+                    .get_item(i_s, slice_type, result_context, self, add_issue)
+            }
             Type::Intersection(i) => i.get_item(i_s, slice_type, result_context, add_issue),
             Type::Callable(_) => not_possible(true),
             Type::ParamSpecArgs(_) => i_s.db.python_state.tuple_of_obj.get_item_internal(
@@ -1168,13 +1172,25 @@ pub(crate) fn attribute_access_of_type(
             ClassLookupOptions::new(&add_issue).with_kind(kind),
         ),
         Type::Callable(_) => LookupDetails::none(),
-        Type::Self_ => i_s.current_class().unwrap().lookup(
-            i_s,
-            name,
-            ClassLookupOptions::new(&add_issue)
-                .with_kind(kind)
-                .with_as_type_type(&|| Type::Type(in_type.clone())),
-        ),
+        Type::Self_ => {
+            let Some(current_class) = i_s.current_class() else {
+                recoverable_error!(
+                    "Type[Self] lookup without current_class, you should probably report this"
+                );
+                callable(
+                    &in_type,
+                    LookupDetails::new(Type::Self_, LookupResult::None, AttributeKind::Attribute),
+                );
+                return;
+            };
+            current_class.lookup(
+                i_s,
+                name,
+                ClassLookupOptions::new(&add_issue)
+                    .with_kind(kind)
+                    .with_as_type_type(&|| Type::Type(in_type.clone())),
+            )
+        }
         Type::Any(cause) => i_s
             .db
             .python_state
