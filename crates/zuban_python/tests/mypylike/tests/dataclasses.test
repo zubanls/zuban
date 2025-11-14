@@ -974,3 +974,18 @@ class A:
 
 def foo(val: A.B, val2: A.C) -> None:
     pass
+
+[case dataclass_should_not_crash]
+# From GH #161
+import dataclasses
+from typing import overload
+
+@dataclasses.dataclass()
+class BaseExpression:
+    pass
+
+class BaseArithmeticExpression(BaseExpression):
+    def __add__(self, other: int) -> Addition:
+        return Addition()
+
+class Addition[G](BaseArithmeticExpression): ...

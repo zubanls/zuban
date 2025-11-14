@@ -158,10 +158,10 @@ impl FuncLike for Callable<'_> {
     }
 
     fn first_self_or_class_annotation(&self, _: &InferenceState) -> Option<Cow<'_, Type>> {
-        self.content
-            .kind
-            .had_first_self_or_class_annotation()
-            .then(|| Cow::Owned(self.content.first_positional_type().unwrap()))
+        if !self.content.kind.had_first_self_or_class_annotation() {
+            return None;
+        }
+        Some(Cow::Owned(self.content.first_positional_type()?))
     }
 
     fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
