@@ -195,3 +195,19 @@ def foo(a: X, b: X):
 __main__.py:11:documentation -> "(function) def __eq__(other: object) -> bool\n---\nHello world"
 __main__.py:13:documentation -> "(function) def __and__(other: X) -> X"
 __main__.py:15:documentation -> "(function) def __or__(int, /) -> int"
+
+[case docs_on_overload]
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+
+@overload
+def f(x: str) -> str: ...
+def f(x: str | int) -> str | int: ...
+
+#? --codepoint-column 0 documentation
+f(1)
+
+[out]
+__main__.py:11:documentation -> "(function) Overload(def f(x: int) -> int, def f(x: str) -> str)"
