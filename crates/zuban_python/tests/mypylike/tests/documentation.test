@@ -197,6 +197,7 @@ __main__.py:13:documentation -> "(function) def __and__(other: X) -> X"
 __main__.py:15:documentation -> "(function) def __or__(int, /) -> int"
 
 [case docs_on_overload]
+# From GH #162
 from typing import overload
 
 @overload
@@ -210,4 +211,4 @@ def f(x: str | int) -> str | int: ...
 f(1)
 
 [out]
-__main__.py:11:documentation -> "(function) Overload(def f(x: int) -> int, def f(x: str) -> str)"
+__main__.py:12:documentation -> "(function) Overload(def f(x: int) -> int, def f(x: str) -> str)"
