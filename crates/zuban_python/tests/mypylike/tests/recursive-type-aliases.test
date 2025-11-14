@@ -200,3 +200,95 @@ IncEx: TypeAlias = Union[
 def foo(a: IncEx | None) -> None: ...
 
 foo(a={"foo"})
+
+[case assert_type_recursive_type_dataclass_generic_arithmetic_expression]
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal, assert_type, overload
+
+type ArithmeticExpression = int | float | BaseArithmeticExpression
+
+
+@dataclass(frozen=True)
+class BaseExpression[G]:
+    pass
+
+
+@dataclass(frozen=True)
+class BaseComparableExpression[G](BaseExpression[G]):
+    pass
+
+
+@dataclass(frozen=True)
+class BaseNumericExpression[G](BaseComparableExpression[G]):
+    pass
+
+
+@dataclass(frozen=True)
+class BaseArithmeticExpression[G](BaseNumericExpression[G]):
+    @overload
+    def __add__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: int,
+    ) -> Addition[Literal[False], S, int]: ...
+
+    @overload
+    def __add__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: float,
+    ) -> Addition[Literal[False], S, float]: ...
+
+    def __add__(self, other: ArithmeticExpression) -> Addition:
+        return Addition(lhs=self, rhs=other)  # type: ignore
+
+    @overload
+    def __radd__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: int,
+    ) -> Addition[Literal[False], int, S]: ...
+
+    @overload
+    def __radd__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: float,
+    ) -> Addition[Literal[False], float, S]: ...
+
+    def __radd__(self, other: ArithmeticExpression) -> Addition:
+        return Addition(lhs=other, rhs=self)  # type: ignore
+
+
+@dataclass(frozen=True)
+class BaseBinaryArithmeticOperation[
+    G,
+    L: ArithmeticExpression,
+    R: ArithmeticExpression,
+](BaseArithmeticExpression[G]):
+    lhs: L
+    rhs: R
+
+
+@dataclass(frozen=True)
+class Addition[
+    G,
+    L: ArithmeticExpression,
+    R: ArithmeticExpression,
+](BaseBinaryArithmeticOperation[G, L, R]):
+    pass
+
+
+@dataclass(frozen=True)
+class BaseNamedSymbol(BaseExpression[Literal[False]]):
+    name: str
+
+
+@dataclass(frozen=True)
+class IntegerNamedSymbol(BaseArithmeticExpression[Literal[False]], BaseNamedSymbol):
+    pass
+
+
+x = IntegerNamedSymbol(name="age")
+result1 = x + 3.7
+assert_type(result1, Addition[Literal[False], IntegerNamedSymbol, float])
+result2 = 3.7 + x
+assert_type(result2, Addition[Literal[False], float, IntegerNamedSymbol])
