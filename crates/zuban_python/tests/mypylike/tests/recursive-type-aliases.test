@@ -200,3 +200,14 @@ IncEx: TypeAlias = Union[
 def foo(a: IncEx | None) -> None: ...
 
 foo(a={"foo"})
+
+[case recursive_type_alias_assert_type]
+from typing import assert_type
+X = list['X'] | int
+
+def f(x: X):
+    assert_type(x, list[X] | int)
+    assert_type(x, X)
+    if isinstance(x, list):
+        assert_type(x[0], list[X] | int)
+        assert_type(x[0], X)

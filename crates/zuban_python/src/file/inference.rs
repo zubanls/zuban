@@ -1369,7 +1369,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     && self
                         .infer_name_of_definition_by_index(first_index)
                         .as_cow_type(i_s)
-                        .is_equal_type(i_s.db, &value.as_cow_type(i_s))
+                        .is_equal_type(i_s.db, None, &value.as_cow_type(i_s))
                 {
                 } else {
                     let mut node_ref = name_def_ref;

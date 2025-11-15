@@ -989,3 +989,79 @@ class BaseArithmeticExpression(BaseExpression):
         return Addition()
 
 class Addition[G](BaseArithmeticExpression): ...
+
+[case dataclass_recursive_types_assert_type]
+# From GH #161
+import dataclasses
+from typing import Literal, assert_type, overload
+
+type ArithmeticExpression = int | float | BaseArithmeticExpression
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class BaseExpression[G]:
+    pass
+
+class BaseComparableExpression[G](BaseExpression[G]):
+    pass
+
+class BaseNumericExpression[G](BaseComparableExpression[G]):
+    pass
+
+class BaseArithmeticExpression[G](BaseNumericExpression[G]):
+    @overload
+    def __add__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: int,
+    ) -> Addition[Literal[False], S, int]: ...
+
+    @overload
+    def __add__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: float,
+    ) -> Addition[Literal[False], S, float]: ...
+
+    def __add__(self, other: ArithmeticExpression) -> Addition:
+        return Addition(lhs=self, rhs=other)  # type: ignore
+
+    @overload
+    def __radd__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: int,
+    ) -> Addition[Literal[False], int, S]: ...
+
+    @overload
+    def __radd__[S: BaseArithmeticExpression[Literal[False]]](
+        self: S,
+        other: float,
+    ) -> Addition[Literal[False], float, S]: ...
+
+    def __radd__(self, other: ArithmeticExpression) -> Addition:
+        return Addition(lhs=other, rhs=self)  # type: ignore
+
+class BaseBinaryArithmeticOperation[
+    G,
+    L: ArithmeticExpression,
+    R: ArithmeticExpression,
+](BaseArithmeticExpression[G]):
+    lhs: L
+    rhs: R
+
+class Addition[
+    G,
+    L: ArithmeticExpression,
+    R: ArithmeticExpression,
+](BaseBinaryArithmeticOperation[G, L, R]):
+    pass
+
+class BaseNamedSymbol(BaseExpression[Literal[False]]):
+    name: str
+
+class IntegerNamedSymbol(BaseArithmeticExpression[Literal[False]]):
+    pass
+
+age = IntegerNamedSymbol()
+
+result1 = age + 3.7
+assert_type(result1, Addition[Literal[False], IntegerNamedSymbol, float])
+result2 = 3.7 + age
+assert_type(result2, Addition[Literal[False], float, IntegerNamedSymbol])
