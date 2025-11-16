@@ -1306,7 +1306,7 @@ fn check_goto_likes() {
         json!({
             "contents": {
                 "kind": "markdown",
-                "value": "(variable) d: Class\n---\ndoc 🫶 love",
+                "value": "```python\n(variable) d: Class\n```\n---\ndoc 🫶 love",
             },
             "range": {
                 "start": {"line": 1, "character": 0},

@@ -427,6 +427,7 @@ impl<'project> Document<'project> {
             docs
         } else {
             let mut out = String::default();
+            out += "```python\n";
             if !declaration_kinds.is_empty() {
                 out.push('(');
                 out += &declaration_kinds.join(", ");
@@ -456,6 +457,7 @@ impl<'project> Document<'project> {
                 }
             }
             out += &types.join(" | ");
+            out += "\n```";
             if !results.is_empty() {
                 out += "\n---\n";
                 out += &docs;

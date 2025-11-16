@@ -20,11 +20,11 @@ x
 1
 
 [out]
-__main__.py:8:documentation -> "(param) x: A | B\n---\na doc\n\nb doc"
-__main__.py:10:documentation -> "(param) a: A\n---\na doc"
+__main__.py:8:documentation -> "```python\n(param) x: A | B\n```\n---\na doc\n\nb doc"
+__main__.py:10:documentation -> "```python\n(param) a: A\n```\n---\na doc"
 __main__.py:12:documentation -> "a doc"
-__main__.py:15:documentation -> "(variable) x: int"
-__main__.py:17:documentation -> "(variable) x: int"
+__main__.py:15:documentation -> "```python\n(variable) x: int\n```"
+__main__.py:17:documentation -> "```python\n(variable) x: int\n```"
 __main__.py:19:documentation -> No docs found
 
 [case docs_class]
@@ -45,10 +45,10 @@ WithGeneric
 WithoutGeneric
 
 [out]
-__main__.py:2:documentation -> "(class) WithGeneric\n---\nwith docs"
-__main__.py:7:documentation -> "(class) WithoutGeneric\n---\nwithout docs"
-__main__.py:13:documentation -> "(class) WithGeneric\n---\nwith docs"
-__main__.py:15:documentation -> "(class) WithoutGeneric\n---\nwithout docs"
+__main__.py:2:documentation -> "```python\n(class) WithGeneric\n```\n---\nwith docs"
+__main__.py:7:documentation -> "```python\n(class) WithoutGeneric\n```\n---\nwithout docs"
+__main__.py:13:documentation -> "```python\n(class) WithGeneric\n```\n---\nwith docs"
+__main__.py:15:documentation -> "```python\n(class) WithoutGeneric\n```\n---\nwithout docs"
 
 [case docs_alias]
 
@@ -64,10 +64,10 @@ OtherAlias = str
 def bar() -> OtherAlias: ...
 
 [out]
-__main__.py:3:documentation -> "(type) Alias = int"
-__main__.py:5:documentation -> "(type) Alias = int"
-__main__.py:8:documentation -> "(variable) OtherAlias: type[str]"
-__main__.py:11:documentation -> "(variable) OtherAlias: type[str]"
+__main__.py:3:documentation -> "```python\n(type) Alias = int"
+__main__.py:5:documentation -> "```python\n(type) Alias = int"
+__main__.py:8:documentation -> "```python\n(variable) OtherAlias: type[str]"
+__main__.py:11:documentation -> "```python\n(variable) OtherAlias: type[str]"
 
 [case docs_function_mypy_compatible]
 # flags: --mypy-compatible
@@ -86,10 +86,10 @@ typed
 untyped
 
 [out]
-__main__.py:3:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
-__main__.py:7:documentation -> "(function) def untyped(x: Any) -> Any\n---\nuntyped doc"
-__main__.py:12:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
-__main__.py:14:documentation -> "(function) def untyped(x: Any) -> Any\n---\nuntyped doc"
+__main__.py:3:documentation -> "```python\n(function) def [T] typed(x: list[T]) -> T\n```\n---\ntyped doc"
+__main__.py:7:documentation -> "```python\n(function) def untyped(x: Any) -> Any\n```\n---\nuntyped doc"
+__main__.py:12:documentation -> "```python\n(function) def [T] typed(x: list[T]) -> T\n```\n---\ntyped doc"
+__main__.py:14:documentation -> "```python\n(function) def untyped(x: Any) -> Any\n```\n---\nuntyped doc"
 
 [case docs_function_no_mypy_compatible]
 # flags: --no-mypy-compatible
@@ -108,10 +108,10 @@ typed
 untyped
 
 [out]
-__main__.py:3:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
-__main__.py:7:documentation -> "(function) def [T1: Any] untyped(x: T1) -> T1\n---\nuntyped doc"
-__main__.py:12:documentation -> "(function) def [T] typed(x: list[T]) -> T\n---\ntyped doc"
-__main__.py:14:documentation -> "(function) def [T1: Any] untyped(x: T1) -> T1\n---\nuntyped doc"
+__main__.py:3:documentation -> "```python\n(function) def [T] typed(x: list[T]) -> T\n```\n---\ntyped doc"
+__main__.py:7:documentation -> "```python\n(function) def [T1: Any] untyped(x: T1) -> T1\n```\n---\nuntyped doc"
+__main__.py:12:documentation -> "```python\n(function) def [T] typed(x: list[T]) -> T\n```\n---\ntyped doc"
+__main__.py:14:documentation -> "```python\n(function) def [T1: Any] untyped(x: T1) -> T1\n```\n---\nuntyped doc"
 
 [case docs_property]
 class X:
@@ -136,12 +136,12 @@ X.prop
 X().prop
 
 [out]
-__main__.py:3:documentation -> "(function) def [T] func(self, x: list[T]) -> T\n---\nfunc doc"
-__main__.py:9:documentation -> "(property) def prop(self) -> int\n---\nproperty doc"
-__main__.py:14:documentation -> "(function) def [T] func(self, x: list[T]) -> T\n---\nfunc doc"
-__main__.py:16:documentation -> "(function) def [T] func(x: list[T]) -> T\n---\nfunc doc"
-__main__.py:18:documentation -> "(function) prop: property"
-__main__.py:20:documentation -> "(property) prop: int"
+__main__.py:3:documentation -> "```python\n(function) def [T] func(self, x: list[T]) -> T\n```\n---\nfunc doc"
+__main__.py:9:documentation -> "```python\n(property) def prop(self) -> int\n```\n---\nproperty doc"
+__main__.py:14:documentation -> "```python\n(function) def [T] func(self, x: list[T]) -> T\n```\n---\nfunc doc"
+__main__.py:16:documentation -> "```python\n(function) def [T] func(x: list[T]) -> T\n```\n---\nfunc doc"
+__main__.py:18:documentation -> "```python\n(function) prop: property\n```"
+__main__.py:20:documentation -> "```python\n(property) prop: int\n```"
 
 [case docs_classmethod_staticmethod]
 class X:
@@ -167,12 +167,12 @@ X.staticm
 X().staticm
 
 [out]
-__main__.py:4:documentation -> "(function) def classm(cls, cls) -> int\n---\nclassm doc"
-__main__.py:10:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
-__main__.py:15:documentation -> "(function) def classm(cls) -> int\n---\nclassm doc"
-__main__.py:17:documentation -> "(function) def classm(cls) -> int\n---\nclassm doc"
-__main__.py:19:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
-__main__.py:21:documentation -> "(function) def staticm(x: str) -> int\n---\nstaticm doc"
+__main__.py:4:documentation -> "```python\n(function) def classm(cls, cls) -> int\n```\n---\nclassm doc"
+__main__.py:10:documentation -> "```python\n(function) def staticm(x: str) -> int\n```\n---\nstaticm doc"
+__main__.py:15:documentation -> "```python\n(function) def classm(cls) -> int\n```\n---\nclassm doc"
+__main__.py:17:documentation -> "```python\n(function) def classm(cls) -> int\n```\n---\nclassm doc"
+__main__.py:19:documentation -> "```python\n(function) def staticm(x: str) -> int\n```\n---\nstaticm doc"
+__main__.py:21:documentation -> "```python\n(function) def staticm(x: str) -> int\n```\n---\nstaticm doc"
 
 [case docs_goto_on_operator]
 class X:
@@ -192,9 +192,9 @@ def foo(a: X, b: X):
     1 | 1
 
 [out]
-__main__.py:11:documentation -> "(function) def __eq__(other: object) -> bool\n---\nHello world"
-__main__.py:13:documentation -> "(function) def __and__(other: X) -> X"
-__main__.py:15:documentation -> "(function) def __or__(int, /) -> int"
+__main__.py:11:documentation -> "```python\n(function) def __eq__(other: object) -> bool\n```\n---\nHello world"
+__main__.py:13:documentation -> "```python\n(function) def __and__(other: X) -> X\n```"
+__main__.py:15:documentation -> "```python\n(function) def __or__(int, /) -> int\n```"
 
 [case docs_on_overload]
 # From GH #162
@@ -211,4 +211,4 @@ def f(x: str | int) -> str | int: ...
 f(1)
 
 [out]
-__main__.py:12:documentation -> "(function) Overload(def f(x: int) -> int, def f(x: str) -> str)"
+__main__.py:12:documentation -> "```python\n(function) Overload(def f(x: int) -> int, def f(x: str) -> str)\n```"
