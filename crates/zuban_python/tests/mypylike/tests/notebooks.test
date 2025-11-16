@@ -173,12 +173,12 @@ c.py:13: error: Invalid syntax
 c.py:3:goto -> a.py:1:6:a.Abcdef
 c.py:5:goto -> a.py:3:4:a.Abcdef.x
 c.py:7:infer -> a.py:1:6:a.Abcdef
-c.py:9:documentation -> "(class) Abcdef\n---\nheyho"
+c.py:9:documentation -> "```python\n(class) Abcdef() -> Abcdef\n```\n---\nheyho"
 c.py:13:goto -> a.py:1:6:a.Abcdef
 b.py:3:goto -> a.py:1:6:a.Abcdef
 b.py:5:goto -> a.py:3:4:a.Abcdef.x
 b.py:7:infer -> a.py:1:6:a.Abcdef
-b.py:9:documentation -> "(class) Abcdef\n---\nheyho"
+b.py:9:documentation -> "```python\n(class) Abcdef() -> Abcdef\n```\n---\nheyho"
 
 [case notebook_completion]
 [file a.py]

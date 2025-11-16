@@ -732,7 +732,7 @@ def bla(something):
 [out]
 __main__.py:4:infer -> __main__.py:1:6:__main__.A
 __main__.py:10:infer -> __main__.py:1:6:__main__.A
-__main__.py:15:documentation -> "(param) y: A"
+__main__.py:15:documentation -> "```python\n(param) y: A\n```"
 __main__.py:21:infer -> __main__.py:1:6:__main__.A
 
 [case infer_on_generic_class_in_untyped_function]
