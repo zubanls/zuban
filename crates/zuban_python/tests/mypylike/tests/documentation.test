@@ -45,10 +45,10 @@ WithGeneric
 WithoutGeneric
 
 [out]
-__main__.py:2:documentation -> "```python\n(class) WithGeneric\n```\n---\nwith docs"
-__main__.py:7:documentation -> "```python\n(class) WithoutGeneric\n```\n---\nwithout docs"
-__main__.py:13:documentation -> "```python\n(class) WithGeneric\n```\n---\nwith docs"
-__main__.py:15:documentation -> "```python\n(class) WithoutGeneric\n```\n---\nwithout docs"
+__main__.py:2:documentation -> "```python\n(class) WithGeneric() -> WithGeneric[T]\n```\n---\nwith docs"
+__main__.py:7:documentation -> "```python\n(class) WithoutGeneric() -> WithoutGeneric\n```\n---\nwithout docs"
+__main__.py:13:documentation -> "```python\n(class) WithGeneric() -> WithGeneric[T]\n```\n---\nwith docs"
+__main__.py:15:documentation -> "```python\n(class) WithoutGeneric() -> WithoutGeneric\n```\n---\nwithout docs"
 
 [case docs_alias]
 
@@ -212,3 +212,26 @@ f(1)
 
 [out]
 __main__.py:12:documentation -> "```python\n(function) Overload(def f(x: int) -> int, def f(x: str) -> str)\n```"
+
+[case docs_on_type_of_class]
+from dataclasses import dataclass
+class A:
+    """ a doc """
+    def __init__(self, a: int, *, a2: str): ...
+class B: pass
+@dataclass
+class D:
+    x: int
+    y: str = ""
+
+#? documentation
+A
+#? documentation
+B
+#? documentation
+D
+
+[out]
+__main__.py:12:documentation -> "```python\n(class) A(a, *, a2: str) -> A\n```\n---\na doc"
+__main__.py:14:documentation -> "```python\n(class) B() -> B\n```"
+__main__.py:16:documentation -> "```python\n(class) D(x: int, y: str = ...) -> D\n```"

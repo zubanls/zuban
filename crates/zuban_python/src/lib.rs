@@ -57,7 +57,10 @@ use matching::invalidate_protocol_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
-use crate::select_files::all_typechecked_files;
+use crate::{
+    select_files::all_typechecked_files,
+    type_::{CallableLike, Type},
+};
 
 pub struct Project {
     db: Database,
@@ -392,11 +395,17 @@ impl<'project> Document<'project> {
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
         let mut types = vec![];
+        let mut class_t = None;
         let mut resolver = GotoResolver::new(
             self.positional_document(position)?,
             GotoGoal::Indifferent,
             |n: ValueName| {
                 if !only_docstrings {
+                    if class_t.is_none()
+                        && let Type::Type(_) = n.type_
+                    {
+                        class_t = Some(n.type_.clone())
+                    }
                     types.push(
                         n.maybe_pretty_function_type()
                             .unwrap_or_else(|| n.type_description())
@@ -456,7 +465,19 @@ impl<'project> Document<'project> {
                     }
                 }
             }
-            out += &types.join(" | ");
+            let db = &self.project.db;
+            if let [description] = types.as_slice()
+                && let Some(class_t) = class_t
+                && let Some(CallableLike::Callable(callable)) =
+                    class_t.maybe_callable(&InferenceState::new_in_unknown_file(db))
+            {
+                out += description;
+                let formatted = callable.format_pretty(&format_data::FormatData::new_short(db));
+                out += "(";
+                out += formatted.split_once('(').unwrap().1;
+            } else {
+                out += &types.join(" | ");
+            }
             out += "\n```";
             if !results.is_empty() {
                 out += "\n---\n";
