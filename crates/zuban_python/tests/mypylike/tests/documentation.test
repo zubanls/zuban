@@ -235,3 +235,23 @@ D
 __main__.py:12:documentation -> "```python\n(class) A(a, *, a2: str) -> A\n```\n---\na doc"
 __main__.py:14:documentation -> "```python\n(class) B() -> B\n```"
 __main__.py:16:documentation -> "```python\n(class) D(x: int, y: str = ...) -> D\n```"
+
+[case documentation_doctests_formatting]
+def f() -> None:
+    """
+    asdf
+    >>> bla
+    foo
+    >>> 1
+    bar
+
+    x
+    
+    >>> hello
+    """
+
+#? documentation
+f
+
+[out]
+__main__.py:15:documentation -> "```python\n(function) def f() -> None\n```\n---\nasdf\n```python\n>>> bla\nfoo\n>>> 1\nbar\n```\n\nx\n\n```python\n>>> hello\n```\n"

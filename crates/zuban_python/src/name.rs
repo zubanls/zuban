@@ -340,7 +340,7 @@ impl<'db, 'x> Name<'db, 'x> {
             debug_assert!(!name.file().is_stub());
             return name.documentation();
         }
-        result
+        docstr_to_markdown(result)
     }
 
     pub fn class_symbols(&self) -> Option<impl ExactSizeIterator<Item = NameSymbol<'db>>> {
@@ -563,4 +563,33 @@ impl<'db> NameSymbol<'db> {
             cst_name: NodeRef::new(self.file, self.node_index).expect_name(),
         })
     }
+}
+
+fn docstr_to_markdown(s: Cow<str>) -> Cow<str> {
+    if !s.contains(">>>") {
+        return s;
+    }
+    let mut out_parts = vec![];
+    let mut in_block = false;
+
+    for line in s.split_inclusive('\n') {
+        if line.starts_with(">>>") {
+            if !in_block {
+                out_parts.push("```python\n");
+                in_block = true;
+            }
+        } else if in_block && line.trim().is_empty() {
+            out_parts.push("```\n");
+            in_block = false;
+        }
+        out_parts.push(line);
+    }
+
+    if in_block {
+        if !out_parts.last().unwrap().ends_with('\n') {
+            out_parts.push("\n");
+        }
+        out_parts.push("```\n");
+    }
+    Cow::Owned(out_parts.join(""))
 }
