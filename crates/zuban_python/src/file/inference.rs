@@ -885,15 +885,33 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     if cls.is_calculating_class_infos() {
                         return None;
                     }
-                    cls.instance()
-                        .lookup(
-                            self.i_s,
-                            name_def.as_code(),
-                            InstanceLookupOptions::new(&|_| ())
-                                .with_skip_first_of_mro(self.i_s.db, cls),
-                        )
-                        .lookup
-                        .into_maybe_inferred()
+                    cls.lookup(
+                        self.i_s,
+                        name_def.as_code(),
+                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                    )
+                    .lookup
+                    .into_maybe_inferred()
+                    .and_then(|x| {
+                        if let Some(ComplexPoint::TypeInstance(Type::Class(c))) =
+                            x.maybe_complex_point(self.i_s.db)
+                            && c.link == self.i_s.db.python_state.property_link()
+                        {
+                            // Properties can beo overwritten with the property value type as a
+                            // normal variable. Here we make sure that the context is correct.
+                            return cls
+                                .instance()
+                                .lookup(
+                                    self.i_s,
+                                    name_def.as_code(),
+                                    InstanceLookupOptions::new(&|_| ())
+                                        .with_skip_first_of_mro(self.i_s.db, cls),
+                                )
+                                .lookup
+                                .into_maybe_inferred();
+                        }
+                        Some(x)
+                    })
                 })
                 .or_else(|| {
                     Some(

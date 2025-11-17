@@ -1091,6 +1091,7 @@ impl PythonState {
     attribute_link!(builtins, pub frozenset_link, builtins_frozenset_index);
     attribute_link!(builtins, pub notimplementederror_link, builtins_notimplementederror);
     attribute_link!(builtins, pub slice_link, builtins_slice_index);
+    attribute_link!(builtins, pub property_link, builtins_property_index);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);

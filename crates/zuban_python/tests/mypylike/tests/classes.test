@@ -2096,3 +2096,19 @@ reveal_type(y)  # N: Revealed type is "Any"
 Test().y = ''  # E: "Test" has no attribute "y"
 Test().with_annotation1  # E: "Test" has no attribute "with_annotation1"
 Test().with_annotation2  # E: "Test" has no attribute "with_annotation2"
+
+[case context_for_class_vars_should_not_be_instance_method]
+import m
+
+def wrap[T](obj: T) -> T: ...
+
+class A(m.Base):
+    y = wrap(m.Base.f)
+    f = wrap(m.Base.f)
+
+A().y()
+A().f()
+
+[file m.pyi]
+class Base:
+    def f(self) -> None: ...
