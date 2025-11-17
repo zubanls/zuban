@@ -1416,17 +1416,15 @@ impl<'db: 'a, 'a> Class<'a> {
             .get(class_block.index())
             .calculated()
         {
-            if !db.project.settings.mypy_compatible {
-                let result = self.file.ensure_module_symbols_flow_analysis(db);
-                if result.is_err() {
-                    debug!(
-                        "Wanted to calculate class {:?} diagnostics, but could not calculated file {}",
-                        self.name(),
-                        self.file.qualified_name(db)
-                    );
-                }
-                result?;
+            let result = self.file.ensure_module_symbols_flow_analysis(db);
+            if result.is_err() {
+                debug!(
+                    "Wanted to calculate class {:?} diagnostics, but could not calculated file {}",
+                    self.name(),
+                    self.file.qualified_name(db)
+                );
             }
+            result?;
             let result = FLOW_ANALYSIS.with(|fa| {
                 fa.with_new_empty_and_delay_further(db, || {
                     self.file

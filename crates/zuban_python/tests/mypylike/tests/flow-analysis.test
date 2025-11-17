@@ -546,3 +546,15 @@ def test_func():
             offset = data["next"]
         else:
             break
+
+[case file_flow_analysis]
+from h import H
+
+def blubb(self, h: H):
+    h.asdf
+
+[file h.py]
+x = undefined  # E: Name "undefined" is not defined
+
+class H:
+    asdf = x
