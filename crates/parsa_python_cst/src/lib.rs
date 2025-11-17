@@ -880,7 +880,7 @@ impl<'db> Name<'db> {
             } else {
                 name_def_.maybe_name_of_class()?.docstring()
             };
-            strings::clean_docstring(strings_?)
+            strings_?.clean_docstring()
         };
         docstr(self).unwrap_or(Cow::Borrowed(""))
     }
@@ -1036,7 +1036,7 @@ impl<'db> File<'db> {
 
     pub fn clean_docstring(&self) -> Cow<'db, str> {
         self.docstring()
-            .and_then(|d| strings::clean_docstring(d))
+            .and_then(|d| d.clean_docstring())
             .unwrap_or(Cow::Borrowed(""))
     }
 }
@@ -1229,7 +1229,7 @@ impl<'db> Expression<'db> {
         node.is_type(Nonterminal(lambda))
     }
 
-    fn maybe_string(&self) -> Option<Strings<'db>> {
+    pub fn maybe_string(&self) -> Option<Strings<'db>> {
         match self.maybe_unpacked_atom()? {
             AtomContent::Strings(s) => Some(s),
             _ => None,
@@ -2942,6 +2942,28 @@ impl<'db> Assignment<'db> {
                 None => expr.maybe_name_or_last_primary_name(),
                 Some(_) => None,
             })
+    }
+
+    pub fn maybe_next_assignment(&self) -> Option<Self> {
+        let stmt_ = self.node.parent_until(&[Nonterminal(stmt)])?;
+        let next = stmt_.next_sibling()?;
+        if !next.is_type(Nonterminal(stmt)) {
+            return None;
+        }
+        let simple_stmts_ = next.nth_child(0);
+        if !simple_stmts_.is_type(Nonterminal(simple_stmts)) {
+            return None;
+        }
+        let simple_stmt_ = simple_stmts_.nth_child(0);
+        if !simple_stmt_.is_type(Nonterminal(simple_stmt)) {
+            return None;
+        }
+        let assignment_ = simple_stmt_.nth_child(0);
+        if assignment_.is_type(Nonterminal(assignment)) {
+            Some(Assignment::new(assignment_))
+        } else {
+            None
+        }
     }
 }
 

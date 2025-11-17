@@ -2,7 +2,8 @@ use std::borrow::Cow;
 
 use lsp_types::SymbolKind;
 use parsa_python_cst::{
-    ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, NodeIndex, Scope, TypeLike,
+    AssignmentContent, ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, NodeIndex,
+    PrimaryTargetOrAtom, Scope, Target, TypeLike,
 };
 use vfs::NormalizedPath;
 
@@ -329,7 +330,28 @@ impl<'db, 'x> Name<'db, 'x> {
 
     pub fn documentation(&self) -> Cow<'db, str> {
         let result = match self {
-            Name::TreeName(n) => n.cst_name.clean_docstring(),
+            Name::TreeName(n) => {
+                n.cst_name.clean_docstring()
+                /*
+                // If we don't have a result try to lookup the next assignment like
+                // foo.__doc__ = "asdf". This is for example the case for typing.Callable
+                if result.is_empty()
+                    && let Some(assignment) = n.cst_name.maybe_assignment_definition_name()
+                    && let Some(next) = assignment.maybe_next_assignment()
+                    && let AssignmentContent::Normal(mut targets, right_side) = next.unpack()
+                    && targets.clone().count() == 1
+                    && let Some(Target::NameExpression(target, name_def)) = targets.next()
+                    && name_def.as_code() == "__doc__"
+                    && let PrimaryTargetOrAtom::Atom(atom) = target.first()
+                    && atom.as_code() == n.cst_name.as_code()
+                    && let Some(expr) = right_side.maybe_simple_expression()
+                    && let Some(strings) = expr.maybe_string()
+                    && let Some(doc) = strings.clean_docstring()
+                {
+                    return doc;
+                }
+                */
+            }
             Name::ModuleName(n) => n.file.tree.root().clean_docstring(),
             Name::NodeName(_) => Cow::Borrowed(""),
         };
