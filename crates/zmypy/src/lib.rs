@@ -286,6 +286,7 @@ pub fn with_diagnostics_from_cli<T>(
     typeshed_path: Option<Arc<NormalizedPath>>,
     callback: impl FnOnce(Diagnostics, &DiagnosticConfig) -> T,
 ) -> anyhow::Result<T> {
+    tracing::info!("Zuban version {}", env!("CARGO_PKG_VERSION"));
     tracing::info!("Checking in {current_dir}");
     let (mut project, diagnostic_config) =
         project_from_cli(cli, &current_dir, typeshed_path, |name| std::env::var(name));
