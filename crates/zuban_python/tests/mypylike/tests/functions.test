@@ -433,3 +433,30 @@ def generator():
 
 val = foo()  # E: "foo" does not return a value (it only ever returns None)
 assert_type(val, None)
+
+[case function_does_not_return_value_mypy_compatible]
+# flags: --mypy-compatible
+from collections.abc import Callable
+
+def get(fn: Callable[[], None] | Callable[[], str]) -> None:
+    ret = fn()
+    reveal_type(ret)  # N: Revealed type is "None | str"
+
+def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
+    ret = fn(1)  # E: Function does not return a value (it only ever returns None) \
+                 # E: Function does not return a value (it only ever returns None)
+    reveal_type(ret)  # N: Revealed type is "Any"
+
+[case function_does_not_return_value_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# From GH #124
+from collections.abc import Callable
+
+def get(fn: Callable[[], None] | Callable[[], str]) -> None:
+    ret = fn()
+    reveal_type(ret)  # N: Revealed type is "None | str"
+
+def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
+    ret = fn(1)  # E: Function does not return a value (it only ever returns None) \
+                 # E: Function does not return a value (it only ever returns None)
+    reveal_type(ret)  # N: Revealed type is "None"

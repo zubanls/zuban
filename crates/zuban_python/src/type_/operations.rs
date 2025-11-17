@@ -673,6 +673,18 @@ impl Type {
                 execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
             }
             Type::Union(union) => Inferred::gather_simplified_union(i_s, |gather| {
+                let result_context = if result_context.expect_not_none()
+                    && union.iter().any(|t| match t {
+                        // If there's any callable with a return type that is not None we should
+                        // not complain with the lint that a None return does not make sense,
+                        // because it can be some other type.
+                        Type::Callable(c) => c.return_type != Type::None,
+                        _ => false,
+                    }) {
+                    &mut ResultContext::ExpectUnused
+                } else {
+                    result_context
+                };
                 for entry in union.iter() {
                     gather(entry.execute(i_s, None, args, result_context, on_type_error))
                 }
