@@ -780,10 +780,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)
-                    } else if result_context.expect_not_none() {
-                        from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
-                        Inferred::new_any_from_error()
                     } else {
+                        if result_context.expect_not_none() {
+                            from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
+                            if i_s.db.project.settings.mypy_compatible {
+                                return Inferred::new_any_from_error();
+                            }
+                        }
                         Inferred::new_none()
                     }
                 } else {
@@ -4778,10 +4781,11 @@ pub fn await_(
     }
     if expect_not_none && matches!(t, Type::None) {
         from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
-        Inferred::new_any_from_error()
-    } else {
-        Inferred::from_type(t)
+        if i_s.db.project.settings.mypy_compatible {
+            return Inferred::new_any_from_error();
+        }
     }
+    Inferred::from_type(t)
 }
 
 fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {

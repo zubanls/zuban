@@ -409,9 +409,27 @@ def four(*args: int) -> int: ...
 [case function_no_return_should_not_result_in_any_no_mypy_compatible]
 # flags: --no-mypy-compatible
 # From GH #150, see also the discussion there, Mypy returns Any, Pyright None
-from typing import assert_type
+from typing import assert_type, Callable, Generator, Iterator
 
 def foo() -> None: ...
+
+def bar(c: Callable[[], None]):
+    val = c()  # E: Function does not return a value (it only ever returns None)
+    assert_type(val, None)
+
+async def asyn(depth: int) -> None:
+    if depth > 0:
+        val = await asyn(depth - 1)  # E: Function does not return a value (it only ever returns None)
+        assert_type(val, None)
+
+def generator():
+    def gen() -> Iterator[int]:
+        yield 1
+        return None
+
+    val = yield from gen()  # E: Function does not return a value (it only ever returns None)
+    assert_type(val, None)
+
 
 val = foo()  # E: "foo" does not return a value (it only ever returns None)
 assert_type(val, None)

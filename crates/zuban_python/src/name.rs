@@ -2,8 +2,7 @@ use std::borrow::Cow;
 
 use lsp_types::SymbolKind;
 use parsa_python_cst::{
-    AssignmentContent, ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, NodeIndex,
-    PrimaryTargetOrAtom, Scope, Target, TypeLike,
+    ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, NodeIndex, Scope, TypeLike,
 };
 use vfs::NormalizedPath;
 

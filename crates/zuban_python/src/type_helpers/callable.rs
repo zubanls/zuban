@@ -74,7 +74,9 @@ impl<'a> Callable<'a> {
                         .into(),
                 ),
             );
-            return Inferred::new_any_from_error();
+            if i_s.db.project.settings.mypy_compatible {
+                return Inferred::new_any_from_error();
+            }
         }
         self.execute_for_custom_return_type(
             i_s,
