@@ -2896,9 +2896,11 @@ fn test_semantic_tokens_folding_and_selection_ranges() {
         },
         json!([
           {
-            "kind": "region",
             "startLine": 0,
+            "startCharacter": 8,
             "endLine": 3,
+            "endCharacter": 21,
+            "kind": "region",
           }
         ]),
     );
