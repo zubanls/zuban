@@ -1,17 +1,14 @@
-#![allow(unused)] // TODO remove, there are currently quite a few unused methods
-
 //! Advertises the capabilities of the LSP Server.
 use lsp_types::{
     CodeActionProviderCapability, CompletionOptions, DeclarationCapability,
     FoldingRangeProviderCapability, HoverProviderCapability, ImplementationProviderCapability,
     NotebookCellSelector, NotebookDocumentSyncOptions, NotebookSelector, OneOf, Position,
-    PositionEncodingKind, RenameOptions, SelectionRangeProviderCapability, SemanticTokenModifier,
-    SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    PositionEncodingKind, RenameOptions, SelectionRangeProviderCapability,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensServerCapabilities, ServerCapabilities, SignatureHelpOptions,
     TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
-    WorkspaceFileOperationsServerCapabilities, WorkspaceFoldersServerCapabilities,
-    WorkspaceServerCapabilities,
+    TypeDefinitionProviderCapability, WorkspaceFileOperationsServerCapabilities,
+    WorkspaceFoldersServerCapabilities, WorkspaceServerCapabilities,
 };
 use zuban_python::InputPosition;
 
@@ -173,36 +170,6 @@ impl ClientCapabilities {
             .as_deref()
     }
 
-    pub(crate) fn did_save_text_document_dynamic_registration(&self) -> bool {
-        let caps =
-            (|| self.caps.text_document.as_ref()?.synchronization.clone())().unwrap_or_default();
-        caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
-    }
-
-    pub(crate) fn did_change_watched_files_dynamic_registration(&self) -> bool {
-        (|| {
-            self.caps
-                .workspace
-                .as_ref()?
-                .did_change_watched_files
-                .as_ref()?
-                .dynamic_registration
-        })()
-        .unwrap_or_default()
-    }
-
-    pub(crate) fn did_change_watched_files_relative_pattern_support(&self) -> bool {
-        (|| {
-            self.caps
-                .workspace
-                .as_ref()?
-                .did_change_watched_files
-                .as_ref()?
-                .relative_pattern_support
-        })()
-        .unwrap_or_default()
-    }
-
     pub(crate) fn location_link(&self) -> bool {
         (|| self.caps.text_document.as_ref()?.definition?.link_support)().unwrap_or_default()
     }
@@ -231,6 +198,7 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
+    #[expect(dead_code)]
     pub(crate) fn code_action_literals(&self) -> bool {
         (|| {
             self.caps
@@ -244,23 +212,7 @@ impl ClientCapabilities {
         .is_some()
     }
 
-    pub(crate) fn work_done_progress(&self) -> bool {
-        (|| self.caps.window.as_ref()?.work_done_progress)().unwrap_or_default()
-    }
-
-    pub(crate) fn change_annotation_support(&self) -> bool {
-        (|| {
-            self.caps
-                .workspace
-                .as_ref()?
-                .workspace_edit
-                .as_ref()?
-                .change_annotation_support
-                .as_ref()
-        })()
-        .is_some()
-    }
-
+    #[expect(dead_code)]
     pub(crate) fn code_action_resolve(&self) -> bool {
         (|| {
             Some(
@@ -304,17 +256,7 @@ impl ClientCapabilities {
         self.should_push_diagnostics
     }
 
-    pub(crate) fn text_document_diagnostic_related_document_support(&self) -> bool {
-        (|| {
-            self.caps
-                .text_document
-                .as_ref()?
-                .diagnostic
-                .as_ref()?
-                .related_document_support
-        })() == Some(true)
-    }
-
+    #[expect(dead_code)]
     pub(crate) fn diagnostics_refresh(&self) -> bool {
         (|| {
             self.caps
@@ -327,6 +269,7 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
+    #[expect(dead_code)]
     pub(crate) fn insert_replace_support(&self) -> bool {
         (|| {
             self.caps
