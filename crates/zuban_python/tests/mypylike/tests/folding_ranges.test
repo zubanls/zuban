@@ -122,14 +122,16 @@ def f(something) -> None:
             ...
         case typing.Final: ...
         case foo:
-            ...
+            ...  # ho
+    # hi
 [out]
 __main__.py:2: Folding Ranges:
 - 1:0-2:13 Imports
-- 4:0-12:15 Region
+- 4:0-13:8 Region
+- 5:4-13:8 Region
 - 6:8-7:15 Region
 - 8:8-9:15 Region
-- 11:8-12:15 Region
+- 11:8-12:21 Region
 
 [case folding_ranges_async]
 #? folding-ranges
