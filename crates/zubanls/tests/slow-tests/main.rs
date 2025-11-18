@@ -13,18 +13,18 @@ use lsp_server::Response;
 use lsp_types::{
     CodeActionParams, CompletionItemKind, CompletionParams, DiagnosticServerCapabilities,
     DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
-    DocumentHighlightKind, DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams,
-    HoverParams, NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range,
-    ReferenceContext, ReferenceParams, RenameParams, SelectionRangeParams, SemanticToken,
-    SemanticTokenType, SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
+    DocumentHighlightKind, DocumentHighlightParams, DocumentSymbolParams, FoldingRangeParams,
+    GotoDefinitionParams, HoverParams, NumberOrString, PartialResultParams, Position,
+    PositionEncodingKind, Range, ReferenceContext, ReferenceParams, RenameParams,
+    SelectionRangeParams, SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
     TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
     WorkDoneProgressParams, WorkspaceSymbolParams,
     request::{
         CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
-        DocumentSymbolRequest, GotoDeclaration, GotoDefinition, GotoImplementation,
-        GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References, Rename,
-        SelectionRangeRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
+        DocumentSymbolRequest, FoldingRangeRequest, GotoDeclaration, GotoDefinition,
+        GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References,
+        Rename, SelectionRangeRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
         SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
@@ -2633,7 +2633,7 @@ fn test_symbols() {
 
 #[test]
 #[serial]
-fn test_semantic_tokens_and_selection_ranges() {
+fn test_semantic_tokens_folding_and_selection_ranges() {
     let server = Project::with_fixture(
         r#"
         [file foo.py]
@@ -2884,6 +2884,21 @@ fn test_semantic_tokens_and_selection_ranges() {
                 "line": 5
               }
             }
+          }
+        ]),
+    );
+
+    server.request_and_expect_json::<FoldingRangeRequest>(
+        FoldingRangeParams {
+            text_document: server.doc_id("foo.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([
+          {
+            "kind": "region",
+            "startLine": 0,
+            "endLine": 3,
           }
         ]),
     );

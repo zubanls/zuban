@@ -615,17 +615,19 @@ impl GlobalState<'_> {
         params: FoldingRangeParams,
     ) -> anyhow::Result<Option<Vec<FoldingRange>>> {
         let document = self.document(params.text_document)?;
-        Ok(document
-            .folding_ranges()
-            .map(|folding_range| FoldingRange {
-                start_line: folding_range.start().line_zero_based(),
-                end_line: folding_range.end().line_zero_based(),
-                kind: folding_range.kind(),
-                start_character: None,
-                end_character: None,
-                collapsed_text: None,
-            })
-            .collect())
+        Ok(Some(
+            document
+                .folding_ranges()
+                .map(|folding_range| FoldingRange {
+                    start_line: folding_range.start.line_zero_based() as u32,
+                    end_line: folding_range.end.line_zero_based() as u32,
+                    kind: Some(folding_range.kind),
+                    start_character: None,
+                    end_character: None,
+                    collapsed_text: None,
+                })
+                .collect(),
+        ))
     }
 
     pub fn selection_ranges(
