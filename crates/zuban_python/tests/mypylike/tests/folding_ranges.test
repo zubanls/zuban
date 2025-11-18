@@ -82,6 +82,55 @@ __main__.py:2: Folding Ranges:
 - 24:8-25:15 Region
 - 26:8-27:15 Region
 
+[case folding_ranges_try_except]
+#? folding-ranges
+
+def f(something, something_else) -> None:
+    import typing
+    try:
+        str
+    except something: ...
+    except something_else:
+        ...
+        ...
+        ...
+    except NotImplementedError:
+        ...
+    else:
+        something
+    finally:
+        something
+
+[out]
+__main__.py:2: Folding Ranges:
+- 3:0-18:0 Region
+- 5:4-6:11 Region
+- 8:4-11:11 Region
+- 12:4-13:11 Region
+- 14:4-15:17 Region
+- 16:4-17:17 Region
+
+[case folding_ranges_match]
+#? folding-ranges
+import typing
+
+def f(something) -> None:
+    match something:
+        case { a: b as c }:
+            ...
+        case (1, 2):
+            ...
+        case typing.Final: ...
+        case foo:
+            ...
+[out]
+__main__.py:2: Folding Ranges:
+- 1:0-2:13 Imports
+- 4:0-12:15 Region
+- 6:8-7:15 Region
+- 8:8-9:15 Region
+- 11:8-12:15 Region
+
 [case folding_ranges_async]
 #? folding-ranges
 async def foo(something):
