@@ -103,7 +103,7 @@ def f(something, something_else) -> None:
 
 [out]
 __main__.py:2: Folding Ranges:
-- 3:41-18:0 Region
+- 3:41-17:17 Region
 - 5:8-6:11 Region
 - 8:26-11:11 Region
 - 12:31-13:11 Region
@@ -127,8 +127,8 @@ def f(something) -> None:
 [out]
 __main__.py:2: Folding Ranges:
 - 1:0-2:13 Imports
-- 4:25-13:8 Region
-- 5:20-13:8 Region
+- 4:25-12:21 Region
+- 5:20-12:21 Region
 - 6:27-7:15 Region
 - 8:20-9:15 Region
 - 11:17-12:21 Region
@@ -156,7 +156,7 @@ async def bar():
 
 [out]
 __main__.py:2: Folding Ranges:
-- 2:25-16:0 Region
+- 2:25-15:16 Region
 - 4:29-5:11 Region
 - 6:29-7:11 Region
 - 8:9-9:24 Region
@@ -179,3 +179,18 @@ x = 1
 [out]
 __main__.py:2: Folding Ranges:
 - 6:20-10:7 Region
+
+[case if_nested_folding_range]
+#? folding-ranges
+def f() -> None:
+    if bool():
+        if bool():
+            ...
+    else:
+        ...
+[out]
+__main__.py:2: Folding Ranges:
+- 2:16-7:11 Region
+- 3:14-5:15 Region
+- 4:18-5:15 Region
+- 6:9-7:11 Region

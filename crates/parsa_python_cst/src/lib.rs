@@ -386,7 +386,13 @@ impl Tree {
 
     pub fn folding_blocks<'x>(&'x self) -> impl Iterator<Item = (CodeIndex, CodeIndex)> {
         self.0.nodes().filter_map(|n| {
-            let end = || n.last_leaf_in_subtree().previous_leaf().unwrap().end() - 1;
+            let end = || {
+                let mut leaf = n.last_leaf_in_subtree();
+                while leaf.is_type(Terminal(TerminalType::Dedent)) {
+                    leaf = leaf.previous_leaf().unwrap();
+                }
+                leaf.end() - 1
+            };
             if n.is_type(Nonterminal(match_stmt)) {
                 return Some((n.nth_child(3).start(), end()));
             }
