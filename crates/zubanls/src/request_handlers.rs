@@ -614,17 +614,39 @@ impl GlobalState<'_> {
         &mut self,
         params: FoldingRangeParams,
     ) -> anyhow::Result<Option<Vec<FoldingRange>>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let line_folding_only = self.client_capabilities.line_folding_only();
         let document = self.document(params.text_document)?;
         Ok(Some(
             document
                 .folding_ranges()
-                .map(|folding_range| FoldingRange {
-                    start_line: folding_range.start.line_zero_based() as u32,
-                    end_line: folding_range.end.line_zero_based() as u32,
-                    kind: Some(folding_range.kind),
-                    start_character: None,
-                    end_character: None,
-                    collapsed_text: None,
+                .map(|folding_range| {
+                    let (start_line, start_character, end_line, end_character) =
+                        if line_folding_only {
+                            (
+                                folding_range.start.line_zero_based() as u32,
+                                None,
+                                folding_range.end.line_zero_based() as u32,
+                                None,
+                            )
+                        } else {
+                            let start = Self::to_position(encoding, folding_range.start);
+                            let end = Self::to_position(encoding, folding_range.end);
+                            (
+                                start.line,
+                                Some(start.character),
+                                end.line,
+                                Some(end.character),
+                            )
+                        };
+                    FoldingRange {
+                        start_line,
+                        end_line,
+                        start_character,
+                        end_character,
+                        kind: Some(folding_range.kind),
+                        collapsed_text: None,
+                    }
                 })
                 .collect(),
         ))
