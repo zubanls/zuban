@@ -388,7 +388,9 @@ impl Tree {
         let code = self.code();
         self.0
             .nodes()
-            .filter(|n| n.is_type(Nonterminal(block)))
+            .filter(|n| {
+                n.is_type(Nonterminal(block)) && !n.nth_child(0).is_type(Nonterminal(simple_stmts))
+            })
             .map(|block_| {
                 let previous = block_.parent().unwrap();
                 let until_code = &code[block_.start() as usize..];

@@ -39,6 +39,5 @@ str
 __main__.py:2: Folding Ranges:
 - 1:0-5:27 Imports
 - 7:0-9:0 Region
-- 9:0-10:0 Region
 - 11:0-19:0 Region
 - 12:4-15:4 Region
