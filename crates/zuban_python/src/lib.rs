@@ -38,7 +38,7 @@ use completion::CompletionResolver;
 pub use completion::{Completion, CompletionItemKind};
 pub use goto::{GotoGoal, ReferencesGoal};
 use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
-use lsp_types::Position;
+use lsp_types::{FoldingRangeKind, Position};
 use name::Range;
 use parsa_python_cst::{GotoNode, Scope, Tree};
 use rayon::prelude::*;
@@ -59,7 +59,7 @@ use matching::invalidate_protocol_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
-use crate::select_files::all_typechecked_files;
+use crate::{node_ref::NodeRef, select_files::all_typechecked_files};
 
 pub struct Project {
     db: Database,
@@ -362,6 +362,27 @@ impl<'project> Document<'project> {
         })
     }
 
+    pub fn folding_ranges(&self) -> impl Iterator<Item = FoldingRange<'project>> {
+        let file = self.project.db.loaded_python_file(self.file_index);
+        let to_range = |from, to, kind| FoldingRange {
+            start: file.byte_to_position_infos(&self.project.db, from),
+            end: file.byte_to_position_infos(&self.project.db, to),
+            kind,
+        };
+        let initial_imports_end = file.tree.initial_imports_end_code_index();
+        let has_import_range = file.all_imports.first().is_some_and(|imp| {
+            NodeRef::new(file, imp.node_index).node_start_position() < initial_imports_end
+        });
+        has_import_range
+            .then(|| to_range(0, initial_imports_end - 1, FoldingRangeKind::Imports))
+            .into_iter()
+            .chain(
+                file.tree
+                    .folding_blocks()
+                    .map(move |(start, stop)| to_range(start, stop, FoldingRangeKind::Region)),
+            )
+    }
+
     pub fn complete<T>(
         &self,
         position: InputPosition,
@@ -503,6 +524,12 @@ impl<'a> Script<'a> {
     pub fn context(&self, _position: Position) {}
 }
 */
+
+pub struct FoldingRange<'db> {
+    pub start: PositionInfos<'db>,
+    pub end: PositionInfos<'db>,
+    pub kind: FoldingRangeKind,
+}
 
 pub struct Diagnostics<'a> {
     pub checked_files: usize,

@@ -8,9 +8,9 @@ use lsp_types::{
     DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlight,
     DocumentHighlightKind, DocumentHighlightParams, DocumentSymbol, DocumentSymbolParams,
-    DocumentSymbolResponse, FullDocumentDiagnosticReport, GotoDefinitionParams,
-    GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location, LocationLink,
-    MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
+    DocumentSymbolResponse, FoldingRange, FoldingRangeParams, FullDocumentDiagnosticReport,
+    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location,
+    LocationLink, MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
     ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, ReferenceParams,
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
     ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
@@ -608,6 +608,24 @@ impl GlobalState<'_> {
         Ok(Some(SemanticTokensRangeResult::Tokens(
             self.semantic_tokens_internal(params.text_document, Some(params.range))?,
         )))
+    }
+
+    pub fn folding_ranges(
+        &mut self,
+        params: FoldingRangeParams,
+    ) -> anyhow::Result<Option<Vec<FoldingRange>>> {
+        let document = self.document(params.text_document)?;
+        Ok(document
+            .folding_ranges()
+            .map(|folding_range| FoldingRange {
+                start_line: folding_range.start().line_zero_based(),
+                end_line: folding_range.end().line_zero_based(),
+                kind: folding_range.kind(),
+                start_character: None,
+                end_character: None,
+                collapsed_text: None,
+            })
+            .collect())
     }
 
     pub fn selection_ranges(

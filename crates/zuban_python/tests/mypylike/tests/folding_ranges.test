@@ -1,0 +1,44 @@
+[case folding_ranges_basic_without_imports]
+#? folding-ranges
+
+def f(x):
+    str(x + 1)
+
+    str(x + 1)
+    #
+
+# 
+str
+
+[out]
+__main__.py:2: Folding Ranges:
+- 3:0-10:0 Region
+
+[case folding_ranges_basic_with_imports]
+#? folding-ranges
+
+import typing
+
+from typing import Protocol
+
+try:
+    import types
+except ImportError: ...
+
+def f(x):
+    if bool():
+        str(x + 1)
+
+    str(x + 1)
+    #
+
+# 
+str
+
+[out]
+__main__.py:2: Folding Ranges:
+- 1:0-5:27 Imports
+- 7:0-9:0 Region
+- 9:0-10:0 Region
+- 11:0-19:0 Region
+- 12:4-15:4 Region

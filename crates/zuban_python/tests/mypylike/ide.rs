@@ -34,6 +34,7 @@ pub enum Commands {
     SemanticTokens(SemanticTokensArgs),
     SelectionRanges(SelectionRangeArgs),
     CodeActions(CodeActionArgs),
+    FoldingRanges(FoldingBlocksArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -116,6 +117,9 @@ pub struct CodeActionArgs {
     #[arg(long)]
     pub until_line: Option<usize>,
 }
+
+#[derive(Parser, Debug)]
+pub struct FoldingBlocksArgs {}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -462,6 +466,20 @@ pub(crate) fn find_and_check_ide_tests(
                         }
                         Err(err) => ("code-actions", Err(err)),
                     }
+                }
+                Commands::FoldingRanges(_) => {
+                    output.push(format!("{path}:{test_on_line_nr}: Folding Ranges:"));
+                    for range in document.folding_ranges() {
+                        output.push(format!(
+                            "- {}:{}-{}:{} {:?}",
+                            range.start.line_one_based(),
+                            range.start.code_points_column(),
+                            range.end.line_one_based(),
+                            range.end.code_points_column(),
+                            range.kind,
+                        ));
+                    }
+                    continue;
                 }
             };
             output.push(match out {

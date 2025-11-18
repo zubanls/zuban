@@ -383,6 +383,18 @@ impl Tree {
             .filter(|&n| n.is_type(Terminal(TerminalType::Name)))
             .map(Name::new)
     }
+
+    pub fn folding_blocks<'x>(&'x self) -> impl Iterator<Item = (CodeIndex, CodeIndex)> {
+        let code = self.code();
+        self.0
+            .nodes()
+            .filter(|n| n.is_type(Nonterminal(block)))
+            .map(|block_| {
+                let previous = block_.parent().unwrap();
+                let until_code = &code[block_.start() as usize..];
+                (previous.start(), block_.end())
+            })
+    }
 }
 
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
