@@ -12,7 +12,7 @@ str
 
 [out]
 __main__.py:2: Folding Ranges:
-- 3:0-10:0 Region
+- 3:0-9:2 Region
 
 [case folding_ranges_basic_with_imports]
 #? folding-ranges
@@ -28,16 +28,50 @@ except ImportError: ...
 def f(x):
     if bool():
         str(x + 1)
-
-    str(x + 1)
-    #
-
-# 
 str
 
 [out]
 __main__.py:2: Folding Ranges:
 - 1:0-5:27 Imports
-- 7:0-9:0 Region
-- 11:0-19:0 Region
-- 12:4-15:4 Region
+- 7:0-8:16 Region
+- 11:0-13:18 Region
+- 12:4-13:18 Region
+
+[case folding_ranges_basic_syntax_blocks]
+#? folding-ranges
+
+if bool():
+    str
+[out]
+__main__.py:2: Folding Ranges:
+- 3:0-4:7 Region
+
+[case folding_ranges_async]
+#? folding-ranges
+async def foo(something):
+    await bar()
+    async for x in something:
+        x()
+    async for x in something:
+        x()
+    else:
+        print(something)
+
+    async with (
+        something as bar,
+        something.foo
+    ):
+        bar.lala
+
+@foo
+async def bar():
+    ...
+
+[out]
+__main__.py:2: Folding Ranges:
+- 2:0-16:0 Region
+- 4:4-6:3 Region
+- 6:4-8:3 Region
+- 8:4-11:3 Region
+- 11:4-16:0 Region
+- 18:0-20:0 Region

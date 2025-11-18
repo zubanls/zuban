@@ -392,9 +392,15 @@ impl Tree {
                 n.is_type(Nonterminal(block)) && !n.nth_child(0).is_type(Nonterminal(simple_stmts))
             })
             .map(|block_| {
-                let previous = block_.parent().unwrap();
+                let mut previous = block_.parent().unwrap();
+                let ancestor = previous.parent().unwrap();
+                if ancestor.is_type(Nonterminal(async_stmt))
+                    || ancestor.is_type(Nonterminal(async_function_def))
+                {
+                    previous = ancestor;
+                }
                 let until_code = &code[block_.start() as usize..];
-                (previous.start(), block_.end())
+                (previous.start(), block_.end() - 1)
             })
     }
 }
