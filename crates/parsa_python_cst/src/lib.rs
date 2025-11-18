@@ -393,14 +393,27 @@ impl Tree {
             })
             .map(|block_| {
                 let mut previous = block_.parent().unwrap();
-                let ancestor = previous.parent().unwrap();
-                if ancestor.is_type(Nonterminal(async_stmt))
-                    || ancestor.is_type(Nonterminal(async_function_def))
-                {
-                    previous = ancestor;
+                if previous.is_type(Nonterminal(if_stmt)) {
+                    let cousin = block_
+                        .previous_sibling()
+                        .unwrap()
+                        .previous_sibling()
+                        .unwrap()
+                        .previous_sibling()
+                        .unwrap();
+                    if cousin.as_code() == "elif" {
+                        previous = cousin
+                    }
+                } else {
+                    let ancestor = previous.parent().unwrap();
+                    if ancestor.is_type(Nonterminal(async_stmt))
+                        || ancestor.is_type(Nonterminal(async_function_def))
+                    {
+                        previous = ancestor;
+                    }
                 }
-                let until_code = &code[block_.start() as usize..];
-                (previous.start(), block_.end() - 1)
+                let non_dedent = block_.last_leaf_in_subtree().previous_leaf().unwrap();
+                (previous.start(), non_dedent.end() - 1)
             })
     }
 }
