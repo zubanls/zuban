@@ -388,32 +388,12 @@ impl Tree {
         self.0.nodes().filter_map(|n| {
             let end = || n.last_leaf_in_subtree().previous_leaf().unwrap().end() - 1;
             if n.is_type(Nonterminal(match_stmt)) {
-                return Some((n.start(), end()));
+                return Some((n.nth_child(3).start(), end()));
             }
             if !n.is_type(Nonterminal(block)) || n.nth_child(0).is_type(Nonterminal(simple_stmts)) {
                 return None;
             }
-            let mut previous = n.parent().unwrap();
-            if previous.is_type(Nonterminal(if_stmt)) {
-                let cousin = n
-                    .previous_sibling()
-                    .unwrap()
-                    .previous_sibling()
-                    .unwrap()
-                    .previous_sibling()
-                    .unwrap();
-                if cousin.as_code() == "elif" {
-                    previous = cousin
-                }
-            } else {
-                let ancestor = previous.parent().unwrap();
-                if ancestor.is_type(Nonterminal(async_stmt))
-                    || ancestor.is_type(Nonterminal(async_function_def))
-                {
-                    previous = ancestor;
-                }
-            }
-            Some((previous.start(), end()))
+            Some((n.start(), end()))
         })
     }
 }

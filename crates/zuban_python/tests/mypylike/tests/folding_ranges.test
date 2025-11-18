@@ -12,7 +12,7 @@ str
 
 [out]
 __main__.py:2: Folding Ranges:
-- 3:0-6:22 Region
+- 3:9-6:22 Region
 
 [case folding_ranges_basic_with_imports]
 #? folding-ranges
@@ -35,9 +35,9 @@ import types
 [out]
 __main__.py:2: Folding Ranges:
 - 1:0-5:27 Imports
-- 7:0-8:16 Region
-- 11:0-13:18 Region
-- 12:4-13:18 Region
+- 7:4-8:16 Region
+- 11:9-13:18 Region
+- 12:14-13:18 Region
 
 [case folding_ranges_basic_syntax_blocks]
 #? folding-ranges
@@ -65,22 +65,22 @@ class X:
             something
         else:
             ...
-        with something:
+        with something:  # Something
             ...
 [out]
 __main__.py:2: Folding Ranges:
-- 3:0-27:15 Region
-- 4:4-27:15 Region
-- 6:8-7:15 Region
-- 9:8-10:15 Region
-- 11:8-13:15 Region
-- 14:8-15:13 Region
-- 16:8-17:13 Region
-- 18:8-19:15 Region
-- 20:8-21:21 Region
-- 22:8-23:21 Region
-- 24:8-25:15 Region
-- 26:8-27:15 Region
+- 3:8-27:15 Region
+- 4:27-27:15 Region
+- 6:18-7:15 Region
+- 9:29-10:15 Region
+- 11:13-13:15 Region
+- 14:27-15:13 Region
+- 16:27-17:13 Region
+- 18:13-19:15 Region
+- 20:24-21:21 Region
+- 22:24-23:21 Region
+- 24:13-25:15 Region
+- 26:36-27:15 Region
 
 [case folding_ranges_try_except]
 #? folding-ranges
@@ -103,12 +103,12 @@ def f(something, something_else) -> None:
 
 [out]
 __main__.py:2: Folding Ranges:
-- 3:0-18:0 Region
-- 5:4-6:11 Region
-- 8:4-11:11 Region
-- 12:4-13:11 Region
-- 14:4-15:17 Region
-- 16:4-17:17 Region
+- 3:41-18:0 Region
+- 5:8-6:11 Region
+- 8:26-11:11 Region
+- 12:31-13:11 Region
+- 14:9-15:17 Region
+- 16:12-17:17 Region
 
 [case folding_ranges_match]
 #? folding-ranges
@@ -127,11 +127,11 @@ def f(something) -> None:
 [out]
 __main__.py:2: Folding Ranges:
 - 1:0-2:13 Imports
-- 4:0-13:8 Region
-- 5:4-13:8 Region
-- 6:8-7:15 Region
-- 8:8-9:15 Region
-- 11:8-12:21 Region
+- 4:25-13:8 Region
+- 5:20-13:8 Region
+- 6:27-7:15 Region
+- 8:20-9:15 Region
+- 11:17-12:21 Region
 
 [case folding_ranges_async]
 #? folding-ranges
@@ -156,9 +156,26 @@ async def bar():
 
 [out]
 __main__.py:2: Folding Ranges:
-- 2:0-16:0 Region
-- 4:4-5:11 Region
-- 6:4-7:11 Region
-- 8:4-9:24 Region
-- 11:4-15:16 Region
-- 18:0-19:7 Region
+- 2:25-16:0 Region
+- 4:29-5:11 Region
+- 6:29-7:11 Region
+- 8:9-9:24 Region
+- 14:6-15:16 Region
+- 18:16-19:7 Region
+
+[case multi_line_function_definition_folding]
+#? folding-ranges
+def f(
+    x: str,
+    y: str,
+    *,
+    z: str) -> None:
+    ...
+    ...
+    pass
+    ...
+
+x = 1
+[out]
+__main__.py:2: Folding Ranges:
+- 6:20-10:7 Region
