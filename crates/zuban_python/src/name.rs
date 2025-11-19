@@ -254,35 +254,16 @@ impl<'db, 'x> Name<'db, 'x> {
 
     pub(crate) fn goto_non_stub(&self) -> Option<Name<'db, 'x>> {
         match self {
-            Name::TreeName(n) => {
-                let file = n.file.normal_file_of_stub_file(n.db)?;
-                self.goto_helper(n, file)
-            }
-            Name::ModuleName(n) => {
-                let file = n.file.normal_file_of_stub_file(n.db)?;
-                Some(Self::ModuleName(ModuleName { db: n.db, file }))
-            }
+            Name::TreeName(n) => n.goto_non_stub(),
+            Name::ModuleName(n) => n.goto_non_stub(),
             Name::NodeName(_) => None,
         }
     }
 
-    fn goto_helper(&self, n: &TreeName<'db>, to_file: &'db PythonFile) -> Option<Self> {
-        let (other_file, other_name) = n.goto_helper(to_file)?;
-        Some(Self::TreeName(TreeName::with_unknown_parent_scope(
-            n.db, other_file, other_name,
-        )))
-    }
-
     pub(crate) fn goto_stub(&self) -> Option<Name<'db, 'x>> {
         match self {
-            Name::TreeName(n) => {
-                let file = n.file.stub_file_of_normal_file(n.db)?;
-                self.goto_helper(n, file)
-            }
-            Name::ModuleName(n) => {
-                let file = n.file.stub_file_of_normal_file(n.db)?;
-                Some(Self::ModuleName(ModuleName { db: n.db, file }))
-            }
+            Name::TreeName(n) => n.goto_stub(),
+            Name::ModuleName(n) => n.goto_stub(),
             Name::NodeName(_) => None,
         }
     }
@@ -316,40 +297,11 @@ impl<'db, 'x> Name<'db, 'x> {
     }
 
     pub fn documentation(&self) -> Cow<'db, str> {
-        let result = match self {
-            Name::TreeName(n) => {
-                n.cst_name.clean_docstring()
-                /*
-                // If we don't have a result try to lookup the next assignment like
-                // foo.__doc__ = "asdf". This is for example the case for typing.Callable
-                if result.is_empty()
-                    && let Some(assignment) = n.cst_name.maybe_assignment_definition_name()
-                    && let Some(next) = assignment.maybe_next_assignment()
-                    && let AssignmentContent::Normal(mut targets, right_side) = next.unpack()
-                    && targets.clone().count() == 1
-                    && let Some(Target::NameExpression(target, name_def)) = targets.next()
-                    && name_def.as_code() == "__doc__"
-                    && let PrimaryTargetOrAtom::Atom(atom) = target.first()
-                    && atom.as_code() == n.cst_name.as_code()
-                    && let Some(expr) = right_side.maybe_simple_expression()
-                    && let Some(strings) = expr.maybe_string()
-                    && let Some(doc) = strings.clean_docstring()
-                {
-                    return doc;
-                }
-                */
-            }
-            Name::ModuleName(n) => n.file.tree.root().clean_docstring(),
+        match self {
+            Name::TreeName(n) => n.documentation(),
+            Name::ModuleName(n) => n.documentation(),
             Name::NodeName(_) => Cow::Borrowed(""),
-        };
-        if result.is_empty()
-            && self.file().is_stub()
-            && let Some(name) = self.goto_non_stub()
-        {
-            debug_assert!(!name.file().is_stub());
-            return name.documentation();
         }
-        docstr_to_markdown(result)
     }
 
     pub fn class_symbols(&self) -> Option<impl ExactSizeIterator<Item = NameSymbol<'db>>> {
@@ -367,6 +319,21 @@ impl<'db, 'x> Name<'db, 'x> {
             _ => None,
         }
     }
+}
+
+fn process_docstring<'db, 'x>(
+    file: &'db PythonFile,
+    result: Cow<'db, str>,
+    goto_non_stub: impl FnOnce() -> Option<Name<'db, 'x>>,
+) -> Cow<'db, str> {
+    if result.is_empty()
+        && file.is_stub()
+        && let Some(name) = goto_non_stub()
+    {
+        debug_assert!(!name.file().is_stub());
+        return name.documentation();
+    }
+    docstr_to_markdown(result)
 }
 
 enum FileOrClass<'a> {
@@ -512,7 +479,7 @@ impl<'db> TreeName<'db> {
         }
     }
 
-    fn goto_helper(&self, to_file: &'db PythonFile) -> Option<(&'db PythonFile, CSTName<'db>)> {
+    fn goto_helper(&self, to_file: &'db PythonFile) -> Option<Name<'db, 'static>> {
         let db = self.db;
         let result = to_file.ensure_module_symbols_flow_analysis(db);
         debug_assert!(result.is_ok());
@@ -524,7 +491,45 @@ impl<'db> TreeName<'db> {
         };
         let ref_ = lookup_parent_scope_in_other_file(db, to_file, scopes)?
             .lookup(db, self.cst_name.as_code())?;
-        Some((ref_.file, ref_.maybe_name()?))
+        Some(Name::TreeName(TreeName::with_unknown_parent_scope(
+            self.db,
+            ref_.file,
+            ref_.maybe_name()?,
+        )))
+    }
+
+    fn documentation(&self) -> Cow<'db, str> {
+        let doc = self.cst_name.clean_docstring();
+        /*
+        // If we don't have a result try to lookup the next assignment like
+        // foo.__doc__ = "asdf". This is for example the case for typing.Callable
+        if result.is_empty()
+            && let Some(assignment) = n.cst_name.maybe_assignment_definition_name()
+            && let Some(next) = assignment.maybe_next_assignment()
+            && let AssignmentContent::Normal(mut targets, right_side) = next.unpack()
+            && targets.clone().count() == 1
+            && let Some(Target::NameExpression(target, name_def)) = targets.next()
+            && name_def.as_code() == "__doc__"
+            && let PrimaryTargetOrAtom::Atom(atom) = target.first()
+            && atom.as_code() == n.cst_name.as_code()
+            && let Some(expr) = right_side.maybe_simple_expression()
+            && let Some(strings) = expr.maybe_string()
+            && let Some(doc) = strings.clean_docstring()
+        {
+            return doc;
+        }
+        */
+        process_docstring(self.file, doc, || self.goto_non_stub())
+    }
+
+    fn goto_non_stub(&self) -> Option<Name<'db, 'static>> {
+        let file = self.file.normal_file_of_stub_file(self.db)?;
+        self.goto_helper(file)
+    }
+
+    fn goto_stub(&self) -> Option<Name<'db, 'static>> {
+        let file = self.file.stub_file_of_normal_file(self.db)?;
+        self.goto_helper(file)
     }
 }
 
@@ -553,6 +558,23 @@ impl<'db, 'x> NodeName<'db, 'x> {
 pub struct ModuleName<'db> {
     pub(crate) db: &'db Database,
     pub(crate) file: &'db PythonFile,
+}
+
+impl<'db> ModuleName<'db> {
+    fn documentation(&self) -> Cow<'db, str> {
+        let result = self.file.tree.root().clean_docstring();
+        process_docstring(self.file, result, || self.goto_non_stub())
+    }
+
+    fn goto_non_stub(&self) -> Option<Name<'db, 'static>> {
+        let file = self.file.normal_file_of_stub_file(self.db)?;
+        Some(Name::ModuleName(ModuleName { db: self.db, file }))
+    }
+
+    fn goto_stub(&self) -> Option<Name<'db, 'static>> {
+        let file = self.file.stub_file_of_normal_file(self.db)?;
+        Some(Name::ModuleName(ModuleName { db: self.db, file }))
+    }
 }
 
 pub struct NameSymbol<'db> {
