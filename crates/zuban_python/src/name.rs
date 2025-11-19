@@ -267,21 +267,9 @@ impl<'db, 'x> Name<'db, 'x> {
     }
 
     fn goto_helper(&self, n: &TreeName<'db>, to_file: &'db PythonFile) -> Option<Self> {
-        let db = n.db;
-        let result = to_file.ensure_module_symbols_flow_analysis(db);
-        debug_assert!(result.is_ok());
-
-        let scopes = ScopesIterator {
-            file: self.file(),
-            only_reachable: true,
-            current: Some(n.parent_scope),
-        };
-        let ref_ = lookup_parent_scope_in_other_file(db, to_file, scopes)?
-            .lookup(db, n.cst_name.as_code())?;
+        let (other_file, other_name) = n.goto_helper(to_file)?;
         Some(Self::TreeName(TreeName::with_unknown_parent_scope(
-            db,
-            ref_.file,
-            ref_.maybe_name()?,
+            n.db, other_file, other_name,
         )))
     }
 
@@ -522,6 +510,21 @@ impl<'db> TreeName<'db> {
             parent_scope: parent_scope_to_scope(file, parent_scope),
             file,
         }
+    }
+
+    fn goto_helper(&self, to_file: &'db PythonFile) -> Option<(&'db PythonFile, CSTName<'db>)> {
+        let db = self.db;
+        let result = to_file.ensure_module_symbols_flow_analysis(db);
+        debug_assert!(result.is_ok());
+
+        let scopes = ScopesIterator {
+            file: self.file,
+            only_reachable: true,
+            current: Some(self.parent_scope),
+        };
+        let ref_ = lookup_parent_scope_in_other_file(db, to_file, scopes)?
+            .lookup(db, self.cst_name.as_code())?;
+        Some((ref_.file, ref_.maybe_name()?))
     }
 }
 
