@@ -1250,7 +1250,7 @@ fn test_pyproject_with_mypy_config_dir_env_var() {
 
     assert_eq!(
         server.diagnostics_for_file("src/hello_zuban/__init__.py"),
-        ["Cannot find implementation or library stub for module named \"hello_zuban\""]
+        Vec::<String>::default()
     );
     assert_eq!(
         server.diagnostics_for_file("src/hello_zuban/hello.py"),
