@@ -15,8 +15,8 @@ __main__.py:2: Folding Ranges:
 - 3:9-6:22 Region
 
 [case folding_ranges_basic_with_imports]
+# flags: --no-windows
 #? folding-ranges
-
 import typing
 
 from typing import Protocol
@@ -33,7 +33,7 @@ import typing
 import types
 
 [out]
-__main__.py:2: Folding Ranges:
+__main__.py:3: Folding Ranges:
 - 1:0-5:27 Imports
 - 7:4-8:16 Region
 - 11:9-13:18 Region
@@ -111,6 +111,7 @@ __main__.py:2: Folding Ranges:
 - 16:12-17:17 Region
 
 [case folding_ranges_match]
+# flags: --no-windows
 #? folding-ranges
 import typing
 
@@ -125,13 +126,13 @@ def f(something) -> None:
             ...  # ho
     # hi
 [out]
-__main__.py:2: Folding Ranges:
-- 1:0-2:13 Imports
-- 4:25-12:21 Region
-- 5:20-12:21 Region
-- 6:27-7:15 Region
-- 8:20-9:15 Region
-- 11:17-12:21 Region
+__main__.py:3: Folding Ranges:
+- 1:0-3:13 Imports
+- 5:25-13:21 Region
+- 6:20-13:21 Region
+- 7:27-8:15 Region
+- 9:20-10:15 Region
+- 12:17-13:21 Region
 
 [case folding_ranges_async]
 #? folding-ranges

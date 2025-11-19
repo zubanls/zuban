@@ -378,6 +378,7 @@ impl TestCase<'_, '_> {
             || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
             || steps.flags.contains(&"--only-language-server")
                 && !matches!(projects.mode, Mode::LanguageServer)
+            || steps.flags.contains(&"--no-windows") && cfg!(windows)
         {
             return Ok(false);
         }
