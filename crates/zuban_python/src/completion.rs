@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashSet};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, NameDef, NodeIndex,
+    ClassDef, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NodeIndex,
     RestNode, Scope,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
@@ -17,7 +17,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     lines::BytePositionInfos,
-    name::Range,
+    name::{Range, TreeName, process_docstring},
     node_ref::NodeRef,
     recoverable_error,
     type_::{CallableParam, Enum, EnumMemberDefinition, FunctionKind, Namespace, Type},
@@ -478,7 +478,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
             self.maybe_add_tree_name(file, Scope::Class(class_node), name_def, true)
         }
         if is_instance {
-            for (symbol, _node_index) in storage.self_symbol_table.iter() {
+            for (symbol, &node_index) in storage.self_symbol_table.iter() {
                 if !self.maybe_add(symbol) || is_private(symbol) || should_ignore(symbol) {
                     continue;
                 }
@@ -487,7 +487,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                     &CompletionTreeName {
                         db: self.infos.db,
                         file: self.infos.file,
-                        name: symbol,
+                        name: NodeRef::new(self.infos.file, node_index).expect_name(),
                         kind: CompletionItemKind::FIELD,
                     },
                 );
@@ -552,7 +552,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
             &CompletionTreeName {
                 db: self.infos.db,
                 file,
-                name,
+                name: name_def.name(),
                 kind,
             },
         );
@@ -706,7 +706,7 @@ pub trait Completion {
     fn deprecated(&self) -> bool {
         false
     }
-    fn documentation(&self) -> Option<&str> {
+    fn documentation(&self) -> Option<Cow<'_, str>> {
         None
     }
 }
@@ -714,13 +714,13 @@ pub trait Completion {
 struct CompletionTreeName<'db> {
     db: &'db Database,
     file: &'db PythonFile,
-    name: &'db str,
+    name: Name<'db>,
     kind: CompletionItemKind,
 }
 
 impl<'db> Completion for CompletionTreeName<'db> {
     fn label(&self) -> &str {
-        self.name
+        self.name.as_code()
     }
 
     fn kind(&self) -> CompletionItemKind {
@@ -729,6 +729,14 @@ impl<'db> Completion for CompletionTreeName<'db> {
 
     fn file_path(&self) -> Option<&str> {
         Some(self.file.file_path(self.db))
+    }
+
+    fn documentation(&self) -> Option<Cow<'db, str>> {
+        Some(process_docstring(
+            self.file,
+            self.name.clean_docstring(),
+            || TreeName::with_unknown_parent_scope(self.db, self.file, self.name).goto_non_stub(),
+        ))
     }
 }
 

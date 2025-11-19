@@ -271,3 +271,28 @@ from foo.
 [file foo/bar.py]
 [out]
 __main__.py:3:complete -> [bar]
+
+[case completion_docstr_simple]
+# flags: --no-typecheck
+class Asdf:
+    """
+    hello
+    """
+    def foobar(self):
+        """
+        world
+
+        >>> asdf
+        asdf
+        """
+#? complete --show-documentation
+Asd
+#? complete --show-documentation
+Asdf.fooba
+#? complete --show-documentation
+Asdf().fooba
+
+[out]
+__main__.py:14:complete -> [Asdf:Some("hello")]
+__main__.py:16:complete -> [foobar:Some("world\n\n```python\n>>> asdf\nasdf\n```\n")]
+__main__.py:18:complete -> [foobar:Some("world\n\n```python\n>>> asdf\nasdf\n```\n")]

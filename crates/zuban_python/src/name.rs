@@ -321,7 +321,7 @@ impl<'db, 'x> Name<'db, 'x> {
     }
 }
 
-fn process_docstring<'db, 'x>(
+pub(crate) fn process_docstring<'db, 'x>(
     file: &'db PythonFile,
     result: Cow<'db, str>,
     goto_non_stub: impl FnOnce() -> Option<Name<'db, 'x>>,
@@ -522,7 +522,7 @@ impl<'db> TreeName<'db> {
         process_docstring(self.file, doc, || self.goto_non_stub())
     }
 
-    fn goto_non_stub(&self) -> Option<Name<'db, 'static>> {
+    pub(crate) fn goto_non_stub(&self) -> Option<Name<'db, 'static>> {
         let file = self.file.normal_file_of_stub_file(self.db)?;
         self.goto_helper(file)
     }

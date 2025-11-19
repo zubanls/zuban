@@ -8,13 +8,13 @@ use lsp_types::{
     DiagnosticSeverity, DocumentChangeOperation, DocumentChanges, DocumentDiagnosticParams,
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, DocumentHighlight,
     DocumentHighlightKind, DocumentHighlightParams, DocumentSymbol, DocumentSymbolParams,
-    DocumentSymbolResponse, FoldingRange, FoldingRangeParams, FullDocumentDiagnosticReport,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, Location,
-    LocationLink, MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
-    ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, ReferenceParams,
-    RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
-    ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
-    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    DocumentSymbolResponse, Documentation, FoldingRange, FoldingRangeParams,
+    FullDocumentDiagnosticReport, GotoDefinitionParams, GotoDefinitionResponse, Hover,
+    HoverContents, HoverParams, Location, LocationLink, MarkupContent, MarkupKind, OneOf,
+    OptionalVersionedTextDocumentIdentifier, ParameterInformation, ParameterLabel, Position,
+    PrepareRenameResponse, Range, ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameFile,
+    RenameParams, ResourceOp, ResourceOperationKind, SelectionRange, SelectionRangeParams,
+    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
     TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
     WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
@@ -124,19 +124,22 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<CompletionResponse>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let (document, pos) = self.document_with_pos(params.text_document_position)?;
-        let mut completions = document.complete(pos, false, |replace_range, completion| {
-            CompletionItem {
+        let mut completions =
+            document.complete(pos, false, |replace_range, completion| CompletionItem {
                 label: completion.label().to_string(),
                 kind: Some(completion.kind()),
                 text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                     range: Self::to_range(encoding, replace_range),
                     new_text: completion.insert_text(),
                 })),
-                // TODO
-                // documentation: Some(Documentation::String(completion.documentation().unwrap_or_else())),
+                documentation: completion.documentation().map(|doc| {
+                    Documentation::MarkupContent(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: doc.into_owned(),
+                    })
+                }),
                 ..Default::default()
-            }
-        })?;
+            })?;
         tracing::trace!("Completion results: {completions:?}");
         if completions.is_empty() {
             return Ok(None);
