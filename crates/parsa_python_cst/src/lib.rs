@@ -391,7 +391,7 @@ impl Tree {
                 while leaf.is_type(Terminal(TerminalType::Dedent)) {
                     leaf = leaf.previous_leaf().unwrap();
                 }
-                leaf.end() - 1
+                leaf.start()
             };
             if n.is_type(Nonterminal(match_stmt)) {
                 return Some((n.nth_child(3).start(), end()));
