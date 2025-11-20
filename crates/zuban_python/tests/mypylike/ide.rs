@@ -234,7 +234,7 @@ pub(crate) fn find_and_check_ide_tests(
                         if complete_args.show_documentation {
                             result = format!("{result}:{:?}", name.documentation());
                         }
-                        result
+                        Some(result)
                     });
                     if let Some(filter) = complete_args.filter
                         && let Ok(r) = result

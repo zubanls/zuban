@@ -80,7 +80,7 @@ pub(crate) struct CompletionResolver<'db, C, T> {
     replace_range: Range<'db>,
 }
 
-impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db, C, T> {
+impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db, C, T> {
     pub fn complete(
         db: &'db Database,
         file: &'db PythonFile,
@@ -205,8 +205,10 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
             CompletionNode::NecessaryKeyword(keyword) => {
                 let keyword = *keyword;
                 let result = (self.on_result)(self.replace_range, &KeywordCompletion { keyword });
-                self.items
-                    .push((CompletionSortPriority::Default(keyword), result))
+                if let Some(result) = result {
+                    self.items
+                        .push((CompletionSortPriority::Default(keyword), result))
+                }
             }
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
@@ -345,16 +347,17 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
             if !self.maybe_add(name) {
                 continue;
             }
-            let result = (self.on_result)(
+            if let Some(result) = (self.on_result)(
                 self.replace_range,
                 &CompletionDirEntry {
                     db: self.infos.db,
                     name,
                     entry,
                 },
-            );
-            self.items
-                .push((CompletionSortPriority::new_symbol(name), result))
+            ) {
+                self.items
+                    .push((CompletionSortPriority::new_symbol(name), result))
+            }
         }
     }
 
@@ -444,10 +447,11 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                         if !self.maybe_add_cow(Cow::Owned(comp.label().into())) {
                             continue;
                         }
-                        let result = (self.on_result)(self.replace_range, &comp);
-                        // TODO fix this name for sorting
-                        self.items
-                            .push((CompletionSortPriority::Default(""), result))
+                        if let Some(result) = (self.on_result)(self.replace_range, &comp) {
+                            // TODO fix this name for sorting
+                            self.items
+                                .push((CompletionSortPriority::Default(""), result))
+                        }
                     }
                     let tup_cls = db.python_state.tuple_class_with_generics_to_be_defined();
                     self.add_class_symbols(tup_cls, is_instance)
@@ -485,7 +489,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                 if !self.maybe_add(symbol) || is_private(symbol) || should_ignore(symbol) {
                     continue;
                 }
-                let result = (self.on_result)(
+                if let Some(result) = (self.on_result)(
                     self.replace_range,
                     &CompletionTreeName {
                         db: self.infos.db,
@@ -493,9 +497,10 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                         name: NodeRef::new(self.infos.file, node_index).expect_name(),
                         kind: CompletionItemKind::FIELD,
                     },
-                );
-                self.items
-                    .push((CompletionSortPriority::new_symbol(symbol), result))
+                ) {
+                    self.items
+                        .push((CompletionSortPriority::new_symbol(symbol), result))
+                }
             }
         }
     }
@@ -505,16 +510,17 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
             if !self.maybe_add_cow(Cow::Owned(member.name(self.infos.db).into())) {
                 continue;
             }
-            let result = (self.on_result)(
+            if let Some(result) = (self.on_result)(
                 self.replace_range,
                 &EnumMemberCompletion {
                     db: self.infos.db,
                     enum_,
                     member,
                 },
-            );
-            self.items
-                .push((CompletionSortPriority::EnumMember, result))
+            ) {
+                self.items
+                    .push((CompletionSortPriority::EnumMember, result))
+            }
         }
         if !enum_.is_from_functional_definition(self.infos.db) {
             self.add_class_symbols(enum_.class(self.infos.db), is_instance)
@@ -550,7 +556,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
         }
         let kind =
             find_kind_and_try_to_follow_imports(self.infos.db, file, scope, name_def, in_class);
-        let result = (self.on_result)(
+        if let Some(result) = (self.on_result)(
             self.replace_range,
             &CompletionTreeName {
                 db: self.infos.db,
@@ -558,9 +564,10 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> T, T> CompletionResolver<'db,
                 name: name_def.name(),
                 kind,
             },
-        );
-        self.items
-            .push((CompletionSortPriority::new_symbol(name), result))
+        ) {
+            self.items
+                .push((CompletionSortPriority::new_symbol(name), result))
+        }
     }
 }
 

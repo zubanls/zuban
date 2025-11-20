@@ -11,21 +11,21 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    CodeActionParams, CompletionItemKind, CompletionParams, DiagnosticServerCapabilities,
-    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
-    DocumentHighlightKind, DocumentHighlightParams, DocumentSymbolParams, FoldingRangeParams,
-    GotoDefinitionParams, HoverParams, NumberOrString, PartialResultParams, Position,
-    PositionEncodingKind, Range, ReferenceContext, ReferenceParams, RenameParams,
-    SelectionRangeParams, SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
-    WorkDoneProgressParams, WorkspaceSymbolParams,
+    CodeActionParams, CompletionItem, CompletionItemKind, CompletionParams,
+    DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
+    DocumentDiagnosticReportResult, DocumentHighlightKind, DocumentHighlightParams,
+    DocumentSymbolParams, FoldingRangeParams, GotoDefinitionParams, HoverParams, NumberOrString,
+    PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext, ReferenceParams,
+    RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType, SemanticTokens,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensServerCapabilities,
+    SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceSymbolParams,
     request::{
         CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
         DocumentSymbolRequest, FoldingRangeRequest, GotoDeclaration, GotoDefinition,
         GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References,
-        Rename, SelectionRangeRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
-        SignatureHelpRequest, WorkspaceSymbolRequest,
+        Rename, ResolveCompletionItem, SelectionRangeRequest, SemanticTokensFullRequest,
+        SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -1780,7 +1780,7 @@ fn check_completions() {
     server.open_in_memory_file(path, "import m\nm.my");
 
     let pos = TextDocumentPositionParams::new(server.doc_id("n.py"), Position::new(1, 4));
-    server.request_and_expect_json::<Completion>(
+    let result = server.request_and_expect_json::<Completion>(
         CompletionParams {
             text_document_position: pos,
             work_done_progress_params: Default::default(),
@@ -1987,6 +1987,55 @@ fn check_completions() {
             },
           }
         ]),
+    );
+
+    let first: CompletionItem = serde_json::from_value(result[0].clone()).unwrap();
+    server.request_and_expect_json::<ResolveCompletionItem>(
+        first,
+        json!({
+          "documentation": {
+            "kind": "markdown",
+            "value": "doc 🫶 love"
+          },
+          "kind": CompletionItemKind::CLASS,
+          "label": "MyClass",
+          "sortText": "00000",
+          "textEdit": {
+            "newText": "MyClass",
+            "range": {
+              "end": {
+                "character": 4,
+                "line": 1
+              },
+              "start": {
+                "character": 2,
+                "line": 1
+              }
+            }
+          }
+        }),
+    );
+    let second: CompletionItem = serde_json::from_value(result[1].clone()).unwrap();
+    server.request_and_expect_json::<ResolveCompletionItem>(
+        second,
+        json!({
+          "kind": CompletionItemKind::FUNCTION,
+          "label": "my_func",
+          "sortText": "00001",
+          "textEdit": {
+            "newText": "my_func",
+            "range": {
+              "end": {
+                "character": 4,
+                "line": 1
+              },
+              "start": {
+                "character": 2,
+                "line": 1
+              }
+            }
+          }
+        }),
     );
 }
 
@@ -2950,5 +2999,5 @@ fn test_auto_imports_code_actions() {
           "kind": "quickfix",
           "title": "Import `email.mime.message.MIMEMessage`"
         }]),
-    )
+    );
 }

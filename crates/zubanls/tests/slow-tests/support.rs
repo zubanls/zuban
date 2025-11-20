@@ -137,7 +137,11 @@ impl Server {
         }
     }
 
-    pub(crate) fn request_and_expect_json<R>(&self, params: R::Params, expected_resp: Value)
+    pub(crate) fn request_and_expect_json<R>(
+        &self,
+        params: R::Params,
+        expected_resp: Value,
+    ) -> Value
     where
         R: lsp_types::request::Request,
         R::Params: Serialize,
@@ -152,6 +156,7 @@ impl Server {
                 to_string_pretty(actual_part).unwrap(),
             );
         }
+        actual
     }
 
     pub(crate) fn diagnostics_for_file(&self, rel_path: &str) -> Vec<String> {

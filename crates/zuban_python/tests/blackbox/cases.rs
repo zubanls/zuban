@@ -197,7 +197,7 @@ impl TestFile<'_> {
                 } => {
                     let actual = document
                         .get()
-                        .complete(position, true, |_, name| name.label().to_owned())
+                        .complete(position, true, |_, name| Some(name.label().to_owned()))
                         .unwrap();
                     for should_not_be_in_there in contains_not {
                         if actual.contains(&should_not_be_in_there) {

@@ -14,8 +14,8 @@ use config::ProjectOptions;
 use crossbeam_channel::{Receiver, Sender, never, select};
 use fluent_uri::Scheme;
 use lsp_server::{Connection, ExtractError, Message, Request};
-use lsp_types::Uri;
 use lsp_types::notification::Notification as _;
+use lsp_types::{TextDocumentPositionParams, Uri};
 use notify::EventKind;
 use serde::{Serialize, de::DeserializeOwned};
 use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
@@ -219,6 +219,7 @@ pub(crate) struct GlobalState<'sender> {
     pub sent_diagnostic_count: usize,
     changed_in_memory_files: Arc<RwLock<Vec<PathWithScheme>>>,
     pub notebooks: Notebooks,
+    pub last_completion_position: Option<TextDocumentPositionParams>,
     pub shutdown_requested: bool,
 }
 
@@ -240,6 +241,7 @@ impl<'sender> GlobalState<'sender> {
             changed_in_memory_files: Default::default(),
             notebooks: Default::default(),
             sent_diagnostic_count: 0,
+            last_completion_position: None,
             shutdown_requested: false,
         }
     }

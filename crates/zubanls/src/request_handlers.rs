@@ -124,8 +124,8 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<CompletionResponse>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let (document, pos) = self.document_with_pos(&params.text_document_position)?;
-        let mut completions =
-            document.complete(pos, false, |replace_range, completion| CompletionItem {
+        let mut completions = document.complete(pos, false, |replace_range, completion| {
+            Some(CompletionItem {
                 label: completion.label().to_string(),
                 kind: Some(completion.kind()),
                 text_edit: Some(CompletionTextEdit::Edit(TextEdit {
@@ -133,7 +133,8 @@ impl GlobalState<'_> {
                     new_text: completion.insert_text(),
                 })),
                 ..Default::default()
-            })?;
+            })
+        })?;
         tracing::trace!("Completion results: {completions:?}");
         if completions.is_empty() {
             return Ok(None);
@@ -142,35 +143,33 @@ impl GlobalState<'_> {
         for (i, c) in completions.iter_mut().enumerate() {
             c.sort_text = Some(format!("{i:05x}"));
         }
+        self.last_completion_position = Some(params.text_document_position);
 
         Ok(Some(CompletionResponse::Array(completions)))
     }
 
     pub fn resolve_completion_item(
         &mut self,
-        item: CompletionItem,
+        mut item: CompletionItem,
     ) -> anyhow::Result<CompletionItem> {
-        let encoding = self.client_capabilities.negotiated_encoding();
-        /*
-        item.label;
-        let (document, pos) = self.document_with_pos(&params.text_document_position)?;
-        let mut completions =
-            document.complete(pos, false, |replace_range, completion| CompletionItem {
-                label: completion.label().to_string(),
-                kind: Some(completion.kind()),
-                text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                    range: Self::to_range(encoding, replace_range),
-                    new_text: completion.insert_text(),
-                })),
-                ..Default::default()
+        if let Some(last) = &self.last_completion_position {
+            let (document, pos) = self.document_with_pos(&last.clone())?;
+            let docs = document.complete(pos, false, |_, completion| {
+                (completion.label() == &item.label)
+                    .then(|| {
+                        completion
+                            .documentation()
+                            .and_then(|doc| (!doc.is_empty()).then(|| doc.into_owned()))
+                    })
+                    .flatten()
             })?;
-        item.documentation = completion.documentation().map(|doc| {
-            Documentation::MarkupContent(MarkupContent {
-                kind: MarkupKind::Markdown,
-                value: doc.into_owned(),
-            })
-        });
-        */
+            if let Some(first_doc) = docs.into_iter().next() {
+                item.documentation = Some(Documentation::MarkupContent(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: first_doc,
+                }));
+            }
+        }
         Ok(item)
     }
 
