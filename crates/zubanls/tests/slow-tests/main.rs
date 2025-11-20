@@ -19,13 +19,15 @@ use lsp_types::{
     RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType, SemanticTokens,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensServerCapabilities,
     SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceSymbolParams,
+    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceDiagnosticParams,
+    WorkspaceSymbolParams,
     request::{
         CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
         DocumentSymbolRequest, FoldingRangeRequest, GotoDeclaration, GotoDefinition,
         GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References,
         Rename, ResolveCompletionItem, SelectionRangeRequest, SemanticTokensFullRequest,
-        SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceSymbolRequest,
+        SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceDiagnosticRequest,
+        WorkspaceSymbolRequest,
     },
 };
 
@@ -64,10 +66,9 @@ fn basic_server_setup() {
             unreachable!()
         };
         assert!(diagnostics.inter_file_dependencies);
-        // For now this is false, but this might change
-        assert!(!diagnostics.workspace_diagnostics);
+        assert!(diagnostics.workspace_diagnostics);
     }
-    assert_eq!(response.server_info.expect("server_info").name, "zubanls");
+    assert_eq!(response.server_info.expect("server_info").name, "zuban");
     con.shutdown_and_exit()
 }
 
@@ -112,7 +113,7 @@ fn exit_without_shutdown() {
 
 #[test]
 #[serial]
-fn diagnostics_for_saved_files() {
+fn diagnostics_for_saved_files_and_workspace_diagnostics() {
     let server = Project::with_fixture(
         r#"
         [file pyproject.toml]
@@ -155,7 +156,7 @@ fn diagnostics_for_saved_files() {
                     },
                   },
                   "severity": 1,
-                  "source": "zubanls"
+                  "source": "zuban"
                 },
                 {
                   "code": "operator",
@@ -171,7 +172,7 @@ fn diagnostics_for_saved_files() {
                     },
                   },
                   "severity": 1,
-                  "source": "zubanls"
+                  "source": "zuban"
                 },
             ],
             "kind": "full"
@@ -217,6 +218,81 @@ fn diagnostics_for_saved_files() {
         assert!(error.message.contains("does not exist"));
         assert_eq!(error.code, lsp_server::ErrorCode::InvalidParams as i32);
     }
+
+    server.request_and_expect_json::<WorkspaceDiagnosticRequest>(
+        WorkspaceDiagnosticParams {
+            identifier: None,
+            previous_result_ids: vec![],
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!({
+          "items": [
+            {
+              "items": [
+                {
+                  "code": "name-defined",
+                  "message": "Name \"lala\" is not defined",
+                  "range": {
+                    "end": {
+                      "line": 1,
+                      "character": 4,
+                    },
+                    "start": {
+                      "line": 1,
+                      "character": 0,
+                    }
+                  },
+                  "severity": 1,
+                  "source": "zuban"
+                }
+              ],
+              "kind": "full",
+              "uri": server.doc_id("pkg/foo.py").uri,
+              "version": null
+            },
+            {
+              "items": [
+                {
+                  "code": "attr-defined",
+                  "message": "Module \"pkg.foo\" has no attribute \"Bar\"",
+                  "range": {
+                    "end": {
+                      "line": 1,
+                      "character": 23,
+                    },
+                    "start": {
+                      "line": 1,
+                      "character": 20,
+                    }
+                  },
+                  "severity": 1,
+                  "source": "zuban"
+                },
+                {
+                  "code": "operator",
+                  "message": "\"int\" not callable",
+                  "range": {
+                    "end": {
+                      "line": 3,
+                      "character": 3,
+                    },
+                    "start": {
+                      "line": 3,
+                      "character": 0,
+                    }
+                  },
+                  "severity": 1,
+                  "source": "zuban"
+                }
+              ],
+              "kind": "full",
+              "uri": server.doc_id("pkg/__init__.py").uri,
+              "version": null
+            }
+          ],
+        }),
+    );
 }
 
 #[test]

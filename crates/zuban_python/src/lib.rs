@@ -250,6 +250,11 @@ pub struct Document<'project> {
 }
 
 impl<'project> Document<'project> {
+    pub fn path(&self) -> &'project PathWithScheme {
+        let python_file = self.project.db.loaded_python_file(self.file_index);
+        python_file.file_path_with_scheme(&self.project.db)
+    }
+
     pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic<'_>]> {
         let python_file = self.project.db.loaded_python_file(self.file_index);
         python_file.diagnostics(&self.project.db)

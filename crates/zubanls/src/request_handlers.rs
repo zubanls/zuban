@@ -17,7 +17,9 @@ use lsp_types::{
     SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
     TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
-    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
+    WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
+    WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -35,6 +37,35 @@ use crate::{
 };
 
 impl GlobalState<'_> {
+    pub(crate) fn handle_workspace_diagnostics(
+        &mut self,
+        _params: WorkspaceDiagnosticParams,
+    ) -> anyhow::Result<WorkspaceDiagnosticReportResult> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        // TODO Currently we don't want to fetch parallel diagnostics, but it would be nice to do
+        // that in the future.
+        let documents: Vec<_> = self.project().workspace_documents().collect();
+        Ok(WorkspaceDiagnosticReportResult::Report(
+            WorkspaceDiagnosticReport {
+                items: documents
+                    .into_iter()
+                    .map(|document| {
+                        WorkspaceDocumentDiagnosticReport::Full(
+                            WorkspaceFullDocumentDiagnosticReport {
+                                uri: to_uri(document.path().as_uri()),
+                                version: None,
+                                full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                                    result_id: None,
+                                    items: Self::diagnostics_for_file(document, encoding),
+                                },
+                            },
+                        )
+                    })
+                    .collect(),
+            },
+        ))
+    }
+
     pub(crate) fn handle_document_diagnostics(
         &mut self,
         params: DocumentDiagnosticParams,
@@ -96,7 +127,7 @@ impl GlobalState<'_> {
                     issue.mypy_error_code().to_string(),
                 )),
                 code_description: None,
-                source: Some("zubanls".to_owned()),
+                source: Some("zuban".to_owned()),
                 message: issue.message(),
                 related_information: None,
                 tags: None,

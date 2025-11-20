@@ -103,7 +103,7 @@ pub fn run_server_with_custom_connection(
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
         server_info: Some(lsp_types::ServerInfo {
-            name: String::from("zubanls"),
+            name: String::from("zuban"),
             version: Some(version().to_string()),
         }),
         offset_encoding: None,
@@ -412,6 +412,7 @@ impl<'sender> GlobalState<'sender> {
             global_state: self,
         }
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
+        .on_sync_mut::<WorkspaceDiagnosticRequest>(GlobalState::handle_workspace_diagnostics)
         .on_sync_mut::<Completion>(GlobalState::handle_completion)
         .on_sync_mut::<ResolveCompletionItem>(GlobalState::resolve_completion_item)
         .on_sync_mut::<SignatureHelpRequest>(GlobalState::handle_signature_help)

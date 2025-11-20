@@ -108,8 +108,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
             lsp_types::DiagnosticOptions {
                 identifier: None,
                 inter_file_dependencies: true,
-                // FIXME
-                workspace_diagnostics: false,
+                workspace_diagnostics: true,
                 work_done_progress_options: Default::default(),
             },
         )),
