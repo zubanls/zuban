@@ -108,7 +108,10 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
             lsp_types::DiagnosticOptions {
                 identifier: None,
                 inter_file_dependencies: true,
-                workspace_diagnostics: true,
+                // It seems like while workspace diagnostics are implemented, VSCode will trigger
+                // this endpint without user interaction. At the moment this is simply to expensive
+                // for large projects, so we avoid doing that.
+                workspace_diagnostics: false,
                 work_done_progress_options: Default::default(),
             },
         )),

@@ -66,7 +66,8 @@ fn basic_server_setup() {
             unreachable!()
         };
         assert!(diagnostics.inter_file_dependencies);
-        assert!(diagnostics.workspace_diagnostics);
+        // This might change in the future.
+        assert!(!diagnostics.workspace_diagnostics);
     }
     assert_eq!(response.server_info.expect("server_info").name, "zuban");
     con.shutdown_and_exit()
