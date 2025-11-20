@@ -498,7 +498,7 @@ impl<'db> TreeName<'db> {
         )))
     }
 
-    fn documentation(&self) -> Cow<'db, str> {
+    pub(crate) fn documentation(&self) -> Cow<'db, str> {
         let doc = self.cst_name.clean_docstring();
         /*
         // If we don't have a result try to lookup the next assignment like
@@ -561,7 +561,7 @@ pub struct ModuleName<'db> {
 }
 
 impl<'db> ModuleName<'db> {
-    fn documentation(&self) -> Cow<'db, str> {
+    pub(crate) fn documentation(&self) -> Cow<'db, str> {
         let result = self.file.tree.root().clean_docstring();
         process_docstring(self.file, result, || self.goto_non_stub())
     }

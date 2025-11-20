@@ -12,12 +12,15 @@ use crate::{
     database::{ClassKind, Database, ParentScope, PointKind},
     debug,
     file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile, is_reexport_issue},
-    goto::{PositionalDocument, unpack_union_types, with_i_s_non_self},
+    goto::{
+        FollowImportResult, PositionalDocument, try_to_follow_imports, unpack_union_types,
+        with_i_s_non_self,
+    },
     imports::{ImportResult, global_import},
     inference_state::InferenceState,
     inferred::Inferred,
     lines::BytePositionInfos,
-    name::{Range, TreeName, process_docstring},
+    name::{ModuleName, Range, TreeName, process_docstring},
     node_ref::NodeRef,
     recoverable_error,
     type_::{CallableParam, Enum, EnumMemberDefinition, FunctionKind, Namespace, Type},
@@ -732,22 +735,31 @@ impl<'db> Completion for CompletionTreeName<'db> {
     }
 
     fn documentation(&self) -> Option<Cow<'db, str>> {
-        Some(process_docstring(
-            self.file,
-            self.name.clean_docstring(),
-            || TreeName::with_unknown_parent_scope(self.db, self.file, self.name).goto_non_stub(),
-        ))
+        let doc = self.name.clean_docstring();
+        if doc.is_empty()
+            && let Some(r) = try_to_follow_imports(self.db, self.file, self.name)
+        {
+            return Some(match r {
+                FollowImportResult::File(file_index) => {
+                    let file = self.db.loaded_python_file(file_index);
+                    ModuleName { db: self.db, file }.documentation()
+                }
+                FollowImportResult::TreeName(tree_name) => tree_name.documentation(),
+            });
+        }
+        Some(process_docstring(self.file, doc, || {
+            TreeName::with_unknown_parent_scope(self.db, self.file, self.name).goto_non_stub()
+        }))
     }
 }
 
-#[expect(dead_code)]
 struct CompletionDirEntry<'db, 'x> {
     db: &'db Database,
     name: &'db str,
     entry: &'x DirectoryEntry,
 }
 
-impl Completion for CompletionDirEntry<'_, '_> {
+impl<'db> Completion for CompletionDirEntry<'db, '_> {
     fn label(&self) -> &str {
         self.name
     }
@@ -770,6 +782,22 @@ impl Completion for CompletionDirEntry<'_, '_> {
         }
         */
         None
+    }
+
+    fn documentation(&self) -> Option<Cow<'db, str>> {
+        match self.entry {
+            DirectoryEntry::File(entry) => {
+                let file_index = self.db.load_file_from_workspace(entry, false)?;
+                Some(
+                    ModuleName {
+                        db: self.db,
+                        file: self.db.loaded_python_file(file_index),
+                    }
+                    .documentation(),
+                )
+            }
+            _ => None,
+        }
     }
 }
 

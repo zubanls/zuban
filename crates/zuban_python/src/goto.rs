@@ -386,19 +386,15 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         self.calculate_return(Name::ModuleName(ModuleName { db, file }))
     }
 
-    fn try_to_follow(&mut self, n: NodeRef, follow_imports: bool) -> Option<Option<T>> {
-        let p = n.point();
-        if !p.calculated() {
-            return None;
-        }
-        match p.kind() {
-            PointKind::Redirect => Some(self.check_node_ref_and_maybe_follow_import(
-                p.as_redirected_node_ref(self.infos.db),
-                follow_imports,
-            )),
-            PointKind::FileReference => Some(Some(self.goto_on_file(p.file_index()))),
-            _ => None,
-        }
+    fn try_to_follow(&mut self, n: NodeRef<'db>, follow_imports: bool) -> Option<T> {
+        self.process_follow_import_result(try_to_follow(self.infos.db, n, follow_imports)?)
+    }
+
+    fn process_follow_import_result(&mut self, r: Option<FollowImportResult<'db>>) -> Option<T> {
+        Some(match r? {
+            FollowImportResult::File(file_index) => self.goto_on_file(file_index),
+            FollowImportResult::TreeName(n) => self.calculate_return(Name::TreeName(n)),
+        })
     }
 
     fn check_node_ref_and_maybe_follow_import(
@@ -406,43 +402,11 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         node_ref: NodeRef<'db>,
         follow_imports: bool,
     ) -> Option<T> {
-        let n = node_ref.maybe_name()?;
-        let db = self.infos.db;
-        if follow_imports && let Some(name_def) = n.name_def() {
-            match name_def.maybe_import() {
-                Some(NameImportParent::ImportFromAsName(_)) => {
-                    let ref_ = NodeRef::new(node_ref.file, name_def.index());
-                    if let Some(result) = self.try_to_follow(ref_, follow_imports) {
-                        return result;
-                    }
-                }
-                Some(NameImportParent::DottedAsName(_)) => {
-                    let p = NodeRef::new(node_ref.file, name_def.index()).point();
-                    if p.kind() == PointKind::FileReference {
-                        return Some(self.goto_on_file(p.file_index()));
-                    }
-                }
-                None => {
-                    if matches!(
-                        name_def.parent(),
-                        NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt
-                    ) {
-                        let ref_ = NodeRef::new(self.infos.file, name_def.index())
-                            .global_or_nonlocal_ref();
-                        if let Some(result) = self.try_to_follow(ref_, follow_imports) {
-                            return result;
-                        }
-                    }
-                }
-            }
-        }
-        Some(
-            self.calculate_return(Name::TreeName(TreeName::with_unknown_parent_scope(
-                db,
-                node_ref.file,
-                n,
-            ))),
-        )
+        self.process_follow_import_result(check_node_ref_and_maybe_follow_import(
+            self.infos.db,
+            node_ref,
+            follow_imports,
+        ))
     }
 
     fn goto_name(&mut self, follow_imports: bool, check_inferred_attrs: bool) -> Option<Vec<T>> {
@@ -526,10 +490,10 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             GotoNode::ImportFromAsName { import_as_name, .. } => Some(vec![self.try_to_follow(
                 NodeRef::new(file, import_as_name.name_def().index()),
                 follow_imports,
-            )??]),
+            )?]),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 let ref_ = NodeRef::new(file, name_def.index()).global_or_nonlocal_ref();
-                if let Some(result) = self.try_to_follow(ref_, follow_imports).flatten() {
+                if let Some(result) = self.try_to_follow(ref_, follow_imports) {
                     Some(vec![result])
                 } else {
                     // This essentially just returns the name of the global definition, because we
@@ -589,6 +553,79 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         });
         (!results.is_empty()).then_some(results)
     }
+}
+
+pub(crate) fn try_to_follow_imports<'db>(
+    db: &'db Database,
+    file: &'db PythonFile,
+    n: CSTName,
+) -> Option<FollowImportResult<'db>> {
+    let name_def = n.name_def()?;
+    match name_def.maybe_import() {
+        Some(NameImportParent::ImportFromAsName(_)) => {
+            let ref_ = NodeRef::new(file, name_def.index());
+            if let Some(result) = try_to_follow(db, ref_, true) {
+                return result;
+            }
+        }
+        Some(NameImportParent::DottedAsName(_)) => {
+            let p = NodeRef::new(file, name_def.index()).point();
+            if p.kind() == PointKind::FileReference {
+                return Some(FollowImportResult::File(p.file_index()));
+            }
+        }
+        None => {
+            if matches!(
+                name_def.parent(),
+                NameDefParent::GlobalStmt | NameDefParent::NonlocalStmt
+            ) {
+                let ref_ = NodeRef::new(file, name_def.index()).global_or_nonlocal_ref();
+                if let Some(result) = try_to_follow(db, ref_, true) {
+                    return result;
+                }
+            }
+        }
+    }
+    None
+}
+
+fn try_to_follow<'db>(
+    db: &'db Database,
+    n: NodeRef<'db>,
+    follow_imports: bool,
+) -> Option<Option<FollowImportResult<'db>>> {
+    let p = n.point();
+    if !p.calculated() {
+        return None;
+    }
+    match p.kind() {
+        PointKind::Redirect => Some(check_node_ref_and_maybe_follow_import(
+            db,
+            p.as_redirected_node_ref(db),
+            follow_imports,
+        )),
+        PointKind::FileReference => Some(Some(FollowImportResult::File(p.file_index()))),
+        _ => None,
+    }
+}
+
+fn check_node_ref_and_maybe_follow_import<'db>(
+    db: &'db Database,
+    node_ref: NodeRef<'db>,
+    follow_imports: bool,
+) -> Option<FollowImportResult<'db>> {
+    let n = node_ref.maybe_name()?;
+    if follow_imports && let result @ Some(_) = try_to_follow_imports(db, node_ref.file, n) {
+        return result;
+    }
+    Some(FollowImportResult::TreeName(
+        TreeName::with_unknown_parent_scope(db, node_ref.file, n),
+    ))
+}
+
+pub(crate) enum FollowImportResult<'db> {
+    File(FileIndex),
+    TreeName(TreeName<'db>),
 }
 
 pub(crate) struct ReferencesResolver<'db, C, T> {

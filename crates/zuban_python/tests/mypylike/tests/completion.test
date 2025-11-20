@@ -296,3 +296,104 @@ Asdf().fooba
 __main__.py:14:complete -> [Asdf:Some("hello")]
 __main__.py:16:complete -> [foobar:Some("world\n\n```python\n>>> asdf\nasdf\n```\n")]
 __main__.py:18:complete -> [foobar:Some("world\n\n```python\n>>> asdf\nasdf\n```\n")]
+
+[case completion_docstr_from_import]
+# flags: --no-typecheck
+from m import Asdf
+#? complete --show-documentation
+Asd
+#? complete --show-documentation
+Asdf.fooba
+#? complete --show-documentation
+Asdf().fooba
+
+[file m.py]
+# flags: --no-typecheck
+class Asdf:
+    """
+    hello
+    """
+    def foobar(self):
+        """
+        world
+        """
+[file m.pyi]
+class Asdf:
+    def foobar(self) -> None: ...
+
+[out]
+__main__.py:4:complete -> [Asdf:Some("hello")]
+__main__.py:6:complete -> [foobar:Some("world")]
+__main__.py:8:complete -> [foobar:Some("world")]
+
+[case completion_docstr_from_stubs]
+# flags: --no-typecheck
+from m import Asdf
+#? complete --show-documentation
+Asd
+#? complete --show-documentation
+Asdf.fooba
+#? complete --show-documentation
+Asdf().fooba
+
+[file m.py]
+# flags: --no-typecheck
+class Asdf:
+    """
+    hello
+    """
+    def foobar(self):
+        """
+        world
+        """
+[file m.pyi]
+class Asdf:
+    def foobar(self) -> None: ...
+
+[out]
+__main__.py:4:complete -> [Asdf:Some("hello")]
+__main__.py:6:complete -> [foobar:Some("world")]
+__main__.py:8:complete -> [foobar:Some("world")]
+
+[case completion_modules]
+#? complete --show-documentation
+import mod_m
+#? complete --show-documentation
+import mod_n
+#? complete --show-documentation
+mod_m
+#? complete --show-documentation
+mod_n
+
+#? complete --show-documentation
+mod_m.mod_o
+#? complete --show-documentation
+mod_m.mod_p
+
+#? complete --show-documentation
+from mod_m import mod_o
+#? complete --show-documentation
+from mod_m import mod_p
+
+[file mod_m.py]
+"m docstr"
+import mod_o
+import mod_p
+[file mod_n.py]
+"n docstr"
+[file mod_n.pyi]
+[file mod_o.py]
+"o docstr"
+[file mod_p.py]
+"p docstr"
+[file mod_p.pyi]
+
+[out]
+__main__.py:2:complete -> [mod_m:Some("m docstr")]
+__main__.py:4:complete -> [mod_n:Some("n docstr")]
+__main__.py:6:complete -> [mod_m:Some("m docstr")]
+__main__.py:8:complete -> [mod_n:Some("n docstr")]
+__main__.py:11:complete -> [mod_o:Some("o docstr")]
+__main__.py:13:complete -> [mod_p:Some("p docstr")]
+__main__.py:16:complete -> [mod_o:Some("o docstr")]
+__main__.py:18:complete -> [mod_p:Some("p docstr")]
