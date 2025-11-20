@@ -35,7 +35,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: None, // TODO
+            resolve_provider: Some(true),
             trigger_characters: Some(vec![
                 ".".to_owned(),
                 "@".to_owned(),

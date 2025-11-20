@@ -411,6 +411,7 @@ impl<'sender> GlobalState<'sender> {
         }
         .on_sync_mut::<DocumentDiagnosticRequest>(GlobalState::handle_document_diagnostics)
         .on_sync_mut::<Completion>(GlobalState::handle_completion)
+        .on_sync_mut::<ResolveCompletionItem>(GlobalState::resolve_completion_item)
         .on_sync_mut::<SignatureHelpRequest>(GlobalState::handle_signature_help)
         .on_sync_mut::<HoverRequest>(GlobalState::handle_hover)
         .on_sync_mut::<GotoDeclaration>(GlobalState::handle_goto_declaration)
@@ -630,9 +631,9 @@ impl<'sender> GlobalState<'sender> {
 
     pub(crate) fn uri_to_path(
         project: &Project,
-        uri: lsp_types::Uri,
+        uri: &lsp_types::Uri,
     ) -> anyhow::Result<PathWithScheme> {
-        let (scheme, path) = unpack_uri(&uri)?;
+        let (scheme, path) = unpack_uri(uri)?;
         let handler = project.vfs_handler();
         let path = handler.unchecked_abs_path_from_uri(Arc::from(path));
         Ok(if scheme.eq_lowercase("file") {

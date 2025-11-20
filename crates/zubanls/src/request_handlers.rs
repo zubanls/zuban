@@ -46,7 +46,7 @@ impl GlobalState<'_> {
             self.sent_diagnostic_count
         );
         let encoding = self.client_capabilities.negotiated_encoding();
-        let document = self.document(params.text_document)?;
+        let document = self.document(&params.text_document)?;
         Ok(DocumentDiagnosticReportResult::Report(
             DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
                 related_documents: None,
@@ -105,9 +105,9 @@ impl GlobalState<'_> {
             .collect()
     }
 
-    fn document(&mut self, text_document: TextDocumentIdentifier) -> anyhow::Result<Document<'_>> {
+    fn document(&mut self, text_document: &TextDocumentIdentifier) -> anyhow::Result<Document<'_>> {
         let project = self.project();
-        let path = Self::uri_to_path(project, text_document.uri)?;
+        let path = Self::uri_to_path(project, &text_document.uri)?;
         let Some(document) = project.document(&path) else {
             tracing::error!("File {} does not exist", path.as_uri());
             bail!(LspError {
@@ -123,7 +123,7 @@ impl GlobalState<'_> {
         params: CompletionParams,
     ) -> anyhow::Result<Option<CompletionResponse>> {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let (document, pos) = self.document_with_pos(params.text_document_position)?;
+        let (document, pos) = self.document_with_pos(&params.text_document_position)?;
         let mut completions =
             document.complete(pos, false, |replace_range, completion| CompletionItem {
                 label: completion.label().to_string(),
@@ -132,14 +132,6 @@ impl GlobalState<'_> {
                     range: Self::to_range(encoding, replace_range),
                     new_text: completion.insert_text(),
                 })),
-                /*
-                documentation: completion.documentation().map(|doc| {
-                    Documentation::MarkupContent(MarkupContent {
-                        kind: MarkupKind::Markdown,
-                        value: doc.into_owned(),
-                    })
-                }),
-                */
                 ..Default::default()
             })?;
         tracing::trace!("Completion results: {completions:?}");
@@ -154,13 +146,41 @@ impl GlobalState<'_> {
         Ok(Some(CompletionResponse::Array(completions)))
     }
 
+    pub fn resolve_completion_item(
+        &mut self,
+        item: CompletionItem,
+    ) -> anyhow::Result<CompletionItem> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        /*
+        item.label;
+        let (document, pos) = self.document_with_pos(&params.text_document_position)?;
+        let mut completions =
+            document.complete(pos, false, |replace_range, completion| CompletionItem {
+                label: completion.label().to_string(),
+                kind: Some(completion.kind()),
+                text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                    range: Self::to_range(encoding, replace_range),
+                    new_text: completion.insert_text(),
+                })),
+                ..Default::default()
+            })?;
+        item.documentation = completion.documentation().map(|doc| {
+            Documentation::MarkupContent(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: doc.into_owned(),
+            })
+        });
+        */
+        Ok(item)
+    }
+
     pub fn handle_signature_help(
         &mut self,
         params: SignatureHelpParams,
     ) -> anyhow::Result<Option<SignatureHelp>> {
         let _p = tracing::info_span!("handle_signature_help").entered();
         let signature_help_label_offsets = self.client_capabilities.signature_help_label_offsets();
-        let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
+        let (document, pos) = self.document_with_pos(&params.text_document_position_params)?;
         let signatures = document.call_signatures(pos)?;
         let mut first_active_signature = None;
         let mut first_active_parameter = None;
@@ -204,7 +224,7 @@ impl GlobalState<'_> {
 
     pub fn handle_hover(&mut self, params: HoverParams) -> anyhow::Result<Option<Hover>> {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
+        let (document, pos) = self.document_with_pos(&params.text_document_position_params)?;
 
         let Some(documentation_result) = document.documentation(pos, false)? else {
             return Ok(None);
@@ -290,7 +310,7 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<GotoDefinitionResponse>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let has_location_link_support = self.client_capabilities.location_link();
-        let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
+        let (document, pos) = self.document_with_pos(&params.text_document_position_params)?;
         let response = if has_location_link_support {
             let result = run_for_location(document, pos, &|name| lsp_location(encoding, name))?;
             if result.is_empty() {
@@ -314,13 +334,13 @@ impl GlobalState<'_> {
 
     fn document_with_pos(
         &mut self,
-        text_position: TextDocumentPositionParams,
+        text_position: &TextDocumentPositionParams,
     ) -> anyhow::Result<(Document<'_>, InputPosition)> {
         let pos = self
             .client_capabilities
             .negotiated_encoding()
             .input_position(text_position.position);
-        Ok((self.document(text_position.text_document)?, pos))
+        Ok((self.document(&text_position.text_document)?, pos))
     }
 
     pub fn handle_references(
@@ -328,7 +348,7 @@ impl GlobalState<'_> {
         params: ReferenceParams,
     ) -> anyhow::Result<Option<Vec<Location>>> {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let (document, pos) = self.document_with_pos(params.text_document_position)?;
+        let (document, pos) = self.document_with_pos(&params.text_document_position)?;
         let result = document.references(
             pos,
             ReferencesGoal::OnlyTypeCheckedWorkspaces,
@@ -351,7 +371,7 @@ impl GlobalState<'_> {
         params: DocumentHighlightParams,
     ) -> anyhow::Result<Option<Vec<DocumentHighlight>>> {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let (document, pos) = self.document_with_pos(params.text_document_position_params)?;
+        let (document, pos) = self.document_with_pos(&params.text_document_position_params)?;
         let result = document.references(pos, ReferencesGoal::OnlyCurrentFile, true, |name| {
             DocumentHighlight {
                 range: Self::to_range(encoding, name.name_range()),
@@ -373,7 +393,7 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<CodeActionResponse>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let uri = params.text_document.uri.clone();
-        let document = self.document(params.text_document)?;
+        let document = self.document(&params.text_document)?;
         let actions = document.code_actions(
             encoding.input_position(params.range.start),
             Some(encoding.input_position(params.range.end)),
@@ -414,7 +434,7 @@ impl GlobalState<'_> {
         params: TextDocumentPositionParams,
     ) -> anyhow::Result<Option<PrepareRenameResponse>> {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let (document, pos) = self.document_with_pos(params)?;
+        let (document, pos) = self.document_with_pos(&params)?;
         let range = document.is_valid_rename_location(pos)?;
         if let Some((start, end)) = range {
             Ok(Some(PrepareRenameResponse::Range(Self::to_range(
@@ -429,7 +449,7 @@ impl GlobalState<'_> {
     pub fn rename(&mut self, params: RenameParams) -> anyhow::Result<Option<WorkspaceEdit>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let new_name = params.new_name;
-        let (document, pos) = self.document_with_pos(params.text_document_position)?;
+        let (document, pos) = self.document_with_pos(&params.text_document_position)?;
         let mut changes = document.references_for_rename(pos, &new_name)?;
         Ok(if changes.has_changes() {
             let workspace_changes: Vec<_> = std::mem::take(&mut changes.changes)
@@ -489,7 +509,7 @@ impl GlobalState<'_> {
             return Ok(None);
         }
 
-        let document = self.document(params.text_document)?;
+        let document = self.document(&params.text_document)?;
         Ok(Some(DocumentSymbolResponse::Nested(
             Self::nested_doc_symbols(encoding, document.symbols()),
         )))
@@ -587,7 +607,7 @@ impl GlobalState<'_> {
         range: Option<Range>,
     ) -> anyhow::Result<SemanticTokens> {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let document = self.document(document)?;
+        let document = self.document(&document)?;
         let mut builder = SemanticTokensBuilder::new();
         let range = range.map(|range| {
             (
@@ -621,7 +641,7 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<Option<Vec<FoldingRange>>> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let line_folding_only = self.client_capabilities.line_folding_only();
-        let document = self.document(params.text_document)?;
+        let document = self.document(&params.text_document)?;
         Ok(Some(
             document
                 .folding_ranges()
@@ -662,7 +682,7 @@ impl GlobalState<'_> {
         params: SelectionRangeParams,
     ) -> anyhow::Result<Option<Vec<SelectionRange>>> {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let document = self.document(params.text_document)?;
+        let document = self.document(&params.text_document)?;
         fn range_iterator_to_selection_range<'x>(
             encoding: NegotiatedEncoding,
             mut ranges: impl Iterator<Item = (PositionInfos<'x>, PositionInfos<'x>)>,

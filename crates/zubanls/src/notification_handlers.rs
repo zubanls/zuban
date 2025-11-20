@@ -33,7 +33,7 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<()> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let project = self.project();
-        let path = Self::uri_to_path(project, text_document.uri)?;
+        let path = Self::uri_to_path(project, &text_document.uri)?;
         tracing::info!("Changing document {}", path.as_uri());
         project
             .store_file_with_lsp_changes(path, content_changes, |pos| encoding.input_position(pos))
@@ -41,7 +41,7 @@ impl GlobalState<'_> {
 
     fn store_in_memory_file(&mut self, uri: lsp_types::Uri, code: Box<str>) -> anyhow::Result<()> {
         let project = self.project();
-        let path = Self::uri_to_path(project, uri)?;
+        let path = Self::uri_to_path(project, &uri)?;
         tracing::info!("Loading {}", path.as_uri());
         project.store_in_memory_file(path, code);
         Ok(())
@@ -69,7 +69,7 @@ impl GlobalState<'_> {
     ) -> anyhow::Result<()> {
         let _p = tracing::info_span!("handle_did_change_text_document").entered();
         let project = self.project();
-        let path = Self::uri_to_path(project, params.text_document.uri)?;
+        let path = Self::uri_to_path(project, &params.text_document.uri)?;
         tracing::info!("Closing {}", path.as_uri());
 
         project
@@ -112,7 +112,7 @@ impl GlobalState<'_> {
             };
             let doc_item = text_documents.swap_remove(pos);
             let project = self.project();
-            let path = Self::uri_to_path(project, cell.document)?;
+            let path = Self::uri_to_path(project, &cell.document)?;
             let maybe_parent = self.notebooks.add_cell_and_return_parent(
                 notebook,
                 path.clone(),
@@ -127,7 +127,7 @@ impl GlobalState<'_> {
         let project = self.project();
         let mut result = Ok(());
         for text_document in text_documents {
-            let path = Self::uri_to_path(project, text_document.uri)?;
+            let path = Self::uri_to_path(project, &text_document.uri)?;
             tracing::info!("Closing {}", path.as_uri());
             if let err @ Err(_) = project
                 .close_in_memory_file(&path)
