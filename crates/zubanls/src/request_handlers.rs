@@ -132,12 +132,14 @@ impl GlobalState<'_> {
                     range: Self::to_range(encoding, replace_range),
                     new_text: completion.insert_text(),
                 })),
+                /*
                 documentation: completion.documentation().map(|doc| {
                     Documentation::MarkupContent(MarkupContent {
                         kind: MarkupKind::Markdown,
                         value: doc.into_owned(),
                     })
                 }),
+                */
                 ..Default::default()
             })?;
         tracing::trace!("Completion results: {completions:?}");
