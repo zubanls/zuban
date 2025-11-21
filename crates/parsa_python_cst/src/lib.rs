@@ -384,7 +384,7 @@ impl Tree {
             .map(Name::new)
     }
 
-    pub fn folding_blocks<'x>(&'x self) -> impl Iterator<Item = (CodeIndex, CodeIndex)> {
+    pub fn folding_blocks(&self) -> impl Iterator<Item = (CodeIndex, CodeIndex)> {
         self.0.nodes().filter_map(|n| {
             let end = || {
                 let mut leaf = n.last_leaf_in_subtree();
@@ -402,6 +402,37 @@ impl Tree {
             Some((n.start(), end()))
         })
     }
+
+    pub fn potential_inlay_hints<'x>(
+        &'x self,
+        start: CodeIndex,
+        end: CodeIndex,
+    ) -> impl Iterator<Item = PotentialInlayHint<'x>> {
+        let leaf = self.0.leaf_by_position(start);
+        let skip = if let Some(prev) = leaf.previous_leaf() {
+            prev.index
+        } else {
+            0
+        };
+        self.0
+            .nodes()
+            .skip(skip as usize)
+            .take_while(move |n| n.start() <= end)
+            .filter_map(|n| {
+                if n.is_type(Nonterminal(function_def)) {
+                    Some(PotentialInlayHint::FunctionDef(FunctionDef::new(n)))
+                } else if n.is_type(Nonterminal(assignment)) {
+                    Some(PotentialInlayHint::Assignment(Assignment::new(n)))
+                } else {
+                    None
+                }
+            })
+    }
+}
+
+pub enum PotentialInlayHint<'db> {
+    FunctionDef(FunctionDef<'db>),
+    Assignment(Assignment<'db>),
 }
 
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {

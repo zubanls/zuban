@@ -101,7 +101,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
             },
         )),
         moniker_provider: None,
-        inlay_hint_provider: None, // TODO
+        inlay_hint_provider: Some(OneOf::Left(true)),
         inline_value_provider: None,
         experimental: None,
         diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(

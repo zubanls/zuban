@@ -1,0 +1,30 @@
+[case inlay_hints_basic_mypy_compatible]
+# flags: --only-language-server --mypy-compatible
+#? inlay-hints --until-line 9
+
+def ret_int():
+    return 0
+
+a = 1
+a = 2
+
+[out]
+__main__.py:3: Inlay Hints:
+- 7:1: "int"
+- 8:1: "int"
+
+[case inlay_hints_basic_no_mypy_compatible]
+# flags: --only-language-server --no-mypy-compatible
+#? inlay-hints --until-line 9
+
+def ret_int():
+    return 0
+
+a = 1
+a = 2
+
+[out]
+__main__.py:3: Inlay Hints:
+- 4:13: "int"
+- 7:1: "int"
+- 8:1: "int"

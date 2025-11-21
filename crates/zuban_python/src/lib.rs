@@ -14,6 +14,7 @@ mod goto;
 mod imports;
 mod inference_state;
 mod inferred;
+mod inlay_hints;
 mod lines;
 mod lsp_utils;
 mod matching;

@@ -432,6 +432,7 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<SemanticTokensRangeRequest>(GlobalState::semantic_tokens_with_range)
         .on_sync_mut::<FoldingRangeRequest>(GlobalState::folding_ranges)
         .on_sync_mut::<SelectionRangeRequest>(GlobalState::selection_ranges)
+        .on_sync_mut::<InlayHintRequest>(GlobalState::inlay_hints)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .finish();
     }

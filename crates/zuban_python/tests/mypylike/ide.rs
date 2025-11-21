@@ -35,6 +35,7 @@ pub enum Commands {
     SelectionRanges(SelectionRangeArgs),
     CodeActions(CodeActionArgs),
     FoldingRanges(FoldingBlocksArgs),
+    InlayHints(InlayHintArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -122,6 +123,12 @@ pub struct CodeActionArgs {
 
 #[derive(Parser, Debug)]
 pub struct FoldingBlocksArgs {}
+
+#[derive(Parser, Debug)]
+pub struct InlayHintArgs {
+    #[arg(long)]
+    pub until_line: usize,
+}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -485,6 +492,27 @@ pub(crate) fn find_and_check_ide_tests(
                         ));
                     }
                     continue;
+                }
+                Commands::InlayHints(args) => {
+                    let until = InputPosition::CodePoints {
+                        line: args.until_line - 1,
+                        column: 0,
+                    };
+                    match document.inlay_hints(position, until) {
+                        Ok(hints) => {
+                            output.push(format!("{path}:{test_on_line_nr}: Inlay Hints:"));
+                            for hint in hints {
+                                output.push(format!(
+                                    "- {}:{}: {:?}",
+                                    hint.position.line_one_based(),
+                                    hint.position.code_points_column(),
+                                    hint.label(),
+                                ));
+                            }
+                            continue;
+                        }
+                        Err(err) => ("inlay-hints", Err(err)),
+                    }
                 }
             };
             output.push(match out {

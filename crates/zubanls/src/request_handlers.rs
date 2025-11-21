@@ -10,11 +10,12 @@ use lsp_types::{
     DocumentHighlightKind, DocumentHighlightParams, DocumentSymbol, DocumentSymbolParams,
     DocumentSymbolResponse, Documentation, FoldingRange, FoldingRangeParams,
     FullDocumentDiagnosticReport, GotoDefinitionParams, GotoDefinitionResponse, Hover,
-    HoverContents, HoverParams, Location, LocationLink, MarkupContent, MarkupKind, OneOf,
-    OptionalVersionedTextDocumentIdentifier, ParameterInformation, ParameterLabel, Position,
-    PrepareRenameResponse, Range, ReferenceParams, RelatedFullDocumentDiagnosticReport, RenameFile,
-    RenameParams, ResourceOp, ResourceOperationKind, SelectionRange, SelectionRangeParams,
-    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    HoverContents, HoverParams, InlayHint, InlayHintLabel, InlayHintParams, Location, LocationLink,
+    MarkupContent, MarkupKind, OneOf, OptionalVersionedTextDocumentIdentifier,
+    ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range, ReferenceParams,
+    RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
+    ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
     TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
     WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
@@ -735,6 +736,31 @@ impl GlobalState<'_> {
                     .unwrap())
                 })
                 .collect::<anyhow::Result<_>>()?,
+        ))
+    }
+
+    pub fn inlay_hints(
+        &mut self,
+        params: InlayHintParams,
+    ) -> anyhow::Result<Option<Vec<InlayHint>>> {
+        let encoding = self.client_capabilities.negotiated_encoding();
+        let document = self.document(&params.text_document)?;
+        let start = encoding.input_position(params.range.start);
+        let end = encoding.input_position(params.range.end);
+        Ok(Some(
+            document
+                .inlay_hints(start, end)?
+                .map(|hint| InlayHint {
+                    position: Self::to_position(encoding, hint.position),
+                    label: InlayHintLabel::String(hint.label().into()),
+                    kind: Some(hint.kind),
+                    text_edits: None,
+                    tooltip: None,
+                    padding_left: None,
+                    padding_right: None,
+                    data: None,
+                })
+                .collect(),
         ))
     }
 

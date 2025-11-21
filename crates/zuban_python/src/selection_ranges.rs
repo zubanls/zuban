@@ -11,7 +11,7 @@ impl<'project> Document<'project> {
         let pos = file.line_column_to_byte(position)?;
         let ranges = file.tree.selection_ranges(pos.byte);
         debug!(
-            "Position for goto-like operation {}->{position:?}",
+            "Position for selection ranges {}->{position:?}",
             file.file_path(db),
         );
         Ok(ranges.map(|range| {
