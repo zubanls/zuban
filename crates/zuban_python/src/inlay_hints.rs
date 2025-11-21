@@ -58,6 +58,7 @@ impl<'project> Document<'project> {
                         type_,
                         kind: InlayHintKind::TYPE,
                         position: file.byte_to_position_infos(db, f.params().end()),
+                        label_kind: LabelKind::FunctionReturnAnnotation,
                     })
                 }
                 PotentialInlayHint::Assignment(assignment) => match assignment.unpack() {
@@ -81,6 +82,7 @@ impl<'project> Document<'project> {
                             kind: InlayHintKind::TYPE,
                             position: file.byte_to_position_infos(db, name_def.end()),
                             type_,
+                            label_kind: LabelKind::NormalAnnotation,
                         })
                     }
                     _ => None,
@@ -89,15 +91,25 @@ impl<'project> Document<'project> {
     }
 }
 
+enum LabelKind {
+    NormalAnnotation,
+    FunctionReturnAnnotation,
+}
+
 pub struct InlayHint<'project> {
     db: &'project Database,
     type_: Type,
     pub kind: InlayHintKind,
     pub position: PositionInfos<'project>,
+    label_kind: LabelKind,
 }
 
 impl InlayHint<'_> {
-    pub fn label(&self) -> Box<str> {
-        self.type_.format_short(self.db)
+    pub fn label(&self) -> String {
+        let formatted = self.type_.format_short(self.db);
+        match self.label_kind {
+            LabelKind::NormalAnnotation => format!(": {formatted}"),
+            LabelKind::FunctionReturnAnnotation => format!(" -> {formatted}"),
+        }
     }
 }

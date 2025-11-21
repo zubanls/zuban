@@ -752,7 +752,7 @@ impl GlobalState<'_> {
                 .inlay_hints(start, end)?
                 .map(|hint| InlayHint {
                     position: Self::to_position(encoding, hint.position),
-                    label: InlayHintLabel::String(hint.label().into()),
+                    label: InlayHintLabel::String(hint.label()),
                     kind: Some(hint.kind),
                     text_edits: None,
                     tooltip: None,
