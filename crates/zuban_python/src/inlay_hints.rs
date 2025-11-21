@@ -5,7 +5,7 @@ use parsa_python_cst::{AssignmentContent, PotentialInlayHint, Target};
 
 use crate::{
     Document, InputPosition, PositionInfos,
-    database::Database,
+    database::{Database, Specific},
     debug,
     file::File as _,
     inference_state::InferenceState,
@@ -73,8 +73,17 @@ impl<'project> Document<'project> {
                         else {
                             return None;
                         };
+                        let name_def_ref = NodeRef::new(file, name_def.index());
+                        if name_def_ref
+                            .name_ref_of_name_def()
+                            .point()
+                            .maybe_calculated_and_specific()
+                            == Some(Specific::NameOfNameDef)
+                        {
+                            return None;
+                        }
                         let i_s = &InferenceState::new_in_unknown_file(db);
-                        let inf = NodeRef::new(file, name_def.index()).maybe_inferred(i_s)?;
+                        let inf = name_def_ref.maybe_inferred(i_s)?;
                         let type_ = inf.as_type(i_s);
                         if type_.is_any() {
                             return None;
