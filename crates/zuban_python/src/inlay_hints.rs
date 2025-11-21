@@ -35,7 +35,9 @@ impl<'project> Document<'project> {
             .potential_inlay_hints(start.byte, end.byte)
             .filter_map(|potential| match potential {
                 PotentialInlayHint::FunctionDef(f) => {
-                    if f.return_annotation().is_some() || f.name().as_code() == "__init__" {
+                    if f.return_annotation().is_some()
+                        || matches!(f.name().as_code(), "__init__" | "__init_subclass__")
+                    {
                         return None;
                     }
                     let func = Function::new_with_unknown_parent(db, NodeRef::new(file, f.index()));
