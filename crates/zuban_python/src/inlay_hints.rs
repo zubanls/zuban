@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use lsp_types::InlayHintKind;
 use parsa_python_cst::{AssignmentContent, PotentialInlayHint, Target};
 
@@ -8,7 +10,7 @@ use crate::{
     file::File as _,
     inference_state::InferenceState,
     node_ref::NodeRef,
-    type_::Type,
+    type_::{ReplaceTypeVarLikes as _, Type},
     type_helpers::{FuncLike as _, Function},
 };
 
@@ -33,16 +35,24 @@ impl<'project> Document<'project> {
             .potential_inlay_hints(start.byte, end.byte)
             .filter_map(|potential| match potential {
                 PotentialInlayHint::FunctionDef(f) => {
-                    if f.return_annotation().is_some() {
+                    if f.return_annotation().is_some() || f.name().as_code() == "__init__" {
                         return None;
                     }
-                    let type_ =
-                        Function::new_with_unknown_parent(db, NodeRef::new(file, f.index()))
-                            .inferred_return_type(&InferenceState::new_in_unknown_file(db))
-                            .into_owned();
-                    if type_.is_any() {
+                    let func = Function::new_with_unknown_parent(db, NodeRef::new(file, f.index()));
+                    let mut t = func.inferred_return_type(&InferenceState::new(db, file));
+                    if let Some(new_t) = t.replace_type_var_likes(db, &mut |usage| {
+                        if usage.as_type_var_like().is_untyped() {
+                            Some(usage.as_any_generic_item())
+                        } else {
+                            None
+                        }
+                    }) {
+                        t = Cow::Owned(new_t);
+                    }
+                    if t.is_any() {
                         return None;
                     }
+                    let type_ = t.into_owned();
                     Some(InlayHint {
                         db,
                         type_,

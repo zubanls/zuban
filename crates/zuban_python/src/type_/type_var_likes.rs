@@ -481,7 +481,7 @@ impl TypeVarLikes {
 
     pub fn has_from_untyped_params(&self) -> bool {
         self.0.last().is_some_and(|tvl| match tvl {
-            TypeVarLike::TypeVar(tv) => matches!(&tv.name, TypeVarName::UntypedParam { .. }),
+            TypeVarLike::TypeVar(tv) => tv.is_untyped(),
             _ => false,
         })
     }
@@ -743,6 +743,13 @@ impl TypeVarLike {
             }
         }
         self
+    }
+
+    pub fn is_untyped(&self) -> bool {
+        match self {
+            TypeVarLike::TypeVar(tv) => tv.is_untyped(),
+            _ => false,
+        }
     }
 }
 
@@ -1082,6 +1089,10 @@ impl TypeVar {
 
     pub fn is_unrestricted(&self) -> bool {
         matches!(self.kind, TypeVarKindInfos::Unrestricted)
+    }
+
+    pub fn is_untyped(&self) -> bool {
+        matches!(&self.name, TypeVarName::UntypedParam { .. })
     }
 
     pub fn qualified_name(&self, db: &Database) -> Box<str> {

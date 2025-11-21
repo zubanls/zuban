@@ -28,3 +28,23 @@ __main__.py:3: Inlay Hints:
 - 4:13: "int"
 - 7:1: "int"
 - 8:1: "int"
+
+[case inlay_hints_avoid_generics]
+# flags: --no-mypy-compatible
+#? inlay-hints --until-line 12
+
+def foo(x):
+    return [x]
+
+class C[T]:
+    def __init__(self, x: T):
+        self.x = x
+
+    def bar(self, x):
+        return (self.x, [x])
+
+[out]
+__main__.py:3: Inlay Hints:
+- 4:10: "list[Any]"
+- 9:14: "T"
+- 11:20: "tuple[T, list[Any]]"
