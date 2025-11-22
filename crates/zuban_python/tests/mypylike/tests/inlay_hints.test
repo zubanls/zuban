@@ -35,6 +35,18 @@ __main__.py:3: Inlay Hints:
 - 4:13: " -> int"
 - 8:1: ": int"
 
+[case inlay_hints_with_range]
+constant = 1
+a = constant
+#? inlay-hints --until-line 5
+
+b = constant
+c = constant
+
+[out]
+__main__.py:4: Inlay Hints:
+- 5:1: ": int"
+
 [case inlay_hints_avoid_generics]
 # flags: --no-mypy-compatible
 #? inlay-hints
