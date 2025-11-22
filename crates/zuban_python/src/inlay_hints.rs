@@ -2,15 +2,15 @@ use std::borrow::Cow;
 
 use lsp_types::InlayHintKind;
 use parsa_python_cst::{
-    AssignmentContent, ExpressionContent, ExpressionPart, PotentialInlayHint, PrimaryContent,
-    Target,
+    AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, PotentialInlayHint,
+    PrimaryContent, Target,
 };
 
 use crate::{
     Document, InputPosition, PositionInfos,
     database::{Database, Specific},
     debug,
-    file::File as _,
+    file::{File as _, PythonFile},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{ReplaceTypeVarLikes as _, Type},
@@ -91,22 +91,9 @@ impl<'project> Document<'project> {
                         if type_.is_any() {
                             return None;
                         }
-                        if right_side.is_simple_assignment(&|expr| match expr.unpack() {
-                            ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
-                                atom.is_literal_value()
-                            }
-                            ExpressionContent::ExpressionPart(ExpressionPart::Primary(prim)) => {
-                                match prim.second() {
-                                    PrimaryContent::Attribute(name) => false, // TODO enums
-                                    PrimaryContent::Execution(_) => {
-                                        prim.first();
-                                        false // TODO classes
-                                    }
-                                    _ => false,
-                                }
-                            }
-                            _ => false,
-                        }) {
+                        // Only allow relevant assignments. Literal/Enum/Class instantiation
+                        // assignments are not relevant and we therefore ignore them.
+                        if is_interesting(file, right_side) {
                             return None;
                         }
                         Some(InlayHint {
@@ -121,6 +108,27 @@ impl<'project> Document<'project> {
                 },
             }))
     }
+}
+
+fn is_interesting(file: &PythonFile, right_side: AssignmentRightSide) -> bool {
+    right_side.is_simple_assignment(&|expr| match expr.unpack() {
+        ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => atom.is_literal_value(),
+        ExpressionContent::ExpressionPart(ExpressionPart::Primary(prim)) => {
+            match prim.second() {
+                PrimaryContent::Attribute(_) if prim.is_only_attributes() => {
+                    NodeRef::new(file, expr.index())
+                        .maybe_type()
+                        .is_some_and(|t| matches!(t, Type::EnumMember(_)))
+                }
+                PrimaryContent::Execution(_) => {
+                    prim.first();
+                    false // TODO classes
+                }
+                _ => false,
+            }
+        }
+        _ => false,
+    })
 }
 
 enum LabelKind {

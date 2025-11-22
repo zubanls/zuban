@@ -3512,7 +3512,7 @@ impl<'db> Primary<'db> {
         }
     }
 
-    fn is_only_attributes(&self) -> bool {
+    pub fn is_only_attributes(&self) -> bool {
         matches!(self.second(), PrimaryContent::Attribute(_))
             && match self.first() {
                 PrimaryOrAtom::Atom(a) => matches!(a.unpack(), AtomContent::Name(_)),

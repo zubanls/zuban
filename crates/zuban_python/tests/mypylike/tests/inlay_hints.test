@@ -81,3 +81,29 @@ e, f = constant, constant
 __main__.py:2: Inlay Hints:
 - 5:1: ": tuple[int, int, int]"
 - 7:1: ": tuple[int, int, int]"
+
+[case inlay_hints_with_enums]
+#? inlay-hints
+from typing import Literal
+import m
+from enum import Enum
+constant: Literal[1] = 1
+class E(Enum):
+    X = 1
+    Y = constant
+
+a = E.X
+b = m.E.X
+
+def f(e: E) -> None:
+    a = e
+
+[file m.py]
+from enum import Enum
+class E(Enum):
+    X = 1
+
+[out]
+__main__.py:2: Inlay Hints:
+- 8:5: ": Literal[1]"
+- 14:5: ": E"
