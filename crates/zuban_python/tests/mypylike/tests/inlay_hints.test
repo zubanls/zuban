@@ -107,3 +107,68 @@ class E(Enum):
 __main__.py:2: Inlay Hints:
 - 8:5: ": Literal[1]"
 - 14:5: ": E"
+
+[case inlay_hints_with_classes]
+# flags: --only-language-server
+#? inlay-hints
+from m import A, D, N1, N2, E1, E2, TD1, TD2
+
+a = A()
+i = int()
+b = str()
+d = D(1)
+n1 = N1(1, 2)
+n2 = N2(1)
+e1 = E1("x")
+e2 = E2("x")
+td1 = TD1(x=1)
+td2 = TD2(x=1)
+
+[file indirect_import.py]
+#? inlay-hints
+import m
+
+a = m.A()
+d = m.D(1)
+n1 = m.N1(1, 2)
+n2 = m.N2(1)
+e1 = m.E1("x")
+e2 = m.E2("x")
+td1 = m.TD1(x=1)
+td2 = m.TD2(x=1)
+
+[file m.py]
+#? inlay-hints
+from dataclasses import dataclass
+from enum import Enum
+from typing import NamedTuple, TypedDict
+
+class A: pass
+@dataclass
+class D:
+    x: int
+N1 = NamedTuple("N1", [('x', int), ('y', int)])
+class N2(NamedTuple):
+    x: int
+E1 = Enum("E1", ['x', 'y'])
+class E2(Enum):
+    x = "x"
+TD1 = TypedDict("TD1", {"x": int})
+class TD2(TypedDict):
+    x: int
+
+a = A()
+i = int()
+b = str()
+d = D(1)
+n1 = N1(1, 2)
+n2 = N2(1)
+e1 = E1("x")
+e2 = E2("x")
+td1 = TD1(x=1)
+td2 = TD2(x=1)
+
+[out]
+__main__.py:3: Inlay Hints:
+m.py:2: Inlay Hints:
+indirect_import.py:2: Inlay Hints:

@@ -3,14 +3,14 @@ use std::borrow::Cow;
 use lsp_types::InlayHintKind;
 use parsa_python_cst::{
     AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, PotentialInlayHint,
-    PrimaryContent, Target,
+    PrimaryContent, PrimaryOrAtom, Target,
 };
 
 use crate::{
     Document, InputPosition, PositionInfos,
-    database::{Database, Specific},
+    database::{ComplexPoint, Database, Specific},
     debug,
-    file::{File as _, PythonFile},
+    file::{File as _, PythonFile, assignment_type_node_ref},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{ReplaceTypeVarLikes as _, Type},
@@ -77,6 +77,15 @@ impl<'project> Document<'project> {
                             return None;
                         };
                         let name_def_ref = NodeRef::new(file, name_def.index());
+                        let i_s = &InferenceState::new_in_unknown_file(db);
+                        if assignment_type_node_ref(file, assignment)
+                            .point()
+                            .calculated()
+                        {
+                            // Type assignments like NamedTuple/Enum/TypedDict definitions should
+                            // never have an inlay hint, because they can never make sense.
+                            return None;
+                        }
                         if name_def_ref
                             .name_ref_of_name_def()
                             .point()
@@ -85,7 +94,6 @@ impl<'project> Document<'project> {
                         {
                             return None;
                         }
-                        let i_s = &InferenceState::new_in_unknown_file(db);
                         let inf = name_def_ref.maybe_inferred(i_s)?;
                         let type_ = inf.as_type(i_s);
                         if type_.is_any() {
@@ -93,7 +101,7 @@ impl<'project> Document<'project> {
                         }
                         // Only allow relevant assignments. Literal/Enum/Class instantiation
                         // assignments are not relevant and we therefore ignore them.
-                        if is_interesting(file, right_side) {
+                        if avoid_inline_hint(i_s, file, right_side) {
                             return None;
                         }
                         Some(InlayHint {
@@ -110,23 +118,45 @@ impl<'project> Document<'project> {
     }
 }
 
-fn is_interesting(file: &PythonFile, right_side: AssignmentRightSide) -> bool {
+fn avoid_inline_hint(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    right_side: AssignmentRightSide,
+) -> bool {
     right_side.is_simple_assignment(&|expr| match expr.unpack() {
         ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => atom.is_literal_value(),
-        ExpressionContent::ExpressionPart(ExpressionPart::Primary(prim)) => {
-            match prim.second() {
-                PrimaryContent::Attribute(_) if prim.is_only_attributes() => {
-                    NodeRef::new(file, expr.index())
-                        .maybe_type()
-                        .is_some_and(|t| matches!(t, Type::EnumMember(_)))
-                }
-                PrimaryContent::Execution(_) => {
-                    prim.first();
-                    false // TODO classes
-                }
-                _ => false,
+        ExpressionContent::ExpressionPart(ExpressionPart::Primary(prim)) => match prim.second() {
+            PrimaryContent::Attribute(_) if prim.is_only_attributes() => {
+                NodeRef::new(file, expr.index())
+                    .maybe_type()
+                    .is_some_and(|t| matches!(t, Type::EnumMember(_)))
             }
-        }
+            PrimaryContent::Execution(_) => {
+                let check = |index| {
+                    if let Some(inf) = NodeRef::new(file, index).maybe_inferred(i_s) {
+                        if matches!(
+                            inf.maybe_complex_point(i_s.db),
+                            Some(
+                                ComplexPoint::Class(_)
+                                    | ComplexPoint::TypedDictDefinition(_)
+                                    | ComplexPoint::TypeInstance(Type::Type(_))
+                            )
+                        ) {
+                            return true;
+                        }
+                    }
+                    false
+                };
+                match prim.first() {
+                    PrimaryOrAtom::Primary(primary) => match primary.second() {
+                        PrimaryContent::Attribute(name) => check(name.index()),
+                        _ => false,
+                    },
+                    PrimaryOrAtom::Atom(atom) => check(atom.index()),
+                }
+            }
+            _ => false,
+        },
         _ => false,
     })
 }

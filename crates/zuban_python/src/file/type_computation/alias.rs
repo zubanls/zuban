@@ -1126,7 +1126,7 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
     }
 }
 
-fn assignment_type_node_ref<'x>(file: &'x PythonFile, assignment: Assignment) -> NodeRef<'x> {
+pub fn assignment_type_node_ref<'x>(file: &'x PythonFile, assignment: Assignment) -> NodeRef<'x> {
     NodeRef::new(file, assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET)
 }
 
