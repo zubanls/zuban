@@ -1,31 +1,39 @@
 [case inlay_hints_basic_mypy_compatible]
 # flags: --only-language-server --mypy-compatible
-#? inlay-hints --until-line 9
+#? inlay-hints --until-line 13
 
 def ret_int():
     return 0
 
-a = 1
-a = 2
+constant = 1
+a = constant
+a = constant
+
+# Constant assignments have no inlay hints
+b = 1
 
 [out]
 __main__.py:3: Inlay Hints:
-- 7:1: ": int"
+- 8:1: ": int"
 
 [case inlay_hints_basic_no_mypy_compatible]
 # flags: --only-language-server --no-mypy-compatible
-#? inlay-hints --until-line 9
+#? inlay-hints --until-line 13
 
 def ret_int():
     return 0
 
-a = 1
-a = 2
+constant = 1
+a = constant
+a = constant
+
+# Constant assignments have no inlay hints
+b = 1
 
 [out]
 __main__.py:3: Inlay Hints:
 - 4:13: " -> int"
-- 7:1: ": int"
+- 8:1: ": int"
 
 [case inlay_hints_avoid_generics]
 # flags: --no-mypy-compatible
@@ -46,3 +54,18 @@ __main__.py:3: Inlay Hints:
 - 4:10: " -> list[Any]"
 - 9:14: ": T"
 - 11:20: " -> tuple[T, list[Any]]"
+
+[case inlay_hints_tuples]
+#? inlay-hints --until-line 10
+
+constant = 1
+a = (1, 2, 3)
+b = (1, 2, constant)
+c = 1, 2, 3
+d = 1, 2, constant
+
+e, f = constant, constant
+[out]
+__main__.py:2: Inlay Hints:
+- 5:1: ": tuple[int, int, int]"
+- 7:1: ": tuple[int, int, int]"

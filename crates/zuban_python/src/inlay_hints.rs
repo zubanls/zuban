@@ -1,7 +1,10 @@
 use std::borrow::Cow;
 
 use lsp_types::InlayHintKind;
-use parsa_python_cst::{AssignmentContent, PotentialInlayHint, Target};
+use parsa_python_cst::{
+    AssignmentContent, ExpressionContent, ExpressionPart, PotentialInlayHint, PrimaryContent,
+    Target,
+};
 
 use crate::{
     Document, InputPosition, PositionInfos,
@@ -64,7 +67,7 @@ impl<'project> Document<'project> {
                     })
                 }
                 PotentialInlayHint::Assignment(assignment) => match assignment.unpack() {
-                    AssignmentContent::Normal(mut targets, _) => {
+                    AssignmentContent::Normal(mut targets, right_side) => {
                         let target = targets.next().unwrap();
                         if targets.next().is_some() {
                             return None;
@@ -86,6 +89,24 @@ impl<'project> Document<'project> {
                         let inf = name_def_ref.maybe_inferred(i_s)?;
                         let type_ = inf.as_type(i_s);
                         if type_.is_any() {
+                            return None;
+                        }
+                        if right_side.is_simple_assignment(&|expr| match expr.unpack() {
+                            ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
+                                atom.is_literal_value()
+                            }
+                            ExpressionContent::ExpressionPart(ExpressionPart::Primary(prim)) => {
+                                match prim.second() {
+                                    PrimaryContent::Attribute(name) => false, // TODO enums
+                                    PrimaryContent::Execution(_) => {
+                                        prim.first();
+                                        false // TODO classes
+                                    }
+                                    _ => false,
+                                }
+                            }
+                            _ => false,
+                        }) {
                             return None;
                         }
                         Some(InlayHint {

@@ -1313,19 +1313,7 @@ impl<'db> Expression<'db> {
     pub fn is_literal_value(&self) -> bool {
         match self.unpack() {
             ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom_)) => {
-                match atom_.unpack() {
-                    AtomContent::Float(_)
-                    | AtomContent::Int(_)
-                    | AtomContent::Complex(_)
-                    | AtomContent::Strings(_)
-                    | AtomContent::Bytes(_)
-                    | AtomContent::NoneLiteral
-                    | AtomContent::Bool(_) => true,
-                    AtomContent::NamedExpression(named_expr) => {
-                        named_expr.expression().is_literal_value()
-                    }
-                    _ => false,
-                }
+                atom_.is_literal_value()
             }
             _ => false,
         }
@@ -3095,6 +3083,32 @@ impl<'db> AssignmentRightSide<'db> {
             Self::YieldExpr(_) => false,
         }
     }
+
+    pub fn is_simple_assignment(&self, is_simple: &impl Fn(Expression) -> bool) -> bool {
+        fn is_simple_expr(expr: Expression, is_simple: &impl Fn(Expression) -> bool) -> bool {
+            if let Some(tup) = expr.maybe_tuple() {
+                tup.iter().all(|s| match s {
+                    StarLikeExpression::NamedExpression(ne) => {
+                        is_simple_expr(ne.expression(), is_simple)
+                    }
+                    _ => false,
+                })
+            } else {
+                is_simple(expr)
+            }
+        }
+        match self {
+            AssignmentRightSide::YieldExpr(_) => false,
+            AssignmentRightSide::StarExpressions(s) => match s.unpack() {
+                StarExpressionContent::Expression(expr) => is_simple_expr(expr, is_simple),
+                StarExpressionContent::StarExpression(_) => false,
+                StarExpressionContent::Tuple(star_exprs) => star_exprs.iter().all(|s| match s {
+                    StarLikeExpression::Expression(expr) => is_simple_expr(expr, is_simple),
+                    _ => false,
+                }),
+            },
+        }
+    }
 }
 
 pub struct StarTargetsIterator<'db>(StepBy<SiblingIterator<'db>>);
@@ -4721,6 +4735,20 @@ impl<'db> Atom<'db> {
         let n = self.node.parent().unwrap();
         n.is_type(Nonterminal(expression))
             .then(|| Expression::new(n))
+    }
+
+    pub fn is_literal_value(&self) -> bool {
+        match self.unpack() {
+            AtomContent::Float(_)
+            | AtomContent::Int(_)
+            | AtomContent::Complex(_)
+            | AtomContent::Strings(_)
+            | AtomContent::Bytes(_)
+            | AtomContent::NoneLiteral
+            | AtomContent::Bool(_) => true,
+            AtomContent::NamedExpression(named_expr) => named_expr.expression().is_literal_value(),
+            _ => false,
+        }
     }
 }
 
