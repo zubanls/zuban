@@ -1,6 +1,6 @@
 [case inlay_hints_basic_mypy_compatible]
 # flags: --only-language-server --mypy-compatible
-#? inlay-hints --until-line 13
+#? inlay-hints
 
 def ret_int():
     return 0
@@ -18,7 +18,7 @@ __main__.py:3: Inlay Hints:
 
 [case inlay_hints_basic_no_mypy_compatible]
 # flags: --only-language-server --no-mypy-compatible
-#? inlay-hints --until-line 13
+#? inlay-hints
 
 def ret_int():
     return 0
@@ -37,7 +37,7 @@ __main__.py:3: Inlay Hints:
 
 [case inlay_hints_avoid_generics]
 # flags: --no-mypy-compatible
-#? inlay-hints --until-line 12
+#? inlay-hints
 
 def foo(x):
     return [x]
@@ -56,7 +56,7 @@ __main__.py:3: Inlay Hints:
 - 11:20: " -> tuple[T, list[Any]]"
 
 [case inlay_hints_tuples]
-#? inlay-hints --until-line 10
+#? inlay-hints
 
 constant = 1
 a = (1, 2, 3)

@@ -127,7 +127,7 @@ pub struct FoldingBlocksArgs {}
 #[derive(Parser, Debug)]
 pub struct InlayHintArgs {
     #[arg(long)]
-    pub until_line: usize,
+    pub until_line: Option<usize>,
 }
 
 impl CommonGotoInferArgs {
@@ -495,7 +495,7 @@ pub(crate) fn find_and_check_ide_tests(
                 }
                 Commands::InlayHints(args) => {
                     let until = InputPosition::CodePoints {
-                        line: args.until_line - 1,
+                        line: args.until_line.unwrap_or_else(|| code.split('\n').count()) - 1,
                         column: 0,
                     };
                     match document.inlay_hints(position, until) {
