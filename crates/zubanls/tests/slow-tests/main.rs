@@ -14,20 +14,20 @@ use lsp_types::{
     CodeActionParams, CompletionItem, CompletionItemKind, CompletionParams,
     DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
     DocumentDiagnosticReportResult, DocumentHighlightKind, DocumentHighlightParams,
-    DocumentSymbolParams, FoldingRangeParams, GotoDefinitionParams, HoverParams, NumberOrString,
-    PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext, ReferenceParams,
-    RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType, SemanticTokens,
-    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensServerCapabilities,
-    SignatureHelpParams, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentPositionParams, Uri, WorkDoneProgressParams, WorkspaceDiagnosticParams,
-    WorkspaceSymbolParams,
+    DocumentSymbolParams, FoldingRangeParams, GotoDefinitionParams, HoverParams, InlayHintParams,
+    NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
+    ReferenceParams, RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType,
+    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    WorkDoneProgressParams, WorkspaceDiagnosticParams, WorkspaceSymbolParams,
     request::{
         CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
         DocumentSymbolRequest, FoldingRangeRequest, GotoDeclaration, GotoDefinition,
-        GotoImplementation, GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References,
-        Rename, ResolveCompletionItem, SelectionRangeRequest, SemanticTokensFullRequest,
-        SemanticTokensRangeRequest, SignatureHelpRequest, WorkspaceDiagnosticRequest,
-        WorkspaceSymbolRequest,
+        GotoImplementation, GotoTypeDefinition, HoverRequest, InlayHintRequest,
+        PrepareRenameRequest, References, Rename, ResolveCompletionItem, SelectionRangeRequest,
+        SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
+        WorkspaceDiagnosticRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -3076,5 +3076,58 @@ fn test_auto_imports_code_actions() {
           "kind": "quickfix",
           "title": "Import `email.mime.message.MIMEMessage`"
         }]),
+    );
+}
+
+#[test]
+#[serial]
+fn test_inlay_hints() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        before = [1]
+        a = 1
+        b = int()
+        c = a
+        d = [1]
+        def foo(): return ""
+
+        after = [1]
+        "#,
+    )
+    .into_server();
+
+    server.request_and_expect_json::<InlayHintRequest>(
+        InlayHintParams {
+            work_done_progress_params: Default::default(),
+            text_document: server.doc_id("foo.py"),
+            range: Range::new(Position::new(1, 0), Position::new(6, 0)),
+        },
+        json!([
+          {
+            "kind": 1,
+            "label": ": int",
+            "position": {
+              "character": 1,
+              "line": 3
+            }
+          },
+          {
+            "kind": 1,
+            "label": ": list[int]",
+            "position": {
+              "character": 1,
+              "line": 4
+            }
+          },
+          {
+            "kind": 1,
+            "label": " -> str",
+            "position": {
+              "character": 9,
+              "line": 5
+            }
+          }
+        ]),
     );
 }
