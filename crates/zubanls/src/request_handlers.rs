@@ -750,15 +750,21 @@ impl GlobalState<'_> {
         Ok(Some(
             document
                 .inlay_hints(start, end)?
-                .map(|hint| InlayHint {
-                    position: Self::to_position(encoding, hint.position),
-                    label: InlayHintLabel::String(hint.label()),
-                    kind: Some(hint.kind),
-                    text_edits: None,
-                    tooltip: None,
-                    padding_left: None,
-                    padding_right: None,
-                    data: None,
+                .map(|hint| {
+                    let pos = Self::to_position(encoding, hint.position);
+                    InlayHint {
+                        position: pos,
+                        label: InlayHintLabel::String(hint.label()),
+                        kind: Some(hint.kind),
+                        text_edits: Some(vec![TextEdit {
+                            range: Range::new(pos, pos),
+                            new_text: hint.label(),
+                        }]),
+                        tooltip: None,
+                        padding_left: None,
+                        padding_right: None,
+                        data: None,
+                    }
                 })
                 .collect(),
         ))

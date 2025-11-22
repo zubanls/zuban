@@ -474,13 +474,13 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         is_instance: bool,
         should_ignore: impl Fn(&str) -> bool,
     ) {
+        let file = c.node_ref.to_db_lifetime(self.infos.db).file;
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
         let class_node = c.node();
         for (symbol, node_index) in storage.class_symbol_table.iter() {
             if is_private(symbol) || should_ignore(symbol) {
                 continue;
             }
-            let file = c.node_ref.to_db_lifetime(self.infos.db).file;
             let name_def = NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE);
             self.maybe_add_tree_name(file, Scope::Class(class_node), name_def, true)
         }
@@ -493,8 +493,8 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                     self.replace_range,
                     &CompletionTreeName {
                         db: self.infos.db,
-                        file: self.infos.file,
-                        name: NodeRef::new(self.infos.file, node_index).expect_name(),
+                        file,
+                        name: NodeRef::new(file, node_index).expect_name(),
                         kind: CompletionItemKind::FIELD,
                     },
                 ) {

@@ -397,3 +397,16 @@ __main__.py:11:complete -> [mod_o:Some("o docstr")]
 __main__.py:13:complete -> [mod_p:Some("p docstr")]
 __main__.py:16:complete -> [mod_o:Some("o docstr")]
 __main__.py:18:complete -> [mod_p:Some("p docstr")]
+
+[case completion_instance]
+from x import X
+
+#? complete
+X().x
+
+[file x.py]
+class X:
+    def __init__(self): 
+        self.x = 1
+[out]
+__main__.py:4:complete -> [x]

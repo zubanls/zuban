@@ -3108,25 +3108,70 @@ fn test_inlay_hints() {
             "kind": 1,
             "label": ": int",
             "position": {
+              "line": 3,
               "character": 1,
-              "line": 3
-            }
+            },
+            "textEdits": [
+              {
+                "newText": ": int",
+                "range": {
+                  "end": {
+                    "line": 3,
+                    "character": 1,
+                  },
+                  "start": {
+                    "line": 3,
+                    "character": 1,
+                  }
+                }
+              }
+            ],
           },
           {
             "kind": 1,
             "label": ": list[int]",
             "position": {
+              "line": 4,
               "character": 1,
-              "line": 4
-            }
+            },
+            "textEdits": [
+              {
+                "newText": ": list[int]",
+                "range": {
+                  "end": {
+                    "line": 4,
+                    "character": 1,
+                  },
+                  "start": {
+                    "line": 4,
+                    "character": 1,
+                  }
+                }
+              }
+            ],
           },
           {
             "kind": 1,
             "label": " -> str",
             "position": {
+              "line": 5,
               "character": 9,
-              "line": 5
-            }
+            },
+            "textEdits": [
+              {
+                "newText": " -> str",
+                "range": {
+                  "end": {
+                    "line": 5,
+                    "character": 9,
+                  },
+                  "start": {
+                    "line": 5,
+                    "character": 9,
+                  }
+                }
+              }
+            ],
           }
         ]),
     );
