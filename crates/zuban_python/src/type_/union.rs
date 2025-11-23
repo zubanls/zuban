@@ -177,13 +177,13 @@ fn merge_simplified_union_type(
                 // cache the type.
             }
             additional_t => {
-                for (i, current) in new_types.iter().enumerate() {
+                for current in new_types.iter_mut() {
                     if current.type_.has_any(i_s) {
                         continue;
                     } else if additional.type_.is_calculating(i_s.db) {
                         break;
                     }
-                    match &current.type_ {
+                    match &mut current.type_ {
                         Type::RecursiveType(r) if r.generics.is_some() => (),
                         t => {
                             if t.is_calculating(i_s.db) {
@@ -197,7 +197,7 @@ fn merge_simplified_union_type(
                                 .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
                                 .bool()
                             {
-                                new_types[i].type_ = additional.type_;
+                                *t = additional.type_;
                                 finished = false;
                                 continue 'outer;
                             }
