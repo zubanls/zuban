@@ -4,3 +4,6 @@
 [submodule "crates/zuban_python/tests/mypylike/mypy"]
 	path = crates/zuban_python/tests/mypylike/mypy
 	url = https://github.com/davidhalter/mypy
+[submodule "third_party/django-stubs"]
+	path = third_party/django-stubs
+	url = https://github.com/typeddjango/django-stubs
