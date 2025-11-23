@@ -2112,3 +2112,25 @@ A().f()
 [file m.pyi]
 class Base:
     def f(self) -> None: ...
+
+[case container_with_never_explicit_unions_in_untyped_functions]
+# flags: --no-mypy-compatible
+from typing import Never
+class X[T]:
+    t: T
+
+def f(x: X[Never], y: X[int]):
+    if bool():
+        return x
+    else:
+        return y
+
+def g(x: X[int], y: X[Never]):
+    if bool():
+        return x
+    else:
+        return y
+
+def test(x: X[Never], y: X[int]):
+    reveal_type(f(x, y))  # N: Revealed type is "__main__.X[Never] | __main__.X[int]"
+    reveal_type(g(y, x))  # N: Revealed type is "__main__.X[int] | __main__.X[Never]"

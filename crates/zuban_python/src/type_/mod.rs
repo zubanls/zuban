@@ -219,11 +219,13 @@ impl GenericItem {
         }
     }
 
-    fn is_never(&self) -> bool {
+    fn is_never_from_inference(&self) -> bool {
         match self {
-            Self::TypeArg(t) => t.is_never(),
-            Self::TypeArgs(ts) => ts.args.is_never(),
-            Self::ParamSpecArg(p) => matches!(p.params, CallableParams::Never(_)),
+            Self::TypeArg(t) => matches!(t, Type::Never(NeverCause::Inference)),
+            Self::TypeArgs(ts) => ts.args.is_never_from_inference(),
+            Self::ParamSpecArg(p) => {
+                matches!(p.params, CallableParams::Never(NeverCause::Inference))
+            }
         }
     }
 }
@@ -248,10 +250,10 @@ impl ClassGenerics {
         }
     }
 
-    pub fn all_never(&self) -> bool {
+    pub fn all_never_from_inference(&self) -> bool {
         match self {
-            Self::List(list) => list.iter().all(|g| g.is_never()),
-            Self::NotDefinedYet => true,
+            Self::List(list) => list.iter().all(|g| g.is_never_from_inference()),
+            Self::NotDefinedYet => false,
             _ => false,
         }
     }
