@@ -213,9 +213,17 @@ pub(crate) enum GenericItem {
 impl GenericItem {
     fn is_any(&self) -> bool {
         match self {
-            Self::TypeArg(t) => matches!(t, Type::Any(_)),
+            Self::TypeArg(t) => t.is_any(),
             Self::TypeArgs(ts) => ts.args.is_any(),
-            Self::ParamSpecArg(_) => false,
+            Self::ParamSpecArg(p) => matches!(p.params, CallableParams::Any(_)),
+        }
+    }
+
+    fn is_never(&self) -> bool {
+        match self {
+            Self::TypeArg(t) => t.is_never(),
+            Self::TypeArgs(ts) => ts.args.is_never(),
+            Self::ParamSpecArg(p) => matches!(p.params, CallableParams::Never(_)),
         }
     }
 }
@@ -235,6 +243,14 @@ impl ClassGenerics {
     pub fn all_any(&self) -> bool {
         match self {
             Self::List(list) => list.iter().all(|g| g.is_any()),
+            Self::NotDefinedYet => true,
+            _ => false,
+        }
+    }
+
+    pub fn all_never(&self) -> bool {
+        match self {
+            Self::List(list) => list.iter().all(|g| g.is_never()),
             Self::NotDefinedYet => true,
             _ => false,
         }

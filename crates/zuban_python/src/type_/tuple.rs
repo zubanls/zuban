@@ -586,13 +586,20 @@ impl TupleArgs {
 
     pub fn is_any(&self) -> bool {
         match self {
-            Self::ArbitraryLen(t) => matches!(t.as_ref(), Type::Any(_)),
+            Self::ArbitraryLen(t) => t.is_any(),
             _ => false,
         }
     }
 
     pub fn has_any(&self, i_s: &InferenceState) -> bool {
         self.has_any_internal(i_s, &mut Vec::new())
+    }
+
+    pub fn is_never(&self) -> bool {
+        match self {
+            Self::ArbitraryLen(t) => t.is_never(),
+            _ => false,
+        }
     }
 
     pub fn is_empty(&self) -> bool {

@@ -176,6 +176,14 @@ fn merge_simplified_union_type(
                 // checking will call this function again if generics are available to
                 // cache the type.
             }
+            Type::Class(c1)
+                if c1.generics.all_never()
+                    && new_types
+                        .iter()
+                        .any(|e| matches!(&e.type_, Type::Class(c2) if c1.link == c2.link)) =>
+            {
+                continue 'outer;
+            }
             additional_t => {
                 for current in new_types.iter_mut() {
                     if current.type_.has_any(i_s) {
@@ -185,6 +193,13 @@ fn merge_simplified_union_type(
                     }
                     match &mut current.type_ {
                         Type::RecursiveType(r) if r.generics.is_some() => (),
+                        Type::Class(c1)
+                            if c1.generics.all_never()
+                                && matches!(additional_t, Type::Class(c2) if c1.link == c2.link) =>
+                        {
+                            current.type_ = additional.type_;
+                            continue 'outer;
+                        }
                         t => {
                             if t.is_calculating(i_s.db) {
                                 if additional_t == t {

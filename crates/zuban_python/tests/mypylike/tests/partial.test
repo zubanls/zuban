@@ -368,10 +368,10 @@ def f(a: Any) -> None:
 [case partials_in_for_loop_input]
 # flags: --disallow-untyped-globals
 for _, x in ((1, {}), ("", {})):  # E: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
-    reveal_type(x)  # N: Revealed type is "dict[Any, Any] | dict[Never, Never]"
+    reveal_type(x)  # N: Revealed type is "dict[Any, Any]"
 
 for _, y in ((1, []), ("", [])):  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
-    reveal_type(y)  # N: Revealed type is "list[Any] | list[Never]"
+    reveal_type(y)  # N: Revealed type is "list[Any]"
 
 for _, z in ((1, set()), ("", set())):
     reveal_type(z)  # N: Revealed type is "set[Any]"
@@ -393,7 +393,7 @@ def f(x, errors=None):
     return ("", errors)
 
 size, errors = f(1)
-reveal_type(errors)  # N: Revealed type is "set[Any] | set[Never]"
+reveal_type(errors)  # N: Revealed type is "set[Any]"
 
 [case partial_set_return_from_untyped_func2]
 # flags: --no-mypy-compatible
@@ -406,7 +406,7 @@ def f(x, errors=None):
     return ("", errors)
 
 size, errors = f(1)
-reveal_type(errors)  # N: Revealed type is "set[Any] | set[Never]"
+reveal_type(errors)  # N: Revealed type is "set[Any]"
 
 [case partial_set_return_from_untyped_func3]
 # flags: --no-mypy-compatible

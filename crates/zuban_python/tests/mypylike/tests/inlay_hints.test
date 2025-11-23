@@ -172,3 +172,54 @@ td2 = TD2(x=1)
 __main__.py:3: Inlay Hints:
 m.py:2: Inlay Hints:
 indirect_import.py:2: Inlay Hints:
+
+[case inlay_hints_avoid_list_never]
+# flags: --no-mypy-compatible --no-typecheck
+#? inlay-hints
+
+def x():
+    if bool():
+        return [1]
+    elif bool():
+        return [undefined]
+    else:
+        return []
+
+def y():
+    if bool():
+        return []
+    else:
+        return [1]
+
+def d():
+    if bool():
+        return {}
+    else:
+        return {1: 1}
+
+def e():
+    if bool():
+        return {1: 1}
+    else:
+        return {}
+
+
+def f():
+    if bool():
+        return set()
+    else:
+        return {1}
+
+def g():
+    if bool():
+        return {1}
+    else:
+        return set()
+[out]
+__main__.py:3: Inlay Hints:
+- 4:7: " -> list[int] | list[Any]"
+- 12:7: " -> list[int]"
+- 18:7: " -> dict[int, int]"
+- 24:7: " -> dict[int, int]"
+- 31:7: " -> set[int]"
+- 37:7: " -> set[int]"
