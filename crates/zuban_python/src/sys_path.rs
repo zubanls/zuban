@@ -278,6 +278,7 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
         let typeshed_path = lib_path
             .join("site-packages")
             .join("zuban")
+            .join("third_party")
             .join("typeshed");
         typeshed_path.exists().then(|| {
             LocalFS::without_watcher().normalized_path_from_current_dir(

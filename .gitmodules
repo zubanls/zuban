@@ -1,5 +1,5 @@
 [submodule "typeshed"]
-	path = typeshed
+	path = third_party/typeshed
 	url = https://github.com/python/typeshed
 [submodule "crates/zuban_python/tests/mypylike/mypy"]
 	path = crates/zuban_python/tests/mypylike/mypy
