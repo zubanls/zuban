@@ -338,7 +338,6 @@ impl<'a, T: ?Sized, U: ?Sized> DerefMut for MappedWriteGuard<'a, T, U> {
     }
 }
 
-/// A read-guard which also owns a mapped value `U`.
 pub struct OwnedMappedReadGuard<'a, T: ?Sized, U> {
     _guard: RwLockReadGuard<'a, T>,
     value: U,
