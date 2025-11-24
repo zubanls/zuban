@@ -337,3 +337,43 @@ impl<'a, T: ?Sized, U: ?Sized> DerefMut for MappedWriteGuard<'a, T, U> {
         unsafe { &mut *self.value }
     }
 }
+
+/// A read-guard which also owns a mapped value `U`.
+pub struct OwnedMappedReadGuard<'a, T: ?Sized, U> {
+    _guard: RwLockReadGuard<'a, T>,
+    value: U,
+}
+
+impl<'a, T: ?Sized, U> OwnedMappedReadGuard<'a, T, U> {
+    pub fn map_owned(guard: RwLockReadGuard<'a, T>, f: impl FnOnce(&'a T) -> U) -> Self {
+        let before: &T = guard.deref();
+        let t: &'a T = unsafe { std::mem::transmute(before) };
+        let value = f(t);
+        Self {
+            _guard: guard,
+            value,
+        }
+    }
+}
+
+impl<'a, T: ?Sized, U: Deref<Target = U>> Deref for OwnedMappedReadGuard<'a, T, U> {
+    type Target = U;
+    fn deref(&self) -> &U {
+        &*self.value
+    }
+}
+
+impl<'a, T: ?Sized, U: Iterator<Item = I>, I> Iterator for OwnedMappedReadGuard<'a, T, U> {
+    type Item = I;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.value.next()
+    }
+}
+impl<'a, T: ?Sized, U: DoubleEndedIterator<Item = I>, I> DoubleEndedIterator
+    for OwnedMappedReadGuard<'a, T, U>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.value.next_back()
+    }
+}
