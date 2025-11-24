@@ -117,14 +117,9 @@ impl<T: ?Sized + Unpin, P: Deref<Target = T>> InsertOnlyVec<T, P> {
     }
 }
 
-impl<T: ?Sized + Unpin, P: DerefMut<Target = T>> InsertOnlyVec<T, P> {
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
-        self.vec
-            .get_mut()
-            .unwrap()
-            .get_mut()
-            .iter_mut()
-            .map(|x| x as &mut T)
+impl<T: ?Sized + Unpin, P> InsertOnlyVec<T, P> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Pin<P>> {
+        self.vec.get_mut().unwrap().get_mut().iter_mut()
     }
 }
 
