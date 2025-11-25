@@ -99,7 +99,7 @@ model_instance.ip_address_field
 model_instance.url_field
 #? float()
 model_instance.float_field
-#? bytes()
+#? bytes() memoryview()
 model_instance.binary_field
 #? bool()
 model_instance.boolean_field
@@ -205,7 +205,7 @@ class Inherited(BusinessModel):
     new_field = models.FloatField()
 
 inherited = Inherited()
-#? int()
+#? str()
 inherited.text_field
 #? str()
 inherited.char_field
@@ -218,7 +218,7 @@ Inherited.category_fk2.category_name
 inherited.category_fk2.category_name
 #? str()
 Inherited.objects.get().char_field
-#? int()
+#? str()
 Inherited.objects.get().text_field
 #? float()
 Inherited.objects.get().new_field

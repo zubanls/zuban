@@ -1322,19 +1322,12 @@ impl<'db: 'a, 'a> Class<'a> {
             recoverable_error!("Expected a list when trying to fill Django generics");
             return;
         };
-        let i_s = &InferenceState::new(db, self.file);
         let find_type = |name| {
-            let found = self.class_storage.class_symbol_table.lookup_symbol(name)?;
-            let annotation = NodeRef::new(self.file, found)
-                .expect_name()
-                .maybe_annotated()?;
-            let name_resolution = self.file.name_resolution_for_types(i_s);
-            name_resolution.ensure_cached_annotation(annotation, false);
-            Some(GenericItem::TypeArg(
-                name_resolution
-                    .use_cached_annotation_type(annotation)
-                    .into_owned(),
-            ))
+            self.mro_maybe_without_object(db, true)
+                .find_map(|(_, item)| match item {
+                    TypeOrClass::Type(_) => None,
+                    TypeOrClass::Class(class) => class.find_django_default_generic_inner(db, name),
+                })
         };
         let entries = list
             .iter()
@@ -1355,6 +1348,21 @@ impl<'db: 'a, 'a> Class<'a> {
             })
             .collect();
         *generics = ClassGenerics::List(GenericsList::new_generics(entries))
+    }
+
+    fn find_django_default_generic_inner(&self, db: &Database, name: &str) -> Option<GenericItem> {
+        let found = self.class_storage.class_symbol_table.lookup_symbol(name)?;
+        let annotation = NodeRef::new(self.file, found)
+            .expect_name()
+            .maybe_annotated()?;
+        let i_s = &InferenceState::new(db, self.file);
+        let name_resolution = self.file.name_resolution_for_types(i_s);
+        name_resolution.ensure_cached_annotation(annotation, false);
+        Some(GenericItem::TypeArg(
+            name_resolution
+                .use_cached_annotation_type(annotation)
+                .into_owned(),
+        ))
     }
 
     pub(crate) fn execute_and_return_generics(
