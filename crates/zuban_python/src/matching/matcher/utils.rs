@@ -266,13 +266,13 @@ impl CalculatedTypeArgs {
                             // The old type vars of the function are still relevant and should stay
                             // there!
                             for already_late_bound_tv in c.type_vars.iter() {
-                                manager.add(already_late_bound_tv.clone(), Some(c.clone()));
+                                manager.add(already_late_bound_tv.clone(), Some(c.clone()), None);
                             }
                             // Try to add the new type vars if they match.
                             c.params.search_type_vars(&mut |u| {
                                 let found = u.as_type_var_like();
                                 if type_var_likes.iter().any(|tvl| tvl == &found) {
-                                    manager.add(found, Some(c.clone()));
+                                    manager.add(found, Some(c.clone()), None);
                                 }
                             });
                             create_callable_hierarchy(

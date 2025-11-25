@@ -82,6 +82,7 @@ impl<'a, T: CallableId> Iterator for CallableAncestors<'a, T> {
 struct UnresolvedTypeVarLike<T> {
     pub type_var_like: TypeVarLike,
     pub most_outer_callable: Option<T>,
+    pub defined_at: Option<NodeIndex>,
 }
 
 #[derive(Debug)]
@@ -97,7 +98,12 @@ impl<T: CallableId> TypeVarManager<T> {
             .position(|t| &t.type_var_like == type_var)
     }
 
-    pub fn add(&mut self, type_var_like: TypeVarLike, in_callable: Option<T>) -> TypeVarIndex {
+    pub fn add(
+        &mut self,
+        type_var_like: TypeVarLike,
+        in_callable: Option<T>,
+        defined_at: Option<NodeIndex>,
+    ) -> TypeVarIndex {
         if let Some(index) = self.position(&type_var_like) {
             self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
                 self.type_vars[index].most_outer_callable.as_ref(),
@@ -108,6 +114,7 @@ impl<T: CallableId> TypeVarManager<T> {
             self.type_vars.push(UnresolvedTypeVarLike {
                 type_var_like,
                 most_outer_callable: in_callable,
+                defined_at,
             });
             (self.type_vars.len() - 1).into()
         }

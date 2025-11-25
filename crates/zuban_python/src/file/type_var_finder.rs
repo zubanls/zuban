@@ -218,10 +218,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     _ => BaseLookup::Other,
                 };
                 if let BaseLookup::TypeVarLike(tvl) = result {
-                    self.handle_type_var_like(tvl, |kind| {
-                        NodeRef::new(self.name_resolution.file, primary.index())
-                            .add_issue(self.name_resolution.i_s, kind)
-                    });
+                    self.handle_type_var_like(tvl, primary.index());
                     return BaseLookup::Other;
                 }
                 result
@@ -305,17 +302,17 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn find_in_name(&mut self, name: Name) -> BaseLookup {
         match self.lookup_name(name) {
             BaseLookup::TypeVarLike(tvl) => {
-                self.handle_type_var_like(tvl, |kind| {
-                    NodeRef::new(self.name_resolution.file, name.index())
-                        .add_issue(self.name_resolution.i_s, kind)
-                });
+                self.handle_type_var_like(tvl, name.index());
                 BaseLookup::Other
             }
             l => l,
         }
     }
 
-    fn handle_type_var_like(&mut self, mut tvl: TypeVarLike, add_issue: impl Fn(IssueKind)) {
+    fn handle_type_var_like(&mut self, mut tvl: TypeVarLike, index: NodeIndex) {
+        let add_issue = |kind| {
+            NodeRef::new(self.name_resolution.file, index).add_issue(self.name_resolution.i_s, kind)
+        };
         if self.i_s.find_parent_type_var(&tvl).is_some() {
             debug!(
                 "Found bound TypeVar {} in parent scope",
@@ -346,7 +343,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 });
             }
             debug!("Found unbound TypeVar {}", tvl.name(self.i_s.db));
-            let old_index = self.infos.type_var_manager.add(tvl, None);
+            let old_index = self.infos.type_var_manager.add(tvl, None, Some(index));
             if let Some(force_index) = self.infos.current_generic_or_protocol_index {
                 if old_index < force_index {
                     add_issue(IssueKind::DuplicateTypeVar)

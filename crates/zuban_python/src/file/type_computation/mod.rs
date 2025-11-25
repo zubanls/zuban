@@ -3156,6 +3156,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let index = self.type_var_manager.add(
                             type_var_like.clone(),
                             self.current_callable.filter(|_| allow_late_bound_callables),
+                            Some(name.index()),
                         );
                         match type_var_like {
                             TypeVarLike::TypeVar(type_var) => TypeContent::Type(Type::TypeVar(
