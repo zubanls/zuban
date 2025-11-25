@@ -253,7 +253,6 @@ impl ClassGenerics {
     pub fn all_never_from_inference(&self) -> bool {
         match self {
             Self::List(list) => list.iter().all(|g| g.is_never_from_inference()),
-            Self::NotDefinedYet => false,
             _ => false,
         }
     }

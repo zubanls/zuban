@@ -29,6 +29,7 @@ use crate::{
         calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage,
     },
     node_ref::NodeRef,
+    recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, Enum, FormatStyle,
         FunctionOverload, GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple,
@@ -1288,7 +1289,12 @@ impl<'db: 'a, 'a> Class<'a> {
             on_type_error,
             from_type_type,
         ) {
-            ClassExecutionResult::ClassGenerics(generics) => {
+            ClassExecutionResult::ClassGenerics(mut generics) => {
+                if generics.all_never_from_inference() {
+                    if self.node_ref.file.is_from_django(i_s.db) {
+                        self.fill_django_default_generics(i_s.db, args, &mut generics);
+                    }
+                }
                 let result = Inferred::from_type(Type::Class(GenericClass {
                     link: self.node_ref.as_link(),
                     generics,
@@ -1304,6 +1310,51 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             ClassExecutionResult::Inferred(inf) => inf,
         }
+    }
+
+    fn fill_django_default_generics(
+        &self,
+        db: &Database,
+        args: &dyn Args,
+        generics: &mut ClassGenerics,
+    ) {
+        let ClassGenerics::List(list) = generics else {
+            recoverable_error!("Expected a list when trying to fill Django generics");
+            return;
+        };
+        let i_s = &InferenceState::new(db, self.file);
+        let find_type = |name| {
+            let found = self.class_storage.class_symbol_table.lookup_symbol(name)?;
+            let annotation = NodeRef::new(self.file, found)
+                .expect_name()
+                .maybe_annotated()?;
+            let name_resolution = self.file.name_resolution_for_types(i_s);
+            name_resolution.ensure_cached_annotation(annotation, false);
+            Some(GenericItem::TypeArg(
+                name_resolution
+                    .use_cached_annotation_type(annotation)
+                    .into_owned(),
+            ))
+        };
+        let entries = list
+            .iter()
+            .enumerate()
+            .map(|(i, entry)| {
+                if let GenericItem::TypeArg(_) = entry {
+                    if i == 0
+                        && let Some(result) = find_type("_pyi_private_set_type")
+                    {
+                        return result;
+                    } else if i == 1
+                        && let Some(result) = find_type("_pyi_private_get_type")
+                    {
+                        return result;
+                    }
+                }
+                entry.clone()
+            })
+            .collect();
+        *generics = ClassGenerics::List(GenericsList::new_generics(entries))
     }
 
     pub(crate) fn execute_and_return_generics(

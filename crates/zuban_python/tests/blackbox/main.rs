@@ -51,7 +51,7 @@ lazy_static::lazy_static! {
         ("context.py", 4),
         ("conftest.py", 1),
         ("docstring.py", 38),
-        ("django.py", 56),
+        ("django.py", 39),
         ("dynamic_params.py", 18),
         ("imports.py", 9),
         ("goto.py", 4),
