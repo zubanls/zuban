@@ -188,3 +188,8 @@ class ShouldBeContravariant1(Generic[T]):
 
 vcontra1_1: ShouldBeContravariant1[float] = ShouldBeContravariant1[int](1)  # E: Incompatible types in assignment (expression has type "ShouldBeContravariant1[int]", variable has type "ShouldBeContravariant1[float]")
 vcontra1_2: ShouldBeContravariant1[int] = ShouldBeContravariant1[float](1.2)  # OK
+
+[case type_var_default_with_never]
+class C[T, U=T]: ...
+
+reveal_type(C())  # N: Revealed type is "__main__.C[Never, Never]"

@@ -674,21 +674,19 @@ impl TypeVarLike {
     pub fn as_never_generic_item(&self, db: &Database, cause: NeverCause) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
-                Some(default) => {
-                    GenericItem::TypeArg(default.clone()).resolve_recursive_defaults_or_set_any(db)
-                }
+                Some(default) => GenericItem::TypeArg(default.clone())
+                    .resolve_recursive_defaults_or_set_never(db),
                 None => GenericItem::TypeArg(Type::Never(cause)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
-                Some(default) => {
-                    GenericItem::TypeArgs(default.clone()).resolve_recursive_defaults_or_set_any(db)
-                }
+                Some(default) => GenericItem::TypeArgs(default.clone())
+                    .resolve_recursive_defaults_or_set_never(db),
                 None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
             },
             TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
                 Some(default) => {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
-                        .resolve_recursive_defaults_or_set_any(db)
+                        .resolve_recursive_defaults_or_set_never(db)
                 }
                 // TODO ParamSpec: this feels wrong, should maybe be never?
                 None => GenericItem::ParamSpecArg(ParamSpecArg::new_never(cause)),
