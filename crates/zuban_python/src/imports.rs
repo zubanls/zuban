@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 use utils::match_case;
-use vfs::{Directory, DirectoryEntry, Entries, FileIndex, WorkspaceKind};
+use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Workspace, WorkspaceKind};
 
 use crate::{
     database::Database,
@@ -364,6 +364,18 @@ pub fn python_import_with_needs_exact_case<'x>(
             directories: namespace_directories.into(),
         })));
     }
+    if name == "django-stubs" {
+        if let Some(workspace) = ensure_django_stubs_workspace_and_return_newly_created(db) {
+            return python_import_with_needs_exact_case(
+                db,
+                from_file,
+                std::iter::once((&workspace.entries, false)),
+                name,
+                needs_exact_case,
+                check_stubs,
+            );
+        }
+    }
     None
 }
 
@@ -374,6 +386,38 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
     } else {
         match_case(db.project.flags.case_sensitive, x, y)
     }
+}
+
+fn ensure_django_stubs_workspace_and_return_newly_created(
+    db: &Database,
+) -> Option<impl Deref<Target = &Workspace>> {
+    let mut django_path = None;
+    for workspace in db.vfs.workspaces.iter() {
+        if django_path.is_none() && workspace.kind == WorkspaceKind::Typeshed {
+            django_path = Some(
+                db.vfs.handler.normalize_unchecked_abs_path(
+                    workspace
+                        .root_path
+                        .as_ref()
+                        .as_ref()
+                        .parent()?
+                        .parent()?
+                        .join("django-stubs")
+                        .to_str()
+                        .expect("The initial path is utf-8"),
+                ),
+            );
+        } else if let Some(django_path) = &django_path {
+            if *django_path == workspace.root_path {
+                // It was already added previously
+                return None;
+            }
+        }
+    }
+    debug_assert!(django_path.is_some());
+    db.vfs
+        .add_workspace(django_path?, WorkspaceKind::SitePackages);
+    Some(db.vfs.workspaces.expect_last())
 }
 
 fn load_init_file(

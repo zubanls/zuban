@@ -1,7 +1,7 @@
 pub mod panic_context;
 
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::UnsafeCell,
     fmt,
     marker::PhantomData,
@@ -355,10 +355,10 @@ impl<'a, T: ?Sized, U> OwnedMappedReadGuard<'a, T, U> {
     }
 }
 
-impl<'a, T: ?Sized, U: Deref<Target = U>> Deref for OwnedMappedReadGuard<'a, T, U> {
+impl<'a, T: ?Sized, U: Borrow<U>> Deref for OwnedMappedReadGuard<'a, T, U> {
     type Target = U;
     fn deref(&self) -> &U {
-        &*self.value
+        self.value.borrow()
     }
 }
 

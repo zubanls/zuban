@@ -1,6 +1,9 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
-use utils::match_case;
+use utils::{OwnedMappedReadGuard, match_case};
 
 use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, NormalizedPath, Parent, PathWithScheme,
@@ -27,13 +30,15 @@ pub struct Workspaces {
 
 impl Workspaces {
     pub(crate) fn add(
-        &mut self,
+        &self,
         vfs: &dyn VfsHandler,
         scheme: Scheme,
         root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
-        self.inner_items_mut()
+        self.items
+            .write()
+            .unwrap()
             .push(Workspace::new(vfs, scheme, root, kind))
     }
 
@@ -53,8 +58,8 @@ impl Workspaces {
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Workspace> {
-        utils::OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |x| {
-            x.iter().map(|w| w.as_ref())
+        OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |workspaces| {
+            workspaces.iter().map(|w| w.as_ref())
         })
     }
 
@@ -253,6 +258,15 @@ impl Workspaces {
         Self {
             items: RwLock::new(new),
         }
+    }
+
+    pub fn expect_last(&self) -> impl Deref<Target = &Workspace> {
+        OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |workspaces| {
+            workspaces
+                .last()
+                .expect("There should always be a workspace")
+                .as_ref()
+        })
     }
 }
 

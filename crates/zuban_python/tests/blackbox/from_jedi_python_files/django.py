@@ -60,7 +60,7 @@ class BusinessModel(models.Model):
 
     unidentifiable = NOT_FOUND
 
-    #? models.IntegerField()
+    #? django.db.models.fields.IntegerField()
     integer_field
 
     def method(self):
@@ -70,11 +70,11 @@ class BusinessModel(models.Model):
 # Model attribute inference
 # -----------------
 
-#? DeferredAttribute()
+#? django.db.models.fields._FieldDescriptor()
 BusinessModel.integer_field
-#? DeferredAttribute()
+#? django.db.models.fields.related_descriptors.ManyToManyDescriptor()
 BusinessModel.tags_m2m
-#? DeferredAttribute()
+#? django.db.models.fields._FieldDescriptor()
 BusinessModel.email_field
 
 model_instance = BusinessModel()
@@ -144,7 +144,7 @@ model_instance.category_fk4
 #?
 model_instance.category_fk5
 
-#? models.manager.RelatedManager()
+#? django.db.models.fields.related_descriptors.ManyRelatedManager()
 model_instance.tags_m2m
 #? Tag()
 model_instance.tags_m2m.get()
@@ -158,7 +158,7 @@ model_instance.unidentifiable
 
 #? int()
 model_instance.method()
-#! ['def method']
+#! ['def method(self):']
 model_instance.method
 
 # -----------------
@@ -171,9 +171,9 @@ model_instance.object
 model_instance.objects
 #?
 model_instance.objects.filter
-#? models.query.QuerySet.filter
+#? django.db.models.manager.Manager.filter
 BusinessModel.objects.filter
-#? BusinessModel() None
+#? BusinessModel() types.NoneType()
 BusinessModel.objects.filter().first()
 #? str()
 BusinessModel.objects.get().char_field
