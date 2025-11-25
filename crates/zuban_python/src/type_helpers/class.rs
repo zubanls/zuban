@@ -9,7 +9,7 @@ use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Nam
 
 use super::{Callable, Instance, InstanceLookupOptions, LookupDetails, overload::OverloadResult};
 use crate::{
-    arguments::Args,
+    arguments::{ArgKind, Args},
     database::{
         BaseClass, ClassKind, ClassStorage, ComplexPoint, Database, Locality, MetaclassState,
         Point, PointKind, PointLink, Specific,
@@ -1292,7 +1292,7 @@ impl<'db: 'a, 'a> Class<'a> {
             ClassExecutionResult::ClassGenerics(mut generics) => {
                 if generics.all_never_from_inference() {
                     if self.node_ref.file.is_from_django(i_s.db) {
-                        self.fill_django_default_generics(i_s.db, args, &mut generics);
+                        self.fill_django_default_generics(i_s, args, &mut generics);
                     }
                 }
                 let result = Inferred::from_type(Type::Class(GenericClass {
@@ -1314,7 +1314,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn fill_django_default_generics(
         &self,
-        db: &Database,
+        i_s: &InferenceState,
         args: &dyn Args,
         generics: &mut ClassGenerics,
     ) {
@@ -1322,18 +1322,51 @@ impl<'db: 'a, 'a> Class<'a> {
             recoverable_error!("Expected a list when trying to fill Django generics");
             return;
         };
-        let find_type = |name| {
-            self.mro_maybe_without_object(db, true)
-                .find_map(|(_, item)| match item {
-                    TypeOrClass::Type(_) => None,
-                    TypeOrClass::Class(class) => class.find_django_default_generic_inner(db, name),
+        let mut known_type = None;
+        if matches!(
+            self.name(),
+            "ForeignKey" | "OneToOneField" | "ManyToManyField"
+        ) {
+            known_type = args
+                .iter(i_s.mode)
+                .enumerate()
+                .find_map(|(i, arg)| match &arg.kind {
+                    ArgKind::Positional(arg) if i == 0 => {
+                        Some(arg.infer(&mut ResultContext::Unknown))
+                    }
+                    ArgKind::Keyword(kwarg) if kwarg.key == "to" => {
+                        Some(kwarg.infer(&mut ResultContext::Unknown))
+                    }
+                    _ => None,
                 })
+                .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
+                    Type::Type(t) => Some(t.clone()),
+                    _ => None,
+                });
+        }
+        let find_type = |name| {
+            Some(GenericItem::TypeArg(
+                if let Some(known_type) = &known_type {
+                    known_type.as_ref().clone()
+                } else {
+                    self.mro_maybe_without_object(i_s.db, true).find_map(
+                        |(_, item)| match item {
+                            TypeOrClass::Type(_) => None,
+                            TypeOrClass::Class(class) => {
+                                class.find_django_default_generic_inner(i_s.db, name)
+                            }
+                        },
+                    )?
+                },
+            ))
         };
         let entries = list
             .iter()
             .enumerate()
             .map(|(i, entry)| {
-                if let GenericItem::TypeArg(_) = entry {
+                if let GenericItem::TypeArg(t) = entry
+                    && t.is_never()
+                {
                     if i == 0
                         && let Some(result) = find_type("_pyi_private_set_type")
                     {
@@ -1347,10 +1380,16 @@ impl<'db: 'a, 'a> Class<'a> {
                 entry.clone()
             })
             .collect();
-        *generics = ClassGenerics::List(GenericsList::new_generics(entries))
+        let lst = GenericsList::new_generics(entries);
+        debug!(
+            "Replaced {} generics with: [{}]",
+            self.name(),
+            lst.format(&FormatData::new_short(i_s.db)),
+        );
+        *generics = ClassGenerics::List(lst)
     }
 
-    fn find_django_default_generic_inner(&self, db: &Database, name: &str) -> Option<GenericItem> {
+    fn find_django_default_generic_inner(&self, db: &Database, name: &str) -> Option<Type> {
         let found = self.class_storage.class_symbol_table.lookup_symbol(name)?;
         let annotation = NodeRef::new(self.file, found)
             .expect_name()
@@ -1358,11 +1397,11 @@ impl<'db: 'a, 'a> Class<'a> {
         let i_s = &InferenceState::new(db, self.file);
         let name_resolution = self.file.name_resolution_for_types(i_s);
         name_resolution.ensure_cached_annotation(annotation, false);
-        Some(GenericItem::TypeArg(
+        Some(
             name_resolution
                 .use_cached_annotation_type(annotation)
                 .into_owned(),
-        ))
+        )
     }
 
     pub(crate) fn execute_and_return_generics(
