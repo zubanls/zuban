@@ -211,7 +211,7 @@ def f(x: str | int) -> str | int: ...
 f(1)
 
 [out]
-__main__.py:12:documentation -> "```python\n(function) Overload(def f(x: int) -> int, def f(x: str) -> str)\n```"
+__main__.py:12:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int,\n    def f(x: str) -> str\n)\n```"
 
 [case docs_on_type_of_class]
 from dataclasses import dataclass

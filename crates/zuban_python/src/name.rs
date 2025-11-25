@@ -16,7 +16,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{LookupResult, Type},
     type_helpers::Class,
-    utils::{SymbolTable, join_with_commas},
+    utils::SymbolTable,
 };
 
 pub type Range<'a> = (PositionInfos<'a>, PositionInfos<'a>);
@@ -37,13 +37,17 @@ pub struct ValueName<'db, 'x> {
 impl ValueName<'_, '_> {
     pub fn type_description(&self) -> Box<str> {
         match self.type_ {
-            Type::FunctionOverload(o) => format!(
-                "Overload({})",
-                join_with_commas(o.iter_functions().map(|callable| {
-                    callable.format_pretty(&FormatData::new_short(self.name.db()))
-                }))
-            )
-            .into(),
+            Type::FunctionOverload(o) => {
+                let overloads: Vec<_> = o
+                    .iter_functions()
+                    .map(|callable| callable.format_pretty(&FormatData::new_short(self.name.db())))
+                    .collect();
+                match overloads.as_slice() {
+                    [] => "Overload()".into(),
+                    [single] => format!("Overload({single})").into(),
+                    _ => format!("Overload(\n    {}\n)", overloads.join(",\n    ")).into(),
+                }
+            }
             _ => self.type_.format_short(self.name.db()),
         }
     }

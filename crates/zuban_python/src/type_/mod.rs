@@ -997,11 +997,13 @@ impl Type {
             Self::Class(c) => c.class(format_data.db).format(format_data),
             Self::Union(union) => union.format(format_data),
             Self::FunctionOverload(callables) => match format_data.style {
-                FormatStyle::MypyRevealType => format!(
-                    "Overload({})",
-                    join_with_commas(callables.iter_functions().map(|t| t.format(format_data)))
-                )
-                .into(),
+                FormatStyle::MypyRevealType => {
+                    let overloads: Vec<_> = callables
+                        .iter_functions()
+                        .map(|t| t.format(format_data))
+                        .collect();
+                    format!("Overload({})", overloads.join(", ")).into()
+                }
                 _ => Box::from("overloaded function"),
             },
             Self::TypeVar(t) => format_data.format_type_var(t),
