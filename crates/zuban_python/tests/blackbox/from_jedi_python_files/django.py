@@ -8,7 +8,7 @@ from django.db.models.query_utils import DeferredAttribute
 from django.db.models.manager import BaseManager
 
 
-class TagManager(models.Manager):
+class TagManager(models.Manager['Tag']):
     def specially_filtered_tags(self):
         return self.all()
 
@@ -188,12 +188,12 @@ BusinessModel.objects.create()
 
 #? TagManager()
 Tag.objects
-#? Tag() None
+#? Tag() types.NoneType()
 Tag.objects.filter().first()
 
 #? TagManager()
 Tag.custom_objects
-#? Tag() None
+#? Tag() types.NoneType()
 Tag.custom_objects.filter().first()
 
 # -----------------
