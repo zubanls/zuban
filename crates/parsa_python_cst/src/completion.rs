@@ -213,11 +213,11 @@ impl Tree {
 fn context(node: PyNode) -> Option<CompletionContext> {
     let parent = node.parent_until(&[
         Nonterminal(primary),
+        ErrorNonterminal(primary),
         Nonterminal(t_primary),
         Nonterminal(stmt),
     ])?;
     if parent.is_type(Nonterminal(primary)) {
-        Primary::new(parent).first();
         let prim = Primary::new(parent);
         if matches!(prim.second(), PrimaryContent::Execution(_)) {
             Some(CompletionContext::PrimaryCall(prim.first()))
@@ -227,6 +227,21 @@ fn context(node: PyNode) -> Option<CompletionContext> {
     } else if parent.is_type(Nonterminal(t_primary)) {
         None
         //PrimaryTarget::new(parent).second()
+    } else if parent.is_type(ErrorNonterminal(primary)) {
+        let mut iterator = parent.iter_children();
+        let first = iterator.next()?;
+        let second = iterator.next()?;
+        if second.as_code() == "(" {
+            let call = if first.is_type(Nonterminal(atom)) {
+                PrimaryOrAtom::Atom(Atom::new(first))
+            } else {
+                assert_eq!(first.type_(), Nonterminal(primary));
+                PrimaryOrAtom::Primary(Primary::new(first))
+            };
+            Some(CompletionContext::PrimaryCall(call))
+        } else {
+            None
+        }
     } else {
         None
     }
