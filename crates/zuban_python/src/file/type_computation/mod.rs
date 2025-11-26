@@ -4309,13 +4309,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     },
                 );
             }
-            type_var_like = type_var_like.replace_type_var_like_defaults_that_are_out_of_scope(
-                self.i_s.db,
-                type_var_likes.iter(),
-                |issue| {
-                    NodeRef::new(self.file, name_def.index()).add_type_issue(self.i_s.db, issue)
-                },
-            );
+            let type_var_like = type_var_like
+                .replace_type_var_like_defaults_that_are_out_of_scope(
+                    self.i_s.db,
+                    type_var_likes.iter(),
+                    |issue| {
+                        NodeRef::new(self.file, name_def.index()).add_type_issue(self.i_s.db, issue)
+                    },
+                )
+                .unwrap_or(type_var_like);
             type_var_likes.push(type_var_like)
         }
         TypeVarLikes::from_vec(type_var_likes)

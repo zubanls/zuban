@@ -155,13 +155,8 @@ impl<T: CallableId> TypeVarManager<T> {
                 .collect(),
         )
     }
-
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &TypeVarLike> + Clone {
         self.type_vars.iter().map(|u| &u.type_var_like)
-    }
-
-    pub fn last(&self) -> Option<&TypeVarLike> {
-        self.type_vars.last().map(|u| &u.type_var_like)
     }
 
     pub fn type_vars_for_callable(&self, callable: &Arc<CallableContent>) -> TypeVarLikes {
@@ -276,6 +271,53 @@ impl<T: CallableId> TypeVarManager<T> {
         } else {
             usage.clone()
         }
+    }
+}
+
+impl TypeVarManager<PointLink> {
+    pub fn into_type_vars_after_checking_type_var_tuples(
+        mut self,
+        db: &Database,
+        in_file: &PythonFile,
+    ) -> TypeVarLikes {
+        let mut prev: Option<&mut UnresolvedTypeVarLike<PointLink>> = None;
+        let mut has_default = false;
+        for unfinished in self.type_vars.iter_mut() {
+            let current_default = unfinished.type_var_like.has_default();
+            if !current_default && has_default {
+                unfinished.type_var_like = unfinished.type_var_like.set_any_default();
+                NodeRef::new(in_file, unfinished.defined_at.unwrap()).add_type_issue(
+                    db,
+                    IssueKind::TypeVarDefaultWrongOrder {
+                        type_var1: unfinished.type_var_like.name(db).into(),
+                        type_var2: prev.unwrap().type_var_like.name(db).into(),
+                    },
+                );
+                break;
+            } else {
+                has_default |= current_default
+            }
+            prev = Some(unfinished)
+        }
+        if has_default {
+            for index in 0..self.type_vars.len() {
+                let unfinished = &self.type_vars[index];
+                let current = &unfinished.type_var_like;
+                if current.default(db).is_some() {
+                    if let Some(new) = current.replace_type_var_like_defaults_that_are_out_of_scope(
+                        db,
+                        self.iter().take(index),
+                        &|kind| {
+                            NodeRef::new(in_file, unfinished.defined_at.unwrap())
+                                .add_type_issue(db, kind)
+                        },
+                    ) {
+                        self.type_vars[index].type_var_like = new;
+                    }
+                }
+            }
+        }
+        self.into_type_vars()
     }
 }
 
@@ -720,11 +762,11 @@ impl TypeVarLike {
     }
 
     pub fn replace_type_var_like_defaults_that_are_out_of_scope<'x>(
-        self,
+        &self,
         db: &Database,
         previous_type_vars: impl Iterator<Item = &'x TypeVarLike> + Clone,
         add_issue: impl Fn(IssueKind),
-    ) -> Self {
+    ) -> Option<Self> {
         if let Some(default) = self.default(db) {
             let mut had_issue = false;
             let replaced = default.replace_type_var_likes(db, &mut |usage| {
@@ -743,11 +785,11 @@ impl TypeVarLike {
                     add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
                         type_var: self.name(db).into(),
                     });
-                    return self.replace_default_with_generic_item(replaced);
+                    return Some(self.replace_default_with_generic_item(replaced));
                 }
             }
         }
-        self
+        None
     }
 
     pub fn is_untyped(&self) -> bool {

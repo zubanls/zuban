@@ -84,7 +84,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         {
             finder.check_generic_or_protocol_length(slice_type)
         }
-        let type_vars = infos.type_var_manager.into_type_vars();
+        let type_vars = infos
+            .type_var_manager
+            .into_type_vars_after_checking_type_var_tuples(i_s.db, class.file);
         debug!(
             "Found type vars for class {:?}: {:?}",
             class.name(),
@@ -149,7 +151,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             infos: &mut infos,
         };
         with(&mut finder);
-        let type_vars = infos.type_var_manager.into_type_vars();
+        let type_vars = infos
+            .type_var_manager
+            .into_type_vars_after_checking_type_var_tuples(i_s.db, file);
         debug!(
             "Found type vars in {:?}: {:?}",
             expr.as_code(),
@@ -309,7 +313,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         }
     }
 
-    fn handle_type_var_like(&mut self, mut tvl: TypeVarLike, index: NodeIndex) {
+    fn handle_type_var_like(&mut self, tvl: TypeVarLike, index: NodeIndex) {
         let add_issue = |kind| {
             NodeRef::new(self.name_resolution.file, index).add_issue(self.name_resolution.i_s, kind)
         };
@@ -326,21 +330,6 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     add_issue(IssueKind::MultipleTypeVarTuplesInClassDef);
                 }
                 return;
-            }
-            if tvl.has_default() {
-                tvl = tvl.replace_type_var_like_defaults_that_are_out_of_scope(
-                    self.i_s.db,
-                    self.infos.type_var_manager.iter(),
-                    &add_issue,
-                )
-            } else if let Some(previous) = self.infos.type_var_manager.last()
-                && previous.has_default()
-            {
-                tvl = tvl.set_any_default();
-                add_issue(IssueKind::TypeVarDefaultWrongOrder {
-                    type_var1: tvl.name(self.i_s.db).into(),
-                    type_var2: previous.name(self.i_s.db).into(),
-                });
             }
             debug!("Found unbound TypeVar {}", tvl.name(self.i_s.db));
             let old_index = self.infos.type_var_manager.add(tvl, None, Some(index));
