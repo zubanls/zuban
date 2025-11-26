@@ -211,25 +211,35 @@ impl Tree {
 }
 
 fn context(node: PyNode) -> Option<CompletionContext> {
-    let parent = node.parent_until(&[
-        Nonterminal(primary),
-        ErrorNonterminal(primary),
-        Nonterminal(t_primary),
-        Nonterminal(stmt),
-    ])?;
+    let node = node.previous_leaf()?;
+    let parent = match node.as_code() {
+        "(" => node.parent()?,
+        "," => {
+            let parent = node.parent()?;
+            if parent.is_type(Nonterminal(arguments)) {
+                parent.parent()?
+            } else if node.is_type(Nonterminal(kwargs)) {
+                parent
+                //node.parent()?.parent()?
+            } else {
+                parent
+            }
+        }
+        _ => return None,
+    };
     if parent.is_type(Nonterminal(primary)) {
         let prim = Primary::new(parent);
         if matches!(prim.second(), PrimaryContent::Execution(_)) {
             Some(CompletionContext::PrimaryCall(prim.first()))
         } else {
-            context(parent)
+            None
         }
     } else if parent.is_type(Nonterminal(t_primary)) {
         let prim = PrimaryTarget::new(parent);
         if matches!(prim.second(), PrimaryContent::Execution(_)) {
             Some(CompletionContext::PrimaryTargetCall(prim.first()))
         } else {
-            context(parent)
+            None
         }
     } else if parent.is_type(ErrorNonterminal(primary)) {
         let mut iterator = parent.iter_children();
