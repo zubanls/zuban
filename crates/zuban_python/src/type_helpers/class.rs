@@ -32,10 +32,10 @@ use crate::{
     recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, Enum, FormatStyle,
-        FunctionOverload, GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple,
-        NeverCause, ParamSpecArg, ParamSpecUsage, ReplaceTypeVarLikes, Tuple, TupleArgs, Type,
-        TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
-        Variance,
+        FunctionOverload, GenericClass, GenericItem, GenericsList, LiteralValue, LookupResult,
+        NamedTuple, NeverCause, ParamSpecArg, ParamSpecUsage, ReplaceTypeVarLikes, Tuple,
+        TupleArgs, Type, TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
+        TypedDictGenerics, Variance,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -1341,6 +1341,31 @@ impl<'db: 'a, 'a> Class<'a> {
                 })
                 .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
                     Type::Type(t) => Some(t.clone()),
+                    Type::Literal(lit) => match lit.value(i_s.db) {
+                        LiteralValue::String(name) => {
+                            if let Type::Type(t) = args
+                                .in_file()?
+                                .lookup(
+                                    i_s.db,
+                                    |issue| {
+                                        debug!(
+                                            "Issue while looking up Django model \
+                                            reference: {issue:?}"
+                                        )
+                                    },
+                                    name,
+                                )
+                                .maybe_inferred()?
+                                .as_cow_type(i_s)
+                                .as_ref()
+                            {
+                                Some(t.clone())
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
                     _ => None,
                 });
         }
