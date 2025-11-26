@@ -67,7 +67,7 @@ def foo(xyz):
 
 #? 7 ['xyz=']
 @foo(xy)
-def x(): pass
+def x1(): pass
 
 #? 7 ['xyz=']
 foo(xyz)
@@ -87,37 +87,37 @@ x = " "; foo(xyz[(xyz)
 
 #? 8 ['xyz=']
 @foo(xyz)
-def x(): pass
+def x2(): pass
 
 @str
 #? 8 ['xyz=']
 @foo(xyz)
-def x(): pass
+def x3(): pass
 
 # -----------------
 # Only keyword arguments are valid
 # -----------------
 
-def x(bam, *, bar, baz):
+def x4(bam, *, bar, baz):
     pass
 def y(bam, *bal, bar, baz, **bag):
     pass
 def z(bam, bar=2, *, bas=1):
     pass
 
-#? 7 ['bar=', 'baz=']
-x(1, ba)
+#? 8 ['bar=', 'baz=']
+x4(1, ba)
 
-#? 14 ['baz=']
-x(1, bar=2, ba)
-#? 7 ['bar=', 'baz=']
-x(1, ba, baz=3)
-#? 14 ['baz=']
-x(1, bar=2, baz=3)
-#? 7 ['BaseException', 'BaseExceptionGroup']
-x(basee)
-#? 22 ['bar=', 'baz=']
-x(1, 2, 3, 4, 5, 6, bar=2)
+#? 15 ['baz=']
+x4(1, bar=2, ba)
+#? 8 ['bar=', 'baz=']
+x4(1, ba, baz=3)
+#? 15 ['baz=']
+x4(1, bar=2, baz=3)
+#? 8 ['BaseException', 'BaseExceptionGroup']
+x4(basee)
+#? 23 ['bar=', 'baz=']
+x4(1, 2, 3, 4, 5, 6, bar=2)
 
 #? 14 ['baz=']
 y(1, bar=2, ba)
