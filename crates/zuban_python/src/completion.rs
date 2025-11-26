@@ -136,7 +136,9 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                         self.add_keyword_param_completions(self.infos.infer_primary_or_atom(*call));
                     }
                     Some(CompletionContext::PrimaryTargetCall(call)) => {
-                        todo!()
+                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*call) {
+                            self.add_keyword_param_completions(inf);
+                        }
                     }
                     None => (),
                 }

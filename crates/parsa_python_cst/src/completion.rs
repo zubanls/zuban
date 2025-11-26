@@ -225,8 +225,12 @@ fn context(node: PyNode) -> Option<CompletionContext> {
             context(parent)
         }
     } else if parent.is_type(Nonterminal(t_primary)) {
-        None
-        //PrimaryTarget::new(parent).second()
+        let prim = PrimaryTarget::new(parent);
+        if matches!(prim.second(), PrimaryContent::Execution(_)) {
+            Some(CompletionContext::PrimaryTargetCall(prim.first()))
+        } else {
+            context(parent)
+        }
     } else if parent.is_type(ErrorNonterminal(primary)) {
         let mut iterator = parent.iter_children();
         let first = iterator.next()?;
