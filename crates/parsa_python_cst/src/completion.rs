@@ -6,8 +6,8 @@ use parsa_python::{
 };
 
 use crate::{
-    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, Tree,
+    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryContent,
+    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Tree,
 };
 
 impl Tree {
@@ -200,7 +200,35 @@ impl Tree {
                 }
             }
         }
-        (scope, CompletionNode::Global, rest)
+        (
+            scope,
+            CompletionNode::Global {
+                context: context(leaf),
+            },
+            rest,
+        )
+    }
+}
+
+fn context(node: PyNode) -> Option<CompletionContext> {
+    let parent = node.parent_until(&[
+        Nonterminal(primary),
+        Nonterminal(t_primary),
+        Nonterminal(stmt),
+    ])?;
+    if parent.is_type(Nonterminal(primary)) {
+        Primary::new(parent).first();
+        let prim = Primary::new(parent);
+        if matches!(prim.second(), PrimaryContent::Execution(_)) {
+            Some(CompletionContext::PrimaryCall(prim.first()))
+        } else {
+            context(parent)
+        }
+    } else if parent.is_type(Nonterminal(t_primary)) {
+        None
+        //PrimaryTarget::new(parent).second()
+    } else {
+        None
     }
 }
 
@@ -283,7 +311,7 @@ impl Scope<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum CompletionNode<'db> {
     Attribute {
         base: PrimaryOrAtom<'db>,
@@ -306,7 +334,15 @@ pub enum CompletionNode<'db> {
     NecessaryKeyword(&'static str),
     AfterDefKeyword,
     AfterClassKeyword,
-    Global,
+    Global {
+        context: Option<CompletionContext<'db>>,
+    },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum CompletionContext<'db> {
+    PrimaryCall(PrimaryOrAtom<'db>),
+    PrimaryTargetCall(PrimaryTargetOrAtom<'db>),
 }
 
 /// Holds all kinds of nodes including invalid ones that might be valid starts for completion.
