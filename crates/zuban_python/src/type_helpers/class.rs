@@ -1368,9 +1368,18 @@ impl<'db: 'a, 'a> Class<'a> {
                     _ => None,
                 });
         }
+        let nullable = args
+            .iter(i_s.mode)
+            .find_map(|arg| match &arg.kind {
+                ArgKind::Keyword(kwarg) if kwarg.key == "null" => kwarg
+                    .infer(&mut ResultContext::Unknown)
+                    .maybe_bool_literal(i_s),
+                _ => None,
+            })
+            .unwrap_or_default();
         let find_type = |name| {
-            Some(GenericItem::TypeArg(
-                if let Some(known_type) = &known_type {
+            Some(GenericItem::TypeArg({
+                let mut result = if let Some(known_type) = &known_type {
                     known_type.as_ref().clone()
                 } else {
                     self.mro_maybe_without_object(i_s.db, true).find_map(
@@ -1381,8 +1390,12 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                         },
                     )?
-                },
-            ))
+                };
+                if nullable {
+                    result.union_in_place(Type::None)
+                }
+                result
+            }))
         };
         let entries = list
             .iter()

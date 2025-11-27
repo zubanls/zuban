@@ -1,0 +1,22 @@
+[case django_models_nullable]
+from django.db import models
+class Foo(models.Model):
+    not_nullable = models.CharField()
+    nullable = models.CharField(null=True)
+
+def f(x: Foo):
+    reveal_type(x.not_nullable)  # N: Revealed type is "str"
+    reveal_type(x.nullable)  # N: Revealed type is "str | None"
+    reveal_type(x.pk)  # N: Revealed type is "Any"
+
+    x.not_nullable = 1
+    x.nullable = 1
+
+    x.not_nullable = '2'
+    x.nullable = '2'
+
+    x.not_nullable = b'3'  # E: Incompatible types in assignment (expression has type "bytes", variable has type "str | int | Combinable")
+    x.nullable = b'3'  # E: Incompatible types in assignment (expression has type "bytes", variable has type "str | int | Combinable | None")
+
+    x.not_nullable = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str | int | Combinable")
+    x.nullable = None
