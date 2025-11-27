@@ -1290,10 +1290,8 @@ impl<'db: 'a, 'a> Class<'a> {
             from_type_type,
         ) {
             ClassExecutionResult::ClassGenerics(mut generics) => {
-                if generics.all_never_from_inference() {
-                    if self.node_ref.file.is_from_django(i_s.db) {
-                        self.fill_django_default_generics(i_s, args, &mut generics);
-                    }
+                if generics.all_never_from_inference() && self.has_django_stubs_base_class(i_s.db) {
+                    self.fill_django_default_generics(i_s, args, &mut generics);
                 }
                 let result = Inferred::from_type(Type::Class(GenericClass {
                     link: self.node_ref.as_link(),
@@ -2004,6 +2002,19 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         self.nth_type_argument(db, 0) == db.python_state.str_type()
             && self.nth_type_argument(db, 1).is_any()
+    }
+
+    fn has_django_stubs_base_class(&self, db: &Database) -> bool {
+        *self
+            .use_cached_class_infos(db)
+            .in_django_stubs
+            .get_or_init(|| {
+                self.node_ref.file.is_from_django(db)
+                    || self.bases(db).any(|b| match b {
+                        TypeOrClass::Type(_) => false,
+                        TypeOrClass::Class(class) => class.has_django_stubs_base_class(db),
+                    })
+            })
     }
 }
 

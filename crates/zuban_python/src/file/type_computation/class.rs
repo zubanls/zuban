@@ -1176,6 +1176,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 has_slots,
                 protocol_members,
                 is_final,
+                in_django_stubs: Default::default(),
                 variance_map: type_vars
                     .iter()
                     .filter_map(|tvl| match tvl {
