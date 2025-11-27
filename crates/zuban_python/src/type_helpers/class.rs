@@ -1468,7 +1468,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
 
-                if let Some(file) = args.in_file() {
+                if let Some(file) = args.in_file()
+                    // Initializing enums without members is possible in Mypy and other type
+                    // checkers, they can be used for example as a base class.
+                    && !(self.file.file_index != i_s.db.python_state.enum_file().file_index
+                        && args.iter(i_s.mode).count() == 1)
+                {
                     return ClassExecutionResult::Inferred(
                         file.name_resolution_for_types(i_s)
                             .compute_functional_enum_definition(*self, args)

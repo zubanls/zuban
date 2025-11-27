@@ -364,3 +364,21 @@ class MyEnum(enum.StrEnum):
     @classmethod
     def cast(cls, value: str) -> Self:
         return cls(value)
+
+
+[case enum_without_members_should_not_lead_to_creation_error]
+import enum
+
+class Color(enum.Enum):
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+Color(str())
+
+
+class ColorBad(enum.Enum):
+    pass
+
+
+ColorBad(str())
