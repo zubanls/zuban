@@ -627,3 +627,21 @@ __main__.py:13: Code Actions:
 - Import `zipfile.Path`: 5:0-5:0 replaced with: "from zipfile import Path\n"
 - Import `pathlib.Path`: 5:0-5:0 replaced with: "from pathlib import Path\n"
 - Import `with_star_imports.Path`: 5:0-5:0 replaced with: "\nfrom with_star_imports import Path\n"
+
+[case auto_import_choose_only_valid_imports]
+# flags: --no-typecheck
+#? code-actions
+something3
+
+[file x.pyc]
+something3 = 1
+[file x.sh]
+something3 = 1
+[file has-dash.sh]
+something3 = 1
+[file valid.py]
+something3 = 1
+
+[out]
+__main__.py:3: Code Actions:
+- Import `valid.something3`: 3:0-3:0 replaced with: "from valid import something3\n\n"

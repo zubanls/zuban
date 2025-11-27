@@ -188,3 +188,20 @@ class ShouldBeContravariant1(Generic[T]):
 
 vcontra1_1: ShouldBeContravariant1[float] = ShouldBeContravariant1[int](1)  # E: Incompatible types in assignment (expression has type "ShouldBeContravariant1[int]", variable has type "ShouldBeContravariant1[float]")
 vcontra1_2: ShouldBeContravariant1[int] = ShouldBeContravariant1[float](1.2)  # OK
+
+[case type_var_default_with_never]
+class C[T, U=T]: ...
+
+reveal_type(C())  # N: Revealed type is "__main__.C[Never, Never]"
+
+[case type_var_default_with_usage_before_generic]
+from typing import TypeVar, Generic, Iterable
+T = TypeVar("T")
+U = TypeVar("U", default=T)
+
+class Something[T]: ...
+class C(Iterable[U], Something[T], Generic[T, U]): ...
+
+def foo() -> C[int]: ...
+
+reveal_type(foo())  # N: Revealed type is "__main__.C[int, int]"

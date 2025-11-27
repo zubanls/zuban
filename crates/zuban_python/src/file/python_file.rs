@@ -727,6 +727,13 @@ impl<'db> PythonFile {
         self.add_type_issue(i_s.db, issue)
     }
 
+    pub fn is_from_django(&self, db: &Database) -> bool {
+        self.file_entry(db)
+            .parent
+            .most_outer_dir()
+            .is_some_and(|dir| *dir.name == *"django-stubs")
+    }
+
     pub fn add_type_issue(&self, db: &'db Database, issue: Issue) {
         // This function adds issues in all normal cases and does not respect the InferenceState
         // mode.

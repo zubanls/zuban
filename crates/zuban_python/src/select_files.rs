@@ -9,8 +9,11 @@ use vfs::{
 };
 
 use crate::{
-    database::Database, diagnostics::Diagnostic, file::PythonFile, imports::ImportResult,
-    utils::join_with_commas,
+    database::Database,
+    diagnostics::Diagnostic,
+    file::PythonFile,
+    imports::ImportResult,
+    utils::{is_file_with_python_ending, join_with_commas},
 };
 
 pub(crate) fn diagnostics_for_relevant_files<'db>(
@@ -43,7 +46,7 @@ pub(crate) fn all_typechecked_files(
 }
 
 fn should_skip(flags: &TypeCheckerFlags, rel_path: &str) -> bool {
-    if !rel_path.ends_with(".py") && !rel_path.ends_with(".pyi") {
+    if !is_file_with_python_ending(rel_path) {
         return true;
     }
     flags.excludes.iter().any(|e| e.regex.is_match(rel_path))

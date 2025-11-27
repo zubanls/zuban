@@ -64,11 +64,14 @@ enum InferredState {
     UnsavedFileReference(FileIndex),
     UnsavedComplex(ComplexPoint),
     UnsavedSpecific(Specific),
-    BoundMethod {
-        instance: Type,
-        mro_index: MroIndex,
-        func_link: PointLink,
-    },
+    BoundMethod(BoundMethodState),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoundMethodState {
+    pub instance: Type,
+    mro_index: MroIndex,
+    pub func_link: PointLink,
 }
 
 #[derive(Clone, Debug)]
@@ -106,11 +109,11 @@ impl<'db: 'slf, 'slf> Inferred {
 
     fn new_bound_method(instance: Type, mro_index: MroIndex, func_link: PointLink) -> Self {
         Self {
-            state: InferredState::BoundMethod {
+            state: InferredState::BoundMethod(BoundMethodState {
                 instance,
                 mro_index,
                 func_link,
-            },
+            }),
         }
     }
 
@@ -214,11 +217,11 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => {
                 Cow::Owned(Type::Module(*file_index))
             }
-            InferredState::BoundMethod {
+            InferredState::BoundMethod(BoundMethodState {
                 instance,
                 mro_index,
                 func_link,
-            } => {
+            }) => {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
                 Cow::Owned(load_bound_method(i_s, instance, class, *func_link).as_type(i_s))
             }
@@ -484,6 +487,13 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn maybe_bound_method(&self) -> Option<&BoundMethodState> {
+        match &self.state {
+            InferredState::BoundMethod(bound) => Some(bound),
+            _ => None,
+        }
+    }
+
     pub fn maybe_literal(
         &'slf self,
         db: &'db Database,
@@ -699,11 +709,11 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => {
                 Point::new_file_reference(file_index, Locality::Todo)
             }
-            InferredState::BoundMethod {
+            InferredState::BoundMethod(BoundMethodState {
                 instance,
                 mro_index,
                 func_link,
-            } => {
+            }) => {
                 let class = Self::load_bound_method_class(i_s, &instance, mro_index);
                 let bound_method = load_bound_method(i_s, &instance, class, func_link);
                 file.complex_points.insert(
@@ -1894,11 +1904,11 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => format!("UnsavedFile({file_index})"),
             InferredState::UnsavedComplex(c) => format!("Unsaved({})", format_complex(db, None, c)),
             InferredState::UnsavedSpecific(specific) => format!("UnsavedSpecific({specific:?})"),
-            InferredState::BoundMethod {
+            InferredState::BoundMethod(BoundMethodState {
                 instance,
                 func_link,
                 ..
-            } => {
+            }) => {
                 format!(
                     "BoundMethod({}.{})",
                     instance.format_short(db),
@@ -2316,11 +2326,11 @@ impl<'db: 'slf, 'slf> Inferred {
                     _ => (),
                 }
             }
-            InferredState::BoundMethod {
+            InferredState::BoundMethod(BoundMethodState {
                 instance,
                 mro_index,
                 func_link,
-            } => {
+            }) => {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
                 return load_bound_method(i_s, instance, class, *func_link).execute(
                     i_s,

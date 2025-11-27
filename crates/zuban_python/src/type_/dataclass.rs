@@ -12,9 +12,8 @@ use utils::FastHashMap;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StarParamType,
-    StarStarParamType, StringSlice, Tuple, Type, TypeVar, TypeVarKind, TypeVarKindInfos,
-    TypeVarLike, TypeVarLikes, TypeVarUsage,
+    GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StringSlice, Tuple,
+    Type, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
     arguments::{ArgKind, Args, SimpleArgs},
@@ -32,7 +31,7 @@ use crate::{
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
-    type_::{CallableLike, ReplaceTypeVarLikes},
+    type_::{CallableLike, ReplaceTypeVarLikes, callable::add_any_params_to_params},
     type_helpers::{
         Callable, Class, ClassLookupOptions, InstanceLookupOptions, LookupDetails, OverloadResult,
         OverloadedFunction, TypeOrClass,
@@ -495,12 +494,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
         }
     }
     if cls.incomplete_mro(i_s.db) {
-        params.push(CallableParam::new_anonymous(ParamType::Star(
-            StarParamType::ArbitraryLen(Type::Any(AnyCause::Todo)),
-        )));
-        params.push(CallableParam::new_anonymous(ParamType::StarStar(
-            StarStarParamType::ValueType(Type::Any(AnyCause::Todo)),
-        )));
+        add_any_params_to_params(&mut params);
     }
     Inits {
         __init__: CallableContent::new_simple(

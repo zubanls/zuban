@@ -9,7 +9,7 @@ use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Nam
 
 use super::{Callable, Instance, InstanceLookupOptions, LookupDetails, overload::OverloadResult};
 use crate::{
-    arguments::Args,
+    arguments::{ArgKind, Args},
     database::{
         BaseClass, ClassKind, ClassStorage, ComplexPoint, Database, Locality, MetaclassState,
         Point, PointKind, PointLink, Specific,
@@ -29,12 +29,14 @@ use crate::{
         calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage,
     },
     node_ref::NodeRef,
+    recoverable_error,
     type_::{
-        AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, Enum, FormatStyle,
-        FunctionOverload, GenericClass, GenericItem, GenericsList, LookupResult, NamedTuple,
-        NeverCause, ParamSpecArg, ParamSpecUsage, ReplaceTypeVarLikes, Tuple, TupleArgs, Type,
-        TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
-        Variance,
+        AnyCause, CallableContent, CallableLike, CallableParam, ClassGenerics, Dataclass, DbString,
+        Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem, GenericsList, LiteralValue,
+        LookupResult, NamedTuple, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
+        ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, Type, TypeVarIndex, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -1288,7 +1290,10 @@ impl<'db: 'a, 'a> Class<'a> {
             on_type_error,
             from_type_type,
         ) {
-            ClassExecutionResult::ClassGenerics(generics) => {
+            ClassExecutionResult::ClassGenerics(mut generics) => {
+                if generics.all_never_from_inference() && self.has_django_stubs_base_class(i_s.db) {
+                    self.fill_django_default_generics(i_s, args, &mut generics);
+                }
                 let result = Inferred::from_type(Type::Class(GenericClass {
                     link: self.node_ref.as_link(),
                     generics,
@@ -1304,6 +1309,136 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             ClassExecutionResult::Inferred(inf) => inf,
         }
+    }
+
+    fn fill_django_default_generics(
+        &self,
+        i_s: &InferenceState,
+        args: &dyn Args,
+        generics: &mut ClassGenerics,
+    ) {
+        let ClassGenerics::List(list) = generics else {
+            recoverable_error!("Expected a list when trying to fill Django generics");
+            return;
+        };
+        let mut known_type = None;
+        if matches!(
+            self.name(),
+            "ForeignKey" | "OneToOneField" | "ManyToManyField"
+        ) {
+            known_type = args
+                .iter(i_s.mode)
+                .enumerate()
+                .find_map(|(i, arg)| match &arg.kind {
+                    ArgKind::Positional(arg) if i == 0 => {
+                        Some(arg.infer(&mut ResultContext::Unknown))
+                    }
+                    ArgKind::Keyword(kwarg) if kwarg.key == "to" => {
+                        Some(kwarg.infer(&mut ResultContext::Unknown))
+                    }
+                    _ => None,
+                })
+                .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
+                    Type::Type(t) => Some(t.clone()),
+                    Type::Literal(lit) => match lit.value(i_s.db) {
+                        LiteralValue::String(name) => {
+                            if let Type::Type(t) = args
+                                .in_file()?
+                                .lookup(
+                                    i_s.db,
+                                    |issue| {
+                                        debug!(
+                                            "Issue while looking up Django model \
+                                            reference: {issue:?}"
+                                        )
+                                    },
+                                    name,
+                                )
+                                .maybe_inferred()?
+                                .as_cow_type(i_s)
+                                .as_ref()
+                            {
+                                Some(t.clone())
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                });
+        }
+        let nullable = args
+            .iter(i_s.mode)
+            .find_map(|arg| match &arg.kind {
+                ArgKind::Keyword(kwarg) if kwarg.key == "null" => kwarg
+                    .infer(&mut ResultContext::Unknown)
+                    .maybe_bool_literal(i_s),
+                _ => None,
+            })
+            .unwrap_or_default();
+        let find_type = |name| {
+            Some(GenericItem::TypeArg({
+                let mut result = if let Some(known_type) = &known_type {
+                    known_type.as_ref().clone()
+                } else {
+                    self.mro_maybe_without_object(i_s.db, true).find_map(
+                        |(_, item)| match item {
+                            TypeOrClass::Type(_) => None,
+                            TypeOrClass::Class(class) => {
+                                class.find_django_default_generic_inner(i_s.db, name)
+                            }
+                        },
+                    )?
+                };
+                if nullable {
+                    result.union_in_place(Type::None)
+                }
+                result
+            }))
+        };
+        let entries = list
+            .iter()
+            .enumerate()
+            .map(|(i, entry)| {
+                if let GenericItem::TypeArg(t) = entry
+                    && t.is_never()
+                {
+                    if i == 0
+                        && let Some(result) = find_type("_pyi_private_set_type")
+                    {
+                        return result;
+                    } else if i == 1
+                        && let Some(result) = find_type("_pyi_private_get_type")
+                    {
+                        return result;
+                    }
+                }
+                entry.clone()
+            })
+            .collect();
+        let lst = GenericsList::new_generics(entries);
+        debug!(
+            "Replaced {} generics with: [{}]",
+            self.name(),
+            lst.format(&FormatData::new_short(i_s.db)),
+        );
+        *generics = ClassGenerics::List(lst)
+    }
+
+    fn find_django_default_generic_inner(&self, db: &Database, name: &str) -> Option<Type> {
+        let found = self.class_storage.class_symbol_table.lookup_symbol(name)?;
+        let annotation = NodeRef::new(self.file, found)
+            .expect_name()
+            .maybe_annotated()?;
+        let i_s = &InferenceState::new(db, self.file);
+        let name_resolution = self.file.name_resolution_for_types(i_s);
+        name_resolution.ensure_cached_annotation(annotation, false);
+        Some(
+            name_resolution
+                .use_cached_annotation_type(annotation)
+                .into_owned(),
+        )
     }
 
     pub(crate) fn execute_and_return_generics(
@@ -1882,6 +2017,30 @@ impl<'db: 'a, 'a> Class<'a> {
         self.nth_type_argument(db, 0) == db.python_state.str_type()
             && self.nth_type_argument(db, 1).is_any()
     }
+
+    pub fn has_django_stubs_base_class(&self, db: &Database) -> bool {
+        *self
+            .use_cached_class_infos(db)
+            .in_django_stubs
+            .get_or_init(|| {
+                self.node_ref.file.is_from_django(db)
+                    || self.bases(db).any(|b| match b {
+                        TypeOrClass::Type(_) => false,
+                        TypeOrClass::Class(class) => class.has_django_stubs_base_class(db),
+                    })
+            })
+    }
+
+    fn is_django_field(&self, db: &Database) -> bool {
+        self.has_django_stubs_base_class(db)
+            && self.mro_maybe_without_object(db, true).any(|(_, base)| {
+                base.as_maybe_class().is_some_and(|cls| {
+                    cls.has_django_stubs_base_class(db)
+                        && cls.name() == "Field"
+                        && cls.file.name(db) == "fields"
+                })
+            })
+    }
 }
 
 impl fmt::Debug for Class<'_> {
@@ -2210,6 +2369,21 @@ fn init_as_callable(
     init_class: TypeOrClass,
 ) -> Option<CallableLike> {
     let mut init_class = init_class;
+    let class_infos = cls.use_cached_class_infos(i_s.db);
+    if let MetaclassState::Some(_) = class_infos.metaclass {
+        let meta = class_infos.metaclass(i_s.db);
+        if meta.has_django_stubs_base_class(i_s.db) && meta.name() == "ModelBase" {
+            let c = CallableContent::new_non_generic(
+                i_s.db,
+                Some(DbString::StringSlice(cls.name_string_slice())),
+                None,
+                cls.node_ref.as_link(),
+                django_model_params(i_s, cls),
+                cls.as_type(i_s.db),
+            );
+            return Some(CallableLike::Callable(Arc::new(c)));
+        }
+    }
     let cls = if matches!(cls.generics(), Generics::NotDefinedYet { .. }) {
         if let TypeOrClass::Class(init_class) = &mut init_class {
             // Make sure generics are not Any
@@ -2306,6 +2480,45 @@ fn init_as_callable(
             }
         }
     })
+}
+
+fn django_model_params(i_s: &InferenceState, cls: Class) -> Vec<CallableParam> {
+    let mut params = vec![];
+    for (_, cls) in cls.mro(i_s.db) {
+        if let Some(cls) = cls.as_maybe_class() {
+            for (_, symbol) in cls.class_storage.class_symbol_table.iter() {
+                let name_ref = NodeRef::new(cls.file, *symbol);
+                let name = name_ref.expect_name();
+                if name.maybe_assignment_definition_name().is_none() {
+                    // Currently we only check assignments, this is a performance optimization. We
+                    // don't make a type out of every function.
+                    continue;
+                }
+                let name_def_ref = name_ref.name_def_ref_of_name();
+                if let Some(inf) = name_def_ref.maybe_inferred(i_s)
+                    && let Some(field_cls) = inf.as_cow_type(i_s).maybe_class(i_s.db)
+                    && field_cls.is_django_field(i_s.db)
+                {
+                    params.push(CallableParam {
+                        name: Some(DbString::StringSlice(StringSlice::from_name(
+                            cls.file.file_index,
+                            name,
+                        ))),
+                        // TODO this should not be any but probably the generic of
+                        // _pyi_private_get_type
+                        type_: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Internal)),
+                        // Params are optional in Django.
+                        has_default: true,
+                        might_have_type_vars: false,
+                    });
+                }
+            }
+        }
+    }
+    // Since some Django users set fields in very dynamic ways we don't want to ensure type safety
+    // here yet.
+    add_any_params_to_params(&mut params);
+    params
 }
 
 pub(crate) enum ClassConstructor<'a> {

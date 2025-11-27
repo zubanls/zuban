@@ -8,7 +8,7 @@ from django.db.models.query_utils import DeferredAttribute
 from django.db.models.manager import BaseManager
 
 
-class TagManager(models.Manager):
+class TagManager(models.Manager['Tag']):
     def specially_filtered_tags(self):
         return self.all()
 
@@ -60,7 +60,7 @@ class BusinessModel(models.Model):
 
     unidentifiable = NOT_FOUND
 
-    #? models.IntegerField()
+    #? django.db.models.fields.IntegerField()
     integer_field
 
     def method(self):
@@ -70,11 +70,11 @@ class BusinessModel(models.Model):
 # Model attribute inference
 # -----------------
 
-#? DeferredAttribute()
+#? django.db.models.fields._FieldDescriptor()
 BusinessModel.integer_field
-#? DeferredAttribute()
+#? django.db.models.fields.related_descriptors.ManyToManyDescriptor()
 BusinessModel.tags_m2m
-#? DeferredAttribute()
+#? django.db.models.fields._FieldDescriptor()
 BusinessModel.email_field
 
 model_instance = BusinessModel()
@@ -99,7 +99,7 @@ model_instance.ip_address_field
 model_instance.url_field
 #? float()
 model_instance.float_field
-#? bytes()
+#? bytes() memoryview()
 model_instance.binary_field
 #? bool()
 model_instance.boolean_field
@@ -144,7 +144,7 @@ model_instance.category_fk4
 #?
 model_instance.category_fk5
 
-#? models.manager.RelatedManager()
+#? django.db.models.fields.related_descriptors.ManyRelatedManager()
 model_instance.tags_m2m
 #? Tag()
 model_instance.tags_m2m.get()
@@ -158,7 +158,7 @@ model_instance.unidentifiable
 
 #? int()
 model_instance.method()
-#! ['def method']
+#! ['def method(self):']
 model_instance.method
 
 # -----------------
@@ -171,9 +171,9 @@ model_instance.object
 model_instance.objects
 #?
 model_instance.objects.filter
-#? models.query.QuerySet.filter
+#? django.db.models.manager.Manager.filter
 BusinessModel.objects.filter
-#? BusinessModel() None
+#? BusinessModel() types.NoneType()
 BusinessModel.objects.filter().first()
 #? str()
 BusinessModel.objects.get().char_field
@@ -188,12 +188,12 @@ BusinessModel.objects.create()
 
 #? TagManager()
 Tag.objects
-#? Tag() None
+#? Tag() types.NoneType()
 Tag.objects.filter().first()
 
 #? TagManager()
 Tag.custom_objects
-#? Tag() None
+#? Tag() types.NoneType()
 Tag.custom_objects.filter().first()
 
 # -----------------
@@ -205,7 +205,7 @@ class Inherited(BusinessModel):
     new_field = models.FloatField()
 
 inherited = Inherited()
-#? int()
+#? str()
 inherited.text_field
 #? str()
 inherited.char_field
@@ -218,7 +218,7 @@ Inherited.category_fk2.category_name
 inherited.category_fk2.category_name
 #? str()
 Inherited.objects.get().char_field
-#? int()
+#? str()
 Inherited.objects.get().text_field
 #? float()
 Inherited.objects.get().new_field
@@ -291,3 +291,5 @@ Inherited.objects.get_or_create(category_fk2)
 Inherited.objects.update_or_create(uuid_fiel)
 #? 48 ['char_field=']
 Inherited.objects.exclude(pk=3).filter(char_fiel)
+#? 47 ['char_field=']
+Inherited.objects.filter(pk=3).update(char_fiel)

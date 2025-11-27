@@ -527,7 +527,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                         }
                                                     )
                                                 } else {
-                                                    type_var_manager.add(tvl, None);
+                                                    type_var_manager.add(
+                                                        tvl,
+                                                        None,
+                                                        Some(n.index()),
+                                                    );
                                                 }
                                             }
                                             _ => {

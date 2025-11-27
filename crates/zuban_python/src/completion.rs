@@ -1,9 +1,9 @@
-use std::{borrow::Cow, collections::HashSet};
+use std::{borrow::Cow, collections::HashSet, sync::Arc};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NodeIndex,
-    RestNode, Scope,
+    ClassDef, CompletionContext, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name,
+    NameDef, NodeIndex, RestNode, Scope,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
@@ -20,10 +20,15 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     lines::BytePositionInfos,
+    matching::Generics,
     name::{ModuleName, Range, TreeName, process_docstring},
     node_ref::NodeRef,
+    params::Param,
     recoverable_error,
-    type_::{CallableParam, Enum, EnumMemberDefinition, FunctionKind, Namespace, Type},
+    type_::{
+        CallableContent, CallableLike, CallableParam, CallableParams, Enum, EnumMemberDefinition,
+        FunctionKind, Namespace, ParamType, Type,
+    },
     type_helpers::{Class, Function, TypeOrClass, is_private},
 };
 
@@ -36,7 +41,7 @@ struct CompletionInfo<'db> {
 impl CompletionInfo<'_> {
     fn fix_for_invalid_columns(mut self) -> Self {
         if self.cursor_position.column_out_of_bounds && !self.rest.as_code().is_empty() {
-            self.node = CompletionNode::Global;
+            self.node = CompletionNode::Global { context: None };
             self.rest.ensure_no_rest();
         }
         self
@@ -121,12 +126,23 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 let inf = self.infos.infer_primary_or_atom(*base);
                 self.add_attribute_completions(inf)
             }
-            CompletionNode::Global => {
+            CompletionNode::Global { context } => {
                 let reachable_scopes = &mut ScopesIterator {
                     file,
                     only_reachable: true,
                     current: Some(self.infos.scope),
                 };
+                match context {
+                    Some(CompletionContext::PrimaryCall(call)) => {
+                        self.add_keyword_param_completions(self.infos.infer_primary_or_atom(*call));
+                    }
+                    Some(CompletionContext::PrimaryTargetCall(call)) => {
+                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*call) {
+                            self.add_keyword_param_completions(inf);
+                        }
+                    }
+                    None => (),
+                }
                 for scope in reachable_scopes {
                     match scope {
                         Scope::Module => self.add_global_module_completions(file),
@@ -212,6 +228,80 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             }
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
+        }
+    }
+
+    fn add_keyword_param_completions(&mut self, inf: Inferred) {
+        with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
+            let maybe_django_query_method = || {
+                let bound = inf.maybe_bound_method()?;
+                let base = bound.instance.maybe_class(i_s.db)?;
+                if !base.has_django_stubs_base_class(i_s.db) {
+                    return None;
+                }
+                let func_ref = NodeRef::from_link(i_s.db, bound.func_link);
+                let func = func_ref.maybe_function()?;
+                if matches!(
+                    func.name().as_code(),
+                    "filter"
+                        | "create"
+                        | "exclude"
+                        | "update"
+                        | "get"
+                        | "get_or_create"
+                        | "update_or_create"
+                ) && matches!(func_ref.file.name(i_s.db), "query" | "manager")
+                    && matches!(base.generics, Generics::List(..))
+                {
+                    Some(base.nth_type_argument(i_s.db, 0))
+                } else {
+                    None
+                }
+            };
+
+            if let Some(model) = maybe_django_query_method() {
+                self.add_keyword_params_for_callable_likes(
+                    Type::Type(Arc::new(model)).maybe_callable(i_s),
+                )
+            } else {
+                self.add_keyword_params_for_callable_likes(inf.as_cow_type(i_s).maybe_callable(i_s))
+            }
+        })
+    }
+
+    fn add_keyword_params_for_callable_likes(&mut self, c: Option<CallableLike>) {
+        let mut add = |c: &CallableContent| {
+            if let CallableParams::Simple(params) = &c.params {
+                for param in params.iter() {
+                    if matches!(
+                        param.type_,
+                        ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
+                    ) {
+                        if let Some(name) = param.name(self.infos.db) {
+                            let keyword_argument = format!("{name}=");
+                            if !self.maybe_add_cow(Cow::Owned(keyword_argument.clone())) {
+                                continue;
+                            }
+                            if let Some(result) = (self.on_result)(
+                                self.replace_range,
+                                &KeywordArgumentCompletion { keyword_argument },
+                            ) {
+                                self.items
+                                    .push((CompletionSortPriority::KeywordArgument, result))
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        match c {
+            Some(CallableLike::Callable(c)) => add(&c),
+            Some(CallableLike::Overload(o)) => {
+                for c in o.iter_functions() {
+                    add(c)
+                }
+            }
+            None => (),
         }
     }
 
@@ -808,6 +898,24 @@ impl<'db> Completion for CompletionDirEntry<'db, '_> {
     }
 }
 
+struct KeywordArgumentCompletion {
+    keyword_argument: String,
+}
+
+impl Completion for KeywordArgumentCompletion {
+    fn label(&self) -> &str {
+        &self.keyword_argument
+    }
+
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::UNIT // Not sure what to choose, but I think this is fine.
+    }
+
+    fn file_path(&self) -> Option<&str> {
+        None
+    }
+}
+
 struct KeywordCompletion {
     keyword: &'static str,
 }
@@ -870,6 +978,7 @@ impl Completion for NamedTupleMemberCompletion<'_> {
 enum CompletionSortPriority<'db> {
     //Literal,    // e.g. TypedDict literal
     //NamedParam, // e.g. def foo(*, bar) => `foo(b` completes to bar=
+    KeywordArgument,
     EnumMember,
     Default(&'db str),
     Dunder(&'db str), // e.g. __eq__

@@ -1226,6 +1226,10 @@ impl Database {
             file_entry.clone(),
             invalidates_db,
             |file_index, code| {
+                tracing::trace!(
+                    "Start parsing {}",
+                    file_entry.absolute_path(&*self.vfs.handler).as_uri()
+                );
                 PythonFile::from_file_entry_and_code(&self.project, file_index, file_entry, code)
             },
         )
@@ -1676,6 +1680,7 @@ pub(crate) struct ClassInfos {
     pub total_ordering: bool,
     pub is_runtime_checkable: bool,
     pub abstract_attributes: Box<[PointLink]>,
+    pub in_django_stubs: OnceLock<bool>,
     pub dataclass_transform: Option<Box<DataclassTransformObj>>,
     pub promote_to: Mutex<Option<PointLink>>,
     pub deprecated_reason: Option<Arc<Box<str>>>,
@@ -1698,6 +1703,7 @@ impl Clone for ClassInfos {
             total_ordering: self.total_ordering,
             is_runtime_checkable: self.is_runtime_checkable,
             abstract_attributes: self.abstract_attributes.clone(),
+            in_django_stubs: self.in_django_stubs.clone(),
             dataclass_transform: self.dataclass_transform.clone(),
             promote_to: Mutex::new(*self.promote_to.lock().unwrap()),
             deprecated_reason: self.deprecated_reason.clone(),

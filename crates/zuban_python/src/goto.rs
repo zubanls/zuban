@@ -31,6 +31,7 @@ use crate::{
     recoverable_error,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::{Function, TypeOrClass},
+    utils::is_file_with_python_ending,
 };
 
 pub(crate) struct PositionalDocument<'db, T> {
@@ -806,8 +807,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
         for entries in workspaces_entries {
             entries.walk_entries(&*db.vfs.handler, &mut |_, dir_entry| {
                 if let DirectoryEntry::File(file) = dir_entry
-                    && (file.name.ends_with(".py")
-                        || file.name.ends_with(".pyi")
+                    && (is_file_with_python_ending(&file.name)
                         // We only want to check Python files, but loaded notebooks sometimes have
                         // different endings.
                         || file.get_file_index().is_some())

@@ -82,6 +82,7 @@ impl<'a, T: CallableId> Iterator for CallableAncestors<'a, T> {
 struct UnresolvedTypeVarLike<T> {
     pub type_var_like: TypeVarLike,
     pub most_outer_callable: Option<T>,
+    pub defined_at: Option<NodeIndex>,
 }
 
 #[derive(Debug)]
@@ -97,7 +98,12 @@ impl<T: CallableId> TypeVarManager<T> {
             .position(|t| &t.type_var_like == type_var)
     }
 
-    pub fn add(&mut self, type_var_like: TypeVarLike, in_callable: Option<T>) -> TypeVarIndex {
+    pub fn add(
+        &mut self,
+        type_var_like: TypeVarLike,
+        in_callable: Option<T>,
+        defined_at: Option<NodeIndex>,
+    ) -> TypeVarIndex {
         if let Some(index) = self.position(&type_var_like) {
             self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
                 self.type_vars[index].most_outer_callable.as_ref(),
@@ -108,6 +114,7 @@ impl<T: CallableId> TypeVarManager<T> {
             self.type_vars.push(UnresolvedTypeVarLike {
                 type_var_like,
                 most_outer_callable: in_callable,
+                defined_at,
             });
             (self.type_vars.len() - 1).into()
         }
@@ -148,13 +155,8 @@ impl<T: CallableId> TypeVarManager<T> {
                 .collect(),
         )
     }
-
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &TypeVarLike> + Clone {
         self.type_vars.iter().map(|u| &u.type_var_like)
-    }
-
-    pub fn last(&self) -> Option<&TypeVarLike> {
-        self.type_vars.last().map(|u| &u.type_var_like)
     }
 
     pub fn type_vars_for_callable(&self, callable: &Arc<CallableContent>) -> TypeVarLikes {
@@ -269,6 +271,53 @@ impl<T: CallableId> TypeVarManager<T> {
         } else {
             usage.clone()
         }
+    }
+}
+
+impl TypeVarManager<PointLink> {
+    pub fn into_type_vars_after_checking_type_var_tuples(
+        mut self,
+        db: &Database,
+        in_file: &PythonFile,
+    ) -> TypeVarLikes {
+        let mut prev: Option<&mut UnresolvedTypeVarLike<PointLink>> = None;
+        let mut has_default = false;
+        for unfinished in self.type_vars.iter_mut() {
+            let current_default = unfinished.type_var_like.has_default();
+            if !current_default && has_default {
+                unfinished.type_var_like = unfinished.type_var_like.set_any_default();
+                NodeRef::new(in_file, unfinished.defined_at.unwrap()).add_type_issue(
+                    db,
+                    IssueKind::TypeVarDefaultWrongOrder {
+                        type_var1: unfinished.type_var_like.name(db).into(),
+                        type_var2: prev.unwrap().type_var_like.name(db).into(),
+                    },
+                );
+                break;
+            } else {
+                has_default |= current_default
+            }
+            prev = Some(unfinished)
+        }
+        if has_default {
+            for index in 0..self.type_vars.len() {
+                let unfinished = &self.type_vars[index];
+                let current = &unfinished.type_var_like;
+                if current.default(db).is_some() {
+                    if let Some(new) = current.replace_type_var_like_defaults_that_are_out_of_scope(
+                        db,
+                        self.iter().take(index),
+                        &|kind| {
+                            NodeRef::new(in_file, unfinished.defined_at.unwrap())
+                                .add_type_issue(db, kind)
+                        },
+                    ) {
+                        self.type_vars[index].type_var_like = new;
+                    }
+                }
+            }
+        }
+        self.into_type_vars()
     }
 }
 
@@ -674,21 +723,19 @@ impl TypeVarLike {
     pub fn as_never_generic_item(&self, db: &Database, cause: NeverCause) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
-                Some(default) => {
-                    GenericItem::TypeArg(default.clone()).resolve_recursive_defaults_or_set_any(db)
-                }
+                Some(default) => GenericItem::TypeArg(default.clone())
+                    .resolve_recursive_defaults_or_set_never(db),
                 None => GenericItem::TypeArg(Type::Never(cause)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
-                Some(default) => {
-                    GenericItem::TypeArgs(default.clone()).resolve_recursive_defaults_or_set_any(db)
-                }
+                Some(default) => GenericItem::TypeArgs(default.clone())
+                    .resolve_recursive_defaults_or_set_never(db),
                 None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
             },
             TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
                 Some(default) => {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
-                        .resolve_recursive_defaults_or_set_any(db)
+                        .resolve_recursive_defaults_or_set_never(db)
                 }
                 // TODO ParamSpec: this feels wrong, should maybe be never?
                 None => GenericItem::ParamSpecArg(ParamSpecArg::new_never(cause)),
@@ -715,11 +762,11 @@ impl TypeVarLike {
     }
 
     pub fn replace_type_var_like_defaults_that_are_out_of_scope<'x>(
-        self,
+        &self,
         db: &Database,
         previous_type_vars: impl Iterator<Item = &'x TypeVarLike> + Clone,
         add_issue: impl Fn(IssueKind),
-    ) -> Self {
+    ) -> Option<Self> {
         if let Some(default) = self.default(db) {
             let mut had_issue = false;
             let replaced = default.replace_type_var_likes(db, &mut |usage| {
@@ -738,11 +785,11 @@ impl TypeVarLike {
                     add_issue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
                         type_var: self.name(db).into(),
                     });
-                    return self.replace_default_with_generic_item(replaced);
+                    return Some(self.replace_default_with_generic_item(replaced));
                 }
             }
         }
-        self
+        None
     }
 
     pub fn is_untyped(&self) -> bool {

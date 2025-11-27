@@ -1,7 +1,7 @@
 pub mod panic_context;
 
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::UnsafeCell,
     fmt,
     marker::PhantomData,
@@ -35,8 +35,8 @@ where
     postcard::to_stdvec(value)
 }
 
-pub struct InsertOnlyVec<T: ?Sized> {
-    vec: Mutex<UnsafeCell<Vec<Pin<Box<T>>>>>,
+pub struct InsertOnlyVec<T: ?Sized, P = Box<T>> {
+    vec: Mutex<UnsafeCell<Vec<Pin<P>>>>,
     // Mutex makes everything inside UnsafeCell sync, but we are handing out references to the
     // inner parts that also need to be Sync/Send
     _ensure_sync: PhantomData<T>,
@@ -51,7 +51,7 @@ impl<T: ?Sized> From<Vec<Pin<Box<T>>>> for InsertOnlyVec<T> {
     }
 }
 
-impl<T: ?Sized> Default for InsertOnlyVec<T> {
+impl<T: ?Sized, P> Default for InsertOnlyVec<T, P> {
     fn default() -> Self {
         Self {
             vec: Mutex::new(UnsafeCell::new(vec![])),
@@ -60,7 +60,7 @@ impl<T: ?Sized> Default for InsertOnlyVec<T> {
     }
 }
 
-impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
+impl<T: ?Sized + Unpin, P: Deref<Target = T>> InsertOnlyVec<T, P> {
     pub fn get(&self, index: usize) -> Option<&T> {
         unsafe { &*self.vec.lock().unwrap().get() }
             .get(index)
@@ -74,7 +74,7 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
     }
     */
 
-    pub fn push(&self, element: Pin<Box<T>>) -> (&T, usize) {
+    pub fn push(&self, element: Pin<P>) -> (&T, usize) {
         let guard = self.vec.lock().unwrap();
         let vec = unsafe { &mut *guard.get() };
         vec.push(element);
@@ -95,15 +95,6 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
             .map(|x| x as &T)
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
-        self.vec
-            .get_mut()
-            .unwrap()
-            .get_mut()
-            .iter_mut()
-            .map(|x| x as &mut T)
-    }
-
     pub fn clear(&mut self) {
         self.vec.get_mut().unwrap().get_mut().clear()
     }
@@ -117,17 +108,23 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
         unsafe { (*self.vec.lock().unwrap().get()).iter().map(|x| x as &T) }
     }
 
-    pub fn set(&mut self, index: usize, obj: Pin<Box<T>>) {
+    pub fn set(&mut self, index: usize, obj: Pin<P>) {
         self.vec.get_mut().unwrap().get_mut()[index] = obj;
     }
 
-    pub fn as_vec_mut(&mut self) -> &mut Vec<Pin<Box<T>>> {
+    pub fn as_vec_mut(&mut self) -> &mut Vec<Pin<P>> {
         self.vec.get_mut().unwrap().get_mut()
     }
 }
 
-impl<T> IntoIterator for InsertOnlyVec<T> {
-    type Item = Pin<Box<T>>;
+impl<T: ?Sized + Unpin, P> InsertOnlyVec<T, P> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Pin<P>> {
+        self.vec.get_mut().unwrap().get_mut().iter_mut()
+    }
+}
+
+impl<T, P> IntoIterator for InsertOnlyVec<T, P> {
+    type Item = Pin<P>;
 
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -155,10 +152,7 @@ impl<T: ?Sized + Unpin> std::ops::IndexMut<usize> for InsertOnlyVec<T> {
         &mut self.vec.get_mut().unwrap().get_mut()[index]
     }
 }
-impl<T: ?Sized> Clone for InsertOnlyVec<T>
-where
-    Box<T>: Clone,
-{
+impl<T: ?Sized, P: Clone> Clone for InsertOnlyVec<T, P> {
     fn clone(&self) -> Self {
         Self {
             vec: Mutex::new(UnsafeCell::new(
@@ -341,5 +335,44 @@ impl<'a, T: ?Sized, U: ?Sized> DerefMut for MappedWriteGuard<'a, T, U> {
     fn deref_mut(&mut self) -> &mut U {
         // Safety: `value` comes from `&*guard` and guard outlives this
         unsafe { &mut *self.value }
+    }
+}
+
+pub struct OwnedMappedReadGuard<'a, T: ?Sized, U> {
+    _guard: RwLockReadGuard<'a, T>,
+    value: U,
+}
+
+impl<'a, T: ?Sized, U> OwnedMappedReadGuard<'a, T, U> {
+    pub fn map_owned(guard: RwLockReadGuard<'a, T>, f: impl FnOnce(&'a T) -> U) -> Self {
+        let before: &T = guard.deref();
+        let t: &'a T = unsafe { std::mem::transmute(before) };
+        let value = f(t);
+        Self {
+            _guard: guard,
+            value,
+        }
+    }
+}
+
+impl<'a, T: ?Sized, U: Borrow<U>> Deref for OwnedMappedReadGuard<'a, T, U> {
+    type Target = U;
+    fn deref(&self) -> &U {
+        self.value.borrow()
+    }
+}
+
+impl<'a, T: ?Sized, U: Iterator<Item = I>, I> Iterator for OwnedMappedReadGuard<'a, T, U> {
+    type Item = I;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.value.next()
+    }
+}
+impl<'a, T: ?Sized, U: DoubleEndedIterator<Item = I>, I> DoubleEndedIterator
+    for OwnedMappedReadGuard<'a, T, U>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.value.next_back()
     }
 }

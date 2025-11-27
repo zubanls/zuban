@@ -335,6 +335,26 @@ impl GenericItem {
         )
         .unwrap_or(self)
     }
+
+    pub fn resolve_recursive_defaults_or_set_never(self, db: &Database) -> Self {
+        self.replace_type_var_likes_and_self(
+            db,
+            &mut |usage| {
+                let tvl_found = usage.as_type_var_like();
+                if let Some(default) = tvl_found.default(db) {
+                    Some(default.resolve_recursive_defaults_or_set_never(db))
+                } else {
+                    Some(
+                        usage
+                            .as_type_var_like()
+                            .as_never_generic_item(db, NeverCause::Inference),
+                    )
+                }
+            },
+            &|| None,
+        )
+        .unwrap_or(self)
+    }
 }
 
 impl ReplaceTypeVarLikes for GenericItem {

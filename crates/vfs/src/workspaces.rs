@@ -1,6 +1,9 @@
-use std::sync::Arc;
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
-use utils::match_case;
+use utils::{OwnedMappedReadGuard, match_case};
 
 use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, NormalizedPath, Parent, PathWithScheme,
@@ -20,20 +23,23 @@ pub enum WorkspaceKind {
     PythonStdLib,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct Workspaces {
-    items: Vec<Arc<Workspace>>,
+    items: RwLock<Vec<Arc<Workspace>>>,
 }
 
 impl Workspaces {
     pub(crate) fn add(
-        &mut self,
+        &self,
         vfs: &dyn VfsHandler,
         scheme: Scheme,
         root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
-        self.items.push(Workspace::new(vfs, scheme, root, kind))
+        self.items
+            .write()
+            .unwrap()
+            .push(Workspace::new(vfs, scheme, root, kind))
     }
 
     pub(crate) fn add_at_start(
@@ -43,12 +49,18 @@ impl Workspaces {
         root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
-        self.items
+        self.inner_items_mut()
             .insert(0, Workspace::new(vfs, scheme, root, kind))
     }
 
+    fn inner_items_mut(&mut self) -> &mut Vec<Arc<Workspace>> {
+        self.items.get_mut().unwrap()
+    }
+
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Workspace> {
-        self.items.iter().map(|w| w.as_ref())
+        OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |workspaces| {
+            workspaces.iter().map(|w| w.as_ref())
+        })
     }
 
     pub fn iter_not_type_checked(&self) -> impl Iterator<Item = &Workspace> {
@@ -92,8 +104,8 @@ impl Workspaces {
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
         path: &'path AbsPath,
-    ) -> Option<(&Workspace, Parent, &'path str)> {
-        self.items.iter().find_map(|workspace| {
+    ) -> Option<(Arc<Workspace>, Parent, &'path str)> {
+        self.items.read().unwrap().iter().find_map(|workspace| {
             if **workspace.scheme != *"file" {
                 // TODO for now only file schemes are allowed
                 return None;
@@ -132,7 +144,7 @@ impl Workspaces {
                 } else {
                     // Return dir
                     return Some((
-                        workspace.as_ref(),
+                        workspace.clone(),
                         match current_dir {
                             Some(dir) => Parent::Directory(Arc::downgrade(&dir)),
                             None => Parent::Workspace(Arc::downgrade(workspace)),
@@ -150,7 +162,7 @@ impl Workspaces {
         case_sensitive: bool,
         path: &PathWithScheme,
     ) -> AddedFile {
-        for workspace in &mut self.items {
+        for workspace in self.inner_items_mut() {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 return ensure_dirs_and_file(
                     Parent::Workspace(Arc::downgrade(workspace)),
@@ -160,7 +172,7 @@ impl Workspaces {
                 );
             }
         }
-        for workspace in &mut self.items {
+        for workspace in self.inner_items_mut() {
             if workspace.kind == WorkspaceKind::Fallback {
                 return workspace
                     .entries
@@ -177,7 +189,7 @@ impl Workspaces {
         path: &PathWithScheme,
     ) {
         // TODO for now we always unload, fix that.
-        for workspace in &self.items {
+        for workspace in self.inner_items_mut() {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 workspace.entries.unload_file(vfs, p);
             }
@@ -190,7 +202,7 @@ impl Workspaces {
         case_sensitive: bool,
         path: &PathWithScheme,
     ) -> Result<(), String> {
-        for workspace in &mut self.items {
+        for workspace in self.inner_items_mut() {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 return workspace.entries.delete_directory(vfs, p);
             }
@@ -198,7 +210,9 @@ impl Workspaces {
         Err(format!("Workspace of path {} cannot be found", path.path))
     }
 
-    pub(crate) fn clone_with_new_rcs(&self, vfs: &dyn VfsHandler) -> Self {
+    // We intentionally use a &mut self here, because we want to avoid that the datastructures
+    // inside are modified while we're cloning.
+    pub(crate) fn clone_with_new_rcs(&mut self, vfs: &dyn VfsHandler) -> Self {
         fn clone_inner_rcs(vfs: &dyn VfsHandler, dir: Directory) -> Arc<Directory> {
             // TODO not all entries need to be recalculated if it's not yet calculated
             let dir = Arc::new(dir);
@@ -219,8 +233,8 @@ impl Workspaces {
             }
             dir
         }
-        let mut new = self.clone();
-        for workspace in new.items.iter_mut() {
+        let mut new = self.inner_items_mut().clone();
+        for workspace in &mut new {
             let new_workspace = Arc::new(workspace.as_ref().clone());
             for entry in new_workspace.entries.borrow_mut().iter_mut() {
                 match entry {
@@ -241,7 +255,18 @@ impl Workspaces {
             }
             *workspace = new_workspace
         }
-        new
+        Self {
+            items: RwLock::new(new),
+        }
+    }
+
+    pub fn expect_last(&self) -> impl Deref<Target = &Workspace> {
+        OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |workspaces| {
+            workspaces
+                .last()
+                .expect("There should always be a workspace")
+                .as_ref()
+        })
     }
 }
 

@@ -54,7 +54,9 @@ locked = true
 exclude = [
 ]
 include = [
-    "zuban/typeshed/LICENSE",
-    "zuban/typeshed/README.md",
-    "zuban/typeshed/**/*.pyi",
+    "zuban/third_party/typeshed/LICENSE",
+    "zuban/third_party/typeshed/README.md",
+    "zuban/third_party/**/*.pyi",
+    "zuban/third_party/django-stubs/LICENSE.md",
+    "zuban/third_party/django-stubs/README.md",
 ]

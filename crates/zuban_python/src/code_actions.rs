@@ -25,6 +25,7 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     recoverable_error,
+    utils::is_file_with_python_ending,
 };
 
 impl<'project> Document<'project> {
@@ -187,7 +188,15 @@ impl<'db> ImportFinder<'db> {
             .collect();
         entries.into_par_iter().for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
-                self.find_importable_name_in_file_entry(&entry, false);
+                // Only find importable files like foo.py that have importable file endings and
+                // don't have symbols in there like dashes and spaces.
+                // TODO there are a lot of other symbols that are invalid
+                if is_file_with_python_ending(&entry.name)
+                    && !entry.name.contains(" ")
+                    && !entry.name.contains("-")
+                {
+                    self.find_importable_name_in_file_entry(&entry, false);
+                }
             }
             DirectoryEntry::MissingEntry(_) => unreachable!("Removed above"),
             DirectoryEntry::Directory(dir) => self.find_importable_name_in_entries(

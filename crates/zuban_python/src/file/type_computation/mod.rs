@@ -52,7 +52,8 @@ use crate::{
         TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind,
         TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes,
         TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, TypedDict,
-        TypedDictGenerics, UnionEntry, UnionType, WithUnpack, add_param_spec_to_params,
+        TypedDictGenerics, UnionEntry, UnionType, WithUnpack, add_any_params_to_params,
+        add_param_spec_to_params,
     },
     type_helpers::{Class, Function, cache_class_name},
     utils::{EitherIterator, arc_slice_into_vec},
@@ -2743,12 +2744,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
             TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
-                params.push(CallableParam::new_anonymous(ParamType::Star(
-                    StarParamType::ArbitraryLen(Type::Any(AnyCause::Explicit)),
-                )));
-                params.push(CallableParam::new_anonymous(ParamType::StarStar(
-                    StarStarParamType::ValueType(Type::Any(AnyCause::Explicit)),
-                )));
+                add_any_params_to_params(&mut params);
                 TypeContent::Concatenate(CallableParams::new_simple(params.into()))
             }
             _ => {
@@ -3156,6 +3152,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let index = self.type_var_manager.add(
                             type_var_like.clone(),
                             self.current_callable.filter(|_| allow_late_bound_callables),
+                            Some(name.index()),
                         );
                         match type_var_like {
                             TypeVarLike::TypeVar(type_var) => TypeContent::Type(Type::TypeVar(
@@ -4308,13 +4305,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     },
                 );
             }
-            type_var_like = type_var_like.replace_type_var_like_defaults_that_are_out_of_scope(
-                self.i_s.db,
-                type_var_likes.iter(),
-                |issue| {
-                    NodeRef::new(self.file, name_def.index()).add_type_issue(self.i_s.db, issue)
-                },
-            );
+            let type_var_like = type_var_like
+                .replace_type_var_like_defaults_that_are_out_of_scope(
+                    self.i_s.db,
+                    type_var_likes.iter(),
+                    |issue| {
+                        NodeRef::new(self.file, name_def.index()).add_type_issue(self.i_s.db, issue)
+                    },
+                )
+                .unwrap_or(type_var_like);
             type_var_likes.push(type_var_like)
         }
         TypeVarLikes::from_vec(type_var_likes)

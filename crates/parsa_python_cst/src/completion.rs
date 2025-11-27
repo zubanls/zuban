@@ -6,8 +6,8 @@ use parsa_python::{
 };
 
 use crate::{
-    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, Tree,
+    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryContent,
+    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Tree,
 };
 
 impl Tree {
@@ -200,7 +200,64 @@ impl Tree {
                 }
             }
         }
-        (scope, CompletionNode::Global, rest)
+        (
+            scope,
+            CompletionNode::Global {
+                context: context(leaf),
+            },
+            rest,
+        )
+    }
+}
+
+fn context(node: PyNode) -> Option<CompletionContext> {
+    let node = node.previous_leaf()?;
+    let parent = match node.as_code() {
+        "(" => node.parent()?,
+        "," => {
+            let parent = node.parent()?;
+            if parent.is_type(Nonterminal(arguments)) {
+                parent.parent()?
+            } else if node.is_type(Nonterminal(kwargs)) {
+                parent
+                //node.parent()?.parent()?
+            } else {
+                parent
+            }
+        }
+        _ => return None,
+    };
+    if parent.is_type(Nonterminal(primary)) {
+        let prim = Primary::new(parent);
+        if matches!(prim.second(), PrimaryContent::Execution(_)) {
+            Some(CompletionContext::PrimaryCall(prim.first()))
+        } else {
+            None
+        }
+    } else if parent.is_type(Nonterminal(t_primary)) {
+        let prim = PrimaryTarget::new(parent);
+        if matches!(prim.second(), PrimaryContent::Execution(_)) {
+            Some(CompletionContext::PrimaryTargetCall(prim.first()))
+        } else {
+            None
+        }
+    } else if parent.is_type(ErrorNonterminal(primary)) {
+        let mut iterator = parent.iter_children();
+        let first = iterator.next()?;
+        let second = iterator.next()?;
+        if second.as_code() == "(" {
+            let call = if first.is_type(Nonterminal(atom)) {
+                PrimaryOrAtom::Atom(Atom::new(first))
+            } else {
+                assert_eq!(first.type_(), Nonterminal(primary));
+                PrimaryOrAtom::Primary(Primary::new(first))
+            };
+            Some(CompletionContext::PrimaryCall(call))
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 
@@ -283,7 +340,7 @@ impl Scope<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum CompletionNode<'db> {
     Attribute {
         base: PrimaryOrAtom<'db>,
@@ -306,7 +363,15 @@ pub enum CompletionNode<'db> {
     NecessaryKeyword(&'static str),
     AfterDefKeyword,
     AfterClassKeyword,
-    Global,
+    Global {
+        context: Option<CompletionContext<'db>>,
+    },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum CompletionContext<'db> {
+    PrimaryCall(PrimaryOrAtom<'db>),
+    PrimaryTargetCall(PrimaryTargetOrAtom<'db>),
 }
 
 /// Holds all kinds of nodes including invalid ones that might be valid starts for completion.
