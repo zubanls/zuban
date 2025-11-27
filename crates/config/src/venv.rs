@@ -34,7 +34,7 @@ impl Settings {
         if self.environment.is_some() {
             return;
         }
-        match lookup_env_var("VIRTUAL_ENV") {
+        match lookup_env_var("VIRTUAL_ENV").or_else(|_| lookup_env_var("CONDA_PREFIX")) {
             Ok(path) => {
                 self.environment = Some(
                     vfs_handler.normalize_rc_path(vfs_handler.absolute_path(base_directory, &path)),
