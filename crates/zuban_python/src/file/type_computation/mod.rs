@@ -2745,12 +2745,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
             TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
                 add_any_params_to_params(&mut params);
-                params.push(CallableParam::new_anonymous(ParamType::Star(
-                    StarParamType::ArbitraryLen(Type::Any(AnyCause::Explicit)),
-                )));
-                params.push(CallableParam::new_anonymous(ParamType::StarStar(
-                    StarStarParamType::ValueType(Type::Any(AnyCause::Explicit)),
-                )));
                 TypeContent::Concatenate(CallableParams::new_simple(params.into()))
             }
             _ => {
