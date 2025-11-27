@@ -12,9 +12,8 @@ use utils::FastHashMap;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StarParamType,
-    StarStarParamType, StringSlice, Tuple, Type, TypeVar, TypeVarKind, TypeVarKindInfos,
-    TypeVarLike, TypeVarLikes, TypeVarUsage,
+    GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StringSlice, Tuple,
+    Type, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
     arguments::{ArgKind, Args, SimpleArgs},

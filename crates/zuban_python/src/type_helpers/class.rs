@@ -31,11 +31,12 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        AnyCause, CallableContent, CallableLike, ClassGenerics, Dataclass, Enum, FormatStyle,
-        FunctionOverload, GenericClass, GenericItem, GenericsList, LiteralValue, LookupResult,
-        NamedTuple, NeverCause, ParamSpecArg, ParamSpecUsage, ReplaceTypeVarLikes, Tuple,
-        TupleArgs, Type, TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
-        TypedDictGenerics, Variance,
+        AnyCause, CallableContent, CallableLike, CallableParam, ClassGenerics, Dataclass, DbString,
+        Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem, GenericsList, LiteralValue,
+        LookupResult, NamedTuple, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
+        ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, Type, TypeVarIndex, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -2016,6 +2017,17 @@ impl<'db: 'a, 'a> Class<'a> {
                     })
             })
     }
+
+    fn is_django_field(&self, db: &Database) -> bool {
+        self.has_django_stubs_base_class(db)
+            && self.mro_maybe_without_object(db, true).any(|(_, base)| {
+                base.as_maybe_class().is_some_and(|cls| {
+                    cls.has_django_stubs_base_class(db)
+                        && cls.name() == "Field"
+                        && cls.file.name(db) == "fields"
+                })
+            })
+    }
 }
 
 impl fmt::Debug for Class<'_> {
@@ -2344,6 +2356,21 @@ fn init_as_callable(
     init_class: TypeOrClass,
 ) -> Option<CallableLike> {
     let mut init_class = init_class;
+    let class_infos = cls.use_cached_class_infos(i_s.db);
+    if let MetaclassState::Some(_) = class_infos.metaclass {
+        let meta = class_infos.metaclass(i_s.db);
+        if meta.has_django_stubs_base_class(i_s.db) && meta.name() == "ModelBase" {
+            let c = CallableContent::new_non_generic(
+                i_s.db,
+                Some(DbString::StringSlice(cls.name_string_slice())),
+                None,
+                cls.node_ref.as_link(),
+                django_model_params(i_s, cls),
+                cls.as_type(i_s.db),
+            );
+            return Some(CallableLike::Callable(Arc::new(c)));
+        }
+    }
     let cls = if matches!(cls.generics(), Generics::NotDefinedYet { .. }) {
         if let TypeOrClass::Class(init_class) = &mut init_class {
             // Make sure generics are not Any
@@ -2440,6 +2467,45 @@ fn init_as_callable(
             }
         }
     })
+}
+
+fn django_model_params(i_s: &InferenceState, cls: Class) -> Vec<CallableParam> {
+    let mut params = vec![];
+    for (_, cls) in cls.mro(i_s.db) {
+        if let Some(cls) = cls.as_maybe_class() {
+            for (_, symbol) in cls.class_storage.class_symbol_table.iter() {
+                let name_ref = NodeRef::new(cls.file, *symbol);
+                let name = name_ref.expect_name();
+                if name.maybe_assignment_definition_name().is_none() {
+                    // Currently we only check assignments, this is a performance optimization. We
+                    // don't make a type out of every function.
+                    continue;
+                }
+                let name_def_ref = name_ref.name_def_ref_of_name();
+                if let Some(inf) = name_def_ref.maybe_inferred(i_s)
+                    && let Some(field_cls) = inf.as_cow_type(i_s).maybe_class(i_s.db)
+                    && field_cls.is_django_field(i_s.db)
+                {
+                    params.push(CallableParam {
+                        name: Some(DbString::StringSlice(StringSlice::from_name(
+                            cls.file.file_index,
+                            name,
+                        ))),
+                        // TODO this should not be any but probably the generic of
+                        // _pyi_private_get_type
+                        type_: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Internal)),
+                        // Params are optional in Django.
+                        has_default: true,
+                        might_have_type_vars: false,
+                    });
+                }
+            }
+        }
+    }
+    // Since some Django users set fields in very dynamic ways we don't want to ensure type safety
+    // here yet.
+    add_any_params_to_params(&mut params);
+    params
 }
 
 pub(crate) enum ClassConstructor<'a> {
