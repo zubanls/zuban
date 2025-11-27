@@ -1226,6 +1226,10 @@ impl Database {
             file_entry.clone(),
             invalidates_db,
             |file_index, code| {
+                tracing::trace!(
+                    "Start parsing {}",
+                    file_entry.absolute_path(&*self.vfs.handler).as_uri()
+                );
                 PythonFile::from_file_entry_and_code(&self.project, file_index, file_entry, code)
             },
         )
