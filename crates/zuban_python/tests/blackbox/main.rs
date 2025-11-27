@@ -28,7 +28,7 @@ lazy_static::lazy_static! {
         ("basic.py", 23),
         ("classes.py", 20),
         ("comprehensions.py", 31),
-        ("django.py", 5),
+        ("django.py", 4),
         ("decorators.py", 31),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 18),

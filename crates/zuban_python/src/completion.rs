@@ -245,7 +245,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                     func.name().as_code(),
                     "filter"
                         | "create"
-                        | "exlude"
+                        | "exclude"
                         | "update"
                         | "get"
                         | "get_or_create"
