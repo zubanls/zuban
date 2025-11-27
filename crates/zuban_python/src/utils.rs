@@ -199,6 +199,10 @@ pub fn is_magic_method(name: &str) -> bool {
     name.starts_with("__") && name.ends_with("__")
 }
 
+pub fn is_file_with_python_ending(path_or_name: &str) -> bool {
+    path_or_name.ends_with(".py") || path_or_name.ends_with(".pyi")
+}
+
 pub enum EitherIterator<IT1, IT2> {
     Left(IT1),
     Right(IT2),
