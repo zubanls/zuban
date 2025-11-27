@@ -52,7 +52,8 @@ use crate::{
         TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind,
         TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes,
         TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, TypedDict,
-        TypedDictGenerics, UnionEntry, UnionType, WithUnpack, add_param_spec_to_params,
+        TypedDictGenerics, UnionEntry, UnionType, WithUnpack, add_any_params_to_params,
+        add_param_spec_to_params,
     },
     type_helpers::{Class, Function, cache_class_name},
     utils::{EitherIterator, arc_slice_into_vec},
@@ -2743,6 +2744,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
             TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
+                add_any_params_to_params(&mut params);
                 params.push(CallableParam::new_anonymous(ParamType::Star(
                     StarParamType::ArbitraryLen(Type::Any(AnyCause::Explicit)),
                 )));

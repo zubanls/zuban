@@ -1095,3 +1095,12 @@ pub fn add_param_spec_to_params(params: &mut Vec<CallableParam>, p: ParamSpecUsa
         StarStarParamType::ParamSpecKwargs(p),
     )));
 }
+
+pub fn add_any_params_to_params(params: &mut Vec<CallableParam>) {
+    params.push(CallableParam::new_anonymous(ParamType::Star(
+        StarParamType::ArbitraryLen(Type::Any(AnyCause::Todo)),
+    )));
+    params.push(CallableParam::new_anonymous(ParamType::StarStar(
+        StarStarParamType::ValueType(Type::Any(AnyCause::Todo)),
+    )));
+}
