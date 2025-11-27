@@ -250,7 +250,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                         | "get"
                         | "get_or_create"
                         | "update_or_create"
-                ) && matches!(func_ref.file.name(i_s.db), "queryset" | "manager")
+                ) && matches!(func_ref.file.name(i_s.db), "query" | "manager")
                     && matches!(base.generics, Generics::List(..))
                 {
                     Some(base.nth_type_argument(i_s.db, 0))

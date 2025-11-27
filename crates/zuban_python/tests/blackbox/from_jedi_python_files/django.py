@@ -291,3 +291,5 @@ Inherited.objects.get_or_create(category_fk2)
 Inherited.objects.update_or_create(uuid_fiel)
 #? 48 ['char_field=']
 Inherited.objects.exclude(pk=3).filter(char_fiel)
+#? 47 ['char_field=']
+Inherited.objects.filter(pk=3).update(char_fiel)
