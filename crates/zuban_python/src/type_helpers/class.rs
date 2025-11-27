@@ -2005,7 +2005,7 @@ impl<'db: 'a, 'a> Class<'a> {
             && self.nth_type_argument(db, 1).is_any()
     }
 
-    fn has_django_stubs_base_class(&self, db: &Database) -> bool {
+    pub fn has_django_stubs_base_class(&self, db: &Database) -> bool {
         *self
             .use_cached_class_infos(db)
             .in_django_stubs

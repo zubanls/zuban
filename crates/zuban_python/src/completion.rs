@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashSet};
+use std::{borrow::Cow, collections::HashSet, sync::Arc};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
@@ -20,6 +20,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     lines::BytePositionInfos,
+    matching::Generics,
     name::{ModuleName, Range, TreeName, process_docstring},
     node_ref::NodeRef,
     params::Param,
@@ -232,40 +233,76 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
 
     fn add_keyword_param_completions(&mut self, inf: Inferred) {
         with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
-            let mut add = |c: &CallableContent| {
-                if let CallableParams::Simple(params) = &c.params {
-                    for param in params.iter() {
-                        if matches!(
-                            param.type_,
-                            ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
-                        ) {
-                            if let Some(name) = param.name(self.infos.db) {
-                                let keyword_argument = format!("{name}=");
-                                if !self.maybe_add_cow(Cow::Owned(keyword_argument.clone())) {
-                                    continue;
-                                }
-                                if let Some(result) = (self.on_result)(
-                                    self.replace_range,
-                                    &KeywordArgumentCompletion { keyword_argument },
-                                ) {
-                                    self.items
-                                        .push((CompletionSortPriority::KeywordArgument, result))
-                                }
+            let maybe_django_query_method = || {
+                let bound = inf.maybe_bound_method()?;
+                let base = bound.instance.maybe_class(i_s.db)?;
+                if !base.has_django_stubs_base_class(i_s.db) {
+                    return None;
+                }
+                let func_ref = NodeRef::from_link(i_s.db, bound.func_link);
+                let func = func_ref.maybe_function()?;
+                if matches!(
+                    func.name().as_code(),
+                    "filter"
+                        | "create"
+                        | "exlude"
+                        | "update"
+                        | "get"
+                        | "get_or_create"
+                        | "update_or_create"
+                ) && matches!(func_ref.file.name(i_s.db), "queryset" | "manager")
+                    && matches!(base.generics, Generics::List(..))
+                {
+                    Some(base.nth_type_argument(i_s.db, 0))
+                } else {
+                    None
+                }
+            };
+
+            if let Some(model) = maybe_django_query_method() {
+                self.add_keyword_params_for_callable_likes(
+                    Type::Type(Arc::new(model)).maybe_callable(i_s),
+                )
+            } else {
+                self.add_keyword_params_for_callable_likes(inf.as_cow_type(i_s).maybe_callable(i_s))
+            }
+        })
+    }
+
+    fn add_keyword_params_for_callable_likes(&mut self, c: Option<CallableLike>) {
+        let mut add = |c: &CallableContent| {
+            if let CallableParams::Simple(params) = &c.params {
+                for param in params.iter() {
+                    if matches!(
+                        param.type_,
+                        ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
+                    ) {
+                        if let Some(name) = param.name(self.infos.db) {
+                            let keyword_argument = format!("{name}=");
+                            if !self.maybe_add_cow(Cow::Owned(keyword_argument.clone())) {
+                                continue;
+                            }
+                            if let Some(result) = (self.on_result)(
+                                self.replace_range,
+                                &KeywordArgumentCompletion { keyword_argument },
+                            ) {
+                                self.items
+                                    .push((CompletionSortPriority::KeywordArgument, result))
                             }
                         }
                     }
                 }
-            };
-            match inf.as_cow_type(i_s).maybe_callable(i_s) {
-                Some(CallableLike::Callable(c)) => add(&c),
-                Some(CallableLike::Overload(o)) => {
-                    for c in o.iter_functions() {
-                        add(c)
-                    }
-                }
-                None => (),
             }
-        })
+        };
+        match c {
+            Some(CallableLike::Callable(c)) => add(&c),
+            Some(CallableLike::Overload(o)) => {
+                for c in o.iter_functions() {
+                    add(c)
+                }
+            }
+            None => (),
+        }
     }
 
     fn add_import_result_completions(&mut self, import_result: Option<ImportResult>) {

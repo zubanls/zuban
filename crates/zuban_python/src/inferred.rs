@@ -69,9 +69,9 @@ enum InferredState {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoundMethodState {
-    instance: Type,
+    pub instance: Type,
     mro_index: MroIndex,
-    func_link: PointLink,
+    pub func_link: PointLink,
 }
 
 #[derive(Clone, Debug)]
@@ -484,6 +484,13 @@ impl<'db: 'slf, 'slf> Inferred {
             Some(*m)
         } else {
             None
+        }
+    }
+
+    pub fn maybe_bound_method(&self) -> Option<&BoundMethodState> {
+        match &self.state {
+            InferredState::BoundMethod(bound) => Some(bound),
+            _ => None,
         }
     }
 
