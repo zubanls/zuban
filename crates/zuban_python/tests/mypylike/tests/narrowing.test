@@ -1894,3 +1894,40 @@ if isinstance(obj, B | None):
         print('obj is None')
     else:
         print('obj is B')
+
+[case narrow_literal_bool_with_equals]
+# From GH #173
+from typing import Literal, cast, reveal_type, Any
+
+class TypeA:
+    foo: Literal[True]
+    bar: int
+
+class TypeB:
+    foo: Literal[False]
+    bar: str
+
+a = cast(TypeA | TypeB, None)
+
+if bool():
+    reveal_type(a.foo)  # N: Revealed type is "bool"
+    assert a.foo == True
+    reveal_type(a.bar)  # N: Revealed type is "int"
+
+assert a.foo
+reveal_type(a.bar)  # N: Revealed type is "int"
+
+def func(_: int) -> Any: ...
+
+func(a.bar)
+
+# TODO suddenly a.bar isn't an int anymore
+@func(a.bar)  # E: Argument 1 to "func" has incompatible type "int | str"; expected "int"
+def wrapped_func():
+    pass
+
+# Though this works
+x = a.bar
+@func(x)
+def wrapped_func_2():
+    pass
