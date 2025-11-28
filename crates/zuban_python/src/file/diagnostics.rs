@@ -454,9 +454,15 @@ impl Inference<'_, '_, '_> {
             StmtLikeContent::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
             StmtLikeContent::ClassDef(class) => self.bind_class_names(class),
             StmtLikeContent::Decorated(decorated) => match decorated.decoratee() {
-                Decoratee::FunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+                Decoratee::FunctionDef(f) => {
+                    self.ensure_cached_decorators(decorated);
+                    self.maybe_delay_func_diagnostics(f, class, func)
+                }
                 Decoratee::ClassDef(class) => self.bind_class_names(class),
-                Decoratee::AsyncFunctionDef(f) => self.maybe_delay_func_diagnostics(f, class, func),
+                Decoratee::AsyncFunctionDef(f) => {
+                    self.ensure_cached_decorators(decorated);
+                    self.maybe_delay_func_diagnostics(f, class, func)
+                }
             },
             StmtLikeContent::IfStmt(if_stmt) => {
                 self.flow_analysis_for_if_stmt(if_stmt, class, func)
@@ -1986,6 +1992,26 @@ impl Inference<'_, '_, '_> {
             } else if let Some(star_exprs) = return_stmt.star_expressions() {
                 self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
             }
+        }
+    }
+
+    fn ensure_cached_decorators(&self, decorated: Decorated) {
+        // For now we don't cache decorators for stubs, because narrowing information should not be
+        // relevant.
+        if self.file.is_stub() {
+            return;
+        }
+        for decorator in decorated.decorators().iter_reverse() {
+            // TODO we should scan for actual properties and not just skip properties ending with
+            // setter/deleter.
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(prim)) =
+                decorator.named_expression().expression().unpack()
+                && let PrimaryContent::Attribute(attr) = prim.second()
+                && matches!(attr.as_code(), "setter" | "deleter")
+            {
+                continue;
+            }
+            self.infer_decorator(decorator);
         }
     }
 

@@ -1917,17 +1917,12 @@ if bool():
 assert a.foo
 reveal_type(a.bar)  # N: Revealed type is "int"
 
-def func(_: int) -> Any: ...
+def takes_int(_: int) -> Any: ...
 
-func(a.bar)
-
-# TODO suddenly a.bar isn't an int anymore
-@func(a.bar)  # E: Argument 1 to "func" has incompatible type "int | str"; expected "int"
-def wrapped_func():
-    pass
-
-# Though this works
+# It should work both as a call and as a decorator
 x = a.bar
-@func(x)
-def wrapped_func_2():
-    pass
+takes_int(a.bar)
+@takes_int(a.bar)
+def wrapped_func(): ...
+@takes_int(x)
+def wrapped_func_2(): ...
