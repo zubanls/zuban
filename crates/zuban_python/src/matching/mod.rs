@@ -532,17 +532,19 @@ impl IteratorContent {
                 unpack,
                 before_index,
                 after_index,
-            } => Inferred::from_type(if let Some(result) = unpack.before.get(*before_index) {
-                *before_index += 1;
-                result.clone()
-            } else if let Some(custom) = on_after(unpack) {
-                custom
-            } else if let Some(result) = unpack.after.get(*after_index) {
-                *after_index += 1;
-                result.clone()
-            } else {
-                recoverable_error!("Next on exhausted after should never happen");
-                Type::ERROR
+            } => Inferred::from_type({
+                if let Some(result) = unpack.before.get(*before_index) {
+                    *before_index += 1;
+                    result.clone()
+                } else if let Some(custom) = on_after(unpack) {
+                    custom
+                } else if let Some(result) = unpack.after.get(*after_index) {
+                    *after_index += 1;
+                    result.clone()
+                } else {
+                    recoverable_error!("Next on exhausted after should never happen");
+                    Type::ERROR
+                }
             }),
             Self::Union(_) => unreachable!(),
         }
