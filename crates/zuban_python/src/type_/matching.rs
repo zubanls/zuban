@@ -528,9 +528,6 @@ impl Type {
                 && (variance == Variance::Covariant || u1.entries.len() == 2)
         };
         match value_type {
-            Type::TypeVar(type_var2) if matcher.is_matching_reverse() => matcher
-                .match_or_add_type_var_reverse_if_responsible(i_s, type_var2, self, variance)
-                .unwrap_or(Match::new_false()),
             Type::Union(u2) => match variance {
                 Variance::Covariant => Match::all(u2.iter(), |g2| {
                     self.matches_union(i_s, matcher, u1, g2, variance)
@@ -556,15 +553,26 @@ impl Type {
             {
                 Match::new_true()
             }
-            _ => match variance {
-                Variance::Covariant => {
-                    Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
+            _ => {
+                if let Type::TypeVar(type_var2) = value_type
+                    && matcher.is_matching_reverse()
+                {
+                    if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
+                        i_s, type_var2, self, variance,
+                    ) {
+                        return matched;
+                    }
                 }
-                Variance::Invariant => {
-                    Match::all(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
+                match variance {
+                    Variance::Covariant => {
+                        Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
+                    }
+                    Variance::Invariant => {
+                        Match::all(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
+                    }
+                    Variance::Contravariant => unreachable!(),
                 }
-                Variance::Contravariant => unreachable!(),
-            },
+            }
         }
     }
 

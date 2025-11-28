@@ -1439,8 +1439,7 @@ class X[T](list[T]):
 
     def f[S](self: X[T | S], iterable: S) -> X[T | S]:
         self.update(iterable)
-        # TODO This should not error, but at the moment I'm just happy it does not crash
-        return self # E: Incompatible return value type (got "X[T | S]", expected "X[T | S]")
+        return self
 
 [case own_generics_inversion_should_not_panic]
 from typing import TypeVar, Generic, Any
@@ -1822,3 +1821,9 @@ for s in a:
 
 for s in z:  # Redefining s here should be fine, see also #36
     pass
+
+[case generics_inference_for_dict_with_unions_should_not_fail]
+# From GH #179
+def fn[T]() -> dict[str, T | None]:
+    d: dict[str, T | None] = {}
+    return d
