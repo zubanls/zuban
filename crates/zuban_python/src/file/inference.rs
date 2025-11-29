@@ -1,6 +1,5 @@
-use std::{borrow::Cow, cell::Cell, sync::Arc};
-
 use parsa_python_cst::*;
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use super::{
     ClassNodeRef, FLOW_ANALYSIS, File, PythonFile,
@@ -2257,8 +2256,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 };
                 let new_target = star_target.as_target();
                 let expect_tuple = matches!(new_target, Target::Tuple(_));
-                let (is_empty, mut value) =
-                    value_iterator.unpack_starred(self.i_s, after, expect_tuple, true);
+                let (is_empty, mut value) = value_iterator.unpack_starred_and_return_is_empty(
+                    self.i_s,
+                    after,
+                    expect_tuple,
+                    true,
+                );
                 if is_empty
                     && !expect_tuple
                     && self.infer_target(star_target.as_target(), false).is_some()

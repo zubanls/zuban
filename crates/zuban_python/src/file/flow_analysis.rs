@@ -3651,6 +3651,7 @@ impl Inference<'_, '_, '_> {
         let mut value_iterator = tup.iter();
         let mut truthy_gatherer = TupleGatherer::default();
         let mut falsey_unreachable = true;
+        let mut had_star = false;
         for (i, pattern) in sequence_patterns.enumerate() {
             match pattern {
                 SequencePatternItem::Entry(pattern) => {
@@ -3677,8 +3678,13 @@ impl Inference<'_, '_, '_> {
                 SequencePatternItem::Rest(star_pattern) => {
                     truthy_gatherer
                         .extend_from_inferred_iterator(value_iterator.clone(), after_stars);
-                    let (is_empty, mut value) =
-                        value_iterator.unpack_starred(i_s, after_stars, false, false);
+                    let (is_empty, mut value) = value_iterator.unpack_starred_and_return_is_empty(
+                        i_s,
+                        after_stars,
+                        false,
+                        false,
+                    );
+                    had_star = true;
                     match star_pattern.unpack() {
                         StarPatternContent::NameDef(name_def) => {
                             if is_empty && self.infer_name_target(name_def, false).is_some() {
@@ -3697,7 +3703,7 @@ impl Inference<'_, '_, '_> {
             truthy_gatherer
                 .into_tuple(i_s.db, || unreachable!())
                 .into_type(i_s),
-            if falsey_unreachable {
+            if falsey_unreachable && (matches!(&tup.args, TupleArgs::FixedLen(_)) || had_star) {
                 Type::Never(NeverCause::Other)
             } else {
                 Type::Tuple(tup)

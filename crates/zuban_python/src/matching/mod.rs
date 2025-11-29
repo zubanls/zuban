@@ -421,7 +421,7 @@ impl IteratorContent {
         }
     }
 
-    pub fn unpack_starred(
+    pub fn unpack_starred_and_return_is_empty(
         &mut self,
         i_s: &InferenceState,
         after: usize,

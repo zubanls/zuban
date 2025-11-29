@@ -317,3 +317,38 @@ class Repository(Enum):
 match a:  # E: Name "a" is used before definition
     case a:
         pass
+
+[case match_tuples_with_unpack]
+# flags: --warn-unreachable
+# Copied from conformance tests (tuples_type_compat.py), see also 187
+from typing import TypeAlias, assert_type
+
+Func6Input: TypeAlias = tuple[int] | tuple[str, str] | tuple[int, *tuple[str, ...], int]
+
+def func6(val: Func6Input):
+    match val:
+        case (x,):
+            assert_type(val, tuple[int])
+
+        case (x, y):
+            assert_type(val, tuple[str, str] | tuple[int, int])
+
+        case (x, y, z):
+            assert_type(val, tuple[int, str, int])
+
+[case match_tuples_with_unpack_and_stars]
+# flags: --warn-unreachable
+from typing import TypeAlias, assert_type
+
+Func6Input: TypeAlias = tuple[int] | tuple[str, str] | tuple[int, *tuple[str, ...], int]
+
+def func6(val: Func6Input):
+    match val:
+        case (x,):
+            assert_type(val, tuple[int])
+        case (x, y):
+            assert_type(val, tuple[str, str] | tuple[int, int])
+        case (x, y, *z):
+            assert_type(val, tuple[int, str, int, *tuple[str, ...], int])
+        case (x, y, z):
+            reveal_type(x)  # E: Statement is unreachable
