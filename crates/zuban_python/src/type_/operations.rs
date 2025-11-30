@@ -377,18 +377,25 @@ impl Type {
                 self,
                 lookup_on_enum_member_instance(i_s, add_issue, member, name),
             ),
-            Type::RecursiveType(r) => r
-                .calculated_type(i_s.db)
-                .run_after_lookup_on_each_union_member(
-                    i_s,
-                    None,
-                    from_file,
-                    name,
-                    kind,
-                    result_context,
-                    add_issue,
-                    callable,
-                ),
+            Type::RecursiveType(r) => {
+                if r.calculating(i_s.db) {
+                    // This currently only happens with protocols that are not defined properly
+                    // (e.g. if bounds use them and the bounds are validated recursively)
+                    callable(self, LookupDetails::any(AnyCause::FromError));
+                } else {
+                    r.calculated_type(i_s.db)
+                        .run_after_lookup_on_each_union_member(
+                            i_s,
+                            None,
+                            from_file,
+                            name,
+                            kind,
+                            result_context,
+                            add_issue,
+                            callable,
+                        )
+                }
+            }
             Type::ParamSpecArgs(_) => i_s
                 .db
                 .python_state
