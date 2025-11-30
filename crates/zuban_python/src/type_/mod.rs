@@ -587,7 +587,9 @@ impl Type {
         match self {
             Type::Class(c) => c.class(db).is_calculating_class_infos(),
             Type::Tuple(tup) => tup.is_calculating(),
-            Type::RecursiveType(r) => r.calculating(db) || r.calculated_type(db).is_calculating(db),
+            Type::RecursiveType(r) => r
+                .calculated_type_if_ready(db)
+                .is_none_or(|t| t.is_calculating(db)),
             Type::Union(u) => u.iter().any(|t| t.is_calculating(db)),
             _ => false,
         }
@@ -1025,15 +1027,17 @@ impl Type {
                     .into();
                 }
 
-                if rec.calculating(format_data.db) {
-                    // Happens only in weird cases like MRO calculation and will probably mostly
-                    // appear when debugging.
-                    return rec.name(format_data.db).into();
-                }
-
                 let avoid = AvoidRecursionFor::RecursiveType(rec);
                 match format_data.with_seen_recursive_type(avoid) {
-                    Ok(format_data) => rec.calculated_type(format_data.db).format(&format_data),
+                    Ok(format_data) => {
+                        if let Some(t) = rec.calculated_type_if_ready(format_data.db) {
+                            t.format(&format_data)
+                        } else {
+                            // Happens only in weird cases like MRO calculation and will probably mostly
+                            // appear when debugging.
+                            rec.name(format_data.db).into()
+                        }
+                    }
                     Err(()) => {
                         if format_data.style == FormatStyle::MypyRevealType {
                             "...".into()
@@ -1435,18 +1439,23 @@ impl Type {
                     false,
                 )
             }
-            Type::RecursiveType(r) if !r.calculating(db) => {
-                let mut mro = r.calculated_type(db).mro(db);
-                mro.class = Some(TypeOrClass::Type(Cow::Borrowed(self)));
-                mro
+            _ => {
+                if let Type::RecursiveType(r) = self
+                    && let Some(t) = r.calculated_type_if_ready(db)
+                {
+                    let mut mro = t.mro(db);
+                    mro.class = Some(TypeOrClass::Type(Cow::Borrowed(self)));
+                    mro
+                } else {
+                    MroIterator::new(
+                        db,
+                        TypeOrClass::Type(Cow::Borrowed(self)),
+                        Generics::None,
+                        [].iter(),
+                        false,
+                    )
+                }
             }
-            _ => MroIterator::new(
-                db,
-                TypeOrClass::Type(Cow::Borrowed(self)),
-                Generics::None,
-                [].iter(),
-                false,
-            ),
         }
     }
 

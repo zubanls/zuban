@@ -54,11 +54,18 @@ impl RecursiveType {
         NodeRef::from_link(db, self.link).maybe_alias().is_some()
     }
 
-    pub fn calculating(&self, db: &Database) -> bool {
+    fn calculating(&self, db: &Database) -> bool {
         match self.origin(db) {
             RecursiveTypeOrigin::TypeAlias(alias) => alias.calculating(),
             RecursiveTypeOrigin::Class(class) => class.is_calculating_class_infos(),
         }
+    }
+
+    pub fn calculated_type_if_ready<'db: 'slf, 'slf>(
+        &'slf self,
+        db: &'db Database,
+    ) -> Option<&'slf Type> {
+        (!self.calculating(db)).then(|| self.calculated_type(db))
     }
 
     pub fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {

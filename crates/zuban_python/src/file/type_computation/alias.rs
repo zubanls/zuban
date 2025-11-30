@@ -1172,10 +1172,10 @@ fn is_invalid_recursive_alias(db: &Database, seen: &SeenRecursiveAliases, t: &Ty
                 && rec.has_alias_origin(db)
             {
                 let new_seen = seen.append(rec.link);
-                return if rec.calculating(db) {
-                    new_seen.is_cycle()
+                return if let Some(t) = rec.calculated_type_if_ready(db) {
+                    is_invalid_recursive_alias(db, &new_seen, t)
                 } else {
-                    is_invalid_recursive_alias(db, &new_seen, rec.calculated_type(db))
+                    new_seen.is_cycle()
                 };
             }
             false
@@ -1242,12 +1242,13 @@ fn check_for_and_replace_type_type_in_finished_alias(
                 .iter_with_unpacked_unions_without_unpacking_recursive_types()
                 .any(|t| match t {
                     Type::RecursiveType(recursive_alias) => {
-                        !recursive_alias.calculating(i_s.db)
-                            && recursive_alias.has_alias_origin(i_s.db)
+                        recursive_alias.has_alias_origin(i_s.db)
                             && recursive_alias
-                                .calculated_type(i_s.db)
-                                .iter_with_unpacked_unions_without_unpacking_recursive_types()
-                                .any(|t| matches!(t, Type::Type(_)))
+                                .calculated_type_if_ready(i_s.db)
+                                .is_some_and(|t| {
+                                    t.iter_with_unpacked_unions_without_unpacking_recursive_types()
+                                        .any(|t| matches!(t, Type::Type(_)))
+                                })
                     }
                     _ => false,
                 }),
