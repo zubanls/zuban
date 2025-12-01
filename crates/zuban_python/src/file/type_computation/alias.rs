@@ -1238,20 +1238,20 @@ fn check_for_and_replace_type_type_in_finished_alias(
     if alias
         .type_if_valid()
         .find_in_type(i_s.db, &mut |t| match t {
-            Type::Type(t) => t
-                .iter_with_unpacked_unions_without_unpacking_recursive_types()
-                .any(|t| match t {
-                    Type::RecursiveType(recursive_alias) => {
-                        recursive_alias.has_alias_origin(i_s.db)
+            Type::Type(t) => {
+                t.iter_with_unpacked_unions_without_unpacking_recursive_types()
+                    .any(|t| match t {
+                        Type::RecursiveType(recursive_alias) => recursive_alias
+                            .has_alias_origin(i_s.db)
                             && recursive_alias
                                 .calculated_type_if_ready(i_s.db)
                                 .is_some_and(|t| {
                                     t.iter_with_unpacked_unions_without_unpacking_recursive_types()
                                         .any(|t| matches!(t, Type::Type(_)))
-                                })
-                    }
-                    _ => false,
-                }),
+                                }),
+                        _ => false,
+                    })
+            }
             _ => false,
         })
     {
