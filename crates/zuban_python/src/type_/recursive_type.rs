@@ -69,6 +69,14 @@ impl RecursiveType {
     }
 
     pub fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
+        debug_assert!(!self.calculating(db));
+        self.calculated_type_that_may_not_be_finished(db)
+    }
+
+    pub fn calculated_type_that_may_not_be_finished<'db: 'slf, 'slf>(
+        &'slf self,
+        db: &'db Database,
+    ) -> &'slf Type {
         match self.origin(db) {
             RecursiveTypeOrigin::TypeAlias(alias) => {
                 if self.generics.is_none() {

@@ -136,7 +136,6 @@ impl Type {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         matcher.avoid_recursion(t1, t2, |matcher| {
                             if let Some(g) = rec1.calculated_type_if_ready(i_s.db) {
-                                let g = rec1.calculated_type(i_s.db);
                                 g.matches_internal(i_s, matcher, value_type, variance)
                             } else {
                                 // Happens for example when creating the MRO of a class with a
@@ -146,13 +145,25 @@ impl Type {
                         })
                     }
                     t2 @ Type::RecursiveType(rec2) => matcher.avoid_recursion(t1, t2, |matcher| {
-                        let t1 = rec1.calculated_type(i_s.db);
-                        let t2 = rec2.calculated_type(i_s.db);
-                        t1.matches_internal(i_s, matcher, t2, variance)
+                        if let Some((t1, t2)) = rec1
+                            .calculated_type_if_ready(i_s.db)
+                            .zip(rec2.calculated_type_if_ready(i_s.db))
+                        {
+                            t1.matches_internal(i_s, matcher, t2, variance)
+                        } else {
+                            // Happens for example when creating the MRO of a class with a
+                            // tuple base class.
+                            (rec1.link == rec2.link).into()
+                        }
                     }),
                     _ => {
-                        let g = rec1.calculated_type(i_s.db);
-                        g.matches_internal(i_s, matcher, value_type, variance)
+                        if let Some(g) = rec1.calculated_type_if_ready(i_s.db) {
+                            g.matches_internal(i_s, matcher, value_type, variance)
+                        } else {
+                            // Happens for example when creating the MRO of a class with a
+                            // tuple base class.
+                            return Match::new_false();
+                        }
                     }
                 }
             }

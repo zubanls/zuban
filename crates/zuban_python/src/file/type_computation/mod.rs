@@ -523,7 +523,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     return CalculatedBaseClass::Unknown;
                 }
-                self.compute_base_class_for_type(expr, r.calculated_type(self.i_s.db).clone())
+                self.compute_base_class_for_type(
+                    expr,
+                    r.calculated_type_that_may_not_be_finished(self.i_s.db)
+                        .clone(),
+                )
             }
             _ => CalculatedBaseClass::Invalid,
         }
