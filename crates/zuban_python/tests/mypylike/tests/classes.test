@@ -1454,7 +1454,7 @@ class C(B):
 from typing import TypeVar
 
 CT = TypeVar("CT", bound="C[str]")  # E: Type argument "str" of "C" must be a subtype of "D[int]"
-DT = TypeVar("DT", bound="D[int]")
+DT = TypeVar("DT", bound="D[int]")  # E: Type argument "int" of "D" must be a subtype of "C[str]"
 
 class C(list[DT]): ...
 class D(list[CT]): ...

@@ -38,8 +38,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple,
-        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, TypedDict,
-        UnionType, WithUnpack, lookup_on_enum_instance,
+        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar, TypeVarKind,
+        TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -363,11 +363,20 @@ struct LoopDetails {
     loop_frame_index: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum DelayedDiagnostic {
     Func(DelayedFunc),
     Class(PointLink),
     ClassTypeParams { class_link: PointLink },
+    ConstraintVerification(Box<DelayedConstraintVerification>),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct DelayedConstraintVerification {
+    pub type_var: Arc<TypeVar>,
+    pub add_issue_at: PointLink,
+    pub actual: Type,
+    pub of_name: StringSlice,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -416,9 +425,11 @@ impl FlowAnalysis {
             *self.delayed_diagnostics.borrow_mut() =
                 std::mem::take(&mut file.delayed_diagnostics.write().unwrap());
             let result = callable();
-            let delayed = self.delayed_diagnostics.take();
+            let mut delayed = self.delayed_diagnostics.take();
             if db.project.flags.local_partial_types {
-                *file.delayed_diagnostics.write().unwrap() = delayed;
+                let mut file_delayed = file.delayed_diagnostics.write().unwrap();
+                delayed.extend(file_delayed.drain(..));
+                *file_delayed = delayed;
             } else {
                 self.process_delayed_diagnostics(db, delayed)
             }
@@ -1022,6 +1033,9 @@ impl FlowAnalysis {
                 }
                 DelayedDiagnostic::ClassTypeParams { class_link } => {
                     ClassNodeRef::from_link(db, class_link).infer_variance_of_type_params(db, true);
+                }
+                DelayedDiagnostic::ConstraintVerification(constraint) => {
+                    verify_constraint(db, constraint)
                 }
             }
         }
@@ -5729,6 +5743,49 @@ pub fn process_unfinished_partials(db: &Database, partials: impl IntoIterator<It
             && specific.is_partial()
         {
             node_ref.finish_partial_with_annotation_needed(db);
+        }
+    }
+}
+
+fn verify_constraint(db: &Database, verify: Box<DelayedConstraintVerification>) {
+    let add_issue_at = NodeRef::from_link(db, verify.add_issue_at);
+    let i_s = &InferenceState::new(db, add_issue_at.file);
+    match verify.type_var.kind(db) {
+        TypeVarKind::Unrestricted => unreachable!(),
+        TypeVarKind::Bound(bound) => {
+            if !bound.is_simple_super_type_of(i_s, &verify.actual).bool() {
+                add_issue_at.add_issue(
+                    i_s,
+                    IssueKind::TypeVarBoundViolation {
+                        actual: verify.actual.format_short(db),
+                        of: verify.of_name.as_str(db).into(),
+                        expected: bound.format_short(db),
+                    },
+                );
+            }
+        }
+        TypeVarKind::Constraints(mut constraints) => {
+            if let Type::TypeVar(usage) = &verify.actual
+                && let TypeVarKind::Constraints(mut constraints2) = usage.type_var.kind(db)
+                && constraints2.all(|t2| {
+                    constraints
+                        .clone()
+                        .any(|t| t.is_simple_super_type_of(i_s, t2).bool())
+                })
+            {
+                // The provided type_var2 is a subset of the type_var constraints.
+                return;
+            }
+            if !constraints.any(|t| t.is_simple_same_type(i_s, &verify.actual).bool()) {
+                add_issue_at.add_issue(
+                    i_s,
+                    IssueKind::InvalidTypeVarValue {
+                        type_var_name: Box::from(verify.type_var.name(db)),
+                        of: format!("\"{}\"", verify.of_name.as_str(db)).into(),
+                        actual: verify.actual.format_short(db),
+                    },
+                );
+            }
         }
     }
 }

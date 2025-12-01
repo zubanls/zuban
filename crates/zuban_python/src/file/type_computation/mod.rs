@@ -33,7 +33,10 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
-    file::PythonFile,
+    file::{
+        PythonFile,
+        flow_analysis::{DelayedConstraintVerification, DelayedDiagnostic},
+    },
     format_data::FormatData,
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
     imports::{ImportResult, namespace_import},
@@ -1756,51 +1759,29 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     #[inline]
     fn check_constraints(
         &mut self,
-        type_var: &TypeVar,
+        type_var: &Arc<TypeVar>,
         node_ref: NodeRef,
         as_type: impl Fn(&mut Self) -> Type,
         of_name: StringSlice,
     ) {
-        let i_s = self.i_s;
-        match type_var.kind(i_s.db) {
-            TypeVarKind::Unrestricted => (),
-            TypeVarKind::Bound(bound) => {
-                let actual = as_type(self);
-                if !bound.is_simple_super_type_of(i_s, &actual).bool() {
-                    node_ref.add_issue(
-                        i_s,
-                        IssueKind::TypeVarBoundViolation {
-                            actual: actual.format_short(i_s.db),
-                            of: of_name.as_str(i_s.db).into(),
-                            expected: bound.format_short(i_s.db),
-                        },
-                    );
-                }
-            }
-            TypeVarKind::Constraints(mut constraints) => {
-                let t2 = as_type(self);
-                if let Type::TypeVar(usage) = &t2
-                    && let TypeVarKind::Constraints(mut constraints2) = usage.type_var.kind(i_s.db)
-                    && constraints2.all(|t2| {
-                        constraints
-                            .clone()
-                            .any(|t| t.is_simple_super_type_of(i_s, t2).bool())
-                    })
-                {
-                    // The provided type_var2 is a subset of the type_var constraints.
-                    return;
-                }
-                if !constraints.any(|t| t.is_simple_same_type(i_s, &t2).bool()) {
-                    node_ref.add_issue(
-                        i_s,
-                        IssueKind::InvalidTypeVarValue {
-                            type_var_name: Box::from(type_var.name(i_s.db)),
-                            of: format!("\"{}\"", of_name.as_str(i_s.db)).into(),
-                            actual: t2.format_short(i_s.db),
-                        },
-                    );
-                }
-            }
+        if !matches!(type_var.kind(self.i_s.db), TypeVarKind::Unrestricted) {
+            // These need to be delayed, because there is a chance that they need to matched
+            // against protocols, which means that a lot of inference information is accessed,
+            // which we don't want while calculating the types.
+            node_ref
+                .file
+                .original_file(self.i_s.db)
+                .delayed_diagnostics
+                .write()
+                .unwrap()
+                .push_back(DelayedDiagnostic::ConstraintVerification(Box::new(
+                    DelayedConstraintVerification {
+                        type_var: type_var.clone(),
+                        add_issue_at: node_ref.as_link(),
+                        actual: as_type(self),
+                        of_name,
+                    },
+                )))
         }
     }
 
