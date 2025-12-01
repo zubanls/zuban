@@ -5,7 +5,6 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::str::FromStr;
 use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, RwLock};
 
@@ -25,6 +24,7 @@ use crate::capabilities::{ClientCapabilities, server_capabilities};
 use crate::notebooks::Notebooks;
 use crate::notification_handlers::TestPanic;
 use crate::panic_hooks;
+use crate::request_handlers::to_uri;
 
 // Since we currently don't do garbage collection, we simply delete the project and reindex,
 // because it's not that expensive after a specific amount of diagnostics.
@@ -623,7 +623,7 @@ impl<'sender> GlobalState<'sender> {
                     <lsp_types::notification::PublishDiagnostics
                         as lsp_types::notification::Notification>::METHOD.to_owned(),
                     lsp_types::PublishDiagnosticsParams {
-                        uri: Uri::from_str(&path.as_uri()).unwrap(),
+                        uri: to_uri(path.as_uri()),
                         diagnostics,
                         version: None,
                     }

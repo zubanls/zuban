@@ -350,7 +350,7 @@ impl GlobalState<'_> {
             result.into()
         } else {
             let result = run_for_location_link(document, pos, &|name| LocationLink {
-                target_uri: Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+                target_uri: to_uri(name.file_uri()),
                 target_range: Self::to_range(encoding, name.target_range()),
                 origin_selection_range: None,
                 target_selection_range: Self::to_range(encoding, name.name_range()),
@@ -386,7 +386,7 @@ impl GlobalState<'_> {
             params.context.include_declaration,
             |name| {
                 Location::new(
-                    Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+                    to_uri(name.file_uri()),
                     Self::to_range(encoding, name.name_range()),
                 )
             },
@@ -790,7 +790,7 @@ fn ensure_valid_workspace_edit(
     Ok(())
 }
 
-fn to_uri(s: String) -> Uri {
+pub(crate) fn to_uri(s: String) -> Uri {
     Uri::from_str(&s)
         .unwrap_or_else(|err| panic!("Tried to parse the URI {s}, but failed with {err:?}"))
 }
@@ -827,7 +827,7 @@ fn resource_ops_supported(
 
 fn lsp_location(encoding: NegotiatedEncoding, name: Name) -> Location {
     Location::new(
-        Uri::from_str(&name.file_uri()).expect("Expected a valid URI"),
+        to_uri(name.file_uri()),
         GlobalState::to_range(encoding, name.name_range()),
     )
 }
