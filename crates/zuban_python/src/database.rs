@@ -901,6 +901,10 @@ impl TypeAlias {
         NodeRef::from_link(db, self.name).as_code()
     }
 
+    pub fn name_slice<'db>(&self, db: &'db Database) -> StringSlice {
+        NodeRef::from_link(db, self.name).string_slice()
+    }
+
     pub fn application_allowed(&self, db: &Database) -> bool {
         self.is_valid() && {
             let t = self.type_if_valid();

@@ -1600,7 +1600,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.compute_get_item_generics_on_class(
                             s,
                             s.iter(),
-                            class_node_ref.name(),
+                            class_node_ref.name_string_slice(),
                             type_var_likes,
                             &mut generics,
                         );
@@ -1742,7 +1742,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             &mut generics,
             slice_type.iter(),
             &alias.type_vars,
-            &|| alias.name(self.name_resolution.i_s.db).into(),
+            alias.name_slice(self.i_s.db),
             |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
@@ -1759,7 +1759,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         type_var: &TypeVar,
         node_ref: NodeRef,
         as_type: impl Fn(&mut Self) -> Type,
-        get_of: impl FnOnce() -> Box<str>,
+        of_name: StringSlice,
     ) {
         let i_s = self.i_s;
         match type_var.kind(i_s.db) {
@@ -1771,7 +1771,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         i_s,
                         IssueKind::TypeVarBoundViolation {
                             actual: actual.format_short(i_s.db),
-                            of: get_of(),
+                            of: of_name.as_str(i_s.db).into(),
                             expected: bound.format_short(i_s.db),
                         },
                     );
@@ -1795,7 +1795,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         i_s,
                         IssueKind::InvalidTypeVarValue {
                             type_var_name: Box::from(type_var.name(i_s.db)),
-                            of: format!("\"{}\"", get_of()).into(),
+                            of: format!("\"{}\"", of_name.as_str(i_s.db)).into(),
                             actual: t2.format_short(i_s.db),
                         },
                     );
@@ -1900,7 +1900,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.compute_get_item_generics_on_class(
             slice_type,
             iterator,
-            class.name(),
+            class.name_string_slice(),
             type_var_likes,
             &mut generics,
         );
@@ -1917,7 +1917,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
         iterator: SliceTypeIterator,
-        class_name: &str,
+        class_name: StringSlice,
         type_var_likes: &TypeVarLikes,
         generics: &mut Vec<GenericItem>,
     ) {
@@ -1926,12 +1926,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             generics,
             iterator,
             type_var_likes,
-            &|| Box::from(class_name),
+            class_name,
             |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
                     IssueKind::TypeArgumentIssue {
-                        class: Box::from(class_name),
+                        class: Box::from(class_name.as_str(self.name_resolution.i_s.db)),
                         counts,
                     },
                 );
@@ -1984,7 +1984,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     type_var,
                     slice_content.as_node_ref(),
                     |slf| slf.as_type(t.clone(), slice_content.as_node_ref()),
-                    || Box::from(class.name()),
+                    class.name_string_slice(),
                 );
                 if !matches!(
                     t,
@@ -2029,7 +2029,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         generics: &mut Vec<GenericItem>,
         iterator: SliceTypeIterator,
         type_var_likes: &TypeVarLikes,
-        get_of: &impl Fn() -> Box<str>,
+        name: StringSlice,
         on_count_mismatch: impl FnOnce(&mut Self, GenericCounts),
     ) {
         let mut given = generics.len();
@@ -2065,7 +2065,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         type_args.next_type_argument(self, has_type_var_tuple)
                     {
                         given += 1;
-                        self.check_constraints(type_var, node_ref, |_| t.clone(), get_of);
+                        self.check_constraints(type_var, node_ref, |_| t.clone(), name);
                         GenericItem::TypeArg(t)
                     } else if let Some(default) = type_var.default(db) {
                         resolve_default(generics, GenericItem::TypeArg(default.clone()))
@@ -2082,7 +2082,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeVarLike::TypeVar(type_var) => {
                                 if let Some((from, t)) = type_args.next_type_argument_back(self) {
                                     given += 1;
-                                    self.check_constraints(type_var, from, |_| t.clone(), get_of);
+                                    self.check_constraints(type_var, from, |_| t.clone(), name);
                                     GenericItem::TypeArg(t)
                                 } else if let Some(default) = type_var.default(db) {
                                     resolve_default(generics, GenericItem::TypeArg(default.clone()))

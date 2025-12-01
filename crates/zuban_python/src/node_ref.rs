@@ -20,7 +20,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
-    type_::Type,
+    type_::{StringSlice, Type},
     type_helpers::Function,
 };
 
@@ -95,6 +95,15 @@ impl<'file> NodeRef<'file> {
 
     pub fn set_point(&self, point: Point) {
         self.file.points.set(self.node_index, point)
+    }
+
+    pub fn string_slice(&self) -> StringSlice {
+        //self.start()
+        StringSlice::new(
+            self.file_index(),
+            self.node_start_position(),
+            self.node_end_position(),
+        )
     }
 
     pub fn as_redirection_point(&self, locality: Locality) -> Point {

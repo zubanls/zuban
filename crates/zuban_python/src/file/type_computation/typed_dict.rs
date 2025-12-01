@@ -155,11 +155,12 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
             &mut generics,
             slice_type.iter(),
             type_var_likes,
-            &|| {
-                typed_dict
-                    .name_or_fallback(&FormatData::new_short(db))
-                    .into()
-            },
+            typed_dict.name.unwrap_or_else(|| {
+                recoverable_error!(
+                    "Get item should only be possible for a TypedDict type computation"
+                );
+                NodeRef::from_link(db, typed_dict.defined_at).string_slice()
+            }),
             |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),

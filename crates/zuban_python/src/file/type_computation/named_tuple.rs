@@ -114,7 +114,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
             &mut generics,
             slice_type.iter(),
             &named_tuple.__new__.type_vars,
-            &|| named_tuple.name(db).into(),
+            named_tuple.name,
             |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
