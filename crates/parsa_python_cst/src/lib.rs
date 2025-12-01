@@ -1714,7 +1714,6 @@ impl<'db> WithItem<'db> {
 
     pub fn in_async_with_stmt(&self) -> bool {
         let with = self.node.parent().unwrap().parent().unwrap();
-        debug_assert!(with.is_type(Nonterminal(with_stmt)));
         with.is_type(Nonterminal(async_stmt))
     }
 }
