@@ -1551,3 +1551,10 @@ class C():
 @C  # E: Too many arguments for "C"
 def fn():
     pass
+
+[case avoid_crash_for_underscore_definition]
+# From GH #195
+def f(x: int):  # E: Invalid syntax
+_: x  # E: Variable "__main__.x" is not valid as a type \
+      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+reveal_type(x)  # N: Revealed type is "Any"

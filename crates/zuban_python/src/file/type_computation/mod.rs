@@ -3579,8 +3579,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             }
             TypeLike::ParamName(annotation) => Lookup::T(TypeContent::InvalidVariable({
                 let as_base_class_any = annotation
-                    .map(
-                        |a| match use_cached_annotation_type(i_s.db, node_ref.file, a).as_ref() {
+                    .map(|a| {
+                        let point = node_ref.file.points.get(a.index());
+                        if !point.calculated() {
+                            // This happens typically with names that are invalid syntax nodes,
+                            // like a def without a colon.
+                            return false;
+                        }
+                        match use_cached_annotation_type(i_s.db, node_ref.file, a).as_ref() {
                             Type::Any(_) => true,
                             Type::Type(t) => match t.as_ref() {
                                 Type::Any(_) => true,
@@ -3591,8 +3597,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 _ => false,
                             },
                             _ => false,
-                        },
-                    )
+                        }
+                    })
                     .unwrap_or(true);
                 if as_base_class_any {
                     InvalidVariableType::ParamNameAsBaseClassAny(node_ref)
