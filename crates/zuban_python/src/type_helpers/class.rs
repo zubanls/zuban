@@ -12,11 +12,11 @@ use crate::{
     arguments::{ArgKind, Args},
     database::{
         BaseClass, ClassKind, ClassStorage, ComplexPoint, Database, Locality, MetaclassState,
-        Point, PointKind, PointLink, Specific,
+        ParentScope, Point, PointKind, PointLink, Specific,
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, TypeVarCallbackReturn},
+    file::{ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, TypeVarCallbackReturn},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -1694,6 +1694,17 @@ impl<'db: 'a, 'a> Class<'a> {
                             || redirected_to.file.file_index != file.file_index
                         {
                             return None;
+                        }
+                        if let Some(name) = redirected_to.maybe_name()
+                            && let Some(name_def) = dbg!(name.name_def())
+                            && let Some(func) = name_def.parent_function_of_param()
+                        {
+                            let parent_scope =
+                                FuncNodeRef::new(redirected_to.file, func.index()).parent_scope();
+                            if !matches!(parent_scope, ParentScope::Class(c) if c == self.node_index)
+                            {
+                                return None;
+                            }
                         }
                         Some(redirected_to.infer_name_of_definition_by_index(
                             &InferenceState::from_class(db, self),

@@ -3672,8 +3672,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if cfg!(debug_assertions) {
             let point = self.file.points.get(annotation.index());
             debug_assert!(
-                point.specific().is_annotation_or_type_comment(),
-                "{point:?}"
+                point
+                    .maybe_calculated_and_specific()
+                    .is_some_and(|s| s.is_annotation_or_type_comment()),
+                "Annotation {annotation:?} has unexpected point: {point:?}"
             );
         }
         Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))

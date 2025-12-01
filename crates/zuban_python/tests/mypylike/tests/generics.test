@@ -1852,3 +1852,53 @@ class ServerContextRequest(
 class ServerContextResponse(
     BaseResponse[SCReq_t_co], Protocol[SCReq_t_co]
 ): ...
+
+[case generics_crash_with_variance_inference]
+# From GH #196
+from typing import Any, Callable, assert_type, cast, overload
+
+type HandlerFn[T: Any, RT] = Callable[[T], RT]
+type ResFn[T: Any] = Callable[[T], None]
+
+
+class Promise[T]:
+    def __init__(self, fn: Callable[[ResFn[T], ResFn], None], /):
+        def resolve(arg: Any) -> None:
+            self._result = arg
+
+    @overload
+    def then[RT](
+        self,
+        on_resolve: HandlerFn[T, Promise[RT]] | None,
+        on_reject: HandlerFn[Any, Promise[RT]] | None = None,
+        /,
+    ) -> Promise[RT]: ...
+
+    @overload
+    def then[RT](
+        self,
+        on_resolve: HandlerFn[T, RT] | None,
+        on_reject: HandlerFn[Any, RT] | None = None,
+        /,
+    ) -> Promise[RT]: ...
+
+    def then[RT](
+        self,
+        on_resolve: HandlerFn[T, RT] | None,
+        on_reject: HandlerFn[Any, RT] | None = None,
+        /,
+    ) -> Promise:
+        return cast(Promise, None)
+
+
+@Promise
+def promise(resolve: ResFn[int], reject: ResFn):
+    pass
+
+
+def handler2(arg: int) -> Promise[str]:
+    return cast(Promise[str], None)
+
+
+# FIXME: This causes zuban to panic.
+assert_type(promise.then(handler2), Promise[str])

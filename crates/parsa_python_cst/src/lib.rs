@@ -4608,6 +4608,23 @@ impl<'db> NameDef<'db> {
         }
         None
     }
+
+    pub fn parent_function_of_param(&self) -> Option<FunctionDef<'db>> {
+        let parent = self.node.parent()?;
+        if !matches!(
+            parent.type_(),
+            Nonterminal(param_no_default)
+                | Nonterminal(param_with_default)
+                | Nonterminal(param_maybe_default)
+                | Nonterminal(starred_param)
+                | Nonterminal(double_starred_param)
+        ) {
+            None
+        } else {
+            let par = parent.parent_until(&[Nonterminal(function_def)]).unwrap();
+            Some(FunctionDef::new(par))
+        }
+    }
 }
 
 pub enum NameDefParent {
