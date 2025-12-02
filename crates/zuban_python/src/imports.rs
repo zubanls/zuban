@@ -162,6 +162,9 @@ pub fn global_import<'a>(
     from_file: &PythonFile,
     name: &'a str,
 ) -> Option<ImportResult> {
+    if name == "typing" {
+        return Some(ImportResult::File(db.python_state.typing().file_index));
+    }
     // First try <package>-stubs
     global_import_of_stubs_folders(db, from_file, name).or_else(|| {
         python_import_with_needs_exact_case(

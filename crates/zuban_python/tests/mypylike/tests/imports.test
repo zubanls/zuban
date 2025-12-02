@@ -693,3 +693,28 @@ reveal_type(y)  # N: Revealed type is "int | str"
 [file m.py]
 x: str = str()
 y: str = str()
+
+[case typing_module_override_should_not_crash]
+# From GH #194
+if 1 in set():
+    pass
+
+[file typing.pyi]
+# E: Module shadows the typeshed module "typing"
+
+[case typing_module_override_no_shadow1]
+import typing
+typing.a  # E: Module has no attribute "a"
+
+[file typing.pyi]
+# E: Module shadows the typeshed module "typing"
+
+[case typing_module_override_no_shadow2]
+if 1 in set():
+    pass
+
+import typing
+typing.a  # E: Module has no attribute "a"
+
+[file typing/__init__.pyi]
+# E: Module shadows the typeshed module "typing"

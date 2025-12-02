@@ -13,7 +13,7 @@ use config::{
 };
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
-use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, PathWithScheme};
+use vfs::{Directory, DirectoryEntry, FileEntry, FileIndex, PathWithScheme, WorkspaceKind};
 
 use super::{
     FLOW_ANALYSIS,
@@ -336,6 +336,12 @@ impl<'db> PythonFile {
             tree.mypy_inline_config_directives(),
         );
         ignore_type_errors |= directives_info.ignore_errors;
+        if !ignore_type_errors && let Some(issue) = add_error_if_typeshed_is_overwritten(file_entry)
+        {
+            let result =
+                issues.add_if_not_ignored(Issue::from_node_index(&tree, 0, issue, false), None);
+            debug_assert!(result.is_ok());
+        }
         let points = Points::new(tree.length());
         Self::new_internal(
             file_index,
@@ -1111,4 +1117,25 @@ impl Iterator for OtherDefinitionIterator<'_> {
 #[derive(Clone, Default)]
 struct StubCache {
     non_stub: OnceLock<Option<FileIndex>>,
+}
+
+fn add_error_if_typeshed_is_overwritten(file_entry: &FileEntry) -> Option<IssueKind> {
+    let is_err = || {
+        if *file_entry.name == *"typing.pyi"
+            && let Ok(workspace) = file_entry.parent.maybe_workspace()
+            && workspace.kind != WorkspaceKind::Typeshed
+        {
+            true
+        } else if *file_entry.name == *"__init__.pyi"
+            && let Ok(dir) = file_entry.parent.maybe_dir()
+            && *dir.name == *"typing"
+            && let Ok(workspace) = dir.parent.maybe_workspace()
+            && workspace.kind != WorkspaceKind::Typeshed
+        {
+            true
+        } else {
+            false
+        }
+    };
+    is_err().then_some(IssueKind::InvalidShadowingOfTypeshedModule { module: "typing" })
 }

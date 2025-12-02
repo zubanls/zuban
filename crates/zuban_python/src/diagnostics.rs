@@ -155,6 +155,7 @@ pub(crate) enum IssueKind {
     EnsureSingleGenericOrProtocol,
     GenericWithTypeParamsIsRedundant,
     ProtocolWithTypeParamsNoBracketsExpected,
+    InvalidShadowingOfTypeshedModule { module: &'static str },
 
     InvalidType(Box<str>),
     InvalidTypeDeclaration,
@@ -1329,6 +1330,9 @@ impl<'db> Diagnostic<'db> {
             GenericWithTypeParamsIsRedundant => "Generic[...] base class is redundant".to_string(),
             ProtocolWithTypeParamsNoBracketsExpected =>
                 r#"No arguments expected for "Protocol" base class"#.to_string(),
+            InvalidShadowingOfTypeshedModule { module } => format!(
+                r#"Module shadows the typeshed module "{module}""#
+            ),
 
             InvalidTypeDeclaration =>
                 "Type cannot be declared in assignment to non-self attribute".to_string(),

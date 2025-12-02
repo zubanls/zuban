@@ -38,6 +38,13 @@ impl Parent {
         }
     }
 
+    pub fn maybe_workspace(&self) -> Result<Arc<Workspace>, &Weak<Directory>> {
+        match self {
+            Self::Directory(dir) => Err(dir),
+            Self::Workspace(w) => Ok(w.upgrade().unwrap()),
+        }
+    }
+
     pub fn most_outer_dir(&self) -> Option<Arc<Directory>> {
         match self {
             Self::Directory(dir) => {
