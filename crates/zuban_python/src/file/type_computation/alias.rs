@@ -229,7 +229,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         name_def: NameDef,
         expr: Expression<'x>,
     ) -> Result<Lookup<'file, 'file>, CalculatingAliasType<'x>> {
-        let special = self.maybe_special_assignment_execution(expr)?;
         // At this point we only take care of special assignments like TypeVars,
         // collection.namedtuple, etc.
         // This does not include NamedTuple, NewType and TypedDict executions, which are taken care
@@ -244,7 +243,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     // This happens when we are in an untyped context
                     || p.maybe_specific() == Some(Specific::AnyDueToError)
             );
+            if p.maybe_specific() == Some(Specific::Cycle) {
+                return Ok(Lookup::UNKNOWN_REPORTED);
+            }
+            // TODO why is this necessary? Simply explain why!
+            self.maybe_special_assignment_execution(expr)?;
         } else {
+            let special = self.maybe_special_assignment_execution(expr)?;
             let inf = match special {
                 SpecialAssignmentKind::Enum(class, args) => self
                     .compute_functional_enum_definition(
