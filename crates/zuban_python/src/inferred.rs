@@ -919,45 +919,15 @@ impl<'db: 'slf, 'slf> Inferred {
                                 })
                             }
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                let as_instance = || instance.clone();
-                                let mut matcher = Matcher::new_function_matcher(
-                                    &func,
-                                    func.type_vars(i_s.db),
-                                    &as_instance,
-                                );
-                                // If __call__ has a self type that is a Callable, just ignore it,
-                                // because that causes a recursion. It is how Mypy does it in
-                                // c68bd7ae2cffe8f0377ea9aab54b963b9fac3231
-                                if !(matches!(first_type.as_ref(), Type::Callable(_))
-                                    && func.name() == "__call__")
-                                    && !match_self_type(
-                                        i_s,
-                                        &mut matcher,
-                                        &instance,
-                                        &attribute_class,
-                                        &first_type,
-                                    )
-                                {
-                                    add_issue(IssueKind::InvalidSelfArgument {
-                                        argument_type: instance.format_short(i_s.db),
-                                        function_name: Box::from(func.name()),
-                                        callable: func
-                                            .as_type(i_s, FirstParamProperties::None)
-                                            .format_short(i_s.db),
-                                    });
-                                }
-                                let callable = func.as_callable(
-                                    i_s,
-                                    FirstParamProperties::Skip {
-                                        to_self_instance: &|| instance.clone(),
-                                    },
-                                );
                                 Some((
-                                    Self::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Type::Callable(Arc::new(
-                                            matcher.remove_self_from_callable(i_s, callable),
-                                        )),
-                                    )),
+                                    infer_callable_with_first_param_annotation(
+                                        i_s,
+                                        func,
+                                        &first_type,
+                                        &attribute_class,
+                                        instance,
+                                        add_issue,
+                                    ),
                                     attr_kind,
                                 ))
                             } else if avoid_inferring_return_types {
@@ -3053,6 +3023,41 @@ pub fn specific_to_type<'db>(
         ))),
         actual => unreachable!("{actual:?}"),
     }
+}
+
+fn infer_callable_with_first_param_annotation(
+    i_s: &InferenceState,
+    func: Function,
+    first_type: &Type,
+    attribute_class: &Class,
+    instance: Type,
+    add_issue: impl Fn(IssueKind),
+) -> Inferred {
+    let as_instance = || instance.clone();
+    let mut matcher = Matcher::new_function_matcher(&func, func.type_vars(i_s.db), &as_instance);
+    // If __call__ has a self type that is a Callable, just ignore it,
+    // because that causes a recursion. It is how Mypy does it in
+    // c68bd7ae2cffe8f0377ea9aab54b963b9fac3231
+    if !(matches!(first_type, Type::Callable(_)) && func.name() == "__call__")
+        && !match_self_type(i_s, &mut matcher, &instance, &attribute_class, first_type)
+    {
+        add_issue(IssueKind::InvalidSelfArgument {
+            argument_type: instance.format_short(i_s.db),
+            function_name: Box::from(func.name()),
+            callable: func
+                .as_type(i_s, FirstParamProperties::None)
+                .format_short(i_s.db),
+        });
+    }
+    let callable = func.as_callable(
+        i_s,
+        FirstParamProperties::Skip {
+            to_self_instance: &|| instance.clone(),
+        },
+    );
+    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Type::Callable(Arc::new(
+        matcher.remove_self_from_callable(i_s, callable),
+    ))))
 }
 
 enum ApplyDescriptorsKind {
