@@ -651,7 +651,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn original_func_for_overload(&self) -> Option<NodeRef<'a>> {
+    pub fn original_func_for_overload(&self) -> Option<NodeRef<'a>> {
         let is_ov_unreachable =
             |p: Point| p.maybe_specific() == Some(Specific::OverloadUnreachable);
         if is_ov_unreachable(self.node_ref.point()) {

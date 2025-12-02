@@ -212,7 +212,21 @@ impl<'db, T> PositionalDocument<'db, T> {
 
     fn maybe_inferred_node_index(&self, node_index: NodeIndex) -> Option<Inferred> {
         let n = NodeRef::new(self.file, node_index);
-        self.with_i_s(|i_s| n.maybe_inferred(i_s))
+        self.with_i_s(|i_s| {
+            let result = n.maybe_inferred(i_s);
+            if let Some(result) = &result
+                && let Some(saved) = result.maybe_saved_node_ref(self.db)
+                && matches!(
+                    saved.point().maybe_specific(),
+                    Some(Specific::OverloadUnreachable)
+                )
+            {
+                let n = Function::new_with_unknown_parent(self.db, saved)
+                    .original_func_for_overload()?;
+                return n.maybe_inferred(i_s);
+            }
+            result
+        })
     }
 
     pub fn infer_primary(&self, primary: Primary) -> Inferred {

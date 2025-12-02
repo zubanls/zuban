@@ -197,13 +197,15 @@ __main__.py:13:documentation -> "```python\n(function) def __and__(other: X) -> 
 __main__.py:15:documentation -> "```python\n(function) def __or__(int, /) -> int\n```"
 
 [case docs_on_overload]
-# From GH #162
+# From GH #162 and #192
 from typing import overload
 
 @overload
+#? --codepoint-column 4 documentation
 def f(x: int) -> int: ...
 
 @overload
+#? --codepoint-column 4 documentation
 def f(x: str) -> str: ...
 def f(x: str | int) -> str | int: ...
 
@@ -211,7 +213,29 @@ def f(x: str | int) -> str | int: ...
 f(1)
 
 [out]
-__main__.py:12:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
+__main__.py:6:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
+__main__.py:10:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
+__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
+
+[case docs_on_property_setter_deleter_no_crash]
+class X:
+    @property
+    #? --codepoint-column 9 documentation
+    def p(self) -> int: ...
+    @p.setter
+    #? --codepoint-column 9 documentation
+    def p(self, value): ...
+    @p.deleter
+    #? --codepoint-column 9 documentation
+    def p(self): ...
+
+#? documentation
+X().p
+[out]
+__main__.py:4:documentation -> "```python\n(function) def p(self) -> int\n```"
+__main__.py:7:documentation -> "```python\n(function) def p(self) -> int\n```"
+__main__.py:10:documentation -> "```python\n(function) def p(self) -> int\n```"
+__main__.py:13:documentation -> "```python\n(function) int\n```"
 
 [case docs_on_type_of_class]
 from dataclasses import dataclass
