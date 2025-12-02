@@ -886,8 +886,8 @@ impl<'a> Matcher<'a> {
             callable = callable.replace_type_var_likes_and_self_inplace(
                 i_s.db,
                 &mut self.as_usage_closure(i_s.db, |usage| {
-                    let index = usage.index().as_usize();
                     if usage.in_definition() == defined_at {
+                        let index = usage.index().as_usize();
                         let c = &tv_matcher.calculating_type_args[index];
                         debug_assert!(!c.calculated());
                         let new_index = tv_matcher

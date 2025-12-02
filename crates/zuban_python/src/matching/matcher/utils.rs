@@ -24,6 +24,7 @@ use crate::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
     },
+    recoverable_error,
     type_::{
         CallableContent, CallableParams, CallableWithParent, ClassGenerics, GenericItem,
         GenericsList, MaybeUnpackGatherer, NeverCause, ParamSpecTypeVars, ReplaceSelf,
@@ -238,7 +239,14 @@ impl CalculatedTypeArgs {
                         return Some(generic_item);
                     }
                     if self.in_definition == usage.in_definition() {
-                        return Some(self.type_arguments.as_ref().unwrap()[usage.index()].clone());
+                        if let Some(args) = self.type_arguments.as_ref() {
+                            return Some(args[usage.index()].clone());
+                        } else {
+                            recoverable_error!(
+                                "Missing type argument replacement for return type {} ",
+                                return_type.format_short(i_s.db)
+                            );
+                        }
                     }
                     None
                 },

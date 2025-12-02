@@ -604,3 +604,13 @@ def f(c: C, d: D):
     D(c)
     D(None)
     D(D(None))
+
+[case self_type_with_self_bound_no_crash]
+# From GH #193
+from typing import TypeVar
+
+_NodeType = TypeVar('_NodeType', bound='SyntaxTreeNode')
+
+class SyntaxTreeNode:
+    def walk(self: _NodeType) -> _NodeType:
+        return self.walk()
