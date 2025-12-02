@@ -628,25 +628,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
             _ => {
-                let is_ov_unreachable =
-                    |p: Point| p.maybe_specific() == Some(Specific::OverloadUnreachable);
-                if is_ov_unreachable(self.node_ref.point()) {
-                    let current_index = node.name().index();
-                    let file = self.node_ref.file;
-                    let mut pre_unreachable = current_index - NAME_TO_FUNCTION_DIFF;
-                    // Find the method before the unreachable method
-                    // Previously we just used the first name, but that might just be a different
-                    // definition.
-                    for n in OtherDefinitionIterator::new(&file.points, current_index) {
-                        let n_def = n - NAME_TO_FUNCTION_DIFF;
-                        let new_p = file.points.get(n_def);
-                        if new_p.calculated() && !is_ov_unreachable(new_p) {
-                            pre_unreachable = n_def;
-                        }
-                    }
-                    debug_assert_ne!(pre_unreachable, current_index - NAME_TO_FUNCTION_DIFF);
-                    let original_func = NodeRef::new(self.node_ref.file, pre_unreachable);
-
+                if let Some(original_func) = self.original_func_for_overload() {
                     if let Some(ComplexPoint::FunctionOverload(o)) = original_func.maybe_complex() {
                         for c in o.functions.iter_functions() {
                             if c.defined_at == self.node_ref.as_link() {
@@ -666,6 +648,30 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                 }
             }
+        }
+    }
+
+    fn original_func_for_overload(&self) -> Option<NodeRef<'a>> {
+        let is_ov_unreachable =
+            |p: Point| p.maybe_specific() == Some(Specific::OverloadUnreachable);
+        if is_ov_unreachable(self.node_ref.point()) {
+            let mut pre_unreachable = self.node_ref.node_index;
+            let current_index = pre_unreachable + NAME_TO_FUNCTION_DIFF;
+            let file = self.node_ref.file;
+            // Find the method before the unreachable method
+            // Previously we just used the first name, but that might just be a different
+            // definition.
+            for n in OtherDefinitionIterator::new(&file.points, current_index) {
+                let n_def = n - NAME_TO_FUNCTION_DIFF;
+                let new_p = file.points.get(n_def);
+                if new_p.calculated() && !is_ov_unreachable(new_p) {
+                    pre_unreachable = n_def;
+                }
+            }
+            debug_assert_ne!(pre_unreachable, current_index - NAME_TO_FUNCTION_DIFF);
+            Some(NodeRef::new(self.node_ref.file, pre_unreachable))
+        } else {
+            None
         }
     }
 
