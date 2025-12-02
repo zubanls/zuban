@@ -861,3 +861,13 @@ def f(a: T):
     pass
 
 T = T()  # E: Name "T" is used before definition
+
+[case type_definitions_and_local_partial_types]
+# flags: --local-partial-types
+from typing import TypeVar
+
+TFloat = TypeVar("TFloat", bound=float)
+X = list[TFloat]
+
+def foo() -> None:
+    p6: X[str]  # E: Type argument "str" of "X" must be a subtype of "float"

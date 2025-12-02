@@ -832,8 +832,11 @@ impl<'db> PythonFile {
     }
 
     pub fn process_delayed_diagnostics(&self, db: &Database) {
-        let delayed = std::mem::take(&mut *self.delayed_diagnostics.write().unwrap());
-        if !delayed.is_empty() {
+        loop {
+            let delayed = std::mem::take(&mut *self.delayed_diagnostics.write().unwrap());
+            if delayed.is_empty() {
+                break;
+            }
             FLOW_ANALYSIS.with(|fa| fa.process_delayed_diagnostics(db, delayed));
         }
     }
