@@ -483,7 +483,7 @@ impl PythonState {
             {
                 if is_func {
                     panic!(
-                        "Expected a function for {}.{name}",
+                        "Expected a function in typeshed for {}.{name}",
                         module(db).qualified_name(db)
                     )
                 }
@@ -510,7 +510,7 @@ impl PythonState {
                 if node_ref.maybe_function().is_some() {
                     if !is_func {
                         panic!(
-                            "Expected a class for {}.{name}",
+                            "Expected a class in typeshed for {}.{name}",
                             module(db).qualified_name(db)
                         )
                     }
@@ -525,7 +525,7 @@ impl PythonState {
                     update(db, None);
                 } else {
                     panic!(
-                        "It's not possible to cache the index for the alias {}.{name}",
+                        "Typeshed: It's not possible to cache the index for the alias {}.{name}",
                         module(db).qualified_name(db)
                     )
                 }
@@ -542,8 +542,13 @@ impl PythonState {
                     |db| db.python_state.$module_name(),
                     $name,
                     |db, new_index| {
-                        db.python_state.$attr_name =
-                            new_index.unwrap_or_else(|| panic!("Expected {}", $name));
+                        db.python_state.$attr_name = new_index.unwrap_or_else(|| {
+                            panic!(
+                                "Expected a valid identifier {:?} in typeshed module {:?}",
+                                $name,
+                                db.python_state.$module_name().qualified_name(db)
+                            )
+                        });
                     },
                     $is_func,
                 );
@@ -572,7 +577,13 @@ impl PythonState {
                                 |db, new_index| {
                                     db.python_state.$attr_name = PointLink::new(
                                         db.python_state.typing_extensions().file_index,
-                                        new_index.unwrap_or_else(|| panic!("Expected {}", $name)),
+                                        new_index.unwrap_or_else(|| {
+                                            panic!(
+                                                "Expected a valid identifier {:?} \
+                                                 in typeshed module typing_extensions",
+                                                $name,
+                                            )
+                                        }),
                                     );
                                 },
                                 $is_func,
