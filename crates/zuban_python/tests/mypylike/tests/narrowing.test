@@ -1926,3 +1926,14 @@ takes_int(a.bar)
 def wrapped_func(): ...
 @takes_int(x)
 def wrapped_func_2(): ...
+
+[case type_var_isinstance_intersection]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def convert_floats_to_approx(x: T) -> T:
+    if isinstance(x, float):
+        reveal_type(x)  # N: Revealed type is "<subclass of "T" and "float">"
+        return x  # Incompatible return value type (got "float", expected "T")
+    return x

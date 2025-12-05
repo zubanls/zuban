@@ -96,6 +96,12 @@ impl Intersection {
                     add_issue,
                 );
             }
+            (_, Type::TypeVar(_)) | (Type::TypeVar(_), _) => {
+                return Ok(Type::Intersection(Intersection::from_types(
+                    t1.clone(),
+                    t2.clone(),
+                )));
+            }
             _ => (),
         }
         let mut error_if_not_intersectable = |t: &Type| {

@@ -5629,8 +5629,12 @@ fn split_and_intersect(
                 other_side.union_in_place(t.clone())
             }
             Type::TypeVar(tv) if matches!(tv.type_var.kind(i_s.db), TypeVarKind::Unrestricted) => {
-                true_type = isinstance_type.clone();
-                other_side.union_in_place(t.clone())
+                if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
+                    true_type = new.into_owned();
+                    other_side.union_in_place(t.clone())
+                } else {
+                    split(t)
+                }
             }
             _ => split(t),
         }

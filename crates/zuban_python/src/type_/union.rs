@@ -391,6 +391,7 @@ impl UnionType {
             Type::None => 2,
             Type::TypeVar(_) => 3,
             Type::Any(_) => 4,
+            Type::Intersection(_) => 0,
             _ => t.type_.has_type_vars().into(),
         });
     }
