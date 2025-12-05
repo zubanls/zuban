@@ -82,7 +82,7 @@ pub(crate) struct NameBinder<'db> {
     kind: NameBinderKind,
     scope_node: NodeIndex,
     symbol_table: SymbolTable,
-    latest_type_params: Option<TypeParams<'db>>,
+    latest_type_params: LinkedList<TypeParams<'db>>,
     unordered_references: Vec<UnorderedReference<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
@@ -105,7 +105,7 @@ impl<'db> NameBinder<'db> {
             kind,
             scope_node,
             symbol_table: SymbolTable::default(),
-            latest_type_params: None,
+            latest_type_params: LinkedList::new(),
             unordered_references: vec![],
             unresolved_nodes: vec![],
             names_to_be_resolved_in_parent: vec![],
@@ -171,9 +171,30 @@ impl<'db> NameBinder<'db> {
     ) -> SymbolTable {
         let mut name_binder = Self::new(self.db_infos, kind, scope_node, Some(self));
         name_binder.following_nodes_need_flow_analysis = self.following_nodes_need_flow_analysis;
-        name_binder.latest_type_params = self.latest_type_params;
+        // FIXME: Existing in-tree mypy tests require that type parameters of an outer class
+        // definition are not accessible within inner classes. That is also the behavior
+        // implemented by mypy. However, PEP 695 seems to require that type parameters from outer
+        // classes be available in inner classes, even including them in an explicit example:
+        //
+        //     class Outer[T]:
+        //         ...
+        //         class Inner1:
+        //             ...
+        //             def inner_method(self):
+        //                 ...
+        //                 print(T)  # Prints 'T'
+        //
+        // but we preserve the existing (test-specified) behavior for now.
+        if !matches!(self.kind, NameBinderKind::Class) {
+            // TODO: Should LinkedListNode be reference counted, and should we store a reference to
+            // the current head instead of moving the list between NameBinder instances?
+            name_binder.latest_type_params = std::mem::replace(&mut self.latest_type_params, LinkedList::new());
+        }
         func(&mut name_binder);
         name_binder.close();
+        if !matches!(self.kind, NameBinderKind::Class) {
+            self.latest_type_params = std::mem::replace(&mut name_binder.latest_type_params, LinkedList::new());
+        }
         let NameBinder {
             unresolved_nodes,
             names_to_be_resolved_in_parent,
@@ -679,6 +700,10 @@ impl<'db> NameBinder<'db> {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
+                        if self.try_to_process_type_params(name)
+                        {
+                            continue;
+                        }
                         // Enable flow analysis, because we don't know the original state if flow
                         // analsis is needed here, because we are in the parent scope.
                         if !self.try_to_process_reference(name, false, true) {
@@ -853,9 +878,13 @@ impl<'db> NameBinder<'db> {
         type_params: Option<TypeParams<'db>>,
         callback: impl FnOnce(&mut Self),
     ) {
-        let old_latest_type_params = std::mem::replace(&mut self.latest_type_params, type_params);
-        callback(self);
-        self.latest_type_params = old_latest_type_params;
+        if let Some(params) = type_params {
+            self.latest_type_params.insert_head(params);
+            callback(self);
+            self.latest_type_params.pop_head();
+        } else {
+            callback(self);
+        }
     }
 
     fn index_class(&mut self, class_def: ClassDef<'db>) {
@@ -1038,8 +1067,7 @@ impl<'db> NameBinder<'db> {
             };
             match n {
                 InterestingNode::Name(name) => {
-                    if let Some(type_params) = self.latest_type_params
-                        && self.try_to_process_type_params(type_params, name)
+                    if self.try_to_process_type_params(name)
                     {
                         continue;
                     }
@@ -1455,7 +1483,9 @@ impl<'db> NameBinder<'db> {
         // now we just do.
         self.unresolved_nodes.push(Unresolved::FunctionDef {
             func,
-            latest_type_params: self.latest_type_params,
+            // TODO: Should we make LinkedListNode reference counted and store a reference
+            // to the current head, instead of just storing its contents?
+            latest_type_params: self.latest_type_params.get_head().map(|v| { *v }),
             is_method: self.kind == NameBinderKind::Class,
             is_async,
         });
@@ -1471,47 +1501,46 @@ impl<'db> NameBinder<'db> {
         }
 
         // Needs to be reset at the of this function
-        let old_latest_type_params = std::mem::replace(&mut self.latest_type_params, type_params);
+        self.with_latest_type_params(type_params, |slf| {
+            for param in params.iter() {
+                // expressions are resolved immediately while annotations are inferred at the
+                // end of a module.
+                if let Some(param_annotation) = param.annotation() {
+                    match param_annotation.maybe_starred() {
+                        Ok(starred) => slf.index_non_block_node_full(
+                            &starred,
+                            true,
+                            IndexingCause::Annotation {
+                                definition_name_index: None,
+                            },
+                        ),
+                        Err(expr) => slf.index_annotation_expr(&expr, None),
+                    };
+                }
+            }
+            if let Some(return_annotation) = return_annotation {
+                // This is the -> annotation
+                slf.index_annotation_expr(&return_annotation.expression(), None);
+            }
 
-        for param in params.iter() {
-            // expressions are resolved immediately while annotations are inferred at the
-            // end of a module.
-            if let Some(param_annotation) = param.annotation() {
-                match param_annotation.maybe_starred() {
-                    Ok(starred) => self.index_non_block_node_full(
-                        &starred,
-                        true,
-                        IndexingCause::Annotation {
-                            definition_name_index: None,
-                        },
-                    ),
-                    Err(expr) => self.index_annotation_expr(&expr, None),
-                };
-            }
-        }
-        if let Some(return_annotation) = return_annotation {
-            // This is the -> annotation
-            self.index_annotation_expr(&return_annotation.expression(), None);
-        }
-
-        let parent_node_index = match self.kind {
-            NameBinderKind::Global | NameBinderKind::Function { .. } | NameBinderKind::Class => {
-                self.scope_node
-            }
-            NameBinderKind::Lambda | NameBinderKind::Comprehension | NameBinderKind::TypeAlias => {
-                unreachable!()
-            }
-        };
-        self.db_infos.points.set(
-            func.index() + FUNC_TO_PARENT_DIFF,
-            Point::new_parent(parent_node_index, Locality::NameBinder),
-        );
-        self.add_new_definition_with_cause(
-            name_def,
-            Point::new_uncalculated(),
-            IndexingCause::FunctionName,
-        );
-        self.latest_type_params = old_latest_type_params;
+            let parent_node_index = match slf.kind {
+                NameBinderKind::Global | NameBinderKind::Function { .. } | NameBinderKind::Class => {
+                    slf.scope_node
+                }
+                NameBinderKind::Lambda | NameBinderKind::Comprehension | NameBinderKind::TypeAlias => {
+                    unreachable!()
+                }
+            };
+            slf.db_infos.points.set(
+                func.index() + FUNC_TO_PARENT_DIFF,
+                Point::new_parent(parent_node_index, Locality::NameBinder),
+            );
+            slf.add_new_definition_with_cause(
+                name_def,
+                Point::new_uncalculated(),
+                IndexingCause::FunctionName,
+            );
+        });
     }
 
     fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
@@ -1599,18 +1628,20 @@ impl<'db> NameBinder<'db> {
         )
     }
 
-    fn try_to_process_type_params(&mut self, type_params: TypeParams, name: Name) -> bool {
+    fn try_to_process_type_params(&mut self, name: Name) -> bool {
         let wanted = name.as_code();
-        for type_param in type_params.iter() {
-            let name_def = type_param.name_def();
-            if name_def.as_code() == wanted {
-                let point = Point::new_redirect(
-                    self.db_infos.file_index,
-                    name_def.name_index(),
-                    Locality::NameBinder,
-                );
-                self.db_infos.points.set(name.index(), point);
-                return true;
+        for type_params in self.latest_type_params.iter() {
+            for type_param in type_params.iter() {
+                let name_def = type_param.name_def();
+                if name_def.as_code() == wanted {
+                    let point = Point::new_redirect(
+                        self.db_infos.file_index,
+                        name_def.name_index(),
+                        Locality::NameBinder,
+                    );
+                    self.db_infos.points.set(name.index(), point);
+                    return true;
+                }
             }
         }
         false
@@ -1674,6 +1705,59 @@ impl<'db> NameBinder<'db> {
             .borrow()
             .iter()
             .any(|star_import| star_import.scope == self.scope_node)
+    }
+}
+
+#[derive(Debug)]
+struct LinkedListNode<T> {
+    value: T,
+    next: Option<Box<Self>>,
+}
+
+#[derive(Debug)]
+struct LinkedList<T> {
+    head: Option<Box<LinkedListNode<T>>>,
+}
+
+impl<T> LinkedList<T> {
+    fn new() -> Self {
+        Self { head: None }
+    }
+
+    fn insert_head(&mut self, value: T) {
+        self.head = Some(Box::new(LinkedListNode { value, next: self.head.take() }));
+    }
+
+    fn get_head(&mut self) -> Option<&T> {
+        self.head.as_ref().map(|head| {
+            &head.value
+        })
+    }
+
+    fn pop_head(&mut self) -> Option<T> {
+        self.head.take().map(|head| {
+            self.head = head.next;
+            head.value
+        })
+    }
+
+    fn iter(&self) -> LinkedListIter<'_, T> {
+        LinkedListIter { next: self.head.as_deref() }
+    }
+}
+
+pub struct LinkedListIter<'a, T> {
+    next: Option<&'a LinkedListNode<T>>,
+}
+
+impl<'a, T> Iterator for LinkedListIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.map(|node| {
+            self.next = node.next.as_deref();
+            &node.value
+        })
     }
 }
 

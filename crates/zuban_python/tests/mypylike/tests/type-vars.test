@@ -205,3 +205,55 @@ class C(Iterable[U], Something[T], Generic[T, U]): ...
 def foo() -> C[int]: ...
 
 reveal_type(foo())  # N: Revealed type is "__main__.C[int, int]"
+
+[case class_type_param_in_closure]
+def requires_int(arg: int):
+    pass
+
+class Outer[T: int]:
+    def inner(self, arg: T) -> T:
+        def closure(arg: T) -> T:
+            requires_int(arg)
+            return arg
+        requires_int(arg)
+        closure(arg) # OK
+        closure(42) # E: Argument 1 to "closure" has incompatible type "int"; expected "T"
+        return closure(arg) # OK
+
+    def inner2(self, arg: T) -> T:
+        def closure[U](arg: T) -> T:
+            requires_int(arg)
+            return arg
+        requires_int(arg)
+        closure(arg) # OK
+        closure(42) # E: Argument 1 to "closure" has incompatible type "int"; expected "T"
+        return closure(arg) # OK
+
+[case generic_class_type_param_in_closure]
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound=int)
+
+def requires_int(arg: int):
+    pass
+
+class Outer(Generic[T]):
+    def inner(self, arg: T) -> T:
+        def closure(arg: T) -> T:
+            requires_int(arg)
+            return arg
+        requires_int(arg)
+        closure(arg) # OK
+        # Make sure T is bound to the value of T in Outer and not
+        # just a free TypeVar
+        closure(42) # E: Argument 1 to "closure" has incompatible type "int"; expected "T"
+        return closure(arg) # OK
+
+    def inner2(self, arg: T) -> T:
+        def closure[U](arg: T) -> T:
+            requires_int(arg)
+            return arg
+        requires_int(arg)
+        closure(arg) # OK
+        closure(42) # E: Argument 1 to "closure" has incompatible type "int"; expected "T"
+        return closure(arg) # OK
