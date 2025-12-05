@@ -15,8 +15,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        FLOW_ANALYSIS, FuncNodeRef, FuncParent, OtherDefinitionIterator, PythonFile,
-        RedefinitionResult, TypeVarCallbackReturn, first_defined_name_of_multi_def,
+        DecoratorState, FLOW_ANALYSIS, FuncNodeRef, FuncParent, OtherDefinitionIterator,
+        PythonFile, RedefinitionResult, TypeVarCallbackReturn, first_defined_name_of_multi_def,
         on_argument_type_error, use_cached_param_annotation_type,
     },
     format_data::FormatData,
@@ -390,6 +390,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .inference(i_s)
                 .is_no_type_check(decorated);
         }
+        if self.node_ref.point().calculated() {
+            return;
+        }
         let maybe_computed = if no_type_check {
             None
         } else {
@@ -446,17 +449,35 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         None
     }
 
-    pub fn cache_func(&self, i_s: &InferenceState) {
+    pub fn cache_func_from_diagnostics(&self, i_s: &InferenceState) {
         self.cache_func_with_name_def(
             i_s,
             NodeRef::new(self.node_ref.file, self.node().name_def().index()),
+            true,
         )
     }
 
-    pub fn cache_func_with_name_def(&self, i_s: &InferenceState, name_def: NodeRef) {
+    pub fn cache_func_with_name_def(
+        &self,
+        i_s: &InferenceState,
+        name_def: NodeRef,
+        from_diagnostics: bool,
+    ) {
         if !name_def.point().calculated() {
             name_def.set_point(Point::new_calculating());
+            if !from_diagnostics && self.needs_flow_analysis_for_decorators(i_s) {
+                name_def.set_point(Point::new_uncalculated());
+                let result = self.file.ensure_module_symbols_flow_analysis(i_s.db);
+                // Some cycle
+                if result.is_err() {
+                    name_def.set_point(Point::new_calculating());
+                }
+            }
             self.ensure_cached_func(i_s);
+            if name_def.point().calculated() {
+                // This can happen with recursions while calculating the decorators
+                return;
+            }
             name_def.set_point(Point::new_redirect(
                 self.node_ref.file_index(),
                 self.node_ref.node_index,
@@ -479,6 +500,44 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     inference.add_initial_name_definition(name_def.expect_name_def())
                 }
             }
+        }
+    }
+
+    fn needs_flow_analysis_for_decorators(&self, i_s: &InferenceState) -> bool {
+        let node = self.node();
+        let Some(decorated) = node.maybe_decorated() else {
+            return false;
+        };
+        for dec in decorated.decorators().iter() {
+            match self
+                .file
+                .name_resolution_for_types(i_s)
+                .decorator_without_need_for_flow_analysis(dec)
+            {
+                Some(DecoratorState::NodeRef(node_ref)) => NodeRef::new(self.file, dec.index())
+                    .set_point(Point::new_redirect(
+                        node_ref.file_index(),
+                        node_ref.node_index,
+                        Locality::Todo,
+                    )),
+                Some(DecoratorState::Calculating) => return false,
+                None => return true,
+            }
+        }
+        let current_index = node.name().index();
+        let p = NodeRef::new(self.file, current_index).point();
+        debug_assert!(matches!(
+            p.specific(),
+            Specific::FirstNameOfNameDef | Specific::NameOfNameDef
+        ));
+        let next_index = p.node_index();
+        if next_index > current_index
+            && let Some(next_func) = NodeRef::new(self.file, next_index).maybe_name_of_function()
+        {
+            Self::new(NodeRef::new(self.file, next_func.index()), self.class)
+                .needs_flow_analysis_for_decorators(i_s)
+        } else {
+            false
         }
     }
 

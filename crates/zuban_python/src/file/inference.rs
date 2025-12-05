@@ -4138,7 +4138,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     NodeRef::new(self.file, func_def.index()),
                     self.i_s.current_class(),
                 )
-                .cache_func_with_name_def(self.i_s, name_def);
+                .cache_func_with_name_def(self.i_s, name_def, false);
             }
             DefiningStmt::ClassDef(cls) => cache_class_name(name_def, cls),
             DefiningStmt::Assignment(assignment) => {

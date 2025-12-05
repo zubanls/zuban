@@ -1256,7 +1256,7 @@ impl Inference<'_, '_, '_> {
         }
 
         let func_node_ref = FuncNodeRef::new(self.file, func_def.index());
-        Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func(i_s);
+        Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func_from_diagnostics(i_s);
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
         if let Some(ComplexPoint::FunctionOverload(overload)) = func_node_ref.maybe_complex() {
@@ -1305,11 +1305,11 @@ impl Inference<'_, '_, '_> {
                             .expect_name_def();
                         if let Some(f) = name_def.maybe_name_of_func() {
                             Function::new(NodeRef::new(self.file, f.index()), class)
-                                .cache_func(self.i_s);
+                                .cache_func_from_diagnostics(self.i_s);
                         }
                     }
                 }
-                func.cache_func(self.i_s);
+                func.cache_func_from_diagnostics(self.i_s);
             }
         }
         FLOW_ANALYSIS.with(|fa| {
@@ -1324,7 +1324,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
-        function.cache_func(self.i_s);
+        function.cache_func_from_diagnostics(self.i_s);
         let func_node = function.node();
         if let Some(decorated) = func_node.maybe_decorated()
             && function.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable)

@@ -2134,3 +2134,25 @@ def g(x: X[int], y: X[Never]):
 def test(x: X[Never], y: X[int]):
     reveal_type(f(x, y))  # N: Revealed type is "__main__.X[Never] | __main__.X[int]"
     reveal_type(g(y, x))  # N: Revealed type is "__main__.X[int] | __main__.X[Never]"
+
+[case multiple_inheritance_overload_mismatch_no_crash]
+# From GH #200
+from tkinter_like import Canvas, Frame
+class C(Canvas, Frame): ...
+
+[file tkinter_like.pyi]
+from collections import *
+from typing import overload, Any
+
+class Canvas:
+    @overload
+    def configure(self) -> str: ...
+    @overload
+    def configure(self, cnf: str) -> int: ...
+
+class Frame:
+    @overload
+    def configure(self) -> str: ...
+    @overload
+    def configure(self, cnf: str) -> int: ...
+    config = configure
