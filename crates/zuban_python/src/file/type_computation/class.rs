@@ -4,10 +4,10 @@ use std::{
 };
 
 use parsa_python_cst::{
-    ArgOrComprehension, Argument, ArgumentsDetails, AssignmentContent, AsyncStmtContent, ClassDef,
-    Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg, Name, NodeIndex, Primary,
-    PrimaryContent, StarLikeExpression, StmtLikeContent, StmtLikeIterator, Target,
-    TrivialBodyState, TypeLike,
+    ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent,
+    AsyncStmtContent, ClassDef, Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg,
+    Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent,
+    StmtLikeIterator, Target, TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -1297,33 +1297,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
                         }
                     }
-                    if let Some(right) = assignment.right_side() {
-                        if let Some(expr) = right.maybe_simple_expression()
-                            && let ExpressionContent::ExpressionPart(ExpressionPart::Primary(
-                                primary,
-                            )) = expr.unpack()
-                            && let Some(non_member_ref) = db.python_state.enum_nonmember_node_ref()
-                        {
-                            if let PrimaryContent::Execution(_) = primary.second()
-                                && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) = self
-                                    .file
-                                    .name_resolution_for_types(&InferenceState::from_class(
-                                        db,
-                                        &Class::from_non_generic_node_ref(self.node_ref),
-                                    ))
-                                    .lookup_type_primary_or_atom_if_only_names(primary.first())
-                            {
-                                if node_ref.into_node_ref() == non_member_ref {
-                                    continue;
-                                    /*
-                                    } else if node_ref.into_node_ref()
-                                        == db.python_state.enum_member_node_ref()
-                                    {
-                                        */
-                                }
-                            }
-                        }
-                    } else {
+                    if !self.maybe_valid_enum_assignment(db, assignment) {
                         continue;
                     }
                 }
@@ -1337,6 +1311,35 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
         members.into_boxed_slice()
+    }
+
+    fn maybe_valid_enum_assignment(&self, db: &Database, assignment: Assignment) -> bool {
+        if let Some(right) = assignment.right_side() {
+            if let Some(expr) = right.maybe_simple_expression() {
+                match expr.unpack() {
+                    ExpressionContent::Lambda(_) => return false,
+                    ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) => {
+                        if let Some(non_member_ref) = db.python_state.enum_nonmember_node_ref() {
+                            if let PrimaryContent::Execution(_) = primary.second()
+                                && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) = self
+                                    .file
+                                    .name_resolution_for_types(&InferenceState::from_class(
+                                        db,
+                                        &Class::from_non_generic_node_ref(self.node_ref),
+                                    ))
+                                    .lookup_type_primary_or_atom_if_only_names(primary.first())
+                            {
+                                return node_ref.into_node_ref() != non_member_ref;
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            true
+        } else {
+            false
+        }
     }
 
     fn named_tuple_from_class(&self, db: &Database) -> Arc<NamedTuple> {

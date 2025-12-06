@@ -736,7 +736,6 @@ testEnumMemberSupport
 testEnumImplicitlyFinalForSubclassingWithCallableMember
 # enum member gathering
 testFinalWithMethodAssignment
-testLambdaIsNotEnumMember
 
 # Forward name binder reference in class
 testNewAnalyzerNamedTupleCallNested
