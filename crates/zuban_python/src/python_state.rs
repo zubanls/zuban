@@ -1085,6 +1085,8 @@ impl PythonState {
         typeshed_supports_keys_and_get_item_index
     );
     attribute_node_ref!(enum_file, pub enum_node_ref, enum_enum_index);
+    optional_attribute_node_ref!(enum_file, pub enum_member_node_ref, enum_member_index);
+    optional_attribute_node_ref!(enum_file, pub enum_nonmember_node_ref, enum_nonmember_index);
     attribute_node_ref!(
         collections,
         collections_named_tuple_node_ref,
@@ -1115,8 +1117,6 @@ impl PythonState {
     attribute_link!(functools, pub cached_property_link, functools_cached_property_index);
     attribute_link!(enum_file, pub enum_meta_link, enum_enum_meta_index);
     attribute_link!(enum_file, pub enum_auto_link, enum_auto_index);
-    optional_attribute_link!(enum_file, pub enum_member_link, enum_member_index);
-    optional_attribute_link!(enum_file, pub enum_nonmember_link, enum_nonmember_index);
     attribute_link!(typing, pub overload_link, typing_overload_index);
     attribute_link!(typing, pub sequence_link, typing_sequence_index);
     attribute_link!(typing, pub coroutine_link, typing_coroutine_index);

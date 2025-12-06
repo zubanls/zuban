@@ -103,6 +103,10 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         Self(node_ref)
     }
 
+    pub fn into_node_ref(self) -> NodeRef<'file> {
+        self.into()
+    }
+
     #[inline]
     pub fn to_db_lifetime(self, db: &Database) -> ClassNodeRef<'_> {
         ClassNodeRef(self.0.to_db_lifetime(db))
@@ -1278,23 +1282,50 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     )
                 }
                 let name = name_node_ref.expect_name();
-                if let Some(assignment) = name.maybe_assignment_definition_name()
-                    && let AssignmentContent::WithAnnotation(_, annotation, Some(_)) =
+                if let Some(assignment) = name.maybe_assignment_definition_name() {
+                    if let AssignmentContent::WithAnnotation(_, annotation, Some(_)) =
                         assignment.unpack()
-                {
-                    // TODO this check is wrong and should do name resolution correctly.
-                    // However it is not that easy to do name resolution correctly, because the
-                    // class is not ready to do name resolution. We probably have to move this
-                    // check into EnumMemberDefinition calculation.
-                    // Mypy allows this, so we should probably as well (and enum members are
-                    // final anyway, so this is just redundance.
-                    if annotation.expression().as_code() != "Final" {
-                        NodeRef::new(self.node_ref.file, point.node_index())
-                            .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
+                    {
+                        // TODO this check is wrong and should do name resolution correctly.
+                        // However it is not that easy to do name resolution correctly, because the
+                        // class is not ready to do name resolution. We probably have to move this
+                        // check into EnumMemberDefinition calculation.
+                        // Mypy allows this, so we should probably as well (and enum members are
+                        // final anyway, so this is just redundance.
+                        if annotation.expression().as_code() != "Final" {
+                            NodeRef::new(self.node_ref.file, point.node_index())
+                                .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
+                        }
                     }
-                }
-                if name.is_assignment_annotation_without_definition() {
-                    continue;
+                    if let Some(right) = assignment.right_side() {
+                        if let Some(expr) = right.maybe_simple_expression()
+                            && let ExpressionContent::ExpressionPart(ExpressionPart::Primary(
+                                primary,
+                            )) = expr.unpack()
+                            && let Some(non_member_ref) = db.python_state.enum_nonmember_node_ref()
+                        {
+                            if let PrimaryContent::Execution(_) = primary.second()
+                                && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) = self
+                                    .file
+                                    .name_resolution_for_types(&InferenceState::from_class(
+                                        db,
+                                        &Class::from_non_generic_node_ref(self.node_ref),
+                                    ))
+                                    .lookup_type_primary_or_atom_if_only_names(primary.first())
+                            {
+                                if node_ref.into_node_ref() == non_member_ref {
+                                    continue;
+                                    /*
+                                    } else if node_ref.into_node_ref()
+                                        == db.python_state.enum_member_node_ref()
+                                    {
+                                        */
+                                }
+                            }
+                        }
+                    } else {
+                        continue;
+                    }
                 }
 
                 // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we

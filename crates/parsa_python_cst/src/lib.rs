@@ -2886,17 +2886,17 @@ impl<'db> Assignment<'db> {
                 || child.is_type(Nonterminal(star_expressions))
             {
                 let iter = AssignmentTargetIterator(self.node.iter_children().step_by(2));
-                return AssignmentContent::Normal(iter, Self::right_side(child));
+                return AssignmentContent::Normal(iter, Self::create_right_side(child));
             } else if child.is_type(Nonterminal(annotation)) {
                 iterator.next();
-                let right = iterator.next().map(Self::right_side);
+                let right = iterator.next().map(Self::create_right_side);
                 return AssignmentContent::WithAnnotation(
                     Target::new_single_target(self.node.nth_child(0)),
                     Annotation::new(child),
                     right,
                 );
             } else if child.is_type(Nonterminal(augassign)) {
-                let right = Self::right_side(iterator.next().unwrap());
+                let right = Self::create_right_side(iterator.next().unwrap());
                 return AssignmentContent::AugAssign(
                     Target::new_single_target(self.node.nth_child(0)),
                     AugAssign::new(child),
@@ -2907,11 +2907,19 @@ impl<'db> Assignment<'db> {
         unreachable!()
     }
 
-    fn right_side(child: PyNode) -> AssignmentRightSide {
+    fn create_right_side(child: PyNode) -> AssignmentRightSide {
         if child.is_type(Nonterminal(star_expressions)) {
             AssignmentRightSide::StarExpressions(StarExpressions::new(child))
         } else {
             AssignmentRightSide::YieldExpr(YieldExpr::new(child))
+        }
+    }
+
+    pub fn right_side(&self) -> Option<AssignmentRightSide<'db>> {
+        match self.unpack() {
+            AssignmentContent::Normal(_, right) => Some(right),
+            AssignmentContent::WithAnnotation(_, _, right) => right,
+            AssignmentContent::AugAssign(_, _, right) => Some(right),
         }
     }
 

@@ -97,6 +97,7 @@ impl EnumMemberDefinition {
     pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {
         self.name.as_str(db)
     }
+
     pub fn infer_value(&self, i_s: &InferenceState, enum_: &Enum) -> Inferred {
         match self.value {
             // I'm not 100% sure why this is, but Mypy returns Any on all enums that have a __new__
