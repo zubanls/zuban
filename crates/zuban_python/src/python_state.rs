@@ -224,6 +224,8 @@ pub(crate) struct PythonState {
     enum_enum_meta_index: NodeIndex,
     enum_enum_index: NodeIndex,
     enum_auto_index: NodeIndex,
+    enum_member_index: Option<NodeIndex>,
+    enum_nonmember_index: Option<NodeIndex>,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
     mypy_extensions_named_arg_func: NodeIndex,
@@ -356,6 +358,8 @@ impl PythonState {
             enum_enum_meta_index: 0,
             enum_enum_index: 0,
             enum_auto_index: 0,
+            enum_member_index: None,
+            enum_nonmember_index: None,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -650,6 +654,8 @@ impl PythonState {
         cache_index!(builtins_str_index, builtins, "str");
         cache_index!(enum_enum_index, enum_file, "Enum");
         cache_index!(enum_auto_index, enum_file, "auto");
+        cache_optional_index!(enum_member_index, enum_file, "member");
+        cache_optional_index!(enum_nonmember_index, enum_file, "nonmember");
 
         cache_index!(builtins_dict_index, builtins, "dict");
         cache_index!(builtins_list_index, builtins, "list");
@@ -1109,6 +1115,8 @@ impl PythonState {
     attribute_link!(functools, pub cached_property_link, functools_cached_property_index);
     attribute_link!(enum_file, pub enum_meta_link, enum_enum_meta_index);
     attribute_link!(enum_file, pub enum_auto_link, enum_auto_index);
+    optional_attribute_link!(enum_file, pub enum_member_link, enum_member_index);
+    optional_attribute_link!(enum_file, pub enum_nonmember_link, enum_nonmember_index);
     attribute_link!(typing, pub overload_link, typing_overload_index);
     attribute_link!(typing, pub sequence_link, typing_sequence_index);
     attribute_link!(typing, pub coroutine_link, typing_coroutine_index);
