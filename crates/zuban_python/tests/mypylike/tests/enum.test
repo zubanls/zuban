@@ -382,3 +382,11 @@ class ColorBad(enum.Enum):
 
 
 ColorBad(str())
+
+[case enum_ensure_valid_value]
+# Copied from conformance tests (enums_member_values.py)
+from enum import Enum
+class Color3(Enum):
+    _value_: int
+    RED = 1  # OK
+    GREEN = "green"  # E: Enum value type "str" does not match the type "int" of "_value_"

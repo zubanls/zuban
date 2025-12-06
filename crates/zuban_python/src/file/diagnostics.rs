@@ -950,17 +950,47 @@ impl Inference<'_, '_, '_> {
         let (type_params, arguments, _) = class.unpack();
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = class_node_ref.use_cached_class_infos(db);
-        if let Some(t) = class_infos.undefined_generics_type.get()
-            && let Type::Dataclass(d) = t.as_ref()
-        {
-            ensure_calculated_dataclass(d, db);
-            if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
-                c.add_issue_on_name(
-                    db,
-                    IssueKind::DataclassPlusExplicitSlots {
-                        class_name: c.name().into(),
-                    },
-                )
+        if let Some(t) = class_infos.undefined_generics_type.get() {
+            match t.as_ref() {
+                Type::Dataclass(d) => {
+                    ensure_calculated_dataclass(d, db);
+                    if d.options.slots && c.lookup_symbol(self.i_s, "__slots__").is_some() {
+                        c.add_issue_on_name(
+                            db,
+                            IssueKind::DataclassPlusExplicitSlots {
+                                class_name: c.name().into(),
+                            },
+                        )
+                    }
+                }
+                Type::Enum(e) => {
+                    if let Some(expected) =
+                        c.lookup_symbol(self.i_s, "_value_").into_maybe_inferred()
+                    {
+                        for member in e.members.iter() {
+                            if let Some(value) = member.value {
+                                let actual = member.infer_value(self.i_s, e);
+                                if !expected
+                                    .as_cow_type(self.i_s)
+                                    .is_simple_super_type_of(
+                                        self.i_s,
+                                        &actual.as_cow_type(self.i_s),
+                                    )
+                                    .bool()
+                                {
+                                    NodeRef::from_link(db, value).add_type_issue(
+                                        db,
+                                        IssueKind::EnumValueMustMatchUnderscoreValue {
+                                            actual: actual.format_short(self.i_s),
+                                            expected: expected.format_short(self.i_s),
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => (),
             }
         }
 

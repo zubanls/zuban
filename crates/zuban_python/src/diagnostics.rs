@@ -455,6 +455,7 @@ pub(crate) enum IssueKind {
     EnumMixinNotAllowedAfterEnum { after: Box<str> },
     EnumMembersAttributeOverwritten,
     EnumMemberAnnotationDisallowed,
+    EnumValueMustMatchUnderscoreValue { actual: Box<str>, expected: Box<str> },
 
     DataclassCannotBe { kind: Box<str> },
     DataclassMultipleKwOnly,
@@ -1130,6 +1131,9 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push("See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members".into());
                 r#"Enum members must be left unannotated"#.to_string()
             }
+            EnumValueMustMatchUnderscoreValue { actual, expected } => format!(
+                r#"Enum value type "{actual}" does not match the type "{expected}" of "_value_""#
+            ),
 
             DataclassCannotBe { kind: kind_name } => format!("{kind_name} cannot be a dataclass"),
             DataclassMultipleKwOnly =>
