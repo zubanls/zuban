@@ -1937,3 +1937,32 @@ def convert_floats_to_approx(x: T) -> T:
         reveal_type(x)  # N: Revealed type is "<subclass of "T" and "float">"
         return x  # Incompatible return value type (got "float", expected "T")
     return x
+
+[case flags_should_not_be_narrowed]
+# flags: --warn-unreachable
+# Copied from conformance tests (enums_expansion.py)
+from typing import assert_type, Literal
+from enum import Flag
+
+class CustomFlags(Flag):
+    FLAG1 = 1
+    FLAG2 = 2
+    FLAG3 = 4
+
+
+def test1(f: CustomFlags):
+    if f is CustomFlags.FLAG1 or f is CustomFlags.FLAG2:
+        print("flag1 and flag2")
+    else:
+        assert_type(f, CustomFlags)
+        assert_type(f, Literal[CustomFlags.FLAG3])  # E: Expression is of type "CustomFlags", not "Literal[CustomFlags.FLAG3]"
+
+
+def test2(f: CustomFlags):
+    match f:
+        case CustomFlags.FLAG1 | CustomFlags.FLAG2:
+            pass
+        case CustomFlags.FLAG3:
+            pass
+        case _:
+            assert_type(f, CustomFlags)

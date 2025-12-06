@@ -1221,11 +1221,21 @@ fn split_off_enum_member(
             }
             Type::Enum(e2) => {
                 if enum_member.enum_.defined_at == e2.defined_at {
+                    let is_flag_like = enum_member
+                        .enum_
+                        .class(i_s.db)
+                        .instance()
+                        .lookup_with_details(i_s, |_| (), "__or__", LookupKind::OnlyType)
+                        .lookup
+                        .is_some();
+                    if is_flag_like {
+                        add(sub_t.clone())
+                    }
                     for (i, _) in e2.members.iter().enumerate() {
                         let new_member = Type::EnumMember(EnumMember::new(e2.clone(), i, false));
                         if i == enum_member.member_index {
                             set_truthy();
-                        } else {
+                        } else if !is_flag_like {
                             add(new_member)
                         }
                     }
