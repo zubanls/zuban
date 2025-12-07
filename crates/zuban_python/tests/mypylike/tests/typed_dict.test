@@ -974,3 +974,37 @@ def f(x: X, y: Y):
         1
     else:
         1
+
+[case typed_dict_readonly_inheritance]
+# Copied from conformance tests (typeddicts_readonly_inheritance.py)
+from typing import TypedDict, ReadOnly, Collection
+
+class NamedDict(TypedDict):
+    name: ReadOnly[str]
+
+class Album1(NamedDict):
+    name: str
+    year: int
+
+a1: Album1 = {"name": "Flood", "year": 1990}
+a1["year"] = 1973  # OK
+a1["name"] = "Dark Side Of The Moon"  # OK
+
+# > If a read-only item is not redeclared, it remains read-only.
+
+class Album2(NamedDict):
+    year: int
+
+a2: Album2 = {"name": "Flood", "year": 1990}
+a2["name"] = "Dark Side Of The Moon"  # E: ReadOnly TypedDict key "name" TypedDict is mutated
+
+# > Subclasses can narrow value types of read-only items.
+
+class AlbumCollection(TypedDict):
+    albums: ReadOnly[Collection[Album1]]
+    alt: ReadOnly[list[str | int]]
+
+class RecordShop(AlbumCollection):
+    name: str
+    albums: ReadOnly[list[Album1]]  # OK
+    alt: ReadOnly[list[str]]  # E: Overwriting TypedDict field "alt" while extending
