@@ -731,7 +731,6 @@ testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
 # enum.member / enum.nonmember
-testEnumNonMemberSupport
 testEnumMemberSupport
 # enum member gathering
 testFinalWithMethodAssignment

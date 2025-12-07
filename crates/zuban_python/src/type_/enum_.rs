@@ -7,7 +7,7 @@ use super::{
     AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, LookupResult, Type,
 };
 use crate::{
-    database::{Database, ParentScope, PointLink},
+    database::{ComplexPoint, Database, ParentScope, PointLink},
     debug,
     diagnostics::IssueKind,
     file::File as _,
@@ -272,14 +272,31 @@ pub(crate) fn lookup_on_enum_class<'a>(
             AttributeKind::Attribute,
         )
         .or_else(|| {
-            enum_.class(i_s.db).lookup(
-                i_s,
-                name,
-                ClassLookupOptions::new(&add_issue)
-                    .with_kind(kind)
-                    .with_as_type_type(&|| Type::Type(in_type.clone())),
-            )
+            enum_
+                .class(i_s.db)
+                .lookup(
+                    i_s,
+                    name,
+                    ClassLookupOptions::new(&add_issue)
+                        .with_kind(kind)
+                        .with_as_type_type(&|| Type::Type(in_type.clone())),
+                )
+                .remove_non_member_from_enum(i_s.db)
         }),
+    }
+}
+
+impl LookupDetails<'_> {
+    fn remove_non_member_from_enum(mut self, db: &Database) -> Self {
+        if let Some(inf) = self.lookup.maybe_inferred()
+            && let Some(ComplexPoint::TypeInstance(Type::Class(c))) = inf.maybe_complex_point(db)
+            && Some(c.link) == db.python_state.enum_nonmember_link()
+        {
+            let first_generic = c.class(db).nth_type_argument(db, 0);
+            self.lookup
+                .update_inferred(Inferred::from_type(first_generic.clone()))
+        }
+        self
     }
 }
 

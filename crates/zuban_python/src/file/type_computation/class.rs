@@ -5,9 +5,9 @@ use std::{
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent,
-    AsyncStmtContent, ClassDef, Decoratee, Expression, ExpressionContent, ExpressionPart, Kwarg,
-    Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression, StmtLikeContent,
-    StmtLikeIterator, Target, TrivialBodyState, TypeLike,
+    AsyncStmtContent, ClassDef, Decorated, Decoratee, Expression, ExpressionContent,
+    ExpressionPart, Kwarg, Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression,
+    StmtLikeContent, StmtLikeIterator, Target, TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -1263,31 +1263,38 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         // want the original order in an enum.
         name_indexes.sort();
 
+        let search_decorated_for =
+            |maybe_decorated: Option<Decorated>, check_against: Option<NodeRef>| {
+                (|| {
+                    let check_against = check_against?;
+                    maybe_decorated?.decorators().iter().find_map(|decorator| {
+                        match self
+                            .file
+                            .name_resolution_for_types(&InferenceState::from_class(
+                                db,
+                                &Class::from_non_generic_node_ref(self.node_ref),
+                            ))
+                            .lookup_decorator_if_only_names(decorator)?
+                        {
+                            Lookup::T(TypeContent::Class { node_ref, .. }) => {
+                                Some(node_ref == check_against)
+                            }
+                            _ => None,
+                        }
+                    })
+                })()
+                .unwrap_or_default()
+            };
         for &name_index in name_indexes {
             let name_node_ref = NodeRef::new(self.node_ref.file, name_index);
             if let Some(func) = name_node_ref
                 .add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64))
                 .maybe_function()
             {
-                if let Some(decorated) = func.maybe_decorated()
-                    && decorated.decorators().iter().any(|decorator| {
-                        if let Some(member) = db.python_state.enum_member_node_ref()
-                            && let Some(lookup) = self
-                                .file
-                                .name_resolution_for_types(&InferenceState::from_class(
-                                    db,
-                                    &Class::from_non_generic_node_ref(self.node_ref),
-                                ))
-                                .lookup_decorator_if_only_names(decorator)
-                            && let Lookup::T(TypeContent::Class { node_ref, .. }) = lookup
-                            && node_ref == member
-                        {
-                            true
-                        } else {
-                            false
-                        }
-                    })
-                {
+                if search_decorated_for(
+                    func.maybe_decorated(),
+                    db.python_state.enum_member_node_ref(),
+                ) {
                     let name = name_node_ref.expect_name();
                     members.push(EnumMemberDefinition::new(
                         StringSlice::from_name(self.node_ref.file_index(), name).into(),
@@ -1325,6 +1332,17 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     if !self.maybe_valid_enum_assignment(db, assignment) {
                         continue;
                     }
+                }
+                // Check if classes have an @nonmember
+                if let Some(cls) = name_node_ref
+                    .add_to_node_index(-(NAME_TO_CLASS_DIFF as i64))
+                    .maybe_class()
+                    && search_decorated_for(
+                        cls.maybe_decorated(),
+                        db.python_state.enum_nonmember_node_ref(),
+                    )
+                {
+                    continue;
                 }
 
                 // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
