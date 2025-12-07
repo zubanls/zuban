@@ -370,6 +370,7 @@ pub(crate) enum IssueKind {
     NamedTupleShouldBeASingleBase,
     NamedTupleSelfNotAllowed,
     NamedTupleAttributeCannotBeDeleted,
+    NamedTupleOverwriteInSubclass,
 
     TypedDictIncompatibleType { got: Box<str>, key: Box<str>, expected: Box<str> },
     TypedDictExtraKey { key: Box<str>, typed_dict: Box<str> },
@@ -1869,6 +1870,7 @@ impl<'db> Diagnostic<'db> {
             NamedTupleShouldBeASingleBase => "NamedTuple should be a single base".to_string(),
             NamedTupleSelfNotAllowed => "Self type cannot be used in NamedTuple item type".to_string(),
             NamedTupleAttributeCannotBeDeleted => "NamedTuple attributes cannot be deleted".to_string(),
+            NamedTupleOverwriteInSubclass => "NamedTuple attributes cannot be overridden in subclasses".to_string(),
 
             TypedDictIncompatibleType {got, key, expected} => format!(
                 r#"Incompatible types (expression has type "{got}", TypedDict item "{key}" has type "{expected}")"#

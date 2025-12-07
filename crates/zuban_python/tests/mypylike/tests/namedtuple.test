@@ -183,3 +183,15 @@ class Point2(NamedTuple):
 
     def is_origin(self) -> int:  # Not a field
         return self.x == 0 and self.y == 0
+
+[case named_tuple_overwrite_of_attribute_in_inheritance_invalid]
+# Copied from conformance tests (namedtuples_define_class.py)
+from typing import NamedTuple
+class Point(NamedTuple):
+    x: int
+    y: int
+    units: str = "meters"
+
+class BadPointWithName(Point):
+    name: str = ""  # OK
+    x: int = 0  # E: NamedTuple attributes cannot be overridden in subclasses

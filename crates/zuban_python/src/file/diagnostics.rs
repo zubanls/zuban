@@ -1115,31 +1115,52 @@ impl Inference<'_, '_, '_> {
                     .add_issue(&i_s, IssueKind::InvalidDunderMatchArgs)
             }
         }
-        if matches!(class_infos.class_kind, ClassKind::Protocol) {
-            for (name, name_index) in c.class_storage.self_symbol_table.iter() {
-                if c.class_storage
-                    .class_symbol_table
-                    .lookup_symbol(name)
-                    .is_none()
-                {
-                    let from = NodeRef::new(self.file, *name_index);
-                    // Apparently Mypy raises two issues here.
-                    from.add_issue(
-                        self.i_s,
-                        IssueKind::ProtocolMembersCannotHaveSelfVariableDefinitions,
-                    );
-                    from.add_issue(
-                        self.i_s,
-                        IssueKind::AttributeError {
-                            object: format!("\"{}\"", c.name()).into(),
-                            name: name.into(),
-                        },
-                    )
+        match class_infos.class_kind {
+            ClassKind::Protocol => {
+                for (name, name_index) in c.class_storage.self_symbol_table.iter() {
+                    if c.class_storage
+                        .class_symbol_table
+                        .lookup_symbol(name)
+                        .is_none()
+                    {
+                        let from = NodeRef::new(self.file, *name_index);
+                        // Apparently Mypy raises two issues here.
+                        from.add_issue(
+                            self.i_s,
+                            IssueKind::ProtocolMembersCannotHaveSelfVariableDefinitions,
+                        );
+                        from.add_issue(
+                            self.i_s,
+                            IssueKind::AttributeError {
+                                object: format!("\"{}\"", c.name()).into(),
+                                name: name.into(),
+                            },
+                        )
+                    }
+                }
+                if type_params.is_none() {
+                    check_protocol_type_var_variances(self.i_s, c)
                 }
             }
-            if type_params.is_none() {
-                check_protocol_type_var_variances(self.i_s, c)
+            ClassKind::NamedTuple => {
+                if let Some(nt) = class_infos.mro.iter().find_map(|c| match &c.type_ {
+                    Type::NamedTuple(nt) if !c.is_direct_base => Some(nt),
+                    _ => None,
+                }) {
+                    for param in nt.params() {
+                        if let Some(check_name) = param.name(self.i_s.db)
+                            && let Some(in_class_same_name_index) =
+                                c.class_storage.class_symbol_table.lookup_symbol(check_name)
+                        {
+                            NodeRef::new(self.file, in_class_same_name_index).add_type_issue(
+                                self.i_s.db,
+                                IssueKind::NamedTupleOverwriteInSubclass,
+                            )
+                        }
+                    }
+                }
             }
+            _ => (),
         }
     }
 
