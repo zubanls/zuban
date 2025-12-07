@@ -31,10 +31,10 @@ use crate::{
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass,
-        DataclassOptions, DataclassTransformObj, DbString, Enum, EnumMemberDefinition,
-        ExtraItemsType, FunctionKind, GenericClass, NamedTuple, ParamType, ReplaceTypeVarLikes,
-        StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance, TypedDict,
-        TypedDictMember, TypedDictMembers, Variance,
+        DataclassOptions, DataclassTransformObj, DbString, Enum, EnumMemberAlias,
+        EnumMemberDefinition, ExtraItemsType, FunctionKind, GenericClass, NamedTuple, ParamType,
+        ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeVarLike, TypeVarLikes, TypeVarVariance,
+        TypedDict, TypedDictMember, TypedDictMembers, Variance,
     },
     type_helpers::{Class, FirstParamProperties, Function},
     utils::{debug_indent, join_with_commas},
@@ -606,7 +606,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
             }
             class_infos.class_kind = ClassKind::Enum;
-            let members = self.enum_members(db);
+            let (members, aliases) = self.enum_members(db);
             if !members.is_empty() {
                 let enum_ = Enum::new(
                     DbString::StringSlice(self.name_string_slice()),
@@ -614,6 +614,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     self.node_ref.as_link(),
                     self.class_storage.parent_scope,
                     members,
+                    aliases,
                     OnceLock::new(),
                 );
                 let enum_type = Arc::new(Type::Enum(enum_.clone()));
@@ -1238,8 +1239,9 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
     }
 
-    fn enum_members(&self, db: &Database) -> Box<[EnumMemberDefinition]> {
+    fn enum_members(&self, db: &Database) -> (Box<[EnumMemberDefinition]>, Box<[EnumMemberAlias]>) {
         let mut members = vec![];
+        let mut aliases = vec![];
         let mut name_indexes = vec![];
         for (name, name_index) in self.class_storage.class_symbol_table.iter() {
             // It seems like Enums treat private, "dunder" and "sunder" names special.
@@ -1317,7 +1319,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
                     }
                 }
-                match self.maybe_valid_enum_member_assignment(db, assignment) {
+                match self.maybe_valid_enum_member_assignment(
+                    db,
+                    name_node_ref,
+                    assignment,
+                    &mut aliases,
+                ) {
                     Some(ValidEnumMemberAssignment::Valid) => {}
                     Some(ValidEnumMemberAssignment::SubExpression(expr)) => {
                         value_ref = NodeRef::new(self.file, expr.index())
@@ -1354,13 +1361,15 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 Some(value_ref.as_link()),
             ))
         }
-        members.into_boxed_slice()
+        (members.into_boxed_slice(), aliases.into_boxed_slice())
     }
 
     fn maybe_valid_enum_member_assignment(
         &self,
         db: &Database,
+        name_node_ref: NodeRef,
         assignment: Assignment<'a>,
+        aliases: &mut Vec<EnumMemberAlias>,
     ) -> Option<ValidEnumMemberAssignment<'a>> {
         if let Some(right) = assignment.right_side() {
             if let Some(expr) = right.maybe_simple_expression() {
@@ -1407,6 +1416,15 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     if points_to.node_index > class_node.index()
                         && points_to.node_index <= class_node.block().last_leaf_index()
                     {
+                        let name = name_node_ref.expect_name();
+                        aliases.push(EnumMemberAlias::new(
+                            StringSlice::from_name(self.node_ref.file_index(), name).into(),
+                            StringSlice::from_name(
+                                self.node_ref.file_index(),
+                                points_to.expect_name_def().name(),
+                            )
+                            .into(),
+                        ));
                         return None;
                     }
                 }

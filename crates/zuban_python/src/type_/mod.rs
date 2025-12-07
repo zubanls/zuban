@@ -43,7 +43,7 @@ pub(crate) use self::{
         lookup_on_dataclass_type,
     },
     enum_::{
-        Enum, EnumKind, EnumMember, EnumMemberDefinition, lookup_on_enum_class,
+        Enum, EnumKind, EnumMember, EnumMemberAlias, EnumMemberDefinition, lookup_on_enum_class,
         lookup_on_enum_instance, lookup_on_enum_member_instance,
     },
     intersection::Intersection,

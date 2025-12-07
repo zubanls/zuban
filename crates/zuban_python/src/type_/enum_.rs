@@ -153,13 +153,29 @@ impl EnumMemberDefinition {
     }
 }
 
-#[derive(Debug, Eq, Clone)]
+#[derive(Debug, Clone)]
+pub(crate) struct EnumMemberAlias {
+    name: DbString,
+    pointing_to_name: DbString,
+}
+
+impl EnumMemberAlias {
+    pub fn new(name: DbString, pointing_to_name: DbString) -> Self {
+        Self {
+            name,
+            pointing_to_name,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct Enum {
     pub name: DbString,
     pub class: PointLink,
     pub defined_at: PointLink,
     parent_scope: ParentScope,
     pub members: Box<[EnumMemberDefinition]>,
+    pub member_aliases: Box<[EnumMemberAlias]>,
     has_customized_new: OnceLock<bool>,
 }
 
@@ -170,6 +186,7 @@ impl Enum {
         defined_at: PointLink,
         parent_scope: ParentScope,
         members: Box<[EnumMemberDefinition]>,
+        member_aliases: Box<[EnumMemberAlias]>,
         has_customized_new: OnceLock<bool>,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -179,6 +196,7 @@ impl Enum {
             class,
             members,
             has_customized_new,
+            member_aliases,
         })
     }
 
@@ -260,6 +278,8 @@ impl PartialEq for Enum {
     }
 }
 
+impl Eq for Enum {}
+
 impl Hash for Enum {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.defined_at.hash(state);
@@ -284,7 +304,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
         "_ignore_" | "_order_" | "__order__" => LookupDetails::none(),
         _ => LookupDetails::new(
             Type::Enum(enum_.clone()),
-            lookup_members_on_enum(i_s, enum_, name),
+            lookup_members_or_aliases_on_enum(i_s, enum_, name),
             AttributeKind::Attribute,
         )
         .or_else(|| {
@@ -343,7 +363,7 @@ fn lookup_on_enum_instance_fallback<'a>(
     enum_: &'a Arc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
-    let lookup = lookup_members_on_enum(i_s, enum_, name);
+    let lookup = lookup_members_or_aliases_on_enum(i_s, enum_, name);
     if lookup.is_some() {
         LookupDetails::new(Type::Enum(enum_.clone()), lookup, AttributeKind::Attribute)
     } else {
@@ -410,8 +430,19 @@ pub(crate) fn lookup_on_enum_member_instance<'a>(
     lookup_on_enum_instance_fallback(i_s, add_issue, &member.enum_, name)
 }
 
-fn lookup_members_on_enum(i_s: &InferenceState, enum_: &Arc<Enum>, name: &str) -> LookupResult {
-    match Enum::lookup(enum_, i_s.db, name, true) {
+fn lookup_members_or_aliases_on_enum(
+    i_s: &InferenceState,
+    enum_: &Arc<Enum>,
+    name: &str,
+) -> LookupResult {
+    match Enum::lookup(enum_, i_s.db, name, true).or_else(|| {
+        enum_.member_aliases.iter().find_map(|alias| {
+            if alias.name.as_str(i_s.db) != name {
+                return None;
+            }
+            Enum::lookup(enum_, i_s.db, alias.pointing_to_name.as_str(i_s.db), true)
+        })
+    }) {
         Some(m) => LookupResult::UnknownName(Inferred::from_type(Type::EnumMember(m))),
         None => LookupResult::None,
     }

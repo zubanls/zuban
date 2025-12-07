@@ -433,3 +433,21 @@ class E(Enum):
 reveal_type(E.x)  # N: Revealed type is "def (x: int) -> int"
 reveal_type(E.y)  # N: Revealed type is "def (x: int) -> int"
 reveal_type(E.z)  # N: Revealed type is "Literal[__main__.E.z]?"
+
+[case enum_member_alias_lookup]
+# Partially copied from conformance tests (enums_members.py)
+from enum import Enum
+from typing import Literal, assert_type
+class TrafficLight(Enum):
+    RED = 1
+    GREEN = 2
+    YELLOW = 3
+
+    AMBER = YELLOW  # Alias for YELLOW
+
+assert_type(TrafficLight.AMBER, Literal[TrafficLight.YELLOW])
+
+def f(a: TrafficLight, b: type[TrafficLight], c: Literal[TrafficLight.YELLOW]):
+    reveal_type(a.AMBER)  # N: Revealed type is "Literal[__main__.TrafficLight.YELLOW]?"
+    reveal_type(b.AMBER)  # N: Revealed type is "Literal[__main__.TrafficLight.YELLOW]?"
+    reveal_type(c.AMBER)  # N: Revealed type is "Literal[__main__.TrafficLight.YELLOW]?"

@@ -135,6 +135,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 name_infos.0.as_link(),
                 self.i_s.as_parent_scope(),
                 members,
+                [].into(),
                 class.has_customized_enum_new(self.i_s).into(),
             ),
         )))))
