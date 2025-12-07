@@ -1854,8 +1854,13 @@ fn find_stmt_named_tuple_types(
                         })
                     }
                 }
-                _ => NodeRef::new(file, assignment.index())
-                    .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple),
+                _ => {
+                    // Mypy disallows this, but the conformance tests do not.
+                    if db.project.settings.mypy_compatible {
+                        NodeRef::new(file, assignment.index())
+                            .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple)
+                    }
+                }
             },
             StmtLikeContent::AsyncStmt(async_stmt)
                 if matches!(async_stmt.unpack(), AsyncStmtContent::FunctionDef(_)) => {}

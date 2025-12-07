@@ -171,3 +171,15 @@ class PointWithName(Point):
 class BadPointWithName(Point):
     name: str = ""  # OK
     x: int = 0  # E: Cannot override namedtuple attr
+
+[case namedtuple_attribute_from_conformance_tests]
+# flags: --no-mypy-compatible
+# Copied from conformance tests (namedtuples_define_class.py)
+from typing import NamedTuple
+class Point2(NamedTuple):
+    x: int
+    y: int
+    units = "meters"  # Not a field
+
+    def is_origin(self) -> int:  # Not a field
+        return self.x == 0 and self.y == 0
