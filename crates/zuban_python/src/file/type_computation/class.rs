@@ -1291,79 +1291,84 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 .add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64))
                 .maybe_function()
             {
-                if search_decorated_for(
+                // Search for @enum.member
+                if !search_decorated_for(
                     func.maybe_decorated(),
                     db.python_state.enum_member_node_ref(),
                 ) {
-                    let name = name_node_ref.expect_name();
-                    members.push(EnumMemberDefinition::new(
-                        StringSlice::from_name(self.node_ref.file_index(), name).into(),
-                        Some(name_node_ref.as_link()),
-                    ))
-                }
-            } else {
-                let point = name_node_ref.point();
-                debug_assert!(point.is_name_of_name_def_like(), "{point:?}");
-                if point.node_index() != name_index {
-                    NodeRef::new(self.node_ref.file, point.node_index()).add_type_issue(
-                        db,
-                        IssueKind::EnumReusedMemberName {
-                            enum_name: self.name().into(),
-                            member_name: name_node_ref.as_code().into(),
-                        },
-                    )
-                }
-                let name = name_node_ref.expect_name();
-                if let Some(assignment) = name.maybe_assignment_definition_name() {
-                    if let AssignmentContent::WithAnnotation(_, annotation, Some(_)) =
-                        assignment.unpack()
-                    {
-                        // TODO this check is wrong and should do name resolution correctly.
-                        // However it is not that easy to do name resolution correctly, because the
-                        // class is not ready to do name resolution. We probably have to move this
-                        // check into EnumMemberDefinition calculation.
-                        // Mypy allows this, so we should probably as well (and enum members are
-                        // final anyway, so this is just redundance.
-                        if annotation.expression().as_code() != "Final" {
-                            NodeRef::new(self.node_ref.file, point.node_index())
-                                .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
-                        }
-                    }
-                    if !self.maybe_valid_enum_assignment(db, assignment) {
-                        continue;
-                    }
-                }
-                // Check if classes have an @nonmember
-                if let Some(cls) = name_node_ref
-                    .add_to_node_index(-(NAME_TO_CLASS_DIFF as i64))
-                    .maybe_class()
-                    && search_decorated_for(
-                        cls.maybe_decorated(),
-                        db.python_state.enum_nonmember_node_ref(),
-                    )
-                {
                     continue;
                 }
-
-                // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
-                // however only filter for functions and ignore decorators.
-                members.push(EnumMemberDefinition::new(
-                    StringSlice::from_name(self.node_ref.file_index(), name).into(),
-                    Some(name_node_ref.as_link()),
-                ))
             }
+            let name = name_node_ref.expect_name();
+            let mut value_ref = name_node_ref;
+            let point = name_node_ref.point();
+            if let Some(assignment) = name.maybe_assignment_definition_name() {
+                if let AssignmentContent::WithAnnotation(_, annotation, Some(_)) =
+                    assignment.unpack()
+                {
+                    // TODO this check is wrong and should do name resolution correctly.
+                    // However it is not that easy to do name resolution correctly, because the
+                    // class is not ready to do name resolution. We probably have to move this
+                    // check into EnumMemberDefinition calculation.
+                    // Mypy allows this, so we should probably as well (and enum members are
+                    // final anyway, so this is just redundance.
+                    if annotation.expression().as_code() != "Final" {
+                        NodeRef::new(self.node_ref.file, point.node_index())
+                            .add_type_issue(db, IssueKind::EnumMemberAnnotationDisallowed);
+                    }
+                }
+                match self.maybe_valid_enum_member_assignment(db, assignment) {
+                    Some(ValidEnumMemberAssignment::Valid) => {}
+                    Some(ValidEnumMemberAssignment::SubExpression(expr)) => {
+                        value_ref = NodeRef::new(self.file, expr.index())
+                    }
+                    None => continue,
+                }
+            // Check if classes have an @nonmember
+            } else if let Some(cls) = name_node_ref
+                .add_to_node_index(-(NAME_TO_CLASS_DIFF as i64))
+                .maybe_class()
+                && search_decorated_for(
+                    cls.maybe_decorated(),
+                    db.python_state.enum_nonmember_node_ref(),
+                )
+            {
+                continue;
+            }
+
+            debug_assert!(point.is_name_of_name_def_like(), "{point:?}");
+            if point.node_index() != name_index {
+                NodeRef::new(self.node_ref.file, point.node_index()).add_type_issue(
+                    db,
+                    IssueKind::EnumReusedMemberName {
+                        enum_name: self.name().into(),
+                        member_name: name_node_ref.as_code().into(),
+                    },
+                )
+            }
+
+            // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
+            // however only filter for functions and ignore decorators.
+            members.push(EnumMemberDefinition::new(
+                StringSlice::from_name(self.node_ref.file_index(), name).into(),
+                Some(value_ref.as_link()),
+            ))
         }
         members.into_boxed_slice()
     }
 
-    fn maybe_valid_enum_assignment(&self, db: &Database, assignment: Assignment) -> bool {
+    fn maybe_valid_enum_member_assignment(
+        &self,
+        db: &Database,
+        assignment: Assignment<'a>,
+    ) -> Option<ValidEnumMemberAssignment<'a>> {
         if let Some(right) = assignment.right_side() {
             if let Some(expr) = right.maybe_simple_expression() {
                 match expr.unpack() {
-                    ExpressionContent::Lambda(_) => return false,
+                    ExpressionContent::Lambda(_) => return None,
                     ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) => {
                         if let Some(non_member_ref) = db.python_state.enum_nonmember_node_ref() {
-                            if let PrimaryContent::Execution(_) = primary.second()
+                            if let PrimaryContent::Execution(args) = primary.second()
                                 && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) = self
                                     .file
                                     .name_resolution_for_types(&InferenceState::from_class(
@@ -1372,16 +1377,25 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                     ))
                                     .lookup_type_primary_or_atom_if_only_names(primary.first())
                             {
-                                return node_ref.into_node_ref() != non_member_ref;
+                                let node_ref = node_ref.into_node_ref();
+                                if node_ref == non_member_ref {
+                                    return None;
+                                } else if Some(node_ref) == db.python_state.enum_member_node_ref() {
+                                    if let Some(named_expr) = args.maybe_single_named_expr() {
+                                        return Some(ValidEnumMemberAssignment::SubExpression(
+                                            named_expr.expression(),
+                                        ));
+                                    }
+                                }
                             }
                         }
                     }
                     _ => (),
                 }
             }
-            true
+            Some(ValidEnumMemberAssignment::Valid)
         } else {
-            false
+            None
         }
     }
 
@@ -2221,4 +2235,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Err(issue) => self.add_type_issue(value.index(), issue),
         }
     }
+}
+
+enum ValidEnumMemberAssignment<'db> {
+    SubExpression(Expression<'db>),
+    Valid,
 }

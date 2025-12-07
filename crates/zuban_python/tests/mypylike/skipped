@@ -730,8 +730,6 @@ testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
-# enum.member / enum.nonmember
-testEnumMemberSupport
 # enum member gathering
 testFinalWithMethodAssignment
 
