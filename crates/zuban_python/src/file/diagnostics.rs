@@ -966,6 +966,8 @@ impl Inference<'_, '_, '_> {
                 Type::Enum(e) => {
                     if let Some(expected) =
                         c.lookup_symbol(self.i_s, "_value_").into_maybe_inferred()
+                        // The customized __init__ can set the _value_.
+                        && !e.has_customized_dunder_init(self.i_s)
                     {
                         for member in e.members.iter() {
                             if let Some(value) = member.value {

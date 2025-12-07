@@ -236,6 +236,22 @@ impl Enum {
     pub fn is_from_functional_definition(&self, db: &Database) -> bool {
         self.class.file == db.python_state.enum_file().file_index()
     }
+
+    pub fn has_customized_dunder_init(&self, i_s: &InferenceState) -> bool {
+        let lookup = self.class(i_s.db).instance().lookup_on_self(
+            i_s,
+            &|_issue| (),
+            "__init__",
+            LookupKind::Normal,
+        );
+        lookup.lookup.is_some()
+            && match lookup.class {
+                TypeOrClass::Type(_) => true,
+                TypeOrClass::Class(class) => {
+                    class.file.file_index != i_s.db.python_state.builtins().file_index
+                }
+            }
+    }
 }
 
 impl PartialEq for Enum {

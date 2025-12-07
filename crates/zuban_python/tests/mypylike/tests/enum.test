@@ -391,6 +391,14 @@ class Color3(Enum):
     RED = 1  # OK
     GREEN = "green"  # E: Enum value type "str" does not match the type "int" of "_value_"
 
+class Planet2(Enum):
+    _value_: str
+
+    def __init__(self, value: int, mass: float, radius: float):
+        self._value_ = value  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+    MERCURY = (1, 3.303e23, 2.4397e6)
+
 [case enum_nonmember_access_in_different_ways]
 from typing import Literal
 from enum import Enum, member, nonmember
