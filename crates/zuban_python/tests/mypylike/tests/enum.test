@@ -402,6 +402,8 @@ class A(Enum):
 def some_a(a: A, b: type[A], c: Literal[A.x]):
     reveal_type(a.x)  # N: Revealed type is "Literal[__main__.A.x]?"
     reveal_type(b.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+    reveal_type(c.x)  # N: Revealed type is "Literal[__main__.A.x]?"
 
     reveal_type(a.y)  # N: Revealed type is "int"
     reveal_type(b.y)  # N: Revealed type is "int"
+    reveal_type(c.y)  # N: Revealed type is "int"

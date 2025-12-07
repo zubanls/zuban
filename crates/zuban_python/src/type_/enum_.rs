@@ -317,15 +317,7 @@ pub(crate) fn lookup_on_enum_instance<'a>(
             AttributeKind::Attribute,
         ),
         "_ignore_" => LookupDetails::none(),
-        _ => {
-            let lookup = lookup_members_on_enum(i_s, enum_, name);
-            if lookup.is_some() {
-                LookupDetails::new(Type::Enum(enum_.clone()), lookup, AttributeKind::Attribute)
-            } else {
-                lookup_on_enum_instance_fallback(i_s, add_issue, enum_, name)
-                    .remove_non_member_from_enum(i_s.db)
-            }
-        }
+        _ => lookup_on_enum_instance_fallback(i_s, add_issue, enum_, name),
     }
 }
 
@@ -335,11 +327,19 @@ fn lookup_on_enum_instance_fallback<'a>(
     enum_: &'a Arc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
-    Instance::new(enum_.class(i_s.db), None).lookup(
-        i_s,
-        name,
-        InstanceLookupOptions::new(add_issue).with_as_self_instance(&|| Type::Enum(enum_.clone())),
-    )
+    let lookup = lookup_members_on_enum(i_s, enum_, name);
+    if lookup.is_some() {
+        LookupDetails::new(Type::Enum(enum_.clone()), lookup, AttributeKind::Attribute)
+    } else {
+        Instance::new(enum_.class(i_s.db), None)
+            .lookup(
+                i_s,
+                name,
+                InstanceLookupOptions::new(add_issue)
+                    .with_as_self_instance(&|| Type::Enum(enum_.clone())),
+            )
+            .remove_non_member_from_enum(i_s.db)
+    }
 }
 
 pub(crate) fn lookup_on_enum_member_instance<'a>(
