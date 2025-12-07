@@ -733,7 +733,6 @@ testOtherVarArgs
 # enum.member / enum.nonmember
 testEnumNonMemberSupport
 testEnumMemberSupport
-testEnumImplicitlyFinalForSubclassingWithCallableMember
 # enum member gathering
 testFinalWithMethodAssignment
 

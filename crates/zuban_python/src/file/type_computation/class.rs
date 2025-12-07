@@ -1265,11 +1265,36 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
         for &name_index in name_indexes {
             let name_node_ref = NodeRef::new(self.node_ref.file, name_index);
-            if name_node_ref
+            if let Some(func) = name_node_ref
                 .add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64))
                 .maybe_function()
-                .is_none()
             {
+                if let Some(decorated) = func.maybe_decorated()
+                    && decorated.decorators().iter().any(|decorator| {
+                        if let Some(member) = db.python_state.enum_member_node_ref()
+                            && let Some(lookup) = self
+                                .file
+                                .name_resolution_for_types(&InferenceState::from_class(
+                                    db,
+                                    &Class::from_non_generic_node_ref(self.node_ref),
+                                ))
+                                .lookup_decorator_if_only_names(decorator)
+                            && let Lookup::T(TypeContent::Class { node_ref, .. }) = lookup
+                            && node_ref == member
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                {
+                    let name = name_node_ref.expect_name();
+                    members.push(EnumMemberDefinition::new(
+                        StringSlice::from_name(self.node_ref.file_index(), name).into(),
+                        Some(name_node_ref.as_link()),
+                    ))
+                }
+            } else {
                 let point = name_node_ref.point();
                 debug_assert!(point.is_name_of_name_def_like(), "{point:?}");
                 if point.node_index() != name_index {

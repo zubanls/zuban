@@ -4312,21 +4312,24 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         TypeVarLikes::from_vec(type_var_likes)
     }
 
+    fn lookup_decorator_if_only_names(&self, decorator: Decorator) -> Option<Lookup<'db, 'db>> {
+        match decorator.named_expression().expression().unpack() {
+            ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => match p.second() {
+                PrimaryContent::Attribute(_) => self.lookup_type_primary_if_only_names(p),
+                _ => None,
+            },
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => match a.unpack() {
+                _ => self.lookup_type_primary_or_atom_if_only_names(PrimaryOrAtom::Atom(a)),
+            },
+            _ => None,
+        }
+    }
+
     pub fn decorator_without_need_for_flow_analysis(
         &self,
         decorator: Decorator,
     ) -> Option<DecoratorState<'db>> {
-        let lookup = match decorator.named_expression().expression().unpack() {
-            ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => match p.second() {
-                PrimaryContent::Attribute(_) => self.lookup_type_primary_if_only_names(p)?,
-                _ => return None,
-            },
-            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => match a.unpack() {
-                _ => self.lookup_type_primary_or_atom_if_only_names(PrimaryOrAtom::Atom(a))?,
-            },
-            _ => return None,
-        };
-        match lookup {
+        match self.lookup_decorator_if_only_names(decorator)? {
             Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Function { node_ref })) => {
                 let name_ref = NodeRef::new(node_ref.file, node_ref.node().name_def().index());
                 if name_ref.point().calculating() {
