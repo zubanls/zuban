@@ -1008,3 +1008,23 @@ class RecordShop(AlbumCollection):
     name: str
     albums: ReadOnly[list[Album1]]  # OK
     alt: ReadOnly[list[str]]  # E: Overwriting TypedDict field "alt" while extending
+
+[case typed_dict_readonly_inheritance_with_required]
+# Copied from conformance tests (typeddicts_readonly_inheritance.py)
+from typing import TypedDict, ReadOnly, Collection, Required, NotRequired
+class F1(TypedDict):
+    a: Required[int]
+    b: ReadOnly[NotRequired[int]]
+    c: ReadOnly[Required[int]]
+
+class F3(F1):
+    a: ReadOnly[int]  # E: Overwriting TypedDict field "a" while extending
+
+class F4(F1):
+    a: NotRequired[int]  # E: Overwriting TypedDict field "a" while extending
+
+class F5(F1):
+    b: ReadOnly[Required[int]]  # OK
+
+class F6(F1):
+    c: ReadOnly[NotRequired[int]]  # E: Overwriting TypedDict field "c" while extending

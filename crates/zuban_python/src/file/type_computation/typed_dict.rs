@@ -451,13 +451,15 @@ impl TypedDictMemberGatherer {
             if i >= self.first_after_merge_index {
                 Err(IssueKind::TypedDictDuplicateKey { key: key.into() })
             } else {
-                let result =
-                    if m.read_only && m.type_.is_simple_super_type_of(i_s, &member.type_).bool() {
-                        // Allow read-only overwrites with subtypes
-                        Ok(())
-                    } else {
-                        Err(IssueKind::TypedDictOverwritingKeyWhileExtending { key: key.into() })
-                    };
+                let result = if m.read_only
+                    && !(m.required && !member.required)
+                    && m.type_.is_simple_super_type_of(i_s, &member.type_).bool()
+                {
+                    // Allow read-only overwrites with subtypes
+                    Ok(())
+                } else {
+                    Err(IssueKind::TypedDictOverwritingKeyWhileExtending { key: key.into() })
+                };
                 *m = member;
                 result
             }
