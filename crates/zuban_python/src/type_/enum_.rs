@@ -323,6 +323,7 @@ pub(crate) fn lookup_on_enum_instance<'a>(
                 LookupDetails::new(Type::Enum(enum_.clone()), lookup, AttributeKind::Attribute)
             } else {
                 lookup_on_enum_instance_fallback(i_s, add_issue, enum_, name)
+                    .remove_non_member_from_enum(i_s.db)
             }
         }
     }

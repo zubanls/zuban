@@ -390,3 +390,18 @@ class Color3(Enum):
     _value_: int
     RED = 1  # OK
     GREEN = "green"  # E: Enum value type "str" does not match the type "int" of "_value_"
+
+[case enum_nonmember_access_in_different_ways]
+from typing import Literal
+from enum import Enum, member, nonmember
+
+class A(Enum):
+    x = member(1)
+    y = nonmember(2)
+
+def some_a(a: A, b: type[A], c: Literal[A.x]):
+    reveal_type(a.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+    reveal_type(b.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+
+    reveal_type(a.y)  # N: Revealed type is "int"
+    reveal_type(b.y)  # N: Revealed type is "int"
