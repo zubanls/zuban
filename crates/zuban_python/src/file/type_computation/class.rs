@@ -5,7 +5,7 @@ use std::{
 
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent,
-    AsyncStmtContent, ClassDef, Decorated, Decoratee, Expression, ExpressionContent,
+    AsyncStmtContent, AtomContent, ClassDef, Decorated, Decoratee, Expression, ExpressionContent,
     ExpressionPart, Kwarg, Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression,
     StmtLikeContent, StmtLikeIterator, Target, TrivialBodyState, TypeLike,
 };
@@ -21,7 +21,7 @@ use crate::{
     diagnostics::{Issue, IssueKind},
     file::{
         OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
-        name_resolution::NameResolution,
+        name_resolution::{NameResolution, PointResolution},
         type_computation::{InvalidVariableType, TypeContent},
         use_cached_annotation_type,
         utils::should_add_deprecated,
@@ -1364,18 +1364,17 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     ) -> Option<ValidEnumMemberAssignment<'a>> {
         if let Some(right) = assignment.right_side() {
             if let Some(expr) = right.maybe_simple_expression() {
+                let cls = &Class::from_non_generic_node_ref(self.node_ref);
+                let i_s = &InferenceState::from_class(db, cls);
+                let name_resolution = self.file.name_resolution_for_types(i_s);
                 match expr.unpack() {
                     ExpressionContent::Lambda(_) => return None,
                     ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) => {
                         if let Some(non_member_ref) = db.python_state.enum_nonmember_node_ref() {
                             if let PrimaryContent::Execution(args) = primary.second()
-                                && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) = self
-                                    .file
-                                    .name_resolution_for_types(&InferenceState::from_class(
-                                        db,
-                                        &Class::from_non_generic_node_ref(self.node_ref),
-                                    ))
-                                    .lookup_type_primary_or_atom_if_only_names(primary.first())
+                                && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) =
+                                    name_resolution
+                                        .lookup_type_primary_or_atom_if_only_names(primary.first())
                             {
                                 let node_ref = node_ref.into_node_ref();
                                 if node_ref == non_member_ref {
@@ -1395,6 +1394,21 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         }
                     }
                     _ => (),
+                }
+                // Find aliases that link to other members
+                if let Some(AtomContent::Name(n)) = expr.maybe_unpacked_atom()
+                    && let PointResolution::NameDef {
+                        node_ref: points_to,
+                        ..
+                    } = name_resolution.resolve_name_without_narrowing(n)
+                    && points_to.file.file_index == self.file.file_index
+                {
+                    let class_node = self.node();
+                    if points_to.node_index > class_node.index()
+                        && points_to.node_index <= class_node.block().last_leaf_index()
+                    {
+                        return None;
+                    }
                 }
             }
             Some(ValidEnumMemberAssignment::Valid)

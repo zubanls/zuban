@@ -730,9 +730,6 @@ testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
 testOtherVarArgs
 
-# enum member gathering
-testFinalWithMethodAssignment
-
 # Forward name binder reference in class
 testNewAnalyzerNamedTupleCallNested
 # class binder questionable types in class body

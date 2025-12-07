@@ -1650,6 +1650,10 @@ impl<'db> Block<'db> {
             StmtLikeIterator::from_stmt_iterator(first, iterator)
         }
     }
+
+    pub fn last_leaf_index(&self) -> NodeIndex {
+        self.node.last_leaf_in_subtree().index
+    }
 }
 
 impl<'db> ElseBlock<'db> {
