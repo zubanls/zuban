@@ -415,3 +415,21 @@ def some_a(a: A, b: type[A], c: Literal[A.x]):
     reveal_type(a.y)  # N: Revealed type is "int"
     reveal_type(b.y)  # N: Revealed type is "int"
     reveal_type(c.y)  # N: Revealed type is "int"
+
+[case customized_staticmethod_and_classmethod_no_enum_members]
+from enum import Enum
+
+def identity(x: int) -> int:
+    return x
+
+def classm(c, x: int) -> int:
+    return x
+
+class E(Enum):
+    x = staticmethod(identity)
+    y = classmethod(classm)
+    z = int()
+
+reveal_type(E.x)  # N: Revealed type is "def (x: int) -> int"
+reveal_type(E.y)  # N: Revealed type is "def (x: int) -> int"
+reveal_type(E.z)  # N: Revealed type is "Literal[__main__.E.z]?"

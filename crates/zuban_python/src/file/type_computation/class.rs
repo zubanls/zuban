@@ -1386,6 +1386,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                             named_expr.expression(),
                                         ));
                                     }
+                                } else if node_ref == db.python_state.classmethod_node_ref()
+                                    || node_ref == db.python_state.staticmethod_node_ref()
+                                {
+                                    return None;
                                 }
                             }
                         }
