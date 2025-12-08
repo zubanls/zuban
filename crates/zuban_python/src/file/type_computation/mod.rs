@@ -987,6 +987,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .as_code()
                     == "__init__"
             })
+            || class.maybe_dataclass(self.i_s.db).is_some()
     }
 
     fn as_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {
@@ -2970,7 +2971,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 TypeContent::UNKNOWN_REPORTED
             } else {
-                TypeContent::ClassVar(self.compute_slice_type(first))
+                let t = self.compute_slice_type_content(first);
+                if let TypeContent::Final(t) = t {
+                    // TODO here ClassVar is ignored, this probably only matters if it's
+                    // initialized late.
+                    TypeContent::Final(t)
+                } else {
+                    TypeContent::ClassVar(self.as_type(t, first.as_node_ref()))
+                }
             }
         }
     }

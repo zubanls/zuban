@@ -8,6 +8,7 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
+testFinalUsedWithClassVar
 docs_alias
 docs_property
 

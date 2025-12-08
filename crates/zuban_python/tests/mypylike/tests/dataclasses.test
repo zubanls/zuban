@@ -1151,3 +1151,33 @@ class DC3:
 
         # This should generate an error because "y" is not in slots.
         self.y = 3  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.DC3"
+
+[case dataclasses_final_conformance_tests]
+# Copied from conformance tests (dataclasses_final.py)
+from dataclasses import dataclass
+from typing import assert_type, ClassVar, Final
+
+@dataclass
+class D:
+    final_no_default: Final[int]
+    final_with_default: Final[str] = "foo"
+    final_classvar: ClassVar[Final[int]] = 4
+    # we don't require support for Final[ClassVar[...]] because the dataclasses
+    # runtime implementation won't recognize it as a ClassVar either
+
+# An explicitly marked ClassVar can be accessed on the class:
+assert_type(D.final_classvar, int)
+
+# ...but not assigned to, because it's Final:
+D.final_classvar = 10  # E: Cannot assign to final attribute "final_classvar"
+
+# A non-ClassVar attribute (with or without default) is a dataclass field:
+d = D(final_no_default=1, final_with_default="bar")
+assert_type(d.final_no_default, int)
+assert_type(d.final_with_default, str)
+
+# ... but can't be assigned to (on the class or on an instance):
+d.final_no_default = 10  # E: Cannot assign to final attribute "final_no_default"
+d.final_with_default = "baz"  # E: Cannot assign to final attribute "final_with_default"
+D.final_no_default = 10  # E: Cannot assign to final attribute "final_no_default"
+D.final_with_default = "baz"  # E: Cannot assign to final attribute "final_with_default"
