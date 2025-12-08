@@ -278,7 +278,10 @@ enum TypeContent<'db, 'a> {
     ClassVar(Type),
     EnumMember(EnumMember),
     TypedDictMemberModifiers(TypedDictFieldModifiers, Type),
-    Final(Type),
+    Final {
+        t: Type,
+        is_class_var: bool,
+    },
     TypeGuardInfo(TypeGuardInfo),
     TypedDictFieldModifier(TypedDictFieldModifier),
     CallableParam(CallableParam),
@@ -900,7 +903,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             t
                         }
                     }
-                    TypeContent::Final(t) => {
+                    TypeContent::Final { t, is_class_var } => {
                         if let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                             is_initialized,
                             ..
@@ -909,7 +912,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             is_final = true;
                             if !is_initialized
                                 && !self.file.is_stub()
-                                && !self.final_is_assigned_in_init(annotation_node_ref)
+                                && (!self.final_is_assigned_in_init(annotation_node_ref)
+                                    // ClassVars need to always be initialized
+                                    || is_class_var)
                             {
                                 self.add_issue(
                                     type_storage_node_ref,
@@ -930,7 +935,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 t
                             }
                         } else {
-                            self.as_type(TypeContent::Final(t), type_storage_node_ref)
+                            self.as_type(
+                                TypeContent::Final { t, is_class_var },
+                                type_storage_node_ref,
+                            )
                         }
                     }
                     type_ => self.as_type(type_, type_storage_node_ref),
@@ -1299,7 +1307,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
-            TypeContent::Final(_) => self.add_issue(node_ref, IssueKind::FinalInWrongPlace),
+            TypeContent::Final { t: _, .. } => {
+                self.add_issue(node_ref, IssueKind::FinalInWrongPlace)
+            }
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(self.i_s.db, |t| self.add_issue(node_ref, t), self.origin);
             }
@@ -2679,7 +2689,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .add_issue(self.i_s, IssueKind::FinalAndClassVarUsedBoth);
                 TypeContent::UNKNOWN_REPORTED
             }
-            t => TypeContent::Final(self.as_type(t, slice_type.as_node_ref())),
+            t => TypeContent::Final {
+                t: self.as_type(t, slice_type.as_node_ref()),
+                is_class_var: false,
+            },
         }
     }
 
@@ -2972,10 +2985,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::UNKNOWN_REPORTED
             } else {
                 let t = self.compute_slice_type_content(first);
-                if let TypeContent::Final(t) = t {
-                    // TODO here ClassVar is ignored, this probably only matters if it's
-                    // initialized late.
-                    TypeContent::Final(t)
+                if let TypeContent::Final {
+                    t,
+                    is_class_var: false,
+                } = t
+                {
+                    TypeContent::Final {
+                        t,
+                        is_class_var: true,
+                    }
                 } else {
                     TypeContent::ClassVar(self.as_type(t, first.as_node_ref()))
                 }
