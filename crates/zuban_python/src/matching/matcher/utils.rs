@@ -112,10 +112,13 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
     func_like: &dyn FuncLike,
     check: impl FnOnce(Matcher, &'a TypeVarLikes) -> CalculatedTypeArgs,
 ) -> CalculatedTypeArgs {
-    debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
     let class_matcher_needed =
         matches!(class.generics, Generics::NotDefinedYet { .. }) && !type_vars.is_empty();
+    debug!(
+        "Calculate __init__ type vars for class {} matcher needed: {class_matcher_needed}",
+        class.name(),
+    );
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_like.type_vars(i_s.db);
 
@@ -593,6 +596,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
     on_type_error: Option<OnTypeError>,
     check_params: impl FnOnce(&mut Matcher) -> SignatureMatch,
 ) -> CalculatedTypeArgs {
+    const INVALID_SELF_TYPE_IN_INIT: &str = "Invalid self type in __init__";
     let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
         let mut add_init_generics = |matcher: &mut Matcher, return_class: &Class| {
@@ -617,9 +621,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
                 if !m.bool() {
                     had_wrong_init_type_var = true;
                     if on_type_error.is_some() {
-                        add_issue(IssueKind::ArgumentIssue(
-                            "Invalid self type in __init__".into(),
-                        ))
+                        add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()))
                     }
                 }
                 if cfg!(debug_assertions) {
@@ -643,6 +645,22 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
             func_like,
             add_init_generics,
         )
+    // If there are no TypeVar matchers, we still have to check that the generics for __init__
+    // match.
+    } else if let Some(return_class) = return_class
+        && let Some(t) = func_like.first_self_or_class_annotation(i_s)
+        && !matches!(t.as_ref(), Type::Self_)  // We exclude Self, because the context might be
+                                               // different
+        && func_like.class().is_some()
+        && !Class::with_self_generics(i_s.db, return_class.node_ref)
+            .as_type(i_s.db)
+            .is_simple_sub_type_of(i_s, &t)
+            .bool()
+    {
+        had_wrong_init_type_var = true;
+        if on_type_error.is_some() {
+            add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()))
+        }
     }
     let matches = check_params(&mut matcher);
     let mut result = matcher.into_type_arguments(i_s, match_in_definition);

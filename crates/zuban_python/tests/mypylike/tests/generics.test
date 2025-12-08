@@ -1902,3 +1902,12 @@ def handler2(arg: int) -> Promise[str]:
 
 # FIXME: This causes zuban to panic.
 assert_type(promise.then(handler2), Promise[str])
+
+[case validate_class_init_self_generics]
+from typing import Generic, TypeVar
+T = TypeVar("T")
+# Copied from conformance tests (constructors_call_init.py)
+class Class4(Generic[T]):
+    def __init__(self: "Class4[int]") -> None: ...
+
+Class4[str]()  # E: Invalid self type in __init__
