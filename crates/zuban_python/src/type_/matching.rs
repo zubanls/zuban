@@ -16,7 +16,8 @@ use crate::{
     params::matches_params,
     recoverable_error,
     type_::{
-        AnyCause, CallableLike, CallableParams, LiteralKind, TupleArgs, TupleUnpack, Variance,
+        AnyCause, CallableLike, CallableParams, LiteralKind, ReplaceTypeVarLikes as _, TupleArgs,
+        TupleUnpack, Variance,
     },
     type_helpers::{Class, TypeOrClass},
 };
@@ -786,15 +787,41 @@ impl Type {
             Type::FunctionOverload(overload) if variance == Variance::Covariant => {
                 // Since only one of the overloads is going to match, but all of them can change
                 // the type var inference, we simply "backtrack" here.
-                let old_matcher = matcher.clone();
-                let mut need_matcher_backup = false;
-                Match::any(overload.iter_functions(), |c2| {
-                    if need_matcher_backup {
-                        *matcher = old_matcher.clone();
-                    }
-                    need_matcher_backup = true;
-                    matcher.matches_callable(i_s, c1, c2)
-                })
+                let has_type_var_matcher = matcher.has_type_var_matcher();
+                let mut check = |overload: &FunctionOverload| {
+                    let old_matcher = matcher.clone();
+                    let mut need_matcher_backup = false;
+                    Match::any(overload.iter_functions(), |c2| {
+                        if need_matcher_backup {
+                            *matcher = old_matcher.clone();
+                        }
+                        need_matcher_backup = true;
+                        matcher.matches_callable(i_s, c1, c2)
+                    })
+                };
+                // TODO We erase TypeVars here for overloads, because otherwise we can get
+                // extremely weird interactions with for example a signature like dict
+                // (see for example dataclass_transform_converter_conformance). TypeVar solving is
+                // lazy and does not have branches. We only ever take one branch and trust it.
+                // Theoretically we would need to have multiple branches here that might all be
+                // valid, but that's a lot of extra work.
+                // To not break defaultdict partials, we run the normal code for a very specific
+                // case.
+                if has_type_var_matcher
+                    && let Some(Type::FunctionOverload(o)) =
+                        value_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                            overload
+                                .iter_functions()
+                                .any(|c| c.defined_at == usage.in_definition())
+                                .then(|| usage.as_any_generic_item())
+                        })
+                    && !matches!(&c1.return_type, Type::TypeVar(usage)
+                                 if usage.in_definition == i_s.db.python_state.defaultdict_link())
+                {
+                    check(&o)
+                } else {
+                    check(overload)
+                }
             }
             Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
                 c1.return_type.matches(i_s, matcher, t2, variance)

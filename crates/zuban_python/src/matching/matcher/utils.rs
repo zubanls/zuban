@@ -26,8 +26,8 @@ use crate::{
     },
     recoverable_error,
     type_::{
-        CallableContent, CallableParams, CallableWithParent, ClassGenerics, GenericItem,
-        GenericsList, MaybeUnpackGatherer, NeverCause, ParamSpecTypeVars, ReplaceSelf,
+        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics,
+        GenericItem, GenericsList, MaybeUnpackGatherer, NeverCause, ParamSpecTypeVars, ReplaceSelf,
         ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
         TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
@@ -817,7 +817,12 @@ pub(crate) fn match_arguments_against_params<
                 }
             };
             let value_t = value.as_cow_type(i_s);
-            if matches!(value_t.as_ref(), Type::FunctionOverload(_))
+            if (matches!(value_t.as_ref(), Type::FunctionOverload(_))
+                || value_t.maybe_type_of_class(i_s.db).is_some_and(|_| {
+                    value_t
+                        .maybe_callable(i_s)
+                        .is_some_and(|c| matches!(c, CallableLike::Overload(_)))
+                }))
                 && !was_delayed
                 && expected.has_type_vars()
             {

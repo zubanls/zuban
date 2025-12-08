@@ -719,8 +719,7 @@ class DC2(ModelBase):
     field2: int = model_field(converter=converter_with_args)
     field3: ConverterClass = model_field(converter=ConverterClass)
     field4: int = model_field(converter=overloaded_converter)
-    # TODO remove this error
-    field5: dict[str, str] = model_field(converter=dict, default=())  # E: Incompatible callable argument with type vars
+    field5: dict[str, str] = model_field(converter=dict, default=())
 
 
 DC2(1, "f1", "f2", b"f3", [])  # E: Argument 1 to "DC2" has incompatible type "int"; expected "str"
