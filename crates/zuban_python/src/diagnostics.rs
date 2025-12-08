@@ -439,6 +439,7 @@ pub(crate) enum IssueKind {
 
     MethodWithoutArguments,
     TypeOfSelfIsNotASupertypeOfItsClass { self_type: Box<str>, class: Box<str> },
+    TypeOfSelfHasTypeVars { type_var_like: TypeVarLike, class_name: Box<str> },
     SelfArgumentMissing,
     MultipleStarredExpressionsInAssignment,
 
@@ -1084,6 +1085,10 @@ impl<'db> Diagnostic<'db> {
             }
             TypeOfSelfIsNotASupertypeOfItsClass { self_type, class } => format!(
                 r#"The erased type of self "{self_type}" is not a supertype of its class "{class}""#
+            ),
+            TypeOfSelfHasTypeVars { type_var_like, class_name } => format!(
+                r#"The type of self "{}" has type vars in non standard potisions for class "{class_name}""#,
+                type_var_like.name(self.db),
             ),
             SelfArgumentMissing =>
                 "Self argument missing for a non-static method (or an invalid type for self)".to_string(),

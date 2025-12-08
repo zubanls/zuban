@@ -1911,3 +1911,14 @@ class Class4(Generic[T]):
     def __init__(self: "Class4[int]") -> None: ...
 
 Class4[str]()  # E: Invalid self type in __init__
+
+[case self_generics_with_wrong_own_type_vars]
+# Copied from conformance tests (constructors_call_init.py)
+from typing import Generic, TypeVar
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+class Class8(Generic[T1, T2]):
+    def __init__(self: "Class8[T2, T1]") -> None:  # E: The type of self "T1" has type vars in non standard potisions for class "Class8" \
+                                                   # E: The type of self "T2" has type vars in non standard potisions for class "Class8"
+        pass

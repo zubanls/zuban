@@ -1662,9 +1662,10 @@ impl Inference<'_, '_, '_> {
                 if let Some(annotation) = first_param.annotation() {
                     let undefined_generics_class = Class::with_undefined_generics(class.node_ref);
                     let mut class_t = undefined_generics_class.as_type(i_s.db);
-                    let mut original = self.use_cached_param_annotation_type(annotation);
+                    let original_self_t = self.use_cached_param_annotation_type(annotation);
                     let mut new = None;
-                    match original.as_ref() {
+                    let mut self_t = original_self_t.clone();
+                    match self_t.as_ref() {
                         Type::TypeVar(tv) => {
                             if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
                                 new = Some(b.clone());
@@ -1680,16 +1681,16 @@ impl Inference<'_, '_, '_> {
                         _ => (),
                     };
                     if let Some(new) = new {
-                        original = Cow::Owned(new)
+                        self_t = Cow::Owned(new)
                     }
-                    let erased = original
+                    let erased = self_t
                         .replace_type_var_likes_and_self(
                             i_s.db,
                             &mut |u| Some(u.as_any_generic_item()),
                             &|| Some(class_t.clone()),
                         )
                         .map(Cow::Owned)
-                        .unwrap_or(original);
+                        .unwrap_or(self_t);
                     let erased_is_protocol = match erased.as_ref() {
                         Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
                         Type::Type(t) => {
@@ -1713,6 +1714,37 @@ impl Inference<'_, '_, '_> {
                                 IssueKind::SelfArgumentMissing
                             };
                             self.add_issue(annotation.index(), issue);
+                        } else {
+                            let definition = class.node_ref.as_link();
+                            if let Type::Class(c) = original_self_t.as_ref()
+                                && c.link == definition
+                                && let ClassGenerics::List(gs) = &c.generics
+                            {
+                                for (i, (generic, type_var_like)) in gs
+                                    .iter()
+                                    .zip(class.use_cached_type_vars(i_s.db).iter())
+                                    .enumerate()
+                                {
+                                    let mut has_unrelated_type_var = false;
+                                    generic.replace_type_var_likes(i_s.db, &mut |usage| {
+                                        if usage.in_definition() == definition
+                                            && usage.index().as_usize() != i
+                                        {
+                                            has_unrelated_type_var = true;
+                                        }
+                                        None
+                                    });
+                                    if has_unrelated_type_var {
+                                        self.add_issue(
+                                            annotation.index(),
+                                            IssueKind::TypeOfSelfHasTypeVars {
+                                                type_var_like: type_var_like.clone(),
+                                                class_name: class.name().into(),
+                                            },
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
