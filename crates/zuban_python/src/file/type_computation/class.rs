@@ -2135,6 +2135,7 @@ impl DataclassOptions {
             "init" => assign_option(&mut self.init),
             "match_args" => assign_option(&mut self.match_args),
             "slots" => assign_option(&mut self.slots),
+            "unsafe_hash" => assign_option(&mut self.unsafe_hash),
             // The other names should not go through while type checking
             _ => (),
         }

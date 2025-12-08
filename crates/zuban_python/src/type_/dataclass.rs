@@ -62,6 +62,7 @@ pub(crate) struct DataclassOptions {
     pub match_args: bool,
     pub kw_only: bool,
     pub slots: bool,
+    pub unsafe_hash: bool,
     pub transform_field_specifiers: Option<FieldSpecifiers>,
     // the keyword arguments `weakref_slot = false` and `repr = true` are ignored here, because
     // they are not relevant for us as a typechecker.
@@ -77,6 +78,7 @@ impl Default for DataclassOptions {
             match_args: true,
             kw_only: false,
             slots: false,
+            unsafe_hash: false,
             transform_field_specifiers: None,
         }
     }
@@ -1169,11 +1171,15 @@ pub(crate) fn lookup_on_dataclass<'a>(
     if result.is_some() && !class.lookup_symbol(i_s, name).is_some() {
         return LookupDetails::new(Type::Dataclass(self_.clone()), result, attr_kind);
     }
+    let mut lookup_options = InstanceLookupOptions::new(&add_issue);
+    if name == "__hash__" && !self_.options.unsafe_hash && !self_.options.frozen.unwrap_or_default()
+    {
+        lookup_options = lookup_options.without_object();
+    }
     let mut lookup_details = class.instance().lookup(
         i_s,
         name,
-        InstanceLookupOptions::new(&add_issue)
-            .with_as_self_instance(&|| Type::Dataclass(self_.clone())),
+        lookup_options.with_as_self_instance(&|| Type::Dataclass(self_.clone())),
     );
     lookup_details.lookup = lookup_details
         .lookup
