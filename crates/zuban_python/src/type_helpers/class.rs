@@ -1901,17 +1901,22 @@ impl<'db: 'a, 'a> Class<'a> {
             match type_or_class {
                 TypeOrClass::Type(_) => (),
                 TypeOrClass::Class(class) => {
-                    let Some(slots) = &class.class_storage.slots else {
-                        return;
-                    };
-                    if class.lookup_symbol(i_s, "__setattr__").is_some() {
-                        return;
-                    }
-                    if slots.iter().any(|slot| {
-                        let s = slot.as_str(i_s.db);
-                        s == name || s == "__dict__"
-                    }) {
-                        return;
+                    if let Some(dataclass) = class.maybe_dataclass(i_s.db)
+                        && dataclass.options.slots
+                    {
+                        if Dataclass::lookup(i_s.db, &dataclass, name).is_some() {
+                            return;
+                        }
+                    } else {
+                        let Some(slots) = &class.class_storage.slots else {
+                            return;
+                        };
+                        if slots.iter().any(|slot| {
+                            let s = slot.as_str(i_s.db);
+                            s == name || s == "__dict__"
+                        }) {
+                            return;
+                        }
                     }
                     if let Some(on_class) = class.lookup_symbol(i_s, name).into_maybe_inferred()
                         && on_class
@@ -1919,6 +1924,9 @@ impl<'db: 'a, 'a> Class<'a> {
                             .is_func_or_overload()
                     {
                         // Adds IssueType::CannotAssignToAMethod in other places.
+                        return;
+                    }
+                    if class.lookup_symbol(i_s, "__setattr__").is_some() {
                         return;
                     }
                 }

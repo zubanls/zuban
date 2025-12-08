@@ -162,6 +162,17 @@ impl Dataclass {
     pub fn is_dataclass_transform(&self) -> bool {
         self.options.transform_field_specifiers.is_some()
     }
+
+    pub fn lookup<'dataclass>(
+        db: &Database,
+        dataclass: &'dataclass Arc<Dataclass>,
+        name: &str,
+    ) -> Option<&'dataclass CallableParam> {
+        dataclass_init_func(dataclass, db)
+            .expect_simple_params()
+            .iter()
+            .find(|p| p.name.as_ref().is_some_and(|n| n.as_str(db) == name))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1149,10 +1160,7 @@ pub(crate) fn lookup_on_dataclass<'a>(
     name: &str,
 ) -> LookupDetails<'a> {
     if self_.options.frozen == Some(true)
-        && let Some(param) = dataclass_init_func(self_, i_s.db)
-            .expect_simple_params()
-            .iter()
-            .find(|p| p.name.as_ref().is_some_and(|n| n.as_str(i_s.db) == name))
+        && let Some(param) = Dataclass::lookup(i_s.db, self_, name)
     {
         return LookupDetails::new(
             Type::Dataclass(self_.clone()),

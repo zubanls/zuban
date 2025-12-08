@@ -1117,3 +1117,37 @@ class DC7:
         return self.a == other.a
 
 v7: Hashable = DC7(0)
+
+[case dataclasses_slots_checking]
+# flags: --no-mypy-compatible
+# Copied from conformance tests (dataclasses_slots.py)
+from dataclasses import dataclass
+
+# This should generate an error because __slots__ is already defined
+@dataclass(slots=True)
+class DC1:  # E: "DC1" both defines "__slots__" and is used with "slots=True"
+    x: int
+
+    __slots__ = ()
+
+@dataclass(slots=True)
+class DC2:
+    x: int
+
+    def __init__(self):
+        self.x = 3
+
+        # This should generate an error because "y" is not in slots.
+        self.y = 3  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.DC2"
+
+@dataclass(slots=False)
+class DC3:
+    x: int
+
+    __slots__ = ("x",)
+
+    def __init__(self):
+        self.x = 3
+
+        # This should generate an error because "y" is not in slots.
+        self.y = 3  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.DC3"
