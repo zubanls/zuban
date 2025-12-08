@@ -1106,10 +1106,41 @@ fn typed_dict_update_internal<'db>(
         td.defined_at,
         td.generics.clone(),
     );
-    args.maybe_single_positional_arg(
+    let inf = args.maybe_single_positional_arg(
         i_s,
         &mut ResultContext::new_known(&Type::TypedDict(expected)),
     )?;
+    if let Type::TypedDict(from_arg) = inf.as_cow_type(i_s).as_ref() {
+        let arg_members = from_arg.members(i_s.db);
+        for member in arg_members.named.iter() {
+            let name = member.name.as_str(i_s.db);
+            if let Some(e) = td.find_entry(i_s.db, name)
+                && e.read_only
+                && !member.type_.is_never()
+            {
+                args.add_issue(
+                    i_s,
+                    IssueKind::TypedDictUpdateOfReadOnlyMember { name: name.into() },
+                );
+            }
+        }
+        let members = td.members(i_s.db);
+        if let Some(arg_extra) = arg_members.extra_items.as_ref()
+            && !arg_extra.t.is_never()
+            && (members.named.iter().any(|m| m.read_only)
+                || members
+                    .extra_items
+                    .as_ref()
+                    .is_some_and(|extra| extra.read_only))
+        {
+            args.add_issue(
+                i_s,
+                IssueKind::TypedDictUpdateOfReadOnlyMember {
+                    name: "extra_items".into(),
+                },
+            );
+        }
+    }
     Some(Inferred::new_none())
 }
 

@@ -412,6 +412,7 @@ pub(crate) enum IssueKind {
     TypedDictMemberRequiredButHasExtraItemsOfSuper { name: Box<str> },
     TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot { name: Box<str> },
     TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name: Box<str>, in_super_class: Box<str>, member_type: Box<str> },
+    TypedDictUpdateOfReadOnlyMember { name: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1980,6 +1981,9 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name, in_super_class, member_type } => format!(
                 r#"TypedDict member "{name}" type "{member_type}" is not assignable, but the extra_items of the super class are of type "{in_super_class}""#
+            ),
+            TypedDictUpdateOfReadOnlyMember { name } => format!(
+                r#"TypedDict member "{name}" is read-only"#
             ),
 
             OverloadImplementationNotLast =>

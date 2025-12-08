@@ -1028,3 +1028,55 @@ class F5(F1):
 
 class F6(F1):
     c: ReadOnly[NotRequired[int]]  # E: Overwriting TypedDict field "c" while extending
+
+[case typed_dict_readonly_update]
+# Copied from conformance tests (typeddicts_readonly_update.py)
+from typing import Never, NotRequired, TypedDict, ReadOnly
+
+class A(TypedDict):
+    x: ReadOnly[int]
+    y: int
+
+a1: A = {"x": 1, "y": 2}
+a2: A = {"x": 3, "y": 4}
+a1.update(a2)  # E: TypedDict member "x" is read-only
+
+class B(TypedDict):
+    x: NotRequired[Never]
+    y: ReadOnly[int]
+
+def update_a(a: A, b: B) -> None:
+    a.update(b)  # OK
+
+[case typed_dict_extra_items_read_only_update]
+from typing import Never, TypedDict, ReadOnly
+
+class A1(TypedDict):
+    x: ReadOnly[int]
+    y: int
+
+class A2(TypedDict, extra_items=ReadOnly[str]):
+    x: ReadOnly[int]
+    y: int
+
+class B(TypedDict):
+    y: int
+
+class C(TypedDict, extra_items=str):
+    y: int
+
+class D(TypedDict):
+    z: str
+
+def f(a1: A1, a2: A2, b: B, c: C, d: D):
+    a1.update(a1)  # E: TypedDict member "x" is read-only
+    a1.update(a2)  # E: TypedDict member "x" is read-only  # E: TypedDict member "extra_items" is read-only
+    a2.update(a2)  # E: TypedDict member "x" is read-only  # E: TypedDict member "extra_items" is read-only
+    a2.update(a1)  # E: TypedDict member "x" is read-only
+
+    a1.update(b)
+    a1.update(c)  # E: TypedDict member "extra_items" is read-only
+
+    a2.update(b)
+    a2.update(c)  # E: TypedDict member "extra_items" is read-only
+    a2.update(d)  # E: TypedDict member "z" is read-only
