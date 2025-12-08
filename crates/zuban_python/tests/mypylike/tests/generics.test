@@ -1910,6 +1910,7 @@ T = TypeVar("T")
 class Class4(Generic[T]):
     def __init__(self: "Class4[int]") -> None: ...
 
+Class4[int]()
 Class4[str]()  # E: Invalid self type in __init__
 
 [case self_generics_with_wrong_own_type_vars]

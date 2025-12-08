@@ -652,7 +652,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         && !matches!(t.as_ref(), Type::Self_)  // We exclude Self, because the context might be
                                                // different
         && func_like.class().is_some()
-        && !Class::with_self_generics(i_s.db, return_class.node_ref)
+        && !return_class
             .as_type(i_s.db)
             .is_simple_sub_type_of(i_s, &t)
             .bool()
