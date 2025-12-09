@@ -244,9 +244,6 @@ testRecursiveAliasViaBaseClass2
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
-# Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
-testRegularGenericDecoratorOverload
-testParamSpecDecoratorOverload
 # list element context inference should probably ignore type vars
 testInferenceAgainstGenericCallableGenericNonLinear
 # Recursive alias union type var inference where Nested[T] is checked before T

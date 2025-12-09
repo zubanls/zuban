@@ -7,7 +7,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{Arg, Args, KnownArgs},
+    arguments::{Arg, Args, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
         PointLink, Specific,
@@ -1810,23 +1810,34 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
+        let type_vars = self.type_vars(i_s.db);
         let calculated_type_vars =
             if self.node().is_typed() || !self.file.should_infer_untyped_returns(i_s.db) {
+                if !type_vars.is_empty()
+                    && let Some(inf) = self.maybe_generic_decorator_overload_call(
+                        i_s,
+                        args,
+                        skip_first_argument,
+                        on_type_error,
+                        replace_self_type,
+                        result_context,
+                    )
+                {
+                    return inf;
+                }
                 calc_func_type_vars(
                     i_s,
                     *self,
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
-                    self.type_vars(i_s.db),
+                    type_vars,
                     self.node_ref.as_link(),
                     replace_self_type,
                     result_context,
                     Some(on_type_error),
                 )
             } else {
-                let type_vars = self.type_vars(i_s.db);
-
                 calc_untyped_func_type_vars(
                     i_s,
                     self,
@@ -1947,6 +1958,62 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .name_resolution_for_types(i_s)
                 .use_cached_return_annotation(return_annotation)
         }
+    }
+
+    fn maybe_generic_decorator_overload_call(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Args<'db>,
+        skip_first_argument: bool,
+        on_type_error: OnTypeError,
+        replace_self_type: Option<ReplaceSelfInMatcher>,
+        result_context: &mut ResultContext,
+    ) -> Option<Inferred> {
+        // This method is named is_generic_decorator_overload_call in Mypy.
+        // It is necessary to pass overloads along mostly in decorators. Mypy has more reasoning
+        // about it.
+        let mut params = self.iter_params().skip(skip_first_argument as usize);
+        let first_param = params.next()?;
+        if params.next().is_some() {
+            return None;
+        }
+        let first_annotation = first_param.annotation(i_s.db)?;
+        let Type::Callable(_) = first_annotation.as_ref() else {
+            return None;
+        };
+        let first_arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
+        let first_t = first_arg.as_cow_type(i_s);
+        let Type::FunctionOverload(overload) = first_t.as_ref() else {
+            return None;
+        };
+        let funcs: Box<[_]> = overload
+            .iter_functions()
+            .filter_map(|overload_callable| {
+                let had_errors = Cell::new(false);
+                let result = self.execute_internal(
+                    i_s,
+                    &KnownArgsWithCustomAddIssue::new(
+                        &Inferred::from_type(Type::Callable(overload_callable.clone())),
+                        &|_| had_errors.set(true),
+                    ),
+                    skip_first_argument,
+                    on_type_error,
+                    replace_self_type,
+                    result_context,
+                );
+                let Type::Callable(c) = result.as_type(i_s) else {
+                    return None;
+                };
+                (!had_errors.get()).then_some(c)
+            })
+            .collect();
+        if funcs.len() == 0 {
+            // No overload matched, therefore we can return
+            return None;
+        }
+        Some(Inferred::from_type(Type::FunctionOverload(
+            FunctionOverload::new(funcs),
+        )))
     }
 
     pub fn diagnostic_string(&self) -> String {
