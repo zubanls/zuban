@@ -1772,7 +1772,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 *class,
                                 attribute_class,
                                 &func.as_callable(i_s, FirstParamProperties::None),
-                                None,
+                                Some(&|| class.as_type_type(i_s.db)),
                             );
                             if let Some(result) = result {
                                 return callable_into_inferred(result);
