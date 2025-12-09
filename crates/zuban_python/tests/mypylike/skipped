@@ -10,6 +10,7 @@ goto_doc_contains_stdlib_compiled
 
 testNewAndInit2
 testNewAndInit3
+class_dunder_new_conformance_tests3
 
 docs_alias
 docs_property

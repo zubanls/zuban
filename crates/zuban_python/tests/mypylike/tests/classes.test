@@ -2169,20 +2169,50 @@ class Meta1(type):
     def __call__(cls: type[T], x: int, y: str) -> T:  # type: ignore
         return type.__call__(cls)
 
-
 class Class1(metaclass=Meta1):
     def __new__(cls, *args, **kwargs) -> Self:
         return super().__new__(*args, **kwargs)
-
 
 def func1(cls: type[Class1]):
     cls(x=1, y="")  # OK
     cls()  # E: Missing positional arguments "x", "y" in call to "Class1"
 
-[case class_dunder_new_specialized]
+[case class_dunder_new_conformance_tests1]
 # flags: --no-mypy-compatible
 # from conformance tests (constructors_call_new.py)
-from typing import assert_type, Any
+from typing import Generic, Self, TypeVar, assert_type
+
+T = TypeVar("T")
+
+
+class Class1(Generic[T]):
+    def __new__(cls, x: T) -> Self:
+        return super().__new__(cls)
+
+
+assert_type(Class1[int](1), Class1[int])
+assert_type(Class1[float](1), Class1[float])
+Class1[int](1.0)  # E: Argument 1 to "Class1" has incompatible type "float"; expected "int"
+
+assert_type(Class1(1), Class1[int])
+assert_type(Class1(1.0), Class1[float])
+
+
+class Class2(Generic[T]):
+    def __new__(cls, *args, **kwargs) -> Self:
+        return super().__new__(cls)
+
+    def __init__(self, x: T) -> None:
+        pass
+
+
+assert_type(Class2(1), Class2[int])
+assert_type(Class2(""), Class2[str])
+
+[case class_dunder_new_conformance_tests2]
+# flags: --no-mypy-compatible
+# from conformance tests (constructors_call_new.py)
+from typing import assert_type, Any, NoReturn
 
 class Class3:
     def __new__(cls) -> int:
@@ -2207,3 +2237,82 @@ class Class4:
         pass
 
 assert_type(Class4(), Class4 | Any)
+
+class Class5:
+    def __new__(cls) -> NoReturn:
+        raise NotImplementedError
+
+    def __init__(self, x: int):
+        pass
+
+try:
+    assert_type(Class5(), NoReturn)
+except:
+    pass
+
+class Class6:
+    def __new__(cls) -> "int | Class6":
+        return 0
+
+    def __init__(self, x: int):
+        pass
+
+assert_type(Class6(), int | Class6)
+
+# > If the return type of __new__ is not annotated, a type checker may assume
+# > that the return type is Self and proceed with the assumption that the
+# > __init__ method will be called.
+
+class Class7:
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, *args, **kwargs)
+
+    def __init__(self, x: int):
+        pass
+
+assert_type(Class7(1), Class7)
+
+[case class_dunder_new_conformance_tests3]
+# flags: --no-mypy-compatible
+# from conformance tests (constructors_call_new.py)
+
+from typing import Generic, Self, TypeVar, assert_type
+T = TypeVar("T")
+
+# > If the class is generic, it is possible for a __new__ method to override
+# > the specialized class type and return a class instance that is specialized
+# > with different type arguments.
+
+class Class8(Generic[T]):
+    def __new__(cls, *args, **kwargs) -> "Class8[list[T]]": ...
+
+
+assert_type(Class8[int](), Class8[list[int]])
+assert_type(Class8[str](), Class8[list[str]])
+
+
+# > If the cls parameter within the __new__ method is not annotated,
+# > type checkers should infer a type of type[Self].
+
+
+class Class9(Generic[T]):
+    def __new__(cls, *args, **kwargs) -> Self: ...
+
+
+class Class10(Class9[int]):
+    pass
+
+
+c10: Class9[int] = Class10()
+
+# > Regardless of whether the type of the cls parameter is explicit or
+# > inferred, the type checker should bind the class being constructed to
+# > the cls parameter and report any type errors that arise during binding.
+
+
+class Class11(Generic[T]):
+    def __new__(cls: "type[Class11[int]]") -> "Class11[int]": ...
+
+Class11()  # OK
+Class11[int]()  # OK
+Class11[str]()  # E: 
