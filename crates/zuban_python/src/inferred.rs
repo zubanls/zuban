@@ -1749,8 +1749,17 @@ impl<'db: 'slf, 'slf> Inferred {
     ) -> Self {
         // This method exists for __new__
         let attribute_class = class_of_attribute.unwrap_or(*class);
-        let add_invalid_self_argument_issue = |t: Option<&Type>| {
-            if let Some(t) = t {
+        let to_class_method = |callable| {
+            let result = infer_class_method(
+                i_s,
+                *class,
+                attribute_class,
+                callable,
+                Some(&|| class.as_type_type(i_s.db)),
+            );
+            if result.is_none()
+                && let Some(t) = callable.first_positional_type()
+            {
                 let class_t = class.as_type_type(i_s.db);
                 add_issue(IssueKind::InvalidSelfArgument {
                     argument_type: class_t.format_short(i_s.db),
@@ -1758,6 +1767,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     callable: t.format_short(i_s.db),
                 })
             }
+            result
         };
         match &self.state {
             InferredState::Saved(definition) => {
@@ -1767,19 +1777,11 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointKind::Specific => {
                         if point.specific() == Specific::Function {
                             let func = Function::new(node_ref, Some(attribute_class));
-                            let result = infer_class_method(
-                                i_s,
-                                *class,
-                                attribute_class,
-                                &func.as_callable(i_s, FirstParamProperties::None),
-                                Some(&|| class.as_type_type(i_s.db)),
-                            );
-                            if let Some(result) = result {
+                            if let Some(result) =
+                                to_class_method(&func.as_callable(i_s, FirstParamProperties::None))
+                            {
                                 return callable_into_inferred(result);
                             } else {
-                                add_invalid_self_argument_issue(
-                                    func.first_self_or_class_annotation(i_s).as_deref(),
-                                );
                                 // e.g. def __new__() -> X: ...
                                 // Error will be added to the class and not the caller
                                 return Self::new_any_from_error();
@@ -1797,14 +1799,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         complex => {
                             if let Some(Type::Callable(c)) = complex.maybe_instance() {
-                                let Some(c) =
-                                    infer_class_method(i_s, *class, attribute_class, c, None)
-                                else {
-                                    /*
-                                    add_invalid_self_argument_issue(
-                                        c.first_self_or_class_annotation(i_s).as_deref(),
-                                    );
-                                    */
+                                let Some(c) = to_class_method(c) else {
                                     return Self::new_any_from_error();
                                 };
                                 return Inferred::from_type(Type::Callable(Arc::new(c)));
@@ -1816,7 +1811,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Type::Callable(c))) => {
                 // This is reached by NamedTuples. Not sure it this reached otherwise as well.
-                let result = infer_class_method(i_s, *class, attribute_class, c, None);
+                let result = to_class_method(c);
                 if let Some(result) = result {
                     return callable_into_inferred(result);
                 } else {
