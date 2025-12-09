@@ -2316,3 +2316,85 @@ class Class11(Generic[T]):
 Class11()  # OK
 Class11[int]()  # OK
 Class11[str]()  # E: 
+
+[case class_dunder_new_callable_conformance_tests_with_explicit_any]
+# flags: --no-mypy-compatible
+# from conformance tests (constructors_callable.py)
+
+from typing import Generic, Self, TypeVar, assert_type, Any, overload, ParamSpec, Callable
+T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def accepts_callable(cb: Callable[P, R]) -> Callable[P, R]:
+    return cb
+
+class Class6Any:
+    """__new__ that causes __init__ to be ignored via Any"""
+
+    def __new__(cls) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        """This __init__ is ignored for purposes of conversion"""
+        pass
+
+
+r6_any = accepts_callable(Class6Any)
+reveal_type(r6_any)  # N: Revealed type is "def () -> Any"
+assert_type(r6_any(), Any)
+r6_any(1)  # E: Too many arguments
+
+# > If the __init__ or __new__ method is overloaded, the callable type should
+# > be synthesized from the overloads. The resulting callable type itself will
+# > be overloaded.
+
+
+class Class7(Generic[T]):
+    @overload
+    def __init__(self: "Class7[int]", x: int) -> None: ...
+    @overload
+    def __init__(self: "Class7[str]", x: str) -> None: ...
+    def __init__(self, x: int | str) -> None:
+        pass
+
+
+r7 = accepts_callable(Class7)
+reveal_type(
+    r7
+)  # overload of `def (x: int) -> Class7[int]` and `def (x: str) -> Class7[str]`
+assert_type(r7(0), Class7[int])
+assert_type(r7(""), Class7[str])
+
+[case class_as_callable_conformance_tests_and_generics]
+# flags: --no-mypy-compatible
+# from conformance tests (constructors_callable.py)
+
+from typing import Generic, Self, TypeVar, assert_type, Any, overload, ParamSpec, Callable
+T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def accepts_callable(cb: Callable[P, R]) -> Callable[P, R]:
+    return cb
+
+class Class8(Generic[T]):
+    def __new__(cls, x: list[T], y: list[T]) -> Self:
+        return super().__new__(cls)
+
+
+r8 = accepts_callable(Class8)
+reveal_type(r8)  # N: Revealed type is "def [T] (x: list[T], y: list[T]) -> __main__.Class8[T]"
+assert_type(r8([""], [""]), Class8[str])
+r8([1], [""])  # E: List item 0 has incompatible type "str"; expected "int"
+
+
+class Class9:
+    def __init__(self, x: list[T], y: list[T]) -> None:
+        pass
+
+
+r9 = accepts_callable(Class9)
+reveal_type(r9)  # N: Revealed type is "def (x: list[T], y: list[T]) -> __main__.Class9"
+assert_type(r9([""], [""]), Class9)
+r9([1], [""])  # E: List item 0 has incompatible type "str"; expected "int"

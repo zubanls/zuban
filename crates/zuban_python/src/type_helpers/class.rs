@@ -1280,7 +1280,10 @@ impl<'db: 'a, 'a> Class<'a> {
                     if !cls
                         .as_maybe_class()
                         .is_some_and(|c| i_s.db.python_state.bare_type_node_ref() == c.node_ref)
-                        && !matches!(t.as_ref(), Type::Self_ | Type::Any(_))
+                        && !matches!(
+                            t.as_ref(),
+                            Type::Self_ | Type::Any(AnyCause::Unannotated | AnyCause::FromError)
+                        )
                     {
                         //dbg!(t);
                         //dbg!(&inf.debug_info(i_s.db));
