@@ -2156,3 +2156,25 @@ class Frame:
     @overload
     def configure(self, cnf: str) -> int: ...
     config = configure
+
+[case metaclass_callable_initialization]
+# flags: --no-mypy-compatible
+# from conformance tests (constructors_call_type.py)
+from typing import Self, TypeVar
+
+T = TypeVar("T")
+
+class Meta1(type):
+    # Ignore possible errors related to incompatible override
+    def __call__(cls: type[T], x: int, y: str) -> T:  # type: ignore
+        return type.__call__(cls)
+
+
+class Class1(metaclass=Meta1):
+    def __new__(cls, *args, **kwargs) -> Self:
+        return super().__new__(*args, **kwargs)
+
+
+def func1(cls: type[Class1]):
+    cls(x=1, y="")  # OK
+    cls()  # E: Missing positional arguments "x", "y" in call to "Class1"

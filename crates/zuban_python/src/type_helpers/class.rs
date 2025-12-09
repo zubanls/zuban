@@ -31,12 +31,12 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        AnyCause, CallableContent, CallableLike, CallableParam, ClassGenerics, Dataclass, DbString,
-        Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem, GenericsList, LiteralValue,
-        LookupResult, NamedTuple, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
-        ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, Type, TypeVarIndex, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
-        add_any_params_to_params,
+        AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
+        Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
+        GenericsList, LiteralValue, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
+        ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType, StringSlice, Tuple,
+        TupleArgs, Type, TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
+        TypedDictGenerics, Variance, add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -1209,7 +1209,26 @@ impl<'db: 'a, 'a> Class<'a> {
                     inf.as_cow_type(i_s).for_all_in_union(i_s.db, &|t| match t {
                         Type::Callable(callable) => {
                             callable.return_type.for_all_in_union(i_s.db, &|t| match t {
-                                Type::Class(class) => class.link != self.node_ref.as_link(),
+                                Type::Class(class) => {
+                                    class.link != self.node_ref.as_link()
+                                        || match &callable.params {
+                                            CallableParams::Simple(ps) => {
+                                                // In case where *args is not involve, we assume
+                                                // that the metaclass __call__ is  the initializer
+                                                !ps.iter().any(|p| {
+                                                    matches!(
+                                                        p.type_,
+                                                        ParamType::Star(
+                                                            StarParamType::ArbitraryLen(Type::Any(
+                                                                _
+                                                            ))
+                                                        )
+                                                    )
+                                                })
+                                            }
+                                            _ => false,
+                                        }
+                                }
                                 Type::Any(_) => false,
                                 _ => true,
                             })
