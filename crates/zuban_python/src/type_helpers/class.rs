@@ -1285,9 +1285,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             Type::Self_ | Type::Any(AnyCause::Unannotated | AnyCause::FromError)
                         )
                     {
-                        //dbg!(t);
-                        //dbg!(&inf.debug_info(i_s.db));
-                        debug!("SET TRUE");
+                        debug!(
+                            "Use __new__ instead of __init__ because it has an explicit type {:?}",
+                            t.format_short(i_s.db)
+                        );
                         is_new = true;
                     }
                 }
@@ -2513,13 +2514,9 @@ fn init_as_callable(
             // generics for the __init__ function. We merge those and then set the proper
             // ids for the type vars.
             let class_type_vars = cls.type_vars(i_s);
-            if class_type_vars.is_empty() {
-                c.type_vars = class_type_vars.clone();
-            } else {
-                let mut tv_vec = class_type_vars.as_vec();
-                tv_vec.extend(c.type_vars.iter().cloned());
-                c.type_vars = TypeVarLikes::from_vec(tv_vec);
-            }
+            let mut tv_vec = class_type_vars.as_vec();
+            tv_vec.extend(c.type_vars.iter().cloned());
+            c.type_vars = TypeVarLikes::from_vec(tv_vec);
             let c_defined_at = c.defined_at;
             if !c.type_vars.is_empty() {
                 c = c.replace_type_var_likes_and_self_inplace(

@@ -2395,6 +2395,6 @@ class Class9:
 
 
 r9 = accepts_callable(Class9)
-reveal_type(r9)  # N: Revealed type is "def (x: list[T], y: list[T]) -> __main__.Class9"
+reveal_type(r9)  # N: Revealed type is "def [T] (x: list[T], y: list[T]) -> __main__.Class9"
 assert_type(r9([""], [""]), Class9)
 r9([1], [""])  # E: List item 0 has incompatible type "str"; expected "int"
