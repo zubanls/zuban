@@ -838,12 +838,19 @@ impl Type {
     }
 
     fn type_type_maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
+        let cls_callable = |cls: Class| {
+            let error = Cell::new(false);
+            let result = cls
+                .find_relevant_constructor(i_s, &|_| error.set(true))
+                .maybe_callable(i_s, cls);
+            if error.get() {
+                return None;
+            }
+            result
+        };
         // Is type[Foo] a callable?
         match self {
-            Type::Class(c) => {
-                let cls = c.class(i_s.db);
-                cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls)
-            }
+            Type::Class(c) => cls_callable(c.class(i_s.db)),
             Type::Dataclass(d) => {
                 let cls = d.class(i_s.db);
                 if d.options.init {
@@ -860,7 +867,7 @@ impl Type {
                     }
                     return Some(CallableLike::Callable(Arc::new(init)));
                 }
-                cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls)
+                cls_callable(cls)
             }
             Type::TypedDict(td) => Some(CallableLike::Callable(Arc::new(
                 rc_typed_dict_as_callable(i_s.db, td.clone()),

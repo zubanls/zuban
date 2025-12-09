@@ -2315,7 +2315,7 @@ class Class11(Generic[T]):
 
 Class11()  # OK
 Class11[int]()  # OK
-Class11[str]()  # E: 
+Class11[str]()  # E: Invalid self argument "type[Class11[str]]" to attribute function "__new__" with type "type[Class11[int]]"
 
 [case class_dunder_new_callable_conformance_tests_with_explicit_any]
 # flags: --no-mypy-compatible

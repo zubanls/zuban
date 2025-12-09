@@ -34,8 +34,8 @@ use crate::{
         TypeVarLikes, execute_tuple_class, execute_type_of_type, merge_class_type_vars,
     },
     type_helpers::{
-        BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function,
-        Instance, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
+        BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, FuncLike as _,
+        Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
         execute_cast, execute_isinstance, execute_issubclass, execute_reveal_type, execute_super,
     },
 };
@@ -1745,9 +1745,20 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         class: &Class,
         class_of_attribute: Option<Class>,
+        add_issue: &dyn Fn(IssueKind),
     ) -> Self {
         // This method exists for __new__
         let attribute_class = class_of_attribute.unwrap_or(*class);
+        let add_invalid_self_argument_issue = |t: Option<&Type>| {
+            if let Some(t) = t {
+                let class_t = class.as_type_type(i_s.db);
+                add_issue(IssueKind::InvalidSelfArgument {
+                    argument_type: class_t.format_short(i_s.db),
+                    function_name: "__new__".into(),
+                    callable: t.format_short(i_s.db),
+                })
+            }
+        };
         match &self.state {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
@@ -1766,6 +1777,9 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(result) = result {
                                 return callable_into_inferred(result);
                             } else {
+                                add_invalid_self_argument_issue(
+                                    func.first_self_or_class_annotation(i_s).as_deref(),
+                                );
                                 // e.g. def __new__() -> X: ...
                                 // Error will be added to the class and not the caller
                                 return Self::new_any_from_error();
@@ -1786,6 +1800,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let Some(c) =
                                     infer_class_method(i_s, *class, attribute_class, c, None)
                                 else {
+                                    /*
+                                    add_invalid_self_argument_issue(
+                                        c.first_self_or_class_annotation(i_s).as_deref(),
+                                    );
+                                    */
                                     return Self::new_any_from_error();
                                 };
                                 return Inferred::from_type(Type::Callable(Arc::new(c)));

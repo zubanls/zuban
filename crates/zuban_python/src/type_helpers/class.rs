@@ -480,7 +480,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                             cls.name(),
                                                             self.name()
                                                         ).into());
-                                                        cls.find_relevant_constructor(i_s)
+                                                        cls.find_relevant_constructor(i_s, &|_| ())
                                                             .into_type(i_s, cls)
                                                     })
                                                 }
@@ -1194,7 +1194,11 @@ impl<'db: 'a, 'a> Class<'a> {
         })
     }
 
-    pub fn find_relevant_constructor(&self, i_s: &InferenceState<'db, '_>) -> ClassConstructor<'_> {
+    pub fn find_relevant_constructor(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        add_issue: &dyn Fn(IssueKind),
+    ) -> ClassConstructor<'_> {
         if !i_s.db.project.settings.mypy_compatible
             && let MetaclassState::Some(metaclass) = self.use_cached_class_infos(i_s.db).metaclass
         {
@@ -1297,7 +1301,12 @@ impl<'db: 'a, 'a> Class<'a> {
                         // TODO this should not be bound
                         constructor: __new__
                             .and_then(|inf| {
-                                Some(inf.bind_new_descriptors(i_s, self, cls.as_maybe_class()))
+                                Some(inf.bind_new_descriptors(
+                                    i_s,
+                                    self,
+                                    cls.as_maybe_class(),
+                                    add_issue,
+                                ))
                             })
                             .unwrap(),
                     }
@@ -1533,7 +1542,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let d = |_: &dyn FuncLike, _: &Database| Some(format!("\"{}\"", self.name()));
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
-        match self.find_relevant_constructor(i_s) {
+        match self.find_relevant_constructor(i_s, &|issue| args.add_issue(i_s, issue)) {
             ClassConstructor::DunderNew { constructor } => {
                 let result = constructor
                     .into_inferred()
