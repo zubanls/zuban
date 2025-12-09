@@ -1874,6 +1874,7 @@ impl Inference<'_, '_, '_> {
         }
 
         if let Some(return_annotation) = function.return_annotation()
+            && i_s.db.project.settings.mypy_compatible
             && function.is_dunder_new()
         {
             let mut class = function.class.unwrap();

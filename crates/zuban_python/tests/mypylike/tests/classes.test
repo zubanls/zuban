@@ -2178,3 +2178,32 @@ class Class1(metaclass=Meta1):
 def func1(cls: type[Class1]):
     cls(x=1, y="")  # OK
     cls()  # E: Missing positional arguments "x", "y" in call to "Class1"
+
+[case class_dunder_new_specialized]
+# flags: --no-mypy-compatible
+# from conformance tests (constructors_call_new.py)
+from typing import assert_type, Any
+
+class Class3:
+    def __new__(cls) -> int:
+        return 0
+
+    # In this case, the __init__ method should not be considered
+    # by the type checker when evaluating a constructor call.
+    def __init__(self, x: int):
+        pass
+
+assert_type(Class3(), int)
+
+# > For purposes of this test, an explicit return type of Any (or a union
+# > containing Any) should be treated as a type that is not an instance of
+# > the class being constructed.
+
+class Class4:
+    def __new__(cls) -> "Class4 | Any":
+        return 0
+
+    def __init__(self, x: int):
+        pass
+
+assert_type(Class4(), Class4 | Any)

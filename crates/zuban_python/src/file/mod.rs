@@ -30,7 +30,8 @@ pub(crate) use type_computation::{
     TypeVarCallbackReturn, TypeVarTupleDefaultOrigin, assignment_type_node_ref,
     expect_class_or_simple_generic, linearize_mro_and_return_linearizable, maybe_saved_annotation,
     use_cached_annotation_or_type_comment, use_cached_annotation_type,
-    use_cached_param_annotation_type, use_cached_simple_generic_type,
+    use_cached_param_annotation_type, use_cached_return_annotation_type,
+    use_cached_simple_generic_type,
 };
 pub(crate) use type_var_finder::TypeVarFinder;
 pub(crate) use utils::{

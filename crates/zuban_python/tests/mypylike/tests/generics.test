@@ -1239,6 +1239,7 @@ class Other2(Thing[t]):
         return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[t]"
 
 [case __new__super_class_generics]
+# flags: --mypy-compatible
 from typing import Iterator, TypeVar, Iterable, Self
 
 T = TypeVar('T')

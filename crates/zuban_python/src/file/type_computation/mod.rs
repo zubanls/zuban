@@ -4854,6 +4854,15 @@ pub(crate) fn use_cached_annotation_type<'db: 'file, 'file>(
         )
 }
 
+pub(crate) fn use_cached_return_annotation_type<'db: 'file, 'file>(
+    db: &'db Database,
+    file: &'file PythonFile,
+    annotation: ReturnAnnotation,
+) -> Cow<'file, Type> {
+    file.name_resolution_for_types(&InferenceState::new(db, file))
+        .use_cached_return_annotation_type(annotation)
+}
+
 pub(crate) fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
     i_s: &InferenceState<'db, '_>,
     definition: NodeRef<'file>,

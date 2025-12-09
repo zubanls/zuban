@@ -16,7 +16,10 @@ use crate::{
     },
     debug,
     diagnostics::IssueKind,
-    file::{ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, TypeVarCallbackReturn},
+    file::{
+        ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, TypeVarCallbackReturn,
+        use_cached_return_annotation_type,
+    },
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -759,6 +762,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
         super_count: usize,
+        without_object: bool,
         bind: impl FnOnce(LookupResult, TypeOrClass<'a>, MroIndex) -> T,
     ) -> T {
         if name == "__doc__" {
@@ -774,7 +778,7 @@ impl<'db: 'a, 'a> Class<'a> {
             );
         }
         for (mro_index, c) in self
-            .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
+            .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db) || without_object)
             .skip(super_count)
         {
             let (_, result) = c.lookup_symbol(i_s, name);
@@ -858,6 +862,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 name,
                 options.super_count,
+                false,
                 |lookup_result, class, mro_index| {
                     let mut attr_kind = AttributeKind::Attribute;
                     let result = lookup_result.and_then(|inf| {
@@ -1253,18 +1258,37 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 "__init__",
                 0,
+                false,
                 |lookup, cls, mro_index| (lookup, cls, mro_index),
             );
         self.lookup_and_class_and_maybe_ignore_self_internal(
             i_s,
             "__new__",
             0,
+            true,
             |__new__, cls, new_mro_index| {
-                // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
-                // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
-                // a lower MRO than an __init__.
-                let is_new = new_mro_index < init_mro_index;
-                if is_new {
+                // This is just a weird heuristic Mypy uses, because the type system itself is very
+                // unclear what to do if both __new__ and __init__ are present. So just only use
+                // __new__ if it's in a lower MRO than an __init__.
+                let mut is_new = new_mro_index < init_mro_index;
+                if let Some(inf) = __new__.maybe_inferred()
+                    && let Some(node_ref) = inf.maybe_saved_node_ref(i_s.db)
+                    && let Some(func) = node_ref.maybe_function()
+                    && let Some(return_annot) = func.return_annotation()
+                {
+                    let t = use_cached_return_annotation_type(i_s.db, node_ref.file, return_annot);
+                    if !cls
+                        .as_maybe_class()
+                        .is_some_and(|c| i_s.db.python_state.bare_type_node_ref() == c.node_ref)
+                        && !matches!(t.as_ref(), Type::Self_ | Type::Any(_))
+                    {
+                        //dbg!(t);
+                        //dbg!(&inf.debug_info(i_s.db));
+                        debug!("SET TRUE");
+                        is_new = true;
+                    }
+                }
+                if is_new && __new__.is_some() {
                     ClassConstructor::DunderNew {
                         // TODO this should not be bound
                         constructor: __new__
@@ -1511,13 +1535,15 @@ impl<'db: 'a, 'a> Class<'a> {
                     .into_inferred()
                     .execute_with_details(i_s, args, result_context, on_type_error)
                     .as_type(i_s);
-                // Only subclasses of the current class are valid, otherwise return the current
-                // class. Diagnostics will care about these cases and raise errors when needed.
-                if !result.is_any()
-                    && Self::with_undefined_generics(self.node_ref)
-                        .as_type(i_s.db)
-                        .is_simple_super_type_of(i_s, &result)
-                        .bool()
+                // For Mypy only subclasses of the current class are valid, otherwise return the
+                // current class. Diagnostics will care about these cases and raise errors when
+                // needed.
+                if !i_s.db.project.settings.mypy_compatible
+                    || !result.is_any()
+                        && Self::with_undefined_generics(self.node_ref)
+                            .as_type(i_s.db)
+                            .is_simple_super_type_of(i_s, &result)
+                            .bool()
                 {
                     ClassExecutionResult::Inferred(Inferred::from_type(result))
                 } else if matches!(self.generics, Generics::NotDefinedYet { .. })
@@ -1963,19 +1989,27 @@ impl<'db: 'a, 'a> Class<'a> {
         add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
-        self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, 0, |lookup, c, _| {
-            if let Some(inf) = lookup.into_maybe_inferred() {
-                if inf.maybe_saved_specific(i_s.db)
-                    == Some(Specific::AnnotationOrTypeCommentClassVar)
-                    && !c.is_protocol(i_s.db)
-                {
-                    add_issue(IssueKind::CannotAssignToClassVarViaInstance { name: name.into() })
-                } else if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
-                    // See testSlotsAssignmentWithMethodReassign
-                    //add_issue(IssueType::CannotAssignToAMethod);
+        self.lookup_and_class_and_maybe_ignore_self_internal(
+            i_s,
+            name,
+            0,
+            false,
+            |lookup, c, _| {
+                if let Some(inf) = lookup.into_maybe_inferred() {
+                    if inf.maybe_saved_specific(i_s.db)
+                        == Some(Specific::AnnotationOrTypeCommentClassVar)
+                        && !c.is_protocol(i_s.db)
+                    {
+                        add_issue(IssueKind::CannotAssignToClassVarViaInstance {
+                            name: name.into(),
+                        })
+                    } else if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
+                        // See testSlotsAssignmentWithMethodReassign
+                        //add_issue(IssueType::CannotAssignToAMethod);
+                    }
                 }
-            }
-        });
+            },
+        );
         self.check_slots(i_s, add_issue, name)
     }
 
