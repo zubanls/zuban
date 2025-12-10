@@ -204,14 +204,14 @@ def f() -> int | str: return 1
 
 match f():
     case str(s) if s == "foo":
-        reveal_type(s)  # N: Revealed type is "str"
+        reveal_type(s)  # N: Revealed type is "Literal['foo']?"
     case rest:
         reveal_type(rest)  # N: Revealed type is "int | str"
 
 x = f()
 match x:
     case str(s) if s == "foo":
-        reveal_type(s)  # N: Revealed type is "str"
+        reveal_type(s)  # N: Revealed type is "Literal['foo']?"
     case rest:
         reveal_type(rest)  # N: Revealed type is "int | str"
 

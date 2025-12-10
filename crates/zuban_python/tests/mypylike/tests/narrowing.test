@@ -1992,3 +1992,16 @@ def func1(f: float):
 
     if not isinstance(f, float):
         f.numerator  # OK
+
+[case string_literal_narrowing_in_conformance_tests]
+# Copied from conformance tests (literals_interactions.py)
+from typing import Literal
+def expects_bad_status(status: Literal["MALFORMED", "ABORTED"]): ...
+def expects_pending_status(status: Literal["PENDING"]): ...
+
+def parse_status2(status: str) -> None:
+    if status in ("MALFORMED", "ABORTED"):
+        return expects_bad_status(status)
+
+    if status == "PENDING":
+        expects_pending_status(status)
