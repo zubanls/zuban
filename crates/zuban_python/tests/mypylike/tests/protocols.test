@@ -340,6 +340,72 @@ v6_good3: Template6 = Concrete6_Good3()  # OK
 v6_bad3: Template6 = Concrete6_Bad3()  # E: Incompatible types in assignment (expression has type "Concrete6_Bad3", variable has type "Template6") \
                                        # N: Protocol member Template6.val1 expected settable variable, got read-only attribute
 
+[case protocols_bad_overrides_due_to_different_param_names_in_conformance_tests]
+# flags: --no-mypy-compatible
+# Partially copied from conformance tests (protocols_definition.py)
+from typing import Protocol, Sequence
+
+class Template5(Protocol):
+    def method1(self, a: int, b: int) -> float:
+        ...
+
+class Concrete5_Bad1:
+    def method1(self, a, c) -> int:
+        return 0
+
+class Concrete5_Bad2:
+    def method1(self, a: int, c: int) -> int:
+        return 0
+
+class Concrete5_Bad3:
+    def method1(self, *, a: int, b: int) -> float:
+        return 0
+
+class Concrete5_Bad4:
+    def method1(self, a: int, b: int, /) -> float:
+        return 0
+
+class Concrete5_Bad5:
+    @staticmethod
+    def method1(self, a: int, b: int) -> float:
+        return 0
+
+v5_bad1: Template5 = Concrete5_Bad1()  # E: Incompatible types in assignment (expression has type "Concrete5_Bad1", variable has type "Template5") \
+                                       # N: Following member(s) of "Concrete5_Bad1" have conflicts: \
+                                       # N:     Expected: \
+                                       # N:         def method1(self, a: int, b: int) -> float \
+                                       # N:     Got: \
+                                       # N:         def method1(self, a: Any, c: Any) -> int
+
+v5_bad2: Template5 = Concrete5_Bad2()  # E: Incompatible types in assignment (expression has type "Concrete5_Bad2", variable has type "Template5") \
+                                       # N: Following member(s) of "Concrete5_Bad2" have conflicts: \
+                                       # N:     Expected: \
+                                       # N:         def method1(self, a: int, b: int) -> float \
+                                       # N:     Got: \
+                                       # N:         def method1(self, a: int, c: int) -> int
+
+v5_bad3: Template5 = Concrete5_Bad3()  # E: Incompatible types in assignment (expression has type "Concrete5_Bad3", variable has type "Template5") \
+                                       # N: Following member(s) of "Concrete5_Bad3" have conflicts: \
+                                       # N:     Expected: \
+                                       # N:         def method1(self, a: int, b: int) -> float \
+                                       # N:     Got: \
+                                       # N:         def method1(self, *, a: int, b: int) -> float
+
+v5_bad4: Template5 = Concrete5_Bad4()  # E: Incompatible types in assignment (expression has type "Concrete5_Bad4", variable has type "Template5") \
+                                       # N: Following member(s) of "Concrete5_Bad4" have conflicts: \
+                                       # N:     Expected: \
+                                       # N:         def method1(self, a: int, b: int) -> float \
+                                       # N:     Got: \
+                                       # N:         def method1(self, int, int, /) -> float
+
+v5_bad5: Template5 = Concrete5_Bad5()  # E: Incompatible types in assignment (expression has type "Concrete5_Bad5", variable has type "Template5") \
+                                       # N: Following member(s) of "Concrete5_Bad5" have conflicts: \
+                                       # N:     Expected: \
+                                       # N:         def method1(self: Template5, a: int, b: int) -> float \
+                                       # N:     Got: \
+                                       # N:         def method1(self: Any, a: int, b: int) -> float
+
+
 [case protocols_runtime_checkable_issubclass]
 # Copied from conformance tests (protocols_runtime_checkable.py)
 from typing import Protocol, runtime_checkable, Any

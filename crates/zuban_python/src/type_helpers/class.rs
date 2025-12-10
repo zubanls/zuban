@@ -323,7 +323,8 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut had_at_least_one_member_with_same_name = false;
 
         let ignore_positional_param_names_old = matcher.ignore_positional_param_names;
-        matcher.ignore_positional_param_names = true;
+        let positional_default = i_s.db.project.settings.mypy_compatible;
+        matcher.ignore_positional_param_names = positional_default;
 
         let mut protocol_member_count = 0;
         for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
@@ -363,7 +364,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             .bool()
                             && had_error.borrow().is_none()
                         {
-                            matcher.ignore_positional_param_names = true;
+                            matcher.ignore_positional_param_names = positional_default;
                             had_at_least_one_member_with_same_name = true;
                             continue;
                         }
@@ -640,7 +641,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     missing_members.push(name);
                 }
                 if is_call {
-                    matcher.ignore_positional_param_names = true;
+                    matcher.ignore_positional_param_names = positional_default;
                 }
                 mismatches += mismatch as usize;
             }
