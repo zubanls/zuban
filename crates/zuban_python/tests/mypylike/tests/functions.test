@@ -460,3 +460,20 @@ def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
     ret = fn(1)  # E: Function does not return a value (it only ever returns None) \
                  # E: Function does not return a value (it only ever returns None)
     reveal_type(ret)  # N: Revealed type is "None"
+
+[case annotations_generator_unreachable_yield]
+# flags: --no-mypy-compatible
+# From conformance tests (annotations_generators.py)
+from typing import AsyncIterable, AsyncIterator, Iterable
+def generator23() -> Iterable[str]:  # OK
+    return
+    yield ""  # Unreachable, but fine, because it's an empty generator
+
+
+async def generator24() -> AsyncIterable[str]:  # OK
+    return
+    yield ""  # Unreachable, but fine, because it's an empty generator
+
+async def generator30() -> AsyncIterator[int]:
+    raise NotImplementedError
+    yield

@@ -2486,37 +2486,6 @@ impl<'db> FunctionDef<'db> {
         Block::new(self.node.iter_children().last().unwrap())
     }
 
-    pub fn is_empty_generator_function(&self) -> bool {
-        let mut iterator = self.body().iter_stmt_likes();
-        let Some(first) = iterator.next() else {
-            return false;
-        };
-        match first.node {
-            StmtLikeContent::ReturnStmt(r) => {
-                if let Some(star_exprs) = r.star_expressions()
-                    && !star_exprs.is_none_literal()
-                {
-                    return false;
-                }
-            }
-            _ => return false,
-        }
-        let Some(second) = iterator.next() else {
-            return false;
-        };
-        if iterator.next().is_some() {
-            return false;
-        }
-        match second.node {
-            StmtLikeContent::YieldExpr(y) => match y.unpack() {
-                YieldExprContent::StarExpressions(s) => s.is_none_literal(),
-                YieldExprContent::YieldFrom(_) => false,
-                YieldExprContent::None => true,
-            },
-            _ => false,
-        }
-    }
-
     pub fn on_name_def_in_scope(&self, callback: &mut impl FnMut(NameDef<'db>)) {
         for p in self.params().iter() {
             callback(p.name_def())

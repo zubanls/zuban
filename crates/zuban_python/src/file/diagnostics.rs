@@ -1376,6 +1376,41 @@ impl Inference<'_, '_, '_> {
         })
     }
 
+    pub fn is_empty_generator_function(&self, func_node: FunctionDef) -> bool {
+        let mut iterator = func_node.body().iter_stmt_likes();
+        let Some(first) = iterator.next() else {
+            return false;
+        };
+        match first.node {
+            StmtLikeContent::ReturnStmt(r) => {
+                if let Some(star_exprs) = r.star_expressions()
+                    && !star_exprs.is_none_literal()
+                {
+                    return false;
+                }
+            }
+            StmtLikeContent::RaiseStmt(_) => {}
+            _ => return false,
+        }
+        let Some(second) = iterator.next() else {
+            return false;
+        };
+        if iterator.next().is_some() {
+            return false;
+        }
+        match second.node {
+            StmtLikeContent::YieldExpr(y) => match y.unpack() {
+                YieldExprContent::StarExpressions(s) => {
+                    // Conformance tests have things like `yield ""`.
+                    s.is_none_literal() || !self.i_s.db.project.settings.mypy_compatible
+                }
+                YieldExprContent::YieldFrom(_) => false,
+                YieldExprContent::None => true,
+            },
+            _ => false,
+        }
+    }
+
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         function.cache_func_from_diagnostics(self.i_s);
         let func_node = function.node();
@@ -1412,7 +1447,7 @@ impl Inference<'_, '_, '_> {
         body_ref.set_point(Point::new_calculating());
         FLOW_ANALYSIS.with(|fa| {
             let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
-                if func_node.is_empty_generator_function() {
+                if self.is_empty_generator_function(func_node) {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
                 let flags = self.flags();
