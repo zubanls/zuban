@@ -2492,11 +2492,17 @@ fn init_as_callable(
     } else {
         inf.as_cow_type(i_s).maybe_callable(i_s)?
     };
-    let to_callable = |c: &CallableContent| {
+    let to_callable = |original: &CallableContent| {
         // Since __init__ does not have a return, we need to check the params
         // of the __init__ functions and the class as a return type separately.
-        c.remove_first_positional_param().map(|mut c| {
-            let self_ = cls.as_type(i_s.db);
+        original.remove_first_positional_param().map(|mut c| {
+            let self_ = if c.kind.had_first_self_or_class_annotation()
+                && let Some(first) = original.first_positional_type()
+            {
+                first
+            } else {
+                cls.as_type(i_s.db)
+            };
             let needs_type_var_remap = init_class
                 .is_some_and(|c| !c.type_vars(i_s).is_empty() && c.node_ref != cls.node_ref);
 

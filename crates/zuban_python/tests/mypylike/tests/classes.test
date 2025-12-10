@@ -2360,9 +2360,8 @@ class Class7(Generic[T]):
 
 
 r7 = accepts_callable(Class7)
-reveal_type(
-    r7
-)  # overload of `def (x: int) -> Class7[int]` and `def (x: str) -> Class7[str]`
+reveal_type(r7)  # N: Revealed type is "Overload(def (x: int) -> __main__.Class7[int], def (x: str) -> __main__.Class7[str])"
+
 assert_type(r7(0), Class7[int])
 assert_type(r7(""), Class7[str])
 
