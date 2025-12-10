@@ -4149,7 +4149,6 @@ impl Inference<'_, '_, '_> {
             return None;
         };
         let input = self.key_from_namedexpression(arg);
-        let key = input.key?;
         let Argument::Positional(type_arg) = iterator.next()? else {
             return None;
         };
@@ -4162,7 +4161,7 @@ impl Inference<'_, '_, '_> {
             // about the type and its parents except that it can be anything.
             debug!("The isinstance type is Any, we therefore do not narrow");
             return Some(FramesWithParentUnions {
-                truthy: Frame::from_type(key, isinstance_type),
+                truthy: Frame::from_type(input.key?, isinstance_type),
                 falsey: Frame::new_conditional(),
                 parent_unions: vec![],
             });
@@ -4181,6 +4180,7 @@ impl Inference<'_, '_, '_> {
                 }
             },
         );
+        let key = input.key?;
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(key.clone(), truthy),
             falsey: Frame::from_type(key, falsey),

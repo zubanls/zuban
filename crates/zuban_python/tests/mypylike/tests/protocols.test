@@ -360,6 +360,46 @@ def func2(a: Any):
                                                         # N: Protocol "DataProtocol" has non-method member(s): name
         return
 
+[case protocols_runtime_checkable_invalid_overlap]
+# flags: --warn-unreachable
+# Copied from conformance tests (protocols_runtime_checkable.py)
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Proto2(Protocol):
+    name: str
+
+@runtime_checkable
+class NonDataProtocol(Protocol):
+    def method1(self) -> int: ...
+
+@runtime_checkable
+class Proto3(Protocol):
+    def method1(self, a: int) -> int: ...
+
+class Concrete3A:
+    def method1(self, a: str) -> None: ...
+
+class Concrete3B:
+    method1: int = 1
+
+def func3() -> None:
+    if isinstance(Concrete3A(), Proto2):  # OK
+        pass
+
+    if isinstance(Concrete3A(), Proto3):  # E: Subclass of "Concrete3A" and "Proto3" cannot exist: would have incompatible method signatures
+        pass
+
+    if isinstance(
+        Concrete3B(), (Proto3, NonDataProtocol)  # E: Subclass of "Concrete3B" and "Proto3" cannot exist: would have incompatible method signatures \
+                                                 # E: Subclass of "Concrete3B" and "NonDataProtocol" cannot exist: would have incompatible method signatures
+    ):
+        pass
+
+    if issubclass(Concrete3A, (Proto3, NonDataProtocol)):  # E: Subclass of "Concrete3A" and "Proto3" cannot exist: would have incompatible method signatures \
+                                                           # E: Subclass of "Concrete3A" and "NonDataProtocol" cannot exist: would have incompatible method signatures
+        pass
+
 [case protocols_not_instantiated]
 # Copied from conformance tests (protocols_explicit.py)
 from abc import ABC, abstractmethod
