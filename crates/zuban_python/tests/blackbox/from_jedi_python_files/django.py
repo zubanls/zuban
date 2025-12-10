@@ -205,7 +205,7 @@ class Inherited(BusinessModel):
     new_field = models.FloatField()
 
 inherited = Inherited()
-#? str()
+#?
 inherited.text_field
 #? str()
 inherited.char_field
@@ -218,7 +218,7 @@ Inherited.category_fk2.category_name
 inherited.category_fk2.category_name
 #? str()
 Inherited.objects.get().char_field
-#? str()
+#?
 Inherited.objects.get().text_field
 #? float()
 Inherited.objects.get().new_field
