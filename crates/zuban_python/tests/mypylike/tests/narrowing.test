@@ -1966,3 +1966,16 @@ def test2(f: CustomFlags):
             pass
         case _:
             assert_type(f, CustomFlags)
+
+[case enum_narrowing_reachability]
+# flags: --warn-unreachable
+from enum import Enum
+
+class Answer(Enum):
+    Yes = 1
+    No = 2
+
+def test3(val: object) -> list[Answer]:
+    assert val is Answer.Yes or val is Answer.No
+    x = [val]
+    return x

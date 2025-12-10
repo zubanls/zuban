@@ -1207,10 +1207,18 @@ fn split_off_enum_member(
 
     for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
-            Type::Any(_) if abort_on_custom_eq => {
-                return None; // Can always contain a custom eq.
-            }
             Type::Any(_) => {
+                if abort_on_custom_eq {
+                    return None; // Can always contain a custom eq.
+                }
+                // Add it to both sides
+                set_truthy();
+                add(sub_t.clone());
+            }
+            Type::Class(c) if c.link == i_s.db.python_state.object_link() => {
+                if abort_on_custom_eq {
+                    return None; // Can always contain a custom eq.
+                }
                 // Add it to both sides
                 set_truthy();
                 add(sub_t.clone());
