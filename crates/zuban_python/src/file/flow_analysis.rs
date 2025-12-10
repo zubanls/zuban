@@ -5657,7 +5657,7 @@ fn split_and_intersect(
             _ => split(t),
         }
     }
-    if matches!(true_type, Type::Never(_)) {
+    if true_type.is_never() {
         if original_t.overlaps(i_s, matcher, isinstance_type) {
             true_type = isinstance_type.clone();
         } else {
@@ -5667,6 +5667,13 @@ fn split_and_intersect(
                 }
             }
         }
+    }
+    if other_side.is_never()
+        && matches!(isinstance_type, Type::Class(c) if c.link == i_s.db.python_state.float_link())
+    {
+        // This is a special case. Promotion makes it so a float is not always an int. We therefore
+        // making the other side an int.
+        other_side = i_s.db.python_state.int_type()
     }
     debug!(
         "Narrowed because of isinstance or TypeIs to {} and other side to {}",

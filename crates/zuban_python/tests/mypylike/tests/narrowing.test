@@ -1979,3 +1979,16 @@ def test3(val: object) -> list[Answer]:
     assert val is Answer.Yes or val is Answer.No
     x = [val]
     return x
+
+[case float_promotion_special_case_with_isinstance]
+# flags: --warn-unreachable
+# Copied from conformance tests (specialtypes_promotion.py)
+v1: float = 1
+v2: complex = 1.2
+v2 = 1
+
+def func1(f: float):
+    f.numerator  # E: "float" has no attribute "numerator"
+
+    if not isinstance(f, float):
+        f.numerator  # OK
