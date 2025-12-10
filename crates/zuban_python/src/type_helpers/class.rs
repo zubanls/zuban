@@ -2488,9 +2488,9 @@ fn init_as_callable(
     let init_class = init_class.as_maybe_class();
     let callable = if let Some(c) = init_class {
         let i_s = &i_s.with_class_context(&c);
-        inf.as_cow_type(i_s).maybe_callable(i_s)
+        inf.as_cow_type(i_s).maybe_callable(i_s)?
     } else {
-        inf.as_cow_type(i_s).maybe_callable(i_s)
+        inf.as_cow_type(i_s).maybe_callable(i_s)?
     };
     let to_callable = |c: &CallableContent| {
         // Since __init__ does not have a return, we need to check the params
@@ -2550,19 +2550,17 @@ fn init_as_callable(
             Arc::new(c)
         })
     };
-    callable.and_then(|callable_like| match callable_like {
-        CallableLike::Callable(c) => to_callable(&c).map(CallableLike::Callable),
+    Some(match callable {
+        CallableLike::Callable(c) => CallableLike::Callable(to_callable(&c)?),
         CallableLike::Overload(callables) => {
             let funcs: Box<_> = callables
                 .iter_functions()
                 .filter_map(|c| to_callable(c))
                 .collect();
             match funcs.len() {
-                0 => None,
-                1 => Some(CallableLike::Callable(
-                    funcs.into_vec().into_iter().next().unwrap(),
-                )),
-                _ => Some(CallableLike::Overload(FunctionOverload::new(funcs))),
+                0 => return None,
+                1 => CallableLike::Callable(funcs.into_vec().into_iter().next().unwrap()),
+                _ => CallableLike::Overload(FunctionOverload::new(funcs)),
             }
         }
     })

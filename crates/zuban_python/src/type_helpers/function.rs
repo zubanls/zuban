@@ -1983,7 +1983,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         let first_arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
         let first_t = first_arg.as_cow_type(i_s);
-        let Type::FunctionOverload(overload) = first_t.as_ref() else {
+        let CallableLike::Overload(overload) = first_t.maybe_callable(i_s)? else {
             return None;
         };
         let funcs: Box<[_]> = overload
@@ -2001,9 +2001,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     replace_self_type,
                     result_context,
                 );
-                let Type::Callable(c) = result.as_type(i_s) else {
+                let Type::Callable(mut c) = result.as_type(i_s) else {
                     return None;
                 };
+                if c.name.is_none() {
+                    let mut new = c.as_ref().clone();
+                    new.name = overload_callable.name.clone();
+                    c = Arc::new(new);
+                }
                 (!had_errors.get()).then_some(c)
             })
             .collect();
