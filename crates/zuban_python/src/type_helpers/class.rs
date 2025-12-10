@@ -1281,9 +1281,10 @@ impl<'db: 'a, 'a> Class<'a> {
                     && let Some(return_annot) = func.return_annotation()
                 {
                     let t = use_cached_return_annotation_type(i_s.db, node_ref.file, return_annot);
-                    if !cls
-                        .as_maybe_class()
-                        .is_some_and(|c| i_s.db.python_state.bare_type_node_ref() == c.node_ref)
+                    if !i_s.db.project.settings.mypy_compatible
+                        && !cls
+                            .as_maybe_class()
+                            .is_some_and(|c| i_s.db.python_state.bare_type_node_ref() == c.node_ref)
                         && !matches!(
                             t.as_ref(),
                             Type::Self_ | Type::Any(AnyCause::Unannotated | AnyCause::FromError)
