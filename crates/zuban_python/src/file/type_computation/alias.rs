@@ -500,9 +500,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         "value" if value.is_none() => value = Some(val),
                         "type_params" => {
                             let Some(tuple) = val.maybe_tuple() else {
-                                debug!(
-                                    "Expected a tuple literal for the keyword argument \
-                                        type_params, aborting TypeAliasType computation"
+                                self.add_type_issue(
+                                    val.index(),
+                                    IssueKind::TypeAliasTypeTypeParamsShouldBeTuple,
                                 );
                                 return None;
                             };

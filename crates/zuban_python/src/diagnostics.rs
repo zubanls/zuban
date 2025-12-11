@@ -209,6 +209,7 @@ pub(crate) enum IssueKind {
     TypeParametersShouldBeDeclared { type_var_like: TypeVarLike },
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
+    TypeAliasTypeTypeParamsShouldBeTuple,
     FreeTypeVariableExpectInTypeAliasTypeTypeParams { is_unpack: bool },
     TypeVarBoundViolation { actual: Box<str>, of: Box<str>, expected: Box<str> },
     InvalidTypeVarValue { type_var_name: Box<str>, of: Box<str>, actual: Box<str> },
@@ -1464,6 +1465,8 @@ impl<'db> Diagnostic<'db> {
             IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_string(),
             TypeVarExpected{class} => format!("Free type variable expected in {class}[...]"),
+            TypeAliasTypeTypeParamsShouldBeTuple =>
+                "Tuple literal expected as the type_params argument to TypeAliasType".to_string(),
             FreeTypeVariableExpectInTypeAliasTypeTypeParams  { is_unpack } => {
                 if *is_unpack {
                     additional_notes.push("Don't Unpack type variables in type_params".to_string());

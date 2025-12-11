@@ -871,3 +871,10 @@ X = list[TFloat]
 
 def foo() -> None:
     p6: X[str]  # E: Type argument "str" of "X" must be a subtype of "float"
+
+[case type_alias_type_conformance_tests_no_tuple]
+from typing import TypeAliasType, TypeVar
+S = TypeVar("S")
+T = TypeVar("T")
+my_tuple = (S, T)
+BadAlias3 = TypeAliasType("BadAlias3", int, type_params=my_tuple)  # E: Tuple literal expected as the type_params argument to TypeAliasType
