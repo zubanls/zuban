@@ -1245,10 +1245,11 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 match &c.kind {
                     FunctionKind::Function { .. }
-                        if !matches!(
-                            apply_descriptors_kind,
-                            ApplyDescriptorsKind::NoBoundMethod
-                        ) =>
+                        if !i_s.db.project.settings.mypy_compatible
+                            || !matches!(
+                                apply_descriptors_kind,
+                                ApplyDescriptorsKind::NoBoundMethod
+                            ) =>
                     {
                         debug_assert!(matches!(c.kind, FunctionKind::Function { .. }));
                         if let Some(f) = c.first_positional_type() {

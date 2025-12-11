@@ -264,7 +264,8 @@ reveal_type(Foo().foo)  # N: Revealed type is "def (int) -> str"
 reveal_type(Foo().bar)  # N: Revealed type is "def (int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
 
-[case callable_on_class_without_classvar]
+[case callable_on_class_without_classvar_mypy_compatible]
+# flags: --mypy-compatible
 from typing import Callable
 class Foo:
     o: Callable[[], Callable[[Foo, int], None]]
@@ -279,6 +280,50 @@ reveal_type(Foo.bla)  # N: Revealed type is "def (__main__.Foo, int)"
 reveal_type(Foo().foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
+
+[case callable_on_class_without_classvar_no_mypy_compatible]
+# flags: --no-mypy-compatible
+from typing import Callable
+class Foo:
+    o: Callable[[], Callable[[Foo, int], None]]
+    foo: Callable[[Foo, int], str]
+    bar = foo
+    bla = o()
+
+reveal_type(Foo.foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo.bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo.bla)  # N: Revealed type is "def (__main__.Foo, int)"
+
+reveal_type(Foo().foo)  # N: Revealed type is "def (int) -> str"
+reveal_type(Foo().bar)  # N: Revealed type is "def (int) -> str"
+reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
+
+[case self_method_assignment_mypy_compatible]
+# flags: --mypy-compatible
+# The conformance tests work want different behavior, but this is not how Mypy works.
+from typing import Callable, Self
+class CallableAttribute:
+    def foo(self) -> int:
+        return 0
+    bar: Callable[[Self], int] = foo
+
+reveal_type(CallableAttribute.bar)  # E: Access to generic instance variables via class is ambiguous  # N: Revealed type is "def (__main__.CallableAttribute) -> int"
+reveal_type(CallableAttribute().bar)  # N: Revealed type is "def (__main__.CallableAttribute) -> int"
+
+[case self_method_assignment_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# From conformance tests (generics_self_usage.py)
+from typing import Callable, Self
+class CallableAttribute:
+    def foo(self) -> int:
+        return 0
+
+    # Accepted (treated as an @property returning the Callable type)
+    bar: Callable[[Self], int] = foo
+
+# TODO this error should not be there
+reveal_type(CallableAttribute.bar)  # E: Access to generic instance variables via class is ambiguous # N: Revealed type is "def (__main__.CallableAttribute) -> int"
+reveal_type(CallableAttribute().bar)  # N: Revealed type is "def () -> int"
 
 [case callable_mapped_via_class1]
 from typing import Callable, ClassVar
@@ -552,7 +597,8 @@ __main__:2: note: Possible overload variants:
 __main__:2: note:     def __init__(self, object, /) -> type
 __main__:2: note:     def __init__(self, str, tuple[type[Any], ...], dict[str, Any], /, **kwds: Any) -> type
 
-[case assign_in_subclass_to_callable]
+[case assign_in_subclass_to_callable_mypy_compatible]
+# flags: --mypy-compatible
 # Inspired a bit by testTypedDictUnpackSingleWithSubtypingNoCrash
 from typing import Callable
 
@@ -580,6 +626,29 @@ class D(C):
              # N:          def (int, /) -> None \
              # N:      Subclass: \
              # N:          Callable[[], None]
+
+[case assign_in_subclass_to_callable_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# Inspired a bit by testTypedDictUnpackSingleWithSubtypingNoCrash
+from typing import Callable
+
+def f(pseudo_self, x: int) -> None:
+    pass
+def g(pseudo_self, y: str) -> None:
+    pass
+def h(x: int) -> None:
+    pass
+
+class C:
+    foo: Callable[[int], None]
+    bar: Callable[[int], None]
+    baz: Callable[[int], None]
+
+# Currently we fail
+class D(C):
+    foo = f
+    bar = g
+    baz = h  # E: Invalid self argument "D" to attribute function "h" with type "Callable[[int], None]"
 
 [case total_ordering_missing_method]
 from functools import total_ordering
