@@ -195,3 +195,25 @@ class Point(NamedTuple):
 class BadPointWithName(Point):
     name: str = ""  # OK
     x: int = 0  # E: NamedTuple attributes cannot be overridden in subclasses
+
+[case named_tuple_with_final_field_name]
+from typing import NamedTuple, Final
+# Copied from conformance tests (qualifiers_final_annotation.py)
+X: Final = "x"
+Y: Final = "y"
+N = NamedTuple("N", [(X, int), (Y, int)])
+
+N(x=3, y=4)  # OK
+N(a=1)  # E: Unexpected keyword argument "a" for "N"
+N(x="", y="")  # E: Argument "x" to "N" has incompatible type "str"; expected "int" \
+               # E: Argument "y" to "N" has incompatible type "str"; expected "int"
+
+[case named_tuple_with_literal_field_name]
+from typing import NamedTuple, Final, Literal
+X: Literal['x'] = "x"
+Y: Final[Literal['y']] = "y"
+N = NamedTuple("N", [(X, int), (Y, int)])
+
+N(x=3, y=4)  # OK
+N(a=1)  # E: Unexpected keyword argument "a" for "N"
+N(x="", y=1)  # E: Argument "x" to "N" has incompatible type "str"; expected "int"

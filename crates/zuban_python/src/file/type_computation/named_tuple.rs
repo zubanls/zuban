@@ -39,7 +39,6 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
     ) -> Option<Vec<CallableParam>> {
         // From NamedTuple('x', [('a', int)]) to a callable that matches those params
 
-        let file_index = self.file.file_index;
         let mut params = start_namedtuple_params(self.i_s.db);
         for element in list {
             let StarLikeExpression::NamedExpression(ne) = element else {
@@ -81,8 +80,9 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
                 );
                 return None;
             };
-            let Some(name) =
-                StringSlice::from_string_in_expression(file_index, name_expr.expression())
+            let Some(name) = self
+                .name_resolution
+                .expr_maybe_string(name_expr.expression())
             else {
                 self.name_resolution
                     .add_issue(name_expr.index(), IssueKind::NamedTupleInvalidFieldName);

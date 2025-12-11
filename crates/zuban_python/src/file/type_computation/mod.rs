@@ -4413,6 +4413,36 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             None => false,
         }
     }
+
+    fn expr_maybe_string(&self, expr: Expression) -> Option<StringSlice> {
+        StringSlice::from_string_in_expression(self.file.file_index, expr).or_else(|| {
+            let lookup = self.lookup_type_expr_if_only_names(expr)?;
+            let Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(node_ref))) =
+                lookup
+            else {
+                return None;
+            };
+            let assignment = node_ref.maybe_name_def()?.maybe_assignment_definition()?;
+            match assignment.unpack() {
+                AssignmentContent::WithAnnotation(_, annotation, right_side) => {
+                    //
+                    let var_i_s = &InferenceState::new(self.i_s.db, node_ref.file);
+                    let name_resolution = node_ref.file.name_resolution_for_types(var_i_s);
+                    name_resolution.ensure_cached_annotation(annotation, right_side.is_some());
+                    if let Type::Literal(lit) = name_resolution
+                        .use_cached_annotation_type(annotation)
+                        .as_ref()
+                        && let LiteralKind::String(DbString::StringSlice(s)) = &lit.kind
+                    {
+                        // TODO probably also support DbString and not just StringSlice
+                        return Some(s.clone());
+                    }
+                    None
+                }
+                _ => None,
+            }
+        })
+    }
 }
 
 fn check_for_invalid_outer_type_vars(

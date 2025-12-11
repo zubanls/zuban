@@ -844,21 +844,7 @@ impl<'db> Name<'db> {
     }
 
     pub fn maybe_assignment_definition_name(&self) -> Option<Assignment<'db>> {
-        let node = self
-            .node
-            .parent_until(&[
-                Nonterminal(assignment),
-                Nonterminal(stmt),
-                Nonterminal(walrus),
-                Nonterminal(lambda),
-                Nonterminal(t_primary),
-            ])
-            .expect("There should always be a stmt");
-        if node.is_type(Nonterminal(assignment)) {
-            Some(Assignment::new(node))
-        } else {
-            None
-        }
+        self.name_def()?.maybe_assignment_definition()
     }
 
     pub fn maybe_self_assignment_name_on_self_like(&self) -> Option<Assignment<'db>> {
