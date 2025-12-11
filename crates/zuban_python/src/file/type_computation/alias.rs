@@ -691,6 +691,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(result) = i_s.find_parent_type_var(&type_var_like) {
                     if let TypeVarCallbackReturn::TypeVarLike(_) = &result
                         && matches!(origin, CalculatingAliasType::Normal)
+                        && (!matches!(cause, AliasCause::SyntaxOrTypeAliasType)
+                            || i_s.db.project.settings.mypy_compatible)
                     {
                         return TypeVarCallbackReturn::AddIssue(IssueKind::BoundTypeVarInAlias {
                             name: Box::from(type_var_like.name(i_s.db)),

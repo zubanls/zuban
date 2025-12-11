@@ -873,8 +873,18 @@ def foo() -> None:
     p6: X[str]  # E: Type argument "str" of "X" must be a subtype of "float"
 
 [case type_alias_type_conformance_tests_no_tuple]
+# Copied from conformance tests (aliases_typealiastype.py)
 from typing import TypeAliasType, TypeVar
 S = TypeVar("S")
 T = TypeVar("T")
 my_tuple = (S, T)
 BadAlias3 = TypeAliasType("BadAlias3", int, type_params=my_tuple)  # E: Tuple literal expected as the type_params argument to TypeAliasType
+
+[case type_alias_type_in_class_with_outer_type_var]
+# flags: --no-mypy-compatible
+# Partially copied from conformance tests (aliases_typealiastype.py)
+from typing import TypeAliasType, TypeVar, Generic
+T = TypeVar("T")
+class ClassA(Generic[T]):
+    type good = list[T]
+    GoodAlias6 = TypeAliasType("GoodAlias6", list[T])
