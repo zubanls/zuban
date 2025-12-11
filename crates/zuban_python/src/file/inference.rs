@@ -1468,7 +1468,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
                 let lookup_details = lookup_in_bases();
                 if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
-                    if lookup_details.attr_kind == AttributeKind::Final {
+                    if lookup_details.attr_kind == AttributeKind::Final
+                        && (self.is_initialized(first_index)
+                            || !self.self_in_init_function(name_def))
+                    {
                         from.add_issue(
                             i_s,
                             IssueKind::CannotAssignToFinal {
@@ -1653,10 +1656,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 //             self.y = 1  # This is disallowed
                 if !c.lookup_assignment(name_str).is_some_and(|a| {
                     matches!(a.unpack(), AssignmentContent::WithAnnotation(_, _, None),)
-                }) || func_of_self_symbol(self.file, name_def.name_index())
-                    .name_def()
-                    .as_code()
-                    != "__init__"
+                }) || !self.self_in_init_function(name_def)
                 {
                     from.add_issue(
                         i_s,
@@ -1703,6 +1703,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             save(name_def.index(), &base_inf);
             //}
         }
+    }
+
+    fn self_in_init_function(&self, name_def: NameDef) -> bool {
+        func_of_self_symbol(self.file, name_def.name_index())
+            .name_def()
+            .as_code()
+            == "__init__"
     }
 
     fn check_assign_arbitrary_named_expr(
@@ -2045,7 +2052,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             from,
             value,
             assign_kind,
-            save,
+            |node_index, inf| {
+                self.add_initial_name_definition(name_def);
+                save(node_index, inf)
+            },
             Some(&|| {
                 in_class.instance().lookup(
                     i_s,

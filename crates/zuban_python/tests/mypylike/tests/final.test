@@ -81,3 +81,50 @@ bar = Bar()
 bar.in_bar1 = 3
 bar.in_bar2 = 3
 bar.in_bar3 = 3
+
+[case final_class_init_conditional_initialization]
+# Partially Copied from conformance tests (qualifiers_final_annotation.py)
+from typing import Final
+class ClassA:
+    ID6: Final[int]
+    other1: Final[int]
+    other2: Final[int]
+    wrong: Final[int]
+
+    def __init__(self, cond: bool) -> None:
+        if cond:
+            self.ID6 = 1
+            self.other1 = 1
+            self.other2 = ""
+            self.wrong = 1
+            self.wrong = 1  # E: Cannot assign to final attribute "wrong"
+        else:
+            self.ID6 = 2
+            self.other1 = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+            self.other2 = 1
+
+[case final_class_init_nested_conditional_initialization]
+from typing import Final
+class ClassA:
+    x: Final[int]
+    y: Final[int]
+    z: Final[int]
+    wrong: Final[int]
+
+    def __init__(self) -> None:
+        if bool():
+            self.x = 1
+            if bool():
+                self.y = 1
+            else:
+                self.y = 2
+                self.wrong = 1
+                if bool():
+                    self.z = 1
+            self.wrong = 2  # E: Cannot assign to final attribute "wrong"
+        elif bool():
+            self.x = 2
+            self.y = 3
+        else:
+            self.z = 1
+            self.x = 3

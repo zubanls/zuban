@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell, RefCell, RefMut},
+    cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     collections::VecDeque,
     rc::Rc,
     sync::Arc,
@@ -566,6 +566,17 @@ impl FlowAnalysis {
             },
             entry.deleted,
         )
+    }
+
+    fn lookup_entry(&self, db: &Database, lookup_key: FlowKey) -> Option<Ref<'_, Entry>> {
+        let frames = self.frames.borrow();
+        Ref::filter_map(frames, |frames| {
+            frames
+                .iter()
+                .rev()
+                .find_map(|frame| frame.lookup_entry(db, &lookup_key))
+        })
+        .ok()
     }
 
     pub fn is_unreachable(&self) -> bool {
@@ -1657,6 +1668,11 @@ impl Inference<'_, '_, '_> {
             };
             matches!(last.kind, FrameKind::Conditional)
         })
+    }
+
+    pub fn is_initialized(&self, first_index: NodeIndex) -> bool {
+        let key = FlowKey::Name(PointLink::new(self.file.file_index, first_index));
+        FLOW_ANALYSIS.with(|fa| fa.lookup_entry(self.i_s.db, key).is_some())
     }
 
     pub fn mark_current_frame_unreachable(&self) {
