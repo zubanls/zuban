@@ -1180,3 +1180,23 @@ d.final_no_default = 10  # E: Cannot assign to final attribute "final_no_default
 d.final_with_default = "baz"  # E: Cannot assign to final attribute "final_with_default"
 D.final_no_default = 10  # E: Cannot assign to final attribute "final_no_default"
 D.final_with_default = "baz"  # E: Cannot assign to final attribute "final_with_default"
+
+[case dataclass_self_type_matching]
+from dataclasses import dataclass
+from typing import ClassVar, Callable, assert_type
+
+def f(s: str) -> int:
+    return int(s)
+
+@dataclass
+class DC6:
+    a: ClassVar[int] = 0
+    b: str
+    c: Callable[[str], int] = f
+
+
+dc6 = DC6("")
+assert_type(dc6.a, int)
+assert_type(DC6.a, int)
+assert_type(dc6.b, str)
+assert_type(dc6.c, Callable[[str], int])
