@@ -614,3 +614,13 @@ _NodeType = TypeVar('_NodeType', bound='SyntaxTreeNode')
 class SyntaxTreeNode:
     def walk(self: _NodeType) -> _NodeType:
         return self.walk()
+
+[case reject_self_if_self_type_var_bound]
+# flags: --no-mypy-compatible
+# From conformance tests (generics_self_usage.py)
+from typing import TypeVar, Self
+
+TFoo2 = TypeVar("TFoo2", bound="Foo2")
+class Foo2:
+    # Rejected (Self is treated as unknown).
+    def has_existing_self_annotation(self: TFoo2) -> Self: ... # E: Self argument missing for a non-static method (or an invalid type for self)

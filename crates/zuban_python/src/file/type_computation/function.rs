@@ -300,7 +300,8 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         );
         let mut star_annotation = None;
         let mut previous_param = None;
-        for param in func_node.params().iter() {
+        let mut method_self_non_self_bound = false;
+        for (i, param) in func_node.params().iter().enumerate() {
             if let Some(annotation) = param.annotation() {
                 let mut is_implicit_optional = false;
                 if implicit_optional
@@ -318,6 +319,15 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 );
                 if param_kind == ParamKind::Star {
                     star_annotation = Some(annotation);
+                }
+                if i == 0
+                    && class.is_some()
+                    && !is_staticmethod
+                    && !type_computation
+                        .use_cached_param_annotation_type(annotation)
+                        .has_self_type(i_s.db)
+                {
+                    method_self_non_self_bound = true;
                 }
             }
             previous_param = Some(param);
@@ -344,7 +354,16 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         }
         let type_guard = func_node.return_annotation().and_then(|return_annot| {
             in_result_type.set(true);
-            type_computation.cache_return_annotation(return_annot)
+            let result = type_computation.cache_return_annotation(return_annot);
+            if method_self_non_self_bound
+                && type_computation
+                    .use_cached_return_annotation_type(return_annot)
+                    .has_self_type(i_s.db)
+            {
+                self.expect_return_annotation_node_ref()
+                    .add_type_issue(i_s.db, IssueKind::SelfArgumentMissing);
+            }
+            result
         });
         let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
             for param in func_node.params().iter() {

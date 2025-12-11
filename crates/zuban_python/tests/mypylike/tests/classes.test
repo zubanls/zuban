@@ -683,7 +683,7 @@ T = TypeVar("T")
 class A(Generic[T]):
     def __init__(self, x: T):
         self.x = x
-    def __add__(self: A[int], other: object) -> Self: ...
+    def __add__(self: A[int], other: object) -> Self: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
 
 aint = A(1)
 astr = A("")

@@ -443,6 +443,7 @@ pub(crate) enum IssueKind {
     TypeOfSelfIsNotASupertypeOfItsClass { self_type: Box<str>, class: Box<str> },
     TypeOfSelfHasTypeVars { type_var_like: TypeVarLike, class_name: Box<str> },
     SelfArgumentMissing,
+    SelfAlreadyBoundInFirstParam,
     MultipleStarredExpressionsInAssignment,
 
     EnumFirstArgMustBeString,
@@ -1094,6 +1095,8 @@ impl<'db> Diagnostic<'db> {
             ),
             SelfArgumentMissing =>
                 "Self argument missing for a non-static method (or an invalid type for self)".to_string(),
+            SelfAlreadyBoundInFirstParam =>
+                "Self is already bound in the first param, use that type instead".to_string(),
             MultipleStarredExpressionsInAssignment =>
                 "Two starred expressions in assignment".to_string(),
 
