@@ -4491,6 +4491,7 @@ impl Inference<'_, '_, '_> {
         left: &mut ComparisonPartInfos,
         right: &ComparisonPartInfos,
     ) -> Option<FramesWithParentUnions> {
+        // This is needed, because the operator can also be `not in`
         let maybe_invert = |truthy, falsey, parent_unions| {
             self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
             if op.as_code() == "in" {
@@ -4508,21 +4509,37 @@ impl Inference<'_, '_, '_> {
             }
         };
         let db = self.i_s.db;
-        if let Some(container_item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s))
-            && let Some(ComparisonKey::Normal(left_key)) = &left.key
-        {
-            let left_t = left.inf.as_cow_type(self.i_s);
-            if !container_item
-                .iter_with_unpacked_unions(db)
-                .any(|t| t == &Type::None)
-                && left_t.simple_overlaps(self.i_s, &container_item)
-                && let Some(t) = removed_optional(db, &left_t)
-            {
-                return maybe_invert(
-                    Frame::from_type(left_key.clone(), t),
-                    Frame::new_conditional(),
-                    left.parent_unions.take(),
-                );
+        if let Some(ComparisonKey::Normal(left_key)) = &left.key {
+            let right = &right.inf.as_cow_type(self.i_s);
+            if let Some(entries) = right.maybe_fixed_len_tuple() {
+                let left_t = left.inf.as_cow_type(self.i_s);
+                let initial = Some((Frame::new_unreachable(), Frame::new_conditional()));
+                if let Some((truthy, falsey)) = entries.iter().fold(initial, |initial, t| {
+                    let initial = initial?;
+                    let new = narrow_is_or_eq(self.i_s, left_key.clone(), &left_t, t, true)?;
+                    Some(FLOW_ANALYSIS.with(|fa| {
+                        let truthy = fa.merge_or(self.i_s, initial.0, new.0, false);
+                        let falsey = merge_and(self.i_s, initial.1, new.1);
+                        (truthy, falsey)
+                    }))
+                }) {
+                    return maybe_invert(truthy, falsey, left.parent_unions.take());
+                }
+            }
+            if let Some(container_item) = stdlib_container_item(db, right) {
+                let left_t = left.inf.as_cow_type(self.i_s);
+                if !container_item
+                    .iter_with_unpacked_unions(db)
+                    .any(|t| t == &Type::None)
+                    && left_t.simple_overlaps(self.i_s, &container_item)
+                    && let Some(t) = removed_optional(db, &left_t)
+                {
+                    return maybe_invert(
+                        Frame::from_type(left_key.clone(), t),
+                        Frame::new_conditional(),
+                        left.parent_unions.take(),
+                    );
+                }
             }
         }
         // The right side can currently only be narrowed with TypedDicts

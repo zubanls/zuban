@@ -7,7 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
-string_literal_narrowing_in_conformance_tests
 
 docs_alias
 docs_property

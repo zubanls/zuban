@@ -2002,10 +2002,30 @@ def expects_pending_status(status: Literal["PENDING"]): ...
 
 def parse_status2(status: str) -> None:
     if status in ("MALFORMED", "ABORTED"):
+        reveal_type(status)  # N: Revealed type is "Literal['MALFORMED']? | Literal['ABORTED']?"
         return expects_bad_status(status)
 
     if status == "PENDING":
         expects_pending_status(status)
+
+[case int_narrowing_literals_both_sides]
+from typing import Literal
+def f(x: Literal[1, 2, 3, 4, 5]):
+    if x in (3, 4):
+        reveal_type(x)  # N: Revealed type is "Literal[3] | Literal[4]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2] | Literal[5]"
+
+def g(x: Literal[1, 2, 3] | None):
+    # TODO this could be better
+    if x in (3, None):
+        reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2] | Literal[3] | None"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2]"
+    if x in (3, 4):
+        reveal_type(x)  # N: Revealed type is "Literal[3]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2] | None"
 
 [case str_int_enum_narrowing]
 # flags: --no-mypy-compatible
