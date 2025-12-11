@@ -2397,3 +2397,17 @@ r9 = accepts_callable(Class9)
 reveal_type(r9)  # N: Revealed type is "def [T] (x: list[T], y: list[T]) -> __main__.Class9"
 assert_type(r9([""], [""]), Class9)
 r9([1], [""])  # E: List item 0 has incompatible type "str"; expected "int"
+
+[case staticmethod_self_disallowed]
+# from conformance tests (generics_self_usage.py)
+from typing import Self
+class Base:
+    @staticmethod
+    # This should generate an error.
+    def make() -> Self:  # E: Static methods cannot use Self type
+        ...
+
+    @staticmethod
+    # This should generate an error.
+    def return_parameter(foo: Self) -> Self:  # E: Static methods cannot use Self type    # E: Static methods cannot use Self type
+        ...

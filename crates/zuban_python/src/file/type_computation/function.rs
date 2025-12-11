@@ -195,19 +195,21 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if type_var_reference.point().calculated() {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
         }
-        let (mut type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s, class);
+        let node = self.node();
+        let is_staticmethod = node.maybe_decorated().is_some_and(|decorated| {
+            decorated.decorators().iter().any(|decorator| {
+                // TODO this is not proper type inference, but should probably
+                // suffice for now.
+                decorator.as_code().contains("staticmethod")
+            })
+        });
+        let (mut type_vars, type_guard, star_annotation) =
+            self.cache_type_vars(i_s, class, is_staticmethod);
         if type_vars.is_empty() && !i_s.db.project.settings.mypy_compatible {
-            let node = self.node();
             if !node.is_typed() && !["__init__", "__new__"].contains(&node.name().as_code()) {
                 let mut skip_first = class.is_some();
-                if skip_first && let Some(decorated) = node.maybe_decorated() {
-                    for decorator in decorated.decorators().iter() {
-                        if decorator.as_code().contains("staticmethod") {
-                            // TODO this is not proper type inference, but should probably
-                            // suffice for now.
-                            skip_first = false;
-                        }
-                    }
+                if skip_first && is_staticmethod {
+                    skip_first = false;
                 }
                 type_vars = TypeVarLikes::new_untyped_params(node, skip_first)
             }
@@ -226,6 +228,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         &self,
         i_s: &InferenceState<'db, '_>,
         class: Option<ClassNodeRef<'_>>,
+        is_staticmethod: bool,
     ) -> (
         TypeVarLikes,
         Option<TypeGuardInfo>,
@@ -292,7 +295,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             self.file,
             self.as_link(),
             &mut on_type_var,
-            TypeComputationOrigin::ParamTypeCommentOrAnnotation,
+            TypeComputationOrigin::ParamTypeCommentOrAnnotation { is_staticmethod },
         );
         let mut star_annotation = None;
         let mut previous_param = None;

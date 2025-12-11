@@ -124,7 +124,9 @@ enum TypeComputationOrigin {
         is_initialized: bool,
         type_comment: bool,
     },
-    ParamTypeCommentOrAnnotation,
+    ParamTypeCommentOrAnnotation {
+        is_staticmethod: bool,
+    },
     TypedDictMember,
     TypeApplication,
     TypeAlias,
@@ -1164,6 +1166,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeComputationOrigin::Other | TypeComputationOrigin::BaseClass => {
                             IssueKind::SelfTypeOutsideOfClass
                         }
+                        TypeComputationOrigin::ParamTypeCommentOrAnnotation {
+                            is_staticmethod: true,
+                        } if self.i_s.current_class().is_some() => {
+                            IssueKind::SelfTypeInStaticMethod
+                        }
                         _ => {
                             if let Some(class) = self.i_s.current_class() {
                                 if class.is_metaclass(db) {
@@ -1963,7 +1970,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             debug_assert_eq!(node_ref.point().specific(), Specific::SimpleGeneric);
             return valid_simple_generic();
         }
-        if self.origin != TypeComputationOrigin::ParamTypeCommentOrAnnotation {
+        if !matches!(
+            self.origin,
+            TypeComputationOrigin::ParamTypeCommentOrAnnotation { .. }
+        ) {
             return None;
         }
         for (i, type_var_like) in tvs.iter().enumerate() {
