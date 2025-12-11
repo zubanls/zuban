@@ -372,3 +372,23 @@ def func6(val: Func6Input):
             assert_type(val, tuple[int, str, int, *tuple[str, ...], int])
         case (x, y, z):
             reveal_type(x)  # E: Statement is unreachable
+
+[case match_narrowing_for_str_int_enum]
+import enum
+
+class Periodicity(enum.StrEnum):
+    daily = "daily"
+    weekly = "weekly"
+
+def foo(p: Periodicity) -> int:
+    if p == p.daily:
+        return 1
+    if p == p.weekly:
+        return 7
+
+def bar(p: Periodicity) -> int:
+    match p:
+        case p.daily:
+            return 1
+        case p.weekly:
+            return 7
