@@ -2468,7 +2468,7 @@ assert_type(r9([""], [""]), Class9)
 r9([1], [""])  # E: List item 0 has incompatible type "str"; expected "int"
 
 [case staticmethod_self_disallowed]
-# from conformance tests (generics_self_usage.py)
+# From conformance tests (generics_self_usage.py)
 from typing import Self
 class Base:
     @staticmethod
@@ -2480,3 +2480,22 @@ class Base:
     # This should generate an error.
     def return_parameter(foo: Self) -> Self:  # E: Static methods cannot use Self type    # E: Static methods cannot use Self type
         ...
+
+[case assigning_of_callable_to_self]
+# From conformance tests (generics_param_spec_semantics.py)
+from typing import Callable, assert_type
+class Y[U, **P]:
+    f: Callable[P, str]
+    prop: U
+
+    def __init__(self, f: Callable[P, str], prop: U) -> None:
+        self.f = f
+        self.prop = prop
+
+def callback_a(q: int, /) -> str: ...
+
+def func(x: int) -> None:
+    y1 = Y(callback_a, x)
+    assert_type(y1, Y[int, [int]])
+    y2 = y1.f
+    assert_type(y2, Callable[[int], str])

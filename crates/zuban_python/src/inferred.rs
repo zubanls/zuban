@@ -1246,6 +1246,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 match &c.kind {
                     FunctionKind::Function { .. }
                         if !i_s.db.project.settings.mypy_compatible
+                            // ParamSpecs are bound and can only be used from self
+                            && c.params.maybe_param_spec().is_none()
                             || !matches!(
                                 apply_descriptors_kind,
                                 ApplyDescriptorsKind::NoBoundMethod
