@@ -1733,6 +1733,17 @@ impl<'db: 'a, 'a> Class<'a> {
                 )
             } else {
                 if is_self_attr {
+                    if self
+                        .class_storage
+                        .class_symbol_table
+                        .lookup_symbol(name)
+                        .is_some()
+                    {
+                        debug!(
+                            "Ignored the attribute because it was already checked while looking up class symbols"
+                        );
+                        return None;
+                    }
                     // Check simple assignments like self.x = x. This solves most of the simple
                     // cases to improve variance inference.
                     let search_simple_name_assignments = || {
@@ -1803,12 +1814,11 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             Some((inf, attr_kind))
         };
-        for (i, table) in [
-            &self.class_storage.class_symbol_table,
-            &self.class_storage.self_symbol_table,
+        for (table, is_self_table) in [
+            (&self.class_storage.class_symbol_table, false),
+            (&self.class_storage.self_symbol_table, true),
         ]
         .into_iter()
-        .enumerate()
         {
             for (name, &node_index) in table.iter() {
                 if ["__init__", "__new__", "__init_subclass__"].contains(&name) {
@@ -1818,7 +1828,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         .infer_name_of_definition_by_index(&i_s.with_class_context(self));
                     continue;
                 }
-                if let Some((inf, attr_kind)) = lookup_member(name, node_index, i == 1) {
+                if let Some((inf, attr_kind)) = lookup_member(name, node_index, is_self_table) {
                     // Mypy allows return types to be the current class.
                     let t = self.erase_return_self_type(inf.as_cow_type(i_s));
                     if let Some(with_object_t) = replace_type_var_with_object(&t) {

@@ -925,6 +925,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             if i_s
                                 .current_class()
                                 .is_some_and(|class| uses_class_generics(class, &t))
+                                && i_s.db.project.settings.mypy_compatible
                             {
                                 self.add_issue(
                                     type_storage_node_ref,
