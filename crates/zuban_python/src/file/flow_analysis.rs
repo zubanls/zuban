@@ -37,7 +37,7 @@ use crate::{
     recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
-        EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple,
+        Enum, EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple,
         NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar, TypeVarKind,
         TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
     },
@@ -1243,12 +1243,11 @@ fn split_off_enum_member(
                     if is_flag_like {
                         add(sub_t.clone())
                     }
-                    for (i, _) in e2.members.iter().enumerate() {
-                        let new_member = Type::EnumMember(EnumMember::new(e2.clone(), i, false));
-                        if i == enum_member.member_index {
+                    for new_member in Enum::implicit_members(e2) {
+                        if new_member.member_index == enum_member.member_index {
                             set_truthy();
                         } else if !is_flag_like {
-                            add(new_member)
+                            add(Type::EnumMember(new_member))
                         }
                     }
                     continue;

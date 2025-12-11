@@ -204,6 +204,13 @@ impl Enum {
         Class::from_non_generic_link(db, self.class)
     }
 
+    pub fn implicit_members(rc: &Arc<Enum>) -> impl Iterator<Item = EnumMember> {
+        rc.members
+            .iter()
+            .enumerate()
+            .map(|(i, _)| EnumMember::new(rc.clone(), i, false))
+    }
+
     pub fn lookup(rc: &Arc<Enum>, db: &Database, name: &str, implicit: bool) -> Option<EnumMember> {
         for (index, member) in rc.members.iter().enumerate() {
             if name == member.name(db) {
