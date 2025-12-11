@@ -196,13 +196,14 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
         }
         let node = self.node();
-        let is_staticmethod = node.maybe_decorated().is_some_and(|decorated| {
-            decorated.decorators().iter().any(|decorator| {
-                // TODO this is not proper type inference, but should probably
-                // suffice for now.
-                decorator.as_code().contains("staticmethod")
-            })
-        });
+        let is_staticmethod = class.is_some()
+            && node.maybe_decorated().is_some_and(|decorated| {
+                decorated.decorators().iter().any(|decorator| {
+                    // TODO this is not proper type inference, but should probably
+                    // suffice for now.
+                    decorator.as_code().contains("staticmethod")
+                })
+            });
         let (mut type_vars, type_guard, star_annotation) =
             self.cache_type_vars(i_s, class, is_staticmethod);
         if type_vars.is_empty() && !i_s.db.project.settings.mypy_compatible {
