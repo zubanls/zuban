@@ -1673,6 +1673,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             },
                         },
                     );
+                } else {
+                    check_assign_including_partials(
+                        name_def.name_index(),
+                        &base_inf,
+                        Some(base_lookup.class),
+                    );
                 }
             }
             save(

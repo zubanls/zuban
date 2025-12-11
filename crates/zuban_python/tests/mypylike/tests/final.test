@@ -83,7 +83,7 @@ bar.in_bar2 = 3
 bar.in_bar3 = 3
 
 [case final_class_init_conditional_initialization]
-# Partially Copied from conformance tests (qualifiers_final_annotation.py)
+# Partially copied from conformance tests (qualifiers_final_annotation.py)
 from typing import Final
 class ClassA:
     ID6: Final[int]
@@ -95,13 +95,14 @@ class ClassA:
         if cond:
             self.ID6 = 1
             self.other1 = 1
-            self.other2 = ""
+            self.other2 = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
             self.wrong = 1
             self.wrong = 1  # E: Cannot assign to final attribute "wrong"
         else:
             self.ID6 = 2
             self.other1 = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
             self.other2 = 1
+        reveal_type(self.other2)  # N: Revealed type is "int"
 
 [case final_class_init_nested_conditional_initialization]
 from typing import Final
