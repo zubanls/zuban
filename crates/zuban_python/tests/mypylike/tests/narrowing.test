@@ -1994,6 +1994,7 @@ def func1(f: float):
         f.numerator  # OK
 
 [case string_literal_narrowing_in_conformance_tests]
+# flags: --no-mypy-compatible
 # Copied from conformance tests (literals_interactions.py)
 from typing import Literal
 def expects_bad_status(status: Literal["MALFORMED", "ABORTED"]): ...
@@ -2005,3 +2006,28 @@ def parse_status2(status: str) -> None:
 
     if status == "PENDING":
         expects_pending_status(status)
+
+[case str_int_enum_narrowing]
+# flags: --no-mypy-compatible
+# Copied partially from testNarrowingWithIntEnum and testNarrowingWithStrEnum
+from enum import IntEnum, StrEnum
+
+class IE(IntEnum):
+    X = 1
+    Y = 2
+
+class SE(StrEnum):
+    A = 'a'
+    B = 'b'
+
+def f1(x: IE) -> None:
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "__main__.IE"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.IE"
+
+def f2(x: SE) -> None:
+    if x == 'a':
+        reveal_type(x)  # N: Revealed type is "__main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.SE"

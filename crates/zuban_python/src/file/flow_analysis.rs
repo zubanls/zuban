@@ -1336,6 +1336,10 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
                     */
                     if sub_t.is_simple_super_type_of(i_s, singleton).bool() {
                         truthy.union_in_place(singleton.clone())
+                    } else if let Type::Enum(e) = sub_t
+                        && matches!(e.kind(i_s), EnumKind::IntEnum | EnumKind::StrEnum)
+                    {
+                        truthy.union_in_place(sub_t.clone());
                     }
                 }
                 add(sub_t.clone())
