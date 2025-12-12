@@ -46,6 +46,25 @@ impl Type {
             highest_union_format_index,
         )
     }
+
+    fn common_base_if_subtype(&self, i_s: &InferenceState, t2: &Self) -> Option<Self> {
+        // Conformance tests do not allow tuple merging for TypeVarTuples,
+        // we therefore only match subtypes.
+        if self.is_any() {
+            return Some(self.clone());
+        } else if t2.is_any() {
+            return Some(t2.clone());
+        }
+        let t1 = self.avoid_implicit_literal_cow(i_s.db);
+        let t2 = t2.avoid_implicit_literal_cow(i_s.db);
+        if t1.is_simple_super_type_of(i_s, &t2).bool() {
+            Some(t1.into_owned())
+        } else if t2.is_simple_super_type_of(i_s, &t1).bool() {
+            Some(t2.into_owned())
+        } else {
+            None
+        }
+    }
 }
 
 impl TupleArgs {
@@ -116,21 +135,11 @@ impl TupleArgs {
                     ts1.iter()
                         .zip(ts2.iter())
                         .map(|(t1, t2)| {
-                            Some(if i_s.db.project.settings.mypy_compatible {
-                                t1.simplified_union(i_s, t2)
+                            if i_s.db.project.settings.mypy_compatible {
+                                Some(t1.simplified_union(i_s, t2))
                             } else {
-                                // Conformance tests do not allow tuple merging for TypeVarTuples,
-                                // we therefore only match subtypes.
-                                let t1 = t1.avoid_implicit_literal_cow(i_s.db);
-                                let t2 = t2.avoid_implicit_literal_cow(i_s.db);
-                                if t1.is_simple_super_type_of(i_s, &t2).bool() {
-                                    t1.into_owned()
-                                } else if t2.is_simple_super_type_of(i_s, &t1).bool() {
-                                    t2.into_owned()
-                                } else {
-                                    return None
-                                }
-                            })
+                                t1.common_base_if_subtype(i_s, t2)
+                            }
                         })
                         .collect::<Option<_>>()?,
                 )
