@@ -555,13 +555,10 @@ fn common_base_for_tuples(
     } else if let Some(tup2) = tup2.maybe_avoid_implicit_literal(i_s.db) {
         common_base_for_tuples(i_s, tup1, &tup2, checked_recursions)
     } else {
-        let tup_args = if i_s.db.project.settings.mypy_compatible {
+        Tuple::new(
             tup1.args
-                .common_base_type(i_s, &tup2.args, checked_recursions)
-        } else {
-            tup1.args.simplified_union(i_s, &tup2.args)
-        };
-        Tuple::new(tup_args)
+                .common_base_type(i_s, &tup2.args, checked_recursions),
+        )
     }
 }
 

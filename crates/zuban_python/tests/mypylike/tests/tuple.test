@@ -465,65 +465,35 @@ g2 = c  # E: Incompatible types in assignment (expression has type "Callable[[tu
 g3 = c
 g4 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, ...], VarArg(int)], Any]")
 
-[case common_base_type_for_fixed_len_tuple_mypy_compatible]
-# flags: --mypy-compatible --use-joins
+[case common_base_type_for_fixed_len_tuple]
+# flags: --use-joins
 x = [
     (1, ""),
     (1, b''),
 ]
 reveal_type(x)  # N: Revealed type is "list[tuple[int, typing.Sequence[object]]]"
 
-[case common_base_type_for_fixed_len_tuple_no_mypy_compatible]
-# flags: --no-mypy-compatible --use-joins
-x = [
-    (1, ""),
-    (1, b''),
-]
-reveal_type(x)  # N: Revealed type is "list[tuple[int, str | bytes]]"
-
-[case common_base_type_for_arbitrary_len_tuple_mypy_compatible]
-# flags: --mypy-compatible
+[case common_base_type_for_arbitrary_len_tuple]
+# flags: --use-joins
 def f(x: tuple[str, ...], y: tuple[bytes, ...]):
     t = [x, y]
     reveal_type(t)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
-[case common_base_type_for_arbitrary_len_tuple_no_mypy_compatible]
-# flags: --no-mypy-compatible --use-joins
-def f(x: tuple[str, ...], y: tuple[bytes, ...]):
-    t = [x, y]
-    reveal_type(t)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
-
-[case common_base_type_for_arbitrary_vs_fixed_len_tuple_mypy_compatible]
-# flags: --mypy-compatible
+[case common_base_type_for_arbitrary_vs_fixed_len_tuple]
+# flags: --use-joins
 def f(x: tuple[str, ...], y: tuple[bytes]):
     t1 = [x, y]
     reveal_type(t1)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
     t2 = [x, y]
     reveal_type(t2)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
 
-[case common_base_type_for_arbitrary_vs_fixed_len_tuple_no_mypy_compatible]
-# flags: --no-mypy-compatible --use-joins
-def f(x: tuple[str, ...], y: tuple[bytes, ...]):
-    t1 = [x, y]
-    reveal_type(t1)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
-    t2 = [x, y]
-    reveal_type(t2)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
-
-[case common_base_type_for_different_fixed_len_tuples_mypy_compatible]
-# flags: --mypy-compatible
+[case common_base_type_for_different_fixed_len_tuples]
+# flags: --use-joins
 def f(x: tuple[str, bytes], y: tuple[str]):
     t1 = [x, y]
     reveal_type(t1)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
     t2 = [x, y]
     reveal_type(t2)  # N: Revealed type is "list[tuple[typing.Sequence[object], ...]]"
-
-[case common_base_type_for_different_fixed_len_tuples_no_mypy_compatible]
-# flags: --no-mypy-compatible --use-joins
-def f(x: tuple[str, bytes], y: tuple[str]):
-    t1 = [x, y]
-    reveal_type(t1)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
-    t2 = [x, y]
-    reveal_type(t2)  # N: Revealed type is "list[tuple[str | bytes, ...]]"
 
 [case unpack_simplification_no_crash]
 # flags: --allow-redefinition
