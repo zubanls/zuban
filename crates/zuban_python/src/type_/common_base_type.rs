@@ -11,7 +11,7 @@ use crate::{
     database::Database,
     inference_state::InferenceState,
     matching::{CheckedTypeRecursion, Match, Matcher},
-    type_::{CallableLike, ParamSpecArg, TypeArgs},
+    type_::{CallableLike, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -623,7 +623,47 @@ impl TupleArgs {
                     checked_recursions,
                 )))
             }
-            (_, _) => self.simplified_union(i_s, other),
+            (TupleArgs::WithUnpack(w1), TupleArgs::WithUnpack(w2))
+                if w1.before.len() == w2.before.len() && w1.after.len() == w2.after.len() =>
+            {
+                TupleArgs::WithUnpack(WithUnpack {
+                    before: w1
+                        .before
+                        .iter()
+                        .zip(w2.before.iter())
+                        .map(|(t1, t2)| t1.simplified_union(i_s, t2))
+                        .collect(),
+                    unpack: match (&w1.unpack, &w2.unpack) {
+                        (TupleUnpack::ArbitraryLen(t1), TupleUnpack::ArbitraryLen(t2)) => {
+                            TupleUnpack::ArbitraryLen(t1.simplified_union(i_s, t2))
+                        }
+                        (TupleUnpack::TypeVarTuple(tvt1), TupleUnpack::TypeVarTuple(tvt2))
+                            if tvt1 == tvt2 =>
+                        {
+                            TupleUnpack::TypeVarTuple(tvt1.clone())
+                        }
+                        _ => {
+                            if w1.unpack.is_any() {
+                                w1.unpack.clone()
+                            } else if w2.unpack.is_any() {
+                                w2.unpack.clone()
+                            } else {
+                                TupleUnpack::ArbitraryLen(i_s.db.python_state.object_type())
+                            }
+                        }
+                    },
+                    after: w1
+                        .after
+                        .iter()
+                        .zip(w2.after.iter())
+                        .map(|(t1, t2)| t1.simplified_union(i_s, t2))
+                        .collect(),
+                })
+            }
+            (_, _) => TupleArgs::ArbitraryLen(Arc::new(
+                self.simplified_union_of_tuple_entries(i_s)
+                    .simplified_union(i_s, &other.simplified_union_of_tuple_entries(i_s)),
+            )),
         }
     }
 }
