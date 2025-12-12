@@ -56,14 +56,14 @@ class Array3(Generic[*Ts1, *Ts2]):  # E: Can only use one type var tuple in a cl
 [case typevartuple_match_length]
 # flags: --no-mypy-compatible
 # Copied from conformance tests (generics_typevartuple_basic.py)
-from typing import assert_type, Literal
+from typing import assert_type
 
 def func2[*Ts](arg1: tuple[*Ts], arg2: tuple[*Ts]) -> tuple[*Ts]: ...
 
-assert_type(func2((0,), (1,)), tuple[Literal[0, 1]])  # OK
+assert_type(func2((0,), (1,)), tuple[int])  # OK
 func2((0,), (0.0,))  # OK
 func2((0.0,), (0,))  # OK
 func2((0,), (1,))  # OK
 
-func2((0,), ("0",))
+func2((0,), ("0",))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal['0']]"; expected "tuple[int]"
 func2((0, 0), (0,))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal[0]]"; expected "tuple[int, int]"

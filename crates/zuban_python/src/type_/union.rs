@@ -115,11 +115,27 @@ impl TupleArgs {
                 TupleArgs::FixedLen(
                     ts1.iter()
                         .zip(ts2.iter())
-                        .map(|(t1, t2)| t1.simplified_union(i_s, t2))
-                        .collect(),
+                        .map(|(t1, t2)| {
+                            Some(if i_s.db.project.settings.mypy_compatible {
+                                t1.simplified_union(i_s, t2)
+                            } else {
+                                // Conformance tests do not allow tuple merging for TypeVarTuples,
+                                // we therefore only match subtypes.
+                                let t1 = t1.avoid_implicit_literal_cow(i_s.db);
+                                let t2 = t2.avoid_implicit_literal_cow(i_s.db);
+                                if t1.is_simple_super_type_of(i_s, &t2).bool() {
+                                    t1.into_owned()
+                                } else if t2.is_simple_super_type_of(i_s, &t1).bool() {
+                                    t2.into_owned()
+                                } else {
+                                    return None
+                                }
+                            })
+                        })
+                        .collect::<Option<_>>()?,
                 )
             }
-            (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2))
+            (TupleArgs::FixedLen(_), TupleArgs::FixedLen(_))
                 // Conformance tests don't allow unions with different length, Mypy allows it
                 if !i_s.db.project.settings.mypy_compatible =>
             {
