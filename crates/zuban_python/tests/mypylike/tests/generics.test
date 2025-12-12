@@ -1355,8 +1355,8 @@ def f(x: Foo[A, B, C, C], y: Foo[C, B, B, A], z: Foo[C, B], other: Foo[int]):
     reveal_type(g(x, z))  # N: Revealed type is "__main__.Foo[Unpack[Tuple[__main__.A, ...]]]"
     reveal_type(g(z, x))  # N: Revealed type is "__main__.Foo[Unpack[Tuple[__main__.A, ...]]]"
 
-    reveal_type(g(x, other))  # N: Revealed type is "__main__.Foo[Unpack[Tuple[__main__.A | int, ...]]]"
-    reveal_type(g(other, x))  # N: Revealed type is "__main__.Foo[Unpack[Tuple[int | __main__.A, ...]]]"
+    reveal_type(g(x, other))  # N: Revealed type is "__main__.Foo[Unpack[Tuple[object, ...]]]"
+    reveal_type(g(other, x))  # N: Revealed type is "__main__.Foo[Unpack[Tuple[object, ...]]]"
 
 def g(x: T, y: T) -> T: ...
 

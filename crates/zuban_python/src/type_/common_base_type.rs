@@ -226,7 +226,9 @@ fn common_base_class_basic(
             TypeVarLike::TypeVarTuple(_) => {
                 let ts1 = generic1.expect_type_arguments();
                 let ts2 = generic2.expect_type_arguments();
-                let new = ts1.args.simplified_union(i_s, &ts2.args);
+                let new = ts1
+                    .args
+                    .common_base_type(i_s, &ts2.args, Some(checked_recursions));
                 generics.push(GenericItem::TypeArgs(TypeArgs::new(new)));
             }
             TypeVarLike::ParamSpec(_) => {
