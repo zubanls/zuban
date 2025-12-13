@@ -69,6 +69,7 @@ func2((0,), ("0",))  # E: Argument 2 to "func2" has incompatible type "tuple[Lit
 func2((0, 0), (0,))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal[0]]"; expected "tuple[int, int]"
 
 [case typevartuple_non_unpacked_error]
+# flags: --no-mypy-compatible
 # Copied from conformance tests (generics_typevartuple_basic.py)
 from typing import Generic, TypeVarTuple
 

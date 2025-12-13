@@ -4094,10 +4094,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         node_ref: NodeRef,
         check_invalid_outer_type_vars: bool,
+        from_bound: bool,
         callback: impl FnOnce(TypeComputation) -> T,
     ) -> T {
         let in_definition = node_ref.as_link();
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _, _: Name| {
+            if from_bound && !i_s.db.project.settings.mypy_compatible {
+                return TypeVarCallbackReturn::AddIssue(
+                    IssueKind::TypeVarBoundMustNotContainTypeVars,
+                );
+            }
             let mut found = i_s.find_parent_type_var(&type_var_like);
             if check_invalid_outer_type_vars {
                 found = check_for_invalid_outer_type_vars(i_s.db, node_ref, found)
@@ -4125,7 +4131,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         from_type_var_syntax: bool,
     ) -> Type {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, from_type_var_syntax, |mut comp| {
+        self.within_type_var_like_definition(node_ref, from_type_var_syntax, true, |mut comp| {
             match comp.compute_type(expr) {
                 TypeContent::InvalidVariable(_) if !from_type_var_syntax => {
                     // TODO this is a bit weird and should probably generate other errors
@@ -4182,7 +4188,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_type_var_default(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, false, |mut comp| {
+        self.within_type_var_like_definition(node_ref, false, false, |mut comp| {
             let tc = comp.compute_type(expr);
             Some(comp.as_type(tc, node_ref))
         })
@@ -4190,7 +4196,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, false, |mut comp| {
+        self.within_type_var_like_definition(node_ref, false, false, |mut comp| {
             comp.calculate_callable_params_for_expr(expr, false, false)
         })
     }
@@ -4206,7 +4212,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 TypeVarTupleDefaultOrigin::TypeParam(star_expr) => star_expr.index(),
             },
         );
-        self.within_type_var_like_definition(node_ref, false, |mut comp| {
+        self.within_type_var_like_definition(node_ref, false, false, |mut comp| {
             let unpacked = match origin {
                 TypeVarTupleDefaultOrigin::OldSchool(expr) => match comp.compute_type(expr) {
                     TypeContent::Unpacked(unpacked) => unpacked,

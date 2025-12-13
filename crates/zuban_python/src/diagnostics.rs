@@ -222,6 +222,7 @@ pub(crate) enum IssueKind {
     TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
+    TypeVarBoundMustNotContainTypeVars,
     TypeVarBoundMustBeType,
     TypeVarConstraintCannotHaveTypeVariables,
     TypeVarInvalidDefault,
@@ -1502,6 +1503,8 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar \"{argument}\" may only be a literal bool"
             ),
             TypeVarTypeExpected => "Type expected".to_string(),
+            TypeVarBoundMustNotContainTypeVars =>
+                r#"TypeVar bound must not contain type variables"#.to_string(),
             TypeVarBoundMustBeType => r#"TypeVar "bound" must be a type"#.to_string(),
             TypeVarConstraintCannotHaveTypeVariables =>
                 "TypeVar constraint type cannot be parametrized by type variables".to_string(),

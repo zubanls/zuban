@@ -17,10 +17,18 @@ from typing import TypeVar
 Y2 = TypeVar("Y2", int, str)
 AlsoOk2 = TypeVar("AlsoOk2", int, str, bool, default=Y2)
 
-[case type_var_syntax_bound_nested_type_variables_not_reachable]
+[case type_var_syntax_bound_nested_type_variables_not_reachable_mypy_compatible]
+# flags: --mypy-compatible
 # From conformance tests generics_syntax_declarations.py
 class ClassG[V]:
     class ClassD[T: dict[str, V]]:  # E: "V" may not be used, because it's defined in an outer class
+        ...
+
+[case type_var_syntax_bound_nested_type_variables_not_reachable_no_mypy_compatible]
+# flags: --no-mypy-compatible
+# From conformance tests generics_syntax_declarations.py
+class ClassG[V]:
+    class ClassD[T: dict[str, V]]:  # E: TypeVar bound must not contain type variables
         ...
 
 [case other_type_var_syntax_nested_type_variables_not_reachable]
@@ -206,3 +214,11 @@ class C(Iterable[U], Something[T], Generic[T, U]): ...
 def foo() -> C[int]: ...
 
 reveal_type(foo())  # N: Revealed type is "__main__.C[int, int]"
+
+[case type_vars_in_bounds_not_allowed_in_conformance_tests]
+# flags: --no-mypy-compatible
+from typing import TypeVar, Generic
+T = TypeVar("T")
+
+class Test(Generic[T]):
+    T_Bad1 = TypeVar("T_Bad1", bound=list[T])  # E: TypeVar bound must not contain type variables
