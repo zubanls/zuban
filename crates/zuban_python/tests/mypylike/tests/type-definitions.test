@@ -781,7 +781,7 @@ a: """
 2"""""
 
 [out]
-__main__:2: error: Syntax error in type annotation
+__main__:3: error: Invalid syntax
 
 [case avoid_recursion_problem_in_with]
 with a as a:  # E: Name "a" is used before definition  # E: Cannot resolve name "a" (possible cyclic definition)
@@ -888,3 +888,10 @@ T = TypeVar("T")
 class ClassA(Generic[T]):
     type good = list[T]
     GoodAlias6 = TypeAliasType("GoodAlias6", list[T])
+
+[case multiline_annotation]
+value: """
+    int |
+    str |
+    list[int]
+"""

@@ -476,10 +476,15 @@ impl<'db> PythonFile {
         &self,
         db: &'db Database,
         start: CodeIndex,
-        code: Cow<str>,
+        mut code: Cow<str>,
     ) -> &'db Self {
         if let Some(sub_file_index) = self.sub_files.lookup_sub_file_at_position(start) {
             return db.loaded_python_file(sub_file_index);
+        }
+        if code.contains('\n') {
+            // TODO this is a bit hacky, but will probably be good enough for all cases.
+            // The parser currently is a bit weird and
+            code = Cow::Owned(code.replace('\n', " "));
         }
         let tree = Tree::parse(code.into_owned().into_boxed_str());
         let points = Points::new(tree.length());
