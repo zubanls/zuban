@@ -1448,6 +1448,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(unpacked) => {
                 TuplePart::TupleUnpack(self.use_tuple_unpack(unpacked, from))
             }
+            TypeContent::TypeVarTuple(_) => {
+                let t = self.as_type(t, from);
+                debug_assert!(t.is_any());
+                TuplePart::TupleUnpack(TypeCompTupleUnpack::ArbitraryLen(Arc::new(t)))
+            }
             t => TuplePart::Type(self.as_type(t, from)),
         }
     }

@@ -67,3 +67,19 @@ func2((0,), (1,))  # OK
 
 func2((0,), ("0",))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal['0']]"; expected "tuple[int]"
 func2((0, 0), (0,))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal[0]]"; expected "tuple[int, int]"
+
+[case typevartuple_non_unpacked_error]
+# Copied from conformance tests (generics_typevartuple_basic.py)
+from typing import Generic, TypeVarTuple
+
+Shape = TypeVarTuple("Shape")
+
+class ClassA(Generic[Shape]):  # E: Free type variable expected in Generic[...]
+    def __init__(self, shape: tuple[Shape]):  # E: TypeVarTuple "Shape" is only valid with an unpack
+        self._shape: tuple[*Shape] = shape
+
+    def get_shape(self) -> tuple[Shape]:  # E: TypeVarTuple "Shape" is only valid with an unpack
+        return self._shape
+
+    def method1(*args: Shape) -> None:  # E: TypeVarTuple "Shape" is only valid with an unpack
+        ...
