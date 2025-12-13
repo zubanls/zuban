@@ -996,7 +996,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     fn pre_calc_classes_in_atom(&self, atom: Atom) -> PreClassCalculationLookup<'file> {
         let compute_forward_reference = |start, string: Cow<str>| {
-            let file = self.file.ensure_annotation_file(self.i_s.db, start, string);
+            let file = self
+                .file
+                .ensure_forward_reference_file(self.i_s.db, start, string);
 
             let Some(star_exprs) = file.tree.maybe_star_expressions() else {
                 return;

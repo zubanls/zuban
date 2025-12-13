@@ -3873,9 +3873,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         s: &str,
         assignment_node_ref: NodeRef,
     ) -> TypeCommentDetails<'db> {
-        let f: &'db PythonFile =
-            self.file
-                .ensure_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
+        let f: &'db PythonFile = self.file.ensure_annotation_or_type_comment_file(
+            self.i_s.db,
+            start,
+            s.trim_end_matches('\\').into(),
+        );
         let name_resolution = self.with_new_file(f);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {

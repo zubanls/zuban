@@ -472,7 +472,7 @@ impl<'db> PythonFile {
             .ensure_module_symbols_flow_analysis()
     }
 
-    pub(super) fn ensure_annotation_file(
+    pub(super) fn ensure_annotation_or_type_comment_file(
         &self,
         db: &'db Database,
         start: CodeIndex,
@@ -517,9 +517,9 @@ impl<'db> PythonFile {
         let whitespace_in_beginning = code.len() - maybe_new.len();
         if whitespace_in_beginning > 0 {
             start += whitespace_in_beginning as CodeIndex;
-            self.ensure_annotation_file(db, start, Cow::Borrowed(maybe_new))
+            self.ensure_annotation_or_type_comment_file(db, start, Cow::Borrowed(maybe_new))
         } else {
-            self.ensure_annotation_file(db, start, code)
+            self.ensure_annotation_or_type_comment_file(db, start, code)
         }
     }
 
