@@ -10,7 +10,8 @@ use crate::{
     type_::{
         AnyCause, CallableParams, GenericItem, NeverCause, ParamSpecArg, ParamType,
         ReplaceTypeVarLikes, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance, match_tuple_type_arguments,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance, WithUnpack,
+        match_tuple_type_arguments,
     },
     type_helpers::Class,
 };
@@ -285,9 +286,9 @@ impl BoundKind {
                         .simplified_union(i_s, &t2.avoid_implicit_literal_cow(i_s.db))
                 }))
             }
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                Some(Self::TypeVarTuple(tup1.simplified_unionv2(i_s, tup2)?))
-            }
+            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => Some(Self::TypeVarTuple(
+                tup1.simplified_union_for_type_var_tuple(i_s, tup2)?,
+            )),
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => params1
                 .common_base_type(i_s, params2, None)
                 .map(Self::ParamSpec),
@@ -392,6 +393,103 @@ impl BoundKind {
                 matches_params_with_variance(i_s, matcher, params1, params2, variance)
             }
             _ => unreachable!(),
+        }
+    }
+}
+
+impl TupleArgs {
+    fn simplified_union_for_type_var_tuple(
+        &self,
+        i_s: &InferenceState,
+        other: &Self,
+    ) -> Option<Self> {
+        if self == other {
+            return Some(self.clone());
+        }
+        Some(match (self, other) {
+            (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2)) if ts1.len() == ts2.len() => {
+                TupleArgs::FixedLen(
+                    ts1.iter()
+                        .zip(ts2.iter())
+                        .map(|(t1, t2)| {
+                            if i_s.db.project.settings.mypy_compatible {
+                                Some(t1.simplified_union(i_s, t2))
+                            } else {
+                                t1.common_base_if_subtype(i_s, t2)
+                            }
+                        })
+                        .collect::<Option<_>>()?,
+                )
+            }
+            (TupleArgs::FixedLen(_), TupleArgs::FixedLen(_))
+                // Conformance tests don't allow unions with different length, Mypy allows it
+                if !i_s.db.project.settings.mypy_compatible =>
+            {
+                return None;
+            }
+            (TupleArgs::WithUnpack(w1), TupleArgs::WithUnpack(w2))
+                if w1.before.len() == w2.before.len() && w1.after.len() == w2.after.len() =>
+            {
+                TupleArgs::WithUnpack(WithUnpack {
+                    before: w1
+                        .before
+                        .iter()
+                        .zip(w2.before.iter())
+                        .map(|(t1, t2)| t1.simplified_union(i_s, t2))
+                        .collect(),
+                    unpack: match (&w1.unpack, &w2.unpack) {
+                        (TupleUnpack::ArbitraryLen(t1), TupleUnpack::ArbitraryLen(t2)) => {
+                            TupleUnpack::ArbitraryLen(t1.simplified_union(i_s, t2))
+                        }
+                        (TupleUnpack::TypeVarTuple(tvt1), TupleUnpack::TypeVarTuple(tvt2))
+                            if tvt1 == tvt2 =>
+                        {
+                            TupleUnpack::TypeVarTuple(tvt1.clone())
+                        }
+                        _ => {
+                            if w1.unpack.is_any() {
+                                w1.unpack.clone()
+                            } else if w2.unpack.is_any() {
+                                w2.unpack.clone()
+                            } else {
+                                return None;
+                            }
+                        }
+                    },
+                    after: w1
+                        .after
+                        .iter()
+                        .zip(w2.after.iter())
+                        .map(|(t1, t2)| t1.simplified_union(i_s, t2))
+                        .collect(),
+                })
+            }
+            (TupleArgs::FixedLen(_) | TupleArgs::ArbitraryLen(_), TupleArgs::FixedLen(_) | TupleArgs::ArbitraryLen(_)) => TupleArgs::ArbitraryLen(Arc::new(
+                self.simplified_union_of_tuple_entries(i_s)
+                    .simplified_union(i_s, &other.simplified_union_of_tuple_entries(i_s)),
+            )),
+            _ => return None
+        })
+    }
+}
+
+impl Type {
+    fn common_base_if_subtype(&self, i_s: &InferenceState, t2: &Self) -> Option<Self> {
+        // Conformance tests do not allow tuple merging for TypeVarTuples,
+        // we therefore only match subtypes.
+        if self.is_any() {
+            return Some(self.clone());
+        } else if t2.is_any() {
+            return Some(t2.clone());
+        }
+        let t1 = self.avoid_implicit_literal_cow(i_s.db);
+        let t2 = t2.avoid_implicit_literal_cow(i_s.db);
+        if t1.is_simple_super_type_of(i_s, &t2).bool() {
+            Some(t1.into_owned())
+        } else if t2.is_simple_super_type_of(i_s, &t1).bool() {
+            Some(t2.into_owned())
+        } else {
+            None
         }
     }
 }
