@@ -188,6 +188,7 @@ pub(crate) enum IssueKind {
     IssubcclassWithProtocolNonMethodMembers { protocol: Box<str>, non_method_members: Box<str> },
     TypeAliasRightSideNeeded,
     TypeAliasInTypeCommentNotSupported,
+    ForwardReferenceUnionsCausesRuntimeError,
 
     FinalTooManyArguments,
     FinalNameMustBeInitializedWithValue,
@@ -1413,6 +1414,9 @@ impl<'db> Diagnostic<'db> {
             }
             TypeAliasRightSideNeeded => "Right side needed for TypeAlias".to_string(),
             TypeAliasInTypeCommentNotSupported => "TypeAlias comment currently not supported".to_string(),
+            ForwardReferenceUnionsCausesRuntimeError =>
+                "Forward reference unions cause runtime errors, consider wrapping the whole \
+                 annotation with a string".to_string(),
 
             FinalTooManyArguments => "Final[...] takes at most one type argument".to_string(),
             FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),

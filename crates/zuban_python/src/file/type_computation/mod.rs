@@ -1463,11 +1463,28 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ExpressionPart::Primary(primary) => self.compute_type_primary(primary),
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
+                let node_ref_a = NodeRef::new(self.file, a.index());
+                let node_ref_b = NodeRef::new(self.file, b.index());
                 let first = self.compute_type_expression_part(a);
                 let second = self.compute_type_expression_part(b);
 
-                let node_ref_a = NodeRef::new(self.file, a.index());
-                let node_ref_b = NodeRef::new(self.file, b.index());
+                if matches!(a.maybe_unpacked_atom(), Some(AtomContent::Strings(_)))
+                    && !matches!(second, TypeContent::Type(Type::TypeVar(_)))
+                {
+                    self.add_issue(
+                        node_ref_a,
+                        IssueKind::ForwardReferenceUnionsCausesRuntimeError,
+                    )
+                }
+                if matches!(b.maybe_unpacked_atom(), Some(AtomContent::Strings(_)))
+                    && !matches!(first, TypeContent::Type(Type::TypeVar(_)))
+                {
+                    self.add_issue(
+                        node_ref_b,
+                        IssueKind::ForwardReferenceUnionsCausesRuntimeError,
+                    )
+                }
+
                 if self.errors_already_calculated {
                     if self.flags().disallow_any_explicit {
                         if matches!(first, TypeContent::SpecialCase(Specific::TypingAny)) {

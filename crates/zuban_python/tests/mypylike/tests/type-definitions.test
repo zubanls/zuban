@@ -317,9 +317,9 @@ A, B = NewType("A", int)  # E: Invalid assignment form for NewType, please use t
 
 [case new_type_recursion_same_module]
 from typing import NewType
-A = NewType("A", list[int | "A"])
+A = NewType("A", list["int | A"])
 B = NewType("B", "B")  # E: Argument 2 to NewType(...) must be subclassable (got "B")
-C = NewType("C", list[undefined | "A"])  # E: Name "undefined" is not defined
+C = NewType("C", list["undefined | A"])  # E: Name "undefined" is not defined
 
 a1: A = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 a2: A = A([1])
@@ -343,9 +343,9 @@ c3: m.C = m.C([1])
 
 [file m.py]
 from typing import NewType
-A = NewType("A", list[int | "A"])
+A = NewType("A", list["int | A"])
 B = NewType("B", "B")  # E: Argument 2 to NewType(...) must be subclassable (got "B")
-C = NewType("C", list[undefined | "A"])  # E: Name "undefined" is not defined
+C = NewType("C", list["undefined | A"])  # E: Name "undefined" is not defined
 
 [case double_string_in_annotation]
 # flags: --show-column-numbers
@@ -782,6 +782,16 @@ a: """
 
 [out]
 __main__:3: error: Invalid syntax
+
+[case forward_ref_disallow_string_not_around_annotations]
+# Copied from conformance tests (annotations_forward_refs.py)
+bad1: ClassA  # E?: Runtime error prior to 3.14: requires quotes
+bad2: list[ClassA]  # E?: Runtime error prior to 3.14: requires quotes
+bad3: "ClassA" | int  # E: Forward reference unions cause runtime errors, consider wrapping the whole annotation with a string
+bad4: int | "ClassA"  # E: Forward reference unions cause runtime errors, consider wrapping the whole annotation with a string
+
+class ClassA:
+    ...
 
 [case avoid_recursion_problem_in_with]
 with a as a:  # E: Name "a" is used before definition  # E: Cannot resolve name "a" (possible cyclic definition)
