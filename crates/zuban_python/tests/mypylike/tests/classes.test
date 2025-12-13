@@ -2499,3 +2499,11 @@ def func(x: int) -> None:
     assert_type(y1, Y[int, [int]])
     y2 = y1.f
     assert_type(y2, Callable[[int], str])
+
+[case consistent_type_variable_ordering]
+from typing import TypeVar, Generic
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+class Grandparent(Generic[T1, T2]): ...
+class Parent(Grandparent[T1, T2]): ...
+class BadChild(Parent[T1, T2], Grandparent[T2, T1]): ...  # E: Cannot determine consistent method resolution order (MRO) for "BadChild"

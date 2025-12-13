@@ -1924,61 +1924,56 @@ pub fn linearize_mro_and_return_linearizable(
             linearizable = false;
         }
     }
-    let add_to_mro = |mro: &mut Vec<BaseClass>,
-                      base_index: usize,
-                      is_direct_base,
-                      new_base: &BaseToBeAdded,
-                      allowed_to_use: &mut usize| {
-        if new_base.t.as_ref() != &object {
-            mro.push(BaseClass {
-                type_: if new_base.needs_remapping {
-                    new_base
-                        .t
-                        .replace_type_var_likes(db, &mut |usage| {
-                            Some(match &bases[base_index] {
-                                Type::Tuple(tup) => tup
+    let to_base_class = |base_index: usize,
+                         is_direct_base,
+                         new_base: &BaseToBeAdded,
+                         allowed_to_use: &mut usize| {
+        BaseClass {
+            type_: if new_base.needs_remapping {
+                new_base
+                    .t
+                    .replace_type_var_likes(db, &mut |usage| {
+                        Some(match &bases[base_index] {
+                            Type::Tuple(tup) => tup
+                                .class(db)
+                                .generics
+                                .nth_usage(db, &usage)
+                                .into_generic_item(),
+                            Type::NamedTuple(n) => n
+                                .as_tuple_ref()
+                                .class(db)
+                                .generics
+                                .nth_usage(db, &usage)
+                                .into_generic_item(),
+                            Type::Class(GenericClass {
+                                generics: ClassGenerics::List(generics),
+                                ..
+                            }) => generics[usage.index()].clone(),
+                            // Very rare and therefore a separate case.
+                            Type::Class(c) => c
+                                .class(db)
+                                .generics
+                                .nth_usage(db, &usage)
+                                .into_generic_item(),
+                            Type::Dataclass(d) => match &d.class.generics {
+                                ClassGenerics::List(generics) => generics[usage.index()].clone(),
+                                _ => d
                                     .class(db)
                                     .generics
                                     .nth_usage(db, &usage)
                                     .into_generic_item(),
-                                Type::NamedTuple(n) => n
-                                    .as_tuple_ref()
-                                    .class(db)
-                                    .generics
-                                    .nth_usage(db, &usage)
-                                    .into_generic_item(),
-                                Type::Class(GenericClass {
-                                    generics: ClassGenerics::List(generics),
-                                    ..
-                                }) => generics[usage.index()].clone(),
-                                // Very rare and therefore a separate case.
-                                Type::Class(c) => c
-                                    .class(db)
-                                    .generics
-                                    .nth_usage(db, &usage)
-                                    .into_generic_item(),
-                                Type::Dataclass(d) => match &d.class.generics {
-                                    ClassGenerics::List(generics) => {
-                                        generics[usage.index()].clone()
-                                    }
-                                    _ => d
-                                        .class(db)
-                                        .generics
-                                        .nth_usage(db, &usage)
-                                        .into_generic_item(),
-                                },
-                                // If we expect class generics and tuples are involved, the tuple was already
-                                // calculated.
-                                _ => unreachable!(),
-                            })
+                            },
+                            // If we expect class generics and tuples are involved, the tuple was already
+                            // calculated.
+                            _ => unreachable!(),
                         })
-                        .unwrap_or_else(|| new_base.t.as_ref().clone())
-                } else {
-                    *allowed_to_use += 1;
-                    new_base.t.as_ref().clone()
-                },
-                is_direct_base,
-            })
+                    })
+                    .unwrap_or_else(|| new_base.t.as_ref().clone())
+            } else {
+                *allowed_to_use += 1;
+                new_base.t.as_ref().clone()
+            },
+            is_direct_base,
         }
     };
 
@@ -2023,6 +2018,7 @@ pub fn linearize_mro_and_return_linearizable(
             .peekable()
         })
         .collect();
+    // Signals how many of the base_iterators we can use.
     let mut allowed_to_use = 1;
     'outer: loop {
         let mut had_entry = false;
@@ -2036,21 +2032,28 @@ pub fn linearize_mro_and_return_linearizable(
                         .any(|(_, other)| to_base_kind(&candidate.t) == to_base_kind(&other.t))
                 });
                 if !conflicts {
-                    for base_bases in base_iterators.iter_mut() {
+                    let is_non_object = candidate.t.as_ref() != &object;
+                    for (skip_index, base_bases) in base_iterators.iter_mut().enumerate() {
                         base_bases.next_if(|(i, next)| {
                             if *i == 0 {
                                 allowed_to_use += 1;
                             }
-                            to_base_kind(&candidate.t) == to_base_kind(&next.t)
+                            let skip = to_base_kind(&candidate.t) == to_base_kind(&next.t);
+                            if skip && skip_index != base_index && is_non_object {
+                                let new = to_base_class(base_index, false, &candidate, &mut 0);
+                                let other = to_base_class(base_index, false, next, &mut 0);
+                                if !new.type_.is_equal_type(db, None, &other.type_) {
+                                    linearizable = false
+                                }
+                            }
+                            skip
                         });
                     }
-                    add_to_mro(
-                        &mut mro,
-                        base_index,
-                        i == 0,
-                        &candidate,
-                        &mut allowed_to_use,
-                    );
+                    if is_non_object {
+                        let new =
+                            to_base_class(base_index, i == 0, &candidate, &mut allowed_to_use);
+                        mro.push(new);
+                    };
                     continue 'outer;
                 }
             }
@@ -2064,7 +2067,10 @@ pub fn linearize_mro_and_return_linearizable(
                 // Here we know that we have issues and only add the type if it's not already
                 // there.
                 if mro.iter().any(|b| &b.type_ == type_.t.as_ref()) {
-                    add_to_mro(&mut mro, base_index, i == 0, &type_, &mut allowed_to_use);
+                    if type_.t.as_ref() != &object {
+                        let new = to_base_class(base_index, i == 0, &type_, &mut allowed_to_use);
+                        mro.push(new);
+                    };
                 }
                 continue 'outer;
             }
