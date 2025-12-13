@@ -439,7 +439,7 @@ create_grammar!(
 );
 
 pub fn parse(code: Box<str>) -> PyTree {
-    let mut code = code.to_string();
+    let mut code = code.into_string();
     // TODO is this really the best way? Especially for refactoring?!
     {
         if !code.ends_with('\n') {

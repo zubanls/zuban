@@ -481,9 +481,7 @@ impl<'db> PythonFile {
         if let Some(sub_file_index) = self.sub_files.lookup_sub_file_at_position(start) {
             return db.loaded_python_file(sub_file_index);
         }
-        // TODO should probably not need a newline
-        let code = code.into_owned() + "\n";
-        let tree = Tree::parse(code.into_boxed_str());
+        let tree = Tree::parse(code.into_owned().into_boxed_str());
         let points = Points::new(tree.length());
         let f = db.load_sub_file(self, |file_index| {
             let mut file = PythonFile::new_internal(
