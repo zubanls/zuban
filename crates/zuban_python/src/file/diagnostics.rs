@@ -950,6 +950,10 @@ impl Inference<'_, '_, '_> {
         let (type_params, arguments, _) = class.unpack();
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = class_node_ref.use_cached_class_infos(db);
+
+        let type_vars = class_node_ref.use_cached_type_vars(db);
+        type_vars.add_error_if_default_after_type_var_tuple(|issue| c.add_issue_on_name(db, issue));
+
         if let Some(t) = class_infos.undefined_generics_type.get() {
             match t.as_ref() {
                 Type::Dataclass(d) => {

@@ -566,6 +566,24 @@ impl TypeVarLikes {
             _ => unreachable!(),
         }
     }
+
+    pub fn add_error_if_default_after_type_var_tuple(&self, add_issue: impl FnOnce(IssueKind)) {
+        let mut defaults_allowed = true;
+        for tvl in self.iter() {
+            match tvl {
+                TypeVarLike::TypeVar(_) => {
+                    if !defaults_allowed && tvl.has_default() {
+                        add_issue(IssueKind::TypeVarDefaultsAmbiguousAfterTypeVarTuple);
+                        break;
+                    }
+                }
+                TypeVarLike::TypeVarTuple(_) => defaults_allowed = false,
+                // TypeVars with defaults are allowed after ParamSpec again, because it clearly
+                // separates the two.
+                TypeVarLike::ParamSpec(_) => defaults_allowed = true,
+            }
+        }
+    }
 }
 
 impl std::ops::Index<usize> for TypeVarLikes {

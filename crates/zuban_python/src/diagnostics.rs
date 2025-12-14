@@ -275,6 +275,7 @@ pub(crate) enum IssueKind {
     MultipleTypeVarTupleDisallowedInTypeParams { in_type_alias_type: bool },
     InvalidTypeVarOfOuterClass { name: Box<str> },
     TypeVarInferVarianceCannotSpecifyVariance { specified: &'static str },
+    TypeVarDefaultsAmbiguousAfterTypeVarTuple,
 
     CannotUseIsinstanceWith { func: &'static str, with: &'static str },
     CannotUseIsinstanceWithParametrizedGenerics,
@@ -1631,6 +1632,8 @@ impl<'db> Diagnostic<'db> {
             TypeVarInferVarianceCannotSpecifyVariance { specified } => format!(
                 "Cannot use {specified} with infer_variance"
             ),
+            TypeVarDefaultsAmbiguousAfterTypeVarTuple =>
+                "TypeVar defaults are ambiguous after a TypeVarTuple".to_string(),
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),
             CannotUseIsinstanceWithParametrizedGenerics =>

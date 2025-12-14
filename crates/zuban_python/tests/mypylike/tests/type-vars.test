@@ -222,3 +222,12 @@ T = TypeVar("T")
 
 class Test(Generic[T]):
     T_Bad1 = TypeVar("T_Bad1", bound=list[T])  # E: TypeVar bound must not contain type variables
+
+[case generics_default_not_allowed_after_type_var_tuple]
+# Partially from conformance tests (generics_defaults.py)
+from typing import TypeVarTuple, TypeVar, Generic
+Ts = TypeVarTuple("Ts")
+T5 = TypeVar("T5", default=bool)
+
+class Foo5(Generic[*Ts, T5]): ...  # E: TypeVar defaults are ambiguous after a TypeVarTuple
+class Other(Generic[*Ts, T5]): ...  # E: TypeVar defaults are ambiguous after a TypeVarTuple
