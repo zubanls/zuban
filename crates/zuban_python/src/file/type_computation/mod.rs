@@ -2116,7 +2116,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 }
                             }
                             TypeVarLike::ParamSpec(param_spec) => {
-                                if let Some(spec) = type_args.next_param_spec_back(self) {
+                                if let Some(spec) = type_args.next_param_spec_back(
+                                    self,
+                                    has_type_var_tuple && param_spec.has_default(),
+                                ) {
                                     given += 1;
                                     GenericItem::ParamSpecArg(spec)
                                 } else if let Some(default) = param_spec.default(db) {
@@ -2442,31 +2445,48 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         from_class_generics: bool,
         allow_aesthetic_class_simplification: bool,
     ) -> CallableParams {
+        self.calculate_callable_params_optional(
+            first,
+            from_class_generics,
+            allow_aesthetic_class_simplification,
+        )
+        .unwrap_or_else(|| {
+            if let SliceOrSimple::Simple(n) = first {
+                if from_class_generics {
+                    self.add_issue(
+                        n.as_node_ref(),
+                        IssueKind::InvalidParamSpecGenerics {
+                            got: Box::from(n.named_expr.as_code()),
+                        },
+                    );
+                } else {
+                    self.add_issue(n.as_node_ref(), IssueKind::InvalidCallableParams);
+                }
+            } else {
+                recoverable_error!("Expected there to be a CallableParams returned")
+            }
+            CallableParams::Any(AnyCause::FromError)
+        })
+    }
+
+    fn calculate_callable_params_optional(
+        &mut self,
+        first: SliceOrSimple,
+        from_class_generics: bool,
+        allow_aesthetic_class_simplification: bool,
+    ) -> Option<CallableParams> {
         let SliceOrSimple::Simple(n) = first else {
             self.add_issue(
                 first.as_node_ref(),
                 IssueKind::InvalidType("Invalid callable params".into()),
             );
-            return CallableParams::Any(AnyCause::FromError);
+            return Some(CallableParams::Any(AnyCause::FromError));
         };
         self.calculate_callable_params_for_expr(
             n.named_expr.expression(),
             from_class_generics,
             allow_aesthetic_class_simplification,
         )
-        .unwrap_or_else(|| {
-            if from_class_generics {
-                self.add_issue(
-                    n.as_node_ref(),
-                    IssueKind::InvalidParamSpecGenerics {
-                        got: Box::from(n.named_expr.as_code()),
-                    },
-                );
-            } else {
-                self.add_issue(n.as_node_ref(), IssueKind::InvalidCallableParams);
-            }
-            CallableParams::Any(AnyCause::FromError)
-        })
     }
 
     fn calculate_callable_params_for_expr(
@@ -4510,7 +4530,7 @@ fn check_for_invalid_outer_type_vars(
     found
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum TypeCompTupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
     ArbitraryLen(Arc<Type>),
@@ -4538,6 +4558,7 @@ enum TuplePart {
     TupleUnpack(TypeCompTupleUnpack),
 }
 
+#[derive(Clone)]
 struct TypeArgIterator<'a, I> {
     slices: I,
     current_unpack: Option<(NodeRef<'a>, TypeCompTupleUnpack)>,
@@ -4753,7 +4774,15 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     fn next_param_spec_back(
         &mut self,
         type_computation: &mut TypeComputation,
+        abort_when_type_is_found: bool,
     ) -> Option<ParamSpecArg> {
+        if abort_when_type_is_found {
+            // This is a type
+            let mut new_iterator = self.clone();
+            let (_, result) = new_iterator.next_back(type_computation)?;
+            let slice = result.err()?;
+            type_computation.calculate_callable_params_optional(slice, true, false)?;
+        }
         let (_, result) = self.next_back(type_computation)?;
         let slice = result.err()?;
         let params = type_computation.calculate_callable_params(slice, true, false);

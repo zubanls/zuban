@@ -1334,6 +1334,10 @@ impl ParamSpec {
         }
     }
 
+    pub fn has_default(&self) -> bool {
+        self.default.is_some()
+    }
+
     pub fn default(&self, db: &Database) -> Option<&CallableParams> {
         Some(
             self.default

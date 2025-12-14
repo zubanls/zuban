@@ -231,3 +231,15 @@ T5 = TypeVar("T5", default=bool)
 
 class Foo5(Generic[*Ts, T5]): ...  # E: TypeVar defaults are ambiguous after a TypeVarTuple
 class Other(Generic[*Ts, T5]): ...  # E: TypeVar defaults are ambiguous after a TypeVarTuple
+
+[case generics_default_for_param_specs_after_type_var_tuple]
+# From conformance tests (generics_defaults.py)
+from typing import TypeVarTuple, ParamSpec, Generic, assert_type
+
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P", default=[float, bool])
+
+class Foo6(Generic[*Ts, P]): ...  # OK
+
+assert_type(Foo6[int, str], type[Foo6[int, str, [float, bool]]])
+assert_type(Foo6[int, str, [bytes]], type[Foo6[int, str, [bytes]]])
