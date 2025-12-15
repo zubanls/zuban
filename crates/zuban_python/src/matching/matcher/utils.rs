@@ -481,6 +481,8 @@ fn apply_result_context(
             // check if the classes match and then push the generics there.
             let type_var_likes = return_class.type_vars(i_s);
             if !type_var_likes.is_empty()
+                // We don't need to match Any, this will just result in Any contexts
+                && !expected.is_any()
                 && matches!(return_class.generics, Generics::NotDefinedYet { .. })
             {
                 if Class::with_self_generics(i_s.db, return_class.node_ref)

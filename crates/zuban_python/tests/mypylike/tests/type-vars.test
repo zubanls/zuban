@@ -243,3 +243,17 @@ class Foo6(Generic[*Ts, P]): ...  # OK
 
 assert_type(Foo6[int, str], type[Foo6[int, str, [float, bool]]])
 assert_type(Foo6[int, str, [bytes]], type[Foo6[int, str, [bytes]]])
+
+[case type_var_default_with_method_access_and_self_resolution]
+# Inspiered by conformance tests (generics_defaults.py)
+from typing import TypeVar, Generic, assert_type, Callable, Self
+DefaultIntT = TypeVar("DefaultIntT", default=int)
+class Foo7(Generic[DefaultIntT]):
+    def meth(self, /) -> Self:
+        return self
+
+    attr: DefaultIntT
+
+reveal_type(Foo7.meth(Foo7[int]()))  # N: Revealed type is "__main__.Foo7[int]"
+reveal_type(Foo7.meth(Foo7()))  # N: Revealed type is "__main__.Foo7[int]"
+assert_type(Foo7().attr, int)

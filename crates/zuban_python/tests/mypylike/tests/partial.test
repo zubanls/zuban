@@ -373,7 +373,7 @@ for _, x in ((1, {}), ("", {})):  # E: Need type annotation for "x" (hint: "x: D
 for _, y in ((1, []), ("", [])):  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
     reveal_type(y)  # N: Revealed type is "list[Any]"
 
-for _, z in ((1, set()), ("", set())):
+for _, z in ((1, set()), ("", set())):  # E: Need type annotation for "z" (hint: "z: Set[<type>] = ...")
     reveal_type(z)  # N: Revealed type is "set[Any]"
 
 [case defaultdict_with_tuple]

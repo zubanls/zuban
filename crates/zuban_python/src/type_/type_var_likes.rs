@@ -1064,6 +1064,10 @@ impl TypeVar {
         )
     }
 
+    pub fn is_self_name(&self) -> bool {
+        matches!(self.name, TypeVarName::Self_)
+    }
+
     pub fn kind<'a>(
         &'a self,
         db: &'a Database,

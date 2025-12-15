@@ -925,7 +925,20 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, |usage| Some(usage.as_any_generic_item()))
+        self.replace_type_var_likes(db, t, |usage| {
+            Some(
+                if let TypeVarLikeUsage::TypeVar(tv_usage) = &usage
+                    // Self names for TypeVars are a bit special, the context is probably wanted
+                    // unlike other TypeVars.
+                    && tv_usage.type_var.is_self_name()
+                    && let TypeVarKind::Bound(bound) = tv_usage.type_var.kind(db)
+                {
+                    GenericItem::TypeArg(bound.clone())
+                } else {
+                    usage.as_any_generic_item()
+                },
+            )
+        })
     }
 
     pub fn replace_type_var_likes_for_nested_context_in_tuple_args(
