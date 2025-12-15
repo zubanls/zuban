@@ -1228,10 +1228,10 @@ class Thing(Generic[t]):
     def end(self) -> None:
         return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[t]"
 
-class Other(Thing[Set[t]]):
+class Other[S](Thing[Set[S]]):
     def end2(self) -> None:
-        self.chain([1])  # E: List item 0 has incompatible type "int"; expected "set[t]"
-        return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[set[t]]"
+        self.chain([1])  # E: List item 0 has incompatible type "int"; expected "set[S]"
+        return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[set[S]]"
 
 class Other2(Thing[t]):
     def end2(self) -> None:
@@ -1499,7 +1499,7 @@ def mapmap(m: Callable[[], D], p: list[A]) -> list[D]: ...
 [case generics_resolving_for_method_access_on_subclass]
 from typing import Generic, TypeVar, Callable, Generator
 
-G = TypeVar("G")
+G = TypeVar("G", covariant=True)
 SendT_contra = TypeVar("SendT_contra", contravariant=True, default=None)
 ReturnT_co = TypeVar("ReturnT_co", covariant=True, default=None)
 

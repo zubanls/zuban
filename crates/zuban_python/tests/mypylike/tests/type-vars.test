@@ -257,3 +257,32 @@ class Foo7(Generic[DefaultIntT]):
 reveal_type(Foo7.meth(Foo7[int]()))  # N: Revealed type is "__main__.Foo7[int]"
 reveal_type(Foo7.meth(Foo7()))  # N: Revealed type is "__main__.Foo7[int]"
 assert_type(Foo7().attr, int)
+
+[case type_var_ensure_correct_variance_contravariance]
+# Partially copied from conformance tests (generics_variance.py)
+from typing import TypeVar, Generic
+
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
+
+class Co(Generic[T_co]): ...
+class Contra(Generic[T_contra]): ...
+
+Co_TA = Co[T_co]
+Contra_TA = Contra[T_contra]
+
+class CoToContraToContra_WithTA(Contra_TA[Co_TA[Contra_TA[T_contra]]]):  # E: Variance of TypeVar "T_contra" incompatible with variance in parent type
+    ...
+
+class CoToContraToContra_WithTA_valid(Contra_TA[Co_TA[Contra_TA[T_co]]]):
+    ...
+
+class ContraToContraToContra_WithTA(
+    Contra_TA[Contra_TA[Contra_TA[T_co]]]  # E: Variance of TypeVar "T_co" incompatible with variance in parent type
+):
+    ...
+
+class ContraToContraToContra_WithTA_valid(
+    Contra_TA[Contra_TA[Contra_TA[T_contra]]]
+):
+    ...

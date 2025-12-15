@@ -27,8 +27,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred, infer_class_method},
     matching::{
-        ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, OnTypeError,
-        ReplaceSelfInMatcher, ResultContext,
+        ErrorStrs, Generics, LookupKind, Match, Matcher, OnTypeError, ReplaceSelfInMatcher,
+        ResultContext,
     },
     node_ref::NodeRef,
     params::{Param, WrappedParamType, WrappedStar, matches_params},
@@ -37,8 +37,8 @@ use crate::{
         AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
         FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
         NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind, TypeVarLike,
-        TypeVarVariance, Variance, dataclass_post_init_func, ensure_calculated_dataclass,
-        format_callable_params, merge_class_type_vars,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
+        ensure_calculated_dataclass, format_callable_params, merge_class_type_vars,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
@@ -1053,6 +1053,17 @@ impl Inference<'_, '_, '_> {
             }
         }
 
+        let add_issue_to_arguments =
+            |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue);
+        for base in class_infos.base_types() {
+            check_type_var_variance_for_base(
+                self.i_s,
+                c.node_ref.as_link(),
+                type_vars,
+                base,
+                add_issue_to_arguments,
+            );
+        }
         check_multiple_inheritance(
             self.i_s,
             || class_infos.base_types(),
@@ -1062,7 +1073,7 @@ impl Inference<'_, '_, '_> {
                     .into_maybe_inferred()
                     .is_none()
             },
-            |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue),
+            add_issue_to_arguments,
         );
 
         let i_s = self.i_s.with_class_context(&c);
@@ -3186,25 +3197,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                 continue;
             }
         };
-        for (type_var_like, arg) in cls1
-            .use_cached_type_vars(db)
-            .iter()
-            .zip(cls1.generics().iter(i_s.db))
-        {
-            if let Generic::TypeArg(t) = arg
-                && let Type::TypeVar(tv) = t.as_ref()
-                && let TypeVarLike::TypeVar(tv_def) = type_var_like
-                && matches!(
-                    tv.type_var.variance,
-                    TypeVarVariance::Known(Variance::Covariant | Variance::Contravariant)
-                )
-                && tv.type_var.variance != tv_def.variance
-            {
-                add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
-                    type_var_name: tv.type_var.name(db).into(),
-                });
-            }
-        }
+
         let instance1 = Instance::new(cls1, None);
         for base2 in bases().skip(i + 1) {
             let instance2 = match base2.maybe_class(db) {
@@ -3310,6 +3303,57 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                     }
                 }
             });
+        }
+    }
+}
+
+fn check_type_var_variance_for_base(
+    i_s: &InferenceState,
+    in_definition: PointLink,
+    type_vars: &TypeVarLikes,
+    base: &Type,
+    mut add_issue: impl FnMut(IssueKind),
+) {
+    for (i, check_type_var) in type_vars.iter().enumerate() {
+        let TypeVarLike::TypeVar(tv) = check_type_var else {
+            continue;
+        };
+        let TypeVarVariance::Known(tv_variance @ (Variance::Covariant | Variance::Contravariant)) =
+            tv.variance
+        else {
+            continue;
+        };
+        let replace_type_var_with_object = |t: &Type| {
+            t.replace_type_var_likes(i_s.db, &mut |usage| {
+                (usage.index() == i.into() && usage.in_definition() == in_definition).then(|| {
+                    match usage {
+                        TypeVarLikeUsage::TypeVar(_) => {
+                            GenericItem::TypeArg(i_s.db.python_state.object_type())
+                        }
+                        _ => {
+                            unreachable!(
+                                "Variance should never be inferred for ParamSpec/TypeVarTuple"
+                            )
+                        }
+                    }
+                })
+            })
+        };
+
+        if let Some(with_object_t) = replace_type_var_with_object(base) {
+            let co = base.is_simple_sub_type_of(i_s, &with_object_t).bool();
+            let contra = with_object_t.is_simple_sub_type_of(i_s, base).bool();
+            let expected_variance = match (co, contra) {
+                (false, true) => Variance::Contravariant,
+                (false, false) => Variance::Invariant,
+                (true, false) => Variance::Covariant,
+                (true, true) => continue,
+            };
+            if expected_variance != tv_variance {
+                add_issue(IssueKind::TypeVarVarianceIncompatibleWithParentType {
+                    type_var_name: check_type_var.name(i_s.db).into(),
+                });
+            }
         }
     }
 }
