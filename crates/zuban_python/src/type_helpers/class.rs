@@ -1674,32 +1674,14 @@ impl<'db: 'a, 'a> Class<'a> {
         let i_s = &InferenceState::new(db, file);
 
         let in_definition = self.node_ref.as_link();
-        let replace_type_var_with_object = |t: &Type| {
-            t.replace_type_var_likes(db, &mut |usage| {
-                (usage.index() == type_var_index && usage.in_definition() == in_definition).then(
-                    || match usage {
-                        TypeVarLikeUsage::TypeVar(_) => {
-                            GenericItem::TypeArg(db.python_state.object_type())
-                        }
-                        _ => {
-                            unreachable!(
-                                "Variance should never be inferred for ParamSpec/TypeVarTuple"
-                            )
-                        }
-                    },
-                )
-            })
-        };
-
-        // Infer variance from base classes
 
         // We intentionally don't use self.bases(db) here, because we want the bare type objects to
         // work with.
         let class_infos = self.use_cached_class_infos(db);
-        let bases = class_infos.mro.iter().filter(|&b| b.is_direct_base);
-        for base in bases {
-            let base_t = &base.type_;
-            if let Some(with_object_t) = replace_type_var_with_object(base_t) {
+        let typevar_to_object =
+            |base_t: &_| replace_type_var_with_object(db, in_definition, type_var_index, base_t);
+        for base_t in class_infos.base_types() {
+            if let Some(with_object_t) = typevar_to_object(base_t) {
                 if !base_t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
                     co = false
                 }
@@ -1829,7 +1811,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some((inf, attr_kind)) = lookup_member(name, node_index, is_self_table) {
                     // Mypy allows return types to be the current class.
                     let t = self.erase_return_self_type(inf.as_cow_type(i_s));
-                    if let Some(with_object_t) = replace_type_var_with_object(&t) {
+                    if let Some(with_object_t) = typevar_to_object(&t) {
                         if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
                             co = false
                         }
@@ -2153,6 +2135,24 @@ impl fmt::Debug for Class<'_> {
             .field("type_var_remap", &self.type_var_remap)
             .finish()
     }
+}
+
+pub(crate) fn replace_type_var_with_object(
+    db: &Database,
+    in_definition: PointLink,
+    type_var_index: TypeVarIndex,
+    t: &Type,
+) -> Option<Type> {
+    t.replace_type_var_likes(db, &mut |usage| {
+        (usage.index() == type_var_index && usage.in_definition() == in_definition).then(|| {
+            match usage {
+                TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArg(db.python_state.object_type()),
+                _ => {
+                    unreachable!("Variance should never be inferred for ParamSpec/TypeVarTuple")
+                }
+            }
+        })
+    })
 }
 
 pub(crate) enum ClassExecutionResult {

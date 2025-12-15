@@ -10,6 +10,7 @@ pub(crate) use bound_method::{BoundMethod, BoundMethodFunction};
 pub(crate) use callable::{Callable, FuncLike};
 pub(crate) use class::{
     Class, ClassExecutionResult, ClassLookupOptions, MroIterator, TypeOrClass, cache_class_name,
+    replace_type_var_with_object,
 };
 pub(crate) use function::{
     FirstParamKind, FirstParamProperties, Function, GeneratorType, is_private,

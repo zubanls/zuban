@@ -37,12 +37,13 @@ use crate::{
         AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
         FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
         NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
+        TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
         ensure_calculated_dataclass, format_callable_params, merge_class_type_vars,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
         Instance, InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,
+        replace_type_var_with_object,
     },
     utils::debug_indent,
 };
@@ -3323,24 +3324,9 @@ fn check_type_var_variance_for_base(
         else {
             continue;
         };
-        let replace_type_var_with_object = |t: &Type| {
-            t.replace_type_var_likes(i_s.db, &mut |usage| {
-                (usage.index() == i.into() && usage.in_definition() == in_definition).then(|| {
-                    match usage {
-                        TypeVarLikeUsage::TypeVar(_) => {
-                            GenericItem::TypeArg(i_s.db.python_state.object_type())
-                        }
-                        _ => {
-                            unreachable!(
-                                "Variance should never be inferred for ParamSpec/TypeVarTuple"
-                            )
-                        }
-                    }
-                })
-            })
-        };
-
-        if let Some(with_object_t) = replace_type_var_with_object(base) {
+        if let Some(with_object_t) =
+            replace_type_var_with_object(i_s.db, in_definition, i.into(), base)
+        {
             let co = base.is_simple_sub_type_of(i_s, &with_object_t).bool();
             let contra = with_object_t.is_simple_sub_type_of(i_s, base).bool();
             let expected_variance = match (co, contra) {
