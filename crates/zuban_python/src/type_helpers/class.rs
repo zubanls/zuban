@@ -2140,16 +2140,14 @@ pub(crate) fn check_type_var_variance_validity_for_type(
     base_t: &Type,
 ) -> Option<CoContra> {
     let with_object_t = base_t.replace_type_var_likes(i_s.db, &mut |usage| {
-        (usage.index() == type_var_index && usage.in_definition() == in_definition).then(|| {
-            match usage {
-                TypeVarLikeUsage::TypeVar(_) => {
-                    GenericItem::TypeArg(i_s.db.python_state.object_type())
-                }
-                _ => {
-                    unreachable!("Variance should never be inferred for ParamSpec/TypeVarTuple")
-                }
-            }
-        })
+        if usage.index() == type_var_index
+            && usage.in_definition() == in_definition
+            && let TypeVarLikeUsage::TypeVar(_) = usage
+        {
+            Some(GenericItem::TypeArg(i_s.db.python_state.object_type()))
+        } else {
+            None
+        }
     })?;
     Some(CoContra {
         co: base_t.is_simple_sub_type_of(i_s, &with_object_t).bool(),
