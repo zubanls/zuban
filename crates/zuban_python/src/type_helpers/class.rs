@@ -1035,10 +1035,8 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'a>> {
         let generics = self.generics;
         self.use_cached_class_infos(db)
-            .mro
-            .iter()
-            .filter(|&b| b.is_direct_base)
-            .map(move |b| apply_generics_to_base_class(db, &b.type_, generics))
+            .base_types()
+            .map(move |b| apply_generics_to_base_class(db, b, generics))
     }
     pub fn class_in_mro(&self, db: &'db Database, node_ref: ClassNodeRef) -> Option<Class<'_>> {
         for (_, type_or_cls) in self.mro(db) {

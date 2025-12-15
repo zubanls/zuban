@@ -1055,7 +1055,7 @@ impl Inference<'_, '_, '_> {
 
         check_multiple_inheritance(
             self.i_s,
-            || c.bases(db),
+            || class_infos.base_types(),
             // Don't check symbols if they are part of the instance that we are currently using.
             |name| {
                 c.lookup_symbol(self.i_s, name)
@@ -3171,7 +3171,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
     }
 }
 
-pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
+pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
     i_s: &InferenceState,
     bases: impl Fn() -> BASES,
     should_check: impl Fn(&str) -> bool,
@@ -3179,9 +3179,9 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
 ) {
     let db = i_s.db;
     for (i, base1) in bases().enumerate() {
-        let cls1 = match base1 {
-            TypeOrClass::Class(c) => c,
-            TypeOrClass::Type(_) => {
+        let cls1 = match base1.maybe_class(db) {
+            Some(c) => c,
+            None => {
                 debug!("TODO check complex base types");
                 continue;
             }
@@ -3207,9 +3207,9 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
         }
         let instance1 = Instance::new(cls1, None);
         for base2 in bases().skip(i + 1) {
-            let instance2 = match base2 {
-                TypeOrClass::Class(c) => Instance::new(c, None),
-                TypeOrClass::Type(_) => continue,
+            let instance2 = match base2.maybe_class(db) {
+                Some(c) => Instance::new(c, None),
+                None => continue,
             };
             instance1.run_on_symbols(|name| {
                 if let Some(inner) = name.strip_prefix("__") {
@@ -3240,8 +3240,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                 let mut add_multi_inheritance_issue = || {
                     add_issue(IssueKind::MultipleInheritanceIncompatibility {
                         name: name.into(),
-                        class1: base1.name(db).into(),
-                        class2: base2.name(db).into(),
+                        class1: cls1.name().into(),
+                        class2: instance2.class.name().into(),
                     })
                 };
                 if had_lookup_issue.get() {
@@ -3266,7 +3266,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                         if inst2_lookup.attr_kind.is_final() {
                             add_issue(IssueKind::CannotOverrideFinalAttribute {
                                 name: name.into(),
-                                base_class: base2.name(db).into(),
+                                base_class: instance2.class.name().into(),
                             });
                             return;
                         }
@@ -3301,8 +3301,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = TypeOrClass<'x>>>(
                                 add_issue(
                                     IssueKind::CannotOverrideWritableAttributeWithReadOnlyProperty {
                                         name: name.into(),
-                                        base_class: base2.name(db).into(),
-                                        other_class: base1.name(db).into(),
+                                        base_class: instance2.class.name().into(),
+                                        other_class: cls1.name().into(),
                                     },
                                 );
                             }

@@ -1758,6 +1758,13 @@ impl ClassInfos {
     pub fn set_promote_to(&self, link: Option<PointLink>) {
         *self.promote_to.lock().unwrap() = link
     }
+
+    pub fn base_types(&self) -> impl Iterator<Item = &'_ Type> {
+        self.mro
+            .iter()
+            .filter(|&b| b.is_direct_base)
+            .map(|b| &b.type_)
+    }
 }
 
 impl std::cmp::PartialEq for ClassStorage {

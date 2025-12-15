@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, sync::Arc};
+use std::{cell::Cell, sync::Arc};
 
 use crate::{
     arguments::Args,
@@ -9,7 +9,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{IteratorContent, OnTypeError, ResultContext},
-    type_helpers::{LookupDetails, TypeOrClass},
+    type_helpers::LookupDetails,
 };
 
 use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry, UnionType};
@@ -172,14 +172,7 @@ impl Intersection {
         let check_multi_inheritance = |intersection: &Self, had_issue: &mut _| {
             check_multiple_inheritance(
                 i_s,
-                || {
-                    intersection
-                        .iter_entries()
-                        .map(|t| match t.maybe_class(i_s.db) {
-                            Some(c) => TypeOrClass::Class(c),
-                            None => TypeOrClass::Type(Cow::Borrowed(t)),
-                        })
-                },
+                || intersection.iter_entries(),
                 |_| true,
                 |_| *had_issue = true,
             );
