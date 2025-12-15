@@ -42,8 +42,8 @@ use crate::{
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
-        Instance, InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,
-        replace_type_var_with_object,
+        Instance, InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name,
+        check_type_var_variance_validity_for_type, is_private,
     },
     utils::debug_indent,
 };
@@ -3324,12 +3324,10 @@ fn check_type_var_variance_for_base(
         else {
             continue;
         };
-        if let Some(with_object_t) =
-            replace_type_var_with_object(i_s.db, in_definition, i.into(), base)
+        if let Some(co_contra) =
+            check_type_var_variance_validity_for_type(i_s, in_definition, i.into(), base)
         {
-            let co = base.is_simple_sub_type_of(i_s, &with_object_t).bool();
-            let contra = with_object_t.is_simple_sub_type_of(i_s, base).bool();
-            let expected_variance = match (co, contra) {
+            let expected_variance = match (co_contra.co, co_contra.contra) {
                 (false, true) => Variance::Contravariant,
                 (false, false) => Variance::Invariant,
                 (true, false) => Variance::Covariant,

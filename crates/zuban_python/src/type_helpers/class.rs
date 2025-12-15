@@ -1678,16 +1678,13 @@ impl<'db: 'a, 'a> Class<'a> {
         // We intentionally don't use self.bases(db) here, because we want the bare type objects to
         // work with.
         let class_infos = self.use_cached_class_infos(db);
-        let typevar_to_object =
-            |base_t: &_| replace_type_var_with_object(db, in_definition, type_var_index, base_t);
+        let check_t = |base_t: &_| {
+            check_type_var_variance_validity_for_type(i_s, in_definition, type_var_index, base_t)
+        };
         for base_t in class_infos.base_types() {
-            if let Some(with_object_t) = typevar_to_object(base_t) {
-                if !base_t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
-                    co = false
-                }
-                if !with_object_t.is_simple_sub_type_of(i_s, base_t).bool() {
-                    contra = false;
-                }
+            if let Some(co_contra) = check_t(base_t) {
+                co &= co_contra.co;
+                contra &= co_contra.contra;
                 if !co && !contra {
                     return Variance::Invariant;
                 }
@@ -1811,11 +1808,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some((inf, attr_kind)) = lookup_member(name, node_index, is_self_table) {
                     // Mypy allows return types to be the current class.
                     let t = self.erase_return_self_type(inf.as_cow_type(i_s));
-                    if let Some(with_object_t) = typevar_to_object(&t) {
-                        if !t.is_simple_sub_type_of(i_s, &with_object_t).bool() {
-                            co = false
-                        }
-                        if !with_object_t.is_simple_sub_type_of(i_s, &t).bool() {
+                    if let Some(co_contra) = check_t(&t) {
+                        co &= co_contra.co;
+                        contra &= co_contra.contra;
+                        if !co_contra.contra {
                             contra = false;
                             // Attributes starting with _ are considered private and the variance
                             // of them are inferred as such.
@@ -2137,22 +2133,33 @@ impl fmt::Debug for Class<'_> {
     }
 }
 
-pub(crate) fn replace_type_var_with_object(
-    db: &Database,
+pub(crate) fn check_type_var_variance_validity_for_type(
+    i_s: &InferenceState,
     in_definition: PointLink,
     type_var_index: TypeVarIndex,
-    t: &Type,
-) -> Option<Type> {
-    t.replace_type_var_likes(db, &mut |usage| {
+    base_t: &Type,
+) -> Option<CoContra> {
+    let with_object_t = base_t.replace_type_var_likes(i_s.db, &mut |usage| {
         (usage.index() == type_var_index && usage.in_definition() == in_definition).then(|| {
             match usage {
-                TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArg(db.python_state.object_type()),
+                TypeVarLikeUsage::TypeVar(_) => {
+                    GenericItem::TypeArg(i_s.db.python_state.object_type())
+                }
                 _ => {
                     unreachable!("Variance should never be inferred for ParamSpec/TypeVarTuple")
                 }
             }
         })
+    })?;
+    Some(CoContra {
+        co: base_t.is_simple_sub_type_of(i_s, &with_object_t).bool(),
+        contra: with_object_t.is_simple_sub_type_of(i_s, base_t).bool(),
     })
+}
+
+pub(crate) struct CoContra {
+    pub co: bool,
+    pub contra: bool,
 }
 
 pub(crate) enum ClassExecutionResult {
