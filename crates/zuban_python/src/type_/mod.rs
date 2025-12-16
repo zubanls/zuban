@@ -583,6 +583,24 @@ impl Type {
         }
     }
 
+    pub fn maybe_union_like_with_materializations<'x>(
+        &'x self,
+        db: &'x Database,
+    ) -> Option<Cow<'x, UnionType>> {
+        self.maybe_union_like(db).or_else(|| match self {
+            Type::Class(c) if c.link == db.python_state.bool_link() => {
+                Some(Cow::Owned(UnionType::from_types(
+                    vec![
+                        Type::Literal(Literal::new_implicit(LiteralKind::Bool(true))),
+                        Type::Literal(Literal::new_implicit(LiteralKind::Bool(false))),
+                    ],
+                    false,
+                )))
+            }
+            _ => None,
+        })
+    }
+
     pub fn is_calculating(&self, db: &Database) -> bool {
         match self {
             Type::Class(c) => c.class(db).is_calculating_class_infos(),

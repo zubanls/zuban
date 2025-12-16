@@ -197,7 +197,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             );
             return OverloadResult::Single(callable);
         }
-        if first_similar.is_none() && args.has_a_union_argument(i_s) {
+        if first_similar.is_none() && args.should_do_union_math_for_overloads(i_s) {
             let mut non_union_args = vec![];
             match self.check_union_math(
                 i_s,
@@ -327,7 +327,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     recursion_depth,
                 );
             };
-            if let Some(u) = inf.as_cow_type(i_s).maybe_union_like(i_s.db) {
+            if let Some(u) = inf
+                .as_cow_type(i_s)
+                .maybe_union_like_with_materializations(i_s.db)
+            {
                 // This unsafe feels very bad, but it seems to be fine, because we don't reuse the
                 // argument we add here outside of this function. It is only ever used in recursive
                 // function calls of this function.

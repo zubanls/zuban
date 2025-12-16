@@ -47,10 +47,17 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         // avoid overload context inference issues.
     }
 
-    fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
+    fn should_do_union_math_for_overloads(&self, i_s: &InferenceState<'db, '_>) -> bool {
         for arg in self.iter(i_s.mode) {
             if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown)
-                && inf.is_union_like(i_s)
+                && {
+                    let t = inf.as_cow_type(i_s);
+                    t.is_union_like(i_s.db)
+                        || match t.as_ref() {
+                            Type::Class(c) => c.link == i_s.db.python_state.bool_link(),
+                            _ => false,
+                        }
+                }
             {
                 return true;
             }

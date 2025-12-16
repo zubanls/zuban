@@ -1010,3 +1010,19 @@ def func4(val: int):
         reveal_type(val)  # N: Revealed type is "int"
     else:
         reveal_type(val)  # N: Revealed type is "int"
+
+
+[case bool_union_math_overloads]
+# Copied from conformance tests (overloads_evaluation.py)
+from typing import overload, Literal, assert_type
+@overload
+def expand_bool(x: Literal[False]) -> Literal[0]: ...
+@overload
+def expand_bool(x: Literal[True]) -> Literal[1]: ...
+def expand_bool(x: bool) -> int:
+    return int(x)
+
+
+def check_expand_bool(v: bool) -> None:
+    ret1 = expand_bool(v)
+    assert_type(ret1, Literal[0, 1])
