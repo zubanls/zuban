@@ -587,7 +587,7 @@ impl Type {
         &'x self,
         db: &'x Database,
     ) -> Option<Cow<'x, UnionType>> {
-        const MAX_ENUM_MEMBERS_MATERIALIZATIONS: usize = 20;
+        const MAX_MATERIALIZATIONS: usize = 20;
         self.maybe_union_like(db).or_else(|| {
             Some(Cow::Owned(UnionType::from_types(
                 match self {
@@ -597,9 +597,50 @@ impl Type {
                             Type::Literal(Literal::new_implicit(LiteralKind::Bool(false))),
                         ]
                     }
-                    Type::Enum(e) if e.members.len() < MAX_ENUM_MEMBERS_MATERIALIZATIONS => {
+                    Type::Enum(e) if e.members.len() < MAX_MATERIALIZATIONS => {
                         Enum::implicit_members(e).map(Type::EnumMember).collect()
                     }
+                    Type::Tuple(tup) => match &tup.args {
+                        TupleArgs::FixedLen(items) => {
+                            let union_for_each_entry: Vec<_> = items
+                                .iter()
+                                .map(|t| t.maybe_union_like_with_materializations(db))
+                                .collect();
+                            if union_for_each_entry.iter().all(|x| x.is_none()) {
+                                return None;
+                            }
+                            let mut new_tuples = vec![vec![]];
+                            for (tuple_index, maybe_union) in
+                                union_for_each_entry.into_iter().enumerate()
+                            {
+                                if let Some(union_split_up) = maybe_union {
+                                    let original_len = new_tuples.len();
+                                    if new_tuples.len() * original_len > MAX_MATERIALIZATIONS {
+                                        return None;
+                                    }
+                                    let union_len = union_split_up.entries.len();
+                                    for _ in 0..union_len - 1 {
+                                        new_tuples.extend_from_within(0..original_len);
+                                    }
+                                    for j in 0..original_len {
+                                        for (k, add_t) in union_split_up.iter().enumerate() {
+                                            new_tuples[j * original_len + k].push(add_t.clone());
+                                        }
+                                    }
+                                } else {
+                                    let new = &items[tuple_index];
+                                    for new_tuple in &mut new_tuples {
+                                        new_tuple.push(new.clone());
+                                    }
+                                }
+                            }
+                            new_tuples
+                                .into_iter()
+                                .map(|ts| Type::Tuple(Tuple::new_fixed_length(Arc::from(ts))))
+                                .collect()
+                        }
+                        _ => return None,
+                    },
                     _ => return None,
                 },
                 false,

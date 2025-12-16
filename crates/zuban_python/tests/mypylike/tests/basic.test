@@ -841,6 +841,7 @@ def f(x: list[bytes] | list[str]):
     reveal_type(y)  # N: Revealed type is "tuple[int | bytes | str, ...]"
 
 [case invalid_star_star_context]
+# flags: --mypy-compatible
 x: dict[int, str] = {**{}}
 y: dict[int, bytes] = {**x}  # E: Unpacked dict entry 0 has incompatible type "dict[int, str]"; expected "SupportsKeysAndGetItem[int, bytes]"
 

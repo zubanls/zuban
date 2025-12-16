@@ -1045,3 +1045,18 @@ def expand_enum(x: Color) -> int:
 def check_expand_enum(v: Color) -> None:
     ret1 = expand_enum(v)
     assert_type(ret1, Literal[0, 1])
+
+[case enum_tuple_union_math_overloads]
+# flags: --no-mypy-compatible
+# Copied from conformance tests (overloads_evaluation.py)
+from typing import overload, Literal, assert_type
+@overload
+def expand_tuple(x: tuple[int, int]) -> int: ...
+@overload
+def expand_tuple(x: tuple[int, str]) -> str: ...
+def expand_tuple(x: tuple[int, int | str]) -> int | str:
+    return 1
+
+def check_expand_tuple(v: int | str) -> None:
+    ret1 = expand_tuple((1, v))
+    assert_type(ret1, int | str)

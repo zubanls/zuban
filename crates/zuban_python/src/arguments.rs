@@ -16,7 +16,7 @@ use crate::{
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
-    type_::{IterCause, ParamSpecUsage, StringSlice, Type, TypedDict, WithUnpack},
+    type_::{IterCause, ParamSpecUsage, StringSlice, TupleArgs, Type, TypedDict, WithUnpack},
 };
 
 pub(crate) trait Args<'db>: std::fmt::Debug {
@@ -56,6 +56,12 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
                         || match t.as_ref() {
                             Type::Class(c) => c.link == i_s.db.python_state.bool_link(),
                             Type::Enum(_) => true,
+                            Type::Tuple(tup) => match &tup.args {
+                                TupleArgs::FixedLen(items) => {
+                                    items.iter().any(|t| t.is_union_like(i_s.db))
+                                }
+                                _ => false,
+                            },
                             _ => false,
                         }
                 }

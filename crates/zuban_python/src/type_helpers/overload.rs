@@ -197,7 +197,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             );
             return OverloadResult::Single(callable);
         }
-        if first_similar.is_none() && args.should_do_union_math_for_overloads(i_s) {
+        // Mypy has a bit of a different way of working than the conformance tests
+        if (first_similar.is_none() || !i_s.db.project.settings.mypy_compatible)
+            && args.should_do_union_math_for_overloads(i_s)
+        {
             let mut non_union_args = vec![];
             match self.check_union_math(
                 i_s,
