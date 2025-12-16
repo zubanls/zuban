@@ -1011,7 +1011,6 @@ def func4(val: int):
     else:
         reveal_type(val)  # N: Revealed type is "int"
 
-
 [case bool_union_math_overloads]
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, Literal, assert_type
@@ -1025,4 +1024,24 @@ def expand_bool(x: bool) -> int:
 
 def check_expand_bool(v: bool) -> None:
     ret1 = expand_bool(v)
+    assert_type(ret1, Literal[0, 1])
+
+[case enum_union_math_overloads]
+# Copied from conformance tests (overloads_evaluation.py)
+from typing import overload, Literal, assert_type
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    BLUE = 1
+
+@overload
+def expand_enum(x: Literal[Color.RED]) -> Literal[0]: ...
+@overload
+def expand_enum(x: Literal[Color.BLUE]) -> Literal[1]: ...
+def expand_enum(x: Color) -> int:
+    return x.value
+
+def check_expand_enum(v: Color) -> None:
+    ret1 = expand_enum(v)
     assert_type(ret1, Literal[0, 1])

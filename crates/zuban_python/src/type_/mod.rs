@@ -587,17 +587,23 @@ impl Type {
         &'x self,
         db: &'x Database,
     ) -> Option<Cow<'x, UnionType>> {
-        self.maybe_union_like(db).or_else(|| match self {
-            Type::Class(c) if c.link == db.python_state.bool_link() => {
-                Some(Cow::Owned(UnionType::from_types(
-                    vec![
-                        Type::Literal(Literal::new_implicit(LiteralKind::Bool(true))),
-                        Type::Literal(Literal::new_implicit(LiteralKind::Bool(false))),
-                    ],
-                    false,
-                )))
-            }
-            _ => None,
+        const MAX_ENUM_MEMBERS_MATERIALIZATIONS: usize = 20;
+        self.maybe_union_like(db).or_else(|| {
+            Some(Cow::Owned(UnionType::from_types(
+                match self {
+                    Type::Class(c) if c.link == db.python_state.bool_link() => {
+                        vec![
+                            Type::Literal(Literal::new_implicit(LiteralKind::Bool(true))),
+                            Type::Literal(Literal::new_implicit(LiteralKind::Bool(false))),
+                        ]
+                    }
+                    Type::Enum(e) if e.members.len() < MAX_ENUM_MEMBERS_MATERIALIZATIONS => {
+                        Enum::implicit_members(e).map(Type::EnumMember).collect()
+                    }
+                    _ => return None,
+                },
+                false,
+            )))
         })
     }
 

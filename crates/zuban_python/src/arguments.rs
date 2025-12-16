@@ -55,6 +55,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
                     t.is_union_like(i_s.db)
                         || match t.as_ref() {
                             Type::Class(c) => c.link == i_s.db.python_state.bool_link(),
+                            Type::Enum(_) => true,
                             _ => false,
                         }
                 }
