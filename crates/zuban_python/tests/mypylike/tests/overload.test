@@ -1060,3 +1060,22 @@ def expand_tuple(x: tuple[int, int | str]) -> int | str:
 def check_expand_tuple(v: int | str) -> None:
     ret1 = expand_tuple((1, v))
     assert_type(ret1, int | str)
+
+[case any_exclusion_of_some_funcs]
+# Copied from conformance tests (overloads_evaluation.py)
+from typing import overload, assert_type, Any
+@overload
+def example4(x: list[int], y: int) -> list[int]: ...
+@overload
+def example4(x: list[str], y: str) -> list[int]: ...
+@overload
+def example4(x: int, y: int) -> list[str]: ...
+def example4(x: list[int] | list[str] | int, y: int | str) -> list[int] | list[str]:
+    return []
+
+def check_example4(v1: list[Any], v2: Any) -> None:
+    ret1 = example4(v1, v2)
+    assert_type(ret1, list[int])
+
+    ret2 = example4(v2, 1)
+    assert_type(ret2, list[Any])

@@ -111,7 +111,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         };
         let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
-        let mut multi_any_match: Option<(_, Box<_>)> = None;
+        let mut multi_any_match: Option<(Callable, Box<_>)> = None;
         let mut had_error_in_func = None;
         let points_backup = args.points_backup();
         for (i, callable) in self.overload.iter_functions().enumerate() {
@@ -150,11 +150,19 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 SignatureMatch::TrueWithAny { argument_indices } if !had_error => {
                     // TODO there could be three matches or more?
                     // TODO maybe merge list[any] and list[int]
-                    if let Some((_, ref old_indices)) = multi_any_match {
+                    if let Some((other_callable, ref old_indices)) = multi_any_match {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
-                        if are_any_arguments_ambiguous_in_overload(old_indices, &argument_indices) {
+                        if are_any_arguments_ambiguous_in_overload(old_indices, &argument_indices)
+                            // If return type is the same, we don't have to return.
+                            && !(other_callable
+                                .content
+                                .return_type
+                                .is_equal_type(i_s.db, None, &callable.content.return_type)
+                                && callable.content.guard.is_none()
+                                && other_callable.content.guard.is_none())
+                        {
                             debug!("Decided overload as not found, because of 2+ Any matches");
                             args.reset_points_from_backup(&points_backup);
                             return OverloadResult::NotFound;
