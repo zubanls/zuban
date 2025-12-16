@@ -477,3 +477,26 @@ async def generator24() -> AsyncIterable[str]:  # OK
 async def generator30() -> AsyncIterator[int]:
     raise NotImplementedError
     yield
+
+[case historical_positional_conformance_tests]
+# From conformance tests (historical_positional.py)
+
+def f2(x: int, __y: int) -> None: ...  # E: A positional only param starting with two underscores is not allowed after a positional or keyword param
+def f3(x: int, *args: int, __y: int) -> None: ...  # OK
+
+f3(3, __y=3)  # OK
+
+class A:
+    def m1(self, __x: int, __y__: int = 0) -> None: ...
+    def m2(self, x: int, __y: int) -> None: ...  # E: A positional only param starting with two underscores is not allowed after a positional or keyword param
+
+a = A()
+a.m1(3, __y__=1)  # OK
+a.m1(__x=3)  # E: Unexpected keyword argument "__x" for "m1" of "A"
+
+# The historical mechanism should not apply when new-st
+# syntax is used.
+
+def f4(x: int, /, __y: int) -> None: ...  # OK
+
+f4(3, __y=4)  # OK

@@ -434,6 +434,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 needs_callable = true;
             }
         }
+
+        // Make sure the callable is created for private names, because they are a bit special.
+        needs_callable |= self
+            .node()
+            .params()
+            .iter()
+            .any(|param| is_private(param.name_def().as_code()));
+
         if needs_callable || type_guard.is_some() {
             let options = AsCallableOptions {
                 first_param: FirstParamProperties::None,
@@ -1552,6 +1560,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         let mut new_params = vec![];
         let file_index = self.node_ref.file_index();
+        let mut had_positional_only = false;
+        let mut had_positional_or_keyword = None;
         for (i, p) in params.enumerate() {
             if p.param.kind() == ParamKind::Star
                 && let Some(ts) = p
@@ -1620,9 +1630,32 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                 })
             };
+            let n = p.param.name_def();
             let param_specific = match specific {
-                WrappedParamType::PositionalOnly(t) => ParamType::PositionalOnly(as_t(t)),
-                WrappedParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(as_t(t)),
+                WrappedParamType::PositionalOnly(t) => {
+                    had_positional_only = true;
+                    ParamType::PositionalOnly(as_t(t))
+                }
+                WrappedParamType::PositionalOrKeyword(t) => {
+                    if is_private(n.as_code()) && !had_positional_only {
+                        // Mypy/conformance tests treat __ params as positional only
+                        if let Some(on_number) = had_positional_or_keyword
+                            // Ignore self
+                            && (on_number != 0 || self.class.is_none())
+                        {
+                            // Generally we shouldn't add issues here when generating the callable.
+                            // However this callable should only be generated once.
+                            NodeRef::new(self.file, p.param.name_def().index()).add_type_issue(
+                                i_s.db,
+                                IssueKind::LegacyPositionalOnlyParamAfterNormal,
+                            )
+                        }
+                        ParamType::PositionalOnly(as_t(t))
+                    } else {
+                        had_positional_or_keyword = Some(i);
+                        ParamType::PositionalOrKeyword(as_t(t))
+                    }
+                }
                 WrappedParamType::KeywordOnly(t) => ParamType::KeywordOnly(as_t(t)),
                 WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => {
                     ParamType::Star(StarParamType::ArbitraryLen(as_t(t)))
@@ -1676,10 +1709,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             new_params.push(CallableParam {
                 type_: param_specific,
                 has_default: p.has_default(),
-                name: Some({
-                    let n = p.param.name_def();
-                    StringSlice::new(file_index, n.start(), n.end()).into()
-                }),
+                name: Some(StringSlice::new(file_index, n.start(), n.end()).into()),
                 might_have_type_vars: p.might_have_type_vars(),
             });
         }
@@ -2178,12 +2208,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     }
 
     fn kind(&self, _: &Database) -> ParamKind {
-        let mut t = self.param.kind();
-        if t == ParamKind::PositionalOrKeyword && is_private(self.param.name_def().as_code()) {
-            // Mypy treats __ params as positional only
-            t = ParamKind::PositionalOnly
-        }
-        t
+        self.param.kind()
     }
 
     fn into_callable_param(self) -> CallableParam {

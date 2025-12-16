@@ -189,6 +189,7 @@ pub(crate) enum IssueKind {
     TypeAliasRightSideNeeded,
     TypeAliasInTypeCommentNotSupported,
     ForwardReferenceUnionsCausesRuntimeError,
+    LegacyPositionalOnlyParamAfterNormal,
 
     FinalTooManyArguments,
     FinalNameMustBeInitializedWithValue,
@@ -1418,6 +1419,8 @@ impl<'db> Diagnostic<'db> {
             ForwardReferenceUnionsCausesRuntimeError =>
                 "Forward reference unions cause runtime errors, consider wrapping the whole \
                  annotation with a string".to_string(),
+            LegacyPositionalOnlyParamAfterNormal =>
+                "A positional only param starting with two underscores is not allowed after a positional or keyword param".to_string(),
 
             FinalTooManyArguments => "Final[...] takes at most one type argument".to_string(),
             FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),
