@@ -2259,6 +2259,7 @@ pub(crate) enum AnyCause {
     Explicit,
     FromError,
     ModuleNotFound,
+    TypeVarReplacement,
     Internal,
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }

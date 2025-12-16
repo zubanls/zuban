@@ -542,3 +542,62 @@ cb1: Proto1 = cb1_good1  # OK
 cb1 = cb1_bad1  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(int | None, 'max_items')], list[bytes]]", variable has type "Proto1")
 cb1 = cb1_bad2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes)], list[bytes]]", variable has type "Proto1")
 cb1 = cb1_bad3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(str | None, 'max_len')], list[bytes]]", variable has type "Proto1")
+
+[case protocol_callable_any_matching]
+# flags: --no-mypy-compatible
+# Copied from conformance tests (callables_annotation.py)
+from typing import Protocol, Any, Callable, Concatenate, ParamSpec, TypeVar
+
+T_contra = TypeVar("T_contra", contravariant=True)
+P = ParamSpec("P")
+
+class Proto1(Protocol):
+    def __call__(self, *args: Any, **kwargs: Any) -> None: ...
+
+class Proto2(Protocol):
+    def __call__(self, a: int, /, *args, **kwargs) -> None: ...
+
+class Proto3(Protocol):
+    def __call__(self, a: int, *args: Any, **kwargs: Any) -> None: ...
+
+class Proto4(Protocol[P]):
+    def __call__(self, a: int, *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+class Proto5(Protocol[T_contra]):
+    def __call__(self, *args: T_contra, **kwargs: T_contra) -> None: ...
+
+class Proto6(Protocol):
+    def __call__(self, a: int, /, *args: Any, k: str, **kwargs: Any) -> None:
+        pass
+
+class Proto7(Protocol):
+    def __call__(self, a: float, /, b: int, *, k: str, m: str) -> None:
+        pass
+
+class Proto8(Protocol):
+    def __call__(self) -> None: ...
+
+def func5(
+    p1: Proto1,
+    p2: Proto2,
+    p3: Proto3,
+    p4: Proto4[...],
+    p5: Proto5[Any],
+    p7: Proto7,
+    p8: Proto8,
+    c1: Callable[..., None],
+    c2: Callable[Concatenate[int, ...], None],
+):
+    ok1: Callable[..., None] = p1  # OK
+    ok2: Proto1 = c1  # OK
+    ok3: Callable[..., None] = p5  # OK
+    ok4: Proto5[Any] = c1  # OK
+    ok5: Callable[Concatenate[int, ...], None] = p2  # OK
+    ok6: Proto2 = c2  # OK
+    ok7: Callable[..., None] = p3  # OK
+    ok8: Proto3 = c1  # OK
+    ok9: Proto4[...] = p3  # OK
+    ok10: Proto3 = p4  # OK
+    ok11: Proto6 = p7  # OK
+
+    err1: Proto5[Any] = p8  # E: 

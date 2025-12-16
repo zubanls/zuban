@@ -480,7 +480,7 @@ pub fn matches_simple_params<
                         }
                         _ => {
                             if !matcher.precise_matching
-                                && is_trivial_suffix(i_s.db, specific1, params1.next(), params2)
+                                && is_trivial_suffix(i_s.db, specific1, params1, params2)
                             {
                                 debug!("Matched because of trivial suffix");
                                 return matches;
@@ -581,7 +581,7 @@ pub fn matches_simple_params<
                 }
                 specific1 => {
                     if !matcher.precise_matching
-                        && is_trivial_suffix(i_s.db, specific1, params1.next(), params2)
+                        && is_trivial_suffix(i_s.db, specific1, params1, params2)
                     {
                         debug!("Matched because of trivial suffix (too few params)");
                         return matches;
@@ -679,8 +679,8 @@ fn params1_matches_unpacked_dict<'db: 'x, 'x>(
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
     db: &'db Database,
     p1: WrappedParamType,
-    p2: Option<P1>,
-    mut params2: Peekable<impl Iterator<Item = P2> + Clone>,
+    mut params1: impl Iterator<Item = P1>,
+    mut params2: Peekable<impl Iterator<Item = P2>>,
 ) -> bool {
     // Mypy allows matching anything if the function ends with *args: Any, **kwargs: Any
     // This is described in Mypy's commit f41e24c8b31a110c2f01a753acba458977e41bfc
@@ -692,9 +692,9 @@ fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
         None => true,
     };
 
-    let Some(p2) = p2 else {
+    let mut on_only_star_args = || {
         // Mypy also allows *args: Any to be overwritten by positional arguments
-        return is_any(&star_t)
+        is_any(&star_t)
             && params2.all(|p| {
                 matches!(
                     p.specific(db),
@@ -702,14 +702,31 @@ fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
                         | WrappedParamType::PositionalOrKeyword(_)
                         | WrappedParamType::Star(_)
                 )
-            });
+            })
     };
-    let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = p2.specific(db)
-    else {
-        return false;
-    };
+    if db.project.settings.mypy_compatible {
+        let Some(p2) = params1.next() else {
+            return on_only_star_args();
+        };
+        let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = p2.specific(db)
+        else {
+            return false;
+        };
 
-    is_any(&star_t) && is_any(&star_star_t)
+        is_any(&star_t) && is_any(&star_star_t)
+    } else {
+        // Conformance tests allow *args, <some-keyword-args>, **kwargs to match
+        let mut had_param = false;
+        for p in params1 {
+            had_param = true;
+            if let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) =
+                p.specific(db)
+            {
+                return is_any(&star_star_t);
+            }
+        }
+        !had_param && on_only_star_args()
+    }
 }
 
 fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P>>(

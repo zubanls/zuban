@@ -84,3 +84,30 @@ class ClassA(Generic[Shape]):  # E: Free type variable expected in Generic[...]
 
     def method1(*args: Shape) -> None:  # E: TypeVarTuple "Shape" is only valid with an unpack
         ...
+
+[case copied_testAliasToCallableWithUnpack]
+# We want to ensure this does not fail for no-mypy-compatible mode, because
+# *args/**kwargs handling is a bit specialized for those two modes.
+from typing import Any, Callable, Tuple, Unpack
+
+_CallableValue = Callable[[Unpack[Tuple[Any, ...]]], Any]
+def higher_order(f: _CallableValue) -> None: ...
+
+def good1(*args: int) -> None: ...
+def good2(*args: str) -> int: ...
+
+# These are special-cased for *args: Any (as opposite to *args: object)
+def ok1(a: str, b: int, /) -> None: ...
+def ok2(c: bytes, *args: int) -> str: ...
+
+def bad1(*, d: str) -> int: ...
+def bad2(**kwargs: None) -> None: ...
+
+higher_order(good1)
+higher_order(good2)
+
+higher_order(ok1)
+higher_order(ok2)
+
+higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"

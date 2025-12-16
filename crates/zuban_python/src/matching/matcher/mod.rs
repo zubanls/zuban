@@ -121,7 +121,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn without_precise_matching(mut self) -> Self {
+    pub fn with_precise_matching(mut self) -> Self {
         self.precise_matching = true;
         self
     }

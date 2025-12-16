@@ -2555,7 +2555,7 @@ fn is_overload_unmatchable(
     c2: &CallableContent,
 ) -> bool {
     create_matcher_with_independent_type_vars(i_s.db, None, c1, c2, |matcher, c1, c2| {
-        let matcher = &mut matcher.without_precise_matching();
+        let matcher = &mut matcher.with_precise_matching();
         let result = matches_params(i_s, matcher, &c2.params, &c1.params);
         matches!(result, Match::True { with_any: false })
     })
