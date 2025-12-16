@@ -679,7 +679,7 @@ fn params1_matches_unpacked_dict<'db: 'x, 'x>(
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
     db: &'db Database,
     p1: WrappedParamType,
-    mut params1: impl Iterator<Item = P1>,
+    params1: impl Iterator<Item = P1>,
     mut params2: Peekable<impl Iterator<Item = P2>>,
 ) -> bool {
     // Mypy allows matching anything if the function ends with *args: Any, **kwargs: Any
@@ -704,29 +704,17 @@ fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
                 )
             })
     };
-    if db.project.settings.mypy_compatible {
-        let Some(p2) = params1.next() else {
-            return on_only_star_args();
-        };
-        let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = p2.specific(db)
-        else {
-            return false;
-        };
-
-        is_any(&star_t) && is_any(&star_star_t)
-    } else {
-        // Conformance tests allow *args, <some-keyword-args>, **kwargs to match
-        let mut had_param = false;
-        for p in params1 {
-            had_param = true;
-            if let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) =
-                p.specific(db)
-            {
-                return is_any(&star_star_t);
-            }
+    // Conformance tests allow *args, <some-keyword-args>, **kwargs to match, Mypy doesn't allow
+    // this currently, but it should probably not matter too much.
+    let mut had_param = false;
+    for p in params1 {
+        had_param = true;
+        if let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = p.specific(db)
+        {
+            return is_any(&star_star_t);
         }
-        !had_param && on_only_star_args()
     }
+    !had_param && on_only_star_args()
 }
 
 fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P>>(
