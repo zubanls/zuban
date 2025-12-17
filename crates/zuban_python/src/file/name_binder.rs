@@ -1608,7 +1608,9 @@ impl<'db> NameBinder<'db> {
                     self.db_infos.file_index,
                     name_def.name_index(),
                     Locality::NameBinder,
-                );
+                )
+                .with_needs_flow_analysis(true);
+
                 self.db_infos.points.set(name.index(), point);
                 return true;
             }
