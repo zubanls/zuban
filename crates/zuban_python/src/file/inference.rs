@@ -1421,15 +1421,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let maybe_complex_def = maybe_saved.and_then(|n| n.maybe_complex());
             // This is mostly to make it clear that things like NewType/TypeVars are special
             // and cannot be redefined
-            let is_special_def = !matches!(
-                maybe_complex_def,
-                None | Some(
+            let is_special_def = match maybe_complex_def {
+                None
+                | Some(
                     ComplexPoint::TypeInstance(_)
-                        | ComplexPoint::IndirectFinal(_)
-                        | ComplexPoint::FunctionOverload(_)
-                        | ComplexPoint::TypeAlias(_)
-                )
-            );
+                    | ComplexPoint::IndirectFinal(_)
+                    | ComplexPoint::FunctionOverload(_)
+                    | ComplexPoint::TypeAlias(_),
+                ) => false,
+                Some(ComplexPoint::TypeVarLike(_)) => i_s.db.project.settings.mypy_compatible,
+                _ => true,
+            };
             let assign_as_new_definition = match assign_kind {
                 AssignKind::Annotation { .. } | AssignKind::TypeAlias => true,
                 AssignKind::Import => {

@@ -286,3 +286,30 @@ class ContraToContraToContra_WithTA_valid(
     Contra_TA[Contra_TA[Contra_TA[T_contra]]]
 ):
     ...
+
+[case narrowing_on_type_vars_from_syntax]
+# flags: --no-mypy-compatible
+from typing import assert_type, TypeVar
+
+T = int(0)
+
+class Outer2[T]:
+    T = int(1)
+
+    assert_type(T, int)
+
+    class Inner1:
+        T = str("")
+
+        assert_type(T, str)
+
+        def inner_method(self):
+            assert_type(T, TypeVar)
+
+    def outer_method(self):
+        T = 3j
+
+        assert_type(T, complex)
+
+        def inner_func():
+            assert_type(T, complex)
