@@ -135,6 +135,7 @@ pub fn matches_simple_params<
     let mut unused_keyword_params: Vec<P2> = vec![];
     let mut mismatched_name_pos_params1: Vec<P1> = vec![];
     let mut mismatched_name_pos_params2: Vec<P2> = vec![];
+    let mut previous_arbitrary_len_match = None;
 
     let mut matches = Match::new_true();
     let mut params1 = params1.peekable();
@@ -403,7 +404,8 @@ pub fn matches_simple_params<
                 WrappedParamType::Star(s1) => match &specific2 {
                     WrappedParamType::Star(s2) => match (s1, s2) {
                         (WrappedStar::ArbitraryLen(t1), WrappedStar::ArbitraryLen(t2)) => {
-                            matches &= match_(i_s, matcher, t1, t2)
+                            matches &= match_(i_s, matcher, t1, t2);
+                            previous_arbitrary_len_match = Some(specific1);
                         }
                         (WrappedStar::UnpackedTuple(tup1), WrappedStar::UnpackedTuple(tup2)) => {
                             matches &= Type::Tuple(tup1.clone()).matches(
@@ -480,7 +482,13 @@ pub fn matches_simple_params<
                         }
                         _ => {
                             if !matcher.precise_matching
-                                && is_trivial_suffix(i_s.db, specific1, params1, params2)
+                                && is_trivial_suffix(
+                                    i_s.db,
+                                    previous_arbitrary_len_match,
+                                    specific1,
+                                    params1,
+                                    params2,
+                                )
                             {
                                 debug!("Matched because of trivial suffix");
                                 return matches;
@@ -579,9 +587,16 @@ pub fn matches_simple_params<
                     matches &= matcher.match_or_add_param_spec(i_s, u1, params2, variance);
                     return matches;
                 }
+                //WrappedParamType::StarStar(WrappedStarStar::ValueType(_)) => {}
                 specific1 => {
                     if !matcher.precise_matching
-                        && is_trivial_suffix(i_s.db, specific1, params1, params2)
+                        && is_trivial_suffix(
+                            i_s.db,
+                            previous_arbitrary_len_match,
+                            specific1,
+                            params1,
+                            params2,
+                        )
                     {
                         debug!("Matched because of trivial suffix (too few params)");
                         return matches;
@@ -678,17 +693,30 @@ fn params1_matches_unpacked_dict<'db: 'x, 'x>(
 
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
     db: &'db Database,
+    previous_arbitrary_len_match: Option<WrappedParamType>,
     p1: WrappedParamType,
     params1: impl Iterator<Item = P1>,
     mut params2: Peekable<impl Iterator<Item = P2>>,
 ) -> bool {
     // Mypy allows matching anything if the function ends with *args: Any, **kwargs: Any
     // This is described in Mypy's commit f41e24c8b31a110c2f01a753acba458977e41bfc
-    let WrappedParamType::Star(WrappedStar::ArbitraryLen(star_t)) = p1 else {
+    let (maybe_star, rest_param) = if let Some(prev) = previous_arbitrary_len_match {
+        (prev, Some(p1))
+    } else {
+        (p1, None)
+    };
+    let rest_specifics = rest_param
+        .into_iter()
+        .chain(params1.map(|p| p.specific(db)));
+    let WrappedParamType::Star(WrappedStar::ArbitraryLen(star_t)) = maybe_star else {
         return false;
     };
     let is_any = |t: &Option<Cow<Type>>| match t {
-        Some(t) => matches!(t.as_ref(), Type::Any(_)),
+        Some(t) => match t.as_ref() {
+            Type::Any(AnyCause::TypeVarReplacement) => false,
+            Type::Any(_) => true,
+            _ => false,
+        },
         None => true,
     };
 
@@ -707,10 +735,9 @@ fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
     // Conformance tests allow *args, <some-keyword-args>, **kwargs to match, Mypy doesn't allow
     // this currently, but it should probably not matter too much.
     let mut had_param = false;
-    for p in params1 {
+    for s in rest_specifics {
         had_param = true;
-        if let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = p.specific(db)
-        {
+        if let WrappedParamType::StarStar(WrappedStarStar::ValueType(star_star_t)) = s {
             return is_any(&star_star_t);
         }
     }

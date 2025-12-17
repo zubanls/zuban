@@ -544,7 +544,6 @@ cb1 = cb1_bad2  # E: Incompatible types in assignment (expression has type "Call
 cb1 = cb1_bad3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(str | None, 'max_len')], list[bytes]]", variable has type "Proto1")
 
 [case protocol_callable_any_matching]
-# flags: --no-mypy-compatible
 # Copied from conformance tests (callables_annotation.py)
 from typing import Protocol, Any, Callable, Concatenate, ParamSpec, TypeVar
 
@@ -600,4 +599,9 @@ def func5(
     ok10: Proto3 = p4  # OK
     ok11: Proto6 = p7  # OK
 
-    err1: Proto5[Any] = p8  # E: 
+    err1: Proto5[Any] = p8  # E: Incompatible types in assignment (expression has type "Proto8", variable has type "Proto5[Any]") \
+                            # N: Following member(s) of "Proto8" have conflicts: \
+                            # N:     Expected: \
+                            # N:         def __call__(self, *args: Any, **kwargs: Any) -> None \
+                            # N:     Got: \
+                            # N:         def __call__(self) -> None

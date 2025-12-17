@@ -908,7 +908,13 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 )))
             }
             Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
-                GenericItem::TypeArg(t) => Some(Some(t)),
+                GenericItem::TypeArg(t) => Some(Some({
+                    if let Type::Any(AnyCause::Explicit) = t {
+                        Type::Any(AnyCause::TypeVarReplacement)
+                    } else {
+                        t
+                    }
+                })),
                 GenericItem::TypeArgs(_) => unreachable!(),
                 GenericItem::ParamSpecArg(_) => unreachable!(),
             },

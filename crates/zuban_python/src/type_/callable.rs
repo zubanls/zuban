@@ -370,29 +370,6 @@ impl CallableParams {
         }
     }
 
-    pub fn is_any_args_and_kwargs(&self) -> bool {
-        let Self::Simple(params) = self else {
-            return false;
-        };
-        let mut iterator = params.iter();
-        let Some(first) = iterator.next() else {
-            return false;
-        };
-        if !matches!(
-            &first.type_,
-            ParamType::Star(StarParamType::ArbitraryLen(Type::Any(_)))
-        ) {
-            return false;
-        }
-        let Some(second) = iterator.next() else {
-            return false;
-        };
-        matches!(
-            &second.type_,
-            ParamType::StarStar(StarStarParamType::ValueType(Type::Any(_)))
-        )
-    }
-
     pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
         let Self::Simple(params) = self else {
             return None;
