@@ -288,7 +288,6 @@ class ContraToContraToContra_WithTA_valid(
     ...
 
 [case narrowing_on_type_vars_from_syntax]
-# flags: --no-mypy-compatible
 from typing import assert_type, TypeVar
 
 T = int(0)

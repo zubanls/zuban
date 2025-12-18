@@ -8,7 +8,9 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
-narrowing_on_type_vars_from_syntax
+testPEP695NonLocalAndGlobal
+testPEP695NestedScopingSpecialCases
+testPEP695ScopingWithBaseClasses
 
 docs_alias
 docs_property

@@ -30,17 +30,20 @@ pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 pub const FUNC_TO_RETURN_OR_YIELD_DIFF: u32 = 1;
 pub const FUNC_TO_TYPE_VAR_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 1;
 const FUNC_TO_PARENT_DIFF: u32 = NAME_TO_FUNCTION_DIFF + 2;
+const TYPE_PARAMS_TO_PARENT_TYPE_PARAMS: u32 = 1;
 
-#[derive(PartialEq, Debug, Copy, Clone)]
-enum NameBinderKind {
+#[derive(Debug, Copy, Clone)]
+enum NameBinderKind<'db> {
     Global,
     Function { is_async: bool },
     Class,
     Lambda,
     Comprehension,
     TypeAlias,
+    TypeParams(TypeParams<'db>),
 }
 
+#[derive(Debug)]
 enum Unresolved<'db> {
     FunctionDef {
         func: FunctionDef<'db>,
@@ -79,10 +82,9 @@ pub(crate) struct DbInfos<'db> {
 
 pub(crate) struct NameBinder<'db> {
     db_infos: DbInfos<'db>,
-    kind: NameBinderKind,
+    kind: NameBinderKind<'db>,
     scope_node: NodeIndex,
     symbol_table: SymbolTable,
-    latest_type_params: Option<TypeParams<'db>>,
     unordered_references: Vec<UnorderedReference<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
@@ -96,7 +98,7 @@ pub(crate) struct NameBinder<'db> {
 impl<'db> NameBinder<'db> {
     fn new(
         db_infos: DbInfos<'db>,
-        kind: NameBinderKind,
+        kind: NameBinderKind<'db>,
         scope_node: NodeIndex,
         parent: Option<*mut Self>,
     ) -> Self {
@@ -105,7 +107,6 @@ impl<'db> NameBinder<'db> {
             kind,
             scope_node,
             symbol_table: SymbolTable::default(),
-            latest_type_params: None,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             names_to_be_resolved_in_parent: vec![],
@@ -165,13 +166,12 @@ impl<'db> NameBinder<'db> {
 
     fn with_nested(
         &mut self,
-        kind: NameBinderKind,
+        kind: NameBinderKind<'db>,
         scope_node: NodeIndex,
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
         let mut name_binder = Self::new(self.db_infos, kind, scope_node, Some(self));
         name_binder.following_nodes_need_flow_analysis = self.following_nodes_need_flow_analysis;
-        name_binder.latest_type_params = self.latest_type_params;
         func(&mut name_binder);
         name_binder.close();
         let NameBinder {
@@ -230,7 +230,15 @@ impl<'db> NameBinder<'db> {
                             .points
                             .set(annotation_name.name.index(), point);
                         true
-                    });
+                    })
+                    || match kind {
+                        NameBinderKind::TypeParams(type_params) => try_to_process_type_params(
+                            &self.db_infos,
+                            type_params,
+                            annotation_name.name,
+                        ),
+                        _ => false,
+                    };
                 if !handled {
                     annotation_name.definition_name_index = None;
                     self.annotation_names.push(annotation_name);
@@ -541,11 +549,11 @@ impl<'db> NameBinder<'db> {
                         IndexingCause::NonFlowAnalysisName,
                     );
                     self.with_nested(NameBinderKind::TypeAlias, type_alias.index(), |binder| {
-                        binder.index_type_param_names(type_params);
                         // This is not an actual annotation, but behaves like one
-                        binder.index_annotation_expr(&expr, None);
+                        binder.process_and_run_with_latest_type_params(type_params, |binder| {
+                            binder.index_annotation_expr(&expr, None)
+                        });
                     });
-                    self.index_type_param_bounds(type_params);
                 }
                 StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
@@ -672,7 +680,9 @@ impl<'db> NameBinder<'db> {
     }
 
     fn close(&mut self) {
-        if self.kind != NameBinderKind::Class {
+        if matches!(self.kind, NameBinderKind::Class) {
+            // TODO
+        } else {
             // We want to make sure that names e.g. defined in a walrus in a comprehension before
             // other names are indexed first, therefore revert.
             self.unresolved_nodes.reverse();
@@ -691,15 +701,22 @@ impl<'db> NameBinder<'db> {
                         is_method,
                         is_async,
                     } => {
-                        self.with_nested(
-                            NameBinderKind::Function { is_async },
-                            func.index(),
-                            |binder| {
-                                binder.with_latest_type_params(latest_type_params, |slf| {
-                                    slf.index_function_body(func, is_method)
-                                })
-                            },
-                        );
+                        let run = |slf: &mut Self| {
+                            slf.with_nested(
+                                NameBinderKind::Function { is_async },
+                                func.index(),
+                                |binder| binder.index_function_body(func, is_method),
+                            );
+                        };
+                        if let Some(type_params) = latest_type_params {
+                            self.with_nested(
+                                NameBinderKind::TypeParams(type_params),
+                                func.index(),
+                                |binder| run(binder),
+                            );
+                        } else {
+                            run(self)
+                        }
                     }
                     Unresolved::Lambda(lambda) => {
                         self.with_nested(NameBinderKind::Lambda, lambda.index(), |binder| {
@@ -848,44 +865,10 @@ impl<'db> NameBinder<'db> {
         self.index_block(block, ordered);
     }
 
-    fn with_latest_type_params(
-        &mut self,
-        type_params: Option<TypeParams<'db>>,
-        callback: impl FnOnce(&mut Self),
-    ) {
-        let old_latest_type_params = std::mem::replace(&mut self.latest_type_params, type_params);
-        callback(self);
-        self.latest_type_params = old_latest_type_params;
-    }
-
     fn index_class(&mut self, class_def: ClassDef<'db>) {
         let type_params = class_def.type_params();
-        self.index_type_param_bounds(type_params);
-        self.with_latest_type_params(type_params, |slf| slf.index_class_internal(class_def))
-    }
-
-    fn index_class_internal(&mut self, class_def: ClassDef<'db>) {
-        let (type_params, arguments, block) = class_def.unpack();
-        if let Some(arguments) = arguments {
-            self.index_non_block_node(&arguments, true);
-        }
-        let class_symbol_table =
-            self.with_nested(NameBinderKind::Class, class_def.index(), |binder| {
-                binder.index_type_param_names(type_params);
-                binder.index_block(block, true);
-            });
-
-        let abstract_attributes = self.search_abstract_method_likes(&class_symbol_table);
-        self.unsaved_classes.push(UnsavedClass {
-            class_def,
-            class_symbol_table,
-            abstract_attributes,
-            parent_scope: match self.kind {
-                NameBinderKind::Global => ParentScope::Module,
-                NameBinderKind::Class => ParentScope::Class(self.scope_node),
-                NameBinderKind::Function { .. } => ParentScope::Function(self.scope_node),
-                _ => unreachable!(),
-            },
+        self.process_and_run_with_latest_type_params(type_params, |binder| {
+            binder.index_class_internal(class_def)
         });
         // Need to first index the class, because the class body does not have access to
         // the class name.
@@ -894,6 +877,30 @@ impl<'db> NameBinder<'db> {
             Point::new_uncalculated(),
             IndexingCause::NonFlowAnalysisName,
         );
+    }
+
+    fn index_class_internal(&mut self, class_def: ClassDef<'db>) {
+        let (_, arguments, block) = class_def.unpack();
+        if let Some(arguments) = arguments {
+            self.index_non_block_node(&arguments, true);
+        }
+        let class_symbol_table =
+            self.with_nested(NameBinderKind::Class, class_def.index(), |binder| {
+                binder.index_block(block, true);
+            });
+
+        let abstract_attributes = self.search_abstract_method_likes(&class_symbol_table);
+        self.unsaved_classes.push(UnsavedClass {
+            class_def,
+            class_symbol_table,
+            abstract_attributes,
+            parent_scope: match self.kind_without_type_params() {
+                NameBinderKind::Global => ParentScope::Module,
+                NameBinderKind::Class => ParentScope::Class(self.scope_node),
+                NameBinderKind::Function { .. } => ParentScope::Function(self.scope_node),
+                _ => unreachable!(),
+            },
+        });
     }
 
     fn index_self_vars(&mut self, class_index: NodeIndex, class: ClassDef<'db>) -> SymbolTable {
@@ -1038,11 +1045,6 @@ impl<'db> NameBinder<'db> {
             };
             match n {
                 InterestingNode::Name(name) => {
-                    if let Some(type_params) = self.latest_type_params
-                        && self.try_to_process_type_params(type_params, name)
-                    {
-                        continue;
-                    }
                     match name.simple_parent() {
                         SimpleNameParent::Atom => {
                             if let IndexingCause::Annotation {
@@ -1295,6 +1297,15 @@ impl<'db> NameBinder<'db> {
         }
     }
 
+    fn kind_without_type_params(&self) -> NameBinderKind<'db> {
+        match self.kind {
+            NameBinderKind::TypeParams(_) => {
+                unsafe { &*self.parent.unwrap() }.kind_without_type_params()
+            }
+            _ => self.kind,
+        }
+    }
+
     fn index_comprehension(&mut self, comp: Comprehension<'db>, _ordered: bool) {
         // TODO the ordered argument is not used here currently and it should probably be used.
         let (named_expr, for_if_clauses) = comp.unpack();
@@ -1352,7 +1363,10 @@ impl<'db> NameBinder<'db> {
         if let Some(parent) = self.parent {
             let parent = unsafe { &*parent };
             let name_str = name.as_code();
-            if !matches!(parent.kind, NameBinderKind::Function { .. }) {
+            if !matches!(
+                parent.kind,
+                NameBinderKind::Function { .. } | NameBinderKind::TypeParams(_)
+            ) {
                 self.add_issue(
                     name.index(),
                     IssueKind::NonlocalNoBindingFound {
@@ -1399,49 +1413,54 @@ impl<'db> NameBinder<'db> {
             .is_some_and(|specific| specific == search)
     }
 
-    fn index_type_param_bounds(&mut self, maybe_type_params: Option<TypeParams<'db>>) {
-        if let Some(type_params) = maybe_type_params {
+    fn process_and_run_with_latest_type_params(
+        &mut self,
+        type_params: Option<TypeParams<'db>>,
+        callback: impl FnOnce(&mut Self),
+    ) {
+        if let Some(type_params) = type_params {
             for type_param in type_params.iter() {
                 let (_, kind) = type_param.unpack();
                 if let TypeParamKind::TypeVar(Some(bound), _) = kind {
                     self.index_annotation_expr(&bound, None)
                 }
+                // Here we copy the behavior of assigning names normally. This is necessary so all
+                // Names have similar behavior.
+                let name_index = type_param.name_def().name_index();
+                let p = Point::new_first_name_of_name_def(name_index, false, Locality::NameBinder);
+                self.db_infos.points.set(name_index, p);
             }
-            // TypeVar defaults can access the other type vars, while bounds cannot
-            self.with_latest_type_params(maybe_type_params, |slf| {
-                for type_param in type_params.iter() {
-                    let (_, kind) = type_param.unpack();
-                    match kind {
-                        TypeParamKind::TypeVar(_, default) => {
-                            if let Some(default) = default {
-                                slf.index_annotation_expr(&default, None)
+            self.with_nested(
+                NameBinderKind::TypeParams(type_params),
+                self.scope_node,
+                |inner| {
+                    // TypeVar defaults can access the other type vars, while bounds cannot, that's why we
+                    // set it here.
+                    for type_param in type_params.iter() {
+                        let (_, kind) = type_param.unpack();
+                        match kind {
+                            TypeParamKind::TypeVar(_, default) => {
+                                if let Some(default) = default {
+                                    inner.index_annotation_expr(&default, None)
+                                }
                             }
-                        }
-                        TypeParamKind::TypeVarTuple(default) => {
-                            if let Some(default) = default {
-                                slf.index_annotation_expr(&default, None)
+                            TypeParamKind::TypeVarTuple(default) => {
+                                if let Some(default) = default {
+                                    inner.index_annotation_expr(&default, None)
+                                }
                             }
-                        }
-                        TypeParamKind::ParamSpec(default) => {
-                            if let Some(default) = default {
-                                slf.index_annotation_expr(&default, None)
+                            TypeParamKind::ParamSpec(default) => {
+                                if let Some(default) = default {
+                                    inner.index_annotation_expr(&default, None)
+                                }
                             }
                         }
                     }
-                }
-            })
-        }
-    }
-
-    fn index_type_param_names(&mut self, type_params: Option<TypeParams<'db>>) {
-        if let Some(type_params) = type_params {
-            for type_param in type_params.iter() {
-                self.add_new_definition_with_cause(
-                    type_param.name_def(),
-                    Point::new_uncalculated(),
-                    IndexingCause::NonFlowAnalysisName,
-                );
-            }
+                    callback(inner);
+                },
+            );
+        } else {
+            callback(self)
         }
     }
 
@@ -1453,16 +1472,7 @@ impl<'db> NameBinder<'db> {
     ) {
         // If there is no parent, this does not have to be resolved immediately in theory, but for
         // now we just do.
-        self.unresolved_nodes.push(Unresolved::FunctionDef {
-            func,
-            latest_type_params: self.latest_type_params,
-            is_method: self.kind == NameBinderKind::Class,
-            is_async,
-        });
-
         let (name_def, type_params, params, return_annotation, _) = func.unpack();
-        self.index_type_param_bounds(type_params);
-
         for param in params.iter() {
             // Defaults don't have access to the type params
             if let Some(expression) = param.default() {
@@ -1470,35 +1480,42 @@ impl<'db> NameBinder<'db> {
             }
         }
 
-        // Needs to be reset at the of this function
-        let old_latest_type_params = std::mem::replace(&mut self.latest_type_params, type_params);
-
-        for param in params.iter() {
-            // expressions are resolved immediately while annotations are inferred at the
-            // end of a module.
-            if let Some(param_annotation) = param.annotation() {
-                match param_annotation.maybe_starred() {
-                    Ok(starred) => self.index_non_block_node_full(
-                        &starred,
-                        true,
-                        IndexingCause::Annotation {
-                            definition_name_index: None,
-                        },
-                    ),
-                    Err(expr) => self.index_annotation_expr(&expr, None),
-                };
+        self.unresolved_nodes.push(Unresolved::FunctionDef {
+            func,
+            latest_type_params: type_params,
+            is_method: matches!(self.kind, NameBinderKind::Class),
+            is_async,
+        });
+        self.process_and_run_with_latest_type_params(type_params, |slf| {
+            for param in params.iter() {
+                // expressions are resolved immediately while annotations are inferred at the
+                // end of a module.
+                if let Some(param_annotation) = param.annotation() {
+                    match param_annotation.maybe_starred() {
+                        Ok(starred) => slf.index_non_block_node_full(
+                            &starred,
+                            true,
+                            IndexingCause::Annotation {
+                                definition_name_index: None,
+                            },
+                        ),
+                        Err(expr) => slf.index_annotation_expr(&expr, None),
+                    };
+                }
             }
-        }
-        if let Some(return_annotation) = return_annotation {
-            // This is the -> annotation
-            self.index_annotation_expr(&return_annotation.expression(), None);
-        }
-
+            if let Some(return_annotation) = return_annotation {
+                // This is the -> annotation
+                slf.index_annotation_expr(&return_annotation.expression(), None);
+            }
+        });
         let parent_node_index = match self.kind {
             NameBinderKind::Global | NameBinderKind::Function { .. } | NameBinderKind::Class => {
                 self.scope_node
             }
-            NameBinderKind::Lambda | NameBinderKind::Comprehension | NameBinderKind::TypeAlias => {
+            NameBinderKind::Lambda
+            | NameBinderKind::Comprehension
+            | NameBinderKind::TypeParams { .. }
+            | NameBinderKind::TypeAlias => {
                 unreachable!()
             }
         };
@@ -1511,13 +1528,11 @@ impl<'db> NameBinder<'db> {
             Point::new_uncalculated(),
             IndexingCause::FunctionName,
         );
-        self.latest_type_params = old_latest_type_params;
     }
 
     fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
         // Function name was indexed already.
-        let (_, type_params, params, _, block) = func.unpack();
-        self.index_type_param_names(type_params);
+        let (_, _, params, _, block) = func.unpack();
         self.index_param_name_defs(params.iter().map(|param| param.name_def()), is_method);
 
         self.index_block(block, true);
@@ -1573,7 +1588,7 @@ impl<'db> NameBinder<'db> {
             self.in_global_scope(),
             self.following_nodes_need_flow_analysis,
         ) {
-            if !ordered || self.kind != NameBinderKind::Class {
+            if !ordered || !matches!(self.kind, NameBinderKind::Class) {
                 self.unordered_references
                     .push(UnorderedReference { name, ordered });
             } else {
@@ -1596,26 +1611,12 @@ impl<'db> NameBinder<'db> {
             name,
             false,
             self.in_global_scope(),
-        )
-    }
-
-    fn try_to_process_type_params(&mut self, type_params: TypeParams, name: Name) -> bool {
-        let wanted = name.as_code();
-        for type_param in type_params.iter() {
-            let name_def = type_param.name_def();
-            if name_def.as_code() == wanted {
-                let point = Point::new_redirect(
-                    self.db_infos.file_index,
-                    name_def.name_index(),
-                    Locality::NameBinder,
-                )
-                .with_needs_flow_analysis(true);
-
-                self.db_infos.points.set(name.index(), point);
-                return true;
+        ) || match self.kind {
+            NameBinderKind::TypeParams(type_params) => {
+                try_to_process_type_params(&self.db_infos, type_params, name)
             }
+            _ => false,
         }
-        false
     }
 
     #[inline]
@@ -1634,7 +1635,12 @@ impl<'db> NameBinder<'db> {
             // very simple cases.
             following_nodes_need_flow_analysis,
             in_global_scope,
-        )
+        ) || match self.kind {
+            NameBinderKind::TypeParams(type_params) => {
+                try_to_process_type_params(&self.db_infos, type_params, name)
+            }
+            _ => false,
+        }
     }
 
     fn index_unordered_references(&mut self) {
@@ -1677,6 +1683,25 @@ impl<'db> NameBinder<'db> {
             .iter()
             .any(|star_import| star_import.scope == self.scope_node)
     }
+}
+
+fn try_to_process_type_params(db_infos: &DbInfos, type_params: TypeParams, name: Name) -> bool {
+    let wanted = name.as_code();
+    for type_param in type_params.iter() {
+        let name_def = type_param.name_def();
+        if name_def.as_code() == wanted {
+            let point = Point::new_redirect(
+                db_infos.file_index,
+                name_def.name_index(),
+                Locality::NameBinder,
+            )
+            .with_needs_flow_analysis(true);
+
+            db_infos.points.set(name.index(), point);
+            return true;
+        }
+    }
+    false
 }
 
 #[derive(Debug)]
@@ -2131,6 +2156,7 @@ pub fn func_parent_scope(tree: &Tree, points: &Points, func_index: NodeIndex) ->
     }
 }
 
+#[derive(Debug)]
 struct UnorderedReference<'db> {
     name: Name<'db>,
     ordered: bool,
