@@ -2034,14 +2034,14 @@ pub fn linearize_mro_and_return_linearizable(
                 if !conflicts {
                     let is_non_object = candidate.t.as_ref() != &object;
                     for (skip_index, base_bases) in base_iterators.iter_mut().enumerate() {
-                        base_bases.next_if(|(i, next)| {
-                            if *i == 0 {
+                        base_bases.next_if(|(other_index, next)| {
+                            if *other_index == 0 {
                                 allowed_to_use += 1;
                             }
                             let skip = to_base_kind(&candidate.t) == to_base_kind(&next.t);
                             if skip && skip_index != base_index && is_non_object {
                                 let new = to_base_class(base_index, false, &candidate, &mut 0);
-                                let other = to_base_class(base_index, false, next, &mut 0);
+                                let other = to_base_class(skip_index, false, next, &mut 0);
                                 if !new.type_.is_equal_type(db, None, &other.type_) {
                                     linearizable = false
                                 }
