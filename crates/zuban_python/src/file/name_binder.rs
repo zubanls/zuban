@@ -869,7 +869,28 @@ impl<'db> NameBinder<'db> {
     fn index_class(&mut self, class_def: ClassDef<'db>) {
         let type_params = class_def.type_params();
         self.process_and_run_with_latest_type_params(type_params, |binder| {
-            binder.index_class_internal(class_def)
+            let (_, arguments, block) = class_def.unpack();
+            if let Some(arguments) = arguments {
+                binder.index_non_block_node(&arguments, true);
+                let in_global_scope = binder.in_global_scope();
+                if type_params.is_some() {
+                    // If type params are involved there's an extra scope and we need to make sure
+                    // that the current class scope is also checked. I hope one day we find a
+                    // better more generalized way.
+                    let class_symbol_table = &unsafe { &*binder.parent.unwrap() }.symbol_table;
+                    binder.unordered_references.retain(|unordered| {
+                        !try_to_process_reference_for_symbol_table(
+                            class_symbol_table,
+                            binder.db_infos.file_index,
+                            binder.db_infos.points,
+                            unordered.name,
+                            binder.following_nodes_need_flow_analysis,
+                            in_global_scope,
+                        )
+                    });
+                }
+            }
+            binder.index_class_internal(class_def, block);
         });
         // Need to first index the class, because the class body does not have access to
         // the class name.
@@ -880,11 +901,7 @@ impl<'db> NameBinder<'db> {
         );
     }
 
-    fn index_class_internal(&mut self, class_def: ClassDef<'db>) {
-        let (_, arguments, block) = class_def.unpack();
-        if let Some(arguments) = arguments {
-            self.index_non_block_node(&arguments, true);
-        }
+    fn index_class_internal(&mut self, class_def: ClassDef<'db>, block: Block<'db>) {
         let class_symbol_table =
             self.with_nested(NameBinderKind::Class, class_def.index(), |binder| {
                 binder.index_block(block, true);
