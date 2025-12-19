@@ -102,6 +102,18 @@ impl Intersection {
                     t2.clone(),
                 )));
             }
+            (Type::Intersection(intersection), other)
+            | (other, Type::Intersection(intersection))
+                if !other.is_subclassable(i_s.db)
+                    || intersection
+                        .iter_entries()
+                        .any(|i| !i.is_subclassable(i_s.db)) =>
+            {
+                return Ok(Type::Intersection(Intersection::from_types(
+                    t1.clone(),
+                    t2.clone(),
+                )));
+            }
             _ => (),
         }
         let mut error_if_not_intersectable = |t: &Type| {

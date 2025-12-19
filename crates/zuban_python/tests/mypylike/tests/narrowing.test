@@ -2051,3 +2051,17 @@ def f2(x: SE) -> None:
         reveal_type(x)  # N: Revealed type is "__main__.SE"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.SE"
+
+
+[case multi_narrowing_with_type_vars_intersection_no_crash]
+# This is from a crash in Pandas, because TypeVars and multiple isinstances are involved.
+from collections.abc import Collection, Iterable, Sized
+from typing import TypeVar, cast
+
+T = TypeVar("T")
+
+def f(obj: Iterable[T] | T) -> Collection[T] | T:
+    if isinstance(obj, Iterable) and not isinstance(obj, Sized):
+        return list(obj)
+    obj = cast(Collection, obj)
+    return obj
