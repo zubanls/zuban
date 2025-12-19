@@ -1620,12 +1620,7 @@ impl<'db> NameBinder<'db> {
             name,
             false,
             self.in_global_scope(),
-        ) || match self.kind {
-            NameBinderKind::TypeParams(type_params) => {
-                try_to_process_type_params(&self.db_infos, type_params, name)
-            }
-            _ => false,
-        }
+        )
     }
 
     #[inline]
