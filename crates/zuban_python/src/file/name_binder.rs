@@ -30,7 +30,6 @@ pub const GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE: NodeIndex = 2;
 pub const FUNC_TO_RETURN_OR_YIELD_DIFF: u32 = 1;
 pub const FUNC_TO_TYPE_VAR_DIFF: i64 = NAME_TO_FUNCTION_DIFF as i64 + 1;
 const FUNC_TO_PARENT_DIFF: u32 = NAME_TO_FUNCTION_DIFF + 2;
-const TYPE_PARAMS_TO_PARENT_TYPE_PARAMS: u32 = 1;
 
 #[derive(Debug, Copy, Clone)]
 enum NameBinderKind<'db> {
