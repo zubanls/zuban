@@ -202,43 +202,44 @@ impl<'db> NameBinder<'db> {
             for mut annotation_name in annotation_names {
                 // Functions should never be considered in annotations. It is really weird that Mypy
                 // applies this logic so partially.
-                let handled = symbol_table
-                    .lookup_symbol(annotation_name.name.as_code())
-                    .is_some_and(|name_index| {
-                        if annotation_name.definition_name_index == Some(name_index) {
-                            // We don't want there to be a foo: foo where we have a cycle.
-                            return false;
-                        }
-                        if matches!(kind, NameBinderKind::Class) {
-                            let name_def = Name::by_index(self.db_infos.tree, name_index)
-                                .name_def()
-                                .unwrap();
-                            if matches!(
-                                name_def.expect_defining_stmt(),
-                                DefiningStmt::FunctionDef(_)
-                            ) {
-                                return false;
-                            }
-                        }
-                        let point = Point::new_redirect(
-                            self.db_infos.file_index,
-                            name_index,
-                            Locality::NameBinder,
-                        )
-                        .with_in_global_scope(self.in_global_scope());
-                        self.db_infos
-                            .points
-                            .set(annotation_name.name.index(), point);
-                        true
-                    })
-                    || match kind {
-                        NameBinderKind::TypeParams(type_params) => try_to_process_type_params(
-                            &self.db_infos,
-                            type_params,
-                            annotation_name.name,
-                        ),
-                        _ => false,
-                    };
+                let handled = match kind {
+                    NameBinderKind::TypeParams(type_params) => try_to_process_type_params(
+                        &self.db_infos,
+                        type_params,
+                        annotation_name.name,
+                    ),
+                    _ => {
+                        symbol_table
+                            .lookup_symbol(annotation_name.name.as_code())
+                            .is_some_and(|name_index| {
+                                if annotation_name.definition_name_index == Some(name_index) {
+                                    // We don't want there to be a foo: foo where we have a cycle.
+                                    return false;
+                                }
+                                if matches!(kind, NameBinderKind::Class) {
+                                    let name_def = Name::by_index(self.db_infos.tree, name_index)
+                                        .name_def()
+                                        .unwrap();
+                                    if matches!(
+                                        name_def.expect_defining_stmt(),
+                                        DefiningStmt::FunctionDef(_)
+                                    ) {
+                                        return false;
+                                    }
+                                }
+                                let point = Point::new_redirect(
+                                    self.db_infos.file_index,
+                                    name_index,
+                                    Locality::NameBinder,
+                                )
+                                .with_in_global_scope(self.in_global_scope());
+                                self.db_infos
+                                    .points
+                                    .set(annotation_name.name.index(), point);
+                                true
+                            })
+                    }
+                };
                 if !handled {
                     annotation_name.definition_name_index = None;
                     self.annotation_names.push(annotation_name);
@@ -1630,20 +1631,20 @@ impl<'db> NameBinder<'db> {
         in_global_scope: bool,
         following_nodes_need_flow_analysis: bool,
     ) -> bool {
-        try_to_process_reference_for_symbol_table(
-            &self.symbol_table,
-            self.db_infos.file_index,
-            self.db_infos.points,
-            name,
-            // Even references sometimes don't need flow analysis. This is really practical in some
-            // very simple cases.
-            following_nodes_need_flow_analysis,
-            in_global_scope,
-        ) || match self.kind {
+        match self.kind {
             NameBinderKind::TypeParams(type_params) => {
                 try_to_process_type_params(&self.db_infos, type_params, name)
             }
-            _ => false,
+            _ => try_to_process_reference_for_symbol_table(
+                &self.symbol_table,
+                self.db_infos.file_index,
+                self.db_infos.points,
+                name,
+                // Even references sometimes don't need flow analysis. This is really practical in some
+                // very simple cases.
+                following_nodes_need_flow_analysis,
+                in_global_scope,
+            ),
         }
     }
 
