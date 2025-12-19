@@ -364,3 +364,16 @@ class Outer(Generic[T]):
         closure(arg) # OK
         closure(42) # E: Argument 1 to "closure" has incompatible type "int"; expected "T"
         return closure(arg) # OK
+
+[case generic_class_type_params_nested_access]
+class Outer[T]:
+    class Inner[S]:
+        def foo[U](self, s: S, t: T, u: U):  # E: Type variable "T" is bound by an outer class
+            x: S
+            y: T  # E: Type variable "T" is bound by an outer class
+            z: U
+            def inner[V](s: S, t: T, u: U, v: V):  # E: Type variable "T" is bound by an outer class
+                x: S
+                y: T  # E: Type variable "T" is bound by an outer class
+                z: U
+                a: V
