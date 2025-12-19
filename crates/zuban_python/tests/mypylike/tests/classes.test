@@ -2517,3 +2517,12 @@ class Mapping1(Mapping): ...
 class Mapping2(Mapping1, MutableMapping): ...
 
 class Mapping3(MutableMapping, Mapping1): ...
+
+[case typing_extensions_override]
+# flags: --enable-error-code explicit-override --python-version 3.11
+from typing_extensions import override
+
+class Foo:
+    @override
+    def __str__(self) -> str:
+        return "<Foo>"

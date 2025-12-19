@@ -1342,7 +1342,7 @@ impl Inference<'_, '_, '_> {
             for decorator in decorators.iter() {
                 if let Some(redirect) =
                     NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
-                    && Some(redirect) == i_s.db.python_state.typing_override()
+                    && redirect.as_link() == i_s.db.python_state.typing_override_link
                 {
                     has_override_decorator = true;
                 }

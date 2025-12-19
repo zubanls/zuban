@@ -2327,12 +2327,7 @@ fn infer_decorator_details(
         if saved_link == i_s.db.python_state.typing_final().as_link() {
             return InferredDecorator::Final;
         }
-        if i_s
-            .db
-            .python_state
-            .typing_override()
-            .is_some_and(|o| saved_link == o.as_link())
-        {
+        if saved_link == i_s.db.python_state.typing_override_link {
             return InferredDecorator::Override;
         }
         if saved_link == i_s.db.python_state.abstractmethod_link() {

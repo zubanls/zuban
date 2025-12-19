@@ -195,7 +195,7 @@ pub(crate) struct PythonState {
     typing_async_iterable_index: NodeIndex,
     typing_supports_index_index: NodeIndex,
     typing_overload_index: NodeIndex,
-    typing_override_index: Option<NodeIndex>,
+    pub typing_override_link: PointLink,
     typing_final_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
@@ -326,7 +326,7 @@ impl PythonState {
             type_alias_type_link: PointLink::new(FileIndex(0), 0),
             typing_cast_index: 0,
             typing_overload_index: 0,
-            typing_override_index: None,
+            typing_override_link: PointLink::new(FileIndex(0), 0),
             typing_final_index: 0,
             typing_typed_dict_index: 0,
             typing_container_index: 0,
@@ -715,6 +715,7 @@ impl PythonState {
             "TypeAliasType",
             false
         );
+        cache_typing_link_with_typing_extensions_fallback!(typing_override_link, "override", true);
         cache_index!(typing_cast_index, typing, "cast", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
@@ -759,8 +760,6 @@ impl PythonState {
         cache_index!(builtins_callable_index, builtins, "callable", true);
         cache_index!(builtins_hasattr_index, builtins, "hasattr", true);
         cache_index!(builtins_len_index, builtins, "len", true);
-
-        cache_optional_index!(typing_override_index, typing, "override", true);
 
         cache_index!(dataclasses_replace_index, dataclasses_file, "replace", true);
 
@@ -1066,7 +1065,6 @@ impl PythonState {
     class_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
     class_node_ref!(typing, pub mutable_mapping_node_ref, typing_mutable_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
-    optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
     optional_attribute_node_ref!(warnings, pub deprecated, warnings_deprecated_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
