@@ -20,9 +20,6 @@ testOpenReturnTypeInference
 testOpenReturnTypeInferenceSpecialCases
 testPathOpenReturnTypeInference
 
-# conformance tests: scoping
-class_matching_against_param_spec_with_type_var_syntax_late_bound
-
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef

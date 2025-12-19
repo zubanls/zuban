@@ -567,11 +567,14 @@ c.k
 
 [case class_matching_against_param_spec_with_type_var_syntax_late_bound]
 from typing import Callable, Sequence
-# From conformance tests generics_syntax_scoping.py
+# Partially copied from conformance tests (generics_syntax_scoping.py)
 def decorator2[**P, R](x: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
     ...
 
 T = int(0)
+
+def foo(x: int) -> str: ...
+decorator2(1)(foo)
 
 @decorator2(T)  # OK
 class ClassE[T](Sequence[T]): ...

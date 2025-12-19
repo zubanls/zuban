@@ -267,8 +267,13 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 .or_else(|| i_s.find_parent_type_var(&type_var_like))
                 .unwrap_or_else(|| {
                     if let Some(known_type_vars) = &known_type_vars {
-                        if let Some(usage) = known_type_vars.find(&type_var_like, self.as_link()) {
-                            return TypeVarCallbackReturn::TypeVarLike(usage);
+                        if known_type_vars
+                            .find(&type_var_like, self.as_link())
+                            .is_some()
+                        {
+                            return TypeVarCallbackReturn::NotFound {
+                                allow_late_bound_callables: in_result_type.get(),
+                            };
                         }
                         unbound_type_vars.insert(type_var_like);
                         return TypeVarCallbackReturn::AnyDueToError;
@@ -365,6 +370,14 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             }
             result
         });
+        // Here we recompute the TypeVars, even if they are already known because of TypeParams.
+        // This is a bit weird, but it's needed, because otherwise we don't have the late bound
+        // calculation that is needed for:
+        //
+        //     def decorator2[**P, R](x: int) -> Callable[[Callable[P, R]], Callable[P, R]]
+        //
+        // This is part of the conformance tests and behaves there like normal late bound callables
+        // do.
         let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
             for param in func_node.params().iter() {
                 if let Some(annotation) = param.annotation() {
@@ -375,13 +388,6 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
             }
         });
-        let type_vars = if let Some(known_type_vars) = known_type_vars {
-            // TODO these are probably not always empty
-            debug_assert!(type_vars.is_empty());
-            known_type_vars
-        } else {
-            type_vars
-        };
         if !unbound_in_params.is_empty()
             && let Type::TypeVar(usage) = self.return_type(i_s).as_ref()
             && unbound_in_params.contains(&TypeVarLike::TypeVar(usage.type_var.clone()))
@@ -410,7 +416,6 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         for type_var_like in unbound_param_specs.into_iter() {
             self.add_issue_for_declaration(i_s, IssueKind::UnboundTypeVarLike { type_var_like });
         }
-        // if type_vars.iter().any(|tv| matches!(tv))
         (type_vars, type_guard, star_annotation)
     }
 
