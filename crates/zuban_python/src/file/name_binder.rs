@@ -1127,30 +1127,44 @@ impl<'db> NameBinder<'db> {
                                     }
                                 }
                                 NameDefParent::NonlocalStmt => {
-                                    if let Some(parent) = self.lookup_nonlocal_in_parents(name) {
-                                        let name_str = name.as_code();
-                                        // If there is no parent, an error was added
-                                        if let Some(local_index) =
-                                            self.symbol_table.lookup_symbol(name_str)
-                                        {
-                                            let issue = if self.has_specific_on_name_def(
-                                                local_index,
-                                                Specific::GlobalVariable,
-                                            ) {
-                                                IssueKind::NonlocalAndGlobal {
-                                                    name: name_str.into(),
-                                                }
-                                            } else if self.is_nonlocal_type_param(local_index) {
-                                                IssueKind::NonlocalBindingDisallowedForTypeParams {
-                                                    name: name_str.into(),
-                                                }
+                                    match self.lookup_nonlocal_in_parents(name) {
+                                        Some(NonlocalParent::Node(parent)) => {
+                                            let name_str = name.as_code();
+                                            // If there is no parent, an error was added
+                                            if let Some(local_index) =
+                                                self.symbol_table.lookup_symbol(name_str)
+                                            {
+                                                let issue = if self.has_specific_on_name_def(
+                                                    local_index,
+                                                    Specific::GlobalVariable,
+                                                ) {
+                                                    IssueKind::NonlocalAndGlobal {
+                                                        name: name_str.into(),
+                                                    }
+                                                } else {
+                                                    IssueKind::NameDefinedInLocalScopeBeforeNonlocal {
+                                                        name: name_str.into(),
+                                                    }
+                                                };
+                                                self.add_issue(name.index(), issue)
                                             } else {
-                                                IssueKind::NameDefinedInLocalScopeBeforeNonlocal {
-                                                    name: name_str.into(),
-                                                }
-                                            };
-                                            self.add_issue(name.index(), issue)
-                                        } else {
+                                                self.add_point_definition(
+                                                    name.name_def().unwrap(),
+                                                    Specific::NonlocalVariable,
+                                                    IndexingCause::Other,
+                                                );
+                                                self.db_infos.points.set(
+                                                    name.index()
+                                                        - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+                                                    Point::new_redirect(
+                                                        self.db_infos.file_index,
+                                                        parent,
+                                                        Locality::NameBinder,
+                                                    ),
+                                                );
+                                            }
+                                        }
+                                        Some(NonlocalParent::TypeParam) => {
                                             self.add_point_definition(
                                                 name.name_def().unwrap(),
                                                 Specific::NonlocalVariable,
@@ -1158,27 +1172,34 @@ impl<'db> NameBinder<'db> {
                                             );
                                             self.db_infos.points.set(
                                                 name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
-                                                Point::new_redirect(
-                                                    self.db_infos.file_index,
-                                                    parent,
+                                                // TODO shouldn't we add an error here?
+                                                Point::new_specific(
+                                                    Specific::AnyDueToError,
+                                                    Locality::NameBinder,
+                                                ),
+                                            );
+                                            self.add_issue(
+                                                name.index(),
+                                                IssueKind::NonlocalBindingDisallowedForTypeParams {
+                                                    name: name.as_code().into(),
+                                                },
+                                            )
+                                        }
+                                        _ => {
+                                            self.add_point_definition(
+                                                name.name_def().unwrap(),
+                                                Specific::NonlocalVariable,
+                                                IndexingCause::Other,
+                                            );
+                                            self.db_infos.points.set(
+                                                name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+                                                // TODO shouldn't we add an error here?
+                                                Point::new_specific(
+                                                    Specific::AnyDueToError,
                                                     Locality::NameBinder,
                                                 ),
                                             );
                                         }
-                                    } else {
-                                        self.add_point_definition(
-                                            name.name_def().unwrap(),
-                                            Specific::NonlocalVariable,
-                                            IndexingCause::Other,
-                                        );
-                                        self.db_infos.points.set(
-                                            name.index() - GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
-                                            // TODO shouldn't we add an error here?
-                                            Point::new_specific(
-                                                Specific::AnyDueToError,
-                                                Locality::NameBinder,
-                                            ),
-                                        );
                                     }
                                 }
                                 NameDefParent::Primary => (),
@@ -1359,14 +1380,18 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn lookup_nonlocal_in_parents(&self, name: Name) -> Option<NodeIndex> {
+    fn lookup_nonlocal_in_parents(&self, name: Name) -> Option<NonlocalParent> {
         if let Some(parent) = self.parent {
             let parent = unsafe { &*parent };
             let name_str = name.as_code();
-            if !matches!(
-                parent.kind,
-                NameBinderKind::Function { .. } | NameBinderKind::TypeParams(_)
-            ) {
+            if let NameBinderKind::TypeParams(type_params) = parent.kind {
+                if type_params
+                    .iter()
+                    .any(|tp| tp.name_def().as_code() == name_str)
+                {
+                    return Some(NonlocalParent::TypeParam);
+                }
+            } else if !matches!(parent.kind, NameBinderKind::Function { .. }) {
                 self.add_issue(
                     name.index(),
                     IssueKind::NonlocalNoBindingFound {
@@ -1377,16 +1402,7 @@ impl<'db> NameBinder<'db> {
             }
             let result = parent.symbol_table.lookup_symbol(name_str);
             if let Some(index) = result {
-                if self.is_nonlocal_type_param(index) {
-                    self.add_issue(
-                        name.index(),
-                        IssueKind::NonlocalBindingDisallowedForTypeParams {
-                            name: name_str.into(),
-                        },
-                    );
-                    return None;
-                }
-                result
+                Some(NonlocalParent::Node(index))
             } else {
                 parent.lookup_nonlocal_in_parents(name)
             }
@@ -1394,13 +1410,6 @@ impl<'db> NameBinder<'db> {
             self.add_issue(name.index(), IssueKind::NonlocalAtModuleLevel);
             None
         }
-    }
-
-    fn is_nonlocal_type_param(&self, pointing_to_name: NodeIndex) -> bool {
-        matches!(
-            Name::by_index(self.db_infos.tree, pointing_to_name).expect_type(),
-            TypeLike::TypeParam(_)
-        ) && self.db_infos.points.get(pointing_to_name).node_index() == pointing_to_name
     }
 
     fn has_specific_on_name_def(&self, name_index: NodeIndex, search: Specific) -> bool {
@@ -1702,6 +1711,11 @@ fn try_to_process_type_params(db_infos: &DbInfos, type_params: TypeParams, name:
         }
     }
     false
+}
+
+enum NonlocalParent {
+    Node(NodeIndex),
+    TypeParam,
 }
 
 #[derive(Debug)]
