@@ -484,7 +484,7 @@ impl<'db> PythonFile {
         if code.contains('\n') {
             // TODO this is a bit hacky, but will probably be good enough for all cases.
             // The parser currently is a bit weird and
-            code = Cow::Owned(code.replace(['\n', '\r'], " "));
+            code = Cow::Owned(code.replace('\n', " "));
         }
         let tree = Tree::parse(code.into_owned().into_boxed_str());
         let points = Points::new(tree.length());

@@ -775,13 +775,14 @@ def run(env: dict[str, str]):
         env_vars |= env
 
 [case multiline_forward_ref_no_crash]
+# flags: --no-windows
 # From https://github.com/zubanls/zuban/issues/80
 a: """
 1
 2"""""
 
 [out]
-__main__:3: error: Invalid syntax
+__main__:4: error: Invalid syntax
 
 [case forward_ref_disallow_string_not_around_annotations]
 # Copied from conformance tests (annotations_forward_refs.py)
