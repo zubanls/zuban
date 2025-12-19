@@ -21,11 +21,7 @@ testOpenReturnTypeInferenceSpecialCases
 testPathOpenReturnTypeInference
 
 # conformance tests: scoping
-type_var_syntax_nested_type_variables_not_reachable
-type_var_syntax_allowed_in_keyword_arg_in_class
 class_matching_against_param_spec_with_type_var_syntax_late_bound
-# conformance tests: named tuple definitions
-disallow_subclassing_of_named_tuple_and_overwriting_attr
 
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric

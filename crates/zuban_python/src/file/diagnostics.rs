@@ -1204,7 +1204,14 @@ impl Inference<'_, '_, '_> {
                 Some(args) => ArgumentsDetails::Node(args),
                 None => ArgumentsDetails::None,
             };
-            let args = SimpleArgs::new(*self.i_s, self.file, c.node_index, details);
+            let args = SimpleArgs::new(
+                // Provide the class scope, because in conformance tests there's once case where a
+                // generic is bound to the class.
+                self.i_s.with_class_context(&c),
+                self.file,
+                c.node_index,
+                details,
+            );
             init_subclass.execute_with_details(
                 self.i_s,
                 &InitSubclassArgs(args),
