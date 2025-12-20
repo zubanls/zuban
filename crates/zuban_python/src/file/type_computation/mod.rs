@@ -3846,7 +3846,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         expr: Expression,
     ) -> Cow<'file, Type> {
         let point = self.file.points.get(annotation_index);
-        assert!(point.calculated(), "Expr: {:?}", expr);
+        if !point.calculated() {
+            recoverable_error!("Had no annotation when looking it up: {expr:?}");
+            return Cow::Borrowed(&Type::ERROR);
+        }
         match point.specific() {
             Specific::AnnotationOrTypeCommentSimpleClassInstance => {
                 expect_class_or_simple_generic(self.i_s.db, NodeRef::new(self.file, expr.index()))

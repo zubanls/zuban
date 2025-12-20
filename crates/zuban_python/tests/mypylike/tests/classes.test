@@ -2526,3 +2526,15 @@ class Foo:
     @override
     def __str__(self) -> str:
         return "<Foo>"
+
+[case dunder_new_no_type_check]
+from typing import no_type_check
+
+class C:
+    @no_type_check
+    def __new__(cls) -> "C":
+        return 1
+
+# Methods
+def f() -> C:
+    return C()
