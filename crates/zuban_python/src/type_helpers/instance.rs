@@ -1128,6 +1128,11 @@ impl<'x> InstanceLookupOptions<'x> {
         self
     }
 
+    pub fn with_disallow_lazy_bound_method(mut self) -> Self {
+        self.disallow_lazy_bound_method = true;
+        self
+    }
+
     pub fn with_avoid_inferring_return_types(mut self) -> Self {
         self.disallow_lazy_bound_method = true;
         self.avoid_inferring_return_types = true;

@@ -179,3 +179,9 @@ class C(Base):
 
     def fn2[T](self, o: type[T]):
         super(C, o).__init__(self)  # E: Unsupported argument 2 for "super"
+
+[case no_crash_on_super_with_union_self]
+# From GH #208
+class C:
+    def f(self: int | None):  # E: The erased type of self "int | None" is not a supertype of its class "__main__.C"
+        super().__str__
