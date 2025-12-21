@@ -1599,3 +1599,9 @@ reveal_type(p)  # N: Revealed type is "Any"
 x: T # E: Variable "__main__.T" is not valid as a type \
      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 T = T.a()  # E: Name "T" is used before definition
+
+[case invalid_name_lookup_to_a_later_defined_class]
+C  # E: Name "C" is used before definition
+try:  # E: Invalid syntax
+    class C:
+        pass

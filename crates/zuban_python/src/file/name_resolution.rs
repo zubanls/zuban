@@ -15,6 +15,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
+    recoverable_error,
     type_::{LookupResult, Type},
     utils::is_magic_method,
 };
@@ -495,10 +496,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         narrow_name,
                     )
                     .unwrap_or_else(|| {
-                        unreachable!(
+                        recoverable_error!(
                             "This should never happen {}",
                             NodeRef::new(r.file, next_node_index).debug_info(self.i_s.db)
-                        )
+                        );
+                        PointResolution::Inferred(Inferred::new_any_from_error())
                     })
                 };
                 if file_index == self.file.file_index {

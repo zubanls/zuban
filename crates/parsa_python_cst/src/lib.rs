@@ -5126,6 +5126,50 @@ impl<'db> Error<'db> {
         self.node.maybe_error_node() == Some(stmt)
             && self.node.nth_child(0).maybe_error_leaf() == Some(TerminalType::Dedent)
     }
+
+    pub fn iter_parts(&self) -> impl Iterator<Item = UnpackedError<'db>> {
+        // Since error nodes are stmts,
+        let first = self.node.nth_child(0);
+        (!first.is_leaf())
+            .then(|| {
+                first.iter_children().filter_map(|n| {
+                    Some(match n.type_() {
+                        Nonterminal(block) => UnpackedError::Block(Block::new(n)),
+                        Nonterminal(else_block) => UnpackedError::ElseBlock(ElseBlock::new(n)),
+                        Nonterminal(except_block) => {
+                            UnpackedError::ExceptBlock(ExceptBlock::new(n))
+                        }
+                        Nonterminal(except_star_block) => {
+                            UnpackedError::ExceptStarBlock(ExceptStarBlock::new(n))
+                        }
+                        Nonterminal(case_block) => UnpackedError::CaseBlock(CaseBlock::new(n)),
+                        Nonterminal(_) | ErrorNonterminal(_) => {
+                            UnpackedError::NonBlockErrorPart(NonBlockErrorPart { node: n })
+                        }
+                        _ => {
+                            return None;
+                        }
+                    })
+                })
+            })
+            .into_iter()
+            .flatten()
+    }
 }
 
-create_interesting_node_searcher!(Error);
+#[derive(Debug)]
+pub struct NonBlockErrorPart<'db> {
+    node: PyNode<'db>,
+}
+
+create_interesting_node_searcher!(NonBlockErrorPart);
+
+#[derive(Debug)]
+pub enum UnpackedError<'db> {
+    Block(Block<'db>),
+    ElseBlock(ElseBlock<'db>),
+    ExceptBlock(ExceptBlock<'db>),
+    ExceptStarBlock(ExceptStarBlock<'db>),
+    CaseBlock(CaseBlock<'db>),
+    NonBlockErrorPart(NonBlockErrorPart<'db>),
+}

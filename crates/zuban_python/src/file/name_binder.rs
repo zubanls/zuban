@@ -622,7 +622,7 @@ impl<'db> NameBinder<'db> {
                         last_was_an_error = true;
                         self.add_issue(error.index(), IssueKind::InvalidSyntax);
                     }
-                    self.index_non_block_node(&error, false);
+                    self.index_error_nodes(error);
                     continue;
                 }
                 StmtLikeContent::BrokenScope(broken) => {
@@ -655,6 +655,31 @@ impl<'db> NameBinder<'db> {
                 latest = binder.latest_return_or_yield;
             });
             self.latest_return_or_yield = latest
+        }
+    }
+
+    fn index_error_nodes(&mut self, error: Error<'db>) {
+        for part in error.iter_parts() {
+            match part {
+                UnpackedError::Block(block) => self.index_block(block, false),
+                UnpackedError::ElseBlock(e) => self.index_block(e.block(), false),
+                UnpackedError::ExceptBlock(e) => {
+                    let (expr, block) = e.unpack();
+                    if let Some(expr) = expr {
+                        self.index_non_block_node(&expr, false)
+                    }
+                    self.index_block(block, false)
+                }
+                UnpackedError::ExceptStarBlock(e) => {
+                    let (expr, block) = e.unpack();
+                    self.index_non_block_node(&expr, false);
+                    self.index_block(block, false)
+                }
+                UnpackedError::CaseBlock(case_block) => self.index_case_block(case_block),
+                UnpackedError::NonBlockErrorPart(err) => {
+                    self.index_non_block_node(&err, false);
+                }
+            }
         }
     }
 
@@ -1015,18 +1040,22 @@ impl<'db> NameBinder<'db> {
         let (subject_expr, case_blocks) = match_stmt.unpack();
         self.index_non_block_node(&subject_expr, ordered);
         for case_block in case_blocks {
-            let (case_pattern, guard, block) = case_block.unpack();
-            match case_pattern {
-                CasePattern::Pattern(pattern) => self.index_non_block_node(&pattern, false),
-                CasePattern::OpenSequencePattern(patterns) => {
-                    self.index_non_block_node(&patterns, false)
-                }
-            };
-            if let Some(guard) = guard {
-                self.index_non_block_node(&guard, false);
-            }
-            self.index_block(block, false)
+            self.index_case_block(case_block)
         }
+    }
+
+    fn index_case_block(&mut self, case_block: CaseBlock<'db>) {
+        let (case_pattern, guard, block) = case_block.unpack();
+        match case_pattern {
+            CasePattern::Pattern(pattern) => self.index_non_block_node(&pattern, false),
+            CasePattern::OpenSequencePattern(patterns) => {
+                self.index_non_block_node(&patterns, false)
+            }
+        };
+        if let Some(guard) = guard {
+            self.index_non_block_node(&guard, false);
+        }
+        self.index_block(block, false)
     }
 
     fn index_non_block_node<T: InterestingNodeSearcher<'db>>(&mut self, node: &T, ordered: bool) {
