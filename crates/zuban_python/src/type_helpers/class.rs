@@ -2565,7 +2565,7 @@ fn init_as_callable(
                         }
                         Some(usage.into_generic_item())
                     },
-                    &|| unreachable!("was already replaced above"),
+                    &|| None,
                 );
             }
             Arc::new(c)
