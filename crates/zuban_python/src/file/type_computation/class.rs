@@ -379,7 +379,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
             ParentScope::Function(node_index) => {
                 Function::new_with_unknown_parent(db, NodeRef::new(self.node_ref.file, node_index))
-                    .find_type_var_like_including_ancestors(db, type_var, true)
+                    .find_type_var_like_including_ancestors(db, type_var, false)
             }
         }
     }

@@ -377,3 +377,14 @@ class Outer[T]:
                 y: T  # E: Type variable "T" is bound by an outer class
                 z: U
                 a: V
+
+[case generic_class_in_function_in_generic_class]
+from typing import Callable, assert_type
+
+class Outer[T]:
+    def inner(self, arg: T) -> Callable[[T], T]:
+        class Inner:
+            def __call__(self, arg: T) -> T:
+                return arg
+        assert_type(Inner()(arg), T) # OK
+        return Inner() # OK
