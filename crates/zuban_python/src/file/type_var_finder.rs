@@ -8,7 +8,7 @@ use super::{
     name_resolution::{NameResolution, PointResolution},
 };
 use crate::{
-    database::{ComplexPoint, PointKind, PointLink, Specific},
+    database::{ComplexPoint, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     file::PythonFile,
@@ -524,6 +524,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let PrimaryContent::Execution(_) = primary.second() else {
             return false;
         };
-        self.lookup_primary_or_atom(primary.first()) == BaseLookup::TypeVarLikeClass
+        let node_ref = NodeRef::new(self.file, expr.index());
+        let p = node_ref.point();
+        if p.calculating() {
+            return false;
+        } else if !p.calculated() {
+            // We need to set calculating here, otherwise the lookup below can recurse.
+            node_ref.set_point(Point::new_calculating());
+        }
+        let result = self.lookup_primary_or_atom(primary.first()) == BaseLookup::TypeVarLikeClass;
+        if !node_ref.point().calculated() {
+            node_ref.set_point(Point::new_uncalculated());
+        }
+        result
     }
 }

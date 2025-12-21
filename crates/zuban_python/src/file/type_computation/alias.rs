@@ -101,6 +101,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if point.calculated() {
             return load_cached_type(cached_type_node_ref);
         }
+        let was_calculating = point.calculating();
         cached_type_node_ref.set_point(Point::new_calculating());
 
         if matches!(cause, AliasCause::Implicit) && !point.calculating() {
@@ -182,7 +183,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 self.check_for_alias(origin, cached_type_node_ref, name_def, expr, cause)
             };
 
-            if !matches!(cause, AliasCause::Implicit) {
+            if !matches!(cause, AliasCause::Implicit) || was_calculating {
                 return check_for_alias(CalculatingAliasType::Normal);
             }
 
@@ -235,6 +236,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         // of in normal alias calculation, because they need access to type vars and can in general
         // create recursive types.
         let p = self.file.points.get(name_def.index());
+        let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
         if p.calculated() {
             // The special assignment has been inferred with the normal inference and we simply set
             // the correct alias below.
@@ -274,6 +276,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 ),
                 SpecialAssignmentKind::TypeOf(args) => {
+                    debug_assert!(cached_type_node_ref.point().calculating());
+                    cached_type_node_ref.set_point(Point::new_uncalculated());
                     if let Some(ArgOrComprehension::Arg(Argument::Positional(arg))) =
                         args.details.iter().next()
                         && arg.expression().is_none_literal()
@@ -298,7 +302,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         };
         // In all cases we now have assigned to the name def and want to assign to the type cache
         // of the assignment to avoid checking this again and again.
-        let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
         debug_assert!(
             !cached_type_node_ref.point().calculated(),
             "{cached_type_node_ref:?}"

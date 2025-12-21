@@ -1592,3 +1592,10 @@ def breaker(): ...  # E: Invalid syntax
 a6: p  # E: Variable "__main__.p" is not valid as a type \
        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 reveal_type(p)  # N: Revealed type is "Any"
+
+[case annotation_reference_no_crash]
+# From GH #140
+
+x: T # E: Variable "__main__.T" is not valid as a type \
+     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+T = T.a()  # E: Name "T" is used before definition
