@@ -445,7 +445,7 @@ pub fn parse(code: Box<str>) -> PyTree {
         if !code.ends_with('\n') {
             code += "\n";
         }
-        if code.ends_with("\\\n") {
+        if code.ends_with("\\\n") || code.ends_with("\\\r\n") {
             // Must end with a proper newline
             code += "\n";
         }
@@ -476,5 +476,13 @@ mod tests {
         parse("    >\\".into());
         parse("    >\\\n".into());
         parse("    >\\\n\n".into());
+
+        // Reappeared in #209
+        parse("\t\\\\\r".into());
+        parse("    >\\\r".into());
+        parse("    >\\\r\n".into());
+        parse("    >\\\r\r".into());
+        parse("    >\\\r\n\r".into());
+        parse("    >\\\r\n\r\n".into());
     }
 }
