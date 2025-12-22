@@ -58,7 +58,13 @@ pub fn simplified_union_from_iterators_with_format_index(
         types.into_iter().flat_map(|(format_index, t)| {
             t.into_iter_with_unpacked_unions(i_s.db, false)
                 .map(move |entry| UnionEntry {
-                    format_index: format_index * multiply + entry.format_index,
+                    // Ensure that this does not overflow, since it's purely visual it shouldn't
+                    // matter that much. However it would probably be better to not get into this
+                    // position in the first place.
+                    format_index: format_index
+                        .checked_mul(multiply)
+                        .and_then(|x| x.checked_add(entry.format_index))
+                        .unwrap_or(usize::MAX),
                     type_: entry.type_,
                 })
         }),
