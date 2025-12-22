@@ -64,10 +64,10 @@ OtherAlias = str
 def bar() -> OtherAlias: ...
 
 [out]
-__main__.py:3:documentation -> "```python\n(type) Alias = int"
-__main__.py:5:documentation -> "```python\n(type) Alias = int"
-__main__.py:8:documentation -> "```python\n(variable) OtherAlias: type[str]"
-__main__.py:11:documentation -> "```python\n(variable) OtherAlias: type[str]"
+__main__.py:3:documentation -> "```python\n(type) Alias = int\n```"
+__main__.py:5:documentation -> "```python\n(type) Alias = int\n```"
+__main__.py:8:documentation -> "```python\n(variable) OtherAlias: type[str]\n```"
+__main__.py:11:documentation -> "```python\n(variable) OtherAlias: type[str]\n```"
 
 [case docs_function_mypy_compatible]
 # flags: --mypy-compatible
@@ -140,8 +140,8 @@ __main__.py:3:documentation -> "```python\n(function) def [T] func(self, x: list
 __main__.py:9:documentation -> "```python\n(property) def prop(self) -> int\n```\n---\nproperty doc"
 __main__.py:14:documentation -> "```python\n(function) def [T] func(self, x: list[T]) -> T\n```\n---\nfunc doc"
 __main__.py:16:documentation -> "```python\n(function) def [T] func(x: list[T]) -> T\n```\n---\nfunc doc"
-__main__.py:18:documentation -> "```python\n(function) prop: property\n```"
-__main__.py:20:documentation -> "```python\n(property) prop: int\n```"
+__main__.py:18:documentation -> "```python\n(property) def prop(self) -> int\n```\n---\nproperty doc"
+__main__.py:20:documentation -> "```python\n(property) def prop(self) -> int\n```\n---\nproperty doc"
 
 [case docs_classmethod_staticmethod]
 class X:
@@ -232,10 +232,10 @@ class X:
 #? documentation
 X().p
 [out]
-__main__.py:4:documentation -> "```python\n(function) def p(self) -> int\n```"
-__main__.py:7:documentation -> "```python\n(function) def p(self) -> int\n```"
-__main__.py:10:documentation -> "```python\n(function) def p(self) -> int\n```"
-__main__.py:13:documentation -> "```python\n(function) int\n```"
+__main__.py:4:documentation -> "```python\n(property) def p(self) -> int\n```"
+__main__.py:7:documentation -> "```python\n(property) def p(self) -> int\n```"
+__main__.py:10:documentation -> "```python\n(property) def p(self) -> int\n```"
+__main__.py:13:documentation -> "```python\n(property) def p(self) -> int\n```"
 
 [case docs_on_type_of_class]
 from dataclasses import dataclass
@@ -279,3 +279,69 @@ f
 
 [out]
 __main__.py:15:documentation -> "```python\n(function) def f() -> None\n```\n---\nasdf\n```python\n>>> bla\nfoo\n>>> 1\nbar\n```\n\nx\n\n```python\n>>> hello\n```\n"
+
+[case property_documentation]
+# From GH #211
+class C:
+    @property
+    #? --codepoint-column 10 documentation
+    def read_only(self) -> int | None:
+        """foo"""
+        return None
+
+    @property
+    #? --codepoint-column 10 documentation
+    def read_write(self) -> str:
+        """bar"""
+        return ""
+    @read_write.setter
+    #? --codepoint-column 10 documentation
+    def read_write(self, value):
+        """baz"""
+
+#? documentation
+C().read_only
+#? documentation
+C().read_write
+#? --codepoint-column 10 documentation
+C().read_write = 1
+
+[out]
+__main__.py:5:documentation -> "```python\n(property) def read_only(self) -> int | None\n```\n---\nfoo"
+__main__.py:11:documentation -> "```python\n(property) def read_write(self) -> str\n```\n---\nbar"
+__main__.py:16:documentation -> "```python\n(property) def read_write(self) -> str\n```\n---\nbar"
+__main__.py:20:documentation -> "```python\n(property) def read_only(self) -> int | None\n```\n---\nfoo"
+__main__.py:22:documentation -> "```python\n(property) def read_write(self) -> str\n```\n---\nbar"
+__main__.py:24:documentation -> "```python\n(property) def read_write(self) -> str\n```\n---\nbar"
+
+[case untyped_property_documentation_mypy_compatible]
+# flags: --mypy-compatible
+class C:
+    @property
+    #? --codepoint-column 10 documentation
+    def untyped(self):
+        """foo"""
+        return 1
+
+#? documentation
+C().untyped
+
+[out]
+__main__.py:5:documentation -> "```python\n(property) def untyped(self) -> Any\n```\n---\nfoo"
+__main__.py:10:documentation -> "```python\n(property) def untyped(self) -> Any\n```\n---\nfoo"
+
+[case untyped_property_documentation_no_mypy_compatible]
+# flags: --no-mypy-compatible
+class C:
+    @property
+    #? --codepoint-column 10 documentation
+    def untyped(self):
+        """foo"""
+        return 1
+
+#? documentation
+C().untyped
+
+[out]
+__main__.py:5:documentation -> "```python\n(property) def untyped(self) -> int\n```\n---\nfoo"
+__main__.py:10:documentation -> "```python\n(property) def untyped(self) -> int\n```\n---\nfoo"

@@ -4,7 +4,8 @@ use crate::{
     goto::GotoResolver,
     inference_state::InferenceState,
     name::Range,
-    type_::{CallableLike, Type},
+    node_ref::NodeRef,
+    type_::{CallableLike, FunctionKind, Type},
 };
 
 impl<'project> Document<'project> {
@@ -35,19 +36,36 @@ impl<'project> Document<'project> {
             },
         );
         let mut results = resolver.infer_definition();
-        if results.is_empty() {
-            return Ok(None);
-        }
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return Ok(None);
         };
 
+        let db = &self.project.db;
+        let mut overwritten_results = vec![];
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
-            n.origin_kind()
+            let kind = n.origin_kind();
+            if let Name::TreeName(n) = n
+                && let Some(name_def) = n.cst_name.name_def()
+                && let Some(func) = name_def.maybe_name_of_func()
+                && let Some(Type::Callable(c)) = NodeRef::new(n.file, func.index()).maybe_type()
+                && matches!(c.kind, FunctionKind::Property { .. })
+            {
+                overwritten_results.push(n.documentation().to_string());
+                types = vec![c.format_pretty(&FormatData::new_short(db)).into_string()];
+                return "property";
+            }
+            kind
         });
         let on_name = resolver.infos.node.on_name();
         let declaration_kinds = resolver.goto(true);
+        if !overwritten_results.is_empty() {
+            results = overwritten_results;
+            class_t = None;
+        }
+        if results.is_empty() {
+            return Ok(None);
+        }
         results.retain(|doc| !doc.is_empty());
 
         let docs = results.join("\n\n");
@@ -73,7 +91,7 @@ impl<'project> Document<'project> {
                             }
                         }
                     }
-                    ["function"] => (),
+                    ["function" | "property"] => (),
                     ["type"] => {
                         out += name.as_code();
                         out += " = ";
@@ -84,7 +102,6 @@ impl<'project> Document<'project> {
                     }
                 }
             }
-            let db = &self.project.db;
             if let [description] = types.as_slice()
                 && let Some(class_t) = class_t
                 && let Some(CallableLike::Callable(callable)) =
