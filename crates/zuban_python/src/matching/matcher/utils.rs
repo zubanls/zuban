@@ -708,7 +708,7 @@ pub(crate) fn match_arguments_against_params<
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let diagnostic_string = |prefix: &str| {
-        (on_type_error.unwrap().generate_diagnostic_string)(func_like, i_s.db)
+        (on_type_error?.generate_diagnostic_string)(func_like, i_s.db)
             .map(|s| (prefix.to_owned() + &s).into())
     };
     let too_few_arguments = || {
