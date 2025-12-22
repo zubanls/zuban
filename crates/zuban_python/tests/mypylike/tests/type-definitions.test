@@ -906,3 +906,13 @@ value: """
     str |
     list[int]
 """
+
+[case recursive_type_should_not_hang]
+# From GH #207
+from typing import Any
+class C[T, *Ts, **P]:
+    pass
+
+C[*C]  # E: Bad number of arguments, expected: at least 2, given: 1 \
+       # E: "C[Any, Unpack[Tuple[Any, ...]], [*Any, **Any]]" cannot be unpacked (must be tuple or TypeVarTuple)
+C[int, *tuple[Any, ...]]  # E: Invalid callable params

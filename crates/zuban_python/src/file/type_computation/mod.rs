@@ -2178,14 +2178,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             generics.push(generic_item);
         }
         if !is_single_param_spec {
-            while type_args
-                .next_type_argument(self, has_type_var_tuple)
-                .is_some()
-            {
-                // Still calculate errors for the rest of the types given. After all they are still
-                // expected to be types.
-                given += 1;
-            }
+            // Still calculate errors for the rest of the types given. After all they are still
+            // expected to be types.
+            given += type_args.minimal_rest_args(self)
         }
         let default_count = type_var_likes
             .iter()
@@ -4579,6 +4574,48 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         }
     }
 
+    fn minimal_rest_args(mut self, type_computation: &mut TypeComputation) -> usize {
+        let mut count = 0;
+        let unpack_count = |unpack| match unpack {
+            TypeCompTupleUnpack::TypeVarTuple(_) => 0,
+            TypeCompTupleUnpack::ArbitraryLen(_) => 0,
+            TypeCompTupleUnpack::WithUnpack(with_unpack) => {
+                with_unpack.before.len() + with_unpack.after.len()
+            }
+            TypeCompTupleUnpack::FixedLen(ts) => ts.len(),
+        };
+        if let Some((_, unpack)) = self.current_unpack.take() {
+            count += unpack_count(unpack)
+        }
+        if let Some(unpack) = self.current_unpack_reverse.take() {
+            count += unpack_count(unpack)
+        }
+        while let Some((_, next)) = self.next_part(type_computation) {
+            match next {
+                TuplePart::Type(_) => count += 1,
+                TuplePart::TupleUnpack(unpack) => count += unpack_count(unpack),
+            }
+        }
+        debug_assert!(self.current_unpack.is_none());
+        debug_assert!(self.current_unpack_reverse.is_none());
+        count
+    }
+
+    fn next_part(
+        &mut self,
+        type_computation: &mut TypeComputation,
+    ) -> Option<(NodeRef<'a>, TuplePart)> {
+        let s = self.slices.next()?;
+        let t = type_computation
+            .compute_slice_type_content(s)
+            .remove_annotated();
+        let node_ref = s.as_node_ref();
+        Some((
+            node_ref,
+            type_computation.convert_slice_type_or_tuple_unpack(t, node_ref),
+        ))
+    }
+
     fn next_type_argument(
         &mut self,
         type_computation: &mut TypeComputation,
@@ -4618,23 +4655,18 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 }
             }
         }
-        let s = self.slices.next()?;
-        let t = type_computation
-            .compute_slice_type_content(s)
-            .remove_annotated();
-        match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
-            TuplePart::Type(t) => Some((s.as_node_ref(), t)),
+        let (node_ref, part) = self.next_part(type_computation)?;
+        match part {
+            TuplePart::Type(t) => Some((node_ref, t)),
             TuplePart::TupleUnpack(u) => {
                 debug_assert!(self.current_unpack.is_none());
                 if !has_type_var_tuple && !matches!(u, TypeCompTupleUnpack::FixedLen(_)) {
-                    type_computation.add_issue(
-                        s.as_node_ref(),
-                        IssueKind::UnpackOnlyValidInVariadicPosition,
-                    );
+                    type_computation
+                        .add_issue(node_ref, IssueKind::UnpackOnlyValidInVariadicPosition);
                     self.current_unpack = None;
-                    return Some((s.as_node_ref(), Type::ERROR));
+                    return Some((node_ref, Type::ERROR));
                 }
-                self.current_unpack = Some((s.as_node_ref(), u));
+                self.current_unpack = Some((node_ref, u));
                 self.next_type_argument(type_computation, has_type_var_tuple)
             }
         }
