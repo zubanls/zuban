@@ -507,19 +507,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .collect()
     }
 
-    fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        let mut t: Option<Type> = None;
-        for callable in self.overload.iter_functions() {
-            let f_t = &callable.return_type;
-            if let Some(old_t) = t.take() {
-                t = Some(old_t.merge_matching_parts(i_s.db, f_t))
-            } else {
-                t = Some(f_t.clone());
-            }
-        }
-        Inferred::from_type(t.unwrap())
-    }
-
     pub fn as_type(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -605,24 +592,33 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
             OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => {
+                let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
+                    if let Some(cls) = self.class {
+                        if let Some(new) =
+                            c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                                maybe_class_usage(i_s.db, &cls, &usage)
+                            })
+                        {
+                            return Cow::Owned(new);
+                        }
+                    }
+                    Cow::Borrowed(&c.return_type)
+                };
                 if i_s.db.project.settings.mypy_compatible {
-                    self.fallback_type(i_s)
+                    let mut t: Option<Type> = None;
+                    for callable in self.overload.iter_functions() {
+                        let f_t = to_type(callable);
+                        if let Some(old_t) = t.take() {
+                            t = Some(old_t.merge_matching_parts(i_s.db, &f_t))
+                        } else {
+                            t = Some(f_t.into_owned());
+                        }
+                    }
+                    Inferred::from_type(t.unwrap())
                 } else {
                     // Conformance tests define the fallback as Any if the return types are not all
                     // equivalent.
                     let mut iterator = self.overload.iter_functions();
-                    let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
-                        if let Some(cls) = self.class {
-                            if let Some(new) =
-                                c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
-                                    maybe_class_usage(i_s.db, &cls, &usage)
-                                })
-                            {
-                                return Cow::Owned(new);
-                            }
-                        }
-                        Cow::Borrowed(&c.return_type)
-                    };
                     let first = to_type(iterator.next().unwrap());
                     if iterator.all(|other_callable| {
                         first.is_equal_type(i_s.db, None, &to_type(other_callable))
