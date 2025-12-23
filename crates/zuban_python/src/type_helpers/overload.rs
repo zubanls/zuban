@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use super::{Callable, Class};
 use crate::{
@@ -13,9 +13,12 @@ use crate::{
     matching::{
         ArgumentIndexWithParam, CalculatedTypeArgs, Generics, OnTypeError, ResultContext,
         SignatureMatch, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
-        replace_class_type_vars_in_callable,
+        maybe_class_usage, replace_class_type_vars_in_callable,
     },
-    type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
+    type_::{
+        AnyCause, CallableContent, FunctionOverload, NeverCause, ReplaceSelf,
+        ReplaceTypeVarLikes as _, Type,
+    },
     utils::debug_indent,
 };
 
@@ -601,7 +604,35 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 result
             }
             OverloadResult::Union(t) => Inferred::from_type(t),
-            OverloadResult::NotFound => self.fallback_type(i_s),
+            OverloadResult::NotFound => {
+                if i_s.db.project.settings.mypy_compatible {
+                    self.fallback_type(i_s)
+                } else {
+                    // Conformance tests define the fallback as Any if the return types are not all
+                    // equivalent.
+                    let mut iterator = self.overload.iter_functions();
+                    let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
+                        if let Some(cls) = self.class {
+                            if let Some(new) =
+                                c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                                    maybe_class_usage(i_s.db, &cls, &usage)
+                                })
+                            {
+                                return Cow::Owned(new);
+                            }
+                        }
+                        Cow::Borrowed(&c.return_type)
+                    };
+                    let first = to_type(iterator.next().unwrap());
+                    if iterator.all(|other_callable| {
+                        first.is_equal_type(i_s.db, None, &to_type(other_callable))
+                    }) {
+                        Inferred::from_type(first.into_owned())
+                    } else {
+                        Inferred::new_any_from_error()
+                    }
+                }
+            }
         }
     }
 

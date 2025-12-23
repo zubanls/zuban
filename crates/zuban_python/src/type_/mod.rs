@@ -1749,7 +1749,13 @@ impl Type {
                 }
                 _ => Type::ERROR,
             },
-            _ => Type::ERROR,
+            _ => {
+                if self.is_equal_type(db, None, other) {
+                    self.clone()
+                } else {
+                    Type::ERROR
+                }
+            }
         }
     }
 

@@ -62,6 +62,7 @@ def f(x: Any) -> Any: pass  # E: Overloaded function signature 3 will never be m
 def f(x: Any) -> Any: pass
 
 [case overload_merging_nested]
+# flags: --mypy-compatible
 from typing import overload, Any
 @overload
 def g(x: str) -> list[list[str]]: ...
@@ -73,6 +74,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "list[list[Any]]"
 
 [case overload_merging_triple1]
+# flags: --mypy-compatible
 from typing import overload, Any
 @overload
 def g(x: str) -> list[str]: ...
@@ -99,6 +101,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "Any"
 
 [case overload_merging_tuple1]
+# flags: --mypy-compatible
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[str, ...]: ...
@@ -110,6 +113,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "tuple[Any, ...]"
 
 [case overload_merging_tuple2]
+# flags: --mypy-compatible
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[str]: ...
@@ -121,6 +125,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "tuple[Any]"
 
 [case overload_merging_tuple3]
+# flags: --mypy-compatible
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[str, bytes]: ...
@@ -154,6 +159,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "tuple[int, str]"
 
 [case overload_merging_tuple6]
+# flags: --mypy-compatible
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[int, str]: ...
@@ -289,7 +295,7 @@ reveal_type(d.get(""))  # E: No overload variant of "get" of "C" matches argumen
                         # N: Possible overload variants: \
                         # N:     def get(self, obj: None) -> Self \
                         # N:     def get(self, obj: int) -> Self \
-                        # N: Revealed type is "Any"
+                        # N: Revealed type is "Self"
 
 [case overload_with_self_types_union_math]
 # Inspired by testOverloadAndSelfTypesGenericNoOverlap
@@ -1062,6 +1068,7 @@ def check_expand_tuple(v: int | str) -> None:
     assert_type(ret1, int | str)
 
 [case any_exclusion_of_some_funcs]
+# flags: --no-mypy-compatible
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, assert_type, Any
 @overload
@@ -1078,7 +1085,7 @@ def check_example4(v1: list[Any], v2: Any) -> None:
     assert_type(ret1, list[int])
 
     ret2 = example4(v2, 1)
-    assert_type(ret2, list[Any])
+    assert_type(ret2, Any)
 
 [case copied_testOverloadWithStarAnyFallback]
 # We want to ensure this does not fail for no-mypy-compatible mode, because
@@ -1100,3 +1107,37 @@ class B:
     def f(self, *args: Any, **kwargs: Any) -> Any: ...
     def f(self, *args, **kwargs):
         pass
+
+[case no_mypy_compatible_testOverloadWithOverlappingItemsAndAnyArgument8]
+# flags: --no-compatible
+from typing import overload, Any
+
+@overload
+def f(x: int, y: int, z: int) -> str: ...
+@overload
+def f(x: object, y: int, z: int) -> str: ...
+def f(x): pass
+
+a: Any
+# The return type is not ambiguous so Any arguments cause no ambiguity.
+reveal_type(f(a, 1, 1)) # N: Revealed type is "str"
+reveal_type(f(1, *a))  # N: Revealed type is "str"
+
+[case no_mypy_compatible_testOverloadWithOverlappingItemsAndAnyArgument9]
+# flags: --no-mypy-compatible
+from typing import overload, Any, List
+
+@overload
+def f(x: List[int]) -> List[int]: ...
+@overload
+def f(x: List[Any]) -> List[Any]: ...
+def f(x): pass
+
+a: Any
+b: List[Any]
+c: List[str]
+d: List[int]
+reveal_type(f(a)) # N: Revealed type is "Any"
+reveal_type(f(b))  # N: Revealed type is "Any"
+reveal_type(f(c))  # N: Revealed type is "list[Any]"
+reveal_type(f(d))  # N: Revealed type is "list[int]"

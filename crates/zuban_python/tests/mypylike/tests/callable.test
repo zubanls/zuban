@@ -424,6 +424,7 @@ reveal_type(X[int]().foo(x=3))  # N: Revealed type is "int"
 reveal_type(X[str]().foo(x=3))  # E: Argument "x" to "foo" of "X" has incompatible type "int"; expected "str" # N: Revealed type is "str"
 
 [case unpack_generic_typeddict_callable_with_overload]
+# flags: --mypy-compatible
 from typing import TypedDict, Generic, TypeVar, Unpack, overload, Any
 
 T = TypeVar('T')
