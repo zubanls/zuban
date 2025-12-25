@@ -2,7 +2,8 @@ use parsa_python::{
     CodeIndex,
     NonterminalType::*,
     PyNode,
-    PyNodeType::{ErrorNonterminal, Nonterminal},
+    PyNodeType::{self, ErrorNonterminal, Nonterminal},
+    TerminalType,
 };
 
 use crate::{
@@ -44,6 +45,11 @@ impl Tree {
             },
             position,
         );
+
+        if leaf.is_type(PyNodeType::Terminal(TerminalType::String)) {
+            return (scope, CompletionNode::InsideString, rest);
+        }
+
         if let Some(previous) = leaf.previous_leaf() {
             match previous.as_code() {
                 "." => {
@@ -363,6 +369,7 @@ pub enum CompletionNode<'db> {
     NecessaryKeyword(&'static str),
     AfterDefKeyword,
     AfterClassKeyword,
+    InsideString,
     Global {
         context: Option<CompletionContext<'db>>,
     },
