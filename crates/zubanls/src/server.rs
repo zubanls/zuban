@@ -350,9 +350,9 @@ impl<'sender> GlobalState<'sender> {
             // It's questionable that we want those two things. And maybe there will also be a need
             // for the type checker to understand what the mypy_path originally was.
             config.settings.mypy_path.extend(
-                self.roots.iter().map(|p| {
-                    vfs_handler.unchecked_normalized_path(vfs_handler.unchecked_abs_path(p))
-                }),
+                self.roots
+                    .iter()
+                    .map(|p| vfs_handler.normalize_unchecked_abs_path(p)),
             );
             if self.typeshed_path.is_some() {
                 config.settings.typeshed_path = self.typeshed_path.clone();
