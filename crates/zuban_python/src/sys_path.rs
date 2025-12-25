@@ -21,18 +21,20 @@ pub(crate) fn create_sys_path(
     );
 
     let new_unchecked = |p: &str| handler.unchecked_normalized_path(handler.unchecked_abs_path(p));
-    if let Some(path) = lib_path(settings) {
+    let lib_path = lib_path(settings);
+    if let Some(path) = &lib_path {
         tracing::info!("Decided to use {path} as the Python lib folder");
         sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&path)));
     } else {
         tracing::warn!("Did not find a Python lib folder (on Linux e.g. /usr/lib/python3.12)");
     }
 
-    if let Some(env) = &settings.environment {
+    let version = settings.python_version_or_default();
+    let check_global_site_packages = if let Some(env) = &settings.environment {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
-        let p = site_packages_path_from_venv(env, settings.python_version_or_default());
+        let p = site_packages_path_from_env(env, version);
         sys_path.push((
             WorkspaceKind::SitePackages,
             new_unchecked(
@@ -42,23 +44,37 @@ pub(crate) fn create_sys_path(
             ),
         ));
         add_editable_src_packages(handler, &mut sys_path, env);
+        include_system_site_packages_in_pyvenv_cfg(env)
     } else {
-        // TODO use a real sys path
-        //"../typeshed/stubs".into(),
-        //"/home/<user>/.local/lib/python3.8/site-packages".into(),
-    }
-    // TODO maybe add these paths for Windows/Mac as well
-    if cfg!(target_os = "linux") && settings.add_global_packages_default {
-        // TODO maybe add /usr/local/lib/python3.12/dist-packages
-        let p = "/usr/lib/python3/dist-packages";
-        if std::fs::exists(p).is_ok_and(|found| found) {
-            sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)));
+        if let Some(lib) = lib_path {
+            // This seems to mostly matter on Windows.
+            let site_packages = Path::new(&lib).join("site-packages");
+            match std::fs::exists(&site_packages) {
+                Ok(true) => {
+                    if let Some(site_packages) = site_packages.to_str() {
+                        sys_path.push((WorkspaceKind::SitePackages, new_unchecked(site_packages)))
+                    } else {
+                        tracing::info!("site-packages are not unicode: {site_packages:?}")
+                    }
+                }
+                Ok(false) => {}
+                Err(err) => tracing::info!("Failed while looking for global site packages: {err}"),
+            }
         }
+        settings.add_global_packages_default
+    };
+    if check_global_site_packages {
+        add_user_site_packages(version, |p| {
+            sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)))
+        });
+        add_global_site_packages(|p| {
+            sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)))
+        });
     }
     sys_path
 }
 
-fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -> PathBuf {
+fn site_packages_path_from_env(environment: &AbsPath, version: PythonVersion) -> PathBuf {
     if cfg!(windows) {
         let direct_site_packages = environment.as_ref().join("site-packages");
         if direct_site_packages.exists() {
@@ -68,31 +84,47 @@ fn site_packages_path_from_venv(environment: &AbsPath, version: PythonVersion) -
         environment.as_ref().join("Lib").join("site-packages")
     } else {
         let lib = environment.as_ref().join("lib");
+        lookup_site_packages_with_version(lib, version)
+    }
+}
 
-        let expected_path = lib
-            .join(format!("python{}.{}", version.major, version.minor))
-            .join("site-packages");
+fn lookup_site_packages_with_version(lib: PathBuf, version: PythonVersion) -> PathBuf {
+    lookup_site_packages_with_version_detailed(
+        lib,
+        format!("python{}.{}", version.major, version.minor),
+        "python",
+        "site-packages",
+    )
+}
 
-        if expected_path.exists() {
-            return expected_path;
-        }
-        // Since the path we wanted doesn't exist, we fall back to trying to find a folder in the lib,
-        // because we are probably not always using the correct PythonVersion.
-        match lib.read_dir() {
-            Ok(dir) => {
-                for path_in_dir in dir.flatten() {
-                    let n = path_in_dir.file_name();
-                    if n.as_encoded_bytes().starts_with(b"python") {
-                        return lib.join(n).join("site-packages");
-                    }
+fn lookup_site_packages_with_version_detailed(
+    base: PathBuf,
+    version_folder_name: String,
+    starts_with: &str,
+    end: &str,
+) -> PathBuf {
+    let expected_path = base.join(version_folder_name).join(end);
+
+    if expected_path.exists() {
+        return expected_path;
+    }
+    // Since the path we wanted doesn't exist, we fall back to trying to find a folder in the lib,
+    // because we are probably not always using the correct PythonVersion.
+    match base.read_dir() {
+        Ok(dir) => {
+            for path_in_dir in dir.flatten() {
+                let n = path_in_dir.file_name();
+                let b = n.as_encoded_bytes();
+                if b.starts_with(starts_with.as_bytes()) {
+                    return base.join(n).join(end);
                 }
             }
-            Err(err) => {
-                tracing::error!("Expected {lib:?} to be a directory: {err}");
-            }
         }
-        expected_path
+        Err(err) => {
+            tracing::error!("Expected {base:?} to be a directory: {err}");
+        }
     }
+    expected_path
 }
 
 fn add_editable_src_packages(
@@ -349,4 +381,80 @@ fn search_typeshed_dir_in_unix(
         }
     }
     Ok(None)
+}
+
+fn include_system_site_packages_in_pyvenv_cfg(env: &NormalizedPath) -> bool {
+    let path = env.as_ref().join("pyvenv.cfg");
+    match std::fs::read_to_string(&path) {
+        Ok(content) => {
+            for line in content.lines() {
+                if let Some((key, value)) = line.split_once('=')
+                    && key.trim() == "include-system-site-packages"
+                {
+                    return value.to_lowercase() == "true";
+                }
+            }
+            tracing::warn!("Did not find an include-system-site-packages definition in {path:?}");
+            true
+        }
+        Err(err) => {
+            tracing::info!("Error while looking up {path:?}: {err}");
+            false
+        }
+    }
+}
+
+fn add_user_site_packages(version: PythonVersion, mut add: impl FnMut(&str)) {
+    if cfg!(windows) {
+        if let Some(app_data) = std::env::var_os("APPDATA") {
+            if let Some(app_data) = app_data.to_str() {
+                let new = lookup_site_packages_with_version_detailed(
+                    Path::new(app_data).join("Python"),
+                    format!("Python{}{}", version.major, version.minor),
+                    "Python",
+                    "site-packages",
+                );
+                if let Some(new) = new.to_str() {
+                    add(new)
+                } else {
+                    tracing::warn!("site-packages path not unicode: {new:?}");
+                }
+            } else {
+                tracing::warn!("app_data not unicode: {app_data:?}");
+            }
+        } else {
+            tracing::warn!("Did not find the environment variable APPDATA");
+        }
+    } else if let Some(home) = dirs::home_dir() {
+        if cfg!(any(target_os = "macos", target_os = "ios")) {
+            let base = home.join("Library").join("Python");
+            let new = lookup_site_packages_with_version_detailed(
+                base,
+                format!("{}.{}", version.major, version.minor),
+                "python",
+                "lib/python/site-packages",
+            );
+            if let Some(new) = new.to_str() {
+                add(new)
+            } else {
+                tracing::warn!("site-packages path not unicode: {new:?}");
+            }
+        }
+        if let Some(pkg) =
+            lookup_site_packages_with_version(home.join(".local").join("lib"), version).to_str()
+        {
+            add(pkg)
+        }
+    }
+}
+
+fn add_global_site_packages(mut add: impl FnMut(&str)) {
+    if cfg!(target_os = "linux") {
+        // TODO maybe add /usr/local/lib/python3.12/dist-packages, but it seems Ubuntu doesn't use
+        // it.
+        let p = "/usr/lib/python3/dist-packages";
+        if std::fs::exists(p).is_ok_and(|found| found) {
+            add(p);
+        }
+    }
 }
