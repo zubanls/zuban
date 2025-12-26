@@ -1136,7 +1136,15 @@ impl<'db: 'a, 'a> Class<'a> {
                     ))
                 }
                 Generics::List(generics, None) => ClassGenerics::List((*generics).clone()),
-                Generics::None => unreachable!(),
+                Generics::None => {
+                    recoverable_error!("Generics::None should never appear with type vars");
+                    ClassGenerics::List(GenericsList::new_generics(
+                        type_var_likes
+                            .iter()
+                            .map(|t| t.as_default_or_any_generic_item(db))
+                            .collect(),
+                    ))
+                }
                 generics => ClassGenerics::List(GenericsList::new_generics(
                     generics.iter(db).map(|g| g.into_generic_item()).collect(),
                 )),
