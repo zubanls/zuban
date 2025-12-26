@@ -2558,3 +2558,23 @@ class ResourceContainer:
 class ResourceFinder:
     def fn(self):
         ResourceContainer(self).resources
+
+[case dunder_eq_vs_dunder_ne]
+# From GH #227
+from typing import assert_type
+
+class Equal:
+    pass
+
+class NotEqual:
+    pass
+
+class Foo:
+    def __eq__(self, other: object) -> Equal:  # type: ignore
+        return Equal()
+
+    def __ne__(self, other: object) -> NotEqual:  # type: ignore
+        return NotEqual()
+
+assert_type(Foo() == 3, Equal)
+assert_type(Foo() != 3, NotEqual)

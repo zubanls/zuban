@@ -2672,7 +2672,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 left_inf.type_lookup_and_execute(
                     self.i_s,
                     from.file,
-                    "__eq__",
+                    if matches!(cmp, ComparisonContent::Equals(..)) {
+                        "__eq__"
+                    } else {
+                        "__ne__"
+                    },
                     &KnownArgs::new(right_inf, from),
                     &mut ResultContext::Unknown,
                     &|_| {
