@@ -110,9 +110,7 @@ impl Tree {
                                 scope,
                                 CompletionNode::ImportFromFirstPart {
                                     base: None,
-                                    dots: from_import_dots_before_node(
-                                        before_dot.previous_leaf().unwrap(),
-                                    ),
+                                    dots: from_import_dots_before_node(previous),
                                 },
                                 rest,
                             );

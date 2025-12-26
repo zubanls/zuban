@@ -410,3 +410,17 @@ class X:
         self.x = 1
 [out]
 __main__.py:4:complete -> [x]
+
+[case from_import_at_start]
+# From GH #224
+[file m/bar.py]
+#? --codepoint-column 6 complete
+from . import foo
+[file m/foo.py]
+#? complete
+from .
+
+[out]
+m/foo.py:2: error: Invalid syntax
+m/bar.py:2:complete -> [bar, foo]
+m/foo.py:2:complete -> [bar, foo]

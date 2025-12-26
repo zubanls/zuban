@@ -180,7 +180,7 @@ from import_tree.p import whatever
 #? 17 --contains-subset ['mod1', 'pkg']
 from import_tree. import whatever
 
-#? 17 ['import_tree']
+##? 17 ['import_tree']
 from .import_tree import 
 ##? 10 ['run']
 from ..run import 

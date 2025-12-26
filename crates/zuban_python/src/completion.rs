@@ -196,16 +196,20 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 }
                 self.add_import_result_completions(result)
             }
-            CompletionNode::ImportFromFirstPart { dots: _, base } => {
-                // TODO use dots
-                if let Some(base) = base {
+            CompletionNode::ImportFromFirstPart { dots, base } => {
+                if *dots <= 0 && base.is_none() {
+                    self.add_global_import_completions()
+                } else {
                     self.add_import_result_completions(self.infos.with_i_s(|i_s| {
                         self.infos
                             .file
-                            .cache_import_dotted_name(i_s.db, *base, None)
+                            .import_from_first_part_calculation_without_loading_file(
+                                i_s.db,
+                                *dots,
+                                *base,
+                                |_| (),
+                            )
                     }))
-                } else {
-                    self.add_global_import_completions()
                 }
             }
             CompletionNode::PrimaryTarget { base } => {

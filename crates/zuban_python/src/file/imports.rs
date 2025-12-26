@@ -171,20 +171,33 @@ impl PythonFile {
         import_from: ImportFrom,
     ) -> Option<ImportResult> {
         let (level, dotted_name) = import_from.level_with_dotted_name();
+        self.import_from_first_part_calculation_without_loading_file(
+            db,
+            level,
+            dotted_name,
+            |issue| NodeRef::new(self, import_from.index()).add_type_issue(db, issue),
+        )
+    }
+
+    pub fn import_from_first_part_calculation_without_loading_file(
+        &self,
+        db: &Database,
+        level: usize,
+        dotted_name: Option<DottedImportName>,
+        add_issue: impl FnOnce(IssueKind),
+    ) -> Option<ImportResult> {
         let maybe_level_file = if level > 0 {
             match find_import_ancestor(db, self, level) {
                 ImportAncestor::Found(import_result) => Some(import_result),
                 ImportAncestor::Workspace => {
-                    NodeRef::new(self, import_from.index())
-                        .add_type_issue(db, IssueKind::NoParentModule);
+                    add_issue(IssueKind::NoParentModule);
                     // This is not correct in theory, we should simply abort here. However in
                     // practice this can be useful, because if the sys path is wrong this still
                     // provides some information, especially with completions/goto.
                     None
                 }
                 ImportAncestor::NoParentModule => {
-                    NodeRef::new(self, import_from.index())
-                        .add_type_issue(db, IssueKind::NoParentModule);
+                    add_issue(IssueKind::NoParentModule);
                     return None;
                 }
             }
