@@ -228,6 +228,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             }
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
+            CompletionNode::InsideString => (),
         }
     }
 

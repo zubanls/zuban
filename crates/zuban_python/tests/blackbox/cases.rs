@@ -35,6 +35,7 @@ enum CaseType {
         expected: Vec<String>,
         contains_subset: bool,
         contains_not: Vec<String>,
+        no_name_filter: bool,
     },
     References {
         expected: FastHashSet<(Option<String>, usize, usize)>,
@@ -194,10 +195,13 @@ impl TestFile<'_> {
                     expected,
                     contains_subset,
                     contains_not,
+                    no_name_filter,
                 } => {
                     let actual = document
                         .get()
-                        .complete(position, true, |_, name| Some(name.label().to_owned()))
+                        .complete(position, !no_name_filter, |_, name| {
+                            Some(name.label().to_owned())
+                        })
                         .unwrap();
                     for should_not_be_in_there in contains_not {
                         if actual.contains(&should_not_be_in_there) {
@@ -259,6 +263,7 @@ impl TestFile<'_> {
                 let mut follow_imports = false;
                 let mut goal = GotoGoal::PreferNonStubs;
                 let mut contains_not = vec![];
+                let mut no_name_filter = false;
                 loop {
                     match names.first() {
                         Some(&"--add-lines") => {
@@ -285,6 +290,11 @@ impl TestFile<'_> {
                             assert!(matches!(kind, TestKind::Goto | TestKind::Infer));
                             names.remove(0);
                             goal = GotoGoal::PreferStubs;
+                        }
+                        Some(&"--no-name-filter") => {
+                            assert_eq!(kind, TestKind::Complete);
+                            names.remove(0);
+                            no_name_filter = true;
                         }
                         Some(name) if name.starts_with("--") => {
                             panic!("Did not expect option {name} in {:?}:#{line_nr}", self.path)
@@ -323,6 +333,7 @@ impl TestFile<'_> {
                         expected: unpack_list(),
                         contains_subset,
                         contains_not,
+                        no_name_filter,
                     },
                     TestKind::References => CaseType::References {
                         expected: unpack_references_tuple(line_nr, &names.join(" ")),

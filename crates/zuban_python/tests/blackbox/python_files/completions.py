@@ -144,3 +144,10 @@ def primary_target_completions():
     import_tree.mod1. = 5
     #? 4 --contains-subset ["help", "str"]
     .mod1.a = 6
+
+def no_completion_inside_string_test():
+    some_variable = 1
+    #? 14 --no-name-filter []
+    " some_var "
+    #? 16 --no-name-filter []
+    """ some_var """
