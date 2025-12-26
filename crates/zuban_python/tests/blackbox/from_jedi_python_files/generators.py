@@ -185,7 +185,7 @@ a
 #? ['__call__']
 gen().close.__call__
 
-#? 
+#? tuple()
 gen().throw()
 
 #? ['co_consts']
