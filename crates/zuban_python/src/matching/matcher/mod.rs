@@ -972,11 +972,7 @@ impl<'a> Matcher<'a> {
         t: &'x Type,
     ) -> Cow<'x, Type> {
         self.replace_type_var_likes(db, t, |usage| {
-            Some(
-                usage
-                    .as_type_var_like()
-                    .as_never_generic_item(db, NeverCause::Inference),
-            )
+            Some(usage.as_type_var_like().as_never_generic_item(db))
         })
     }
 

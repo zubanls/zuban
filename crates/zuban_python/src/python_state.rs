@@ -14,7 +14,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, CustomBehavior,
-        NeverCause, ParamType, Tuple, Type, TypeArgs, TypeVarLikes, dataclasses_replace,
+        ParamType, Tuple, Type, TypeArgs, TypeVarLikes, dataclasses_replace,
     },
     type_helpers::{Class, FirstParamProperties, Function, Instance, cache_class_name},
 };
@@ -839,12 +839,12 @@ impl PythonState {
         s.set_of_any = new_class!(s.set_node_ref().as_link(), Type::ERROR);
         s.list_of_never = new_class!(
             s.list_node_ref().as_link(),
-            Type::Never(NeverCause::Inference)
+            Type::Any(AnyCause::UnknownTypeParam),
         );
         s.dict_of_never = new_class!(
             s.dict_node_ref().as_link(),
-            Type::Never(NeverCause::Inference),
-            Type::Never(NeverCause::Inference),
+            Type::Any(AnyCause::UnknownTypeParam),
+            Type::Any(AnyCause::UnknownTypeParam),
         );
         s.tuple_of_obj = Type::Tuple(Tuple::new_arbitrary_length(s.object_type()));
         s.dict_of_str_and_obj =

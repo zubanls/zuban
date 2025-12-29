@@ -201,7 +201,7 @@ vcontra1_2: ShouldBeContravariant1[int] = ShouldBeContravariant1[float](1.2)  # 
 [case type_var_default_with_never]
 class C[T, U=T]: ...
 
-reveal_type(C())  # N: Revealed type is "__main__.C[Never, Never]"
+reveal_type(C())  # N: Revealed type is "__main__.C[Any, Any]"
 
 [case type_var_default_with_usage_before_generic]
 from typing import TypeVar, Generic, Iterable

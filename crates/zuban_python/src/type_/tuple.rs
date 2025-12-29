@@ -23,7 +23,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{Generics, IteratorContent, OnTypeError, ResultContext},
-    type_::{AnyCause, NeverCause, Type},
+    type_::{AnyCause, Type},
     type_helpers::{Class, ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{arc_slice_into_vec, join_with_commas},
 };
@@ -595,9 +595,9 @@ impl TupleArgs {
         self.has_any_internal(i_s, &mut Vec::new())
     }
 
-    pub fn is_never_from_inference(&self) -> bool {
+    pub fn is_any_with_unknown_type_param(&self) -> bool {
         match self {
-            Self::ArbitraryLen(t) => matches!(&**t, Type::Never(NeverCause::Inference)),
+            Self::ArbitraryLen(t) => matches!(&**t, Type::Any(AnyCause::UnknownTypeParam)),
             _ => false,
         }
     }

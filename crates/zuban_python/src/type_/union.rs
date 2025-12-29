@@ -124,7 +124,7 @@ fn merge_simplified_union_type(
             // Generics with never from inference can probably simply be merged with other objects
             // of the same type.
             Type::Class(c1)
-                if c1.generics.all_never_from_inference()
+                if c1.generics.all_any_with_unknown_type_params()
                     && new_types
                         .iter()
                         .any(|e| matches!(&e.type_, Type::Class(c2) if c1.link == c2.link)) =>
@@ -141,7 +141,7 @@ fn merge_simplified_union_type(
                     match &mut current.type_ {
                         Type::RecursiveType(r) if r.generics.is_some() => (),
                         Type::Class(c1)
-                            if c1.generics.all_never_from_inference()
+                            if c1.generics.all_any_with_unknown_type_params()
                                 && matches!(additional_t, Type::Class(c2) if c1.link == c2.link) =>
                         {
                             current.type_ = additional.type_;

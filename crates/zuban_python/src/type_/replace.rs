@@ -12,7 +12,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
-    type_::{AnyCause, NeverCause, PropertySetterType, TupleUnpack, WithUnpack},
+    type_::{AnyCause, PropertySetterType, TupleUnpack, WithUnpack},
     utils::arc_slice_into_vec,
 };
 
@@ -67,13 +67,13 @@ enum ReplacedParamSpec {
 }
 
 impl Type {
-    pub fn replace_never_from_inference_with_any(&self) -> Self {
-        struct NeverReplacer();
-        impl Replacer for NeverReplacer {
+    pub fn replace_any_with_unknown_type_params_with_any(&self) -> Self {
+        struct AnyReplacer();
+        impl Replacer for AnyReplacer {
             #[inline]
             fn replace_type(&mut self, t: &Type) -> Option<Option<Type>> {
                 match t {
-                    Type::Never(NeverCause::Inference) => Some(Some(Type::ERROR)),
+                    Type::Any(AnyCause::UnknownTypeParam) => Some(Some(Type::ERROR)),
                     _ => None,
                 }
             }
@@ -85,7 +85,7 @@ impl Type {
                 }
             }
         }
-        self.replace_internal(&mut NeverReplacer())
+        self.replace_internal(&mut AnyReplacer())
             .unwrap_or_else(|| self.clone())
     }
 
@@ -344,11 +344,7 @@ impl GenericItem {
                 if let Some(default) = tvl_found.default(db) {
                     Some(default.resolve_recursive_defaults_or_set_never(db))
                 } else {
-                    Some(
-                        usage
-                            .as_type_var_like()
-                            .as_never_generic_item(db, NeverCause::Inference),
-                    )
+                    Some(usage.as_type_var_like().as_never_generic_item(db))
                 }
             },
             &|| None,

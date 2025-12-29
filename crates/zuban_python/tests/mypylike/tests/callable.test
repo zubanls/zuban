@@ -36,7 +36,7 @@ reveal_type(return_callable1(7)("")) # N: Revealed type is "tuple[int, str]"
 def return_callable2() -> Callable[[U], Tuple[T, U]]: ...
 
 reveal_type(return_callable2())  # N: Revealed type is "def [U, T] (U) -> tuple[T, U]"
-reveal_type(return_callable2()(1))  # N: Revealed type is "tuple[Never, int]"
+reveal_type(return_callable2()(1))  # N: Revealed type is "tuple[Any, int]"
 
 [case callable_return_from_function_simple_with_context]
 from typing import Callable, TypeVar, Tuple
@@ -80,7 +80,7 @@ class Foo(Generic[V]):
     def return_callable4(self) -> Callable[[U], Tuple[T, U, V]]: ...
 
 reveal_type(Foo(1.0).return_callable4()) # N: Revealed type is "def [U, T] (U) -> tuple[T, U, float]"
-reveal_type(Foo(1.0).return_callable4()("")) # N: Revealed type is "tuple[Never, str, float]"
+reveal_type(Foo(1.0).return_callable4()("")) # N: Revealed type is "tuple[Any, str, float]"
 
 [case callable_return_from_method_nested_simple]
 from typing import Callable, TypeVar, Tuple, Generic
@@ -115,11 +115,9 @@ class Foo(Generic[V]):
 
 c = Foo(1.0).return_callable6(1)
 reveal_type(c) # N: Revealed type is "def [U, W] (U) -> tuple[def (W) -> tuple[int, U, float, W], def (W) -> tuple[int, U, float, W]]"
-reveal_type(c("")) # N: Revealed type is "tuple[def (Never) -> tuple[int, str, float, Never], def (Never) -> tuple[int, str, float, Never]]"
-reveal_type(c("")[0](b"")) # N: Revealed type is "tuple[int, str, float, Never]" \
-                           # E: Argument 1 has incompatible type "bytes"; expected "Never"
-reveal_type(c("")[1](b"")) # N: Revealed type is "tuple[int, str, float, Never]" \
-                           # E: Argument 1 has incompatible type "bytes"; expected "Never"
+reveal_type(c("")) # N: Revealed type is "tuple[def (Any) -> tuple[int, str, float, Any], def (Any) -> tuple[int, str, float, Any]]"
+reveal_type(c("")[0](b"")) # N: Revealed type is "tuple[int, str, float, Any]"
+reveal_type(c("")[1](b"")) # N: Revealed type is "tuple[int, str, float, Any]"
 
 [case callable_return_from_method_nested_multiple2]
 from typing import Callable, TypeVar, Tuple, Generic
@@ -214,7 +212,7 @@ any: Any
 x, y = any # type: Tuple[Callable[[T], Tuple[T, U]], U]
 
 reveal_type(x) # N: Revealed type is "def [T, U] (T) -> tuple[T, U]"
-reveal_type(x(1)) # N: Revealed type is "tuple[int, Never]"
+reveal_type(x(1)) # N: Revealed type is "tuple[int, Any]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
@@ -232,7 +230,7 @@ any: Any
 x, y = any # type: (Callable[[T], Tuple[T, U]], U)
 
 reveal_type(x) # N: Revealed type is "def [T, U] (T) -> tuple[T, U]"
-reveal_type(x(1)) # N: Revealed type is "tuple[int, Never]"
+reveal_type(x(1)) # N: Revealed type is "tuple[int, Any]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
@@ -249,7 +247,7 @@ U = TypeVar('U')
 x = cast(Callable[[T], Tuple[T, U]], None)
 
 reveal_type(x) # N: Revealed type is "def [T, U] (T) -> tuple[T, U]"
-reveal_type(x(1)) # N: Revealed type is "tuple[int, Never]"
+reveal_type(x(1)) # N: Revealed type is "tuple[int, Any]"
 
 [out]
 
@@ -262,7 +260,7 @@ U = TypeVar('U')
 x, y = cast(Tuple[Callable[[T], Tuple[T, U]], U], None)
 
 reveal_type(x) # N: Revealed type is "def [T, U] (T) -> tuple[T, U]"
-reveal_type(x(1)) # N: Revealed type is "tuple[int, Never]"
+reveal_type(x(1)) # N: Revealed type is "tuple[int, Any]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
@@ -419,7 +417,7 @@ class Foo(TypedDict, Generic[T]):
 class X(Generic[T]):
     def foo(self, **kwargs: Unpack[Foo[T]]) -> T: ...
 
-reveal_type(X().foo(x=3))  # E: Argument "x" to "foo" of "X" has incompatible type "int"; expected "Never"  # N: Revealed type is "Never"
+reveal_type(X().foo(x=3))  # N: Revealed type is "Any"
 reveal_type(X[int]().foo(x=3))  # N: Revealed type is "int"
 reveal_type(X[str]().foo(x=3))  # E: Argument "x" to "foo" of "X" has incompatible type "int"; expected "str" # N: Revealed type is "str"
 

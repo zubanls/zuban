@@ -8,7 +8,7 @@ use std::{
 use parsa_python_cst::{FunctionDef, NodeIndex};
 
 use super::{
-    AnyCause, CallableContent, CallableParams, FormatStyle, GenericItem, GenericsList, NeverCause,
+    AnyCause, CallableContent, CallableParams, FormatStyle, GenericItem, GenericsList,
     ReplaceTypeVarLikes, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
@@ -738,25 +738,28 @@ impl TypeVarLike {
         }
     }
 
-    pub fn as_never_generic_item(&self, db: &Database, cause: NeverCause) -> GenericItem {
+    pub fn as_never_generic_item(&self, db: &Database) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
                 Some(default) => GenericItem::TypeArg(default.clone())
                     .resolve_recursive_defaults_or_set_never(db),
-                None => GenericItem::TypeArg(Type::Never(cause)),
+                None => GenericItem::TypeArg(Type::Any(AnyCause::UnknownTypeParam)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
                 Some(default) => GenericItem::TypeArgs(default.clone())
                     .resolve_recursive_defaults_or_set_never(db),
-                None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
+                None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(
+                    AnyCause::UnknownTypeParam,
+                ))),
             },
             TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
                 Some(default) => {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
                         .resolve_recursive_defaults_or_set_never(db)
                 }
-                // TODO ParamSpec: this feels wrong, should maybe be never?
-                None => GenericItem::ParamSpecArg(ParamSpecArg::new_never(cause)),
+                None => {
+                    GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::UnknownTypeParam))
+                }
             },
         }
     }
@@ -1507,13 +1510,6 @@ impl ParamSpecArg {
     pub fn new_any(cause: AnyCause) -> Self {
         Self {
             params: CallableParams::Any(cause),
-            type_vars: None,
-        }
-    }
-
-    pub fn new_never(cause: NeverCause) -> Self {
-        Self {
-            params: CallableParams::Never(cause),
             type_vars: None,
         }
     }

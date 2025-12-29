@@ -189,24 +189,24 @@ impl<'db: 'slf, 'slf> Inferred {
                 Specific::PartialDict => Cow::Borrowed(&i_s.db.python_state.dict_of_never),
                 Specific::PartialSet => Cow::Owned(new_class!(
                     i_s.db.python_state.set_node_ref().as_link(),
-                    Type::Never(NeverCause::Inference),
+                    Type::Any(AnyCause::UnknownTypeParam),
                 )),
                 Specific::PartialDefaultDict => Cow::Owned(new_class!(
                     i_s.db.python_state.defaultdict_link(),
-                    Type::Never(NeverCause::Inference),
-                    Type::Never(NeverCause::Inference),
+                    Type::Any(AnyCause::UnknownTypeParam),
+                    Type::Any(AnyCause::UnknownTypeParam),
                 )),
                 Specific::PartialDefaultDictWithList => Cow::Owned(new_class!(
                     i_s.db.python_state.defaultdict_link(),
-                    Type::Never(NeverCause::Inference),
+                    Type::Any(AnyCause::UnknownTypeParam),
                     i_s.db.python_state.list_of_never.clone(),
                 )),
                 Specific::PartialDefaultDictWithSet => Cow::Owned(new_class!(
                     i_s.db.python_state.defaultdict_link(),
-                    Type::Never(NeverCause::Inference),
+                    Type::Any(AnyCause::UnknownTypeParam),
                     new_class!(
                         i_s.db.python_state.set_node_ref().as_link(),
-                        Type::Never(NeverCause::Inference),
+                        Type::Any(AnyCause::UnknownTypeParam),
                     )
                 )),
                 _ => {
@@ -335,7 +335,7 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
-    pub fn maybe_never_from_inference(
+    pub fn maybe_any_with_unknown_type_params(
         &self,
         i_s: &InferenceState,
         from: NodeRef,
@@ -343,7 +343,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None;
         };
-        t.has_never_from_inference(i_s.db).then(|| {
+        t.has_any_with_unknown_type_params(i_s.db).then(|| {
             from.add_issue(
                 i_s,
                 IssueKind::NeedTypeAnnotation {
@@ -351,7 +351,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     hint: None,
                 },
             );
-            Inferred::from_type(t.replace_never_from_inference_with_any())
+            Inferred::from_type(t.replace_any_with_unknown_type_params_with_any())
         })
     }
 
@@ -395,14 +395,14 @@ impl<'db: 'slf, 'slf> Inferred {
         } else if *link == i_s.db.python_state.defaultdict_link() {
             let cls = c.class(i_s.db);
             let first = cls.nth_type_argument(i_s.db, 0);
-            if first.is_never() {
+            if matches!(first, Type::Any(AnyCause::UnknownTypeParam)) {
                 let second = cls.nth_type_argument(i_s.db, 1);
                 fn dont_set_type(_: Type) {}
                 return match Self::maybe_new_partial_point_internal(i_s, &second, dont_set_type) {
                     Some(Specific::PartialList) => Some(Specific::PartialDefaultDictWithList),
                     Some(Specific::PartialSet) => Some(Specific::PartialDefaultDictWithSet),
                     _ => {
-                        if second.has_never_from_inference(i_s.db) {
+                        if second.has_any_with_unknown_type_params(i_s.db) {
                             None
                         } else {
                             set_defaultdict_type(second);
@@ -418,7 +418,7 @@ impl<'db: 'slf, 'slf> Inferred {
         for generic in generics.iter() {
             if !matches!(
                 generic,
-                GenericItem::TypeArg(Type::Never(NeverCause::Inference))
+                GenericItem::TypeArg(Type::Any(AnyCause::UnknownTypeParam))
             ) {
                 return None;
             }

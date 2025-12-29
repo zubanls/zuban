@@ -27,7 +27,7 @@ use crate::{
     recoverable_error,
     type_::{
         CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics,
-        GenericItem, GenericsList, MaybeUnpackGatherer, NeverCause, ParamSpecTypeVars, ReplaceSelf,
+        GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,
         ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
         TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
@@ -191,7 +191,7 @@ impl CalculatedTypeArgs {
                     type_var_likes
                         .iter()
                         .any(|tvl| tvl == &found)
-                        .then(|| found.as_never_generic_item(db, NeverCause::Inference))
+                        .then(|| found.as_never_generic_item(db))
                 })
             })
         }
@@ -311,11 +311,8 @@ impl CalculatedTypeArgs {
             if !unused_type_vars.is_empty() {
                 type_ = type_
                     .replace_type_var_likes(i_s.db, &mut |usage| {
-                        (usage.in_definition() == self.in_definition).then(|| {
-                            usage
-                                .as_type_var_like()
-                                .as_never_generic_item(i_s.db, NeverCause::Inference)
-                        })
+                        (usage.in_definition() == self.in_definition)
+                            .then(|| usage.as_type_var_like().as_never_generic_item(i_s.db))
                     })
                     .unwrap_or(type_);
             }

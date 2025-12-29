@@ -2054,7 +2054,7 @@ impl Inference<'_, '_, '_> {
                 });
                 use_else_context = inf
                     .as_cow_type(self.i_s)
-                    .has_never_from_inference(self.i_s.db);
+                    .has_any_with_unknown_type_params(self.i_s.db);
                 needs_recalculation = use_else_context || had_error;
                 if_inf = Some(inf);
             });

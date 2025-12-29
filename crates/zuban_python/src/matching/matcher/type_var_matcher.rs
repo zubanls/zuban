@@ -10,8 +10,8 @@ use crate::{
     matching::MatcherFormatResult,
     recoverable_error,
     type_::{
-        AnyCause, GenericItem, GenericsList, NeverCause, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+        AnyCause, GenericItem, GenericsList, Type, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarUsage, Variance,
     },
     utils::join_with_commas,
 };
@@ -217,7 +217,7 @@ impl CalculatingTypeArg {
             if let Some(fallback) = fallback {
                 GenericItem::TypeArg(fallback)
             } else {
-                type_var_like.as_never_generic_item(db, NeverCause::Inference)
+                type_var_like.as_never_generic_item(db)
             }
         })
     }

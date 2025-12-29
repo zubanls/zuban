@@ -298,10 +298,9 @@ impl BoundKind {
 
     pub(super) fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
         match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => Some(Self::TypeVar(
-                t1.common_sub_type(i_s, t2)
-                    .unwrap_or(Type::Never(NeverCause::Inference)),
-            )),
+            (Self::TypeVar(t1), Self::TypeVar(t2)) => {
+                Some(Self::TypeVar(t1.common_sub_type(i_s, t2)?))
+            }
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
                 Some(Self::TypeVarTuple(tup1.common_sub_type(i_s, tup2)?))
             }

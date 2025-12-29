@@ -220,12 +220,12 @@ impl GenericItem {
         }
     }
 
-    fn is_never_from_inference(&self) -> bool {
+    fn is_any_with_unknown_type_params(&self) -> bool {
         match self {
-            Self::TypeArg(t) => matches!(t, Type::Never(NeverCause::Inference)),
-            Self::TypeArgs(ts) => ts.args.is_never_from_inference(),
+            Self::TypeArg(t) => matches!(t, Type::Any(AnyCause::UnknownTypeParam)),
+            Self::TypeArgs(ts) => ts.args.is_any_with_unknown_type_param(),
             Self::ParamSpecArg(p) => {
-                matches!(p.params, CallableParams::Never(NeverCause::Inference))
+                matches!(p.params, CallableParams::Any(AnyCause::UnknownTypeParam))
             }
         }
     }
@@ -251,9 +251,9 @@ impl ClassGenerics {
         }
     }
 
-    pub fn all_never_from_inference(&self) -> bool {
+    pub fn all_any_with_unknown_type_params(&self) -> bool {
         match self {
-            Self::List(list) => list.iter().all(|g| g.is_never_from_inference()),
+            Self::List(list) => list.iter().all(|g| g.is_any_with_unknown_type_params()),
             _ => false,
         }
     }
@@ -1338,16 +1338,18 @@ impl Type {
         }
     }
 
-    pub fn has_never_from_inference(&self, db: &Database) -> bool {
+    pub fn has_any_with_unknown_type_params(&self, db: &Database) -> bool {
         self.find_in_type(db, &mut |t| match t {
-            Type::Never(NeverCause::Inference) => true,
-            Type::Callable(c) => matches!(c.params, CallableParams::Never(NeverCause::Inference)),
+            Type::Any(AnyCause::UnknownTypeParam) => true,
+            Type::Callable(c) => {
+                matches!(c.params, CallableParams::Any(AnyCause::UnknownTypeParam))
+            }
             Type::Class(c) => match &c.generics {
                 ClassGenerics::List(list) => list.iter().any(|g| {
                     matches!(
                         g,
                         GenericItem::ParamSpecArg(ParamSpecArg {
-                            params: CallableParams::Never(NeverCause::Inference),
+                            params: CallableParams::Any(AnyCause::UnknownTypeParam),
                             ..
                         })
                     )
@@ -2267,6 +2269,7 @@ pub(crate) enum AnyCause {
     ModuleNotFound,
     TypeVarReplacement,
     Internal,
+    UnknownTypeParam,
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }
 

@@ -397,8 +397,8 @@ impl<'db> Inference<'db, '_, '_> {
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(i_s.db.python_state.dict_of_never.clone());
         }
-        let mut key_t = Type::Never(NeverCause::Inference);
-        let mut value_t = Type::Never(NeverCause::Inference);
+        let mut key_t = Type::Never(NeverCause::Other);
+        let mut value_t = Type::Never(NeverCause::Other);
         for (i, child) in dict_elements.enumerate() {
             match child {
                 DictElement::KeyValue(key_value) => {
@@ -433,6 +433,12 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
             }
+        }
+        if key_t.is_never() {
+            key_t = Type::Any(AnyCause::UnknownTypeParam);
+        }
+        if value_t.is_never() {
+            value_t = Type::Any(AnyCause::UnknownTypeParam);
         }
         debug!(
             "Calculated generics for {}: dict[{}, {}]",

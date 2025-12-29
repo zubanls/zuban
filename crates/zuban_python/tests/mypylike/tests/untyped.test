@@ -61,8 +61,8 @@ z: int = ret_other("")
 
 def f[S, T](x: Callable[[T], S]) -> tuple[T, S]: ...
 
-reveal_type(f(ret_same))  # N: Revealed type is "tuple[Never, Never]"
-reveal_type(f(ret_other))  # N: Revealed type is "tuple[Never, int]"
+reveal_type(f(ret_same))  # N: Revealed type is "tuple[Any, Any]"
+reveal_type(f(ret_other))  # N: Revealed type is "tuple[Any, int]"
 
 [case untyped_callables_with_errors]
 # flags: --no-mypy-compatible --check-untyped-defs
@@ -359,7 +359,7 @@ d = D("")  # E: Argument 1 to "D" has incompatible type "str"; expected "int"
 reveal_type(d.foo(b''))  # N: Revealed type is "tuple[bytes, int]"
 
 # TODO this is wrong
-reveal_type(E(1).foo(""))  # N: Revealed type is "tuple[Never, int]"
+reveal_type(E(1).foo(""))  # N: Revealed type is "tuple[Any, int]"
 
 [case untyped_enum_method]
 # flags: --no-mypy-compatible

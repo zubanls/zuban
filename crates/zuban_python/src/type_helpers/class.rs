@@ -1355,7 +1355,9 @@ impl<'db: 'a, 'a> Class<'a> {
             from_type_type,
         ) {
             ClassExecutionResult::ClassGenerics(mut generics) => {
-                if generics.all_never_from_inference() && self.has_django_stubs_base_class(i_s.db) {
+                if generics.all_any_with_unknown_type_params()
+                    && self.has_django_stubs_base_class(i_s.db)
+                {
                     self.fill_django_default_generics(i_s, args, &mut generics);
                 }
                 let result = Inferred::from_type(Type::Class(GenericClass {

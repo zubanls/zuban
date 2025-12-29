@@ -36,9 +36,9 @@ use crate::{
     recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
-        Literal, LiteralKind, LookupResult, NeverCause, ParamType, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType,
-        Variance, dataclass_converter_fields_lookup,
+        Literal, LiteralKind, LookupResult, ParamType, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
+        dataclass_converter_fields_lookup,
     },
     type_helpers::{
         Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
@@ -626,7 +626,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             lookup_and_execute(left_inf);
             return Some(());
         }
-        if class.nth_type_argument(self.i_s.db, 0).is_never() {
+        if matches!(
+            class.nth_type_argument(self.i_s.db, 0),
+            Type::Any(AnyCause::UnknownTypeParam)
+        ) {
             // This adds an empty list again, which should be fine.
             return Some(());
         }
@@ -1297,7 +1300,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         .is_some_and(|c| c.node_ref == class_node_ref)
                     {
                         let mut t = t.into_owned();
-                        if t.has_never_from_inference(i_s.db) {
+                        if t.has_any_with_unknown_type_params(i_s.db) {
                             saved_node_ref.finish_partial_with_annotation_needed(i_s.db)
                         } else {
                             if partial_flags.nullable && !i_s.db.project.strict_optional_partials()
@@ -1584,8 +1587,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
 
                     return;
-                } else if let Some(inf) =
-                    value.maybe_never_from_inference(i_s, NodeRef::new(self.file, current_index))
+                } else if let Some(inf) = value
+                    .maybe_any_with_unknown_type_params(i_s, NodeRef::new(self.file, current_index))
                 {
                     save(name_def.index(), &inf);
                     return;
@@ -1999,7 +2002,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 s_t.infer(i_s).as_type(i_s).avoid_implicit_literal(i_s.db),
                                 value_t,
                             );
-                            if new_dict.has_never_from_inference(i_s.db) {
+                            if new_dict.has_any_with_unknown_type_params(i_s.db) {
                                 from.finish_partial_with_annotation_needed(i_s.db);
                                 return;
                             }
@@ -3308,7 +3311,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 debug!(r#"Partial "{}" was already finished"#, primary.as_code());
                 return None;
             }
-            if resolved_partial.has_never_from_inference(i_s.db) {
+            if resolved_partial.has_any_with_unknown_type_params(i_s.db) {
                 base.finish_partial_with_annotation_needed(i_s.db);
                 return Some(Type::None);
             }
@@ -3604,7 +3607,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     elements @ StarLikeExpressionIterator::Elements(_) => {
                         self.create_list_or_set_generics(elements)
                     }
-                    StarLikeExpressionIterator::Empty => Type::Never(NeverCause::Inference),
+                    StarLikeExpressionIterator::Empty => Type::Any(AnyCause::UnknownTypeParam),
                 };
                 return Inferred::from_type(new_class!(
                     i_s.db.python_state.list_node_ref().as_link(),

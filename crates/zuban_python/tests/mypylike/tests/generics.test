@@ -170,7 +170,7 @@ T = TypeVar('T')
 def add(c: Callable[[T], T | list[T]]) -> T: ...
 
 c: Callable[[str], int | list[str]]
-a: int = add(c) # E: Argument 1 to "add" has incompatible type "Callable[[str], int | list[str]]"; expected "Callable[[Never], Never | list[Never]]"
+a: int = add(c) # E: Argument 1 to "add" has incompatible type "Callable[[str], int | list[str]]"; expected "Callable[[int], int | list[int]]"
 
 [case nested_generic_mismatch_class_and_callable]
 from typing import TypeVar, Generic, Callable
@@ -1096,7 +1096,7 @@ T2 = TypeVar("T2")
 def foo(f: Callable[[T1], T1]) -> T1: ...
 def id(x: T2) -> T2: ...
 
-reveal_type(foo(id))  # N: Revealed type is "Never"
+reveal_type(foo(id))  # N: Revealed type is "Any"
 
 [case transitive_constraints_mismatch1_mypy_compatible]
 # flags: --mypy-compatible
@@ -1192,7 +1192,7 @@ reveal_type(foo(1, ''))  # N: Revealed type is "object"
 
 def bar(x: T | object) -> T: ...
 
-reveal_type(bar(1))  # N: Revealed type is "Never"
+reveal_type(bar(1))  # N: Revealed type is "Any"
 
 [case generic_callable_in_classdef]
 from typing import TypeVar, Generic, Callable
@@ -1297,7 +1297,7 @@ U = TypeVar("U")
 def foo(x: T) -> T:
     def bar(x: U, y: T) -> U: ...
 
-    bar(1, [])  # E: Argument 2 to "bar" has incompatible type "list[Never]"; expected "T"
+    bar(1, [])  # E: Argument 2 to "bar" has incompatible type "list[Any]"; expected "T"
     return x
 
 [case defaultdict_like_getitem]
