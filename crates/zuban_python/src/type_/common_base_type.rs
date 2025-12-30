@@ -586,9 +586,9 @@ impl TupleArgs {
         if self == other {
             return self.clone();
         }
-        if self.is_any() {
+        if self.maybe_any().is_some() {
             return self.clone();
-        } else if other.is_any() {
+        } else if other.maybe_any().is_some() {
             return other.clone();
         }
         match (self, other) {

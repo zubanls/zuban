@@ -215,7 +215,7 @@ impl GenericItem {
     fn is_any(&self) -> bool {
         match self {
             Self::TypeArg(t) => t.is_any(),
-            Self::TypeArgs(ts) => ts.args.is_any(),
+            Self::TypeArgs(ts) => ts.args.maybe_any().is_some(),
             Self::ParamSpecArg(p) => matches!(p.params, CallableParams::Any(_)),
         }
     }
@@ -223,7 +223,7 @@ impl GenericItem {
     fn is_any_with_unknown_type_params(&self) -> bool {
         match self {
             Self::TypeArg(t) => matches!(t, Type::Any(AnyCause::UnknownTypeParam)),
-            Self::TypeArgs(ts) => ts.args.is_any_with_unknown_type_param(),
+            Self::TypeArgs(ts) => ts.args.maybe_any() == Some(AnyCause::UnknownTypeParam),
             Self::ParamSpecArg(p) => {
                 matches!(p.params, CallableParams::Any(AnyCause::UnknownTypeParam))
             }

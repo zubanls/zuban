@@ -217,11 +217,13 @@ impl Bound {
         }
     }
 
-    pub fn is_any(&self) -> bool {
+    pub fn maybe_any(&self) -> Option<AnyCause> {
         match self {
-            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.is_any(),
-            Self::UpperAndLower(upper, lower) => upper.is_any() && lower.is_any(),
-            Self::Uncalculated { .. } => false,
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.maybe_any(),
+            Self::UpperAndLower(upper, lower) => {
+                upper.maybe_any().filter(|_| lower.maybe_any().is_some())
+            }
+            Self::Uncalculated { .. } => None,
         }
     }
 
@@ -361,11 +363,15 @@ impl BoundKind {
         }
     }
 
-    fn is_any(&self) -> bool {
+    fn maybe_any(&self) -> Option<AnyCause> {
         match self {
-            Self::TypeVar(t) => t.is_any(),
-            Self::TypeVarTuple(ts) => ts.is_any(),
-            Self::ParamSpec(params) => matches!(params, CallableParams::Any(_)),
+            Self::TypeVar(Type::Any(cause)) => Some(*cause),
+            Self::TypeVar(_) => None,
+            Self::TypeVarTuple(ts) => ts.maybe_any(),
+            Self::ParamSpec(params) => match params {
+                CallableParams::Any(cause) => Some(*cause),
+                _ => None,
+            },
         }
     }
 

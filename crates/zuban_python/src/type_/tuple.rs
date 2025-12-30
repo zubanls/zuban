@@ -584,22 +584,18 @@ impl TupleArgs {
         ARBITRARY_TUPLE_ARGS_FROM_ERROR.with(|t| t.clone())
     }
 
-    pub fn is_any(&self) -> bool {
+    pub fn maybe_any(&self) -> Option<AnyCause> {
         match self {
-            Self::ArbitraryLen(t) => t.is_any(),
-            _ => false,
+            Self::ArbitraryLen(t) => match t.as_ref() {
+                Type::Any(cause) => Some(*cause),
+                _ => None,
+            },
+            _ => None,
         }
     }
 
     pub fn has_any(&self, i_s: &InferenceState) -> bool {
         self.has_any_internal(i_s, &mut Vec::new())
-    }
-
-    pub fn is_any_with_unknown_type_param(&self) -> bool {
-        match self {
-            Self::ArbitraryLen(t) => matches!(&**t, Type::Any(AnyCause::UnknownTypeParam)),
-            _ => false,
-        }
     }
 
     pub fn is_empty(&self) -> bool {

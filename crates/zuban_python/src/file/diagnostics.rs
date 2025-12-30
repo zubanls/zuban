@@ -1120,7 +1120,7 @@ impl Inference<'_, '_, '_> {
                                      if matches!(&literal.kind, LiteralKind::String(_)))
                         })
                     } else {
-                        tup.args.is_any()
+                        tup.args.maybe_any().is_some()
                     }
                 }
                 Type::Any(_) => true,

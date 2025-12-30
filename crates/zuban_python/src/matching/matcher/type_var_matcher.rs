@@ -43,7 +43,7 @@ impl CalculatingTypeArg {
         if let Bound::Uncalculated { fallback } = &self.type_ {
             if !matches!(&other, Bound::Uncalculated { .. }) || fallback.is_none() {
                 self.type_ = other;
-                if self.type_.is_any() {
+                if self.type_.maybe_any().is_some() {
                     return Match::True { with_any: true };
                 }
             }

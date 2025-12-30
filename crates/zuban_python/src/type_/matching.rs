@@ -104,7 +104,7 @@ impl Type {
                     variance,
                 )
                 .similar_if_false(),
-                Type::ParamSpecArgs(_) => t1.args.is_any().into(),
+                Type::ParamSpecArgs(_) => t1.args.maybe_any().is_some().into(),
                 _ => Match::new_false(),
             },
             Type::Union(union_type1) => {
