@@ -11,7 +11,7 @@ use crate::{
     database::Database,
     inference_state::InferenceState,
     matching::{CheckedTypeRecursion, Match, Matcher},
-    type_::{CallableLike, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
+    type_::{AnyCause, CallableLike, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -64,6 +64,7 @@ impl Type {
                     Some(self.simplified_union(i_s, other))
                 }
             }
+            Type::Any(AnyCause::UnknownTypeParam) => Some(t2.clone()),
             Type::Any(cause) => Some(Type::Any(*cause)),
             Type::Never(_) => Some(t2.clone()),
             Type::Callable(c1) => {
