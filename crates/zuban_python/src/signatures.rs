@@ -274,7 +274,6 @@ impl<'db> CallSignatures<'db> {
                     (Some(param_offsets), label)
                 }
                 CallableParams::Any(_) => (None, "".into()),
-                CallableParams::Never(_) => (Some(vec![]), "*Any, **Any".into()),
             };
             CallSignature {
                 label: format!(

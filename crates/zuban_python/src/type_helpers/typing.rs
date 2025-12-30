@@ -351,7 +351,6 @@ impl Type {
                 })
             }
             (CallableParams::Any(_), CallableParams::Any(_)) => true,
-            (CallableParams::Never(_), CallableParams::Never(_)) => true,
             _ => false,
         };
         let matches_generics = |g1: Generics, g2: Generics| {

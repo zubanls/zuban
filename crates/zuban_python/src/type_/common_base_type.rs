@@ -309,10 +309,8 @@ impl CallableParams {
                     common_params(i_s, params1, params2, checked_recursions)
                 }
                 CallableParams::Any(_) => Some(other.clone()),
-                CallableParams::Never(_) => None,
             },
             CallableParams::Any(_) => Some(self.clone()),
-            CallableParams::Never(_) => None,
         }
     }
 }

@@ -1691,7 +1691,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 CallableParams::Simple(new_params.into())
                             }
                             CallableParams::Any(cause) => CallableParams::Any(cause),
-                            CallableParams::Never(cause) => CallableParams::Never(cause),
                         });
                     }
                     ParamType::Star(StarParamType::ParamSpecArgs(u1.clone()))

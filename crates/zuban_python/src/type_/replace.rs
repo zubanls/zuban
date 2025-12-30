@@ -80,7 +80,7 @@ impl Type {
             #[inline]
             fn replace_callable_params(&mut self, p: &CallableParams) -> Option<CallableParams> {
                 match p {
-                    CallableParams::Never(_) => Some(CallableParams::Any(AnyCause::FromError)),
+                    CallableParams::Any(AnyCause::UnknownTypeParam) => Some(CallableParams::ERROR),
                     _ => None,
                 }
             }
@@ -581,9 +581,6 @@ impl CallableParams {
                                                 ));
                                             }
                                         }
-                                        CallableParams::Never(cause) => {
-                                            overwritten_params = Some(CallableParams::Never(cause))
-                                        }
                                     },
                                 };
                                 return Some(());
@@ -626,7 +623,6 @@ impl CallableParams {
                 }
             }
             CallableParams::Any(_) => None,
-            CallableParams::Never(_) => None,
         }
     }
 }

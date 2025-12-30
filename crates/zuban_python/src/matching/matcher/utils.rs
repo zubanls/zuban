@@ -579,7 +579,7 @@ fn calc_type_vars_for_callable_internal<'db: 'a, 'a>(
                     args,
                 ),
             ),
-            CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
+            CallableParams::Any(_) => SignatureMatch::new_true(),
         },
     )
 }

@@ -2276,7 +2276,6 @@ pub(crate) enum AnyCause {
 #[derive(Debug, Eq, Copy, Clone)]
 pub(crate) enum NeverCause {
     Explicit,
-    Inference,
     Other,
 }
 

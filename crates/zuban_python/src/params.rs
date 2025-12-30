@@ -97,8 +97,6 @@ fn matches_params_detailed(
             matcher.set_all_contained_type_vars_to_any_in_callable_params(params1, *cause);
             Match::new_true()
         }
-        (_, Never(_)) => Match::new_true(),
-        (Never(_), _) => Match::new_false(),
     }
 }
 
@@ -814,7 +812,6 @@ pub fn has_overlapping_params(
             overload_has_overlapping_params(i_s, matcher, params1.iter(), params2.iter())
         }
         (CallableParams::Any(_), _) | (_, CallableParams::Any(_)) => true,
-        (CallableParams::Never(_), _) | (_, CallableParams::Never(_)) => true,
     }
 }
 

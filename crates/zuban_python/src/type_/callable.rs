@@ -289,7 +289,6 @@ impl CallableParam {
 pub(crate) enum CallableParams {
     Simple(Arc<[CallableParam]>),
     Any(AnyCause),
-    Never(NeverCause),
 }
 
 impl CallableParams {
@@ -329,7 +328,6 @@ impl CallableParams {
                 out_params
             }
             Self::Any(_) => return Box::from("..."),
-            Self::Never(_) => return Box::from("Never"),
         };
         let params = parts.join(", ");
         match style {
@@ -366,7 +364,6 @@ impl CallableParams {
                 }
             }),
             Self::Any(_) => true,
-            Self::Never(_) => false,
         }
     }
 
@@ -404,7 +401,7 @@ impl CallableParams {
                     }
                 }
             }
-            Self::Any(_) | Self::Never(_) => (),
+            Self::Any(_) => (),
         }
     }
 
@@ -423,7 +420,7 @@ impl CallableParams {
                     Type::TypedDict(td.clone()).find_in_type(db, check)
                 }
             }),
-            Self::Any(_) | Self::Never(_) => false,
+            Self::Any(_) => false,
         }
     }
 }
@@ -572,7 +569,6 @@ impl CallableContent {
                 }
             }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
-            CallableParams::Never(cause) => CallableParams::Never(*cause),
         };
         Some(c)
     }
@@ -595,7 +591,6 @@ impl CallableContent {
                 _ => None,
             }),
             CallableParams::Any(cause) => Some(Type::Any(*cause)),
-            CallableParams::Never(cause) => Some(Type::Never(*cause)),
         }
     }
 
@@ -616,7 +611,6 @@ impl CallableContent {
                 })
             }
             CallableParams::Any(cause) => Some(Type::Any(*cause)),
-            CallableParams::Never(cause) => Some(Type::Never(*cause)),
         }
     }
 
@@ -636,7 +630,7 @@ impl CallableContent {
                     None
                 }
             },
-            CallableParams::Any(_) | CallableParams::Never(_) => None,
+            CallableParams::Any(_) => None,
         }
     }
 
@@ -733,7 +727,6 @@ impl CallableContent {
             CallableParams::Any(_) => {
                 self.format_pretty_function_with_params(format_data, "*Any, **Any")
             }
-            CallableParams::Never(_) => "Never".into(),
         }
     }
 
@@ -789,7 +782,7 @@ impl CallableContent {
                 CallableParams::Simple(params) => {
                     params_have_self_type_after_self(db, params.iter())
                 }
-                CallableParams::Any(_) | CallableParams::Never(_) => false,
+                CallableParams::Any(_) => false,
             }
     }
 
@@ -804,8 +797,6 @@ impl CallableContent {
                 .skip(skip_first_param.into())
                 .all(|t| t.type_.maybe_type().is_some_and(has_unannotated)),
             CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
-            // Should probably never happen?!
-            CallableParams::Never(_) => true,
         }
     }
 
@@ -853,7 +844,7 @@ impl CallableContent {
                     })
                     .collect(),
             ),
-            CallableParams::Any(_) | CallableParams::Never(_) => CallableParams::Any(cause),
+            CallableParams::Any(_) => CallableParams::Any(cause),
         };
         self.guard = None;
         self.return_type = Type::Any(cause)

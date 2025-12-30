@@ -34,7 +34,7 @@ use crate::{
     recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, Enum, GenericItem,
-        NeverCause, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,
+        ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,
         StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance, WithUnpack, add_param_spec_to_params,
@@ -809,8 +809,6 @@ impl<'a> Matcher<'a> {
                 )
             }
             CallableParams::Any(_) => SignatureMatch::new_true(),
-            // TODO is this correct?
-            CallableParams::Never(_) => SignatureMatch::False { similar: false },
         }
     }
 
@@ -1838,7 +1836,7 @@ fn infer_params_from_args<'db>(
                 }
                 match after {
                     Ok(after) => u.after = after,
-                    Err(()) => return CallableParams::Never(NeverCause::Inference),
+                    Err(()) => return CallableParams::Any(AnyCause::UnknownTypeParam),
                 };
                 params.push(CallableParam::new_anonymous(ParamType::Star(
                     StarParamType::UnpackedTuple(Tuple::new(TupleArgs::WithUnpack(u))),

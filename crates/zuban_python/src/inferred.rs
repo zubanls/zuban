@@ -2724,7 +2724,7 @@ fn proper_classmethod_callable(
                 }
             }
         }
-        CallableParams::Any(_) | CallableParams::Never(_) => (),
+        CallableParams::Any(_) => (),
     };
 
     let type_vars = RefCell::new(type_vars);

@@ -4935,7 +4935,6 @@ fn lookup_lambda_param(
                         Inferred::new_any(AnyCause::FromError)
                     }
                     CallableParams::Any(cause) => Inferred::new_any(*cause),
-                    CallableParams::Never(_) => Inferred::new_any(AnyCause::Todo),
                 };
             } else {
                 return Inferred::new_any(AnyCause::Todo);
