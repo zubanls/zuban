@@ -7,7 +7,8 @@ use std::{
 
 use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
 use crate::{
-    database::Database, format_data::FormatData, inference_state::InferenceState, matching::Matcher,
+    database::Database, format_data::FormatData, inference_state::InferenceState,
+    matching::Matcher, type_::AnyCause,
 };
 
 impl Type {
@@ -98,9 +99,20 @@ fn merge_simplified_union_type(
             return MergeSimplifiedUnionResult::Done(additional.type_);
         }
         if additional.type_.has_any(i_s) {
+            // Generics with unknown type params can probably simply be merged with other objects
+            // of the same type.
+            if let Type::Class(c1) = &additional.type_
+                && c1.generics.all_any_with_unknown_type_params()
+                && new_types
+                    .iter()
+                    .any(|e| matches!(&e.type_, Type::Class(c2) if c1.link == c2.link))
+            {
+                continue;
+            }
             if !new_types
                 .iter()
                 .any(|entry| entry.type_ == additional.type_)
+                && !matches!(additional.type_, Type::Any(AnyCause::UnknownTypeParam))
             {
                 new_types.push(additional)
             }
@@ -120,16 +132,6 @@ fn merge_simplified_union_type(
                 // Recursive aliases need special handling, because the normal subtype
                 // checking will call this function again if generics are available to
                 // cache the type.
-            }
-            // Generics with never from inference can probably simply be merged with other objects
-            // of the same type.
-            Type::Class(c1)
-                if c1.generics.all_any_with_unknown_type_params()
-                    && new_types
-                        .iter()
-                        .any(|e| matches!(&e.type_, Type::Class(c2) if c1.link == c2.link)) =>
-            {
-                continue 'outer;
             }
             additional_t => {
                 for current in new_types.iter_mut() {
