@@ -1468,7 +1468,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .enumerate()
             .map(|(i, entry)| {
                 if let GenericItem::TypeArg(t) = entry
-                    && t.is_never()
+                    && matches!(t, Type::Any(AnyCause::UnknownTypeParam))
                 {
                     if i == 0
                         && let Some(result) = find_type("_pyi_private_set_type")
