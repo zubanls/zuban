@@ -212,21 +212,15 @@ pub(crate) enum GenericItem {
 }
 
 impl GenericItem {
-    fn is_any(&self) -> bool {
+    fn maybe_any(&self) -> Option<AnyCause> {
         match self {
-            Self::TypeArg(t) => t.is_any(),
-            Self::TypeArgs(ts) => ts.args.maybe_any().is_some(),
-            Self::ParamSpecArg(p) => matches!(p.params, CallableParams::Any(_)),
-        }
-    }
-
-    fn is_any_with_unknown_type_params(&self) -> bool {
-        match self {
-            Self::TypeArg(t) => matches!(t, Type::Any(AnyCause::UnknownTypeParam)),
-            Self::TypeArgs(ts) => ts.args.maybe_any() == Some(AnyCause::UnknownTypeParam),
-            Self::ParamSpecArg(p) => {
-                matches!(p.params, CallableParams::Any(AnyCause::UnknownTypeParam))
-            }
+            Self::TypeArg(Type::Any(cause)) => Some(*cause),
+            Self::TypeArg(_) => None,
+            Self::TypeArgs(ts) => ts.args.maybe_any(),
+            Self::ParamSpecArg(p) => match p.params {
+                CallableParams::Any(cause) => Some(cause),
+                _ => None,
+            },
         }
     }
 }
@@ -245,7 +239,7 @@ pub(crate) enum ClassGenerics {
 impl ClassGenerics {
     pub fn all_any(&self) -> bool {
         match self {
-            Self::List(list) => list.iter().all(|g| g.is_any()),
+            Self::List(list) => list.iter().all(|g| g.maybe_any().is_some()),
             Self::NotDefinedYet => true,
             _ => false,
         }
@@ -253,7 +247,9 @@ impl ClassGenerics {
 
     pub fn all_any_with_unknown_type_params(&self) -> bool {
         match self {
-            Self::List(list) => list.iter().all(|g| g.is_any_with_unknown_type_params()),
+            Self::List(list) => list
+                .iter()
+                .all(|g| g.maybe_any() == Some(AnyCause::UnknownTypeParam)),
             _ => false,
         }
     }
