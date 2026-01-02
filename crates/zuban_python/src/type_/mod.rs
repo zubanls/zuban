@@ -2245,19 +2245,7 @@ pub enum UniqueInUnpackedUnionError {
     Multiple,
 }
 
-impl PartialEq for AnyCause {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
-
-impl Hash for AnyCause {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-        // Nothing to do, because all any causes are considered to be equal
-    }
-}
-
-#[derive(Debug, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub(crate) enum AnyCause {
     Unannotated,
     Explicit,

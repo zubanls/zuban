@@ -425,15 +425,6 @@ impl Type {
             (Type::EnumMember(m1), Type::EnumMember(m2)) => {
                 m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
             }
-            (Type::Any(_), Type::TypeVar(tv)) | (Type::TypeVar(tv), Type::Any(_)) => {
-                match tv.type_var.kind(db) {
-                    TypeVarKind::Unrestricted => false,
-                    // TODO this should probably match in different ways and check if this is from
-                    // untyped defs.
-                    TypeVarKind::Bound(bound) => bound.is_any(),
-                    TypeVarKind::Constraints(_) => false,
-                }
-            }
             _ => self == other,
         }
     }

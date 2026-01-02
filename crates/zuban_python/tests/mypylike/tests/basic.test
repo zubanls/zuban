@@ -1314,7 +1314,7 @@ def func3() -> None:
     type BadTypeAlias15 = int  # E: Type alias not allowed in function
 
 [case assert_type_in_untyped_func]
-# flags: --check-untyped-defs
+# flags: --check-untyped-defs --mypy-compatible
 from typing import Any, assert_type
 def foo(x):
     assert_type(x, Any)
