@@ -2257,20 +2257,8 @@ pub(crate) enum AnyCause {
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }
 
-#[derive(Debug, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub(crate) enum NeverCause {
     Explicit,
     Other,
-}
-
-impl PartialEq for NeverCause {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
-
-impl Hash for NeverCause {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-        // Nothing to do, because all never causes are considered to be equal
-    }
 }
