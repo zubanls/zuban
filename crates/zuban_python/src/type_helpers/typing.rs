@@ -260,7 +260,15 @@ pub(crate) fn execute_assert_type<'db>(
 
 impl Type {
     pub fn is_equal_type(&self, db: &Database, other: &Type) -> bool {
-        self.is_equal_type_internal(db, None, other)
+        self.is_equal_type_internal(db, None, other, true)
+    }
+
+    pub fn is_equal_type_without_unpacking_recursive_types(
+        &self,
+        db: &Database,
+        other: &Type,
+    ) -> bool {
+        self.is_equal_type_internal(db, None, other, false)
     }
 
     pub fn is_equal_type_internal(
@@ -268,8 +276,11 @@ impl Type {
         db: &Database,
         checking_type_recursion: Option<CheckedTypeRecursion>,
         other: &Type,
+        unpack_recursive_type: bool,
     ) -> bool {
-        let eq = |t1: &Type, t2: &Type| t1.is_equal_type_internal(db, checking_type_recursion, t2);
+        let eq = |t1: &Type, t2: &Type| {
+            t1.is_equal_type_internal(db, checking_type_recursion, t2, unpack_recursive_type)
+        };
         let all_eq =
             |ts1: &[Type], ts2: &[Type]| ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2));
         let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
@@ -285,8 +296,12 @@ impl Type {
                 && match (&m1.extra_items, &m2.extra_items) {
                     (None, None) => true,
                     (Some(t1), Some(t2)) => {
-                        t1.t.is_equal_type_internal(db, checking_type_recursion, &t2.t)
-                            && t1.read_only == t2.read_only
+                        t1.t.is_equal_type_internal(
+                            db,
+                            checking_type_recursion,
+                            &t2.t,
+                            unpack_recursive_type,
+                        ) && t1.read_only == t2.read_only
                     }
                     _ => false,
                 }
@@ -396,7 +411,9 @@ impl Type {
                     }
             }
             (Type::Type(t1), Type::Type(t2)) => eq(t1, t2),
-            (t1 @ Type::RecursiveType(r1), t2) | (t2, t1 @ Type::RecursiveType(r1)) => {
+            (t1 @ Type::RecursiveType(r1), t2) | (t2, t1 @ Type::RecursiveType(r1))
+                if unpack_recursive_type =>
+            {
                 let checking_type_recursion = CheckedTypeRecursion {
                     current: (t1, t2),
                     previous: checking_type_recursion.as_ref(),
@@ -404,8 +421,12 @@ impl Type {
                 if checking_type_recursion.is_cycle() {
                     return true;
                 }
-                r1.calculated_type(db)
-                    .is_equal_type_internal(db, Some(checking_type_recursion), t2)
+                r1.calculated_type(db).is_equal_type_internal(
+                    db,
+                    Some(checking_type_recursion),
+                    t2,
+                    unpack_recursive_type,
+                )
             }
             (Type::Literal(l1), Type::Literal(l2)) => l1.value(db) == l2.value(db),
             (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
@@ -419,12 +440,14 @@ impl Type {
                 checking_type_recursion,
                 u1.entries.iter().map(|e| &e.type_),
                 u2.entries.iter().map(|e| &e.type_),
+                unpack_recursive_type,
             ),
             (Type::Intersection(i1), Type::Intersection(i2)) => is_equal_union_or_intersection(
                 db,
                 checking_type_recursion,
                 i1.iter_entries(),
                 i2.iter_entries(),
+                unpack_recursive_type,
             ),
             (Type::EnumMember(m1), Type::EnumMember(m2)) => {
                 m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
@@ -439,6 +462,7 @@ fn is_equal_union_or_intersection<'x>(
     checking_type_recursion: Option<CheckedTypeRecursion>,
     ts1: impl ExactSizeIterator<Item = &'x Type>,
     ts2: impl ExactSizeIterator<Item = &'x Type>,
+    unpack_recursive_type: bool,
 ) -> bool {
     if ts1.len() != ts2.len() {
         return false;
@@ -446,7 +470,7 @@ fn is_equal_union_or_intersection<'x>(
     let mut all_second: Vec<_> = ts2.collect();
     'outer: for t1 in ts1 {
         for (i, t2) in all_second.iter().enumerate() {
-            if t1.is_equal_type_internal(db, checking_type_recursion, t2) {
+            if t1.is_equal_type_internal(db, checking_type_recursion, t2, unpack_recursive_type) {
                 all_second.remove(i);
                 continue 'outer;
             }

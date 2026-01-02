@@ -109,10 +109,13 @@ fn merge_simplified_union_type(
             {
                 continue;
             }
-            if !new_types
-                .iter()
-                .any(|entry| entry.type_.is_equal_type(i_s.db, &additional.type_))
-                && !matches!(additional.type_, Type::Any(AnyCause::UnknownTypeParam))
+            if !new_types.iter().any(|entry| {
+                // We cannot use normal unpacking of recursive types, because it that triggers
+                // simplified unions again, due to unpacking of recursive types.
+                entry
+                    .type_
+                    .is_equal_type_without_unpacking_recursive_types(i_s.db, &additional.type_)
+            }) && !matches!(additional.type_, Type::Any(AnyCause::UnknownTypeParam))
             {
                 new_types.push(additional)
             }
