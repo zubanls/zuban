@@ -10,7 +10,7 @@ use crate::{
     matching::{CheckedTypeRecursion, CouldBeALiteral, Generic, Generics, ResultContext},
     type_::{
         CallableParams, ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType,
-        TupleArgs, Type, TypeVarKind, TypedDict, TypedDictGenerics,
+        TupleArgs, Type, TypedDict, TypedDictGenerics,
     },
     utils::join_with_commas,
 };
@@ -69,7 +69,7 @@ pub(crate) fn execute_cast<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'
     {
         let t_in = actual.as_cow_type(i_s);
         let t_out = result.as_cow_type(i_s);
-        if t_in.is_equal_type(i_s.db, None, &t_out) && !(t_in.is_any()) {
+        if t_in.is_equal_type(i_s.db, &t_out) && !(t_in.is_any()) {
             args.add_issue(
                 i_s,
                 IssueKind::RedundantCast {
@@ -243,7 +243,7 @@ pub(crate) fn execute_assert_type<'db>(
         return Inferred::new_any_from_error();
     };
     let second_type = second.as_cow_type(i_s);
-    if !first_type.is_equal_type(i_s.db, None, &second_type) {
+    if !first_type.is_equal_type(i_s.db, &second_type) {
         let mut format_data = FormatData::new_short(i_s.db);
         format_data.hide_implicit_literals = false;
         let mut actual = first_type.format(&format_data);
@@ -259,13 +259,17 @@ pub(crate) fn execute_assert_type<'db>(
 }
 
 impl Type {
-    pub fn is_equal_type(
+    pub fn is_equal_type(&self, db: &Database, other: &Type) -> bool {
+        self.is_equal_type_internal(db, None, other)
+    }
+
+    pub fn is_equal_type_internal(
         &self,
         db: &Database,
         checking_type_recursion: Option<CheckedTypeRecursion>,
         other: &Type,
     ) -> bool {
-        let eq = |t1: &Type, t2: &Type| t1.is_equal_type(db, checking_type_recursion, t2);
+        let eq = |t1: &Type, t2: &Type| t1.is_equal_type_internal(db, checking_type_recursion, t2);
         let all_eq =
             |ts1: &[Type], ts2: &[Type]| ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2));
         let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
@@ -281,7 +285,7 @@ impl Type {
                 && match (&m1.extra_items, &m2.extra_items) {
                     (None, None) => true,
                     (Some(t1), Some(t2)) => {
-                        t1.t.is_equal_type(db, checking_type_recursion, &t2.t)
+                        t1.t.is_equal_type_internal(db, checking_type_recursion, &t2.t)
                             && t1.read_only == t2.read_only
                     }
                     _ => false,
@@ -401,7 +405,7 @@ impl Type {
                     return true;
                 }
                 r1.calculated_type(db)
-                    .is_equal_type(db, Some(checking_type_recursion), t2)
+                    .is_equal_type_internal(db, Some(checking_type_recursion), t2)
             }
             (Type::Literal(l1), Type::Literal(l2)) => l1.value(db) == l2.value(db),
             (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
@@ -442,7 +446,7 @@ fn is_equal_union_or_intersection<'x>(
     let mut all_second: Vec<_> = ts2.collect();
     'outer: for t1 in ts1 {
         for (i, t2) in all_second.iter().enumerate() {
-            if t1.is_equal_type(db, checking_type_recursion, t2) {
+            if t1.is_equal_type_internal(db, checking_type_recursion, t2) {
                 all_second.remove(i);
                 continue 'outer;
             }

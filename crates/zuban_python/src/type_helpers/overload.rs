@@ -162,7 +162,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             && !(other_callable
                                 .content
                                 .return_type
-                                .is_equal_type(i_s.db, None, &callable.content.return_type)
+                                .is_equal_type(i_s.db, &callable.content.return_type)
                                 && callable.content.guard.is_none()
                                 && other_callable.content.guard.is_none())
                         {
@@ -620,9 +620,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     // equivalent.
                     let mut iterator = self.overload.iter_functions();
                     let first = to_type(iterator.next().unwrap());
-                    if iterator.all(|other_callable| {
-                        first.is_equal_type(i_s.db, None, &to_type(other_callable))
-                    }) {
+                    if iterator
+                        .all(|other_callable| first.is_equal_type(i_s.db, &to_type(other_callable)))
+                    {
                         Inferred::from_type(first.into_owned())
                     } else {
                         Inferred::new_any_from_error()

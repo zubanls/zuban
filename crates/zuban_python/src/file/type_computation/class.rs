@@ -2042,7 +2042,7 @@ pub fn linearize_mro_and_return_linearizable(
                             if skip && skip_index != base_index && is_non_object {
                                 let new = to_base_class(base_index, false, &candidate, &mut 0);
                                 let other = to_base_class(skip_index, false, next, &mut 0);
-                                if !new.type_.is_equal_type(db, None, &other.type_) {
+                                if !new.type_.is_equal_type(db, &other.type_) {
                                     linearizable = false
                                 }
                             }

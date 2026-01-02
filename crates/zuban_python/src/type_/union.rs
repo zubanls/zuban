@@ -111,7 +111,7 @@ fn merge_simplified_union_type(
             }
             if !new_types
                 .iter()
-                .any(|entry| entry.type_.is_equal_type(i_s.db, None, &additional.type_))
+                .any(|entry| entry.type_.is_equal_type(i_s.db, &additional.type_))
                 && !matches!(additional.type_, Type::Any(AnyCause::UnknownTypeParam))
             {
                 new_types.push(additional)
