@@ -1769,7 +1769,8 @@ impl ClassInfos {
 
 impl std::cmp::PartialEq for ClassStorage {
     fn eq(&self, _other: &Self) -> bool {
-        unreachable!("Should never happen with classes")
+        recoverable_error!("Should never compare  class storage with ==");
+        false
     }
 }
 
