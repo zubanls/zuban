@@ -12,7 +12,6 @@ testOverloadVarargsSelection
 testOverloadingInferUnionReturnWithObjectTypevarReturn
 testOverloadingInferUnionReturnWithBadObjectTypevarReturn
 testTypedDictOverlapWithDictEmpty
-inlay_hints_avoid_list_never
 
 docs_alias
 

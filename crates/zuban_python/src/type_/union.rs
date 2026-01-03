@@ -139,19 +139,19 @@ fn merge_simplified_union_type(
             additional_t => {
                 for current in new_types.iter_mut() {
                     if current.type_.has_any(i_s) {
+                        if let Type::Class(c1) = &mut current.type_
+                            && c1.generics.all_any_with_unknown_type_params()
+                            && matches!(additional_t, Type::Class(c2) if c1.link == c2.link)
+                        {
+                            current.type_ = additional.type_;
+                            continue 'outer;
+                        }
                         continue;
                     } else if additional.type_.is_calculating(i_s.db) {
                         break;
                     }
                     match &mut current.type_ {
                         Type::RecursiveType(r) if r.generics.is_some() => (),
-                        Type::Class(c1)
-                            if c1.generics.all_any_with_unknown_type_params()
-                                && matches!(additional_t, Type::Class(c2) if c1.link == c2.link) =>
-                        {
-                            current.type_ = additional.type_;
-                            continue 'outer;
-                        }
                         t => {
                             if t.is_calculating(i_s.db) {
                                 if additional_t == t {
