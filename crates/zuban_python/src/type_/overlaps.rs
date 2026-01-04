@@ -3,7 +3,7 @@ use crate::{
     inference_state::InferenceState,
     matching::Matcher,
     params::has_overlapping_params,
-    type_::{TupleArgs, TupleUnpack},
+    type_::{AnyCause, TupleArgs, TupleUnpack},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -310,7 +310,9 @@ impl TypedDict {
                 }
 
                 // Special case for e.g. Matching of X == {}
-                if key.is_never() || value.is_never() {
+                if matches!(key, Type::Any(AnyCause::UnknownTypeParam))
+                    || matches!(value, Type::Any(AnyCause::UnknownTypeParam))
+                {
                     return self.iter_required_members(i_s.db).next().is_none();
                 }
 
