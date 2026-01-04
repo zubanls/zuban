@@ -9,8 +9,8 @@ use crate::{
     inferred::Inferred,
     matching::{CheckedTypeRecursion, CouldBeALiteral, Generic, Generics, ResultContext},
     type_::{
-        CallableParams, ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType,
-        TupleArgs, Type, TypedDict, TypedDictGenerics,
+        CallableParams, ClassGenerics, GenericClass, ParamType, ReplaceTypeVarLikes as _,
+        StarParamType, StarStarParamType, TupleArgs, Type, TypedDict, TypedDictGenerics,
     },
     utils::join_with_commas,
 };
@@ -232,7 +232,18 @@ pub(crate) fn execute_assert_type<'db>(
     } else {
         first.infer(result_context)
     };
-    let first_type = first.as_cow_type(i_s);
+    let mut first_type = first.as_cow_type(i_s);
+
+    // The untyped TypeVars are not really assertable and are internal types mostly for type
+    // inference. Type assertion should simply report Any.
+    if let Some(new) = first_type.replace_type_var_likes(i_s.db, &mut |usage| {
+        usage
+            .as_type_var_like()
+            .is_untyped()
+            .then(|| usage.as_any_generic_item())
+    }) {
+        first_type = Cow::Owned(new)
+    }
 
     let Ok(second) = second_positional
         .node_ref

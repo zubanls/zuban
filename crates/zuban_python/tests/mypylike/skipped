@@ -8,10 +8,6 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
-testOverloadVarargsSelection
-testOverloadingInferUnionReturnWithObjectTypevarReturn
-testOverloadingInferUnionReturnWithBadObjectTypevarReturn
-
 docs_alias
 
 super_explicit_type_var_method
@@ -186,6 +182,11 @@ avoid_bracket_slowdown
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
 testGenericFunctionSubtypingWithUnions
+# Regressions for Never-generics to Any-generics
+testOverloadVarargsSelection
+testOverloadingInferUnionReturnWithObjectTypevarReturn
+testOverloadingInferUnionReturnWithBadObjectTypevarReturn
+
 
 # callable matching should work correctly with the same definitions (currently emits an error log)
 # strict_equality_class_generics_access
