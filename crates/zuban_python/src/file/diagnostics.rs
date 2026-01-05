@@ -1390,9 +1390,10 @@ impl Inference<'_, '_, '_> {
         }
         FLOW_ANALYSIS.with(|fa| {
             if in_func.is_some() {
-                fa.with_reused_narrowings_for_nested_function(self.i_s.db, func.node_ref, || {
-                    let _ = self.ensure_func_diagnostics(func);
-                })
+                // TODO Currently the delayed func checking works in weird ways where we have to
+                // cache the function signature here.
+                func.cache_func_from_diagnostics(self.i_s);
+                fa.add_delayed_func_with_reused_narrowings_for_nested_function(func.node_ref)
             } else {
                 fa.add_delayed_func(func.as_link(), class.map(|c| c.node_ref.as_link()))
             }

@@ -13,6 +13,10 @@ docs_alias
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
+# Regression from calculating nested functions in a different way
+testLocalPartialTypesWithNestedFunction
+testLocalPartialTypesWithNestedFunction2
+
 # typeshed upgrade
 testTypedDictGet
 testOpenReturnTypeInference

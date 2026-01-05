@@ -2065,3 +2065,17 @@ def f(obj: Iterable[T] | T) -> Collection[T] | T:
         return list(obj)
     obj = cast(Collection, obj)
     return obj
+
+[case avoid_inferring_variables_before_end_of_scope_with_nested_functions]
+# flags: --no-mypy-compatible
+# Modified From GH #231
+def ensure_deck():
+    def get_deck() -> dict[str, int] | None:
+        return None
+
+    def create_deck(name: str):
+        deckx = {}
+        deckx["conf"] = deck_preset_id
+
+    if deck := get_deck():
+        deck_preset_id = deck["conf"]

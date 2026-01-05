@@ -2,7 +2,6 @@ use std::{
     borrow::Cow,
     cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     collections::VecDeque,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -68,9 +67,9 @@ thread_local! {
 #[derive(Debug, Clone)]
 enum FlowKey {
     Name(PointLink),
-    Member(Rc<FlowKey>, DbString),
+    Member(Arc<FlowKey>, DbString),
     Index {
-        base_key: Rc<FlowKey>,
+        base_key: Arc<FlowKey>,
         node_index: NodeIndex,
         match_index: FlowKeyIndex,
     },
@@ -383,11 +382,12 @@ pub(crate) struct DelayedConstraintVerification {
     pub of_name: StringSlice,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct DelayedFunc {
     pub func: PointLink,
     pub class: Option<PointLink>,
     pub in_type_checking_only_block: bool,
+    reused_narrowings: Entries,
 }
 
 #[must_use]
@@ -493,46 +493,48 @@ impl FlowAnalysis {
         result
     }
 
-    pub(crate) fn with_reused_narrowings_for_nested_function(
+    pub(crate) fn add_delayed_func_with_reused_narrowings_for_nested_function(
         &self,
-        db: &Database,
         func_node_ref: FuncNodeRef,
-        callable: impl FnOnce(),
     ) {
-        let reused_narrowings = Frame::new(
-            FrameKind::BaseScope,
-            self.frames
-                .borrow()
-                .iter()
-                .rev()
-                .flat_map(|frame| {
-                    frame.entries.iter().filter_map(|entry| {
-                        // We can only use narrowings of names in functions. More complex variables could
-                        // have been tampered in different ways.
-                        let FlowKey::Name(link) = entry.key else {
-                            return None;
-                        };
+        let reused_narrowings = self
+            .frames
+            .borrow()
+            .iter()
+            .rev()
+            .flat_map(|frame| {
+                frame.entries.iter().filter_map(|entry| {
+                    // We can only use narrowings of names in functions. More complex variables could
+                    // have been tampered in different ways.
+                    let FlowKey::Name(link) = entry.key else {
+                        return None;
+                    };
 
-                        if func_node_ref.file_index() != link.file {
-                            // TODO what about star imports? See also star_import_with_import_overwrite
+                    if func_node_ref.file_index() != link.file {
+                        // TODO what about star imports? See also star_import_with_import_overwrite
+                        return None;
+                    }
+                    // We try to filter out narrowed names that are reassigned within the
+                    // function later than where that function is defined.
+                    for name_index in
+                        OtherDefinitionIterator::new(&func_node_ref.file.points, link.node_index)
+                    {
+                        if name_index > func_node_ref.node_index {
                             return None;
                         }
-                        // We try to filter out narrowed names that are reassigned within the
-                        // function later than where that function is defined.
-                        for name_index in OtherDefinitionIterator::new(
-                            &func_node_ref.file.points,
-                            link.node_index,
-                        ) {
-                            if name_index > func_node_ref.node_index {
-                                return None;
-                            }
-                        }
-                        Some(entry.clone())
-                    })
+                    }
+                    Some(entry.clone())
                 })
-                .collect(),
-        );
-        self.with_new_empty_and_delay_further(db, || self.with_frame(reused_narrowings, callable));
+            })
+            .collect();
+        self.delayed_diagnostics
+            .borrow_mut()
+            .push_back(DelayedDiagnostic::Func(DelayedFunc {
+                func: func_node_ref.as_link(),
+                class: None,
+                in_type_checking_only_block: self.in_type_checking_only_block.get(),
+                reused_narrowings,
+            }))
     }
 
     pub fn debug_assert_is_empty(&self) {
@@ -983,6 +985,7 @@ impl FlowAnalysis {
                 func,
                 class,
                 in_type_checking_only_block: self.in_type_checking_only_block.get(),
+                reused_narrowings: Default::default(),
             }))
     }
 
@@ -1026,12 +1029,17 @@ impl FlowAnalysis {
                         } else {
                             InferenceState::new(db, func.node_ref.file)
                         };
-                        let result = func
-                            .node_ref
-                            .file
-                            .inference(&i_s)
-                            .ensure_func_diagnostics(func);
-                        debug_assert!(result.is_ok());
+                        self.with_frame(
+                            Frame::new(FrameKind::BaseScope, delayed_func.reused_narrowings),
+                            || {
+                                let result = func
+                                    .node_ref
+                                    .file
+                                    .inference(&i_s)
+                                    .ensure_func_diagnostics(func);
+                                debug_assert!(result.is_ok());
+                            },
+                        );
                     };
                     if delayed_func.in_type_checking_only_block {
                         self.with_in_type_checking_only_block(run)
@@ -4266,7 +4274,7 @@ impl Inference<'_, '_, '_> {
             _ => Frame::from_type(key.clone(), falsey_parent),
         };
         Some(FramesWithParentUnions {
-            truthy: Frame::from_type(FlowKey::Member(Rc::new(key), attr), attr_t),
+            truthy: Frame::from_type(FlowKey::Member(Arc::new(key), attr), attr_t),
             falsey,
             parent_unions: ParentUnions::default(),
         })
@@ -4695,7 +4703,7 @@ impl Inference<'_, '_, '_> {
                     && let Some(base_key) = &old_base_key
                 {
                     base.key = Some(FlowKey::Index {
-                        base_key: Rc::new(base_key.clone()),
+                        base_key: Arc::new(base_key.clone()),
                         match_index: index_key,
                         node_index: slice_type.index(),
                     });
@@ -4773,7 +4781,7 @@ impl Inference<'_, '_, '_> {
 
     fn key_from_attribute(&self, base_key: FlowKey, n: Name) -> FlowKey {
         FlowKey::Member(
-            Rc::new(base_key),
+            Arc::new(base_key),
             DbString::StringSlice(StringSlice::from_name(self.file.file_index, n)),
         )
     }
@@ -4786,7 +4794,7 @@ impl Inference<'_, '_, '_> {
             PrimaryContent::GetItem(slice_type) => {
                 self.key_from_slice_type(slice_type)
                     .map(|match_index| FlowKey::Index {
-                        base_key: Rc::new(base_key),
+                        base_key: Arc::new(base_key),
                         node_index: slice_type.index(),
                         match_index,
                     })

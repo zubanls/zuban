@@ -1218,7 +1218,7 @@ class Foo:
             bar.z = ""
         def foo(bar) -> None:
             reveal_type(self.x)  # N: Revealed type is "int"
-            reveal_type(self.y)  # E: Cannot determine type of "y" # N: Revealed type is "Any"
+            reveal_type(self.y)  # N: Revealed type is "float"
             self.z  # E: "Self" has no attribute "z"
             bar.x
             bar.y
