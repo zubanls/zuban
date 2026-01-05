@@ -18,7 +18,9 @@ impl Tree {
     ) -> (Scope<'_>, CompletionNode<'_>, RestNode<'_>) {
         let mut leaf = self.0.leaf_by_position(position);
         let is_control = |n: PyNode| {
-            let next_char = n.as_code().chars().next().unwrap();
+            let Some(next_char) = n.as_code().chars().next() else {
+                return true;
+            };
             !next_char.is_alphanumeric() && next_char != '_'
         };
         if leaf.start() == position

@@ -24,6 +24,12 @@ __main__.py:4:complete -> []
 __main__.py:7:complete -> [functio, function]
 __main__.py:10:complete -> [lower, upper]
 
+[case global_completion_in_empty_file_at_end]
+# Note that there is intentionally no newline at the end.
+#? complete --filter object
+[out]
+__main__.py:3:complete -> [object]
+
 [case module_completion_kinds]
 import m
 #? complete --show-kind
