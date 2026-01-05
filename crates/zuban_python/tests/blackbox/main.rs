@@ -41,7 +41,7 @@ lazy_static::lazy_static! {
         ("isinstance.py", 3),
         ("lambdas.py", 18),
         ("named_param.py", 10),
-        ("ordering.py", 5),
+        ("ordering.py", 4),
         ("pep0484_typing.py", 3),
         ("positional_only_params.py", 3),
         ("precedence.py", 7),
