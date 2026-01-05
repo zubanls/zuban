@@ -800,7 +800,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         match meta_base {
                             CalculatedBaseClass::Type(Type::Class(GenericClass {
                                 link,
-                                generics: ClassGenerics::None,
+                                generics: ClassGenerics::None { .. },
                             })) => {
                                 let c = ClassInitializer::from_link(db, link);
                                 if c.is_calculating_class_infos() {
@@ -1220,11 +1220,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 MetaclassState::Some(link1) => {
                     let t1 = Type::Class(GenericClass {
                         link: *link1,
-                        generics: ClassGenerics::None,
+                        generics: ClassGenerics::new_none(),
                     });
                     let t2 = Type::Class(GenericClass {
                         link: link2,
-                        generics: ClassGenerics::None,
+                        generics: ClassGenerics::new_none(),
                     });
                     if !t1.is_simple_sub_type_of(i_s, &t2).bool() {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {

@@ -147,7 +147,7 @@ impl Inference<'_, '_, '_> {
                 if let Type::Class(cls) = t.as_ref() {
                     if !matches!(
                         &cls.generics,
-                        ClassGenerics::NotDefinedYet | ClassGenerics::None
+                        ClassGenerics::NotDefinedYet | ClassGenerics::None { .. }
                     ) {
                         self.add_issue(
                             part.index(),

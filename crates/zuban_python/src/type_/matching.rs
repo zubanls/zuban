@@ -357,7 +357,7 @@ impl Type {
             self.is_same_type(
                 i_s,
                 matcher,
-                &Type::new_class(cls_node_ref.as_link(), ClassGenerics::None),
+                &Type::new_class(cls_node_ref.as_link(), ClassGenerics::new_none()),
             )
             .or(|| self.check_promotion(i_s, matcher, cls_node_ref))
         } else {
@@ -690,7 +690,7 @@ impl Type {
                                 class1.as_type(i_s.db).matches(
                                     i_s,
                                     matcher,
-                                    &Type::new_class(link, ClassGenerics::None),
+                                    &Type::new_class(link, ClassGenerics::new_none()),
                                     variance,
                                 )
                             }

@@ -125,7 +125,7 @@ impl Dataclass {
             GenericClass {
                 link,
                 generics: if type_vars.is_empty() {
-                    ClassGenerics::None
+                    ClassGenerics::new_none()
                 } else {
                     ClassGenerics::NotDefinedYet
                 },
@@ -141,7 +141,7 @@ impl Dataclass {
     pub fn as_base_class<'a>(&'a self, db: &'a Database, generics: Generics<'a>) -> Class<'a> {
         let remap = match &self.class.generics {
             ClassGenerics::List(list) => Some(list),
-            ClassGenerics::None => None,
+            ClassGenerics::None { .. } => None,
             _ => unreachable!(),
         };
         Class::from_position(
@@ -198,7 +198,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
         let mut first_kwarg = None;
         if !matches!(
             dataclass.class.generics,
-            ClassGenerics::None | ClassGenerics::NotDefinedYet
+            ClassGenerics::None { .. } | ClassGenerics::NotDefinedYet
         ) {
             // We need to remap generics in case of inheritance or more complex types.
             match &mut new_param.type_ {

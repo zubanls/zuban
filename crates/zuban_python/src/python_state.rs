@@ -106,7 +106,7 @@ macro_rules! node_ref_to_type_class_without_generic {
     ($vis:vis $name:ident, $from_node_ref:ident) => {
         #[inline]
         $vis fn $name(&self) -> Type {
-            Type::new_class(self.$from_node_ref().as_link(), ClassGenerics::None)
+            Type::new_class(self.$from_node_ref().as_link(), ClassGenerics::new_none())
         }
     };
 }
@@ -116,7 +116,7 @@ macro_rules! link_to_type_class_without_generic {
         #[inline]
         $vis fn $name(&self) -> Type {
             debug_assert_ne!(self.$access.node_index, 0);
-            Type::new_class(self.$access, ClassGenerics::None)
+            Type::new_class(self.$access, ClassGenerics::new_none())
         }
     };
 }
@@ -1200,13 +1200,13 @@ impl PythonState {
     }
 
     pub fn ellipsis_type(&self) -> Type {
-        Type::new_class(self.ellipsis_link(), ClassGenerics::None)
+        Type::new_class(self.ellipsis_link(), ClassGenerics::new_none())
     }
 
     pub fn union_type(&self) -> Option<Type> {
         Some(Type::new_class(
             self.union_type_link()?,
-            ClassGenerics::None,
+            ClassGenerics::new_none(),
         ))
     }
 

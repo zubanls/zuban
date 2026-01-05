@@ -3251,7 +3251,7 @@ impl Inference<'_, '_, '_> {
                 if let Type::Class(c) = &**t
                     && !matches!(
                         c.generics,
-                        ClassGenerics::None | ClassGenerics::NotDefinedYet
+                        ClassGenerics::None { .. } | ClassGenerics::NotDefinedYet
                     )
                 {
                     self.add_issue(dotted.index(), IssueKind::ClassPatternCannotParametrized);

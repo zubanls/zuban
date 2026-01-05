@@ -56,7 +56,7 @@ impl<'a> Generics<'a> {
     ) -> Self {
         match g {
             ClassGenerics::List(l) => Self::List(l, None),
-            ClassGenerics::None => Generics::None,
+            ClassGenerics::None { .. } => Generics::None,
             ClassGenerics::ExpressionWithClassType(link) => {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::ExpressionWithClassType(node_ref.file, node_ref.expect_expression())

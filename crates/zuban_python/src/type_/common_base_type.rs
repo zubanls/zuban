@@ -148,7 +148,7 @@ fn check_promotion(db: &Database, promote: Class, other: Class) -> Option<Type> 
         if promoted.node_ref == other.node_ref {
             Some(Type::new_class(
                 promoted.node_ref.as_link(),
-                ClassGenerics::None,
+                ClassGenerics::new_none(),
             ))
         } else {
             check_promotion(db, promoted, other)

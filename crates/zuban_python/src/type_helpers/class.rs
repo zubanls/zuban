@@ -176,7 +176,7 @@ impl<'db: 'a, 'a> Class<'a> {
             let type_var_likes = self.type_vars(i_s);
             return ClassExecutionResult::ClassGenerics(match type_var_likes.is_empty() {
                 false => ClassGenerics::List(type_var_likes.as_any_generic_list()),
-                true => ClassGenerics::None,
+                true => ClassGenerics::new_none(),
             });
         };
         match inf.init_as_function(i_s, dunder_init_class.as_maybe_class()) {
@@ -1149,7 +1149,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     generics.iter(db).map(|g| g.into_generic_item()).collect(),
                 )),
             },
-            true => ClassGenerics::None,
+            true => ClassGenerics::new_none(),
         }
     }
 
@@ -2372,7 +2372,7 @@ fn apply_generics_to_base_class<'a>(
                         Class::from_position(ClassNodeRef::from_link(db, c.link), generics, Some(g))
                     }
                 }
-                ClassGenerics::None => {
+                ClassGenerics::None { .. } => {
                     Class::from_position(ClassNodeRef::from_link(db, c.link), generics, None)
                 }
                 _ => unreachable!(
@@ -2740,7 +2740,7 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
             Type::Type(type_) => match type_.as_ref() {
                 Type::Class(c) => match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
                     MetaclassState::Some(link) => {
-                        type_part.union_in_place(Type::new_class(*link, ClassGenerics::None))
+                        type_part.union_in_place(Type::new_class(*link, ClassGenerics::new_none()))
                     }
                     _ => type_part.union_in_place(i_s.db.python_state.object_type().clone()),
                 },

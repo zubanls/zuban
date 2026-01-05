@@ -474,7 +474,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialCase(Specific::BuiltinsType) => {
                 CalculatedBaseClass::Type(Type::new_class(
                     self.i_s.db.python_state.bare_type_node_ref().as_link(),
-                    ClassGenerics::None,
+                    ClassGenerics::new_none(),
                 ))
             }
             TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
@@ -508,7 +508,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             Type::Type(t) if matches!(t.as_ref(), Type::Any(_)) => {
                 CalculatedBaseClass::Type(Type::new_class(
                     self.i_s.db.python_state.bare_type_node_ref().as_link(),
-                    ClassGenerics::None,
+                    ClassGenerics::new_none(),
                 ))
             }
             Type::NamedTuple(nt) => {
@@ -1138,7 +1138,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return Some(if db.project.settings.mypy_compatible {
                         Type::new_class(
                             db.python_state.str_node_ref().as_link(),
-                            ClassGenerics::None,
+                            ClassGenerics::new_none(),
                         )
                     } else {
                         Type::LiteralString { implicit: false }
@@ -1929,7 +1929,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         ClassGetItemResult::GenericClass(GenericClass {
             link: class.node_ref.as_link(),
             generics: match type_var_likes.is_empty() {
-                true => ClassGenerics::None,
+                true => ClassGenerics::new_none(),
                 false => ClassGenerics::List(GenericsList::generics_from_vec(generics)),
             },
         })
@@ -3666,7 +3666,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 Type::Any(_) => true,
                                 Type::Class(GenericClass {
                                     link,
-                                    generics: ClassGenerics::None,
+                                    generics: ClassGenerics::None { .. },
                                 }) => *link == i_s.db.python_state.object_node_ref().as_link(),
                                 _ => false,
                             },
@@ -4940,7 +4940,7 @@ pub fn expect_class_or_simple_generic(db: &Database, node_ref: NodeRef) -> Cow<'
                 debug_assert_eq!(p.specific(), Specific::SimpleGeneric);
                 let primary = node_ref.expect_primary();
                 let first_cls = inner(db, NodeRef::new(node_ref.file, primary.first_child_index()));
-                debug_assert_eq!(first_cls.generics, ClassGenerics::None);
+                debug_assert_eq!(first_cls.generics, ClassGenerics::new_none());
                 let link = first_cls.link;
 
                 let PrimaryContent::GetItem(slice_type) = primary.second() else {
@@ -4959,7 +4959,7 @@ pub fn expect_class_or_simple_generic(db: &Database, node_ref: NodeRef) -> Cow<'
             }
             PointKind::Complex => GenericClass {
                 link: node_ref.as_link(),
-                generics: ClassGenerics::None,
+                generics: ClassGenerics::new_none(),
             },
             PointKind::Redirect => inner(db, p.as_redirected_node_ref(db)),
             PointKind::FileReference => unreachable!("Simple class should never be a file"),

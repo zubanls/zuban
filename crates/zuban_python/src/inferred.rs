@@ -2747,7 +2747,7 @@ fn proper_classmethod_callable(
             Type::new_class(
                 class.node_ref.as_link(),
                 match type_var_likes.len() {
-                    0 => ClassGenerics::None,
+                    0 => ClassGenerics::new_none(),
                     _ => ClassGenerics::List(GenericsList::new_generics(
                         type_var_likes
                             .iter()

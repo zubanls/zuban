@@ -233,10 +233,16 @@ pub(crate) enum ClassGenerics {
     // Multiple class definitions, e.g. [int, str], but not [T, str]
     SlicesWithClassTypes(PointLink),
     NotDefinedYet,
-    None,
+    None { might_be_promoted: bool },
 }
 
 impl ClassGenerics {
+    pub const fn new_none() -> Self {
+        Self::None {
+            might_be_promoted: true,
+        }
+    }
+
     pub fn all_any(&self) -> bool {
         match self {
             Self::List(list) => list.iter().all(|g| g.maybe_any().is_some()),
@@ -1710,7 +1716,7 @@ impl Type {
             Type::Class(c1) => match other {
                 Type::Class(c2) if c1.link == c2.link => {
                     let new_generics = match &c1.generics {
-                        ClassGenerics::None => ClassGenerics::None,
+                        ClassGenerics::None { .. } => ClassGenerics::new_none(),
                         _ => {
                             let class_ref = ClassNodeRef::from_link(db, c1.link);
                             ClassGenerics::List(GenericsList::new_generics(
@@ -2103,7 +2109,10 @@ impl Literal {
     }
 
     pub fn fallback_type(&self, db: &Database) -> Type {
-        Type::new_class(self.fallback_node_ref(db).as_link(), ClassGenerics::None)
+        Type::new_class(
+            self.fallback_node_ref(db).as_link(),
+            ClassGenerics::new_none(),
+        )
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

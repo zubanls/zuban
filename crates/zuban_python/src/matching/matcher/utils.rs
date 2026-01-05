@@ -147,7 +147,7 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
                     .map(|g| g.into_generic_item())
                     .collect(),
             )),
-            ClassGenerics::None => None,
+            ClassGenerics::None { .. } => None,
             ClassGenerics::NotDefinedYet => unreachable!(),
         };
     }
@@ -166,7 +166,7 @@ impl CalculatedTypeArgs {
     pub fn type_arguments_into_class_generics(self, db: &Database) -> ClassGenerics {
         match self.type_arguments_into_generics(db) {
             Some(generics) => ClassGenerics::List(generics),
-            None => ClassGenerics::None,
+            None => ClassGenerics::new_none(),
         }
     }
 
