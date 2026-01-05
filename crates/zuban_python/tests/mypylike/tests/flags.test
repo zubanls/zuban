@@ -773,3 +773,16 @@ class P(Protocol):
 1()
 [out]
 __main__:3:1:3:4: error: "int" not callable
+
+[case allow_incomplete_generics]
+# flags: --allow-incomplete-generics
+from typing import Generic, TypeVar, assert_type, Any
+
+T = TypeVar("T")
+class Node(Generic[T]):
+    label: T
+    def __init__(self, label: T | None = None) -> None:
+        if label is not None:
+            self.label = label
+
+x = Node()

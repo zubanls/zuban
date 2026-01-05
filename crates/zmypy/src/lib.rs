@@ -236,6 +236,10 @@ pub struct MypyCli {
     error_summary: bool,
     #[arg(long)]
     no_error_summary: bool,
+    #[arg(long, hide = true)]
+    allow_incomplete_generics: bool,
+    #[arg(long, hide = true)]
+    disallow_incomplete_generics: bool,
 }
 
 pub fn run(cli: Cli) -> ExitCode {
@@ -409,6 +413,11 @@ fn apply_mypy_flags(
     apply!(flags, warn_no_return, no_warn_no_return);
     apply!(flags, no_implicit_reexport, implicit_reexport);
     apply!(flags, extra_checks, no_extra_checks);
+    apply!(
+        flags,
+        allow_incomplete_generics,
+        disallow_incomplete_generics
+    );
 
     apply!(diagnostic_config, show_column_numbers, hide_column_numbers);
     apply!(diagnostic_config, show_error_end, hide_error_end);

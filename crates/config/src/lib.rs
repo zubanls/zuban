@@ -415,6 +415,7 @@ pub struct TypeCheckerFlags {
     // Non-mypy settings
     pub use_joins: bool,
     pub disallow_deprecated: bool,
+    pub allow_incomplete_generics: bool,
 }
 
 impl Default for TypeCheckerFlags {
@@ -456,6 +457,7 @@ impl Default for TypeCheckerFlags {
             case_sensitive: true,
             use_joins: false,
             disallow_deprecated: false,
+            allow_incomplete_generics: false,
         }
     }
 }
@@ -478,6 +480,7 @@ impl TypeCheckerFlags {
         self.strict_equality = true;
         self.allow_untyped_globals = false; // This is mostly important for --no-mypy-compatible
         self.extra_checks = true;
+        self.allow_incomplete_generics = false;
     }
 
     pub fn enable_strict_bytes(&mut self) {
@@ -495,6 +498,7 @@ impl TypeCheckerFlags {
             warn_unreachable: false,
             warn_no_return: true,
             follow_untyped_imports: false,
+            allow_incomplete_generics: false,
             ..Default::default()
         }
     }

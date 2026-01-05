@@ -399,13 +399,15 @@ impl<'file> NodeRef<'file> {
         if !partial_flags.reported_error && !self.file.flags(db).allow_untyped_globals {
             partial_flags.reported_error = true;
             self.set_point(point.set_partial_flags(partial_flags));
-            self.add_type_issue(
-                db,
-                IssueKind::NeedTypeAnnotation {
-                    for_: self.as_code().into(),
-                    hint,
-                },
-            );
+            if !db.project.flags.allow_incomplete_generics {
+                self.add_type_issue(
+                    db,
+                    IssueKind::NeedTypeAnnotation {
+                        for_: self.as_code().into(),
+                        hint,
+                    },
+                );
+            }
         }
     }
 

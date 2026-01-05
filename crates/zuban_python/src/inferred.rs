@@ -344,13 +344,15 @@ impl<'db: 'slf, 'slf> Inferred {
             return None;
         };
         t.has_any_with_unknown_type_params(i_s.db).then(|| {
-            from.add_issue(
-                i_s,
-                IssueKind::NeedTypeAnnotation {
-                    for_: from.as_code().into(),
-                    hint: None,
-                },
-            );
+            if !i_s.db.project.flags.allow_incomplete_generics {
+                from.add_issue(
+                    i_s,
+                    IssueKind::NeedTypeAnnotation {
+                        for_: from.as_code().into(),
+                        hint: None,
+                    },
+                );
+            }
             Inferred::from_type(t.replace_any_with_unknown_type_params_with_any())
         })
     }

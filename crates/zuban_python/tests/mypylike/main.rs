@@ -313,6 +313,14 @@ impl TestCase<'_, '_> {
             "--disallow-untyped-globals",
         );
         set_reverse_bool_flag(&mut config.use_joins, "--no-use-joins");
+        set_bool_flag(
+            &mut config.allow_incomplete_generics,
+            "--allow-incomplete-generics",
+        );
+        set_reverse_bool_flag(
+            &mut config.allow_incomplete_generics,
+            "--disallow-incomplete-generics",
+        );
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
