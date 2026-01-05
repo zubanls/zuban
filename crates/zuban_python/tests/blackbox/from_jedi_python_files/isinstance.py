@@ -1,4 +1,4 @@
-# jedi-diff: added any types
+# zuban-diff: added any types
 def f(ass, i, j, k):
     if isinstance(i, str):
         #? str()
@@ -61,7 +61,7 @@ def fooooo2(obj):
 a
 # In earlier versions of Jedi, this returned both datetime and int, but now
 # Jedi does flow checks and realizes that the top return isn't executed.
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 # int() datetime.date()
 fooooo2('')
 
@@ -91,7 +91,7 @@ class Test():
     def boo(self):
         if isinstance(self.testing, str):
             # TODO this is wrong, it should only be str.
-            # jedi-diff: #? str() int()
+            # zuban-diff: #? str() int()
             #? str()
             self.testing
             #? Test()
@@ -101,7 +101,7 @@ class Test():
 # Syntax
 # -----------------
 
-# jedi-diff: #?
+# zuban-diff: #?
 #? bool()
 isinstance(1, int())
 
@@ -111,7 +111,7 @@ isinstance(1, int())
 
 def ayyyyyye(obj):
     if isinstance(obj.obj, str):
-        # jedi-diff: #?
+        # zuban-diff: #?
         #? str()
         obj.obj
         #?

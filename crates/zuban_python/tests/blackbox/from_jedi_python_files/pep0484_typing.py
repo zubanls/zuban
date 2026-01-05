@@ -34,7 +34,7 @@ def we_can_has_sequence(p: Sequence[int], q: Sequence[B], r: Sequence[int],
     t[1]
     #? ["append"]
     u.a
-    # jedi-diff #? float() list()
+    # zuban-diff #? float() list()
     #?
     u[1.0]
     #? float()
@@ -301,7 +301,7 @@ def union4(x: U[int, str]):
     #? int() str()
     x
 
-# jedi-diff #? typing.Optional
+# zuban-diff #? typing.Optional
 # _SpecialForm()
 typing.Optional[0]
 
@@ -356,7 +356,7 @@ in_out2(1)
 in_out2("")
 #? str()
 in_out2(str())
-# jedi-diff #? str() int()
+# zuban-diff #? str() int()
 #?
 in_out2()
 # TODO this should actually be str() int(), because of the constraints.
@@ -369,7 +369,7 @@ def type_in_out2(x: typing.Type[TYPE_VAR_CONSTRAINTSX]) -> TYPE_VAR_CONSTRAINTSX
 type_in_out2(int)
 #? str()
 type_in_out2(str)
-# jedi-diff #? str() int()
+# zuban-diff #? str() int()
 #?
 type_in_out2()
 # TODO this should actually be str() int(), because of the constraints.

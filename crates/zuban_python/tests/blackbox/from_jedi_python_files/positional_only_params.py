@@ -29,9 +29,9 @@ positional_only_call2(SOMETHING_UNDEFINED)
 positional_only_call2(SOMETHING_UNDEFINED, '')
 
 # Maybe change this? Because it's actually not correct
-# jedi-diff: #? int() str()
+# zuban-diff: #? int() str()
 #? str()
 positional_only_call2(a=1, b='')
-# jedi-diff: #? tuple str()
+# zuban-diff: #? tuple str()
 #? str()
 positional_only_call2(b='', a=tuple)

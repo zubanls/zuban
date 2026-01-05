@@ -11,7 +11,7 @@ class Test():
     def boo(self):
         if isinstance(self.testing, str):
             # TODO this is wrong, it should only be str.
-            # jedi-diff: #? str() int()
+            # zuban-diff: #? str() int()
             #? str()
             self.testing
             #? Test()

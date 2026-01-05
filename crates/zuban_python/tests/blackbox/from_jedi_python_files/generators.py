@@ -28,7 +28,7 @@ next(gen_ret()).
 a = ''
 if gen_ret():
     a = 3
-# jedi-diff #? int()
+# zuban-diff #? int()
 #? int() str()
 a
 
@@ -166,10 +166,10 @@ def simple2():
     yield ""
 
 a, b = simple2()
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() str()
 a
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? int() str()
 b
 
@@ -257,10 +257,10 @@ def yield_from_multiple():
     return 2.0
 
 x, y = yield_from_multiple()
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() str()
 x
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? int() str()
 y
 
@@ -271,14 +271,14 @@ def test_nested():
     yield x
 
 x, y, z = test_nested()
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? float() int() str()
 x
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? float() int() str()
 y
 # For whatever reason this is currently empty
-# jedi-diff: #? float()
+# zuban-diff: #? float()
 #? float() int() str()
 z
 

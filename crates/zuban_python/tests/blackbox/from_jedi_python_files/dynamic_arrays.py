@@ -18,7 +18,7 @@ arr = [tuple()]
 for a in [1,2]:
     arr.append(a);
 
-# jedi-diff: #? int() tuple()
+# zuban-diff: #? int() tuple()
 #? tuple()
 arr[10]
 #? int()
@@ -39,16 +39,16 @@ arr.insert(0, 1.0)
 arr.insert(0)
 arr.insert()
 
-# jedi-diff: #? float() str()
+# zuban-diff: #? float() str()
 #? str()
 arr[10]
 
 for a in arr:
-    # jedi-diff: #? float() str()
+    # zuban-diff: #? float() str()
     #? str()
     a
 
-# jedi-diff: #? float() str()
+# zuban-diff: #? float() str()
 #? str()
 list(arr)[10]
 
@@ -62,14 +62,14 @@ arr.extend([])
 arr.extend("")
 arr.extend(list)  # should ignore
 
-# jedi-diff: #? float() int() str()
+# zuban-diff: #? float() int() str()
 #? float()
 arr[100]
 
 a = set(arr)
 a.update(list(["", 1]))
 
-# jedi-diff: #? float() int() str()
+# zuban-diff: #? float() int() str()
 #? float()
 list(a)[0]
 # -----------------
@@ -105,12 +105,12 @@ s.add("ahh")
 lst = list(s)
 lst.append({})
 
-# jedi-diff: #? dict() int() float() str()
+# zuban-diff: #? dict() int() float() str()
 #? int()
 lst[0]
 
 # should work with tuple conversion, too.
-# jedi-diff: #? dict() int() float() str()
+# zuban-diff: #? dict() int() float() str()
 #? int()
 tuple(lst)[0]
 
@@ -134,7 +134,7 @@ lst = list(s)
 lst.append({})
 lst += [E()]
 
-# jedi-diff: #? dict() int() float() str() C() D() E()
+# zuban-diff: #? dict() int() float() str() C() D() E()
 #? int()
 lst[0]
 
@@ -157,11 +157,11 @@ res = add_to_arr(arr3, 1)
 arr_append(arr3, 'str')
 app(set())
 
-# jedi-diff: #? float() str() int() set()
+# zuban-diff: #? float() str() int() set()
 #? float()
 arr3[10]
 
-# jedi-diff: #? float() str() int() set()
+# zuban-diff: #? float() str() int() set()
 #? float()
 res[10]
 
@@ -184,7 +184,7 @@ def blub2():
     a.append(1.0)
     return a
 
-# jedi-diff #? int() float()
+# zuban-diff #? int() float()
 #? int()
 blub2()[0]
 
@@ -271,7 +271,7 @@ a = set([1.0])
 a.update(a)
 a.update([1])
 
-# jedi-diff: #? float() int()
+# zuban-diff: #? float() int()
 #? float()
 list(a)[0]
 
@@ -317,7 +317,7 @@ lst = list(st)
 
 lst.append('')
 
-# jedi-diff: #? float() int() str()
+# zuban-diff: #? float() int() str()
 #? float()
 lst[0]
 
@@ -329,30 +329,30 @@ some_lst = [int]
 some_lst[3] = str
 #? int
 some_lst[0]
-# jedi-diff #? str
+# zuban-diff #? str
 #? int
 some_lst[3]
-# jedi-diff #? int str
+# zuban-diff #? int str
 #? int
 some_lst[2]
 
 some_lst[0] = tuple
-# jedi-diff #? tuple
+# zuban-diff #? tuple
 #? int
 some_lst[0]
-# jedi-diff: #? int str tuple
+# zuban-diff: #? int str tuple
 #? int
 some_lst[1]
 
 some_lst2 = list([1])
 some_lst2[3] = ''
-# jedi-diff #? int() str()
+# zuban-diff #? int() str()
 #? int()
 some_lst2[0]
-# jedi-diff #? str()
+# zuban-diff #? str()
 #? int()
 some_lst2[3]
-# jedi-diff #? int() str()
+# zuban-diff #? int() str()
 #? int()
 some_lst2[2]
 
@@ -367,10 +367,10 @@ some_lst3[0]
 
 some_set = {int}
 some_set[3] = str
-# jedi-diff: #? int
+# zuban-diff: #? int
 #?
 some_set[0]
-# jedi-diff: #? int
+# zuban-diff: #? int
 #?
 some_set[3]
 
@@ -388,43 +388,43 @@ something[3]
 some_dct = {'a': float, 1: int}
 some_dct['x'] = list
 some_dct['y'] = tuple
-# jedi-diff #? list
+# zuban-diff #? list
 #? int float
 some_dct['x']
-# jedi-diff: #? int float list tuple
+# zuban-diff: #? int float list tuple
 #? int float
 some_dct['unknown']
-# jedi-diff: #? float
+# zuban-diff: #? float
 #? int float
 some_dct['a']
 
 some_dct = dict({'a': 1, 1: ''})
 #? int() str()
 some_dct['la']
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() str()
 some_dct['a']
 
 some_dct['x'] = list
 some_dct['y'] = tuple
-# jedi-diff: #? list
+# zuban-diff: #? list
 #? str() int()
 some_dct['x']
-# jedi-diff #? int() str() list tuple
+# zuban-diff #? int() str() list tuple
 #? int() str()
 some_dct['unknown']
 k = 'a'
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() str()
 some_dct[k]
 
 some_other_dct = dict(some_dct, c=set)
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? set
 some_other_dct['a']
-# jedi-diff: #? list
+# zuban-diff: #? list
 #? set
 some_other_dct['x']
-# jedi-diff: #? set
+# zuban-diff: #? set
 #? set
 some_other_dct['c']

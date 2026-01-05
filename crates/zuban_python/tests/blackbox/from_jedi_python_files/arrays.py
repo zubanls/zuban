@@ -2,7 +2,7 @@
 # basic array lookups
 # -----------------
 
-# jedi-diff: all lists are inferred without positionals
+# zuban-diff: all lists are inferred without positionals
 
 #? int() str()
 [1,""][0]
@@ -292,7 +292,7 @@ f()
 d = dict({'a':''})
 def y(a):
     return a
-# jedi-diff: #?
+# zuban-diff: #?
 #? str()
 y(**d)
 
@@ -509,7 +509,7 @@ tuple({1})[0]
 a, *b, c = [1, 'b', list, dict]
 #? str() int() dict list
 a
-# jedi-diff: #?
+# zuban-diff: #?
 #? list()
 b
 #? str() int() list dict
@@ -519,18 +519,18 @@ c
 a, *b, *c = [1, 'd', list]
 #? int()
 a
-# jedi-diff: #?
+# zuban-diff: #?
 #? list()
 b
-# jedi-diff: #?
+# zuban-diff: #?
 #? list()
 c
 
 lc = [x for a, *x in [(1, '', 1.0)]]
 
-# jedi-diff #?
+# zuban-diff #?
 #? str() float()
 lc[0][0]
-# jedi-diff #?
+# zuban-diff #?
 #? str() float()
 lc[0][1]

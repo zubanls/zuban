@@ -111,10 +111,10 @@ PropClass("").ret
 #? []
 PropClass().ret.
 
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? ret2
 PropClass("").ret2
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? ret2
 PropClass().ret2
 
@@ -162,7 +162,7 @@ class E(object):
         return cls.a
 
 e = E(1)
-# jedi-diff #? int()
+# zuban-diff #? int()
 #? E()
 e.f(1)
 #? int()
@@ -174,7 +174,7 @@ E.g(1)
 
 #? int()
 e.s(1)
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #?
 E.s(1)
 #? int()

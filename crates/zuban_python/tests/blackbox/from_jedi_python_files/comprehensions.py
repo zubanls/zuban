@@ -61,7 +61,7 @@ def _listen(arg):
         x
 
 _listen(['' for x in [1]])
-# jedi-diff: #?
+# zuban-diff: #?
 #? str
 ([str for x in []])[0]
 

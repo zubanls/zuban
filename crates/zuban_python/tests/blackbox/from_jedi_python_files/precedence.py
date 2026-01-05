@@ -5,10 +5,10 @@ multiplications, etc.
 # -----------------
 # numbers
 # -----------------
-# jedi-diff: x = [1, 'a', 1.0]
+# zuban-diff: x = [1, 'a', 1.0]
 x = (1, 'a', 1.0)
 
-# jedi-diff: #? int() str() float()
+# zuban-diff: #? int() str() float()
 #?
 x[12]
 
@@ -17,7 +17,7 @@ x[1 + 1]
 
 index = 0 + 1
 
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? int() str() float()
 x[index]
 
@@ -29,7 +29,7 @@ def calculate(number):
 
 constant = 1
 
-# jedi-diff: #? float()
+# zuban-diff: #? float()
 #? int() str() float()
 x[calculate(1)]
 
@@ -81,7 +81,7 @@ x = [1, 'a', 1.0]
 i = 0
 i += 1
 i += 1
-# jedi-diff: #? float()
+# zuban-diff: #? float()
 #? int() str() float()
 x[i]
 
@@ -89,7 +89,7 @@ i = 1
 i += 1
 i -= 3
 i += 1
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() str() float()
 x[i]
 

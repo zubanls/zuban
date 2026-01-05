@@ -3,7 +3,7 @@ a = 3  # type: str
 a
 
 b = 3  # type: str but I write more
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #?
 b
 

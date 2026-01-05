@@ -157,7 +157,7 @@ class NestedClass():
         return self
 
 # Shouldn't find a definition, because there's other `instance`.
-# jedi-diff: #< (0, 14),
+# zuban-diff: #< (0, 14),
 #<
 NestedClass().instance
 
@@ -195,7 +195,7 @@ class TestClass(Super):
         self.base_class
         #< (-20,13), (0,13)
         self.base_var
-        # jedi-diff: #< (0, 18),
+        # zuban-diff: #< (0, 18),
         #<
         TestClass.base_var
 
@@ -250,7 +250,7 @@ def f(**kwargs):
 # No result
 # -----------------
 if isinstance(j, int):
-    # jedi-diff: #< (0, 4),
+    # zuban-diff: #< (0, 4),
     #<
     j
 
@@ -263,7 +263,7 @@ class DynamicParam():
         return
 
 def check(instance):
-    # jedi-diff: #< 13 (-5,8), (0,13)
+    # zuban-diff: #< 13 (-5,8), (0,13)
     #< 13
     instance.foo()
 
@@ -278,7 +278,7 @@ import _sre
 # TODO reenable this, it's currently not working, because of 2/3
 # inconsistencies in typeshed (_sre exists in typeshed/2, but not in
 # typeshed/3).
-# jedi-diff ##< 0 (-3,7), (0,0), ('_sre', 0, 0)
+# zuban-diff ##< 0 (-3,7), (0,0), ('_sre', 0, 0)
 #< 0 (-7,7), (0,0)
 _sre
 
@@ -337,7 +337,7 @@ def whatever_func():
 # -----------------
 # global
 # -----------------
-# jedi-diff: added a global declaration, otherwise an error is added
+# zuban-diff: added a global declaration, otherwise an error is added
 my_global = None
 
 def global_usage1():
@@ -375,7 +375,7 @@ from stub_folder.with_stub_folder.nested_stub_only import in_stub_only
 #< ('stub:stub_folder.with_stub_folder.nested_stub_only', 2, 4), ('stub:stub_folder.with_stub_folder.nested_stub_only', 4, 4), ('stubs', 64, 17), ('stubs', 89, 17), (-2, 58), (0, 0)
 in_stub_only
 from stub_folder.with_stub_folder.nested_with_stub import in_python
-# jedi-diff: #< ('stub_folder.with_stub_folder.nested_with_stub', 1, 0), ('stubs', 68, 17), (-2, 58), (0, 0)
+# zuban-diff: #< ('stub_folder.with_stub_folder.nested_with_stub', 1, 0), ('stubs', 68, 17), (-2, 58), (0, 0)
 #< (-3, 58), (0, 0)
 in_python
 from stub_folder.with_stub_folder.nested_with_stub import in_both

@@ -5,7 +5,7 @@
 #? ['imag']
 int.imag
 
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? ['is_integer']
 int.is_integer
 
@@ -49,7 +49,7 @@ arr2.app
 arr.count(1)
 
 x = []
-# jedi-diff: #?
+# zuban-diff: #?
 #? int()
 x.pop()
 x = [3]
@@ -57,7 +57,7 @@ x = [3]
 x.pop()
 x = []
 x.append(1.0)
-# jedi-diff: #? float()
+# zuban-diff: #? float()
 #? int()
 x.pop()
 
@@ -84,7 +84,7 @@ dic2['asdf']
 
 d = {'a': 3, 1.0: list}
 
-# jedi-diff: #? int() list
+# zuban-diff: #? int() list
 #?
 d.values()[0]
 #? int() list
@@ -151,23 +151,23 @@ dc = {v: 3 for v in ['a']}
 #? dict()
 {**dc}
 
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? str() int() list
 {**d, "b": "b"}["b"]
 
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? str() int()
 {**dc, "b": "b"}["b"]
 
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? int() list
 {**d}["a"]
 
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? int()
 {**dc}["a"]
 
@@ -182,7 +182,7 @@ s = {1, 2, 3}
 s = {1, 2, 3}
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? int()
 {*s}.pop()
 
@@ -191,7 +191,7 @@ s = {1, 2, 3}
 
 # Should resolve to int() but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? int()
 [*s][0]
 

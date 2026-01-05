@@ -31,7 +31,7 @@ def test_assignments2():
         match = ''
     #? str()
     Foo.match
-    # jedi-diff: #? 13 
+    # zuban-diff: #? 13 
     #? 13 str()
     if Foo.match := 1:
         #? str()

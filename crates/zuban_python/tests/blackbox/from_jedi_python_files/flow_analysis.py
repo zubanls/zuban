@@ -48,7 +48,7 @@ def foo(x):
     else:
         return ''
 
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() str()
 foo(1)
 
@@ -86,7 +86,7 @@ def test_function():
         return True
     return "False"
 
-# jedi-diff: #? bool() str()
+# zuban-diff: #? bool() str()
 #? bool() str()
 test_function()
 
@@ -102,7 +102,7 @@ def elif_flows1(x):
     else:
         return ''
 
-# jedi-diff: #? float()
+# zuban-diff: #? float()
 #? float() str()
 elif_flows1(1)
 
@@ -118,7 +118,7 @@ def elif_flows2(x):
     except ValueError:
         return set
 
-# jedi-diff: #? str() set
+# zuban-diff: #? str() set
 #? str() set
 elif_flows2(1)
 
@@ -134,7 +134,7 @@ def elif_flows3(x):
     except ValueError:
         return set
 
-# jedi-diff: #? int() set
+# zuban-diff: #? int() set
 #? int() set
 elif_flows3(1)
 
@@ -147,10 +147,10 @@ def check(a):
     return ''
     return set
 
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() str()
 check(None)
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? int() str()
 check('asb')
 
@@ -199,7 +199,7 @@ def elif_name(x):
         a = x
     return a
 
-# jedi-diff: #? int() set
+# zuban-diff: #? int() set
 #? int() set str()
 elif_name(set)
 
@@ -228,25 +228,25 @@ def isinst(x):
         return tuple
     return 1
 
-# jedi-diff: #? dict
+# zuban-diff: #? dict
 #? dict set list tuple int()
 isinst(A())
-# jedi-diff: #? set
+# zuban-diff: #? set
 #? dict set list tuple int()
 isinst(True)
-# jedi-diff: #? set
+# zuban-diff: #? set
 #? dict set list tuple int()
 isinst(1)
-# jedi-diff: #? tuple
+# zuban-diff: #? tuple
 #? dict set list tuple int()
 isinst(2)
-# jedi-diff: #? list
+# zuban-diff: #? list
 #? dict set list tuple int()
 isinst(1.0)
-# jedi-diff: #? tuple
+# zuban-diff: #? tuple
 #? dict set list tuple int()
 isinst(False)
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? dict set list tuple int()
 isinst('')
 
@@ -270,7 +270,7 @@ if 0:
         within_flow
         #? str()
         foobar
-    # jedi-diff: #?
+    # zuban-diff: #?
     #? int()
     nested
 

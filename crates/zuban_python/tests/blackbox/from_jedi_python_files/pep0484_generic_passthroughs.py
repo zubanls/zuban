@@ -173,7 +173,7 @@ typed_quoted_input_generic_passthrough((42,))
 
 
 
-# jedi-diff: class CustomList(List):
+# zuban-diff: class CustomList(List):
 class CustomList[T](List[T]):
     def get_first(self):
         return self[0]

@@ -120,13 +120,13 @@ class A(object):
     def before(self):
         self.b = 3
         # TODO should this be so? include entries after cursor?
-        # jedi-diff: #? int() str() list
+        # zuban-diff: #? int() str() list
         #? str()
         self.b
         self.b = list
 
         self.a = 1
-        # jedi-diff: #? str() int()
+        # zuban-diff: #? str() int()
         #? list()
         self.a
 
@@ -134,7 +134,7 @@ class A(object):
         self.after
 
         self.c = 3
-        # jedi-diff: #? int()
+        # zuban-diff: #? int()
         #? set()
         self.c
 
@@ -156,7 +156,7 @@ a.append
 #? []
 a.real
 
-# jedi-diff: #? str() int()
+# zuban-diff: #? str() int()
 #? list()
 a.a
 

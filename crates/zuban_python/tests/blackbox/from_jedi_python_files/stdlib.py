@@ -25,7 +25,7 @@ next(reversed(yielder()))
 #?
 next(reversed())
 
-# jedi-diff: #? str() bytes()
+# zuban-diff: #? str() bytes()
 #? str()
 next(open(''))
 
@@ -55,7 +55,7 @@ type([])
 def x():
     yield 1
 generator = type(x())
-# jedi-diff: #? generator
+# zuban-diff: #? generator
 #? typing.Generator
 type(x for x in [])
 #? type(x)
@@ -63,7 +63,7 @@ type(lambda: x)
 
 import math
 import os
-# jedi-diff: #? type(os)
+# zuban-diff: #? type(os)
 #? types.ModuleType
 type(math)
 class XX(): pass
@@ -88,14 +88,14 @@ if os.path.isfile():
 
 # The type vars and other underscored things from typeshed should not be
 # findable. (in zuban errors are raised, but you can find them)
-# jedi-diff: #?
+# zuban-diff: #?
 #? typing.TypeVar()
 os._T
 
 
 with open('foo') as f:
     for line in f.readlines():
-        # jedi-diff: #? str() bytes()
+        # zuban-diff: #? str() bytes()
         #? str()
         line
 # -----------------
@@ -133,7 +133,7 @@ import weakref
 #? int()
 weakref.proxy(1)
 
-# jedi-diff: #? weakref.ref()
+# zuban-diff: #? weakref.ref()
 #? weakref.ReferenceType()
 weakref.ref(1)
 #? int() types.NoneType()

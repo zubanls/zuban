@@ -84,7 +84,7 @@ import sqlite3
 
 # classes is a local module that has an __init__.py and can therefore not be
 # found.
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? ['classes']
 import classes
 
@@ -113,7 +113,7 @@ import json as
 
 import os
 # Has different paths depending on operating system so we're removing the test and adding another one
-# jedi-diff: #? posixpath.join
+# zuban-diff: #? posixpath.join
 from os.path import join
 #? typing.get_origin
 from typing import get_origin

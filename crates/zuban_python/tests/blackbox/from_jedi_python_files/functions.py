@@ -110,7 +110,7 @@ def recursion2(a):
         else:
             return a
 
-# jedi-diff: #? int() str()
+# zuban-diff: #? int() str()
 #? int()
 recursion2(1)
 
@@ -332,15 +332,15 @@ exe3 = kwargs_func(**{k: v for k, v in [(a, 3), ('b', 4.0)]})
 
 # Should resolve to the same as 2 but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? int() float()
 exe3['a']
 
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? int() float()
 exe3['b']
 
-# jedi-diff: #? 
+# zuban-diff: #? 
 #? int() float()
 exe3['c']
 
@@ -426,21 +426,21 @@ nested_kw(a=3.0, b=1)
 nested_kw(b=1, a=r"")
 #? []
 nested_kw(1, '').
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? --contains-subset ['upper', '__init__']
 nested_kw(a='').
 
 #? int()
 nested_kw2(b=1)
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() float()
 nested_kw2(b=1, c=1.0)
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #? int() float()
 nested_kw2(c=1.0, b=1)
 #? []
 nested_kw2('').
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? --contains-subset ['upper', '__init__']
 nested_kw2(a='').
 #? []

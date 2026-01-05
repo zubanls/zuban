@@ -9,11 +9,11 @@ def scope_basic():
     #? int()
     mod1.a
 
-    # jedi-diff: #? []
+    # zuban-diff: #? []
     #? ['a']
     import_tree.a
 
-    # jedi-diff: #? []
+    # zuban-diff: #? []
     #? ['mod1']
     import_tree.mod1
 
@@ -85,7 +85,7 @@ def scope_from_import_variable():
     #? 
     from import_tree.mod2.fake import c
 
-    # jedi-diff #? 
+    # zuban-diff #? 
     #? int()
     a
     #? 

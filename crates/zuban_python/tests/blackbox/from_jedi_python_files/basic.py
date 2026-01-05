@@ -30,20 +30,20 @@ str.
 # -----------------
 # should not complete
 # -----------------
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? --contains-not TypeVar --contains-subset ["help", "any"]
 .
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? --contains-subset ["help", "any"]
 str..
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? --contains-subset ["help", "any"]
 a(0):.
 #? 2 []
 0x0
 #? []
 1j
-# jedi-diff: #? ['and', 'or', 'if', 'is', 'in', 'not']
+# zuban-diff: #? ['and', 'or', 'if', 'is', 'in', 'not']
 #? --contains-subset ["help", "any"]
 1j 
 x = None()
@@ -235,7 +235,7 @@ del deleted_var
 deleted_var
 #? []
 deleted_var
-# jedi-diff: #! []
+# zuban-diff: #! []
 #! ["deleted_var = 3"]
 deleted_var
 
@@ -411,7 +411,7 @@ with open('') as f:
     #? ['closed']
     f.closed
     for line in f:
-        # jedi-diff: #? str() bytes()
+        # zuban-diff: #? str() bytes()
         #? str()
         line
 

@@ -14,14 +14,14 @@ class Sub(Super):
     def attribute(self):
         pass
 
-    # jedi-diff: #! 8 ['attribute = 3']
+    # zuban-diff: #! 8 ['attribute = 3']
     #! 8 ['def attribute(self):']
     def attribute(self):
         pass
 
     #! 4 ['def func(self):']
     func = 3
-    # jedi-diff #! 12 ['class func(): pass']
+    # zuban-diff #! 12 ['class func(): pass']
     #! 12 ['func = 3']
     class func(): pass
 
@@ -43,14 +43,14 @@ class Test1:
 
     def __init__(self, self2):
         self.foo_here = 3
-        # jedi-diff #? ['foo_here', 'foo_in_func']
+        # zuban-diff #? ['foo_here', 'foo_in_func']
         #? ['foo_here', 'foo_in_func', 'foo_not_on_self']
         self.foo_
         #? int()
         self.foo_here
         #?
         self.foo_nested
-        # jedi-diff #?
+        # zuban-diff #?
         #? int()
         self.foo_not_on_self
         #? float()
@@ -70,13 +70,13 @@ class SubTest(Test1):
         self.foo_sub_class = list
 
     def bar(self):
-        # jedi-diff: #? ['foo_here', 'foo_in_func', 'foo_sub_class']
+        # zuban-diff: #? ['foo_here', 'foo_in_func', 'foo_sub_class']
         #? ['foo_here', 'foo_in_func', 'foo_not_on_self', 'foo_sub_class']
         self.foo_
         #? int()
         self.foo_here
         #?
         self.foo_nested
-        # jedi-diff #?
+        # zuban-diff #?
         #? int()
         self.foo_not_on_self

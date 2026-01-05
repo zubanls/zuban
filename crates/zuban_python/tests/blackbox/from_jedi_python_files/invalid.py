@@ -52,7 +52,7 @@ def indentfault():
     asd(
  indentback
 
- #jedi-diff: #? []
+ #zuban-diff: #? []
 #? --contains-subset ['__hash__', '__eq__']
 indentfault().
 
@@ -115,7 +115,7 @@ a
 # No completions for for loops without the right syntax
 for for_local in :
     for_local
-# jedi-diff: #? []
+# zuban-diff: #? []
 #? ['for_local']
 for_local
 #? 
@@ -187,7 +187,7 @@ invalid2
 
 # comma
 invalid3 = ,call
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #?
 invalid3
 

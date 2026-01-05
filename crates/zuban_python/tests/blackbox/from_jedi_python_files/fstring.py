@@ -13,7 +13,7 @@ Fr'{Foo.bar'
 Fr'{Foo.bar
 #? ['bar']
 Fr'{Foo.bar
-# jedi-diff: #? ['Exception']
+# zuban-diff: #? ['Exception']
 #? ['Exception', 'ExceptionGroup']
 F"{Excepti
 

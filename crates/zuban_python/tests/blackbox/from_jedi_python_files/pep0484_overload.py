@@ -59,7 +59,7 @@ def overload_f1():
 
 #? str()
 overload_f1([''])
-# jedi-diff: #? str() dict()
+# zuban-diff: #? str() dict()
 #?
 overload_f1(1)
 #? dict()
@@ -67,12 +67,12 @@ overload_f1({'': ''})
 
 #? str()
 overload_f1(lst)
-# jedi-diff: #? str() dict()
+# zuban-diff: #? str() dict()
 #? str()
 overload_f1(list_alias)
 #? str()
 overload_f1(list_str)
-# jedi-diff: #? str() dict()
+# zuban-diff: #? str() dict()
 #? str()
 overload_f1(list_int)
 
@@ -88,6 +88,6 @@ def broken_f1(value: 1) -> str: ...
 def broken_f1(value: Tuple[T]) -> Tuple[T]: ...
 
 tup: Tuple[float]
-# jedi-diff: #? float()
+# zuban-diff: #? float()
 #? str()
 broken_f1(broken_f1(tup))[0]

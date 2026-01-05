@@ -117,19 +117,19 @@ def function_with_non_pep_0484_annotation(
         y: 3 + 3,
         zz: float) -> int("42"):
     # infers int from function call
-    # jedi-diff: #? int()
+    # zuban-diff: #? int()
     #?
     x
     # infers int from function call
-    # jedi-diff: #? int()
+    # zuban-diff: #? int()
     #?
     xx
     # infers int from function call
-    # jedi-diff: #? int()
+    # zuban-diff: #? int()
     #?
     yy
     # infers str from function call
-    # jedi-diff: #? int()
+    # zuban-diff: #? int()
     #?
     y
     #? float()
@@ -140,10 +140,10 @@ function_with_non_pep_0484_annotation(1, 2, 3, "force string")
 def function_forward_reference_dynamic(
         x: return_str_type(),
         y: "return_str_type()") -> None:
-    # jedi-diff: #? str()
+    # zuban-diff: #? str()
     #? 
     x
-    # jedi-diff: #? str()
+    # zuban-diff: #? str()
     #? 
     y
 
@@ -160,7 +160,7 @@ def function_with_assined_class_in_reference(x: X, y: "Y"):
 Y = int
 
 def just_because_we_can(x: "flo" + "at"):
-    # jedi-diff: #? float()
+    # zuban-diff: #? float()
     #?
     x
 

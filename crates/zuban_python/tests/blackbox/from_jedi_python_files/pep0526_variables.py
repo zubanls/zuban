@@ -6,7 +6,7 @@ import typing
 asdf = ''
 asdf: int
 # This is not necessarily correct, but for now this is ok (at least no error).
-# jedi-diff #? int()
+# zuban-diff #? int()
 #? str()
 asdf
 
@@ -45,7 +45,7 @@ class Foo():
     baz: typing.ClassVar[str]
 
 
-# jedi-diff #?
+# zuban-diff #?
 #? int()
 Foo.bar
 #? int()
@@ -76,12 +76,12 @@ class VarClass:
         self.var_
 
 
-# jedi-diff: #? ['var_class1', 'var_class2', 'var_instance1']
+# zuban-diff: #? ['var_class1', 'var_class2', 'var_instance1']
 #? ['var_class1', 'var_class2', 'var_instance1', 'var_instance2']
 VarClass.var_
 #? int()
 VarClass.var_instance1
-# jedi-diff #?
+# zuban-diff #?
 #? float()
 VarClass.var_instance2
 #? str()

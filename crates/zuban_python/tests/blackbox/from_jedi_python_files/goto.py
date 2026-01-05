@@ -4,7 +4,7 @@ definition = 3
 #! 0 ['a = definition']
 a = definition
 
-# jedi-diff: #! []
+# zuban-diff: #! []
 #! ['b = a']
 b
 #! ['a = definition']
@@ -16,10 +16,10 @@ c = b
 c
 
 cd = 1
-# jedi-diff: #! 1 ['cd = c']
+# zuban-diff: #! 1 ['cd = c']
 #! 1 ['cd = 1']
 cd = c
-# jedi-diff: #! 0 ['cd = e']
+# zuban-diff: #! 0 ['cd = e']
 #! 0 ['cd = 1']
 cd = e
 
@@ -30,7 +30,7 @@ math
 
 #! ['import math']
 b = math
-# jedi-diff: #! ['b = math']
+# zuban-diff: #! ['b = math']
 #! ['b = a']
 b
 
@@ -43,7 +43,7 @@ foo = 10;print(foo)
 class C(object):
     x = 3
     def b(self):
-        # jedi-diff: #! ['b = math']
+        # zuban-diff: #! ['b = math']
         #! ['b = a']
         b
         #! ['def b(self):']
@@ -63,7 +63,7 @@ class C(object):
     #! ['def b(self):']
     b
 
-# jedi-diff: #! ['b = math']
+# zuban-diff: #! ['b = math']
 #! ['b = a']
 b
 
@@ -90,10 +90,10 @@ D().b
 def c():
     return ''
 
-# jedi-diff: #! ['def c']
+# zuban-diff: #! ['def c']
 #! ['c = b']
 c
-# jedi-diff: #! 0 ['def c']
+# zuban-diff: #! 0 ['def c']
 #! 0 ['c = b']
 c()
 

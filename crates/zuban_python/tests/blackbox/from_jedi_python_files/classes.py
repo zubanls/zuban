@@ -7,11 +7,11 @@ def find_class():
         TestClass.ret
 
 class FindClass():
-    # jedi-diff #? []
+    # zuban-diff #? []
     #? ["ret"]
     TestClass.ret
     if a:
-        # jedi-diff #? []
+        # zuban-diff #? []
         #? ["ret"]
         TestClass.ret
 
@@ -224,7 +224,7 @@ def classgetter():
 
 class Dude(classgetter()):
     def react(self):
-        # jedi-diff: #? ['shout']
+        # zuban-diff: #? ['shout']
         #? []
         self.s
 
@@ -362,7 +362,7 @@ a[1]
 
 #? float()
 WithoutMethod.blub(WithoutMethod())
-# jedi-diff: #? str()
+# zuban-diff: #? str()
 #? float()
 WithoutMethod.blub(B())
 
@@ -582,7 +582,7 @@ class Config(BaseClass):
 #? import_tree.classes.Config2()
 Config.mode
 
-# jedi-diff: #? int()
+# zuban-diff: #? int()
 #?
 Config.mode2
 
