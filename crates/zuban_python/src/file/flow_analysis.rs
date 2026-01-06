@@ -36,9 +36,9 @@ use crate::{
     recoverable_error,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
-        Enum, EnumKind, EnumMember, Intersection, Literal, LiteralKind, LookupResult, NamedTuple,
-        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar, TypeVarKind,
-        TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
+        Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
+        NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar,
+        TypeVarKind, TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -5624,6 +5624,7 @@ fn split_and_intersect(
     let mut true_type = Type::Never(NeverCause::Other);
     let mut other_side = Type::Never(NeverCause::Other);
     let matcher = &mut Matcher::with_ignored_promotions();
+    let mut type_var_split = false;
     for t in original_t.iter_with_unpacked_unions(i_s.db) {
         let mut split = |t: &Type| {
             let mut matched = false;
@@ -5699,6 +5700,7 @@ fn split_and_intersect(
             }
             Type::TypeVar(tv) if matches!(tv.type_var.kind(i_s.db), TypeVarKind::Unrestricted) => {
                 if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
+                    type_var_split = true;
                     true_type = new.into_owned();
                     other_side.union_in_place(t.clone())
                 } else {
@@ -5719,12 +5721,55 @@ fn split_and_intersect(
             }
         }
     }
-    if other_side.is_never()
-        && matches!(isinstance_type, Type::Class(c) if c.link == i_s.db.python_state.float_link())
+    // Handle int/float/complex promotions
     {
-        // This is a special case. Promotion makes it so a float is not always an int. We therefore
-        // making the other side an int.
-        other_side = i_s.db.python_state.int_type()
+        if let Type::Class(c) = isinstance_type {
+            let is_non_promotable = |for_class| {
+                original_t
+                    .iter_with_unpacked_unions(i_s.db)
+                    .any(|t| match t {
+                        Type::Class(c) => {
+                            c.link == for_class
+                                && matches!(
+                                    &c.generics,
+                                    ClassGenerics::None {
+                                        might_be_promoted: false
+                                    }
+                                )
+                        }
+                        _ => false,
+                    })
+            };
+            let complex = i_s.db.python_state.complex_link();
+            let float = i_s.db.python_state.float_link();
+            if c.link == float {
+                if !is_non_promotable(float) {
+                    // This is a special case. Promotion makes it so a float is not always an int.
+                    // We therefore making the other side an int.
+                    if let Some(new) =
+                        replace_promoted(i_s, &other_side, PromotionReplacementFor::Float)
+                    {
+                        other_side = new.union(i_s.db.python_state.int_type())
+                    } else {
+                        let int_t = i_s.db.python_state.int_type();
+                        if !type_var_split
+                            && !other_side.is_simple_super_type_of(i_s, &int_t).bool()
+                        {
+                            other_side = other_side.union(int_t)
+                        }
+                    }
+                }
+            } else if c.link == i_s.db.python_state.int_link() {
+                if let Some(new) = replace_promoted(i_s, &other_side, PromotionReplacementFor::Int)
+                {
+                    other_side = new
+                }
+            } else if c.link == complex {
+                if other_side.is_never() && !is_non_promotable(complex) {
+                    other_side = i_s.db.python_state.float_type()
+                }
+            }
+        }
     }
     debug!(
         "Narrowed because of isinstance or TypeIs to {} and other side to {}",
@@ -5732,6 +5777,62 @@ fn split_and_intersect(
         other_side.format_short(i_s.db)
     );
     (true_type, other_side)
+}
+
+#[derive(Copy, Clone)]
+enum PromotionReplacementFor {
+    Int,
+    Float,
+}
+
+fn replace_promoted(
+    i_s: &InferenceState,
+    t: &Type,
+    replacement: PromotionReplacementFor,
+) -> Option<Type> {
+    let db = i_s.db;
+    match t {
+        Type::Class(c) => {
+            let new_non_promoted = |link| {
+                Type::Class(GenericClass {
+                    link,
+                    generics: ClassGenerics::None {
+                        might_be_promoted: false,
+                    },
+                })
+            };
+            let complex = db.python_state.complex_link();
+            match replacement {
+                PromotionReplacementFor::Int => {
+                    let float = db.python_state.float_link();
+                    if c.link == float {
+                        return Some(new_non_promoted(float));
+                    } else {
+                        if c.link == complex {
+                            return Some(new_non_promoted(float).union(new_non_promoted(complex)));
+                        }
+                    }
+                }
+                PromotionReplacementFor::Float => {
+                    if c.link == complex {
+                        return Some(new_non_promoted(complex));
+                    }
+                }
+            }
+        }
+        Type::Union(u) => {
+            if !u.iter().any(|t| matches!(t, Type::Class(c) if c.link == db.python_state.float_link() || c.link == db.python_state.complex_link())) {
+                return None
+            }
+            return Some(Type::simplified_union_from_iterators(
+                i_s,
+                u.iter()
+                    .map(|t| replace_promoted(i_s, t, replacement).unwrap_or_else(|| t.clone())),
+            ));
+        }
+        _ => (),
+    }
+    None
 }
 
 fn intersect<'x>(

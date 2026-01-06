@@ -2066,6 +2066,74 @@ def f(obj: Iterable[T] | T) -> Collection[T] | T:
     obj = cast(Collection, obj)
     return obj
 
+[case int_float_narrowing]
+# flags: --warn-unreachable
+# From #223
+from typing import assert_never
+
+def int_or_float(x: int | float) -> None:
+    match x:
+        case int():
+            print("jup that is an int")
+        case float():
+            print("jup that is a float")
+        case _:
+            assert_never(x)
+
+
+def test(x: int | float) -> int:
+    if isinstance(x, int):
+        return 0
+    if isinstance(x, float):
+        return 1
+    assert_never(x)
+
+[case complex_narrowing]
+# flags: --warn-unreachable
+from typing import assert_never, assert_type
+
+def f1(x: complex) -> None:
+    match x:
+        case int(): ...
+        case float(): ...
+        case complex(): ...
+        case _: assert_never(x)
+
+def f2(x: complex) -> None:
+    match x:
+        case complex(): ...
+        case int(): ...
+        case float(): ...
+        case _: assert_never(x)
+
+def f3(x: complex) -> None:
+    match x:
+        case int(): ...
+        case complex(): ...
+        case _: assert_type(x, float)
+
+def f4(x: complex) -> None:
+    match x:
+        case float(): ...
+        case _: assert_type(x, complex | int)
+
+def f5(x: complex) -> None:
+    match x:
+        case complex(): ...
+        case _: assert_type(x, float)
+
+def f6_union(x: complex | str) -> None:
+    match x:
+        case int(): ...
+        case float(): ...
+        case complex(): ...
+        case _: assert_type(x, str)
+
+def f7_union(x: complex | str) -> None:
+    match x:
+        case float(): ...
+        case _: assert_type(x, str | int | complex)
+
 [case avoid_inferring_variables_before_end_of_scope_with_nested_functions]
 # flags: --no-mypy-compatible
 # Modified From GH #231

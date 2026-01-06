@@ -1098,6 +1098,7 @@ impl PythonState {
     attribute_link!(builtins, pub object_link, builtins_object_index);
     attribute_link!(builtins, pub int_link, builtins_int_index);
     attribute_link!(builtins, pub float_link, builtins_float_index);
+    attribute_link!(builtins, pub complex_link, builtins_complex_index);
     attribute_link!(builtins, pub str_link, builtins_str_index);
     attribute_link!(builtins, pub bytes_link, builtins_bytes_index);
     attribute_link!(builtins, pub bytearray_link, builtins_bytearray_index);
