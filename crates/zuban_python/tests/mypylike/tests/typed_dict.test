@@ -1080,3 +1080,22 @@ def f(a1: A1, a2: A2, b: B, c: C, d: D):
     a2.update(b)
     a2.update(c)  # E: TypedDict member "extra_items" is read-only
     a2.update(d)  # E: TypedDict member "z" is read-only
+
+[case typed_dict_union_context]
+# From GH #217
+from typing import Literal, TypedDict
+
+class TypeA(TypedDict):
+    type: Literal["A"]
+
+
+class TypeB(TypedDict):
+    type: Literal["B"]
+
+def my_function(my_type: TypeA | TypeB):
+    pass
+
+my_function({"type": "A"})
+my_function({"type": "B"})
+my_function({"type": "C"})  # E: Argument 1 to "my_function" has incompatible type "dict[str, Literal['C']]"; expected "TypeA | TypeB"
+my_function({"foo": 1})  # E: Argument 1 to "my_function" has incompatible type "dict[str, int]"; expected "TypeA | TypeB"

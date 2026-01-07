@@ -133,19 +133,45 @@ impl<'db> Inference<'db, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
         let i_s = self.i_s;
-        let typed_dict_result = result_context
-            .with_type_if_exists(|type_, matcher| {
-                let mut found = None;
-                type_.on_any_typed_dict(i_s, matcher, &mut |matcher, td| {
-                    found = self.check_typed_dict_literal_with_context(matcher, td, dict);
-                    found.is_some()
-                });
-                // `found` might still be empty, because we matched Any.
-                found.map(Inferred::from_type)
+        if let Some(result) = result_context
+            .with_type_if_exists(|t, matcher| {
+                match t.on_unique_type_in_unpacked_union(
+                    i_s.db,
+                    matcher,
+                    &|t| match t {
+                        Type::TypedDict(td) => Some(td.clone()),
+                        _ => None,
+                    },
+                    |matcher, typed_dict| {
+                        self.check_typed_dict_literal_with_context(matcher, typed_dict, dict)
+                    },
+                ) {
+                    Ok(t) => Some(t),
+                    Err(UniqueInUnpackedUnionError::None) => None,
+                    Err(UniqueInUnpackedUnionError::Multiple) => {
+                        for inner in t.iter_with_unpacked_unions(i_s.db) {
+                            if let Type::TypedDict(td) = inner {
+                                let (result, has_error) = i_s.avoid_errors_within(|i_s| {
+                                    self.file
+                                        .inference(i_s)
+                                        .check_typed_dict_literal_with_context(
+                                            matcher,
+                                            td.clone(),
+                                            dict,
+                                        )
+                                });
+                                if !has_error {
+                                    return Some(result);
+                                }
+                            }
+                        }
+                        None
+                    }
+                }
             })
-            .flatten();
-        if typed_dict_result.is_some() {
-            return typed_dict_result;
+            .flatten()
+        {
+            return Some(Inferred::from_type(result));
         }
 
         infer_dict_like(
@@ -163,7 +189,7 @@ impl<'db> Inference<'db, '_, '_> {
         matcher: &mut Matcher,
         typed_dict: Arc<TypedDict>,
         dict: Dict,
-    ) -> Option<Type> {
+    ) -> Type {
         let i_s = self.i_s;
         let mut extra_keys = vec![];
         let mut missing_keys: Vec<_> = typed_dict
@@ -253,13 +279,13 @@ impl<'db> Inference<'db, '_, '_> {
                 },
             )
         }
-        Some(if matches!(&typed_dict.generics, TypedDictGenerics::None) {
+        if matches!(&typed_dict.generics, TypedDictGenerics::None) {
             Type::TypedDict(typed_dict)
         } else {
             matcher
                 .replace_type_var_likes_for_unknown_type_vars(i_s.db, &Type::TypedDict(typed_dict))
                 .into_owned()
-        })
+        }
     }
 
     fn check_dict_literal_with_context(
