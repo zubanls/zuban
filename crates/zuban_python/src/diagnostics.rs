@@ -419,6 +419,7 @@ pub(crate) enum IssueKind {
     TypedDictMemberReadOnlyButExtraItemsOfSuperClassIsNot { name: Box<str> },
     TypedDictMemberNotAssignableToExtraItemsOfSuperClass { name: Box<str>, in_super_class: Box<str>, member_type: Box<str> },
     TypedDictUpdateOfReadOnlyMember { name: Box<str> },
+    TypedDictIsAmbiguous { names: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -2010,6 +2011,9 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictUpdateOfReadOnlyMember { name } => format!(
                 r#"TypedDict member "{name}" is read-only"#
+            ),
+            TypedDictIsAmbiguous{ names } => format!(
+                r#"Type of TypedDict is ambiguous, none of ({names}) matches cleanly"#
             ),
 
             OverloadImplementationNotLast =>

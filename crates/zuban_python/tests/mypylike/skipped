@@ -497,10 +497,6 @@ testListAssignmentUnequalAmountToUnpack
 # Builtin overrides (Exception = Exception)
 testConditionalExceptionAliasOverride
 
-# "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
-testUnionOfEquivalentTypedDictsDistinct
-testUnionOfEquivalentTypedDictsNested
-testTypedDictUnionAmbiguousCaseNoMatch
 # TypedDict --extra-checks
 testTypedDictUnpackStrictMode
 testTypedDictStrictUpdate

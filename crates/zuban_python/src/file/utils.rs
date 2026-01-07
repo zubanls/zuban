@@ -29,6 +29,7 @@ use crate::{
         UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
         maybe_add_extra_keys_issue,
     },
+    utils::join_with_commas,
 };
 
 use super::ClassNodeRef;
@@ -149,6 +150,7 @@ impl<'db> Inference<'db, '_, '_> {
                     Ok(t) => Some(t),
                     Err(UniqueInUnpackedUnionError::None) => None,
                     Err(UniqueInUnpackedUnionError::Multiple) => {
+                        let mut non_matches = vec![];
                         for inner in t.iter_with_unpacked_unions(i_s.db) {
                             if let Type::TypedDict(td) = inner {
                                 let (result, has_error) = i_s.avoid_errors_within(|i_s| {
@@ -160,11 +162,26 @@ impl<'db> Inference<'db, '_, '_> {
                                             dict,
                                         )
                                 });
-                                if !has_error {
+                                if has_error {
+                                    non_matches.push(td.clone());
+                                } else {
                                     return Some(result);
                                 }
                             }
                         }
+
+                        self.add_issue(
+                            dict.index(),
+                            IssueKind::TypedDictIsAmbiguous {
+                                names: join_with_commas(non_matches.into_iter().map(|td| {
+                                    format!(
+                                        "\"{}\"",
+                                        td.name_or_fallback(&FormatData::new_short(self.i_s.db))
+                                    )
+                                }))
+                                .into(),
+                            },
+                        );
                         None
                     }
                 }
