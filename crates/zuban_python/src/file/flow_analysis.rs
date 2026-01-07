@@ -1246,9 +1246,11 @@ fn split_off_enum_member(
                 set_truthy();
                 add(sub_t.clone());
             }
-            Type::EnumMember(m) if enum_member.is_same_member(m) => {
-                set_truthy();
-                continue;
+            Type::EnumMember(m) => {
+                if enum_member.is_same_member(m) {
+                    set_truthy();
+                    continue;
+                }
             }
             Type::Enum(e2) => {
                 if enum_member.enum_.defined_at == e2.defined_at {

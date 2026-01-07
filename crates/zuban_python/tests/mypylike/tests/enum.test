@@ -451,3 +451,53 @@ def f(a: TrafficLight, b: type[TrafficLight], c: Literal[TrafficLight.YELLOW]):
     reveal_type(a.AMBER)  # N: Revealed type is "Literal[__main__.TrafficLight.YELLOW]?"
     reveal_type(b.AMBER)  # N: Revealed type is "Literal[__main__.TrafficLight.YELLOW]?"
     reveal_type(c.AMBER)  # N: Revealed type is "Literal[__main__.TrafficLight.YELLOW]?"
+
+[case str_enum_as_a_tagged_union]
+# flags: --warn-unreachable
+# From GH #182
+import dataclasses
+import enum
+from typing import Literal, assert_never
+
+
+class ModelType(enum.StrEnum):
+    A = "a"
+    B = "b"
+    C = "c"
+    D = "d"
+
+
+@dataclasses.dataclass
+class A:
+    value: int
+    type: Literal[ModelType.A] = ModelType.A
+
+
+@dataclasses.dataclass
+class B:
+    value: int
+    type: Literal[ModelType.B] = ModelType.B
+
+
+@dataclasses.dataclass
+class CD:
+    value: int
+    type: Literal[ModelType.C, ModelType.D]
+
+
+def foo(var: CD | B) -> None:
+    if var.type == ModelType.B:
+        reveal_type(var)  # N: Revealed type is "__main__.B"
+
+
+def bar(var: A | B | CD) -> None:
+    if var.type == ModelType.A:
+        reveal_type(var)  # N: Revealed type is "__main__.A"
+    elif var.type == ModelType.B:
+        reveal_type(var)  # N: Revealed type is "__main__.B"
+    elif var.type == ModelType.C:
+        reveal_type(var)  # N: Revealed type is "__main__.CD"
+    elif var.type == ModelType.D:
+        reveal_type(var)  # N: Revealed type is "__main__.CD"
+    else:
+        assert_never(var)
