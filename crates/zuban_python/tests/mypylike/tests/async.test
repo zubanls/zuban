@@ -17,3 +17,19 @@ def get_sum(number: int) -> int:
     return sum(_ for _ in range(number))
 
 asyncio.gather(asyncio.to_thread(get_sum, 5))
+
+[case async_task_creation_with_untyped_functions]
+# From GH #242
+import asyncio
+
+async def foo():
+    pass
+
+class Bar:
+    def bar(self, task: asyncio.Task):
+        pass
+
+async def main() -> None:
+    task = asyncio.create_task(foo())
+    bar = Bar()
+    task.add_done_callback(bar.bar)

@@ -52,10 +52,10 @@ pub(crate) struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
     pub checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
-    pub(crate) func_like: Option<&'a dyn FuncLike>,
+    func_like: Option<&'a dyn FuncLike>,
     ignore_promotions: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
-    replace_self: Option<ReplaceSelfInMatcher<'a>>,
+    pub replace_self: Option<ReplaceSelfInMatcher<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
     match_reverse: bool,                     // For contravariance subtypes
 }

@@ -491,12 +491,12 @@ impl Type {
                     return Match::new_false()
                 }
                 if matcher.is_matching_reverse()
-                    && let Some(func_like) = matcher.func_like
-                    && let Some(func_class) = func_like.class() {
+                    && let Some(replace_self) = matcher.replace_self
+                {
                         return self.matches(
                             i_s,
                             matcher,
-                            &func_class.as_type(i_s.db),
+                            &replace_self(),
                             variance,
                         );
                 } else if let Some(t) = i_s.current_type() {
