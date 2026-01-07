@@ -117,7 +117,11 @@ impl EnumMemberDefinition {
                 };
                 match inferred.as_cow_type(class_i_s).as_ref() {
                     Type::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
-                        Inferred::from_type(
+                        let result = if enum_.kind(i_s) == EnumKind::StrEnum {
+                            Type::Literal(Literal::new_implicit(LiteralKind::String(
+                                DbString::ArcStr(self.name(i_s.db).to_lowercase().into()),
+                            )))
+                        } else {
                             enum_class
                                 .simple_lookup(
                                     i_s,
@@ -142,8 +146,9 @@ impl EnumMemberDefinition {
                                         Type::Any(AnyCause::Internal)
                                     }
                                 })
-                                .unwrap_or(i_s.db.python_state.int_type()),
-                        )
+                                .unwrap_or(i_s.db.python_state.int_type())
+                        };
+                        Inferred::from_type(result)
                     }
                     _ => inferred,
                 }
@@ -293,6 +298,7 @@ impl Hash for Enum {
     }
 }
 
+#[derive(PartialEq)]
 pub(crate) enum EnumKind {
     Normal,
     IntEnum,
