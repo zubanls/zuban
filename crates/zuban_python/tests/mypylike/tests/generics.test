@@ -1924,3 +1924,22 @@ class Class8(Generic[T1, T2]):
     def __init__(self: "Class8[T2, T1]") -> None:  # E: The type of self "T1" has type vars in non standard potisions for class "Class8" \
                                                    # E: The type of self "T2" has type vars in non standard potisions for class "Class8"
         pass
+
+[case type_annotation_not_needed_for_underscore_variable]
+# From GH #180
+from collections.abc import Callable
+from typing import Literal
+
+class WebDriverWait:
+    @staticmethod
+    def until[T](fn: Callable[[], Literal[False] | T]) -> T:
+        value = fn()
+        if value:
+            return value
+
+        raise TimeoutError
+
+try:
+    _ = WebDriverWait.until(lambda: False)  # error: Need type annotation for "_"  [var-annotated]
+except TimeoutError:
+    pass

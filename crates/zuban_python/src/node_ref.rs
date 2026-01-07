@@ -400,10 +400,11 @@ impl<'file> NodeRef<'file> {
             partial_flags.reported_error = true;
             self.set_point(point.set_partial_flags(partial_flags));
             if !db.project.flags.allow_incomplete_generics {
+                let for_ = self.as_code();
                 self.add_type_issue(
                     db,
                     IssueKind::NeedTypeAnnotation {
-                        for_: self.as_code().into(),
+                        for_: for_.into(),
                         hint,
                     },
                 );

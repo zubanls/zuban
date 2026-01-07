@@ -345,13 +345,17 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         t.has_any_with_unknown_type_params(i_s.db).then(|| {
             if !i_s.db.project.flags.allow_incomplete_generics {
-                from.add_issue(
-                    i_s,
-                    IssueKind::NeedTypeAnnotation {
-                        for_: from.as_code().into(),
-                        hint: None,
-                    },
-                );
+                let for_ = from.as_code();
+                // Mypy does not enforce a type annotation for _
+                if for_ != "_" {
+                    from.add_issue(
+                        i_s,
+                        IssueKind::NeedTypeAnnotation {
+                            for_: for_.into(),
+                            hint: None,
+                        },
+                    );
+                }
             }
             Inferred::from_type(t.replace_any_with_unknown_type_params_with_any())
         })
