@@ -3005,8 +3005,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     fn infer_operation(&self, op: Operation, result_context: &mut ResultContext) -> Inferred {
-        let left = self.infer_expression_part(op.left);
-        let right = self.infer_expression_part(op.right);
+        let context = if result_context.has_explicit_type() {
+            // Pass on the context to each side. I'm not sure that's correct, but it's necessary at
+            // least for list additions.
+            &mut *result_context
+        } else {
+            &mut ResultContext::Unknown
+        };
+        let left = self.infer_expression_part_with_context(op.left, context);
+        let right = self.infer_expression_part_with_context(op.right, context);
         self.infer_detailed_operation(op.index, op.infos, left, &right, result_context)
     }
 

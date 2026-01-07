@@ -2578,3 +2578,20 @@ class Foo:
 
 assert_type(Foo() == 3, Equal)
 assert_type(Foo() != 3, NotEqual)
+
+[case list_addition_inference]
+# From GH #201
+from typing import assert_type
+class A:
+    pass
+
+class B(A):
+    pass
+
+objs: list[A] = [A()] + [B()]
+objs2: list[A] = [B()] + [A()]
+
+objs3 = [A()] + [B()]
+assert_type(objs3, list[A])
+objs4 = [B()] + [A()]
+assert_type(objs4, list[A])
