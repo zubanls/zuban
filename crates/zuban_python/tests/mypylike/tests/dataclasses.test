@@ -492,7 +492,20 @@ def model_field(*, init: bool = True, default: Any | None = None, alias: str | N
     kw_only_default=True,
     field_specifiers=(ModelField, model_field),
 )
-class ModelBase: ...
+class ModelBase:
+    not_a_field: str
+
+    def __init_subclass__(
+        cls,
+        *,
+        frozen: bool = False,
+        kw_only: bool = True,
+        order: bool = True,
+    ) -> None:
+        ...
+
+    def __init__(self, not_a_field: str) -> None:
+        self.not_a_field = not_a_field
 
 class Customer1(ModelBase, frozen=True):
     id: int = model_field()
