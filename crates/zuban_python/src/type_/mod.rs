@@ -37,7 +37,7 @@ pub(crate) use self::{
         add_param_spec_to_params, format_callable_params, format_params_as_param_spec,
         merge_class_type_vars,
     },
-    custom_behavior::{CustomBehavior, CustomBehaviorKind},
+    custom_behavior::CustomBehavior,
     dataclass::{
         Dataclass, DataclassOptions, DataclassTransformObj, dataclass_converter_fields_lookup,
         dataclass_init_func, dataclass_initialize, dataclass_post_init_func, dataclasses_replace,
@@ -70,7 +70,6 @@ pub(crate) use self::{
     union::{UnionEntry, UnionType, simplified_union_from_iterators_with_format_index},
 };
 use crate::{
-    arguments::Args,
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
@@ -78,10 +77,7 @@ use crate::{
     format_data::{AvoidRecursionFor, FormatData, find_similar_types},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{
-        ErrorStrs, ErrorTypes, Generic, Generics, GotType, Match, Matcher, MismatchReason,
-        OnTypeError, ResultContext,
-    },
+    matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType, Match, Matcher, MismatchReason},
     new_class,
     node_ref::NodeRef,
     recoverable_error,

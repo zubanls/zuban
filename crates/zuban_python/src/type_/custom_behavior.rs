@@ -17,7 +17,7 @@ type CustomBehaviorCallback = for<'db> fn(
 ) -> Inferred;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub(crate) enum CustomBehaviorKind {
+enum CustomBehaviorKind {
     Function,
     Method { bound: Option<Arc<Type>> },
 }
