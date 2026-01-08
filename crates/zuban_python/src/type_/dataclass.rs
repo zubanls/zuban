@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     hash::{Hash, Hasher},
     iter::repeat_with,
     sync::{Arc, OnceLock},
@@ -17,7 +16,7 @@ use super::{
     Type, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
-    arguments::{ArgKind, Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
+    arguments::{ArgKind, Args, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{Database, Locality, Point, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
