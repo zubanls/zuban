@@ -51,7 +51,10 @@ impl<'db> PythonString<'db> {
                     }
                     let s = string.as_mut().unwrap();
                     s.push_str(&inner[previous_insert..i]);
-                    let (next_index, ch) = iterator.next().unwrap();
+                    let Some((next_index, ch)) = iterator.next() else {
+                        // This can happen at the end of a string with e.g. \x\\
+                        break;
+                    };
 
                     match ch {
                         b'\\' | b'\'' | b'"' => s.push(*ch as char),

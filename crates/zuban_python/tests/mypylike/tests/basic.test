@@ -1621,3 +1621,9 @@ a: int = ""  # type: ignore # other comment
 
 # My own
 other: int = "" # type: ignored # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case no_crash_on_weird_str_literal]
+# From GH #237
+"\x\\" + "a"
+
++"\x\\"  # E: Unsupported operand type for unary + ("str")
