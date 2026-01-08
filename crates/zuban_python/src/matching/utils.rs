@@ -108,7 +108,7 @@ pub fn calculate_property_return(
     callable: &CallableContent,
     avoid_inferring_return_types: bool,
 ) -> Option<Type> {
-    let first_type = callable.first_positional_type().unwrap();
+    let first_type = callable.first_positional_type()?;
     let c = Callable::new(callable, None); // TODO is this correct?
     let mut matcher = Matcher::new_callable_matcher(&c);
     if callable.kind.had_first_self_or_class_annotation()

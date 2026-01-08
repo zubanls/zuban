@@ -2595,3 +2595,10 @@ objs3 = [A()] + [B()]
 assert_type(objs3, list[A])
 objs4 = [B()] + [A()]
 assert_type(objs4, list[A])
+
+[case property_without_positional_param]
+# From GH #236
+class C(A):  # E: Name "A" is not defined
+    @property
+    def p(*, val: None):  # E: Method must have at least one argument. Did you forget the "self" argument?
+        pass
