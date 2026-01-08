@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     hash::{Hash, Hasher},
     iter::repeat_with,
     sync::{Arc, OnceLock},
@@ -16,7 +17,7 @@ use super::{
     Type, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
-    arguments::{ArgKind, Args, SimpleArgs},
+    arguments::{ArgKind, Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{Database, Locality, Point, PointLink, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
@@ -783,97 +784,107 @@ pub(crate) fn dataclasses_replace<'db>(
     on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
-    debug_assert!(bound.is_none());
-
     let mut arg_iterator = args.iter(i_s.mode);
-    if let Some(first) = arg_iterator.next()
-        && let ArgKind::Positional(positional) = &first.kind
-    {
-        let inferred = positional.infer(&mut ResultContext::Unknown);
-        let successful = run_on_dataclass(
-            i_s,
-            Some(positional.node_ref),
-            &inferred.as_cow_type(i_s),
-            &mut |dataclass| {
-                let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
-                let mut params: Vec<_> = replace_func.expect_simple_params().into();
-                for param in params.iter_mut() {
-                    // All normal dataclass arguments are optional, because they can be
-                    // overridden or just be left in place. However this is different for
-                    // InitVars, which always need to be there. To check if something is an
-                    // InitVar, we use this hack and check if the attribute exists on the
-                    // dataclass. If not, it's an InitVar.
-                    if let Some(name) = param.name.as_ref() {
-                        // All params that have no name should be *args, **kwargs in case of an
-                        // incomplete MRO.
 
-                        let t = param.type_.maybe_type().unwrap();
-                        param.type_ = ParamType::KeywordOnly(t.clone());
-                        if lookup_on_dataclass(
-                            dataclass,
-                            i_s,
-                            |issue| args.add_issue(i_s, issue),
-                            name.as_str(i_s.db),
-                        )
-                        .lookup
-                        .is_some()
-                        {
-                            param.has_default = true;
-                        }
+    let inf = bound.map(|t| Inferred::from_type(t.clone())).or_else(|| {
+        let first = arg_iterator.next()?;
+        if let ArgKind::Positional(positional) = &first.kind {
+            Some(positional.infer(&mut ResultContext::Unknown))
+        } else {
+            None
+        }
+    });
+    let Some(inf) = inf else {
+        // Execute the original function (in typeshed).
+        // These cases are checked by the type checker that use the typeshed stubs.
+        return i_s.db.python_state.dataclasses_replace().execute(
+            i_s,
+            args,
+            result_context,
+            on_type_error,
+        );
+    };
+    let successful = run_on_dataclass_for_replace(
+        i_s,
+        Some(&|issue| args.add_issue(i_s, issue)),
+        &inf.as_cow_type(i_s),
+        &mut |dataclass| {
+            let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
+            let mut params: Vec<_> = replace_func.expect_simple_params().into();
+            for param in params.iter_mut() {
+                // All normal dataclass arguments are optional, because they can be
+                // overridden or just be left in place. However this is different for
+                // InitVars, which always need to be there. To check if something is an
+                // InitVar, we use this hack and check if the attribute exists on the
+                // dataclass. If not, it's an InitVar.
+                if let Some(name) = param.name.as_ref() {
+                    // All params that have no name should be *args, **kwargs in case of an
+                    // incomplete MRO.
+
+                    let t = param.type_.maybe_type().unwrap();
+                    param.type_ = ParamType::KeywordOnly(t.clone());
+                    if lookup_on_dataclass(
+                        dataclass,
+                        i_s,
+                        |issue| args.add_issue(i_s, issue),
+                        name.as_str(i_s.db),
+                    )
+                    .lookup
+                    .is_some()
+                    {
+                        param.has_default = true;
                     }
                 }
-                params.insert(
-                    0,
-                    CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
-                        AnyCause::Todo,
-                    ))),
-                );
-                replace_func.params = CallableParams::new_simple(params.into());
-                Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
-                    i_s,
-                    args,
-                    false,
-                    on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
-                        Some(format!(
-                            r#""replace" of "{}""#,
-                            dataclass.class(i_s.db).format_short(i_s.db)
-                        ))
-                    }),
-                    &mut ResultContext::Unknown,
-                    None,
-                );
-            },
-        );
-        if successful {
-            return inferred;
-        } else {
-            // Error is raised by the type checker
-            return Inferred::new_any_from_error();
-        }
-        // All other cases are checked by the type checker that uses the typeshed stubs.
+            }
+            params.insert(
+                0,
+                CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(AnyCause::Todo))),
+            );
+            replace_func.params = CallableParams::new_simple(params.into());
+            let arg;
+            let known;
+            let add_issue = &|issue| args.add_issue(i_s, issue);
+            Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
+                i_s,
+                if bound.is_some() {
+                    known = KnownArgsWithCustomAddIssue::new(&inf, add_issue);
+                    arg = CombinedArgs::new(&known, args);
+                    &arg
+                } else {
+                    args
+                },
+                false,
+                on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
+                    Some(format!(
+                        r#""replace" of "{}""#,
+                        dataclass.class(i_s.db).format_short(i_s.db)
+                    ))
+                }),
+                &mut ResultContext::Unknown,
+                None,
+            );
+        },
+    );
+    if successful {
+        inf
+    } else {
+        // Error is raised by the type checker
+        Inferred::new_any_from_error()
     }
-    // Execute the original function (in typeshed).
-    i_s.db
-        .python_state
-        .dataclasses_replace()
-        .execute(i_s, args, result_context, on_type_error)
 }
 
-fn run_on_dataclass(
+fn run_on_dataclass_for_replace(
     i_s: &InferenceState,
-    from: Option<NodeRef>,
+    add_issue: Option<&dyn Fn(IssueKind)>,
     t: &Type,
     callback: &mut impl FnMut(&Arc<Dataclass>),
 ) -> bool {
     // Result type signals if we were successful
     let type_var_error = |tv: &TypeVar| {
-        if let Some(from) = from {
-            from.add_issue(
-                i_s,
-                IssueKind::DataclassReplaceExpectedDataclassInTypeVarBound {
-                    got: tv.name(i_s.db).into(),
-                },
-            );
+        if let Some(add_issue) = add_issue {
+            add_issue(IssueKind::DataclassReplaceExpectedDataclassInTypeVarBound {
+                got: tv.name(i_s.db).into(),
+            });
         }
         false
     };
@@ -882,11 +893,13 @@ fn run_on_dataclass(
             callback(d);
             true
         }
-        Type::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
+        Type::Union(u) => u
+            .iter()
+            .all(|t| run_on_dataclass_for_replace(i_s, add_issue, t, callback)),
         Type::Any(_) => true,
         Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
             TypeVarKind::Bound(bound) => {
-                let result = run_on_dataclass(i_s, None, bound, callback);
+                let result = run_on_dataclass_for_replace(i_s, None, bound, callback);
                 if !result {
                     type_var_error(&tv.type_var);
                 }
@@ -896,13 +909,10 @@ fn run_on_dataclass(
             TypeVarKind::Unrestricted => type_var_error(&tv.type_var),
         },
         _ => {
-            if let Some(from) = from {
-                from.add_issue(
-                    i_s,
-                    IssueKind::DataclassReplaceExpectedDataclass {
-                        got: t.format_short(i_s.db),
-                    },
-                );
+            if let Some(add_issue) = add_issue {
+                add_issue(IssueKind::DataclassReplaceExpectedDataclass {
+                    got: t.format_short(i_s.db),
+                });
             }
             false
         }

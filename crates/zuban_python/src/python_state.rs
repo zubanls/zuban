@@ -1332,7 +1332,7 @@ fn typing_changes(
     set_custom_behavior(
         dataclasses,
         "replace",
-        CustomBehavior::new_function(dataclasses_replace),
+        CustomBehavior::new_method(dataclasses_replace, None),
     );
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
     if let Some(none_type_index) = types.symbol_table.lookup_symbol("NoneType") {

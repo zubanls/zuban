@@ -1213,3 +1213,15 @@ assert_type(dc6.a, int)
 assert_type(DC6.a, int)
 assert_type(dc6.b, str)
 assert_type(dc6.c, Callable[[str], int])
+
+[case dataclasses_replace_as_method]
+# From GH #176
+import dataclasses
+
+@dataclasses.dataclass
+class DataClass:
+    x: int
+    replace = dataclasses.replace
+
+DataClass(1).replace()
+DataClass(1).replace(x=2)

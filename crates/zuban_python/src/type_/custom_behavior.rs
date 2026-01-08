@@ -18,7 +18,6 @@ type CustomBehaviorCallback = for<'db> fn(
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 enum CustomBehaviorKind {
-    Function,
     Method { bound: Option<Arc<Type>> },
 }
 
@@ -40,13 +39,6 @@ impl PartialEq for CustomBehavior {
 }
 
 impl CustomBehavior {
-    pub(crate) fn new_function(callback: CustomBehaviorCallback) -> Self {
-        Self {
-            callback,
-            kind: CustomBehaviorKind::Function,
-        }
-    }
-
     pub(crate) fn new_method(callback: CustomBehaviorCallback, bound: Option<Arc<Type>>) -> Self {
         Self {
             callback,
@@ -74,7 +66,6 @@ impl CustomBehavior {
         on_type_error: OnTypeError,
     ) -> Inferred {
         let bound = match &self.kind {
-            CustomBehaviorKind::Function => None,
             CustomBehaviorKind::Method { bound } => bound.as_deref(),
         };
         (self.callback)(i_s, args, result_context, on_type_error, bound)
