@@ -678,45 +678,47 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let class = Class::with_undefined_generics(self.node_ref);
         if let Some(td) = was_typed_dict {
             initialize_typed_dict_members(db, &class, td);
-        };
-
-        // Change the methods that are actually changed by Python to be classmethods.
-        for name in ["__init_subclass__", "__class_getitem__"] {
-            if let Some(node_index) = self.class_storage.class_symbol_table.lookup_symbol(name) {
-                let file = self.node_ref.file;
-                if let Some(func_def) = NodeRef::new(file, node_index).maybe_name_of_function() {
-                    let node_ref = NodeRef::new(file, func_def.index());
-                    let func = Function::new(node_ref, Some(class));
-                    func.ensure_cached_func(i_s);
-                    let mut c = func.as_callable(i_s, FirstParamProperties::None);
-                    if func_def.maybe_decorated().is_some() {
-                        debug!("Make method a classmethod: {name}");
-                    } else {
-                        if !c.kind.had_first_self_or_class_annotation() {
-                            let params = &mut c.params;
-                            let CallableParams::Simple(ps) = params else {
-                                unreachable!()
+        } else {
+            // Change the methods that are actually changed by Python to be classmethods.
+            for name in ["__init_subclass__", "__class_getitem__"] {
+                if let Some(node_index) = self.class_storage.class_symbol_table.lookup_symbol(name)
+                {
+                    let file = self.node_ref.file;
+                    if let Some(func_def) = NodeRef::new(file, node_index).maybe_name_of_function()
+                    {
+                        let node_ref = NodeRef::new(file, func_def.index());
+                        let func = Function::new(node_ref, Some(class));
+                        func.ensure_cached_func(i_s);
+                        let mut c = func.as_callable(i_s, FirstParamProperties::None);
+                        if func_def.maybe_decorated().is_some() {
+                            debug!("Make method a classmethod: {name}");
+                        } else {
+                            if !c.kind.had_first_self_or_class_annotation() {
+                                let params = &mut c.params;
+                                let CallableParams::Simple(ps) = params else {
+                                    unreachable!()
+                                };
+                                *ps = ps
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(i, p)| {
+                                        let mut p = p.clone();
+                                        if let Some(t) = p.type_.maybe_positional_type()
+                                            && i == 0
+                                        {
+                                            p.type_ = ParamType::PositionalOnly(Type::Type(
+                                                Arc::new(t.clone()),
+                                            ));
+                                        }
+                                        p
+                                    })
+                                    .collect();
+                            }
+                            c.kind = FunctionKind::Classmethod {
+                                had_first_self_or_class_annotation: true,
                             };
-                            *ps = ps
-                                .iter()
-                                .enumerate()
-                                .map(|(i, p)| {
-                                    let mut p = p.clone();
-                                    if let Some(t) = p.type_.maybe_positional_type()
-                                        && i == 0
-                                    {
-                                        p.type_ = ParamType::PositionalOnly(Type::Type(Arc::new(
-                                            t.clone(),
-                                        )));
-                                    }
-                                    p
-                                })
-                                .collect();
+                            node_ref.insert_type(Type::Callable(Arc::new(c)));
                         }
-                        c.kind = FunctionKind::Classmethod {
-                            had_first_self_or_class_annotation: true,
-                        };
-                        node_ref.insert_type(Type::Callable(Arc::new(c)));
                     }
                 }
             }

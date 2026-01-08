@@ -1101,3 +1101,13 @@ my_function({"type": "C"})  # E: Type of TypedDict is ambiguous, none of ("TypeA
                             # E: Argument 1 to "my_function" has incompatible type "dict[str, Literal['C']]"; expected "TypeA | TypeB"
 my_function({"foo": 1})  # E: Type of TypedDict is ambiguous, none of ("TypeA", "TypeB") matches cleanly \
                          # E: Argument 1 to "my_function" has incompatible type "dict[str, int]"; expected "TypeA | TypeB"
+
+[case class_getitem_on_typed_dict]
+# From GH #233
+from typing import TypedDict
+
+class D(TypedDict):
+    def __class_getitem__(cls, key):  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+        pass
+
+D[int]  # E: "D" expects no type arguments, but 1 given
