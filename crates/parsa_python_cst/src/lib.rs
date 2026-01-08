@@ -437,15 +437,16 @@ pub enum PotentialInlayHint<'db> {
 
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
     if let Some(after) = text.strip_prefix("ignore") {
-        let after = after.trim_matches(' ');
-        if after.is_empty() {
-            return Some(None);
-        }
-        if let Some(after) = after.strip_prefix('[')
-            && let Some(after) = after.strip_suffix(']')
-            && !after.is_empty()
+        let trimmed = after.trim_matches(' ');
+        if let Some(trimmed) = trimmed.strip_prefix('[')
+            && let Some(trimmed) = trimmed.strip_suffix(']')
+            && !trimmed.is_empty()
         {
-            return Some(Some(after));
+            return Some(Some(trimmed));
+        }
+
+        if after.is_empty() || after.starts_with([' ', '\t']) {
+            return Some(None);
         }
     }
     None

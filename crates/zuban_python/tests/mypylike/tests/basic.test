@@ -1611,3 +1611,13 @@ C  # E: Name "C" is used before definition
 try:  # E: Invalid syntax
     class C:
         pass
+
+[case type_ignore_from_conformance_tests]
+# Copied from conformance tests (directives_type_ignore.py)
+x: int = ""  # type: ignore
+y: int = ""  # type: ignore - additional stuff
+z: int = ""  # type: ignore[assignment]
+a: int = ""  # type: ignore # other comment
+
+# My own
+other: int = "" # type: ignored # E: Incompatible types in assignment (expression has type "str", variable has type "int")
