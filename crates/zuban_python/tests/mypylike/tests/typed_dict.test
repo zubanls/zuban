@@ -1111,3 +1111,14 @@ class D(TypedDict):
         pass
 
 D[int]  # E: "D" expects no type arguments, but 1 given
+
+[case avoid_typed_dict_crash_with_backslash]
+# From GH #234
+from typing import TypedDict
+
+class D(TypedDict):
+    a = \
+
+[out]
+__main__:5: error: Invalid syntax
+__main__:6: error: Invalid statement in TypedDict definition; expected "field_name: field_type"

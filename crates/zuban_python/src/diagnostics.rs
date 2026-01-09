@@ -689,10 +689,15 @@ impl Issue {
         kind: IssueKind,
         from_name_binder: bool,
     ) -> Self {
+        let start_position = tree.node_start_position(node_index);
+        let mut end_position = tree.node_end_position_without_whitespace(node_index);
+        if start_position > end_position {
+            end_position = start_position;
+        }
         Self {
             kind,
-            start_position: tree.node_start_position(node_index),
-            end_position: tree.node_end_position_without_whitespace(node_index),
+            start_position,
+            end_position,
             from_name_binder,
         }
     }
