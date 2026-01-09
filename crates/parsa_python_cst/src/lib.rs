@@ -598,6 +598,7 @@ macro_rules! create_nonterminal_structs {
 create_nonterminal_structs!(
     File: file
     Block: block
+    SimpleStmt: simple_stmt
 
     ForStmt: for_stmt
     WhileStmt: while_stmt
@@ -5144,6 +5145,7 @@ impl<'db> Error<'db> {
                             UnpackedError::ExceptStarBlock(ExceptStarBlock::new(n))
                         }
                         Nonterminal(case_block) => UnpackedError::CaseBlock(CaseBlock::new(n)),
+                        Nonterminal(simple_stmt) => UnpackedError::SimpleStmt(SimpleStmt::new(n)),
                         Nonterminal(_) | ErrorNonterminal(_) => {
                             UnpackedError::NonBlockErrorPart(NonBlockErrorPart { node: n })
                         }
@@ -5156,6 +5158,34 @@ impl<'db> Error<'db> {
             .into_iter()
             .flatten()
     }
+}
+
+impl<'db> SimpleStmt<'db> {
+    pub fn contained_name_defs(&self) -> impl Iterator<Item = NameDef<'db>> {
+        self.node
+            .search(&[Nonterminal(name_def)], true)
+            .map(|n| NameDef::new(n))
+    }
+
+    pub fn unpack(&self) -> SimpleStmtContent<'db> {
+        let child = self.node.nth_child(0);
+        if child.is_type(Nonterminal(assignment)) {
+            SimpleStmtContent::Assignment(Assignment::new(child))
+        } else if child.is_type(Nonterminal(import_from)) {
+            SimpleStmtContent::ImportFrom(ImportFrom::new(child))
+        } else if child.is_type(Nonterminal(import_name)) {
+            SimpleStmtContent::ImportName(ImportName::new(child))
+        } else {
+            SimpleStmtContent::Other
+        }
+    }
+}
+
+pub enum SimpleStmtContent<'db> {
+    Assignment(Assignment<'db>),
+    ImportFrom(ImportFrom<'db>),
+    ImportName(ImportName<'db>),
+    Other,
 }
 
 #[derive(Debug)]
@@ -5172,5 +5202,6 @@ pub enum UnpackedError<'db> {
     ExceptBlock(ExceptBlock<'db>),
     ExceptStarBlock(ExceptStarBlock<'db>),
     CaseBlock(CaseBlock<'db>),
+    SimpleStmt(SimpleStmt<'db>),
     NonBlockErrorPart(NonBlockErrorPart<'db>),
 }

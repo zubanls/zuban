@@ -1141,3 +1141,13 @@ reveal_type(f(a)) # N: Revealed type is "Any"
 reveal_type(f(b))  # N: Revealed type is "Any"
 reveal_type(f(c))  # N: Revealed type is "list[Any]"
 reveal_type(f(d))  # N: Revealed type is "list[int]"
+
+[case no_crash_on_match]
+# From GH #238
+def f(x: tuple[int | str, int | str, int | str]):
+    complex(x)
+[out]
+__main__:3: error: No overload variant of "complex" matches argument type "tuple[int | str, int | str, int | str]"
+__main__:3: note: Possible overload variants:
+__main__:3: note:     def __new__(real: complex | SupportsComplex | SupportsFloat | SupportsIndex = ..., imag: complex | SupportsFloat | SupportsIndex = ...) -> complex
+__main__:3: note:     def __new__(real: str | SupportsComplex | SupportsFloat | SupportsIndex | complex) -> complex

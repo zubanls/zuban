@@ -1629,3 +1629,17 @@ other3: int = "" # type: ignore_foo # E: Incompatible types in assignment (expre
 "\x\\" + "a"
 
 +"\x\\"  # E: Unsupported operand type for unary + ("str")
+
+[case avoid_crash_with_unfinished_call_and_type_param]
+# From GH #232
+a(b=1
+type c[T] = T
+
+def f():
+    pass
+
+reveal_type(T)
+
+[out]
+__main__:2: error: Invalid syntax
+__main__:8: note: Revealed type is "Any"

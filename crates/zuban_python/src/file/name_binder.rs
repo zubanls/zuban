@@ -402,56 +402,7 @@ impl<'db> NameBinder<'db> {
         for stmt_like in stmts.by_ref() {
             match stmt_like.node {
                 StmtLikeContent::Assignment(assignment) => {
-                    let unpacked = assignment.unpack();
-                    // First we have to index the right side, before we can begin indexing the left
-                    // side.
-                    let mut index_right = |right: &_| match right {
-                        AssignmentRightSide::YieldExpr(yield_expr) => {
-                            self.index_non_block_node(yield_expr, ordered)
-                        }
-                        AssignmentRightSide::StarExpressions(star_exprs) => {
-                            self.index_non_block_node(star_exprs, ordered)
-                        }
-                    };
-                    let cause = match &unpacked {
-                        AssignmentContent::Normal(_, right)
-                        | AssignmentContent::AugAssign(_, _, right) => {
-                            index_right(right);
-                            if right.is_inferrable_without_flow_analysis() {
-                                IndexingCause::ConstantAssignment
-                            } else {
-                                IndexingCause::Other
-                            }
-                        }
-                        AssignmentContent::WithAnnotation(_, _, Some(right)) => {
-                            index_right(right);
-                            IndexingCause::Annotation {
-                                definition_name_index: None,
-                            }
-                        }
-                        AssignmentContent::WithAnnotation(_, _, None) => {
-                            IndexingCause::Annotation {
-                                definition_name_index: None,
-                            }
-                        }
-                    };
-                    match unpacked {
-                        AssignmentContent::Normal(targets, _) => {
-                            for target in targets {
-                                self.index_target(target, ordered, cause);
-                            }
-                        }
-                        AssignmentContent::WithAnnotation(target, annotation, _) => {
-                            self.index_annotation_expr(
-                                &annotation.expression(),
-                                target.maybe_name_def().map(|n| n.name_index()),
-                            );
-                            self.index_target(target, ordered, cause)
-                        }
-                        AssignmentContent::AugAssign(target, _, _) => {
-                            self.index_target(target, ordered, IndexingCause::AugAssignment)
-                        }
-                    }
+                    self.index_assignment(assignment, ordered)
                 }
                 StmtLikeContent::ReturnStmt(return_stmt) => {
                     if !matches!(self.kind, NameBinderKind::Function { .. }) {
@@ -493,41 +444,8 @@ impl<'db> NameBinder<'db> {
                         self.index_non_block_node(&error_expr, ordered);
                     }
                 }
-                StmtLikeContent::ImportFrom(import) => {
-                    self.db_infos.all_imports.borrow_mut().push(FileImport {
-                        node_index: import.index(),
-                        in_global_scope: self.in_global_scope(),
-                    });
-                    match import.unpack_targets() {
-                        ImportFromTargets::Star(star) => {
-                            self.following_nodes_need_flow_analysis = true;
-                            self.db_infos.star_imports.borrow_mut().push(StarImport {
-                                scope: self.scope_node,
-                                import_from_node: import.index(),
-                                star_node: star.index(),
-                            })
-                        }
-                        ImportFromTargets::Iterator(targets) => {
-                            for target in targets {
-                                self.add_import_definition(target.name_def())
-                            }
-                        }
-                    };
-                }
-                StmtLikeContent::ImportName(i) => {
-                    self.db_infos.all_imports.borrow_mut().push(FileImport {
-                        node_index: i.index(),
-                        in_global_scope: self.in_global_scope(),
-                    });
-                    for dotted in i.iter_dotted_as_names() {
-                        match dotted.unpack() {
-                            DottedAsNameContent::Simple(name_def, _)
-                            | DottedAsNameContent::WithAs(_, name_def) => {
-                                self.add_import_definition(name_def)
-                            }
-                        }
-                    }
-                }
+                StmtLikeContent::ImportFrom(import) => self.index_import_from(import),
+                StmtLikeContent::ImportName(i) => self.index_import_name(i),
                 StmtLikeContent::RaiseStmt(raise_stmt) => {
                     self.index_non_block_node(&raise_stmt, ordered);
                     break;
@@ -658,6 +576,91 @@ impl<'db> NameBinder<'db> {
         }
     }
 
+    fn index_assignment(&mut self, assignment: Assignment<'db>, ordered: bool) {
+        let unpacked = assignment.unpack();
+        // First we have to index the right side, before we can begin indexing the left
+        // side.
+        let mut index_right = |right: &_| match right {
+            AssignmentRightSide::YieldExpr(yield_expr) => {
+                self.index_non_block_node(yield_expr, ordered)
+            }
+            AssignmentRightSide::StarExpressions(star_exprs) => {
+                self.index_non_block_node(star_exprs, ordered)
+            }
+        };
+        let cause = match &unpacked {
+            AssignmentContent::Normal(_, right) | AssignmentContent::AugAssign(_, _, right) => {
+                index_right(right);
+                if right.is_inferrable_without_flow_analysis() {
+                    IndexingCause::ConstantAssignment
+                } else {
+                    IndexingCause::Other
+                }
+            }
+            AssignmentContent::WithAnnotation(_, _, Some(right)) => {
+                index_right(right);
+                IndexingCause::Annotation {
+                    definition_name_index: None,
+                }
+            }
+            AssignmentContent::WithAnnotation(_, _, None) => IndexingCause::Annotation {
+                definition_name_index: None,
+            },
+        };
+        match unpacked {
+            AssignmentContent::Normal(targets, _) => {
+                for target in targets {
+                    self.index_target(target, ordered, cause);
+                }
+            }
+            AssignmentContent::WithAnnotation(target, annotation, _) => {
+                self.index_annotation_expr(
+                    &annotation.expression(),
+                    target.maybe_name_def().map(|n| n.name_index()),
+                );
+                self.index_target(target, ordered, cause)
+            }
+            AssignmentContent::AugAssign(target, _, _) => {
+                self.index_target(target, ordered, IndexingCause::AugAssignment)
+            }
+        }
+    }
+
+    fn index_import_from(&mut self, import: ImportFrom<'db>) {
+        self.db_infos.all_imports.borrow_mut().push(FileImport {
+            node_index: import.index(),
+            in_global_scope: self.in_global_scope(),
+        });
+        match import.unpack_targets() {
+            ImportFromTargets::Star(star) => {
+                self.following_nodes_need_flow_analysis = true;
+                self.db_infos.star_imports.borrow_mut().push(StarImport {
+                    scope: self.scope_node,
+                    import_from_node: import.index(),
+                    star_node: star.index(),
+                })
+            }
+            ImportFromTargets::Iterator(targets) => {
+                for target in targets {
+                    self.add_import_definition(target.name_def())
+                }
+            }
+        };
+    }
+
+    fn index_import_name(&mut self, import_name: ImportName<'db>) {
+        self.db_infos.all_imports.borrow_mut().push(FileImport {
+            node_index: import_name.index(),
+            in_global_scope: self.in_global_scope(),
+        });
+        for dotted in import_name.iter_dotted_as_names() {
+            match dotted.unpack() {
+                DottedAsNameContent::Simple(name_def, _)
+                | DottedAsNameContent::WithAs(_, name_def) => self.add_import_definition(name_def),
+            }
+        }
+    }
+
     fn index_error_nodes(&mut self, error: Error<'db>) {
         for part in error.iter_parts() {
             match part {
@@ -676,6 +679,21 @@ impl<'db> NameBinder<'db> {
                     self.index_block(block, false)
                 }
                 UnpackedError::CaseBlock(case_block) => self.index_case_block(case_block),
+                UnpackedError::SimpleStmt(simple_stmt) => match simple_stmt.unpack() {
+                    SimpleStmtContent::Assignment(a) => self.index_assignment(a, false),
+                    SimpleStmtContent::ImportFrom(i) => self.index_import_from(i),
+                    SimpleStmtContent::ImportName(i) => self.index_import_name(i),
+                    SimpleStmtContent::Other => {
+                        self.index_non_block_node(&simple_stmt, false);
+                        for name_def in simple_stmt.contained_name_defs() {
+                            self.add_new_definition_with_cause(
+                                name_def,
+                                Point::new_specific(Specific::AnyDueToError, Locality::NameBinder),
+                                IndexingCause::Other,
+                            )
+                        }
+                    }
+                },
                 UnpackedError::NonBlockErrorPart(err) => {
                     self.index_non_block_node(&err, false);
                 }

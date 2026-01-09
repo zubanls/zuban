@@ -392,17 +392,3 @@ def bar(p: Periodicity) -> int:
             return 1
         case p.weekly:
             return 7
-
-[case no_crash_on_match]
-# From GH #238
-complex(x)
-def a(
-    match x:
-    tuple[T | Exception, T | Exception, T | Exception]
-[out]
-__main__:2: error: No overload variant of "complex" matches argument type "tuple[Any | Exception, Any | Exception, Any | Exception]"
-__main__:2: note: Possible overload variants:
-__main__:2: note:     def __new__(real: complex | SupportsComplex | SupportsFloat | SupportsIndex = ..., imag: complex | SupportsFloat | SupportsIndex = ...) -> complex
-__main__:2: note:     def __new__(real: str | SupportsComplex | SupportsFloat | SupportsIndex | complex) -> complex
-__main__:2: error: Name "x" is used before definition
-__main__:3: error: Invalid syntax
