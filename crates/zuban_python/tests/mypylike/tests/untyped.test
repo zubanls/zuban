@@ -807,3 +807,41 @@ reveal_type(x)  # N: Revealed type is "Never"
 def foo():
     reveal_type(foo()) # N: Revealed type is "Any"
     return 1
+
+[case dataclass_crash_from_inheritance]
+# flags: --no-mypy-compatible
+# From GH #235
+from dataclasses import dataclass
+
+class ModelOutput:
+    def __init__(self, arg):
+        self.arg = arg
+
+@dataclass
+class BaseModelOutput(ModelOutput):
+    pass
+
+class FSMTModel:
+    def forward(self, encoder_outputs: tuple):
+        if isinstance(encoder_outputs, BaseModelOutput):
+            pass
+
+[case untyped_class_different_init]
+# flags: --no-mypy-compatible
+# From GH #235
+
+class A:
+    def __init__(self, a1, a2):
+        self.a1 = a1
+        self.a2 = a2
+
+class B(A):
+    def __init__(self, b):
+        # Remapping untyped generics is not supported at the moment
+        super().__init__(1, b'')
+        self.b = b
+
+b = B('')
+reveal_type(b.a1)  # N: Revealed type is "Any"
+reveal_type(b.a2)  # N: Revealed type is "Any"
+reveal_type(b.b)  # N: Revealed type is "str"

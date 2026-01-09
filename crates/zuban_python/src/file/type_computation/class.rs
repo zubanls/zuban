@@ -644,7 +644,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             was_typed_dict = Some((td, typed_dict_options));
         }
 
-        if type_vars.is_empty() && self.file.should_infer_untyped_returns(i_s.db) {
+        if type_vars.is_empty()
+            && self.file.should_infer_untyped_returns(i_s.db)
+            && matches!(class_infos.class_kind, ClassKind::Normal)
+            && was_dataclass.is_none()
+            && class_infos.dataclass_transform.is_none()
+        {
             // TODO this is a weird place to put it, we also override type vars here and it's
             // especially questionable that we inherit from the first type vars and not from the
             // same class that has the __init__/__new__ that the rest of our logic uses. However
