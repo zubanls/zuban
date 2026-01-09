@@ -615,16 +615,16 @@ impl Type {
                             {
                                 if let Some(union_split_up) = maybe_union {
                                     let original_len = new_tuples.len();
-                                    if new_tuples.len() * original_len > MAX_MATERIALIZATIONS {
+                                    let union_len = union_split_up.entries.len();
+                                    if union_len * original_len > MAX_MATERIALIZATIONS {
                                         return None;
                                     }
-                                    let union_len = union_split_up.entries.len();
                                     for _ in 0..union_len - 1 {
                                         new_tuples.extend_from_within(0..original_len);
                                     }
                                     for j in 0..original_len {
                                         for (k, add_t) in union_split_up.iter().enumerate() {
-                                            new_tuples[j * original_len + k].push(add_t.clone());
+                                            new_tuples[j * union_len + k].push(add_t.clone());
                                         }
                                     }
                                 } else {

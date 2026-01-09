@@ -1620,7 +1620,9 @@ z: int = ""  # type: ignore[assignment]
 a: int = ""  # type: ignore # other comment
 
 # My own
-other: int = "" # type: ignored # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+other1: int = "" # type: ignored # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+other2: int = "" # type: ignore# Should be ignored
+other3: int = "" # type: ignore_foo # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case no_crash_on_weird_str_literal]
 # From GH #237
