@@ -185,3 +185,14 @@ class C(Base):
 class C:
     def f(self: int | None):  # E: The erased type of self "int | None" is not a supertype of its class "__main__.C"
         super().__str__
+
+[case no_crash_on_super_with_type_of_any]
+# From GH #239
+from typing import Any
+class C:
+    def f(a: type[Any]):  # E: Self argument missing for a non-static method (or an invalid type for self)
+        super().__call__()
+
+    @classmethod
+    def g(a: type[Any]):
+        super().__call__()

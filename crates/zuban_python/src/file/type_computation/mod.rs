@@ -505,12 +505,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             Type::Class(..) | Type::Tuple(_) | Type::TypedDict(_) | Type::Dataclass(_) => {
                 CalculatedBaseClass::Type(type_)
             }
-            Type::Type(t) if matches!(t.as_ref(), Type::Any(_)) => {
-                CalculatedBaseClass::Type(Type::new_class(
-                    self.i_s.db.python_state.bare_type_node_ref().as_link(),
-                    ClassGenerics::new_none(),
-                ))
-            }
+            Type::Type(t) if t.is_any() => CalculatedBaseClass::Type(Type::new_class(
+                self.i_s.db.python_state.bare_type_node_ref().as_link(),
+                ClassGenerics::new_none(),
+            )),
             Type::NamedTuple(nt) => {
                 // TODO performance: this is already an Arc and should not need to be
                 // duplicated.

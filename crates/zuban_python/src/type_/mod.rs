@@ -673,6 +673,13 @@ impl Type {
             .any(|t| matches!(t, Type::Any(_)))
     }
 
+    pub fn is_type_of_any(&self) -> bool {
+        match self {
+            Type::Type(t) => t.is_any(),
+            _ => false,
+        }
+    }
+
     pub fn is_none_or_none_in_union(&self, db: &Database) -> bool {
         self.iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::None))
