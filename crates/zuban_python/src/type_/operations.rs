@@ -351,7 +351,14 @@ impl Type {
                 self,
                 nt.lookup(i_s, add_issue, name, Some(&|| self.clone())),
             ),
-            Type::Never(_) => (),
+            Type::Never(_) => callable(
+                self,
+                LookupDetails::new(
+                    self.clone(),
+                    LookupResult::UnknownName(Inferred::from_type(self.clone())),
+                    AttributeKind::Attribute,
+                ),
+            ),
             Type::NewType(new_type) => {
                 if let Type::Class(c) = &new_type.type_ {
                     let l = Instance::new(c.class(i_s.db), None).lookup(

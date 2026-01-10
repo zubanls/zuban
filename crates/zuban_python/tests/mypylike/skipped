@@ -39,8 +39,6 @@ testListSetitemTuple
 
 # Wrong TypeVarTuple warning
 testConstraintsIncludeTupleFallback
-# Never attribute access
-testAttributeNoReturn
 # Methods
 testMethodSelfArgumentChecks
 testMethodSelfArgumentChecksConcatenate

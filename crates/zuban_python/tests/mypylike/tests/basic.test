@@ -292,22 +292,11 @@ def bar(x: Any, y: A):
     reveal_type(x + y)  # N: Revealed type is "Any"
     reveal_type(y + x)  # N: Revealed type is "Any"
 
-[case explicit_never_list_tuple_unpacking_mypy_compatible]
-# flags: --mypy-compatible
+[case explicit_never_list_tuple_unpacking]
 from typing import Never
 xx: list[Never] = []
 
-for (y, z) in xx:  # E: "Never" object is not iterable
-    reveal_type(y)
-
-1()  # E: "int" not callable
-
-[case explicit_never_list_tuple_unpacking_no_mypy_compatible]
-# flags: --no-mypy-compatible
-from typing import Never
-xx: list[Never] = []
-
-for (y, z) in xx:  # E: "Never" object is not iterable
+for (y, z) in xx:
     reveal_type(y)  # TODO this might be unreachable, but doesn't need to be.
 
 1()  # E: "int" not callable
