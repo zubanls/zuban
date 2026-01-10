@@ -610,9 +610,10 @@ impl IssueKind {
             CannotInstantiateAbstractClass { .. } => "abstract",
             CallToAbstractMethodViaSuper { .. } => "safe-super",
             Deprecated { .. } => "deprecated",
-            InvalidMetaclass | DisallowedAnyMetaclass { .. } | MetaclassMustInheritFromType => {
-                "metaclass"
-            }
+            InvalidMetaclass
+            | DisallowedAnyMetaclass { .. }
+            | MetaclassMustInheritFromType
+            | MetaclassConflict => "metaclass",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }

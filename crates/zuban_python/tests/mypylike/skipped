@@ -56,14 +56,6 @@ testLiskovFineDecorator
 testLiskovFineDecoratorClean-only_when_nocache
 testFinalBodyReprocessedAndStillFinalOverloaded
 testDeprecatedOverloadedFunctionAlreadyDecorated
-# Metaclass
-testInconsistentMro
-testMetaclassConflict
-testMetaClassConflictIssue14033
-testDynamicMetaclass
-testInvalidMetaclassStructure
-testFineMetaclassRecalculation
-testFineMetaclassDeclaredUpdate
 
 # parser fails
 avoid_bracket_slowdown
