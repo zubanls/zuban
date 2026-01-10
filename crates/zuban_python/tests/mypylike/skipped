@@ -17,16 +17,9 @@ super_explicit_type_var_classmethod
 testLocalPartialTypesWithNestedFunction
 testLocalPartialTypesWithNestedFunction2
 
-# typeshed upgrade
-testTypedDictGet
-testOpenReturnTypeInference
-testOpenReturnTypeInferenceSpecialCases
-testPathOpenReturnTypeInference
-
 # Pre-release regressions
 testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef
-mypy_extensions_invalid_callable_param_named
 self_passing_to_type_var_tuple_with_protocol
 
 # typeshed upgrade __getitem__ with generics
@@ -36,17 +29,6 @@ testUnionOfTupleIndexMixed
 testListMethods
 testListOperators
 testListSetitemTuple
-
-# Methods
-testMethodSelfArgumentChecks
-testMethodSelfArgumentChecksConcatenate
-testMethodSelfArgumentChecksInUntyped
-testBoundMethodsAssignedInClassBody
-testInstanceMethodBoundOnClass
-testMethodMakeBoundIncremental
-testMethodMakeBoundFineGrained
-# Different deprecated error
-testDeprecatedOverloadedFunctionAlreadyDecorated
 
 # parser fails
 avoid_bracket_slowdown
@@ -208,6 +190,15 @@ testPerFileStrictOptionalBasicPyProjectTOML
 optional_backwards_global
 # needs error because only reassignments with other partial
 testInferenceWithUninhabitedType
+
+# Method binding should be ensured (advanced)
+testMethodSelfArgumentChecks
+testMethodSelfArgumentChecksConcatenate
+testMethodSelfArgumentChecksInUntyped
+testBoundMethodsAssignedInClassBody
+testInstanceMethodBoundOnClass
+testMethodMakeBoundIncremental
+testMethodMakeBoundFineGrained
 
 # --------------------------- Not first release ---------------------------
 
@@ -526,6 +517,8 @@ testOverrideMatchArgs
 
 # Check for deprecated overloads
 testDeprecatedOverloadedFunction
+# Different deprecated error
+testDeprecatedOverloadedFunctionAlreadyDecorated
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1
