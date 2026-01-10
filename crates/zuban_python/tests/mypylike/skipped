@@ -37,147 +37,37 @@ testListMethods
 testListOperators
 testListSetitemTuple
 
-# mypy upgrade
-testPropertySetterDecorated
-testInconsistentMro
-testPropertyNameIsChecked
-testPropertyAttributeIsChecked
-testPropertyNameAndAttributeIsCheckedPretty
-testPropertyGetterDecoratorIsRejected
-testSlotsCompatibility
-testMetaclassConflict
-testMetaClassConflictIssue14033
+# Wrong TypeVarTuple warning
+testConstraintsIncludeTupleFallback
+# Never attribute access
+testAttributeNoReturn
+# Methods
 testMethodSelfArgumentChecks
 testMethodSelfArgumentChecksConcatenate
 testMethodSelfArgumentChecksInUntyped
-testPropertyWithExtraMethod
-testRecursivePropertyWithInvalidSetterNoCrash
-testPropertyAllowsDeleterBeforeSetter
-testCorrectConstructorTypeWithAnyFallback
-testSettablePropertyAlias
-testGenericSubclassAccessNoLeak
-testClassVarBareAnnotation
-testClassVarBareAnnotationDisabled
-testDataclassesTypeGuard
-testDataclassDefaultFactoryTypedDict
-testDataclassInitVarRedefinitionNoCrash
-testDeprecatedOverloadedFunction
-testEnumNotFinalWithMethodsAndUninitializedValues
-testEnumAccessFromInstance
-testSingleUnderscoreNameEnumMember
-testSunderValueTypeEllipsis
-testSunderValueTypeEllipsisNonStub
-testDynamicMetaclass
-testInvalidMetaclassStructure
-testStrictEqualityForNone
-testNarrowingOfFinalPersistsInFunctions
-testDisjointBase
-testDisjointBaseSlots
-testStrictBytesEnabledByStrict
-testDecoratedPropertySetter
-testOverrideUntypedDef
-fullNamesOfImportedBaseClassesDisplayed
 testBoundMethodsAssignedInClassBody
-testCheckFunctionErrorContextDuplicateDeferred
-testNoExtraNoteForUnpacking
-testFunctoolsPartialTypeVarErasure
-testUninhabitedCacheChecksAmbiguous
 testInstanceMethodBoundOnClass
-testDeterminismFromJoinOrderingInSolver
-testPropertyWithGenericSetter
-testIncrementalClassVar
-testEnumAreStillFinalAfterCache
 testMethodMakeBoundIncremental
-testBinaryOpInferenceContext
-testDeterminismCommutativityWithJoinInvolvingProtocolBaseAndPromotableType
-testInferOptionalAgainstAny
-testNoCrashOnPartialTypeAsContext
-testConstraintSolvingFailureShowsCorrectArgument
-testInlineErrorCodesOverrideConfigSmall2
-testInlineErrorCodesOverrideConfigSmallBackward
-testInlineOverrideConfig
-testInlineErrorCodesArentRuinedByOthersSe
-testConfigFileErrorCodesOnAndOff
-testInlineConfigBaseCaseWui
-testInlineConfigIsntRuinedByOthersInvalidWui
-testIsinstanceAndNarrowTypeVariable
-testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound1
-testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound2
-testIsInstanceDisjointBase
-testJoinLiteralAndInstance
-testAllMustBeSequenceStr2
-testAllMustBeSequenceStr3
-testModuleAllEmptyList
+testMethodMakeBoundFineGrained
+# Full names of import base classes displayed
 testIncompatibleOverrideFromCachedModuleIncremental
-testNarrowingUsingTypeVar
-testPersistentUnreachableLinesNestedInInpersistentUnreachableLines
-testAvoidFalseRedundantCastInLoops
-testAvoidFalseUnreachableInLoop1
-testAvoidFalseUnreachableInLoop2
-testAvoidFalseUnreachableInLoop3
-testNarrowPromotionsInsideUnions1
-testNarrowPromotionsInsideUnions2
-testAvoidFalseUnreachableInFinally
-testDoNotNarrowToNever
-testNarrowTypeVarBoundType
-testNarrowTypeVarBoundUnion
-testIsinstanceNarrowingWithSelfTypes
-testNarrowingUnionMixins
-testCustomSetterNarrowingReWidened
-testTypeCheckOverloadImplOverlapVarArgsAndKwargs
-testTypeCheckOverloadImplOverlapVarArgsAndKwargsUnion
-testExplicitProtocolJoinPreference
-testProtocolCheckDefersNode
-testProtocolClassObjectDescriptor
-testProtocolClassValDescriptor
-testPEP695MultipleUnpacksInBareApplicationNoCrash
-testForwardNestedPrecedesForwardGlobal
-testPEP695AliasDoesNotReferToFullname
-testTemplateString
-testSelfTypeClassMethodNotSilentlyErased
-testSelfInClassDecoratedClassmethod
-testSelfInClassmethodWithOtherSelfMethod
-testSlotsAssignmentWithMixin
-testSlotsEmptyList
-testSlotsEmptySet
-testExplicitTypeAliasClassVarProhibited
-testTypedDictWithIsInstanceAndIsSubclass
-testTypedDictAliasAsInstanceAttribute
-testTypedDictAssignableToWiderContext
-testOverloadedTypeGuardType
-testTypeIsTupleGeneric
-testTypeVarTupleGenericClassDefn
-testTypeVarTuplePep646TypeVarTupleUnpacking
-testTypeVarTuplePep646CallableInvalidSyntax
-testVariadicAliasMultipleUnpacks
-testConstraintsIncludeTupleFallback
-testUnionSyntaxRecombined
-testOrSyntaxRecombined
-testTypeAliasWithOldUnionIsInstance
-testTypeAliasWithOldUnionIsInstancePython39
-testMypyFalseValuesInBinaryOps_no_empty
-testAttributeNoReturn
-testCastFromLiteralRedundant
-testCastFromUnionOfAnyOk
+fullNamesOfImportedBaseClassesDisplayed
 testAddBaseClassMethodCausingInvalidOverride
 testModifyBaseClassMethodCausingInvalidOverride
 testPreviousErrorInDecoratedMethodOverride
-testFineMetaclassRecalculation
-testFineMetaclassDeclaredUpdate
 testOverloadedMethodSupertype
 testLiskovFineDecorator
 testLiskovFineDecoratorClean-only_when_nocache
 testFinalBodyReprocessedAndStillFinalOverloaded
-testUnusedTypeIgnorePreservedAfterChange
-testTypeIgnoreWithoutCodePreservedAfterChange
 testDeprecatedOverloadedFunctionAlreadyDecorated
-testMethodMakeBoundFineGrained
-testTemplateString
-testTypedNamespaceSubpackage
-testIsInstanceAdHocIntersectionWithStrAndBytes
-testReturnFallbackInferenceDict
-testOverloadedProperty
-testNoneTypeWarning
+# Metaclass
+testInconsistentMro
+testMetaclassConflict
+testMetaClassConflictIssue14033
+testDynamicMetaclass
+testInvalidMetaclassStructure
+testFineMetaclassRecalculation
+testFineMetaclassDeclaredUpdate
 
 # parser fails
 avoid_bracket_slowdown
@@ -191,7 +81,6 @@ testOverloadVarargsSelection
 testOverloadingInferUnionReturnWithObjectTypevarReturn
 testOverloadingInferUnionReturnWithBadObjectTypevarReturn
 
-
 # callable matching should work correctly with the same definitions (currently emits an error log)
 # strict_equality_class_generics_access
 
@@ -202,6 +91,8 @@ testNoCrashOnNestedGenericCallable
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
+# Join issues
+testDeterminismFromJoinOrderingInSolver
 # Self in multi inheritance matching needs intersection to satisfy if its fine
 testTypingSelfOverrideVarMulti
 testSelfInMultipleInheritance
@@ -238,11 +129,15 @@ testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 testRecursiveNamedTupleTypedDict
 # Recursive aliases with NewType, classes should be resolved first
 testRecursiveAliasViaBaseClass2
+# Mypy is probably wrong with this, let's wait for conformance tests to clarify
+testSelfTypeClassMethodNotSilentlyErased
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
 # list element context inference should probably ignore type vars
 testInferenceAgainstGenericCallableGenericNonLinear
+# Context for returns with or
+testBinaryOpInferenceContext
 # Recursive alias union type var inference where Nested[T] is checked before T
 testRecursiveAliasWithRecursiveInstanceInference
 # type var backtracking
@@ -269,24 +164,18 @@ testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
+# Callable x: int should be a subtype of *args: int | str, **kw: int
+testTypeCheckOverloadImplOverlapVarArgsAndKwargs
+testTypeCheckOverloadImplOverlapVarArgsAndKwargsUnion
 
-# Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
-testInferenceWorksWithEmptyCollectionsUnion
-testWideOuterContextEmptyError
-testWideOuterContextNoArgsError
-testInferenceWorksWithEmptyCollectionsNested
-testCallerVarargsAndComplexTypeInference
 # [''] + [1] does not generate an error
 testAssignmentSubtypes
-testRedundantExprTruthiness
 testInWithInvalidArgs
 # union order issues
 testNarrowingEqualityDisabledForCustomEquality
 
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
-# Class __init__ like `def __init__(self: C[Int[S]], x: int, y: S) -> None: ...`
-testOverloadedGenericInit
 # object.__new__(cls) -> Self where object.__new__(int) leads to Never
 testOverride__new__AndCallObject
 # __new__ return types with Never
@@ -305,6 +194,8 @@ testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
+# TypeIs tuple materializations
+testTypeIsTupleGeneric
 # TypeIs removes entries that can never be relevant
 testTypeIsEnumOverlappingUnionExcludesIrrelevant
 # "Function "property_decorator_missing" could always be true in boolean context"
@@ -318,6 +209,10 @@ testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
 testCustomEqCheckStrictEqualityTuple
 testDisableBytearrayPromotion
+testStrictEqualityForNone
+testInlineErrorCodesArentRuinedByOthersSe
+# --strict enables --strict-bytes
+testStrictBytesEnabledByStrict
 # optional assignment within class
 testLocalPartialTypesWithInheritance3
 # formatting the wrong class in assignment to member of superclass of superclass
@@ -366,6 +261,13 @@ testOverrideCallableAttributeWithSettableProperty
 testOverrideCallableAttributeWithSettablePropertyMutableOverride
 # Property setter with self types
 testOverridePropertyGeneric
+testSettablePropertyAlias
+# Property setter with decorator and a different type
+testPropertySetterDecorated
+# Invalid property setter signatures
+testPropertyAllowsDeleterBeforeSetter
+# Property settter generic
+testPropertyWithGenericSetter
 # Inheritance ClassVar in parent of parent, overwritten in parent and therefore should still be a ClassVar but isn't
 testOverrideClassVarManyBases
 # Multi inheritance should check both sides
@@ -390,6 +292,9 @@ testRedefinedOverloadedFunction
 testUnionTryFinally
 testUnionTryFinally5
 testUnionTryFinally6
+testUnionSyntaxRecombined
+testOrSyntaxRecombined
+testAvoidFalseUnreachableInFinally
 # while must be rechecked if type widens
 testModifyLoop
 testModifyLoopWhile4
@@ -402,6 +307,12 @@ testAvoidFalseUnreachableInLoop
 testNewRedefineTryStatement
 testNewRedefineWhileLoopOptional
 testNewRedefineBreakAndContinue
+testNarrowPromotionsInsideUnions2
+testPersistentUnreachableLinesNestedInInpersistentUnreachableLines
+testAvoidFalseRedundantCastInLoops
+testAvoidFalseUnreachableInLoop1
+testAvoidFalseUnreachableInLoop2
+testAvoidFalseUnreachableInLoop3
 # Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple
@@ -435,6 +346,19 @@ isinstance_with_type_of_something_with_any_generics
 testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
+# Narrowing keep out of function narrowings
+testNarrowingOfFinalPersistsInFunctions
+# TypeVar narrowing
+testIsinstanceAndNarrowTypeVariable
+testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound1
+testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound2
+testNarrowingUsingTypeVar
+testNarrowTypeVarBoundType
+testNarrowTypeVarBoundUnion
+# Do not narrow to Never
+testDoNotNarrowToNever
+# Property setter narrowing?
+testCustomSetterNarrowingReWidened
 
 # partials: OrderedDict
 testInferOrderedDictInitializedToEmpty
@@ -458,6 +382,14 @@ testClassVarUnionBoundOnInstance
 # Final not allowed in loop
 testFinalNotInLoops
 final_with_getitem_in_loop
+
+# Disjoint bases
+testSlotsCompatibility
+testDisjointBase
+testDisjointBaseSlots
+testIsInstanceDisjointBase
+testIsInstanceAdHocIntersectionWithStrAndBytes
+testSlotsAssignmentWithMixin
 
 # self.x = self where self: T
 testTypingSelfAttrOldVsNewStyle
@@ -531,6 +463,8 @@ testTypedDictNonMappingMethods
 testSerializeTypedDictInMethod
 # TypedDict unions
 testTypedDictChainedGetWithEmptyDictDefault
+# TypedDict/Dict context
+testTypedDictAssignableToWiderContext
 
 # dataclasses __slots__
 testDataclassWithSlotsArg
@@ -550,6 +484,12 @@ testMultilineQuotedAnnotation
 
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
+# Overloaded descriptors in protocols
+testProtocolClassObjectDescriptor
+testProtocolClassValDescriptor
+# Protocol join preference
+testExplicitProtocolJoinPreference
+testProtocolCheckDefersNode
 # Weird and unsound mypy cases for x: typing.TypeAlias = ...
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
@@ -604,6 +544,9 @@ testMatchAndWithStatementScope
 testMatchClassPatternNonexistentKeyword
 # Overriding match args details
 testOverrideMatchArgs
+
+# Check for deprecated overloads
+testDeprecatedOverloadedFunction
 
 # ""return" not allowed in except* block" / continue break
 testReturnInExceptStarBlock1
@@ -722,10 +665,12 @@ testFunctoolsPartialNestedPartial
 testFunctoolsPartialNestedGeneric
 testFunctoolsPartialClassObjectMatchingPartial
 testFineGrainedFunctoolsPartial
+testFunctoolsPartialTypeVarErasure
 testOtherVarArgs
 
 # Forward name binder reference in class
 testNewAnalyzerNamedTupleCallNested
+testForwardNestedPrecedesForwardGlobal
 # class binder questionable types in class body
 testRefMethodWithDecorator
 # str methods vs. str annotations, when do we use which type
@@ -742,6 +687,8 @@ testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
 # Recursive alias forward reference in class scope
 testRecursiveClassLevelAlias
+# Name binder MYPY/platform/TYPE_CHECKING etc
+testMypyFalseValuesInBinaryOps_no_empty
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
@@ -885,6 +832,9 @@ testIgnoreScopeUnused3
 testUnusedIgnoreVersionCheck
 testUnusedTypeIgnore
 testUnusedTypeIgnoreImport
+testUnusedTypeIgnorePreservedAfterChange
+testInlineConfigBaseCaseWui
+testInlineConfigIsntRuinedByOthersInvalidWui
 # --warn-unused-ignores whole module
 testIgnoreWholeModule1
 testImportUnusedIgnore2
@@ -897,6 +847,8 @@ testInlineErrorCodes
 testInlineErrorCodesMultipleCodes
 testInlineErrorCodesOverrideConfig
 testPerModuleErrorCodesOverride
+testTypeIgnoreWithoutCodePreservedAfterChange
+testConfigFileErrorCodesOnAndOff
 # type: ignore blocking errors cannot be ignored: ""yield" outside function"
 testCannotIgnoreBlockingError
 # type: ignore on forward reference
@@ -909,14 +861,23 @@ testNoteAboutChangedTypedDictErrorCode
 # "mypy: "tmp/typing.py" shadows library module "typing""
 testShadowTypingModule
 
-# Module __all__
+# Invalid __all__
 testAllMustBeSequenceStr
+testAllMustBeSequenceStr2
+testAllMustBeSequenceStr3
+testModuleAllEmptyList
+# Slots weird type inference
+testSlotsEmptyList
+testSlotsEmptySet
+
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment
 
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
 requireExplicitOverrideOverload
+# @override untyped "Method "foo" is marked as an override, but no base method was found with this name"
+testOverrideUntypedDef
 
 # "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
 testErrorCodeFormatCall
@@ -988,6 +949,19 @@ testLiteralUnionEnumAliasAssignable
 testFunctionalEnumListOfPairs
 # "Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership
 testEnumNotFinalWithMethodsAndUninitializedValuesStub
+# Enum value wrong order in lookup
+testEnumAccessFromInstance
+# Enum reachability with underscore member
+testSingleUnderscoreNameEnumMember
+# Enum _value_?
+testSunderValueTypeEllipsis
+testSunderValueTypeEllipsisNonStub
+
+# "NoneType should not be used as a type, please use None instead"
+testNoneTypeWarning
+
+# Template strings
+testTemplateString
 
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
@@ -1146,6 +1120,7 @@ testTypedPkg_args_nositepackages
 testTypedPkgNoSitePkgsIgnoredImports
 # "Skipping analyzing "typedpkg_ns.b.bbb": module is installed, but missing library stubs or py.typed marker"
 testNamespacePkgWStubs
+testTypedNamespaceSubpackage
 # __import__("pkg_resources").declare_namespace(__name__)
 testNamespacePkgWStubsWithNamespacePackagesFlag
 testTypedPkgNamespaceImportFrom
@@ -1163,6 +1138,9 @@ testRedundantExpressions
 testTruthyBool
 testTruthyFunctions
 testTruthyIterable
+testInlineErrorCodesOverrideConfigSmall2
+testInlineErrorCodesOverrideConfigSmallBackward
+testInlineOverrideConfig
 # flags: --disable-error-code truthy-bool
 testDisableEnableErrorCodesIncremental
 # flags: --enable-error-code=mutable-override: "Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")"
@@ -1513,6 +1491,7 @@ testShowErrorContextMember
 testShowErrorContextModule
 testShowErrorContextTopLevel
 testShowErrorContextFromHere
+testCheckFunctionErrorContextDuplicateDeferred
 
 # --pretty
 testReprocessMethodShowSource
@@ -1521,6 +1500,7 @@ testPrettyMessageSorting
 testParseErrorShowSource
 testDictExpressionErrorLocations
 testEndColumnsWithTooManyTypeVars
+testPropertyNameAndAttributeIsCheckedPretty
 
 # --no-silence-site-packages
 testAddFileWhichImportsLibModuleWithErrors
@@ -1622,6 +1602,9 @@ testAddNonPackageSubdir
 testAddPackage5
 testScriptsAreNotModules
 
+# Won't do Invalid Mypy TypeVars according to conformance tests:
+testDeterminismCommutativityWithJoinInvolvingProtocolBaseAndPromotableType
+
 # Won't do: Type Vars qualified names -> comes from visit_Attribute and is not really qualified, but the expr name
 testQualifiedTypeVariableName
 testPartiallyQualifiedTypeVariableName
@@ -1670,6 +1653,7 @@ testDisallowAnyGenericsBuiltinDictPre39
 # Won't support Python 3.9 specialities
 testDataclassWithMatchArgsOldVersion
 testUnionOrSyntaxInIsinstanceNotSupported
+testTypeAliasWithOldUnionIsInstancePython39
 # "Subscripting classes that are not generic at runtime may require escaping"
 testCheckDisallowAnyGenericsStubOnly
 

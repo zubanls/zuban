@@ -1921,8 +1921,8 @@ T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 
 class Class8(Generic[T1, T2]):
-    def __init__(self: "Class8[T2, T1]") -> None:  # E: The type of self "T1" has type vars in non standard potisions for class "Class8" \
-                                                   # E: The type of self "T2" has type vars in non standard potisions for class "Class8"
+    def __init__(self: "Class8[T2, T1]") -> None:  # E: The type of self "T1" has type vars in non standard positions for class "Class8" \
+                                                   # E: The type of self "T2" has type vars in non standard positions for class "Class8"
         pass
 
 [case type_annotation_not_needed_for_underscore_variable]

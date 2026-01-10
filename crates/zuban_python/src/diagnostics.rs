@@ -1100,7 +1100,7 @@ impl<'db> Diagnostic<'db> {
                 r#"The erased type of self "{self_type}" is not a supertype of its class "{class}""#
             ),
             TypeOfSelfHasTypeVars { type_var_like, class_name } => format!(
-                r#"The type of self "{}" has type vars in non standard potisions for class "{class_name}""#,
+                r#"The type of self "{}" has type vars in non standard positions for class "{class_name}""#,
                 type_var_like.name(self.db),
             ),
             SelfArgumentMissing =>
@@ -1614,7 +1614,7 @@ impl<'db> Diagnostic<'db> {
                 r#""{actual}" cannot be unpacked (must be tuple or TypeVarTuple)"#
             ),
             MoreThanOneUnpackTypeIsNotAllowed =>
-                "More than one Unpack in a type is not allowed".to_string(),
+                "More than one variadic Unpack in a type is not allowed".to_string(),
             TypeVarTupleCannotBeSplit => "TypeVarTuple cannot be split".to_string(),
             TypeVarDefaultWrongOrder { type_var1, type_var2 } => format!(
                 r#""{type_var1}" cannot appear after "{type_var2}" in type parameter list because it has no default type"#
@@ -2063,7 +2063,7 @@ impl<'db> Diagnostic<'db> {
             OnlyInstanceMethodsCanBeDecoratedWithProperty =>
                 "Only instance methods can be decorated with @property".to_string(),
             OnlySupportedTopDecoratorSetter{name} =>
-                format!("Only supported top decorator is @{name}.setter"),
+                format!(r#"Only supported top decorators are "@{name}.setter" and "@{name}.deleter""#),
             InvalidPropertySetterSignature => "Invalid property setter signature".to_string(),
             UnexpectedDefinitionForProperty{name} =>
                 format!("Unexpected definition for property \"{name}\""),
