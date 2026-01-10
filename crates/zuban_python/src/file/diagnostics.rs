@@ -1299,7 +1299,7 @@ impl Inference<'_, '_, '_> {
                 original_details,
                 &override_details,
                 name,
-                |_, _| "dataclass",
+                |_| "dataclass".into(),
                 Some(&|| {
                     let params = format_callable_params(
                         &FormatData::new_short(i_s.db),
@@ -2653,7 +2653,14 @@ fn find_and_check_override(
                 original_details,
                 &override_details,
                 name,
-                |db, c| c.name(db),
+                |c| {
+                    if let TypeOrClass::Class(c) = c
+                        && c.file_index() != from.file_index()
+                    {
+                        return c.qualified_name(i_s.db).into();
+                    }
+                    c.name(i_s.db).into()
+                },
                 None,
             );
             original_details = instance.lookup(
@@ -2686,7 +2693,7 @@ pub(super) fn check_override(
     original_lookup_details: LookupDetails,
     override_lookup_details: &LookupDetails,
     name: &str,
-    original_class_name: impl for<'x> Fn(&'x Database, &'x TypeOrClass) -> &'x str,
+    original_class_name: impl Fn(&TypeOrClass) -> Box<str>,
     original_formatter: Option<&dyn Fn() -> String>,
 ) -> bool {
     let original_inf = original_lookup_details.lookup.into_inferred();
@@ -2780,13 +2787,13 @@ pub(super) fn check_override(
         (ClassVar, AnnotatedAttribute) => from.add_issue(
             i_s,
             IssueKind::CannotOverrideClassVariableWithInstanceVariable {
-                base_class: original_class_name(i_s.db, &original_class).into(),
+                base_class: original_class_name(&original_class),
             },
         ),
         (AnnotatedAttribute, ClassVar) => from.add_issue(
             i_s,
             IssueKind::CannotOverrideInstanceVariableWithClassVariable {
-                base_class: original_class_name(i_s.db, &original_class).into(),
+                base_class: original_class_name(&original_class),
             },
         ),
         _ => (),
@@ -2813,8 +2820,6 @@ pub(super) fn check_override(
         // signatures. Try to make this as similar as possible to Mypy.
         match override_func_infos(override_t, &original_t, &override_lookup_details.attr_kind) {
             Some(OverrideFuncInfos::CallablesSameParamLen(got_c, expected_c)) => {
-                let supertype = original_class_name(db, &original_class);
-
                 // First check params
                 let CallableParams::Simple(params1) = &got_c.params else {
                     unreachable!()
@@ -2854,6 +2859,7 @@ pub(super) fn check_override(
                     };
                     let t1 = got_c.erase_func_type_vars_for_type(db, t1);
                     if !t1.is_simple_super_type_of(i_s, t2).bool() {
+                        let supertype = original_class_name(&original_class);
                         let issue = IssueKind::ArgumentIncompatibleWithSupertype {
                             message: format!(
                                 r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
@@ -2884,6 +2890,7 @@ pub(super) fn check_override(
                     .is_simple_sub_type_of(i_s, &expected_c.return_type)
                     .bool()
                 {
+                    let supertype = original_class_name(&original_class);
                     let mut async_note = None;
                     if is_async_iterator_without_async(i_s, &expected_ret, &got_ret) {
                         async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
@@ -2921,7 +2928,7 @@ pub(super) fn check_override(
                                     i_s,
                                     IssueKind::OverloadOrderMustMatchSupertype {
                                         name: name.into(),
-                                        base_class: original_class_name(db, &original_class).into(),
+                                        base_class: original_class_name(&original_class),
                                     },
                                 );
                                 break 'outer;
@@ -2938,7 +2945,7 @@ pub(super) fn check_override(
                     IssueKind::IncompatibleAssignmentInSubclass {
                         got: override_t.format_short(i_s.db),
                         expected: original_t.format_short(i_s.db),
-                        base_class: original_class_name(i_s.db, &original_class).into(),
+                        base_class: original_class_name(&original_class),
                     },
                 )
             }
@@ -2996,7 +3003,7 @@ pub(super) fn check_override(
 
             let issue = IssueKind::SignatureIncompatibleWithSupertype {
                 name: name.into(),
-                base_class: original_class_name(i_s.db, &original_class).into(),
+                base_class: original_class_name(&original_class),
                 notes: notes.into(),
             };
             if let Some(func) = maybe_func() {

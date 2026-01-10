@@ -1058,7 +1058,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         mro_index: None,
                     },
                     name_str,
-                    |db, c| c.name(db),
+                    |c| c.name(i_s.db).into(),
                     None,
                 );
                 had_error = !matched;
