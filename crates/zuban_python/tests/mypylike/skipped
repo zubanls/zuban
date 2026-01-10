@@ -37,8 +37,6 @@ testListMethods
 testListOperators
 testListSetitemTuple
 
-# Wrong TypeVarTuple warning
-testConstraintsIncludeTupleFallback
 # Methods
 testMethodSelfArgumentChecks
 testMethodSelfArgumentChecksConcatenate

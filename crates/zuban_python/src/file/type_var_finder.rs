@@ -323,8 +323,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                 tvl.name(self.i_s.db)
             );
         } else {
-            if matches!(tvl, TypeVarLike::TypeVarTuple(_))
-                && self.infos.type_var_manager.has_type_var_tuples()
+            if let TypeVarLike::TypeVarTuple(tvt) = &tvl
+                && let Some(has_tvt) = self.infos.type_var_manager.first_type_var_tuple()
+                && has_tvt != tvt
             {
                 if self.infos.class.is_some() {
                     add_issue(IssueKind::MultipleTypeVarTuplesInClassDef);

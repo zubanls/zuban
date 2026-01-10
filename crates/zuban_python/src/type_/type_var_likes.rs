@@ -141,10 +141,11 @@ impl<T: CallableId> TypeVarManager<T> {
             .any(|t| t.most_outer_callable.is_some())
     }
 
-    pub fn has_type_var_tuples(&self) -> bool {
-        self.type_vars
-            .iter()
-            .any(|t| matches!(t.type_var_like, TypeVarLike::TypeVarTuple(_)))
+    pub fn first_type_var_tuple(&self) -> Option<&Arc<TypeVarTuple>> {
+        self.type_vars.iter().find_map(|t| match &t.type_var_like {
+            TypeVarLike::TypeVarTuple(tvt) => Some(tvt),
+            _ => None,
+        })
     }
 
     pub fn into_type_vars(self) -> TypeVarLikes {

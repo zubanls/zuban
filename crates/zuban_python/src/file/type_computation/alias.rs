@@ -526,7 +526,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                     tvl,
                                                     TypeVarLike::TypeVarTuple(_)
                                                 ) && type_var_manager
-                                                    .has_type_var_tuples()
+                                                    .first_type_var_tuple()
+                                                    .is_some()
                                                 {
                                                     self.add_type_issue(
                                                         n.index(),
