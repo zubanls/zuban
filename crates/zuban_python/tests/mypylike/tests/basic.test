@@ -1632,3 +1632,8 @@ reveal_type(T)
 [out]
 __main__:2: error: Invalid syntax
 __main__:8: note: Revealed type is "Any"
+
+[case walrus_no_hang]
+# See GH #244
+f(x := 1):  # E: Invalid syntax
+x = 1

@@ -686,11 +686,10 @@ impl<'db> NameBinder<'db> {
                     SimpleStmtContent::Other => {
                         self.index_non_block_node(&simple_stmt, false);
                         for name_def in simple_stmt.contained_name_defs() {
-                            self.add_new_definition_with_cause(
-                                name_def,
+                            self.db_infos.points.set(
+                                name_def.index(),
                                 Point::new_specific(Specific::AnyDueToError, Locality::NameBinder),
-                                IndexingCause::Other,
-                            )
+                            );
                         }
                     }
                 },
