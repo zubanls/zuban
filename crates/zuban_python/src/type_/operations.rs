@@ -1167,6 +1167,9 @@ pub(crate) fn attribute_access_of_type(
                         .with_kind(kind)
                         .with_as_type_type(&|| Type::Type(in_type.clone())),
                 ),
+                Type::Dataclass(d) => {
+                    lookup_on_dataclass_type(&in_type, d, i_s, add_issue, name, kind)
+                }
                 t => {
                     return attribute_access_of_type(
                         i_s,

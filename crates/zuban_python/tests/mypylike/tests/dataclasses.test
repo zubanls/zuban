@@ -1225,3 +1225,17 @@ class DataClass:
 
 DataClass(1).replace()
 DataClass(1).replace(x=2)
+
+[case dataclass_classmethod_with_self_and_type_var_remapping]
+# From GH #245
+from typing import Self
+from dataclasses import dataclass
+
+def f[T: C](x: type[T]) -> T:
+    return x.create()
+
+@dataclass
+class C():
+    @classmethod
+    def create(cls) -> Self:
+        return cls()
