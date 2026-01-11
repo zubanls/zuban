@@ -665,6 +665,7 @@ impl<'sender> NotificationDispatcher<'_, 'sender> {
         };
 
         let _guard = tracing::info_span!("notification", method = ?not.method).entered();
+        tracing::trace!("Notification Json: {not:?}");
 
         let params = match not.extract::<N::Params>(N::METHOD) {
             Ok(it) => it,
