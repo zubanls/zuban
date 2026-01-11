@@ -235,6 +235,7 @@ impl Type {
                 result_context,
                 callable,
                 t.clone(),
+                None,
             ),
             Type::Callable(_) | Type::FunctionOverload(_) => callable(
                 self,
@@ -1133,7 +1134,7 @@ impl<'x> IterInfos<'x> {
     }
 }
 
-pub(crate) fn attribute_access_of_type(
+fn attribute_access_of_type(
     i_s: &InferenceState,
     add_issue: &dyn Fn(IssueKind),
     name: &str,
@@ -1141,7 +1142,9 @@ pub(crate) fn attribute_access_of_type(
     result_context: &mut ResultContext,
     callable: &mut impl FnMut(&Type, LookupDetails),
     in_type: Arc<Type>,
+    mapped_type: Option<&Arc<Type>>,
 ) {
+    let mapped = || mapped_type.unwrap_or(&in_type);
     let details = match in_type.as_ref() {
         Type::Union(union) => {
             debug_assert!(union.entries.len() > 1);
@@ -1154,6 +1157,7 @@ pub(crate) fn attribute_access_of_type(
                     result_context,
                     callable,
                     Arc::new(t.clone()),
+                    None,
                 )
             }
             return;
@@ -1165,10 +1169,10 @@ pub(crate) fn attribute_access_of_type(
                     name,
                     ClassLookupOptions::new(&add_issue)
                         .with_kind(kind)
-                        .with_as_type_type(&|| Type::Type(in_type.clone())),
+                        .with_as_type_type(&|| Type::Type(mapped().clone())),
                 ),
                 Type::Dataclass(d) => {
-                    lookup_on_dataclass_type(&in_type, d, i_s, add_issue, name, kind)
+                    lookup_on_dataclass_type(mapped(), d, i_s, add_issue, name, kind)
                 }
                 t => {
                     return attribute_access_of_type(
@@ -1179,6 +1183,7 @@ pub(crate) fn attribute_access_of_type(
                         result_context,
                         callable,
                         Arc::new(t.clone()),
+                        Some(mapped()),
                     );
                 }
             },
@@ -1201,7 +1206,7 @@ pub(crate) fn attribute_access_of_type(
                     "Type[Self] lookup without current_class, you should probably report this"
                 );
                 callable(
-                    &in_type,
+                    mapped(),
                     LookupDetails::new(Type::Self_, LookupResult::None, AttributeKind::Attribute),
                 );
                 return;
@@ -1210,14 +1215,14 @@ pub(crate) fn attribute_access_of_type(
             if let Some(t) = class_infos.undefined_generics_type.get()
                 && let Type::Enum(e) = t.as_ref()
             {
-                lookup_on_enum_class(i_s, add_issue, &in_type, e, name, kind)
+                lookup_on_enum_class(i_s, add_issue, mapped(), e, name, kind)
             } else {
                 current_class.lookup(
                     i_s,
                     name,
                     ClassLookupOptions::new(&add_issue)
                         .with_kind(kind)
-                        .with_as_type_type(&|| Type::Type(in_type.clone())),
+                        .with_as_type_type(&|| Type::Type(mapped().clone())),
                 )
             }
         }
@@ -1228,14 +1233,14 @@ pub(crate) fn attribute_access_of_type(
             .instance()
             .lookup_with_details(i_s, add_issue, name, kind)
             .or_else(|| LookupDetails::any(*cause)),
-        Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, &in_type, e, name, kind),
-        Type::Dataclass(d) => lookup_on_dataclass_type(&in_type, d, i_s, add_issue, name, kind),
+        Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, mapped(), e, name, kind),
+        Type::Dataclass(d) => lookup_on_dataclass_type(mapped(), d, i_s, add_issue, name, kind),
         Type::TypedDict(_) => i_s.db.python_state.typed_dict_class().lookup(
             i_s,
             name,
             ClassLookupOptions::new(&add_issue).with_kind(kind),
         ),
-        Type::NamedTuple(nt) => nt.type_lookup(i_s, name, Some(&|| (*in_type).clone())),
+        Type::NamedTuple(nt) => nt.type_lookup(i_s, name, Some(&|| (**mapped()).clone())),
         Type::Tuple(tup) => tup.class(i_s.db).lookup(
             i_s,
             name,
@@ -1268,6 +1273,7 @@ pub(crate) fn attribute_access_of_type(
                             result_context,
                             &mut |t, details| on_lookup_result(t, details),
                             Arc::new(t.clone()),
+                            None,
                         );
                     },
                     add_issue,
@@ -1286,6 +1292,7 @@ pub(crate) fn attribute_access_of_type(
                 result_context,
                 callable,
                 Arc::new(r.calculated_type(i_s.db).clone()),
+                Some(mapped()),
             );
             return;
         }
@@ -1297,7 +1304,7 @@ pub(crate) fn attribute_access_of_type(
             LookupDetails::any(AnyCause::FromError)
         }
     };
-    callable(&Type::Type(in_type.clone()), details)
+    callable(&Type::Type(mapped().clone()), details)
 }
 
 pub(crate) fn execute_type_of_type<'db>(
