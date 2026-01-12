@@ -142,7 +142,7 @@ a1 = {"x": A.x, "y": A.y}
 reveal_type(a1)  # N: Revealed type is "dict[str, __main__.A]"
 
 a2 = dict(x=A.x, y=A.y)
-reveal_type(a2)  # N: Revealed type is "dict[str, Literal[__main__.A.x]? | Literal[__main__.A.y]?]"
+reveal_type(a2)  # N: Revealed type is "dict[str, __main__.A]"
 
 def expect_a(x: dict[str, A]) -> None: ...
 

@@ -148,18 +148,8 @@ impl Bound {
         on_uncalculated: impl FnOnce(Option<Type>) -> Option<GenericItem>,
     ) -> Option<GenericItem> {
         Some(match self {
-            // If the upper bound is a literal, we do not want to use the lower bound.
-            Self::UpperAndLower(t @ BoundKind::TypeVar(Type::Literal(_)), _) => {
-                t.into_generic_item()
-            }
-            Self::Lower(BoundKind::TypeVar(Type::Literal(l)))
-            | Self::UpperAndLower(_, BoundKind::TypeVar(Type::Literal(l)))
-                if l.implicit =>
-            {
-                GenericItem::TypeArg(l.fallback_type(db))
-            }
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) | Self::UpperAndLower(_, k) => {
-                k.into_generic_item()
+                k.into_generic_item(db)
             }
             Self::Uncalculated { fallback } => return on_uncalculated(fallback),
         })
@@ -326,9 +316,9 @@ impl BoundKind {
         }
     }
 
-    fn into_generic_item(self) -> GenericItem {
+    fn into_generic_item(self, db: &Database) -> GenericItem {
         match self {
-            Self::TypeVar(t) => GenericItem::TypeArg(t),
+            Self::TypeVar(t) => GenericItem::TypeArg(t.avoid_implicit_literal(db)),
             Self::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
             Self::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
                 params: param_spec,

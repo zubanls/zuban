@@ -350,3 +350,16 @@ def send_key(key: Key) -> None:
 [case avoid_slowdown_with_string_multiplication]
 # From GH #133
 10_000_000_000 * ""
+
+[case literals_in_tuple_matching]
+# From GH #248
+from collections import deque
+
+queue = deque([(0, 0)])
+
+foo = bar = 2
+queue.append((foo, bar))
+
+def f(x: int):
+    l = list([(0, 0)])
+    l.append((x, x))
