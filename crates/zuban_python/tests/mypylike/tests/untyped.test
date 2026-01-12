@@ -18,8 +18,8 @@ reveal_type(f(""))  # E: Argument 1 to "f" has incompatible type "str"; expected
 def f[S, T](x: T, y: S):
     return x
 
-reveal_type(f(1, b''))  # N: Revealed type is "int"
-reveal_type(f("", b''))  # N: Revealed type is "str"
+reveal_type(f(1, b''))  # N: Revealed type is "Literal[1]?"
+reveal_type(f("", b''))  # N: Revealed type is "Literal['']?"
 
 [case infer_untyped_result_result_context]
 # flags: --no-mypy-compatible
@@ -53,8 +53,8 @@ def ret_other(x): return 1
 reveal_type(ret_same)  # N: Revealed type is "def [T1 <: Any] (x: T1) -> T1"
 reveal_type(ret_other)  # N: Revealed type is "def [T1 <: Any] (x: T1) -> Literal[1]?"
 
-reveal_type(ret_same(1))  # N: Revealed type is "int"
-reveal_type(ret_same(""))  # N: Revealed type is "str"
+reveal_type(ret_same(1))  # N: Revealed type is "Literal[1]?"
+reveal_type(ret_same(""))  # N: Revealed type is "Literal['']?"
 x: str = ret_same(1)  # E: Argument 1 to "ret_same" has incompatible type "int"; expected "str"
 y: int = ret_other(1)
 z: int = ret_other("")
@@ -70,7 +70,7 @@ reveal_type(f(ret_other))  # N: Revealed type is "tuple[Any, int]"
 def f(x):
     1()  # E: "int" not callable
     return x
-reveal_type(f(""))  # N: Revealed type is "str"
+reveal_type(f(""))  # N: Revealed type is "Literal['']?"
 
 [case untyped_callables_without_errors]
 # flags: --no-mypy-compatible --no-check-untyped-defs

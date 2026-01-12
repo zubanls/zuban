@@ -110,6 +110,20 @@ vco3_2: ShouldBeCovariant3[int] = ShouldBeCovariant3[float]()  # E: Incompatible
 class ShouldBeCovariant4(Generic[T]):
     x: T
 
+[case class_type_var_should_be_self_generics_and_not_error]
+# flags: --no-mypy-compatible
+from typing import Final, Generic, TypeVar
+
+T = TypeVar("T", covariant=True)
+
+class C(Generic[T]):
+    x: Final[T]
+
+    def __init__(self, value: T):
+        self.x = value
+
+C[int](1)
+
 [case infer_variance_conformance_tests_valid2]
 # flags: --no-mypy-compatible
 # Copied from conformance tests (generics_syntax_infer_variance.py)

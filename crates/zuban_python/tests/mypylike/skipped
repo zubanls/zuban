@@ -22,10 +22,6 @@ testNewAnalyzerAliasToNotReadyClassGeneric
 testNewAnalyzerTrickyAliasInFuncDef
 self_passing_to_type_var_tuple_with_protocol
 
-testIsinstanceInInferredLambda
-testLiteralFinalPropagatesThroughGenerics
-testCallerTupleVarArgsAndGenericCalleeVarArg
-
 # typeshed upgrade __getitem__ with generics
 testGetSlice
 testSliceSupportsIndex

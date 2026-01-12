@@ -1202,7 +1202,7 @@ class Foo(Generic[T]):
     x: T
 
 reveal_type(Foo[Callable[[int], str]]().x(1))  # N: Revealed type is "str"
-reveal_type(Foo[Callable[[T], T]]().x(1))  # N: Revealed type is "int"
+reveal_type(Foo[Callable[[T], T]]().x(1))  # N: Revealed type is "Literal[1]?"
 
 [case infer_lambda_invariant_generics]
 # Like testIsinstanceInInferredLambda but with invariant generics (lists)

@@ -662,7 +662,15 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         }
     }
     let matches = check_params(&mut matcher);
-    let mut result = matcher.into_type_arguments(i_s, match_in_definition);
+    let mut result = matcher.into_type_arguments(
+        i_s,
+        match_in_definition,
+        return_class.is_some()
+            || !matches!(
+                func_like.inferred_return_type(i_s).as_ref(),
+                Type::TypeVar(_)
+            ),
+    );
     if matches!(result.matches, SignatureMatch::False { .. }) {
         if on_type_error.is_some() {
             add_issue(IssueKind::ArgumentTypeIssue(

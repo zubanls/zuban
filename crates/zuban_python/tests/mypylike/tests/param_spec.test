@@ -16,8 +16,8 @@ reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T], _T]"
 
 jf = j.into_callable()
 reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T) -> _T"
-reveal_type(jf(1))  # N: Revealed type is "int"
-reveal_type(jf(""))  # N: Revealed type is "str"
+reveal_type(jf(1))  # N: Revealed type is "Literal[1]?"
+reveal_type(jf(""))  # N: Revealed type is "Literal['']?"
 
 [case param_spec_with_generics_combined]
 from typing import Callable, TypeVar, Generic

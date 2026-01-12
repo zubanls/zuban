@@ -200,7 +200,7 @@ impl<'a> Matcher<'a> {
                 .find_responsible_type_var_matcher_index(c2.defined_at, type_var_matchers_len)
                 .unwrap();
             let matcher = &self.type_var_matchers[i];
-            let generics = matcher.clone().into_generics_list(i_s.db);
+            let generics = matcher.clone().into_generics_list(i_s.db, true);
             debug!(
                 "Type vars for reverse callable matching [{}]{}",
                 generics.format(&FormatData::new_short(i_s.db)),
@@ -1008,7 +1008,7 @@ impl<'a> Matcher<'a> {
                 return current
                     .type_
                     .clone()
-                    .into_maybe_generic_item(db, |_| on_uncalculated(usage));
+                    .into_maybe_generic_item(db, true, |_| on_uncalculated(usage));
             }
             if let Some(c) = self.class
                 && c.node_ref.as_link() == usage.in_definition()
@@ -1420,7 +1420,7 @@ impl<'a> Matcher<'a> {
                             return Some(
                                 tv_matcher.calculating_type_args[first_entry.type_var_index]
                                     .clone()
-                                    .into_generic_item(i_s.db, tvl),
+                                    .into_generic_item(i_s.db, tvl, true),
                             );
                         }
                     }
@@ -1613,10 +1613,9 @@ impl<'a> Matcher<'a> {
             .calculating_type_args
             .into_iter()
             .map(|c| {
-                let GenericItem::TypeArg(g) = c
-                    .type_
-                    .into_generic_item(db, |_| GenericItem::TypeArg(Type::Any(AnyCause::Todo)))
-                else {
+                let GenericItem::TypeArg(g) = c.type_.into_generic_item(db, false, |_| {
+                    GenericItem::TypeArg(Type::Any(AnyCause::Todo))
+                }) else {
                     unreachable!();
                 };
                 g
@@ -1636,7 +1635,7 @@ impl<'a> Matcher<'a> {
             .into_iter()
             .zip(type_vars.iter())
             .map(|(c, type_var_like)| {
-                let GenericItem::TypeArg(t) = c.into_generic_item(db, type_var_like) else {
+                let GenericItem::TypeArg(t) = c.into_generic_item(db, type_var_like, true) else {
                     unreachable!();
                 };
                 t
@@ -1647,13 +1646,14 @@ impl<'a> Matcher<'a> {
         self,
         i_s: &InferenceState,
         in_definition: PointLink,
+        avoid_implicit_literals: bool,
     ) -> CalculatedTypeArgs {
         let (slf, result) = self.finish_matcher(i_s);
         let type_arguments = slf
             .type_var_matchers
             .into_iter()
             .next()
-            .map(|m| m.into_generics_list(i_s.db));
+            .map(|m| m.into_generics_list(i_s.db, avoid_implicit_literals));
         let mut type_var_likes = None;
         let mut matches = SignatureMatch::new_true();
         match result {

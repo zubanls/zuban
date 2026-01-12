@@ -136,20 +136,22 @@ impl Bound {
     pub fn into_generic_item(
         self,
         db: &Database,
+        avoid_implicit_literals: bool,
         on_uncalculated: impl FnOnce(Option<Type>) -> GenericItem,
     ) -> GenericItem {
-        self.into_maybe_generic_item(db, |t| Some(on_uncalculated(t)))
+        self.into_maybe_generic_item(db, avoid_implicit_literals, |t| Some(on_uncalculated(t)))
             .expect("Since we never return None in fallback, we should be able to unwrap")
     }
 
     pub fn into_maybe_generic_item(
         self,
         db: &Database,
+        avoid_implicit_literals: bool,
         on_uncalculated: impl FnOnce(Option<Type>) -> Option<GenericItem>,
     ) -> Option<GenericItem> {
         Some(match self {
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) | Self::UpperAndLower(_, k) => {
-                k.into_generic_item(db)
+                k.into_generic_item(db, avoid_implicit_literals)
             }
             Self::Uncalculated { fallback } => return on_uncalculated(fallback),
         })
@@ -316,9 +318,13 @@ impl BoundKind {
         }
     }
 
-    fn into_generic_item(self, db: &Database) -> GenericItem {
+    fn into_generic_item(self, db: &Database, avoid_implicit_literals: bool) -> GenericItem {
         match self {
-            Self::TypeVar(t) => GenericItem::TypeArg(t.avoid_implicit_literal(db)),
+            Self::TypeVar(t) => GenericItem::TypeArg(if avoid_implicit_literals {
+                t.avoid_implicit_literal(db)
+            } else {
+                t
+            }),
             Self::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
             Self::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
                 params: param_spec,

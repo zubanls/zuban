@@ -1581,7 +1581,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         .is_sub_type_of(i_s, &mut matcher, &result);
                     ClassExecutionResult::ClassGenerics(
                         matcher
-                            .into_type_arguments(i_s, self.node_ref.as_link())
+                            .into_type_arguments(i_s, self.node_ref.as_link(), true)
                             .type_arguments_into_class_generics(i_s.db),
                     )
                 } else {
