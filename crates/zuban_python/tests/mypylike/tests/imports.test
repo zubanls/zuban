@@ -650,7 +650,7 @@ _  # E: Name "_" is not defined  [name-defined]
 from typing import Union, List,  # E: Invalid syntax
 
 class Foo:
-    groups: List[str]  # E: Invalid type comment or annotation
+    groups: List[str]
 
 [case untyped_imports_default]
 # pkgs: typedpkg_ns_b

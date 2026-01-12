@@ -1551,25 +1551,21 @@ def fn():
 [case avoid_crash_for_underscore_definition]
 # From GH #195
 def f(x: int):  # E: Invalid syntax
-_: x  # E: Variable "__main__.x" is not valid as a type \
-      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+_: x
 reveal_type(x)  # N: Revealed type is "Any"
 
 [case ensure_no_crash_for_other_invalid_definitions]
 for x in []  # E: Invalid syntax
-a1: x  # E: Variable "__main__.x" is not valid as a type \
-       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a1: x
 reveal_type(x)  # N: Revealed type is "Any"
 
 while (y := bool())  # E: Invalid syntax
-a2: y  # E: Variable "__main__.y" is not valid as a type \
-       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a2: y
 reveal_type(bool)  # N: Revealed type is "def (object =) -> bool"
 
 with open("") as z  # E: Invalid syntax
-a3: z  # E: Variable "__main__.z" is not valid as a type \
-       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-reveal_type(z)  # N: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+a3: z
+reveal_type(z)  # N: Revealed type is "Any"
 
 try:  # E: Invalid syntax
     ...
@@ -1584,8 +1580,7 @@ reveal_type(t)  # E: Name "t" is not defined  # N: Revealed type is "Any"
 match bool():  # E: Invalid syntax
     case bool() as p
 def breaker(): ...  # E: Invalid syntax
-a6: p  # E: Variable "__main__.p" is not valid as a type \
-       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+a6: p
 reveal_type(p)  # N: Revealed type is "Any"
 
 [case annotation_reference_no_crash]

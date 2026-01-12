@@ -5193,6 +5193,14 @@ pub struct NonBlockErrorPart<'db> {
     node: PyNode<'db>,
 }
 
+impl<'db> NonBlockErrorPart<'db> {
+    pub fn contained_name_defs(&self) -> impl Iterator<Item = NameDef<'db>> {
+        self.node
+            .search(&[Nonterminal(name_def)], true)
+            .map(|n| NameDef::new(n))
+    }
+}
+
 create_interesting_node_searcher!(NonBlockErrorPart);
 
 #[derive(Debug)]
