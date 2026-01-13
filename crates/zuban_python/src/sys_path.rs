@@ -1,12 +1,29 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler, WorkspaceKind};
+#[cfg(target_arch = "wasm32")]
+use std::sync::Arc;
 
+#[cfg(not(target_arch = "wasm32"))]
+use vfs::{AbsPath, LocalFS, NormalizedPath, VfsHandler, WorkspaceKind};
+#[cfg(target_arch = "wasm32")]
+use vfs::{NormalizedPath, VfsHandler, WorkspaceKind};
+
+#[cfg(not(target_arch = "wasm32"))]
 use crate::{PythonVersion, Settings};
 
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn create_sys_path(
+    _handler: &dyn VfsHandler,
+    _settings: &crate::Settings,
+) -> Vec<(WorkspaceKind, Arc<NormalizedPath>)> {
+    Vec::new()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn create_sys_path(
     handler: &dyn VfsHandler,
     settings: &Settings,
@@ -58,6 +75,7 @@ pub(crate) fn create_sys_path(
     sys_path
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn site_packages_path_from_env(environment: &AbsPath, version: PythonVersion) -> PathBuf {
     if cfg!(windows) {
         let direct_site_packages = environment.as_ref().join("site-packages");
@@ -72,6 +90,7 @@ fn site_packages_path_from_env(environment: &AbsPath, version: PythonVersion) ->
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn lookup_site_packages_with_version(lib: impl AsRef<Path>, version: PythonVersion) -> PathBuf {
     lookup_site_packages_with_version_detailed(
         lib.as_ref(),
@@ -81,6 +100,7 @@ fn lookup_site_packages_with_version(lib: impl AsRef<Path>, version: PythonVersi
     )
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn lookup_site_packages_with_version_detailed(
     base: &Path,
     version_folder_name: String,
@@ -111,6 +131,7 @@ fn lookup_site_packages_with_version_detailed(
     expected_path
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn add_editable_src_packages(
     handler: &dyn VfsHandler,
     sys_path: &mut Vec<(WorkspaceKind, Arc<NormalizedPath>)>,
@@ -129,6 +150,7 @@ fn add_editable_src_packages(
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn lib_path(settings: &Settings) -> Option<String> {
     let check = |path: String| {
         let os_path = Path::new(&path).join("os.py");
@@ -273,6 +295,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
     let mut executable = std::env::current_exe().expect(
         "Cannot access the path of the current executable, you need to provide \
@@ -346,6 +369,7 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
     panic!("Did not find a typeshed folder in {env_folder:?}")
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn search_typeshed_dir_in_unix(
     lib_folder: PathBuf,
     maybe_has_zuban: impl Fn(&Path) -> Option<Arc<NormalizedPath>>,
@@ -367,6 +391,7 @@ fn search_typeshed_dir_in_unix(
     Ok(None)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn include_system_site_packages_in_pyvenv_cfg(env: &NormalizedPath) -> bool {
     let path = env.as_ref().join("pyvenv.cfg");
     match std::fs::read_to_string(&path) {
@@ -388,6 +413,7 @@ fn include_system_site_packages_in_pyvenv_cfg(env: &NormalizedPath) -> bool {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn add_user_site_packages(version: PythonVersion, mut add: impl FnMut(&str)) {
     if cfg!(windows) {
         if let Some(app_data) = std::env::var_os("APPDATA") {
@@ -432,6 +458,7 @@ fn add_user_site_packages(version: PythonVersion, mut add: impl FnMut(&str)) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn add_global_site_packages(
     lib_path: Option<String>,
     version: PythonVersion,
@@ -468,4 +495,9 @@ fn add_global_site_packages(
         // TODO maybe add /usr/local/lib/python3.12/dist-packages, but it seems Ubuntu doesn't
         // really use it (at least for me).
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
+    panic!("typeshed_path_from_executable should not be called in playground mode")
 }

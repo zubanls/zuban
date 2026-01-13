@@ -41,7 +41,7 @@ struct CompletionInfo<'db> {
 impl CompletionInfo<'_> {
     fn fix_for_invalid_columns(mut self) -> Self {
         if self.cursor_position.column_out_of_bounds && !self.rest.as_code().is_empty() {
-            self.node = CompletionNode::Global { context: None };
+            self.node = CompletionNode::Global { context: None, at_statement_start: true };
             self.rest.ensure_no_rest();
         }
         self
@@ -126,7 +126,8 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 let inf = self.infos.infer_primary_or_atom(*base);
                 self.add_attribute_completions(inf)
             }
-            CompletionNode::Global { context } => {
+            CompletionNode::Global { context, at_statement_start } => {
+                let at_statement_start = *at_statement_start;
                 let reachable_scopes = &mut ScopesIterator {
                     file,
                     only_reachable: true,
@@ -182,7 +183,8 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                         }
                     };
                 }
-                self.add_module_completions(db.python_state.builtins())
+                self.add_module_completions(db.python_state.builtins());
+                self.add_python_keyword_completions(at_statement_start)
             }
             CompletionNode::ImportName { path: None } => self.add_global_import_completions(),
             CompletionNode::ImportName {
@@ -334,6 +336,15 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         self.add_specific_module_completions(file, false, false, &mut HashSet::default());
         if let Some(super_file) = &file.super_file {
             self.add_global_module_completions(self.infos.db.loaded_python_file(super_file.file))
+        }
+    }
+
+    fn add_python_keyword_completions(&mut self, at_stmt_start: bool) {
+        for &kw in PYTHON_KEYWORDS {
+            if (!at_stmt_start && is_statement_keyword(kw)) || !self.maybe_add(kw) { continue; }
+            if let Some(r) = (self.on_result)(self.replace_range, &KeywordCompletion { keyword: kw }) {
+                self.items.push((CompletionSortPriority::PythonKeyword(kw), r))
+            }
         }
     }
 
@@ -986,8 +997,24 @@ enum CompletionSortPriority<'db> {
     KeywordArgument,
     EnumMember,
     Default(&'db str),
-    Dunder(&'db str), // e.g. __eq__
+    Dunder(&'db str),            // e.g. __eq__
+    PythonKeyword(&'static str), // e.g. if, while, for
 }
+
+const PYTHON_KEYWORDS: &[&str] = &[
+    "False", "None", "True", "and", "as", "assert", "async", "await", "break", "case", "class",
+    "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if",
+    "import", "in", "is", "lambda", "match", "nonlocal", "not", "or", "pass", "raise", "return",
+    "try", "type", "while", "with", "yield",
+];
+
+const STMT_KEYWORDS: &[&str] = &[
+    "assert", "async", "break", "case", "class", "continue", "def", "del", "elif", "else",
+    "except", "finally", "for", "from", "global", "if", "import", "match", "nonlocal", "pass",
+    "raise", "return", "try", "type", "while", "with", "yield",
+];
+
+fn is_statement_keyword(kw: &str) -> bool { STMT_KEYWORDS.contains(&kw) }
 
 impl<'db> CompletionSortPriority<'db> {
     fn new_symbol(symbol: &'db str) -> Self {

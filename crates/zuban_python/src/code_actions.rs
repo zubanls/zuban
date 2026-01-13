@@ -8,6 +8,7 @@ use config::ProjectOptions;
 use parsa_python_cst::{
     CodeIndex, DottedImportName, DottedImportNameContent, Name, NameImportParent, NameParent, Scope,
 };
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use utils::FastHashMap;
@@ -186,7 +187,11 @@ impl<'db> ImportFinder<'db> {
                 e => Some(e.clone()),
             })
             .collect();
-        entries.into_par_iter().for_each(|entry| match entry {
+        #[cfg(not(target_arch = "wasm32"))]
+        let iter = entries.into_par_iter();
+        #[cfg(target_arch = "wasm32")]
+        let iter = entries.into_iter();
+        iter.for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
                 // Only find importable files like foo.py that have importable file endings and
                 // don't have symbols in there like dashes and spaces.
@@ -535,9 +540,12 @@ impl TypeshedSymbols {
         let found: Mutex<Self> = Default::default();
         for workspace in db.vfs.workspaces.iter() {
             if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
-                all_recursive_public_typeshed_file_entries(db, &workspace.entries)
-                    .par_iter()
-                    .for_each(|entry| {
+                let entries = all_recursive_public_typeshed_file_entries(db, &workspace.entries);
+                #[cfg(not(target_arch = "wasm32"))]
+                let iter = entries.par_iter();
+                #[cfg(target_arch = "wasm32")]
+                let iter = entries.iter();
+                iter.for_each(|entry| {
                         let file_index = db.load_file_from_workspace(entry, false).unwrap();
                         let file = db.loaded_python_file(file_index);
 
