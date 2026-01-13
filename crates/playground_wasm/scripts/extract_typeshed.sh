@@ -11,7 +11,10 @@ out="$dir/../src/stubs.rs"
   while read -r s; do
     for d in stdlib stubs; do
       [[ -f "$ts/$d/$s" ]] && {
-        echo "    (\"typeshed/$d/$s\", include_str!(\"../../../third_party/typeshed/$d/$s\")),"
+        echo "    ("
+        echo "        \"typeshed/$d/$s\"",
+        echo "        include_str!(\"../../../third_party/typeshed/$d/$s\"),"
+        echo "    ),"
         ((++n)); break
       }
     done
