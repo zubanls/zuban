@@ -1,80 +1,314 @@
 pub const BUNDLED_STUBS: &[(&str, &str)] = &[
-    ("typeshed/stdlib/builtins.pyi", include_str!("../../../third_party/typeshed/stdlib/builtins.pyi")),
-    ("typeshed/stdlib/typing.pyi", include_str!("../../../third_party/typeshed/stdlib/typing.pyi")),
-    ("typeshed/stdlib/typing_extensions.pyi", include_str!("../../../third_party/typeshed/stdlib/typing_extensions.pyi")),
-    ("typeshed/stdlib/types.pyi", include_str!("../../../third_party/typeshed/stdlib/types.pyi")),
-    ("typeshed/stdlib/abc.pyi", include_str!("../../../third_party/typeshed/stdlib/abc.pyi")),
-    ("typeshed/stdlib/_typeshed/__init__.pyi", include_str!("../../../third_party/typeshed/stdlib/_typeshed/__init__.pyi")),
-    ("typeshed/stdlib/_collections_abc.pyi", include_str!("../../../third_party/typeshed/stdlib/_collections_abc.pyi")),
-    ("typeshed/stubs/mypy-extensions/mypy_extensions.pyi", include_str!("../../../third_party/typeshed/stubs/mypy-extensions/mypy_extensions.pyi")),
-    ("typeshed/stdlib/collections/__init__.pyi", include_str!("../../../third_party/typeshed/stdlib/collections/__init__.pyi")),
-    ("typeshed/stdlib/os/__init__.pyi", include_str!("../../../third_party/typeshed/stdlib/os/__init__.pyi")),
-    ("typeshed/stdlib/os/path.pyi", include_str!("../../../third_party/typeshed/stdlib/os/path.pyi")),
-    ("typeshed/stdlib/sys/__init__.pyi", include_str!("../../../third_party/typeshed/stdlib/sys/__init__.pyi")),
-    ("typeshed/stdlib/json/__init__.pyi", include_str!("../../../third_party/typeshed/stdlib/json/__init__.pyi")),
-    ("typeshed/stdlib/pathlib/__init__.pyi", include_str!("../../../third_party/typeshed/stdlib/pathlib/__init__.pyi")),
-    ("typeshed/stdlib/string/__init__.pyi", include_str!("../../../third_party/typeshed/stdlib/string/__init__.pyi")),
-    ("typeshed/stdlib/argparse.pyi", include_str!("../../../third_party/typeshed/stdlib/argparse.pyi")),
-    ("typeshed/stdlib/ast.pyi", include_str!("../../../third_party/typeshed/stdlib/ast.pyi")),
-    ("typeshed/stdlib/base64.pyi", include_str!("../../../third_party/typeshed/stdlib/base64.pyi")),
-    ("typeshed/stdlib/bisect.pyi", include_str!("../../../third_party/typeshed/stdlib/bisect.pyi")),
-    ("typeshed/stdlib/bz2.pyi", include_str!("../../../third_party/typeshed/stdlib/bz2.pyi")),
-    ("typeshed/stdlib/calendar.pyi", include_str!("../../../third_party/typeshed/stdlib/calendar.pyi")),
-    ("typeshed/stdlib/codecs.pyi", include_str!("../../../third_party/typeshed/stdlib/codecs.pyi")),
-    ("typeshed/stdlib/configparser.pyi", include_str!("../../../third_party/typeshed/stdlib/configparser.pyi")),
-    ("typeshed/stdlib/contextlib.pyi", include_str!("../../../third_party/typeshed/stdlib/contextlib.pyi")),
-    ("typeshed/stdlib/contextvars.pyi", include_str!("../../../third_party/typeshed/stdlib/contextvars.pyi")),
-    ("typeshed/stdlib/copy.pyi", include_str!("../../../third_party/typeshed/stdlib/copy.pyi")),
-    ("typeshed/stdlib/copyreg.pyi", include_str!("../../../third_party/typeshed/stdlib/copyreg.pyi")),
-    ("typeshed/stdlib/csv.pyi", include_str!("../../../third_party/typeshed/stdlib/csv.pyi")),
-    ("typeshed/stdlib/dataclasses.pyi", include_str!("../../../third_party/typeshed/stdlib/dataclasses.pyi")),
-    ("typeshed/stdlib/datetime.pyi", include_str!("../../../third_party/typeshed/stdlib/datetime.pyi")),
-    ("typeshed/stdlib/decimal.pyi", include_str!("../../../third_party/typeshed/stdlib/decimal.pyi")),
-    ("typeshed/stdlib/difflib.pyi", include_str!("../../../third_party/typeshed/stdlib/difflib.pyi")),
-    ("typeshed/stdlib/dis.pyi", include_str!("../../../third_party/typeshed/stdlib/dis.pyi")),
-    ("typeshed/stdlib/enum.pyi", include_str!("../../../third_party/typeshed/stdlib/enum.pyi")),
-    ("typeshed/stdlib/fnmatch.pyi", include_str!("../../../third_party/typeshed/stdlib/fnmatch.pyi")),
-    ("typeshed/stdlib/fractions.pyi", include_str!("../../../third_party/typeshed/stdlib/fractions.pyi")),
-    ("typeshed/stdlib/functools.pyi", include_str!("../../../third_party/typeshed/stdlib/functools.pyi")),
-    ("typeshed/stdlib/glob.pyi", include_str!("../../../third_party/typeshed/stdlib/glob.pyi")),
-    ("typeshed/stdlib/graphlib.pyi", include_str!("../../../third_party/typeshed/stdlib/graphlib.pyi")),
-    ("typeshed/stdlib/gzip.pyi", include_str!("../../../third_party/typeshed/stdlib/gzip.pyi")),
-    ("typeshed/stdlib/hashlib.pyi", include_str!("../../../third_party/typeshed/stdlib/hashlib.pyi")),
-    ("typeshed/stdlib/heapq.pyi", include_str!("../../../third_party/typeshed/stdlib/heapq.pyi")),
-    ("typeshed/stdlib/hmac.pyi", include_str!("../../../third_party/typeshed/stdlib/hmac.pyi")),
-    ("typeshed/stdlib/inspect.pyi", include_str!("../../../third_party/typeshed/stdlib/inspect.pyi")),
-    ("typeshed/stdlib/io.pyi", include_str!("../../../third_party/typeshed/stdlib/io.pyi")),
-    ("typeshed/stdlib/ipaddress.pyi", include_str!("../../../third_party/typeshed/stdlib/ipaddress.pyi")),
-    ("typeshed/stdlib/itertools.pyi", include_str!("../../../third_party/typeshed/stdlib/itertools.pyi")),
-    ("typeshed/stdlib/keyword.pyi", include_str!("../../../third_party/typeshed/stdlib/keyword.pyi")),
-    ("typeshed/stdlib/linecache.pyi", include_str!("../../../third_party/typeshed/stdlib/linecache.pyi")),
-    ("typeshed/stdlib/math.pyi", include_str!("../../../third_party/typeshed/stdlib/math.pyi")),
-    ("typeshed/stdlib/mimetypes.pyi", include_str!("../../../third_party/typeshed/stdlib/mimetypes.pyi")),
-    ("typeshed/stdlib/numbers.pyi", include_str!("../../../third_party/typeshed/stdlib/numbers.pyi")),
-    ("typeshed/stdlib/operator.pyi", include_str!("../../../third_party/typeshed/stdlib/operator.pyi")),
-    ("typeshed/stdlib/pickle.pyi", include_str!("../../../third_party/typeshed/stdlib/pickle.pyi")),
-    ("typeshed/stdlib/platform.pyi", include_str!("../../../third_party/typeshed/stdlib/platform.pyi")),
-    ("typeshed/stdlib/posixpath.pyi", include_str!("../../../third_party/typeshed/stdlib/posixpath.pyi")),
-    ("typeshed/stdlib/pprint.pyi", include_str!("../../../third_party/typeshed/stdlib/pprint.pyi")),
-    ("typeshed/stdlib/queue.pyi", include_str!("../../../third_party/typeshed/stdlib/queue.pyi")),
-    ("typeshed/stdlib/random.pyi", include_str!("../../../third_party/typeshed/stdlib/random.pyi")),
-    ("typeshed/stdlib/re.pyi", include_str!("../../../third_party/typeshed/stdlib/re.pyi")),
-    ("typeshed/stdlib/reprlib.pyi", include_str!("../../../third_party/typeshed/stdlib/reprlib.pyi")),
-    ("typeshed/stdlib/secrets.pyi", include_str!("../../../third_party/typeshed/stdlib/secrets.pyi")),
-    ("typeshed/stdlib/shutil.pyi", include_str!("../../../third_party/typeshed/stdlib/shutil.pyi")),
-    ("typeshed/stdlib/stat.pyi", include_str!("../../../third_party/typeshed/stdlib/stat.pyi")),
-    ("typeshed/stdlib/statistics.pyi", include_str!("../../../third_party/typeshed/stdlib/statistics.pyi")),
-    ("typeshed/stdlib/struct.pyi", include_str!("../../../third_party/typeshed/stdlib/struct.pyi")),
-    ("typeshed/stdlib/tarfile.pyi", include_str!("../../../third_party/typeshed/stdlib/tarfile.pyi")),
-    ("typeshed/stdlib/tempfile.pyi", include_str!("../../../third_party/typeshed/stdlib/tempfile.pyi")),
-    ("typeshed/stdlib/textwrap.pyi", include_str!("../../../third_party/typeshed/stdlib/textwrap.pyi")),
-    ("typeshed/stdlib/threading.pyi", include_str!("../../../third_party/typeshed/stdlib/threading.pyi")),
-    ("typeshed/stdlib/timeit.pyi", include_str!("../../../third_party/typeshed/stdlib/timeit.pyi")),
-    ("typeshed/stdlib/token.pyi", include_str!("../../../third_party/typeshed/stdlib/token.pyi")),
-    ("typeshed/stdlib/tokenize.pyi", include_str!("../../../third_party/typeshed/stdlib/tokenize.pyi")),
-    ("typeshed/stdlib/traceback.pyi", include_str!("../../../third_party/typeshed/stdlib/traceback.pyi")),
-    ("typeshed/stdlib/uuid.pyi", include_str!("../../../third_party/typeshed/stdlib/uuid.pyi")),
-    ("typeshed/stdlib/warnings.pyi", include_str!("../../../third_party/typeshed/stdlib/warnings.pyi")),
-    ("typeshed/stdlib/weakref.pyi", include_str!("../../../third_party/typeshed/stdlib/weakref.pyi")),
-    ("typeshed/stdlib/zipimport.pyi", include_str!("../../../third_party/typeshed/stdlib/zipimport.pyi")),
+    (
+        "typeshed/stdlib/builtins.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/builtins.pyi"),
+    ),
+    (
+        "typeshed/stdlib/typing.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/typing.pyi"),
+    ),
+    (
+        "typeshed/stdlib/typing_extensions.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/typing_extensions.pyi"),
+    ),
+    (
+        "typeshed/stdlib/types.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/types.pyi"),
+    ),
+    (
+        "typeshed/stdlib/abc.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/abc.pyi"),
+    ),
+    (
+        "typeshed/stdlib/_typeshed/__init__.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/_typeshed/__init__.pyi"),
+    ),
+    (
+        "typeshed/stdlib/_collections_abc.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/_collections_abc.pyi"),
+    ),
+    (
+        "typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
+        include_str!("../../../third_party/typeshed/stubs/mypy-extensions/mypy_extensions.pyi"),
+    ),
+    (
+        "typeshed/stdlib/collections/__init__.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/collections/__init__.pyi"),
+    ),
+    (
+        "typeshed/stdlib/os/__init__.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/os/__init__.pyi"),
+    ),
+    (
+        "typeshed/stdlib/os/path.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/os/path.pyi"),
+    ),
+    (
+        "typeshed/stdlib/sys/__init__.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/sys/__init__.pyi"),
+    ),
+    (
+        "typeshed/stdlib/json/__init__.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/json/__init__.pyi"),
+    ),
+    (
+        "typeshed/stdlib/pathlib/__init__.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/pathlib/__init__.pyi"),
+    ),
+    (
+        "typeshed/stdlib/string/__init__.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/string/__init__.pyi"),
+    ),
+    (
+        "typeshed/stdlib/argparse.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/argparse.pyi"),
+    ),
+    (
+        "typeshed/stdlib/ast.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/ast.pyi"),
+    ),
+    (
+        "typeshed/stdlib/base64.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/base64.pyi"),
+    ),
+    (
+        "typeshed/stdlib/bisect.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/bisect.pyi"),
+    ),
+    (
+        "typeshed/stdlib/bz2.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/bz2.pyi"),
+    ),
+    (
+        "typeshed/stdlib/calendar.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/calendar.pyi"),
+    ),
+    (
+        "typeshed/stdlib/codecs.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/codecs.pyi"),
+    ),
+    (
+        "typeshed/stdlib/configparser.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/configparser.pyi"),
+    ),
+    (
+        "typeshed/stdlib/contextlib.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/contextlib.pyi"),
+    ),
+    (
+        "typeshed/stdlib/contextvars.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/contextvars.pyi"),
+    ),
+    (
+        "typeshed/stdlib/copy.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/copy.pyi"),
+    ),
+    (
+        "typeshed/stdlib/copyreg.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/copyreg.pyi"),
+    ),
+    (
+        "typeshed/stdlib/csv.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/csv.pyi"),
+    ),
+    (
+        "typeshed/stdlib/dataclasses.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/dataclasses.pyi"),
+    ),
+    (
+        "typeshed/stdlib/datetime.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/datetime.pyi"),
+    ),
+    (
+        "typeshed/stdlib/decimal.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/decimal.pyi"),
+    ),
+    (
+        "typeshed/stdlib/difflib.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/difflib.pyi"),
+    ),
+    (
+        "typeshed/stdlib/dis.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/dis.pyi"),
+    ),
+    (
+        "typeshed/stdlib/enum.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/enum.pyi"),
+    ),
+    (
+        "typeshed/stdlib/fnmatch.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/fnmatch.pyi"),
+    ),
+    (
+        "typeshed/stdlib/fractions.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/fractions.pyi"),
+    ),
+    (
+        "typeshed/stdlib/functools.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/functools.pyi"),
+    ),
+    (
+        "typeshed/stdlib/glob.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/glob.pyi"),
+    ),
+    (
+        "typeshed/stdlib/graphlib.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/graphlib.pyi"),
+    ),
+    (
+        "typeshed/stdlib/gzip.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/gzip.pyi"),
+    ),
+    (
+        "typeshed/stdlib/hashlib.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/hashlib.pyi"),
+    ),
+    (
+        "typeshed/stdlib/heapq.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/heapq.pyi"),
+    ),
+    (
+        "typeshed/stdlib/hmac.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/hmac.pyi"),
+    ),
+    (
+        "typeshed/stdlib/inspect.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/inspect.pyi"),
+    ),
+    (
+        "typeshed/stdlib/io.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/io.pyi"),
+    ),
+    (
+        "typeshed/stdlib/ipaddress.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/ipaddress.pyi"),
+    ),
+    (
+        "typeshed/stdlib/itertools.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/itertools.pyi"),
+    ),
+    (
+        "typeshed/stdlib/keyword.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/keyword.pyi"),
+    ),
+    (
+        "typeshed/stdlib/linecache.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/linecache.pyi"),
+    ),
+    (
+        "typeshed/stdlib/math.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/math.pyi"),
+    ),
+    (
+        "typeshed/stdlib/mimetypes.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/mimetypes.pyi"),
+    ),
+    (
+        "typeshed/stdlib/numbers.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/numbers.pyi"),
+    ),
+    (
+        "typeshed/stdlib/operator.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/operator.pyi"),
+    ),
+    (
+        "typeshed/stdlib/pickle.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/pickle.pyi"),
+    ),
+    (
+        "typeshed/stdlib/platform.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/platform.pyi"),
+    ),
+    (
+        "typeshed/stdlib/posixpath.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/posixpath.pyi"),
+    ),
+    (
+        "typeshed/stdlib/pprint.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/pprint.pyi"),
+    ),
+    (
+        "typeshed/stdlib/queue.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/queue.pyi"),
+    ),
+    (
+        "typeshed/stdlib/random.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/random.pyi"),
+    ),
+    (
+        "typeshed/stdlib/re.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/re.pyi"),
+    ),
+    (
+        "typeshed/stdlib/reprlib.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/reprlib.pyi"),
+    ),
+    (
+        "typeshed/stdlib/secrets.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/secrets.pyi"),
+    ),
+    (
+        "typeshed/stdlib/shutil.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/shutil.pyi"),
+    ),
+    (
+        "typeshed/stdlib/stat.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/stat.pyi"),
+    ),
+    (
+        "typeshed/stdlib/statistics.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/statistics.pyi"),
+    ),
+    (
+        "typeshed/stdlib/struct.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/struct.pyi"),
+    ),
+    (
+        "typeshed/stdlib/tarfile.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/tarfile.pyi"),
+    ),
+    (
+        "typeshed/stdlib/tempfile.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/tempfile.pyi"),
+    ),
+    (
+        "typeshed/stdlib/textwrap.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/textwrap.pyi"),
+    ),
+    (
+        "typeshed/stdlib/threading.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/threading.pyi"),
+    ),
+    (
+        "typeshed/stdlib/timeit.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/timeit.pyi"),
+    ),
+    (
+        "typeshed/stdlib/token.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/token.pyi"),
+    ),
+    (
+        "typeshed/stdlib/tokenize.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/tokenize.pyi"),
+    ),
+    (
+        "typeshed/stdlib/traceback.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/traceback.pyi"),
+    ),
+    (
+        "typeshed/stdlib/uuid.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/uuid.pyi"),
+    ),
+    (
+        "typeshed/stdlib/warnings.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/warnings.pyi"),
+    ),
+    (
+        "typeshed/stdlib/weakref.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/weakref.pyi"),
+    ),
+    (
+        "typeshed/stdlib/zipimport.pyi",
+        include_str!("../../../third_party/typeshed/stdlib/zipimport.pyi"),
+    ),
 ];

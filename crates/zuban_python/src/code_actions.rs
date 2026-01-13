@@ -546,67 +546,64 @@ impl TypeshedSymbols {
                 #[cfg(target_arch = "wasm32")]
                 let iter = entries.iter();
                 iter.for_each(|entry| {
-                        let file_index = db.load_file_from_workspace(entry, false).unwrap();
-                        let file = db.loaded_python_file(file_index);
+                    let file_index = db.load_file_from_workspace(entry, false).unwrap();
+                    let file = db.loaded_python_file(file_index);
 
-                        let mut found = found.lock().unwrap();
-                        let index = found.files.len() as u32;
-                        found.files.push(TypeshedFile {
-                            path: (**file.file_path(db)).to_string(),
-                        });
-                        let insert_symbol = |found: &mut Self, name: &str| match found
-                            .symbols_to_files
-                            .entry(name.to_string())
-                        {
-                            Entry::Occupied(mut occupied) => occupied.get_mut().insert_last(index),
-                            Entry::Vacant(vacant) => {
-                                vacant.insert_entry(SingleLinkedList::new(index));
-                            }
-                        };
-                        match &entry.parent {
-                            Parent::Directory(dir) => {
-                                let dir = dir.upgrade().unwrap();
-                                if entry.name.as_ref() == "__init__.pyi" {
-                                    Directory::entries(&*db.vfs.handler, &dir)
-                                        .borrow()
-                                        .iter()
-                                        .for_each(|dir_entry| {
-                                            let name = dir_entry.name();
-                                            if name != "__init__.pyi" {
-                                                insert_symbol(
-                                                    &mut found,
-                                                    name.trim_end_matches(".pyi"),
-                                                )
-                                            }
-                                        })
-                                }
-                            }
-                            Parent::Workspace(_) => {
-                                let result = found
-                                    .toplevel_import_names
-                                    .insert(file.name(db).to_string(), index);
-                                debug_assert!(result.is_none());
+                    let mut found = found.lock().unwrap();
+                    let index = found.files.len() as u32;
+                    found.files.push(TypeshedFile {
+                        path: (**file.file_path(db)).to_string(),
+                    });
+                    let insert_symbol = |found: &mut Self, name: &str| match found
+                        .symbols_to_files
+                        .entry(name.to_string())
+                    {
+                        Entry::Occupied(mut occupied) => occupied.get_mut().insert_last(index),
+                        Entry::Vacant(vacant) => {
+                            vacant.insert_entry(SingleLinkedList::new(index));
+                        }
+                    };
+                    match &entry.parent {
+                        Parent::Directory(dir) => {
+                            let dir = dir.upgrade().unwrap();
+                            if entry.name.as_ref() == "__init__.pyi" {
+                                Directory::entries(&*db.vfs.handler, &dir)
+                                    .borrow()
+                                    .iter()
+                                    .for_each(|dir_entry| {
+                                        let name = dir_entry.name();
+                                        if name != "__init__.pyi" {
+                                            insert_symbol(&mut found, name.trim_end_matches(".pyi"))
+                                        }
+                                    })
                             }
                         }
-                        // Builtins are already reachable
-                        if file_index == db.python_state.builtins().file_index
+                        Parent::Workspace(_) => {
+                            let result = found
+                                .toplevel_import_names
+                                .insert(file.name(db).to_string(), index);
+                            debug_assert!(result.is_none());
+                        }
+                    }
+                    // Builtins are already reachable
+                    if file_index == db.python_state.builtins().file_index
                             // For now disable typing_extensions, because it essentially contains
                             // the almost exact same items as typing.pyi
                             || entry.name.as_ref() == "typing_extensions.pyi"
-                        {
-                            return;
+                    {
+                        return;
+                    }
+                    for (name, &node_index) in file.symbol_table.iter() {
+                        if is_private_import_and_not_in_dunder_all(
+                            db,
+                            NodeRef::new(file, node_index),
+                            |_| true,
+                        ) {
+                            continue;
                         }
-                        for (name, &node_index) in file.symbol_table.iter() {
-                            if is_private_import_and_not_in_dunder_all(
-                                db,
-                                NodeRef::new(file, node_index),
-                                |_| true,
-                            ) {
-                                continue;
-                            }
-                            insert_symbol(&mut found, name)
-                        }
-                    })
+                        insert_symbol(&mut found, name)
+                    }
+                })
             }
         }
         found.into_inner().unwrap()

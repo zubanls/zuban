@@ -41,7 +41,10 @@ struct CompletionInfo<'db> {
 impl CompletionInfo<'_> {
     fn fix_for_invalid_columns(mut self) -> Self {
         if self.cursor_position.column_out_of_bounds && !self.rest.as_code().is_empty() {
-            self.node = CompletionNode::Global { context: None, at_statement_start: true };
+            self.node = CompletionNode::Global {
+                context: None,
+                at_statement_start: true,
+            };
             self.rest.ensure_no_rest();
         }
         self
@@ -126,7 +129,10 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 let inf = self.infos.infer_primary_or_atom(*base);
                 self.add_attribute_completions(inf)
             }
-            CompletionNode::Global { context, at_statement_start } => {
+            CompletionNode::Global {
+                context,
+                at_statement_start,
+            } => {
                 let at_statement_start = *at_statement_start;
                 let reachable_scopes = &mut ScopesIterator {
                     file,
@@ -341,9 +347,14 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
 
     fn add_python_keyword_completions(&mut self, at_stmt_start: bool) {
         for &kw in PYTHON_KEYWORDS {
-            if (!at_stmt_start && is_statement_keyword(kw)) || !self.maybe_add(kw) { continue; }
-            if let Some(r) = (self.on_result)(self.replace_range, &KeywordCompletion { keyword: kw }) {
-                self.items.push((CompletionSortPriority::PythonKeyword(kw), r))
+            if (!at_stmt_start && is_statement_keyword(kw)) || !self.maybe_add(kw) {
+                continue;
+            }
+            if let Some(r) =
+                (self.on_result)(self.replace_range, &KeywordCompletion { keyword: kw })
+            {
+                self.items
+                    .push((CompletionSortPriority::PythonKeyword(kw), r))
             }
         }
     }
@@ -1014,7 +1025,9 @@ const STMT_KEYWORDS: &[&str] = &[
     "raise", "return", "try", "type", "while", "with", "yield",
 ];
 
-fn is_statement_keyword(kw: &str) -> bool { STMT_KEYWORDS.contains(&kw) }
+fn is_statement_keyword(kw: &str) -> bool {
+    STMT_KEYWORDS.contains(&kw)
+}
 
 impl<'db> CompletionSortPriority<'db> {
     fn new_symbol(symbol: &'db str) -> Self {

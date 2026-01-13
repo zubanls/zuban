@@ -32,7 +32,11 @@ impl InMemoryFs {
 
     pub fn set_file<S: AsRef<str>, C: Into<String>>(&self, path: S, contents: C) {
         let key = normalize_key(path.as_ref());
-        self.inner.files.write().unwrap().insert(key, contents.into());
+        self.inner
+            .files
+            .write()
+            .unwrap()
+            .insert(key, contents.into());
     }
 
     pub fn remove_file<S: AsRef<str>>(&self, path: S) {

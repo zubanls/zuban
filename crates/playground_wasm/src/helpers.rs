@@ -13,7 +13,9 @@ pub fn prepare_filesystem() -> InMemoryFs {
 }
 
 pub fn panic_payload_to_string(payload: Box<dyn Any + Send>) -> String {
-    payload.downcast_ref::<&str>().map(|s| (*s).to_string())
+    payload
+        .downcast_ref::<&str>()
+        .map(|s| (*s).to_string())
         .or_else(|| payload.downcast_ref::<String>().cloned())
         .unwrap_or_else(|| "panic".to_string())
 }

@@ -143,9 +143,7 @@ impl Project {
         &mut self,
         file_index: FileIndex,
     ) -> Box<[diagnostics::Diagnostic<'_>]> {
-        self.db
-            .loaded_python_file(file_index)
-            .diagnostics(&self.db)
+        self.db.loaded_python_file(file_index).diagnostics(&self.db)
     }
 
     pub fn store_in_memory_file_with_index(
@@ -273,7 +271,9 @@ impl Project {
 
     /// Call after registering stubs to VFS
     pub fn add_site_packages(&self, path: std::sync::Arc<vfs::NormalizedPath>) {
-        self.db.vfs.add_workspace(path, vfs::WorkspaceKind::SitePackages);
+        self.db
+            .vfs
+            .add_workspace(path, vfs::WorkspaceKind::SitePackages);
     }
 }
 
