@@ -695,6 +695,12 @@ impl<'db> NameBinder<'db> {
                 },
                 UnpackedError::NonBlockErrorPart(err) => {
                     self.index_non_block_node(&err, false);
+                    for name_def in err.contained_name_defs() {
+                        self.db_infos.points.set(
+                            name_def.index(),
+                            Point::new_specific(Specific::AnyDueToError, Locality::NameBinder),
+                        );
+                    }
                 }
             }
         }
