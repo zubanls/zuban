@@ -392,69 +392,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             PointResolution::NameDef {
                 node_ref,
                 global_redirect: _,
-            } => {
-                if node_ref.file_index() != self.file.file_index {
-                    return self
-                        .with_new_file(node_ref.file)
-                        .point_resolution_to_base_lookup(resolved);
-                }
-                let name_def = node_ref.expect_name_def();
-                match name_def.expect_type() {
-                    TypeLike::ClassDef(c) => {
-                        return BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()));
-                    }
-                    TypeLike::Assignment(assignment) => {
-                        if node_ref.point().calculated() {
-                            // This is essentially just a performance optimization to avoid looking
-                            // up TypeVar each time.
-                            fn follow_potential_inferred(node_ref: NodeRef) -> BaseLookup {
-                                let p = node_ref.point();
-                                if p.kind() == PointKind::Redirect {
-                                    if p.file_index() == node_ref.file_index() {
-                                        let new = NodeRef::new(node_ref.file, p.node_index());
-                                        follow_potential_inferred(new)
-                                    } else {
-                                        BaseLookup::Other
-                                    }
-                                } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
-                                    node_ref.maybe_complex()
-                                {
-                                    BaseLookup::TypeVarLike(tvl.clone())
-                                } else {
-                                    BaseLookup::Other
-                                }
-                            }
-                            return follow_potential_inferred(node_ref);
-                        }
-                        if let Some((_, None, expr)) =
-                            assignment.maybe_simple_type_expression_assignment()
-                            && self.is_type_var_like_execution(expr)
-                        {
-                            // Now that we know that we have a Typevar-like execution, we can
-                            // simply infer the statement and won't cause problems with cycles.
-                            let inference = node_ref.file.inference(self.i_s);
-                            let inf = inference.infer_name_of_definition(name_def.name());
-                            if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db)
-                                && let Some(ComplexPoint::TypeVarLike(tvl)) =
-                                    node_ref.maybe_complex()
-                            {
-                                return BaseLookup::TypeVarLike(tvl.clone());
-                            }
-                        }
-                    }
-                    TypeLike::ImportFromAsName(from_as_name) => {
-                        return self.point_resolution_to_base_lookup(
-                            self.resolve_import_from_name_def_without_narrowing(from_as_name),
-                        );
-                    }
-                    TypeLike::DottedAsName(dotted_as_name) => {
-                        return self.point_resolution_to_base_lookup(
-                            self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
-                        );
-                    }
-                    _ => (),
-                }
-            }
+            } => return self.check_name_def(node_ref),
             PointResolution::Inferred(inferred) => {
                 if let Some(specific) = inferred.maybe_saved_specific(self.i_s.db) {
                     return match specific {
@@ -485,6 +423,63 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             _ => (),
         };
         BaseLookup::Other
+    }
+
+    fn check_name_def(self, node_ref: NodeRef) -> BaseLookup {
+        if node_ref.file_index() != self.file.file_index {
+            return self.with_new_file(node_ref.file).check_name_def(node_ref);
+        }
+        let name_def = node_ref.expect_name_def();
+        match name_def.expect_type() {
+            TypeLike::ClassDef(c) => {
+                BaseLookup::Class(PointLink::new(node_ref.file_index(), c.index()))
+            }
+            TypeLike::Assignment(assignment) => {
+                if node_ref.point().calculated() {
+                    // This is essentially just a performance optimization to avoid looking
+                    // up TypeVar each time.
+                    fn follow_potential_inferred(node_ref: NodeRef) -> BaseLookup {
+                        let p = node_ref.point();
+                        if p.kind() == PointKind::Redirect {
+                            if p.file_index() == node_ref.file_index() {
+                                let new = NodeRef::new(node_ref.file, p.node_index());
+                                follow_potential_inferred(new)
+                            } else {
+                                BaseLookup::Other
+                            }
+                        } else if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                            node_ref.maybe_complex()
+                        {
+                            BaseLookup::TypeVarLike(tvl.clone())
+                        } else {
+                            BaseLookup::Other
+                        }
+                    }
+                    return follow_potential_inferred(node_ref);
+                }
+                if let Some((_, None, expr)) = assignment.maybe_simple_type_expression_assignment()
+                    && self.is_type_var_like_execution(expr)
+                {
+                    // Now that we know that we have a Typevar-like execution, we can
+                    // simply infer the statement and won't cause problems with cycles.
+                    let inference = node_ref.file.inference(self.i_s);
+                    let inf = inference.infer_name_of_definition(name_def.name());
+                    if let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db)
+                        && let Some(ComplexPoint::TypeVarLike(tvl)) = node_ref.maybe_complex()
+                    {
+                        return BaseLookup::TypeVarLike(tvl.clone());
+                    }
+                }
+                BaseLookup::Other
+            }
+            TypeLike::ImportFromAsName(from_as_name) => self.point_resolution_to_base_lookup(
+                self.resolve_import_from_name_def_without_narrowing(from_as_name),
+            ),
+            TypeLike::DottedAsName(dotted_as_name) => self.point_resolution_to_base_lookup(
+                self.resolve_import_name_name_def_without_narrowing(dotted_as_name),
+            ),
+            _ => BaseLookup::Other,
+        }
     }
 
     fn lookup_primary_or_atom(&self, p: PrimaryOrAtom) -> BaseLookup {
