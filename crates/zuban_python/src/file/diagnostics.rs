@@ -166,13 +166,21 @@ impl Inference<'_, '_, '_> {
                     });
                 })
             });
-            // TODO this unsafe feels very wrong, because a bit lower we might modify the complex
-            // points.
-            for complex_point in unsafe { self.file.complex_points.iter() } {
-                // Make sure types are calculated and the errors are generated.
-                if let ComplexPoint::TypeVarLike(tvl) = complex_point {
-                    tvl.ensure_calculated_types(self.i_s.db);
-                }
+            // Unsafe is fine here, because it only copies existing values. If we used
+            // ensure_calculated_types here, the complex values might be increased in size and we
+            // therefore need to clone all type vars first.
+            let check_type_var_likes: Vec<_> = unsafe { self.file.complex_points.iter() }
+                .filter_map(|complex_point| {
+                    if let ComplexPoint::TypeVarLike(tvl) = complex_point {
+                        // TypeVar likes are reference counted and can be cloned without an issue.
+                        Some(tvl.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            for tvl in check_type_var_likes {
+                tvl.ensure_calculated_types(self.i_s.db)
             }
 
             if let Some(name_ref) = self.file.lookup_symbol("__getattribute__") {

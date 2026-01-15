@@ -969,6 +969,11 @@ else:
 
 class C(Generic[T]): ...
 
+[case invalid_type_aliases_no_crash]
+# From GH #252
+type A[R] = list[R] ; ?  # E: Invalid syntax
+type B[T: A] = list[tuple[T]]
+
 [case weird_type_var_recursion_no_crash]
 # From GH #255
 [a: type T[U: U] = U]  # E: Invalid syntax  # E: Name "U" is not defined
