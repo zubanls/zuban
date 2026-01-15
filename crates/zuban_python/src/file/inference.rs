@@ -3979,6 +3979,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     let p = node_ref.name_ref_of_name_def().point();
                     if p.calculated()
                         && p.needs_flow_analysis()
+                        // Stub files should not need narrowing in general. However it would be
+                        // better to remove this line again.
+                        && !self.file.is_stub()
                         && let Some(result) = ensure_flow_analysis()
                     {
                         return result;

@@ -17,26 +17,12 @@ super_explicit_type_var_classmethod
 testLocalPartialTypesWithNestedFunction
 testLocalPartialTypesWithNestedFunction2
 
-# Pre-release regressions
-testNewAnalyzerAliasToNotReadyClassGeneric
-testNewAnalyzerTrickyAliasInFuncDef
-self_passing_to_type_var_tuple_with_protocol
-
-# typeshed upgrade __getitem__ with generics
-testGetSlice
-testSliceSupportsIndex
-testUnionOfTupleIndexMixed
-testListMethods
-testListOperators
-testListSetitemTuple
-
 # parser fails
 avoid_bracket_slowdown
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
-testGenericFunctionSubtypingWithUnions
 # Regressions for Never-generics to Any-generics
 testOverloadVarargsSelection
 testOverloadingInferUnionReturnWithObjectTypevarReturn
@@ -82,6 +68,9 @@ class_method_generics_with_type_var_in_class_scope
 # Type var bound cycle
 testNewAnalyzerDuplicateTypeVarImportCycle
 testNewAnalyzerDuplicateTypeVarImportCycleWithAliases
+# Import cycle issues
+testNewAnalyzerAliasToNotReadyClassGeneric
+testNewAnalyzerTrickyAliasInFuncDef
 # Recursive aliases that fail to resolve because imports are calculating
 check-incremental:testRecursiveAliasImported
 check-recursive-types:testRecursiveAliasImported

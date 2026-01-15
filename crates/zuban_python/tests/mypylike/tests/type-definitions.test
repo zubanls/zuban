@@ -944,3 +944,27 @@ else:
     some_definition = 2
 
 class C(Generic[T]): ...
+
+[case load_type_var_in_stub_cycle]
+from n import some_definition
+
+[file m.pyi]
+from typing import TypeVar, Generic
+from n import C
+if bool():
+    from n import some_definition
+    T = TypeVar("T")
+
+def f(x: C[int]):
+    reveal_type(x)  # N: Revealed type is "n.C[int]"
+
+[file n.pyi]
+from typing import Generic
+from m import T
+
+if bool():
+    some_definition = 1
+else:
+    some_definition = 2
+
+class C(Generic[T]): ...
