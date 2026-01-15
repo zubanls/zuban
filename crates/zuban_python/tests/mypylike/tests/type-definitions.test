@@ -968,3 +968,12 @@ else:
     some_definition = 2
 
 class C(Generic[T]): ...
+
+[case weird_type_var_recursion_no_crash]
+# From GH #255
+[a: type T[U: U] = U]  # E: Invalid syntax  # E: Name "U" is not defined
+
+def fn(c: T) -> U:  # E: Name "U" is not defined
+    pass
+
+fn or 1

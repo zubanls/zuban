@@ -1626,6 +1626,7 @@ reveal_type(T)
 
 [out]
 __main__:2: error: Invalid syntax
+__main__:8: error: Name "T" is not defined
 __main__:8: note: Revealed type is "Any"
 
 [case walrus_no_hang]

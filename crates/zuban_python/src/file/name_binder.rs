@@ -459,20 +459,7 @@ impl<'db> NameBinder<'db> {
                 StmtLikeContent::YieldExpr(y) => self.index_non_block_node(&y, ordered),
                 StmtLikeContent::GlobalStmt(g) => self.index_non_block_node(&g, ordered),
                 StmtLikeContent::NonlocalStmt(n) => self.index_non_block_node(&n, ordered),
-                StmtLikeContent::TypeAlias(type_alias) => {
-                    let (name_def, type_params, expr) = type_alias.unpack();
-                    self.add_new_definition_with_cause(
-                        name_def,
-                        Point::new_uncalculated(),
-                        IndexingCause::NonFlowAnalysisName,
-                    );
-                    self.with_nested(NameBinderKind::TypeAlias, type_alias.index(), |binder| {
-                        // This is not an actual annotation, but behaves like one
-                        binder.process_and_run_with_latest_type_params(type_params, |binder| {
-                            binder.index_annotation_expr(&expr, None)
-                        });
-                    });
-                }
+                StmtLikeContent::TypeAlias(a) => self.index_type_alias(a),
                 StmtLikeContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
                         func, ordered, false, // is_async
@@ -661,6 +648,21 @@ impl<'db> NameBinder<'db> {
         }
     }
 
+    fn index_type_alias(&mut self, type_alias: TypeAlias<'db>) {
+        let (name_def, type_params, expr) = type_alias.unpack();
+        self.add_new_definition_with_cause(
+            name_def,
+            Point::new_uncalculated(),
+            IndexingCause::NonFlowAnalysisName,
+        );
+        self.with_nested(NameBinderKind::TypeAlias, type_alias.index(), |binder| {
+            // This is not an actual annotation, but behaves like one
+            binder.process_and_run_with_latest_type_params(type_params, |binder| {
+                binder.index_annotation_expr(&expr, None)
+            });
+        });
+    }
+
     fn index_error_nodes(&mut self, error: Error<'db>) {
         for part in error.iter_parts() {
             match part {
@@ -683,6 +685,7 @@ impl<'db> NameBinder<'db> {
                     SimpleStmtContent::Assignment(a) => self.index_assignment(a, false),
                     SimpleStmtContent::ImportFrom(i) => self.index_import_from(i),
                     SimpleStmtContent::ImportName(i) => self.index_import_name(i),
+                    SimpleStmtContent::TypeAlias(a) => self.index_type_alias(a),
                     SimpleStmtContent::Other => {
                         self.index_non_block_node(&simple_stmt, false);
                         for name_def in simple_stmt.contained_name_defs() {

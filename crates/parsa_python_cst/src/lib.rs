@@ -5175,6 +5175,8 @@ impl<'db> SimpleStmt<'db> {
             SimpleStmtContent::ImportFrom(ImportFrom::new(child))
         } else if child.is_type(Nonterminal(import_name)) {
             SimpleStmtContent::ImportName(ImportName::new(child))
+        } else if child.is_type(Nonterminal(type_alias)) {
+            SimpleStmtContent::TypeAlias(TypeAlias::new(child))
         } else {
             SimpleStmtContent::Other
         }
@@ -5185,6 +5187,7 @@ pub enum SimpleStmtContent<'db> {
     Assignment(Assignment<'db>),
     ImportFrom(ImportFrom<'db>),
     ImportName(ImportName<'db>),
+    TypeAlias(TypeAlias<'db>),
     Other,
 }
 
