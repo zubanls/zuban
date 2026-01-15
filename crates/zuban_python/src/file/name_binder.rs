@@ -1611,7 +1611,7 @@ impl<'db> NameBinder<'db> {
     fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
         // Function name was indexed already.
         let (_, _, params, _, block) = func.unpack();
-        self.index_param_name_defs(params.iter().map(|param| param.name_def()), is_method);
+        self.index_param_name_defs(params.iter(), is_method);
 
         self.index_block(block, true);
         // It's kind of hard to know where to store the latest reference statement.
@@ -1621,23 +1621,27 @@ impl<'db> NameBinder<'db> {
         );
     }
 
-    fn index_param_name_defs(
-        &mut self,
-        mut names: impl Iterator<Item = NameDef<'db>>,
-        is_method: bool,
-    ) {
-        if is_method && let Some(name_def) = names.next() {
+    fn index_param_name_defs(&mut self, params: impl Iterator<Item = Param<'db>>, is_method: bool) {
+        let mut params = params.peekable();
+        if is_method
+            && let Some(param) = params.next_if(|param| {
+                matches!(
+                    param.kind(),
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword
+                )
+            })
+        {
             self.add_point_definition(
-                name_def,
+                param.name_def(),
                 Specific::MaybeSelfParam,
                 // Params cause no flow analysis, because they are always the first name to
                 // bind to.
                 IndexingCause::NonFlowAnalysisName,
             );
         }
-        for name_def in names {
+        for param in params {
             self.add_point_definition(
-                name_def,
+                param.name_def(),
                 Specific::Param,
                 IndexingCause::NonFlowAnalysisName,
             );
@@ -1655,7 +1659,7 @@ impl<'db> NameBinder<'db> {
 
     fn index_lambda(&mut self, lambda: Lambda<'db>) {
         let (params, expr) = lambda.unpack();
-        self.index_param_name_defs(params.map(|param| param.name_def()), false);
+        self.index_param_name_defs(params, false);
         self.index_non_block_node(&expr, true);
     }
 

@@ -2602,3 +2602,13 @@ class C(A):  # E: Name "A" is not defined
     @property
     def p(*, val: None):  # E: Method must have at least one argument. Did you forget the "self" argument?
         pass
+
+[case self_as_star_args]
+# flags: --check-untyped-defs
+# From GH #250
+class C[T]:
+    def f(*args):
+        args.a = 1  # E: "tuple[Any, ...]" has no attribute "a"
+
+C().a  # E: "C[Any]" has no attribute "a"
+C().f()
