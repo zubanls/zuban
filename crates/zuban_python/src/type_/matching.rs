@@ -493,12 +493,16 @@ impl Type {
                 if matcher.is_matching_reverse()
                     && let Some(replace_self) = matcher.replace_self
                 {
+                    let replaced = replace_self();
+                    // We already matched Self
+                    if replaced != Type::Self_ {
                         return self.matches(
                             i_s,
                             matcher,
-                            &replace_self(),
+                            &replaced,
                             variance,
                         );
+                    }
                 } else if let Some(t) = i_s.current_type() {
                     return self.matches(i_s, matcher, &t, variance);
                 }

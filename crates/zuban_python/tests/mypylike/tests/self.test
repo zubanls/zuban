@@ -663,3 +663,18 @@ def f(c: C, x: int | str):
     # Union math
     b = c.f(x)
     assert_type(b, C)
+
+[case self_remapping_no_crash]
+from typing import Callable, Self
+
+class Event[W]:
+    def x(self) -> W: raise NotImplementedError
+
+class Widget:
+    def bind(self, func: Callable[[Self], object] | None = None) -> str: ...
+
+class TT(Widget):
+    def __init__(self) -> None:
+        self.bind(self._on_foo)  # E: Argument 1 to "bind" of "Widget" has incompatible type "Callable[[Widget], None]"; expected "Callable[[Self], object] | None"
+
+    def _on_foo(self, junk_event: Widget) -> None: ...
