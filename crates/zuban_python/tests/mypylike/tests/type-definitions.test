@@ -920,3 +920,27 @@ C[int, *tuple[Any, ...]]  # E: Invalid callable params
 # From GH #249
 [for x in y: type z[T] = 0]  # E: Invalid syntax
 T
+
+[case load_type_var_despite_flow_analysis]
+from m import T
+from n import C
+
+def f(x: C[int]):
+    reveal_type(x)  # N: Revealed type is "n.C[int]"
+
+[file m.py]
+from typing import TypeVar
+if bool():
+    from n import some_definition
+T = TypeVar("T")
+
+[file n.py]
+from typing import Generic
+from m import T
+
+if bool():
+    some_definition = 1
+else:
+    some_definition = 2
+
+class C(Generic[T]): ...

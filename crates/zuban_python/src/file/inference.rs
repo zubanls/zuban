@@ -16,8 +16,8 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        flow_analysis::RedefinitionResult, name_resolution::PointResolution,
-        type_computation::TypeCommentState, utils::TupleGatherer,
+        OtherDefinitionIterator, flow_analysis::RedefinitionResult,
+        name_resolution::PointResolution, type_computation::TypeCommentState, utils::TupleGatherer,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -3966,7 +3966,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 .inference(&InferenceState::new(self.i_s.db, node_ref.file))
                 .with_correct_context(global_redirect, |inference| {
                     let ensure_flow_analysis = || {
-                        if inference.ensure_module_symbols_flow_analysis().is_err() {
+                        if inference.ensure_module_symbols_flow_analysis().is_err()
+                            && !inference.maybe_flow_analysis_not_needed_after_all(node_ref)
+                        {
                             add_issue(IssueKind::CannotDetermineType {
                                 for_: node_ref.as_code().into(),
                             });
@@ -4005,6 +4007,25 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             PointResolution::Inferred(inferred) => inferred,
             _ => self.infer_point_resolution(pr),
         }
+    }
+
+    fn maybe_flow_analysis_not_needed_after_all(&self, node_ref: NodeRef) -> bool {
+        // In some cases where type definitions are involved flow analysis might not be needed.
+        debug_assert_eq!(node_ref.file.file_index, self.file.file_index);
+        node_ref
+            .expect_name_def()
+            .maybe_assignment_definition()
+            .is_some_and(|assignment| {
+                OtherDefinitionIterator::new(
+                    &self.file.points,
+                    node_ref.name_ref_of_name_def().node_index,
+                )
+                .is_single_definition()
+                    && self
+                        .file
+                        .name_resolution_for_types(&InferenceState::new(self.i_s.db, node_ref.file))
+                        .is_valid_type_assignment(assignment)
+            })
     }
 
     pub fn check_point_cache(&self, i: NodeIndex) -> Option<Inferred> {
@@ -4743,7 +4764,7 @@ fn get_generator_return_type(i_s: &InferenceState, had_issue: &impl Fn(), t: &Ty
     }
 }
 
-pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex {
+pub(crate) fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex {
     let mut point = file.points.get(name_index);
     if !point.calculated() || point.maybe_specific() != Some(Specific::NameOfNameDef) {
         // Happens e.g. for the definition of builtins.type (overwritten in python_state.rs)
@@ -4763,7 +4784,7 @@ pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex
     }
 }
 
-pub fn first_defined_name_of_multi_def(
+pub(crate) fn first_defined_name_of_multi_def(
     file: &PythonFile,
     name_index: NodeIndex,
 ) -> Option<NodeIndex> {
@@ -4772,7 +4793,7 @@ pub fn first_defined_name_of_multi_def(
     (first != name_index).then_some(first)
 }
 
-pub fn await_(
+pub(crate) fn await_(
     i_s: &InferenceState,
     inf: Inferred,
     from: NodeRef,

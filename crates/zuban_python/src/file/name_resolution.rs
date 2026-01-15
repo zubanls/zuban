@@ -215,6 +215,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             add_issue_if_not_ignored();
                             return;
                         }
+                        /*
+                        if let Some(redirect_to) = &redirect_to {
+                            self.set_point(as_name.index(), redirect_to.into_point(Locality::Todo));
+                        }
+                        */
                         assign_to_name_def(name_def, pr, redirect_to);
                         return;
                     }
@@ -915,7 +920,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub(crate) enum ModuleAccessDetail {
     OnName(PointLink),
     OnFile(FileIndex),

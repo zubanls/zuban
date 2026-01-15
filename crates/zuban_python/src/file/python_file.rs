@@ -1102,6 +1102,10 @@ impl<'a> OtherDefinitionIterator<'a> {
             current: start,
         }
     }
+
+    pub fn is_single_definition(mut self) -> bool {
+        self.next().is_none()
+    }
 }
 
 impl Iterator for OtherDefinitionIterator<'_> {

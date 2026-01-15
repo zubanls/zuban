@@ -46,6 +46,13 @@ const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ALIAS_TYPE_CACHE_OFFSET: u32 = 1;
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
+    pub fn is_valid_type_assignment(&self, assignment: Assignment<'file>) -> bool {
+        !matches!(
+            self.compute_type_assignment(assignment),
+            Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_))
+        )
+    }
+
     pub(super) fn compute_type_assignment(
         &self,
         assignment: Assignment<'file>,
