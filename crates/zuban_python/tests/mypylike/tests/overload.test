@@ -1151,3 +1151,14 @@ __main__:3: error: No overload variant of "complex" matches argument type "tuple
 __main__:3: note: Possible overload variants:
 __main__:3: note:     def __new__(real: complex | SupportsComplex | SupportsFloat | SupportsIndex = ..., imag: complex | SupportsFloat | SupportsIndex = ...) -> complex
 __main__:3: note:     def __new__(real: str | SupportsComplex | SupportsFloat | SupportsIndex | complex) -> complex
+
+[case overload_with_invalid_decorator]
+# From GH #254
+from typing import overload
+
+decorator = lambda x: 1
+
+@decorator  # E: "int" not callable
+@overload
+def f():
+    pass

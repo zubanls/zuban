@@ -1330,9 +1330,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 IssueKind::OverloadInconsistentKind { kind },
             )
         }
-        if functions.len() < 2 && !should_error_out.get() {
+        if let Some(implementation) = &implementation
+            && in_stub
+        {
+            name_def_node_ref(implementation.function_link)
+                .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
+        }
+
+        if should_error_out.get() {
+            return None;
+        }
+        if functions.len() < 2 {
             self.add_issue_onto_start_including_decorator(i_s, IssueKind::OverloadSingleNotAllowed);
-            should_error_out.set(true);
+            return None;
         } else if implementation.is_none()
             && !in_stub
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
@@ -1350,13 +1360,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
             }
         }
-        if let Some(implementation) = &implementation
-            && in_stub
-        {
-            name_def_node_ref(implementation.function_link)
-                .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
-        }
-
         if has_non_abstract && has_abstract {
             self.add_issue_onto_start_including_decorator(
                 i_s,
@@ -1372,20 +1375,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .is_some_and(|implementation| implementation.callable.is_final)
         };
 
-        (!should_error_out.get()).then(|| {
-            if dataclass_transform.is_some() {
-                debug!("Found dataclass transform overload");
-            }
-            OverloadDefinition {
-                functions: {
-                    debug_assert!(functions.len() > 1);
-                    FunctionOverload::new(functions.into_boxed_slice())
-                },
-                implementation,
-                is_final,
-                is_override,
-                dataclass_transform,
-            }
+        if dataclass_transform.is_some() {
+            debug!("Found dataclass transform overload");
+        }
+        Some(OverloadDefinition {
+            functions: {
+                debug_assert!(functions.len() > 1);
+                FunctionOverload::new(functions.into_boxed_slice())
+            },
+            implementation,
+            is_final,
+            is_override,
+            dataclass_transform,
         })
     }
 
