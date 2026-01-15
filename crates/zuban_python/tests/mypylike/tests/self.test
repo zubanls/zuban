@@ -624,3 +624,18 @@ TFoo2 = TypeVar("TFoo2", bound="Foo2")
 class Foo2:
     # Rejected (Self is treated as unknown).
     def has_existing_self_annotation(self: TFoo2) -> Self: ... # E: Self argument missing for a non-static method (or an invalid type for self)
+
+[case self_return_of_overload_no_crash]
+# From GH #251
+x = y
+x = {_: int for _ in _}
+x |= (_ async for _ in _)
+[_ for _ in x]
+[out]
+__main__:2: error: Name "y" is not defined
+__main__:3: error: Name "_" is not defined
+__main__:4: error: No overload variant of "__ior__" of "dict" matches argument type "AsyncGenerator[Any, None]"
+__main__:4: note: Possible overload variants:
+__main__:4: note:     def __ior__(self, SupportsKeysAndGetItem[Any, type[int]], /) -> Self
+__main__:4: note:     def __ior__(self, Iterable[tuple[Any, type[int]]], /) -> Self
+__main__:4: error: Name "_" is not defined

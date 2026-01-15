@@ -771,7 +771,14 @@ impl Type {
                 }
             },
             Type::NewType(n) => n.type_.iter(i_s, infos),
-            Type::Self_ => i_s.current_type().unwrap().iter(i_s, infos),
+            Type::Self_ => {
+                if let Some(current_type) = i_s.current_type() {
+                    current_type.iter(i_s, infos)
+                } else {
+                    recoverable_error!("Had no context self for iter call");
+                    IteratorContent::Any(AnyCause::Internal)
+                }
+            }
             Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, infos),
             Type::Intersection(i) => i.iter(i_s, infos),
             _ => IteratorContent::Inferred(
