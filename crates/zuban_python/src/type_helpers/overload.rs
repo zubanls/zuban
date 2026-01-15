@@ -614,7 +614,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             t = Some(f_t.into_owned());
                         }
                     }
-                    Inferred::from_type(t.unwrap())
+                    Inferred::from_type(t.unwrap().replace_self_if_necessary(i_s.db, replace_self))
                 } else {
                     // Conformance tests define the fallback as Any if the return types are not all
                     // equivalent.
@@ -623,7 +623,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if iterator
                         .all(|other_callable| first.is_equal_type(i_s.db, &to_type(other_callable)))
                     {
-                        Inferred::from_type(first.into_owned())
+                        Inferred::from_type(
+                            first
+                                .into_owned()
+                                .replace_self_if_necessary(i_s.db, replace_self),
+                        )
                     } else {
                         Inferred::new_any_from_error()
                     }

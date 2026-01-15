@@ -59,6 +59,11 @@ where
     ) -> Option<Self> {
         self.replace_type_var_likes_and_self(db, callable, &|| None)
     }
+
+    fn replace_self_if_necessary(self, db: &Database, replace_self: ReplaceSelf) -> Self {
+        self.replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
+            .unwrap_or(self)
+    }
 }
 
 enum ReplacedParamSpec {

@@ -639,3 +639,27 @@ __main__:4: note: Possible overload variants:
 __main__:4: note:     def __ior__(self, SupportsKeysAndGetItem[Any, type[int]], /) -> Self
 __main__:4: note:     def __ior__(self, Iterable[tuple[Any, type[int]]], /) -> Self
 __main__:4: error: Name "_" is not defined
+
+[case self_should_remap_properly_in_overload_fallbacks_and_union_math]
+# Detected in GH #251
+from typing import overload, Self, assert_type
+
+class C:
+    @overload
+    def f(self, x: int) -> Self: ...
+    @overload
+    def f(self, x: str) -> Self: ...
+    def f(self, x):
+        return self
+
+def f(c: C, x: int | str):
+    # Self fallback with wrong type
+    a = c.f(b'') # E: No overload variant of "f" of "C" matches argument type "bytes" \
+                 # N: Possible overload variants: \
+                 # N:     def f(self, x: int) -> Self \
+                 # N:     def f(self, x: str) -> Self
+    assert_type(a, C)
+
+    # Union math
+    b = c.f(x)
+    assert_type(b, C)

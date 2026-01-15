@@ -295,7 +295,7 @@ reveal_type(d.get(""))  # E: No overload variant of "get" of "C" matches argumen
                         # N: Possible overload variants: \
                         # N:     def get(self, obj: None) -> Self \
                         # N:     def get(self, obj: int) -> Self \
-                        # N: Revealed type is "Self"
+                        # N: Revealed type is "__main__.D"
 
 [case overload_with_self_types_union_math]
 # Inspired by testOverloadAndSelfTypesGenericNoOverlap
