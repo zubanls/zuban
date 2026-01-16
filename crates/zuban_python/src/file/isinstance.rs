@@ -157,7 +157,7 @@ impl Inference<'_, '_, '_> {
                     }
                     let class = cls.class(self.i_s.db);
                     let class_infos = class.use_cached_class_infos(self.i_s.db);
-                    if matches!(class_infos.class_kind, ClassKind::Protocol) {
+                    if matches!(class_infos.kind, ClassKind::Protocol) {
                         if !class_infos.is_runtime_checkable {
                             self.add_issue(part.index(), IssueKind::ProtocolNotRuntimeCheckable)
                         }

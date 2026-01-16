@@ -744,7 +744,7 @@ fn find_kind_for_name_def(
         kind = CompletionItemKind::CLASS;
         if let Some(class_infos) =
             ClassNodeRef::new(file, class.index()).maybe_cached_class_infos(db)
-            && matches!(class_infos.class_kind, ClassKind::Enum)
+            && matches!(class_infos.kind, ClassKind::Enum)
         {
             kind = CompletionItemKind::ENUM
         }

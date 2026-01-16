@@ -432,7 +432,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 SpecialAssignmentKind::TypeOf(ArgsContent::new(primary.index(), details)),
             ),
             Some(Lookup::T(TypeContent::Class { node_ref, .. }))
-                if node_ref.use_cached_class_infos(self.i_s.db).class_kind == ClassKind::Enum =>
+                if node_ref.use_cached_class_infos(self.i_s.db).kind == ClassKind::Enum =>
             {
                 Ok({
                     let class = Class::with_self_generics(self.i_s.db, node_ref);

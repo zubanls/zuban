@@ -1676,7 +1676,7 @@ pub(crate) struct ProtocolMember {
 pub(crate) struct ClassInfos {
     pub mro: Box<[BaseClass]>, // Does never include `object`
     pub metaclass: MetaclassState,
-    pub class_kind: ClassKind,
+    pub kind: ClassKind,
     pub incomplete_mro: bool,
     pub protocol_members: Box<[ProtocolMember]>,
     pub has_slots: bool,
@@ -1699,7 +1699,7 @@ impl Clone for ClassInfos {
         Self {
             mro: self.mro.clone(),
             metaclass: self.metaclass,
-            class_kind: self.class_kind,
+            kind: self.kind,
             incomplete_mro: self.incomplete_mro,
             protocol_members: self.protocol_members.clone(),
             has_slots: self.has_slots,
@@ -1721,7 +1721,7 @@ impl PartialEq for ClassInfos {
     fn eq(&self, other: &Self) -> bool {
         self.mro == other.mro
             && self.metaclass == other.metaclass
-            && self.class_kind == other.class_kind
+            && self.kind == other.kind
             && self.incomplete_mro == other.incomplete_mro
             && self.protocol_members == other.protocol_members
             && self.has_slots == other.has_slots

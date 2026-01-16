@@ -913,7 +913,7 @@ impl Inference<'_, '_, '_> {
             FLOW_ANALYSIS.with(|fa| fa.add_delayed_type_params_variance_inference(class_node_ref))
         }
 
-        if matches!(class_infos.class_kind, ClassKind::TypedDict) {
+        if matches!(class_infos.kind, ClassKind::TypedDict) {
             // TypedDicts are special, because they really only contain annotations and no methods.
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
@@ -1018,11 +1018,11 @@ impl Inference<'_, '_, '_> {
             let mut enum_spotted: Option<Class> = None;
             for base in c.bases(db) {
                 if let TypeOrClass::Class(c) = &base {
-                    let is_enum = c.use_cached_class_infos(db).class_kind == ClassKind::Enum;
+                    let is_enum = c.use_cached_class_infos(db).kind == ClassKind::Enum;
                     let has_mixin_enum_new = if is_enum {
                         c.bases(db).any(|inner| match inner {
                             TypeOrClass::Class(inner) => {
-                                inner.use_cached_class_infos(db).class_kind != ClassKind::Enum
+                                inner.use_cached_class_infos(db).kind != ClassKind::Enum
                                     && inner.has_customized_enum_new(self.i_s)
                             }
                             TypeOrClass::Type(_) => false,
@@ -1139,7 +1139,7 @@ impl Inference<'_, '_, '_> {
                     .add_issue(&i_s, IssueKind::InvalidDunderMatchArgs)
             }
         }
-        match class_infos.class_kind {
+        match class_infos.kind {
             ClassKind::Protocol => {
                 for (name, name_index) in c.class_storage.self_symbol_table.iter() {
                     if c.class_storage

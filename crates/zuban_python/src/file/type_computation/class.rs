@@ -550,7 +550,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             let _ = class_infos
                 .undefined_generics_type
                 .set(Arc::new(Type::Dataclass(dataclass.clone())));
-            if let Some(was) = match class_infos.class_kind {
+            if let Some(was) = match class_infos.kind {
                 ClassKind::Normal => None,
                 ClassKind::Protocol => Some("A Protocol"),
                 ClassKind::Enum => Some("An Enum"),
@@ -561,7 +561,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 NodeRef::new(self.node_ref.file, self.node().name_def().index())
                     .add_type_issue(db, IssueKind::DataclassCannotBe { kind: was.into() });
             }
-            class_infos.class_kind = ClassKind::Normal;
+            class_infos.kind = ClassKind::Normal;
         }
         if dataclass_transform.is_some() {
             class_infos.dataclass_transform = dataclass_transform;
@@ -576,7 +576,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         class_infos.total_ordering = total_ordering;
         class_infos.deprecated_reason = deprecated_reason;
 
-        if class_infos.class_kind == ClassKind::Protocol {
+        if class_infos.kind == ClassKind::Protocol {
             class_infos.is_runtime_checkable = is_runtime_checkable;
         } else {
             if is_runtime_checkable {
@@ -605,7 +605,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             if !self.use_cached_type_vars(db).is_empty_or_untyped() {
                 self.add_issue_on_name(db, IssueKind::EnumCannotBeGeneric);
             }
-            class_infos.class_kind = ClassKind::Enum;
+            class_infos.kind = ClassKind::Enum;
             let (members, aliases) = self.enum_members(db);
             if !members.is_empty() {
                 let enum_ = Enum::new(
@@ -646,7 +646,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
 
         if type_vars.is_empty()
             && self.file.should_infer_untyped_returns(i_s.db)
-            && matches!(class_infos.class_kind, ClassKind::Normal)
+            && matches!(class_infos.kind, ClassKind::Normal)
             && was_dataclass.is_none()
             && class_infos.dataclass_transform.is_none()
         {
@@ -910,11 +910,11 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                         if let new_promote @ Some(_) = cached.promote_to() {
                                             promote_to = new_promote;
                                         }
-                                        if cached.class_kind != ClassKind::Normal
+                                        if cached.kind != ClassKind::Normal
                                             && class_kind == ClassKind::Normal
-                                            && !matches!(cached.class_kind, ClassKind::Protocol)
+                                            && !matches!(cached.kind, ClassKind::Protocol)
                                         {
-                                            class_kind = cached.class_kind;
+                                            class_kind = cached.kind;
                                         }
                                     }
                                     Some(c)
@@ -991,7 +991,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                             cached_class_infos.metaclass,
                                         );
                                     }
-                                    match &cached_class_infos.class_kind {
+                                    match &cached_class_infos.kind {
                                         ClassKind::NamedTuple => {
                                             if matches!(
                                                 class_kind,
@@ -1184,7 +1184,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 mro,
                 metaclass,
                 incomplete_mro,
-                class_kind,
+                kind: class_kind,
                 has_slots,
                 protocol_members,
                 is_final,

@@ -305,7 +305,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_protocol(&self, db: &Database) -> bool {
-        self.use_cached_class_infos(db).class_kind == ClassKind::Protocol
+        self.use_cached_class_infos(db).kind == ClassKind::Protocol
     }
 
     pub fn check_protocol_match(
@@ -848,7 +848,7 @@ impl<'db: 'a, 'a> Class<'a> {
         };
 
         let result = if options.kind == LookupKind::Normal {
-            if class_infos.class_kind == ClassKind::Enum
+            if class_infos.kind == ClassKind::Enum
                 && options.apply_descriptors_origin.should_apply()
                 && name == "_ignore_"
             {
@@ -1024,7 +1024,7 @@ impl<'db: 'a, 'a> Class<'a> {
             class_infos.mro.iter(),
             without_object
                 || self.node_ref == db.python_state.object_node_ref()
-                || class_infos.class_kind == ClassKind::Protocol,
+                || class_infos.kind == ClassKind::Protocol,
         )
     }
 
@@ -1080,7 +1080,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some(class_infos) = self.maybe_cached_class_infos(format_data.db) {
-            match &class_infos.class_kind {
+            match &class_infos.kind {
                 ClassKind::NamedTuple => {
                     let named_tuple = self.maybe_named_tuple_base(format_data.db).unwrap();
                     return named_tuple.format_with_name(format_data, &result, self.generics);
@@ -1529,7 +1529,7 @@ impl<'db: 'a, 'a> Class<'a> {
             )
         }
 
-        match &class_infos.class_kind {
+        match &class_infos.kind {
             ClassKind::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
@@ -2025,7 +2025,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn maybe_named_tuple_base(&self, db: &'a Database) -> Option<Arc<NamedTuple>> {
-        if self.use_cached_class_infos(db).class_kind == ClassKind::NamedTuple {
+        if self.use_cached_class_infos(db).kind == ClassKind::NamedTuple {
             for (_, base) in self.mro(db) {
                 if let TypeOrClass::Type(base) = base
                     && let Type::NamedTuple(named_tuple) = base.as_ref()
@@ -2039,7 +2039,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn maybe_tuple_base(&self, db: &Database) -> Option<Arc<Tuple>> {
-        match self.use_cached_class_infos(db).class_kind {
+        match self.use_cached_class_infos(db).kind {
             ClassKind::NamedTuple | ClassKind::Tuple => {
                 for (_, base) in self.mro(db) {
                     if let TypeOrClass::Type(base) = base {
