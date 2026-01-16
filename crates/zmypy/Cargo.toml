@@ -11,6 +11,7 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
+cli_args.workspace = true
 config.workspace = true
 licensing.workspace = true
 vfs.workspace = true

@@ -79,7 +79,7 @@ fn main() -> ExitCode {
 
         let mut v = vec!["".into(), "--python-executable".into(), executable];
         v.extend_from_slice(&cli.mypy_args);
-        let cli = zmypy::Cli::parse_from(v);
+        let cli = cli_args::Cli::parse_from(v);
         let result = zmypy::with_diagnostics_from_cli(
             cli,
             pth,

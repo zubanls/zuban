@@ -1,246 +1,15 @@
 use std::env::VarError;
 use std::process::ExitCode;
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
+use cli_args::Cli;
 use colored::Colorize as _;
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
-use config::{ExcludeRegex, ProjectOptions, PythonVersion, find_cli_config};
-use vfs::{AbsPath, NormalizedPath, SimpleLocalFS, VfsHandler};
+use config::find_cli_config;
+use vfs::{NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::{Mode, Project};
-
-use clap::Parser;
-
-#[derive(Parser)]
-pub struct Cli {
-    // Additional options
-    /// Enable or disable mypy compatibility. By default disabled and enabled if a Mypy config is found (inverse: --no-mypy-compatible)
-    #[arg(long)]
-    pub mypy_compatible: bool,
-    #[arg(long)]
-    pub no_mypy_compatible: bool,
-    #[command(flatten)]
-    pub mypy_options: MypyCli,
-}
-
-#[derive(Parser, Clone)]
-pub struct MypyCli {
-    // Running code:
-    /// Regular expression to match file names, directory names or paths which mypy should ignore
-    /// while recursively discovering files to check, e.g. --exclude '/setup\.py$'. May be
-    /// specified more than once, eg. --exclude a --exclude b
-    #[arg(long)]
-    exclude: Vec<String>,
-    /// This is mostly for testing, to test all possible files (there shouldn't be any crashes)
-    #[arg(long, hide = true)]
-    ignore_excludes_from_config: bool,
-    #[arg(num_args = 0..)]
-    files: Vec<String>,
-    /*
-    /// Type-check module; can repeat for more modules
-    #[arg(short, long, hide = true)]
-    module_todo_unimplemented: Vec<String>,
-    /// Type-check package recursively; can be repeated
-    #[arg(short, long, hide = true)]
-    package_todo_unimplemented: Vec<String>,
-    */
-    // Config file
-    /// Configuration file, must have a [mypy] section (defaults to mypy.ini, .mypy.ini, pyproject.toml, setup.cfg, ~/.config/mypy/config, ~/.mypy.ini)
-    #[arg(long)]
-    config_file: Option<PathBuf>,
-
-    // Import discovery
-    /// Silently ignore imports of missing modules
-    #[arg(long)]
-    ignore_missing_imports: bool,
-    /// Typecheck modules without stubs or py.typed marker
-    #[arg(long)]
-    follow_untyped_imports: bool,
-
-    // Platform configuration
-    /// Type check code assuming it will be running on Python x.y
-    #[arg(long)]
-    python_version: Option<PythonVersion>,
-    /// Specifies the path for a python executable (for example a virtual env)
-    #[arg(long)]
-    python_executable: Option<String>,
-    /// Type check special-cased code for the given OS platform (defaults to sys.platform)
-    #[arg(long)]
-    platform: Option<String>,
-    /// Additional variable to be considered True (may be repeated)
-    #[arg(long, value_name = "NAME")]
-    always_true: Vec<String>,
-    /// Additional variable to be considered False (may be repeated)
-    #[arg(long, value_name = "NAME")]
-    always_false: Vec<String>,
-
-    // Disallow dynamic typing:
-    // --disallow-any-unimported Disallow Any types resulting from unfollowed imports
-    // --disallow-any-expr       Disallow all expressions that have type Any
-    /// Disallow functions that have Any in their signature after decorator transformation
-    #[arg(long)]
-    disallow_any_decorated: bool,
-    #[arg(long)]
-    allow_any_decorated: bool,
-    /// Disallow explicit Any in type positions
-    #[arg(long)]
-    disallow_any_explicit: bool,
-    #[arg(long)]
-    allow_any_explicit: bool,
-    /// Disallow usage of generic types that do not specify explicit type parameters (inverse: --allow-any-generics)
-    #[arg(long)]
-    disallow_any_generics: bool,
-    #[arg(long)]
-    allow_any_generics: bool,
-    /// Disallow subclassing values of type 'Any' when defining classes (inverse: --allow-subclassing-any)
-    #[arg(long)]
-    disallow_subclassing_any: bool,
-    #[arg(long)]
-    allow_subclassing_any: bool,
-
-    // Untyped definitions and calls:
-    /// Disallow calling functions without type annotations from functions with type annotations (inverse: --allow-untyped-calls)
-    #[arg(long)]
-    disallow_untyped_calls: bool,
-    #[arg(long)]
-    allow_untyped_calls: bool,
-    // --untyped-calls-exclude MODULE Disable --disallow-untyped-calls for functions/methods coming from specific package, module, or class
-    /// Disallow defining functions without type annotations or with incomplete type annotations (inverse: --allow-untyped-defs)
-    #[arg(long)]
-    disallow_untyped_defs: bool,
-    #[arg(long)]
-    allow_untyped_defs: bool,
-    /// Disallow defining functions with incomplete type annotations (while still allowing entirely unannotated definitions) (inverse: --allow-incomplete-defs)
-    #[arg(long)]
-    disallow_incomplete_defs: bool,
-    #[arg(long)]
-    allow_incomplete_defs: bool,
-    /// Type check the interior of functions without type annotations (inverse: --no-check-untyped-defs)
-    #[arg(long)]
-    check_untyped_defs: bool,
-    #[arg(long)]
-    no_check_untyped_defs: bool,
-    /// Disallow decorating typed functions with untyped decorators (inverse: --allow-untyped-decorators)
-    #[arg(long)]
-    disallow_untyped_decorators: bool,
-    #[arg(long)]
-    allow_untyped_decorators: bool,
-
-    // None and Optional handling:
-    /// Assume arguments with default values of None are Optional (inverse: --no-implicit-optional)
-    #[arg(long)]
-    implicit_optional: bool,
-    #[arg(long)]
-    no_implicit_optional: bool,
-    /// Disable strict Optional checks (inverse: --strict-optional)
-    #[arg(long)]
-    no_strict_optional: bool,
-    #[arg(long)]
-    strict_optional: bool,
-
-    // Configuring warnings:
-    // --warn-redundant-casts    Warn about casting an expression to its inferred type (inverse: --no-warn-redundant-casts)
-    // --warn-unused-ignores     Warn about unneeded '# type: ignore' comments (inverse: --no-warn-unused-ignores)
-    /// Warn about functions that end without returning (inverse: --no-warn-no-return)
-    #[arg(long)]
-    warn_no_return: bool,
-    #[arg(long)]
-    no_warn_no_return: bool,
-    /// Warn about returning values of type Any from non-Any typed functions (inverse: --no-warn-return-any)
-    #[arg(long)]
-    warn_return_any: bool,
-    #[arg(long)]
-    no_warn_return_any: bool,
-    /// Warn about statements or expressions inferred to be unreachable (inverse: --no-warn-unreachable)
-    #[arg(long)]
-    warn_unreachable: bool,
-    #[arg(long)]
-    no_warn_unreachable: bool,
-
-    // Miscellaneous strictness flags:
-    /// Suppress toplevel errors caused by missing annotations (inverse: --disallow-untyped-globals)
-    #[arg(long)]
-    allow_untyped_globals: bool,
-    #[arg(long)]
-    disallow_untyped_globals: bool,
-    /// Allow unconditional variable redefinition with a new type (inverse: --disallow-redefinition)
-    #[arg(long)]
-    allow_redefinition: bool,
-    #[arg(long)]
-    disallow_redefinition: bool,
-    /// For now --allow-redefinition and --allow-redefinition-new are the same (inverse: --disallow-redefinition-new)
-    #[arg(long)]
-    allow_redefinition_new: bool,
-    #[arg(long)]
-    disallow_redefinition_new: bool,
-    /// Treat imports as private unless aliased (inverse: --implicit-reexport)
-    #[arg(long)]
-    no_implicit_reexport: bool,
-    #[arg(long)]
-    implicit_reexport: bool,
-    /// Prohibit equality, identity, and container checks for non-overlapping types (inverse: --no-strict-equality)
-    #[arg(long)]
-    strict_equality: bool,
-    #[arg(long)]
-    no_strict_equality: bool,
-    /// Disable treating bytearray and memoryview as subtypes of bytes
-    #[arg(long)]
-    strict_bytes: bool,
-    /// Enable additional checks that are technically correct but may be impractical in real code.
-    /// For example, this prohibits partial overlap in TypedDict updates, and makes arguments
-    /// prepended via Concatenate positional-only (inverse: --no-extra-checks)
-    #[arg(long)]
-    extra_checks: bool,
-    #[arg(long)]
-    no_extra_checks: bool,
-    /// Strict mode; enables the following flags: --warn-unused-configs, --disallow-any-generics,
-    /// --disallow-subclassing-any, --disallow-untyped-calls, --disallow-untyped-defs,
-    /// --disallow-incomplete-defs, --check-untyped-defs, --disallow-untyped-decorators,
-    /// --warn-redundant-casts, --warn-unused-ignores, --warn-return-any, --no-implicit-reexport,
-    /// --strict-equality, --extra-checks
-    #[arg(long)]
-    strict: bool,
-    /// Disable a specific error code
-    #[arg(long, value_name = "NAME")]
-    disable_error_code: Vec<String>,
-    /// Enable a specific error code
-    #[arg(long, value_name = "NAME")]
-    enable_error_code: Vec<String>,
-
-    // Configuring error messages:
-    /// Show column numbers in error messages (inverse: --hide-column-numbers)
-    #[arg(long)]
-    show_column_numbers: bool,
-    #[arg(long)]
-    hide_column_numbers: bool,
-    /// Show end line/end column numbers in error messages. This implies --show-column-numbers (inverse: --hide-error-end)
-    #[arg(long)]
-    show_error_end: bool,
-    #[arg(long)]
-    hide_error_end: bool,
-    /// Show error codes in error messages (inverse: --hide-error-codes)
-    #[arg(long)]
-    show_error_codes: bool,
-    #[arg(long)]
-    hide_error_codes: bool,
-    // --show-absolute-path Show absolute paths to files (inverse: --hide-absolute-path)
-    /// Use visually nicer output in error messages: Use soft word wrap, show source code snippets,
-    /// and show error location markers (inverse: --no-pretty)
-    #[arg(long)]
-    pretty: bool,
-    #[arg(long)]
-    no_pretty: bool,
-    /// Avoid showing the summary for errors
-    #[arg(long, hide = true)]
-    error_summary: bool,
-    #[arg(long)]
-    no_error_summary: bool,
-    #[arg(long, hide = true)]
-    allow_incomplete_generics: bool,
-    #[arg(long, hide = true)]
-    disallow_incomplete_generics: bool,
-}
 
 pub fn run(cli: Cli) -> ExitCode {
     /*
@@ -322,7 +91,7 @@ fn project_from_cli(
         .settings
         .try_to_apply_environment_variables(&local_fs, &current_dir, lookup_env_var);
 
-    apply_flags(
+    cli_args::apply_flags(
         &local_fs,
         &mut options,
         &mut found.diagnostic_config,
@@ -337,173 +106,11 @@ fn project_from_cli(
     )
 }
 
-fn apply_flags(
-    vfs_handler: &SimpleLocalFS,
-    project_options: &mut ProjectOptions,
-    diagnostic_config: &mut DiagnosticConfig,
-    cli: Cli,
-    current_dir: Arc<AbsPath>,
-    config_path: Option<&AbsPath>,
-) {
-    if cli.mypy_compatible {
-        project_options.settings.mypy_compatible = true;
-    }
-    if cli.no_mypy_compatible {
-        project_options.settings.mypy_compatible = false;
-    }
-    apply_mypy_flags(
-        vfs_handler,
-        project_options,
-        diagnostic_config,
-        cli.mypy_options,
-        current_dir,
-        config_path,
-    )
-}
-
-fn apply_mypy_flags(
-    vfs_handler: &SimpleLocalFS,
-    project_options: &mut ProjectOptions,
-    diagnostic_config: &mut DiagnosticConfig,
-    cli: MypyCli,
-    current_dir: Arc<AbsPath>,
-    config_path: Option<&AbsPath>,
-) {
-    macro_rules! apply {
-        ($to:ident, $attr:ident, $inverse:ident) => {
-            if cli.$attr {
-                $to.$attr = true;
-            }
-            if cli.$inverse {
-                $to.$attr = false;
-            }
-        };
-    }
-    let flags = &mut project_options.flags;
-    if cli.strict {
-        flags.enable_all_strict_flags();
-    }
-    if cli.strict_bytes {
-        flags.enable_strict_bytes();
-    }
-    apply!(flags, strict_optional, no_strict_optional);
-    apply!(flags, strict_equality, no_strict_equality);
-    apply!(flags, implicit_optional, no_implicit_optional);
-    apply!(flags, check_untyped_defs, no_check_untyped_defs);
-    if cli.ignore_missing_imports {
-        flags.ignore_missing_imports = true;
-    }
-    if cli.follow_untyped_imports {
-        flags.follow_untyped_imports = true;
-    }
-    apply!(flags, disallow_untyped_defs, allow_untyped_defs);
-    apply!(flags, disallow_untyped_calls, allow_untyped_calls);
-    apply!(flags, disallow_untyped_decorators, allow_untyped_decorators);
-    apply!(flags, disallow_any_generics, allow_any_generics);
-    apply!(flags, disallow_any_decorated, allow_any_decorated);
-    apply!(flags, disallow_any_explicit, allow_any_explicit);
-    //apply!(disallow_any_unimported, allow_any_unimported);
-    //apply!(disallow_any_expr, allow_any_expr);
-    apply!(flags, disallow_subclassing_any, allow_subclassing_any);
-    apply!(flags, disallow_incomplete_defs, allow_incomplete_defs);
-    apply!(flags, allow_untyped_globals, disallow_untyped_globals);
-    apply!(flags, warn_unreachable, no_warn_unreachable);
-    //apply!(warn_redundant_casts, no_warn_redundant_casts);
-    apply!(flags, warn_return_any, no_warn_return_any);
-    apply!(flags, warn_no_return, no_warn_no_return);
-    apply!(flags, no_implicit_reexport, implicit_reexport);
-    apply!(flags, extra_checks, no_extra_checks);
-    apply!(
-        flags,
-        allow_incomplete_generics,
-        disallow_incomplete_generics
-    );
-
-    apply!(diagnostic_config, show_column_numbers, hide_column_numbers);
-    apply!(diagnostic_config, show_error_end, hide_error_end);
-    apply!(diagnostic_config, show_error_codes, hide_error_codes);
-    apply!(diagnostic_config, pretty, no_pretty);
-    apply!(diagnostic_config, error_summary, no_error_summary);
-
-    apply!(flags, allow_redefinition, disallow_redefinition);
-    if cli.allow_redefinition_new {
-        flags.allow_redefinition = true;
-    }
-    if cli.disallow_redefinition_new {
-        flags.allow_redefinition = false;
-    }
-
-    if cli.platform.is_some() {
-        project_options.settings.platform = cli.platform;
-    }
-    if let Some(python_version) = cli.python_version {
-        project_options.settings.python_version = Some(python_version);
-    }
-    if let Some(p) = cli.python_executable {
-        project_options
-            .settings
-            .apply_python_executable(vfs_handler, &current_dir, config_path, &p)
-            .expect("Error when applying --python-executable")
-    }
-    if let Some(p) = &project_options.settings.environment {
-        tracing::info!("Checking the following environment: {p}");
-    }
-    if !cli.files.is_empty() {
-        project_options
-            .settings
-            .set_files_or_directories_to_check(vfs_handler, &current_dir, config_path, cli.files)
-            .expect("Need a valid glob path as a files argument");
-    }
-    tracing::info!(
-        "Checking the following files: {:?}",
-        &project_options.settings.files_or_directories_to_check
-    );
-    project_options
-        .flags
-        .enabled_error_codes
-        .extend(cli.enable_error_code);
-    project_options
-        .flags
-        .disabled_error_codes
-        .extend(cli.disable_error_code);
-    project_options
-        .flags
-        .always_true_symbols
-        .extend(cli.always_true);
-    project_options
-        .flags
-        .always_false_symbols
-        .extend(cli.always_false);
-
-    if cli.ignore_excludes_from_config {
-        // This is for testing, so we can test all files
-        project_options.flags.excludes.clear();
-    }
-    for r in cli.exclude {
-        project_options
-            .flags
-            .excludes
-            .push(ExcludeRegex::new(r).expect("Invalid --exclude regex"));
-    }
-    tracing::info!(
-        "Found the following excludes: {:?}",
-        project_options
-            .flags
-            .excludes
-            .iter()
-            .map(|e| &e.regex_str)
-            .collect::<Vec<_>>()
-    );
-
-    project_options
-        .settings
-        .mypy_path
-        .push(vfs_handler.normalize_rc_path(current_dir));
-}
-
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+
+    use clap::Parser as _;
 
     use super::*;
 
@@ -815,7 +422,7 @@ mod tests {
     #[test]
     fn test_files_relative_paths() {
         logging_config::setup_logging_for_tests();
-        let mut project_options = ProjectOptions::mypy_default();
+        let mut project_options = config::ProjectOptions::mypy_default();
         let local_fs = SimpleLocalFS::without_watcher();
         let current_dir = local_fs.unchecked_abs_path("/a/b");
         let mut cli = Cli::parse_from([""]);
@@ -828,7 +435,7 @@ mod tests {
             "blub/baz".to_string(),
             "blub/../not_in_blub".to_string(),
         ];
-        apply_flags(
+        cli_args::apply_flags(
             &local_fs,
             &mut project_options,
             &mut DiagnosticConfig::default(),

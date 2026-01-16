@@ -1,5 +1,5 @@
 [package]
-name = "primer"
+name = "cli_args"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,12 +11,11 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
-cli_args.workspace = true
-test_utils.workspace = true
-zmypy.workspace = true
+config.workspace = true
+licensing.workspace = true
+vfs.workspace = true
 
+anyhow.workspace = true
 clap.workspace = true
-logging_config.workspace = true
-
-[features]
-zuban_debug = ["zmypy/zuban_debug"]
+colored.workspace = true
+tracing.workspace = true

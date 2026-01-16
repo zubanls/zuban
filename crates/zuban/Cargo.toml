@@ -11,6 +11,7 @@ authors.workspace = true
 workspace = true
 
 [dependencies]
+cli_args.workspace= true
 logging_config.workspace = true
 zmypy.workspace = true
 zubanls.workspace = true

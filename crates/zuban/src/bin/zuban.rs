@@ -14,22 +14,22 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Checks a file or project for type errors
-    Check(#[command(flatten)] zmypy::Cli),
+    Check(#[command(flatten)] cli_args::Cli),
     /// Type checks files like you would do when calling `mypy`
-    Mypy(#[command(flatten)] zmypy::MypyCli),
+    Mypy(#[command(flatten)] cli_args::MypyCli),
     /// Starts an LSP server
     Server {},
 }
 
 fn main() -> ExitCode {
-    let run_check = |zmypy_config: zmypy::Cli| {
+    let run_check = |zmypy_config: cli_args::Cli| {
         if let Err(err) = logging_config::setup_logging_without_printing_errors_by_default() {
             panic!("{err}")
         };
         zmypy::run(zmypy_config)
     };
     match Cli::parse().command {
-        Commands::Mypy(mypy_options) => run_check(zmypy::Cli {
+        Commands::Mypy(mypy_options) => run_check(cli_args::Cli {
             mypy_compatible: true,
             no_mypy_compatible: false,
             mypy_options,
