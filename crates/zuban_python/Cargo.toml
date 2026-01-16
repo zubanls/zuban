@@ -32,6 +32,7 @@ which = "*"
 
 [dev-dependencies]
 clap.workspace = true
+cli_args.workspace = true
 test_utils.workspace = true
 logging_config.workspace = true
 shlex = "*"

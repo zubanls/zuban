@@ -1659,6 +1659,7 @@ testClassSpecError
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
+testNoConfigFile
 
 # Not working in interpreter
 # Recursive class inheritance

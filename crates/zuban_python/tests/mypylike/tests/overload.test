@@ -1109,7 +1109,7 @@ class B:
         pass
 
 [case no_mypy_compatible_testOverloadWithOverlappingItemsAndAnyArgument8]
-# flags: --no-compatible
+# flags: --no-mypy-compatible
 from typing import overload, Any
 
 @overload

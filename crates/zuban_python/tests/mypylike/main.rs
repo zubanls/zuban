@@ -113,6 +113,78 @@ struct CliArgs {
     stop_after_first_error: bool,
 }
 
+#[derive(Parser)]
+struct PerTestFlags {
+    #[command(flatten)]
+    cli: cli_args::Cli,
+
+    // Maybe implement?
+    #[arg(long)]
+    warn_redundant_casts: bool,
+    #[arg(long)]
+    local_partial_types: bool,
+    #[arg(long)]
+    no_local_partial_types: bool,
+    #[arg(long)]
+    allow_any_unimported: bool,
+    #[arg(long)]
+    disallow_any_unimported: bool,
+    #[arg(long)]
+    disallow_any_expr: bool,
+    #[arg(long)]
+    disable_memoryview_promotion: bool,
+    #[arg(long)]
+    disable_bytearray_promotion: bool,
+    #[arg(long)]
+    warn_unused_ignores: bool,
+    #[arg(long)]
+    namespace_packages: bool,
+    #[arg(long)]
+    no_namespace_packages: bool,
+    #[arg(long)]
+    no_strict_bytes: bool,
+    #[arg(long)]
+    follow_imports: Option<String>,
+
+    // Won't implement, Mypy internals
+    #[arg(long)]
+    no_sqlite_cache: bool,
+    #[arg(long)]
+    soft_error_limit: Option<isize>,
+    #[arg(long)]
+    fast_module_lookup: bool,
+    #[arg(long)]
+    force_union_syntax: bool,
+    #[arg(long)]
+    no_force_union_syntax: bool,
+    #[arg(long)]
+    cache_fine_grained: bool,
+    #[arg(long)]
+    no_incremental: bool,
+    #[arg(long)]
+    bazel: bool,
+    #[arg(long)]
+    enable_incomplete_feature: Option<String>,
+    #[arg(long)]
+    verbose: bool,
+    #[arg(short)]
+    package: Option<String>,
+
+    // Our own
+    #[arg(long)]
+    no_typecheck: bool,
+    #[arg(long)]
+    only_language_server: bool,
+    #[arg(long)]
+    no_windows: bool,
+    #[arg(long)]
+    use_joins: bool,
+    #[arg(long)]
+    no_use_joins: bool,
+    #[arg(long)]
+    disallow_empty_bodies: bool,
+}
+
 #[derive(Debug)]
 struct TestCase<'name, 'code> {
     file_name: &'name str,
@@ -382,6 +454,11 @@ impl TestCase<'_, '_> {
 
     fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
         let steps = calculate_steps(Some(self.file_name), self.code);
+        let flags =
+            match PerTestFlags::try_parse_from(std::iter::once(&"").chain(steps.flags.iter())) {
+                Ok(flags) => flags,
+                Err(err) => return Err(err.to_string()),
+            };
         if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
             || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
             || steps.flags.contains(&"--only-language-server")
@@ -390,7 +467,6 @@ impl TestCase<'_, '_> {
         {
             return Ok(false);
         }
-        let no_typecheck = steps.flags.contains(&"--no-typecheck");
         let local_fs = SimpleLocalFS::without_watcher();
         let (mut project, diagnostic_config) =
             self.initialize_flags(projects, &local_fs, mypy_compatible, &steps);
@@ -453,7 +529,7 @@ impl TestCase<'_, '_> {
                 default_panic(info);
             }));
 
-            let diagnostics: Vec<_> = if no_typecheck {
+            let diagnostics: Vec<_> = if flags.no_typecheck {
                 vec![]
             } else {
                 project
