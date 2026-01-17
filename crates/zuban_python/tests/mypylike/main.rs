@@ -199,27 +199,26 @@ impl TestCase<'_, '_> {
         projects: &'p mut ProjectsCache,
         local_fs: &SimpleLocalFS,
         mypy_compatible: bool,
-        steps: &test_utils::Steps,
+        flags: PerTestFlags,
+        steps: &[Step],
     ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
         let mut diagnostic_config = DiagnosticConfig {
             show_error_codes: false,
             ..Default::default()
         };
-        let arg_after = |after_name| {
-            let mut flag_iterator = steps.flags.iter();
-            (flag_iterator.any(|x| *x == after_name))
-                .then(|| flag_iterator.next().unwrap().to_string())
-        };
-
-        let mut config = if mypy_compatible {
-            TypeCheckerFlags::mypy_default()
+        let po = if mypy_compatible {
+            ProjectOptions::mypy_default()
         } else {
-            TypeCheckerFlags::default()
+            ProjectOptions::default()
         };
-        let mut settings = Settings::default();
+        let mut config = po.flags;
+        // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
+        // different argument types.
+        //config.python_version = self.default_python_version();
+        let mut settings = po.settings;
         let mut project_options = None;
 
-        if let Some(mypy_ini_config) = steps.steps[0].files.get("mypy.ini") {
+        if let Some(mypy_ini_config) = steps[0].files.get("mypy.ini") {
             println!("Loading mypy.ini for {} ({})", self.name, self.file_name);
             let ini = cleanup_mypy_issues(mypy_ini_config).unwrap();
             let mut new = BASE_PATH.with(|base_path| {
@@ -237,8 +236,7 @@ impl TestCase<'_, '_> {
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);
             project_options = Some(new);
-        }
-        if let Some(pyproject_toml) = steps.steps[0].files.get("pyproject.toml") {
+        } else if let Some(pyproject_toml) = steps[0].files.get("pyproject.toml") {
             println!(
                 "Loading pyproject.toml for {} ({})",
                 self.name, self.file_name
@@ -266,6 +264,7 @@ impl TestCase<'_, '_> {
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);
             project_options = Some(new);
+        } else {
         }
 
         // Appears mostly in pep561.test
@@ -288,160 +287,67 @@ impl TestCase<'_, '_> {
             );
         };
 
-        if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
-            diagnostic_config.show_error_codes = true;
-        }
-        if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
-            diagnostic_config.show_column_numbers = true;
-        }
-        if steps.flags.contains(&"--show-error-end") {
-            diagnostic_config.show_error_end = true;
-        }
+        settings.mypy_compatible = mypy_compatible;
 
-        if steps.flags.contains(&"--strict") {
-            config.enable_all_strict_flags();
-        } else if steps.flags.contains(&"--strict-bytes") {
-            config.enable_strict_bytes()
+        match self.file_name {
+            "check-errorcodes" => diagnostic_config.show_error_codes = true,
+            "check-columns" => diagnostic_config.show_column_numbers = true,
+            "check-recursive-types" => {
+                // This feels very broken, but for now we disable these errors, because they don't feel
+                // wrong, but Mypy does not have them.
+                config.disabled_error_codes.push("used-before-def".into())
+            }
+            "check-modules-case" => {
+                // These tests are checking for case insensitive file systems like macOS, Windows
+                config.case_sensitive = false;
+            }
+            _ => {
+                if self.file_name.starts_with("fine-grained") {
+                    config.local_partial_types = true;
+                }
+            }
         }
-        let set_bool_flag = |change: &mut _, flag| {
-            if steps.flags.contains(&flag) {
-                *change = true;
-            }
-        };
-        let set_reverse_bool_flag = |change: &mut _, flag| {
-            if steps.flags.contains(&flag) {
-                *change = false;
-            }
-        };
-        set_bool_flag(&mut diagnostic_config.pretty, "--pretty");
-        set_bool_flag(&mut config.implicit_optional, "--implicit-optional");
-        set_bool_flag(&mut config.check_untyped_defs, "--check-untyped-defs");
-        set_bool_flag(&mut config.disallow_untyped_defs, "--disallow-untyped-defs");
-        set_bool_flag(
-            &mut config.disallow_untyped_calls,
-            "--disallow-untyped-calls",
-        );
-        set_bool_flag(
-            &mut config.disallow_untyped_decorators,
-            "--disallow-untyped-decorators",
-        );
-        set_bool_flag(&mut config.disallow_any_generics, "--disallow-any-generics");
-        set_bool_flag(
-            &mut config.disallow_any_decorated,
-            "--disallow-any-decorated",
-        );
-        set_bool_flag(&mut config.disallow_any_explicit, "--disallow-any-explicit");
-        set_bool_flag(&mut config.disallow_any_expr, "--disallow-any-expr");
-        set_bool_flag(
-            &mut config.disallow_any_unimported,
-            "--disallow-any-unimported",
-        );
-        set_bool_flag(
-            &mut config.disallow_subclassing_any,
-            "--disallow-subclassing-any",
-        );
-        set_bool_flag(
-            &mut config.disallow_incomplete_defs,
-            "--disallow-incomplete-defs",
-        );
-        set_bool_flag(&mut config.allow_untyped_globals, "--allow-untyped-globals");
-        set_bool_flag(&mut config.warn_unreachable, "--warn-unreachable");
-        set_bool_flag(&mut config.warn_redundant_casts, "--warn-redundant-casts");
-        set_bool_flag(&mut config.warn_return_any, "--warn-return-any");
-        set_bool_flag(&mut config.warn_no_return, "");
-        set_bool_flag(&mut config.local_partial_types, "--local-partial-types");
-        set_bool_flag(&mut config.no_implicit_reexport, "--no-implicit-reexport");
-        set_bool_flag(
-            &mut config.disable_bytearray_promotion,
-            "--disable-bytearray-promotion",
-        );
-        set_bool_flag(
-            &mut config.disable_memoryview_promotion,
-            "--disable-memoryview-promotion",
-        );
-        set_bool_flag(&mut config.strict_equality, "--strict-equality");
-        set_bool_flag(&mut config.extra_checks, "--extra-checks");
-        set_bool_flag(&mut config.allow_redefinition, "--allow-redefinition");
-        set_bool_flag(&mut config.allow_redefinition, "--allow-redefinition-new");
-        set_bool_flag(
-            &mut config.ignore_missing_imports,
-            "--ignore-missing-imports",
-        );
-        set_bool_flag(
-            &mut config.follow_untyped_imports,
-            "--follow-untyped-imports",
-        );
-        set_bool_flag(&mut config.use_joins, "--use-joins");
-        set_bool_flag(&mut config.warn_no_return, "--warn-no-return");
-        set_reverse_bool_flag(&mut config.warn_no_return, "--no-warn-no-return");
-        set_reverse_bool_flag(&mut config.strict_optional, "--no-strict-optional");
-        set_reverse_bool_flag(&mut config.local_partial_types, "--no-local-partial-types");
-        set_reverse_bool_flag(&mut config.disallow_any_generics, "--allow-any-generics");
-        set_reverse_bool_flag(&mut config.allow_redefinition, "--disallow-redefinition");
-        set_reverse_bool_flag(&mut config.check_untyped_defs, "--no-check-untyped-defs");
-        set_reverse_bool_flag(&mut config.warn_unreachable, "--no-warn-unreachable");
-        set_reverse_bool_flag(
-            &mut config.allow_untyped_globals,
-            "--disallow-untyped-globals",
-        );
-        set_reverse_bool_flag(&mut config.use_joins, "--no-use-joins");
-        set_bool_flag(
-            &mut config.allow_incomplete_generics,
-            "--allow-incomplete-generics",
-        );
-        set_reverse_bool_flag(
-            &mut config.allow_incomplete_generics,
-            "--disallow-incomplete-generics",
-        );
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
-        set_reverse_bool_flag(&mut config.allow_empty_bodies, "--disallow-empty-bodies");
-        settings.platform = arg_after("--platform");
-        settings.mypy_compatible = mypy_compatible;
 
-        if let Some(version) = arg_after("--python-version") {
-            settings.python_version = Some(version.parse().unwrap());
-        } else {
-            // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
-            // different argument types.
-            //config.python_version = self.default_python_version();
-        }
+        BASE_PATH.with(|base_path| {
+            cli_args::apply_flags_detailed(
+                local_fs,
+                &mut settings,
+                &mut config,
+                &mut diagnostic_config,
+                flags.cli,
+                NormalizedPath::arc_to_abs_path(base_path.clone()),
+                None,
+            );
+        });
 
-        {
-            let mut flag_iterator = steps.flags.iter();
-            if flag_iterator.any(|x| *x == "--platform") {
-                settings.platform = Some(flag_iterator.next().unwrap().to_string());
-            }
-        }
-
-        let gather_list = |push_to: &mut Vec<_>, wanted_flag: &str| {
-            let mut flag_iterator = steps.flags.iter();
-            while let Some(flag) = flag_iterator.next() {
-                if flag == &wanted_flag {
-                    push_to.push(flag_iterator.next().unwrap().to_string());
-                } else if let Some(rest) = flag.strip_prefix(wanted_flag)
-                    && let Some(name) = rest.strip_prefix('=')
-                {
-                    push_to.push(name.to_string())
+        macro_rules! set_flag {
+            ($name:ident) => {
+                if flags.$name {
+                    config.$name = true;
                 }
-            }
-        };
-        gather_list(&mut config.always_true_symbols, "--always-true");
-        gather_list(&mut config.always_false_symbols, "--always-false");
-        gather_list(&mut config.enabled_error_codes, "--enable-error-code");
-        gather_list(&mut config.disabled_error_codes, "--disable-error-code");
-
-        if self.file_name == "check-recursive-types" {
-            // This feels very broken, but for now we disable these errors, because they don't feel
-            // wrong, but Mypy does not have them.
-            config.disabled_error_codes.push("used-before-def".into());
-        } else if self.file_name == "check-modules-case" {
-            // These tests are checking for case insensitive file systems like macOS, Windows
-            config.case_sensitive = false;
-        } else if self.file_name.starts_with("fine-grained") {
-            config.local_partial_types = true;
+            };
         }
+
+        set_flag!(disallow_any_unimported);
+        set_flag!(disallow_any_expr);
+        set_flag!(warn_redundant_casts);
+        set_flag!(local_partial_types);
+        set_flag!(disable_bytearray_promotion);
+        set_flag!(disable_memoryview_promotion);
+        set_flag!(use_joins);
+        if flags.no_use_joins {
+            config.use_joins = false;
+        }
+        if flags.no_local_partial_types {
+            config.local_partial_types = false;
+        }
+        if flags.disallow_empty_bodies {
+            config.allow_empty_bodies = false;
+        }
+
         let project = if let Some(mut project_options) = project_options {
             project_options.settings = settings;
             project_options.flags = config;
@@ -454,35 +360,37 @@ impl TestCase<'_, '_> {
 
     fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
         let steps = calculate_steps(Some(self.file_name), self.code);
-        let flags =
-            match PerTestFlags::try_parse_from(std::iter::once(&"").chain(steps.flags.iter())) {
-                Ok(flags) => flags,
-                Err(err) => return Err(err.to_string()),
-            };
-        if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
-            || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
-            || steps.flags.contains(&"--only-language-server")
-                && !matches!(projects.mode, Mode::LanguageServer)
-            || steps.flags.contains(&"--no-windows") && cfg!(windows)
+        let flags = match PerTestFlags::try_parse_from(
+            std::iter::once("").chain(steps.flags.into_iter()),
+        ) {
+            Ok(flags) => flags,
+            Err(err) => return Err(err.to_string()),
+        };
+        let steps = steps.steps;
+        if flags.cli.mypy_compatible && !mypy_compatible
+            || flags.cli.no_mypy_compatible && mypy_compatible
+            || flags.only_language_server && !matches!(projects.mode, Mode::LanguageServer)
+            || flags.no_windows && cfg!(windows)
         {
             return Ok(false);
         }
         let local_fs = SimpleLocalFS::without_watcher();
+        let no_typecheck = flags.no_typecheck;
         let (mut project, diagnostic_config) =
-            self.initialize_flags(projects, &local_fs, mypy_compatible, &steps);
+            self.initialize_flags(projects, &local_fs, mypy_compatible, flags, &steps);
 
         let is_parse_test = self.file_name.starts_with("parse");
         let is_semanal_test = self.file_name.starts_with("semanal-");
 
         let mut result = Ok(true);
         let project = project.as_mut();
-        for (i, step) in steps.steps.iter().enumerate() {
+        for (i, step) in steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
                     "\nTest: {}: Step {}/{}",
                     self.format(mypy_compatible),
                     i + 1,
-                    steps.steps.len()
+                    steps.len()
                 );
             }
             let mut wanted = initialize_and_return_wanted_output(
@@ -495,7 +403,7 @@ impl TestCase<'_, '_> {
             if !self.from_mypy_test_suite {
                 BASE_PATH.with(|base_path| {
                     let mut previously_checked = FastHashSet::default();
-                    for step in steps.steps.iter().take(i + 1).rev() {
+                    for step in steps.iter().take(i + 1).rev() {
                         for (path, code) in &step.files {
                             if !previously_checked.insert(path) {
                                 continue;
@@ -529,7 +437,7 @@ impl TestCase<'_, '_> {
                 default_panic(info);
             }));
 
-            let diagnostics: Vec<_> = if flags.no_typecheck {
+            let diagnostics: Vec<_> = if no_typecheck {
                 vec![]
             } else {
                 project
@@ -650,12 +558,12 @@ impl TestCase<'_, '_> {
                     &self.name,
                     self.file_name,
                     i + 1,
-                    steps.steps.len(),
+                    steps.len(),
                 ));
                 break;
             }
         }
-        for step in &steps.steps {
+        for step in &steps {
             for path in step.files.keys() {
                 // We need to unload the whole directory, otherwise we might leave up namespace
                 // packages for other tests.

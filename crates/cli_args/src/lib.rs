@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 pub use config::DiagnosticConfig;
 
-use config::{ExcludeRegex, ProjectOptions, PythonVersion};
+use config::{ExcludeRegex, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
 
 use clap::Parser;
@@ -244,15 +244,36 @@ pub fn apply_flags(
     current_dir: Arc<AbsPath>,
     config_path: Option<&AbsPath>,
 ) {
+    apply_flags_detailed(
+        vfs_handler,
+        &mut project_options.settings,
+        &mut project_options.flags,
+        diagnostic_config,
+        cli,
+        current_dir,
+        config_path,
+    )
+}
+
+pub fn apply_flags_detailed(
+    vfs_handler: &SimpleLocalFS,
+    settings: &mut Settings,
+    flags: &mut TypeCheckerFlags,
+    diagnostic_config: &mut DiagnosticConfig,
+    cli: Cli,
+    current_dir: Arc<AbsPath>,
+    config_path: Option<&AbsPath>,
+) {
     if cli.mypy_compatible {
-        project_options.settings.mypy_compatible = true;
+        settings.mypy_compatible = true;
     }
     if cli.no_mypy_compatible {
-        project_options.settings.mypy_compatible = false;
+        settings.mypy_compatible = false;
     }
     apply_mypy_flags(
         vfs_handler,
-        project_options,
+        settings,
+        flags,
         diagnostic_config,
         cli.mypy_options,
         current_dir,
@@ -262,7 +283,8 @@ pub fn apply_flags(
 
 fn apply_mypy_flags(
     vfs_handler: &SimpleLocalFS,
-    project_options: &mut ProjectOptions,
+    settings: &mut Settings,
+    flags: &mut TypeCheckerFlags,
     diagnostic_config: &mut DiagnosticConfig,
     cli: MypyCli,
     current_dir: Arc<AbsPath>,
@@ -278,7 +300,6 @@ fn apply_mypy_flags(
             }
         };
     }
-    let flags = &mut project_options.flags;
     if cli.strict {
         flags.enable_all_strict_flags();
     }
@@ -333,69 +354,52 @@ fn apply_mypy_flags(
     }
 
     if cli.platform.is_some() {
-        project_options.settings.platform = cli.platform;
+        settings.platform = cli.platform;
     }
     if let Some(python_version) = cli.python_version {
-        project_options.settings.python_version = Some(python_version);
+        settings.python_version = Some(python_version);
     }
     if let Some(p) = cli.python_executable {
-        project_options
-            .settings
+        settings
             .apply_python_executable(vfs_handler, &current_dir, config_path, &p)
             .expect("Error when applying --python-executable")
     }
-    if let Some(p) = &project_options.settings.environment {
+    if let Some(p) = &settings.environment {
         tracing::info!("Checking the following environment: {p}");
     }
     if !cli.files.is_empty() {
-        project_options
-            .settings
+        settings
             .set_files_or_directories_to_check(vfs_handler, &current_dir, config_path, cli.files)
             .expect("Need a valid glob path as a files argument");
     }
     tracing::info!(
         "Checking the following files: {:?}",
-        &project_options.settings.files_or_directories_to_check
+        &settings.files_or_directories_to_check
     );
-    project_options
-        .flags
-        .enabled_error_codes
-        .extend(cli.enable_error_code);
-    project_options
-        .flags
-        .disabled_error_codes
-        .extend(cli.disable_error_code);
-    project_options
-        .flags
-        .always_true_symbols
-        .extend(cli.always_true);
-    project_options
-        .flags
-        .always_false_symbols
-        .extend(cli.always_false);
+    flags.enabled_error_codes.extend(cli.enable_error_code);
+    flags.disabled_error_codes.extend(cli.disable_error_code);
+    flags.always_true_symbols.extend(cli.always_true);
+    flags.always_false_symbols.extend(cli.always_false);
 
     if cli.ignore_excludes_from_config {
         // This is for testing, so we can test all files
-        project_options.flags.excludes.clear();
+        flags.excludes.clear();
     }
     for r in cli.exclude {
-        project_options
-            .flags
+        flags
             .excludes
             .push(ExcludeRegex::new(r).expect("Invalid --exclude regex"));
     }
     tracing::info!(
         "Found the following excludes: {:?}",
-        project_options
-            .flags
+        flags
             .excludes
             .iter()
             .map(|e| &e.regex_str)
             .collect::<Vec<_>>()
     );
 
-    project_options
-        .settings
+    settings
         .mypy_path
         .push(vfs_handler.normalize_rc_path(current_dir));
 }
