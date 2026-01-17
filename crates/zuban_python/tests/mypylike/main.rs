@@ -358,21 +358,14 @@ impl TestCase<'_, '_> {
         (project, diagnostic_config)
     }
 
-    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
+    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> anyhow::Result<bool> {
         let steps = calculate_steps(Some(self.file_name), self.code);
         // We could use PerTestFlags::try_parse_from, but that's much slower, because it recreates
         // the Command each time.
-        let matches = match projects
+        let matches = projects
             .command
-            .try_get_matches_from_mut(std::iter::once("").chain(steps.flags.into_iter()))
-        {
-            Ok(matches) => matches,
-            Err(err) => return Err(err.to_string()),
-        };
-        let flags: PerTestFlags = match PerTestFlags::from_arg_matches(&matches) {
-            Ok(flags) => flags,
-            Err(err) => return Err(err.to_string()),
-        };
+            .try_get_matches_from_mut(std::iter::once("").chain(steps.flags.into_iter()))?;
+        let flags: PerTestFlags = PerTestFlags::from_arg_matches(&matches)?;
         let steps = steps.steps;
         if flags.cli.mypy_compatible && !mypy_compatible
             || flags.cli.no_mypy_compatible && mypy_compatible
@@ -553,7 +546,7 @@ impl TestCase<'_, '_> {
                 wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
 
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
-                result = Err(format!(
+                result = Err(anyhow::anyhow!(
                     "\nMismatch:\n\
                      Wanted lines: {wanted_cleaned_up:?}\n\n\
                      Actual lines: {actual_lines:?}\n\n\
