@@ -10,7 +10,7 @@ use std::{
     time::Instant,
 };
 
-use clap::Parser;
+use clap::{Command, CommandFactory as _, FromArgMatches as _, Parser};
 
 use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use ide::find_and_check_ide_tests;
@@ -360,9 +360,16 @@ impl TestCase<'_, '_> {
 
     fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> Result<bool, String> {
         let steps = calculate_steps(Some(self.file_name), self.code);
-        let flags = match PerTestFlags::try_parse_from(
-            std::iter::once("").chain(steps.flags.into_iter()),
-        ) {
+        // We could use PerTestFlags::try_parse_from, but that's much slower, because it recreates
+        // the Command each time.
+        let matches = match projects
+            .command
+            .try_get_matches_from_mut(std::iter::once("").chain(steps.flags.into_iter()))
+        {
+            Ok(matches) => matches,
+            Err(err) => return Err(err.to_string()),
+        };
+        let flags: PerTestFlags = match PerTestFlags::from_arg_matches(&matches) {
             Ok(flags) => flags,
             Err(err) => return Err(err.to_string()),
         };
@@ -887,6 +894,7 @@ fn calculate_filters(args: &[String]) -> Vec<&str> {
 }
 
 struct ProjectsCache {
+    command: Command,
     base_project: Option<Project>,
     base_version: PythonVersion,
     map: HashMap<(Settings, TypeCheckerFlags), Project>,
@@ -913,6 +921,7 @@ impl ProjectsCache {
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
+            command: PerTestFlags::command(),
             base_project: reuse_db.then(|| Project::without_watcher(po, mode)),
             base_version,
             mode,
