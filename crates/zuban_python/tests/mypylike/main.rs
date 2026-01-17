@@ -113,7 +113,7 @@ struct CliArgs {
     stop_after_first_error: bool,
 }
 
-#[derive(Parser)]
+#[derive(Parser, Default)]
 struct PerTestFlags {
     #[command(flatten)]
     cli: cli_args::Cli,
@@ -360,12 +360,17 @@ impl TestCase<'_, '_> {
 
     fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> anyhow::Result<bool> {
         let steps = calculate_steps(Some(self.file_name), self.code);
-        // We could use PerTestFlags::try_parse_from, but that's much slower, because it recreates
-        // the Command each time.
-        let matches = projects
-            .command
-            .try_get_matches_from_mut(std::iter::once("").chain(steps.flags.into_iter()))?;
-        let flags: PerTestFlags = PerTestFlags::from_arg_matches(&matches)?;
+        // Avoid parsing, because it's pretty slow and let's not do it if not strictly necessary.
+        let flags = if steps.flags.is_empty() {
+            PerTestFlags::default()
+        } else {
+            // We could use PerTestFlags::try_parse_from, but that's much slower, because it recreates
+            // the Command each time.
+            let matches = projects
+                .command
+                .try_get_matches_from_mut(std::iter::once("").chain(steps.flags.into_iter()))?;
+            PerTestFlags::from_arg_matches(&matches)?
+        };
         let steps = steps.steps;
         if flags.cli.mypy_compatible && !mypy_compatible
             || flags.cli.no_mypy_compatible && mypy_compatible

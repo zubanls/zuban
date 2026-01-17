@@ -6,7 +6,7 @@ use config::{ExcludeRegex, ProjectOptions, PythonVersion, Settings, TypeCheckerF
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
 
 use clap::Parser;
-#[derive(Parser)]
+#[derive(Parser, Default)]
 pub struct Cli {
     // Additional options
     /// Enable or disable mypy compatibility. By default disabled and enabled if a Mypy config is found (inverse: --no-mypy-compatible)
@@ -18,7 +18,7 @@ pub struct Cli {
     pub mypy_options: MypyCli,
 }
 
-#[derive(Parser, Clone)]
+#[derive(Parser, Clone, Default)]
 pub struct MypyCli {
     // Running code:
     /// Regular expression to match file names, directory names or paths which mypy should ignore
