@@ -48,7 +48,7 @@ use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 pub use code_actions::CodeAction;
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
-pub use database::Mode;
+pub use database::RunCause;
 use database::{Database, PythonProject};
 pub use diagnostics::Severity;
 pub use documentation::DocumentationResult;
@@ -67,8 +67,8 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn new(vfs: Box<dyn VfsHandler>, options: ProjectOptions, mode: Mode) -> Self {
-        let db = Database::new(vfs, options, mode);
+    pub fn new(vfs: Box<dyn VfsHandler>, options: ProjectOptions, cause: RunCause) -> Self {
+        let db = Database::new(vfs, options, cause);
         Self::new_internal(db)
     }
 
@@ -82,12 +82,12 @@ impl Project {
         options: ProjectOptions,
         recovery: PanicRecovery,
     ) -> Self {
-        let db = Database::from_recovery(vfs, options, recovery.mode, recovery.vfs);
+        let db = Database::from_recovery(vfs, options, recovery.run_cause, recovery.vfs);
         Self { db }
     }
 
-    pub fn without_watcher(options: ProjectOptions, mode: Mode) -> Self {
-        let db = Database::new(Box::new(LocalFS::without_watcher()), options, mode);
+    pub fn without_watcher(options: ProjectOptions, cause: RunCause) -> Self {
+        let db = Database::new(Box::new(LocalFS::without_watcher()), options, cause);
         Self::new_internal(db)
     }
 
@@ -98,7 +98,7 @@ impl Project {
     pub fn into_panic_recovery(self) -> PanicRecovery {
         PanicRecovery {
             vfs: self.db.vfs.into_panic_recovery(),
-            mode: self.db.mode,
+            run_cause: self.db.run_cause,
         }
     }
 
@@ -585,5 +585,5 @@ impl Diagnostics<'_> {
 
 pub struct PanicRecovery {
     vfs: vfs::VfsPanicRecovery<Tree>,
-    mode: Mode,
+    run_cause: RunCause,
 }

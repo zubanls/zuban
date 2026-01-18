@@ -14,7 +14,7 @@ use utils::FastHashMap;
 use vfs::{Directory, DirectoryEntry, Entries, FileEntry, Parent, PathWithScheme, WorkspaceKind};
 
 use crate::{
-    Document, InputPosition, Mode, PositionInfos, Project,
+    Document, InputPosition, PositionInfos, Project, RunCause,
     database::{Database, Specific},
     debug,
     file::{
@@ -483,7 +483,7 @@ impl TypeshedSymbols {
             let cache = || {
                 let mut options = ProjectOptions::default();
                 options.settings.typeshed_path = db.project.settings.typeshed_path.clone();
-                let project = Project::without_watcher(options, Mode::LanguageServer);
+                let project = Project::without_watcher(options, RunCause::LanguageServer);
                 Self::generate_typeshed_symbols(&project.db)
             };
 

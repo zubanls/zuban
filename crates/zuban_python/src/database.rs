@@ -1006,8 +1006,8 @@ impl fmt::Debug for Database {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Mode {
-    TypeCheckingOnly,
+pub enum RunCause {
+    TypeChecking,
     LanguageServer,
 }
 
@@ -1015,18 +1015,18 @@ pub(crate) struct Database {
     pub vfs: Vfs<PythonFile>,
     pub python_state: PythonState,
     pub project: PythonProject,
-    pub mode: Mode,
+    pub run_cause: RunCause,
 }
 
 impl Database {
-    pub fn new(vfs_handler: Box<dyn VfsHandler>, options: ProjectOptions, mode: Mode) -> Self {
-        Self::new_internal(vfs_handler, options, mode, None)
+    pub fn new(vfs_handler: Box<dyn VfsHandler>, options: ProjectOptions, cause: RunCause) -> Self {
+        Self::new_internal(vfs_handler, options, cause, None)
     }
 
     pub fn new_internal(
         vfs_handler: Box<dyn VfsHandler>,
         options: ProjectOptions,
-        mode: Mode,
+        run_cause: RunCause,
         recovery: Option<vfs::VfsPanicRecovery<Tree>>,
     ) -> Self {
         let project = PythonProject {
@@ -1085,7 +1085,7 @@ impl Database {
             vfs,
             python_state: PythonState::reserve(),
             project,
-            mode,
+            run_cause,
         };
 
         this.generate_python_state();
@@ -1095,10 +1095,10 @@ impl Database {
     pub fn from_recovery(
         vfs_handler: Box<dyn VfsHandler>,
         options: ProjectOptions,
-        mode: Mode,
+        cause: RunCause,
         recovery: vfs::VfsPanicRecovery<Tree>,
     ) -> Self {
-        Database::new_internal(vfs_handler, options, mode, Some(recovery))
+        Database::new_internal(vfs_handler, options, cause, Some(recovery))
     }
 
     pub fn try_to_reuse_project_resources_for_tests(&mut self, options: ProjectOptions) -> Self {
@@ -1121,7 +1121,7 @@ impl Database {
         let mut new_db = Self {
             vfs,
             python_state: self.python_state.clone(),
-            mode: self.mode,
+            run_cause: self.run_cause,
             project,
         };
 

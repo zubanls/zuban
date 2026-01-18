@@ -1,12 +1,12 @@
 use config::ProjectOptions;
 use vfs::PathWithScheme;
-use zuban_python::{InputPosition, Mode, Project};
+use zuban_python::{InputPosition, Project, RunCause};
 
 #[test]
 fn test_signature_param_position() {
     let mut po = ProjectOptions::default();
     po.settings.typeshed_path = Some(test_utils::typeshed_path());
-    let mut project = Project::without_watcher(po, Mode::LanguageServer);
+    let mut project = Project::without_watcher(po, RunCause::LanguageServer);
     let vfs = project.vfs_handler();
     let path = PathWithScheme::with_file_scheme(
         vfs.normalize_rc_path(vfs.unchecked_abs_path(&format!("/signature-test/test.py"))),

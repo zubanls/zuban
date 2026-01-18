@@ -12,7 +12,7 @@ use std::{
 
 use config::{ProjectOptions, Settings, TypeCheckerFlags};
 use vfs::{LocalFS, NormalizedPath};
-use zuban_python::{Mode, Project};
+use zuban_python::{Project, RunCause};
 
 #[derive(Debug)]
 pub struct Filter {
@@ -127,7 +127,7 @@ fn main() -> ExitCode {
 
     let files = python_files(&po.settings.mypy_path);
 
-    let mut project = Project::without_watcher(po, Mode::LanguageServer);
+    let mut project = Project::without_watcher(po, RunCause::LanguageServer);
 
     let start = Instant::now();
     let mut full_count = 0;

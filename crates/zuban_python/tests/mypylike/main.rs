@@ -18,7 +18,7 @@ use regex::{Captures, Regex, Replacer};
 use test_utils::{Step, calculate_steps};
 use utils::FastHashSet;
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
-use zuban_python::{Mode, Project};
+use zuban_python::{Project, RunCause};
 
 const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     // --allow-redefinition tests
@@ -363,7 +363,7 @@ impl TestCase<'_, '_> {
         let steps = steps.steps;
         if flags.cli.mypy_compatible && !mypy_compatible
             || flags.cli.no_mypy_compatible && mypy_compatible
-            || flags.only_language_server && !matches!(projects.mode, Mode::LanguageServer)
+            || flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
             || flags.no_windows && cfg!(windows)
         {
             return Ok(false);
@@ -885,7 +885,7 @@ struct ProjectsCache {
     base_project: Option<Project>,
     base_version: PythonVersion,
     map: HashMap<(Settings, TypeCheckerFlags), Project>,
-    mode: Mode,
+    run_cause: RunCause,
 }
 
 fn set_mypy_path(options: &mut ProjectOptions) {
@@ -902,16 +902,16 @@ fn base_path_join(local_fs: &dyn VfsHandler, other: &str) -> PathWithScheme {
 }
 
 impl ProjectsCache {
-    fn new(reuse_db: bool, mode: Mode) -> Self {
+    fn new(reuse_db: bool, run_cause: RunCause) -> Self {
         let mut po = ProjectOptions::mypy_default();
         let base_version = po.settings.python_version_or_default();
         po.settings.typeshed_path = Some(test_utils::typeshed_path());
         set_mypy_path(&mut po);
         Self {
             command: PerTestFlags::command(),
-            base_project: reuse_db.then(|| Project::without_watcher(po, mode)),
+            base_project: reuse_db.then(|| Project::without_watcher(po, run_cause)),
             base_version,
-            mode,
+            run_cause,
             map: Default::default(),
         }
     }
@@ -926,7 +926,7 @@ impl ProjectsCache {
             let project = if key.0.python_version_or_default() == self.base_version {
                 self.try_to_reuse_project_parts(options)
             } else {
-                Project::without_watcher(options, self.mode)
+                Project::without_watcher(options, self.run_cause)
             };
             self.map.insert(key.clone(), project);
         }
@@ -938,7 +938,7 @@ impl ProjectsCache {
             base_project.try_to_reuse_project_resources_for_tests(options)
         } else {
             options.settings.typeshed_path = Some(test_utils::typeshed_path());
-            Project::without_watcher(options, self.mode)
+            Project::without_watcher(options, self.run_cause)
         }
     }
 }
@@ -973,14 +973,20 @@ fn main() -> ExitCode {
     if !cli_args.only_language_server {
         error_count += run(
             &cli_args,
-            Mode::TypeCheckingOnly,
+            RunCause::TypeChecking,
             &files,
             &skipped,
             &filters,
         );
     }
     if !cli_args.only_typecheck && error_count == 0 {
-        error_count += run(&cli_args, Mode::LanguageServer, &files, &skipped, &filters)
+        error_count += run(
+            &cli_args,
+            RunCause::LanguageServer,
+            &files,
+            &skipped,
+            &filters,
+        )
     }
 
     ExitCode::from((error_count > 0) as u8)
@@ -988,13 +994,13 @@ fn main() -> ExitCode {
 
 fn run(
     cli_args: &CliArgs,
-    mode: Mode,
+    run_cause: RunCause,
     files: &[(bool, PathBuf)],
     skipped: &[Skipped],
     filters: &[&str],
 ) -> usize {
     let start = Instant::now();
-    let mut projects = ProjectsCache::new(!cli_args.no_reuse_db, mode);
+    let mut projects = ProjectsCache::new(!cli_args.no_reuse_db, run_cause);
     let mut full_count = 0;
     let mut passed_count = 0;
     let mut error_count = 0;
@@ -1062,11 +1068,11 @@ fn run(
     };
     println!(
         "Passed {passed_count} of {full_count} ({error_count} error{error_s}) \
-         mypy-like tests in {file_count} files; finished in {:.2}s (mode={})",
+         mypy-like tests in {file_count} files; finished in {:.2}s (cause={})",
         start.elapsed().as_secs_f32(),
-        match mode {
-            Mode::TypeCheckingOnly => "type-checking",
-            Mode::LanguageServer => "language-server",
+        match run_cause {
+            RunCause::TypeChecking => "type-checking",
+            RunCause::LanguageServer => "language-server",
         }
     );
     error_count

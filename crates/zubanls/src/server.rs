@@ -18,7 +18,7 @@ use lsp_types::{TextDocumentPositionParams, Uri};
 use notify::EventKind;
 use serde::{Serialize, de::DeserializeOwned};
 use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
-use zuban_python::{Mode, PanicRecovery, Project};
+use zuban_python::{PanicRecovery, Project, RunCause};
 
 use crate::capabilities::{ClientCapabilities, server_capabilities};
 use crate::notebooks::Notebooks;
@@ -367,7 +367,7 @@ impl<'sender> GlobalState<'sender> {
             *project = Some(if let Some(recovery) = self.panic_recovery.take() {
                 Project::from_recovery(vfs, config, recovery)
             } else {
-                Project::new(vfs, config, Mode::LanguageServer)
+                Project::new(vfs, config, RunCause::LanguageServer)
             });
             project.as_mut().unwrap()
         }

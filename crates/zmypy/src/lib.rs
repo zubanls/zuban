@@ -9,7 +9,7 @@ pub use zuban_python::Diagnostics;
 
 use config::find_cli_config;
 use vfs::{NormalizedPath, SimpleLocalFS, VfsHandler};
-use zuban_python::{Mode, Project};
+use zuban_python::{Project, RunCause};
 
 pub fn run(cli: Cli) -> ExitCode {
     /*
@@ -101,7 +101,7 @@ fn project_from_cli(
     );
 
     (
-        Project::new(Box::new(local_fs), options, Mode::LanguageServer),
+        Project::new(Box::new(local_fs), options, RunCause::LanguageServer),
         found.diagnostic_config,
     )
 }

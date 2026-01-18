@@ -12,7 +12,7 @@ use super::{
 };
 use crate::{
     arguments::{Args, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
-    database::{ComplexPoint, Database, Locality, Mode, Point, PointKind, PointLink, Specific},
+    database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, RunCause, Specific},
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
@@ -1493,7 +1493,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let original_inf = self.infer_name_of_definition_by_index(first_index);
             // Walrus is special, because it relays values from the expression to the outer
             // expression.
-            if self.i_s.db.mode == Mode::LanguageServer
+            if self.i_s.db.run_cause == RunCause::LanguageServer
                 && !matches!(assign_kind, AssignKind::Walrus)
             {
                 // This information is only needed if we need to access it again and otherwise
@@ -3417,7 +3417,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
     fn _infer_primary(&self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
         if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
-            return if self.i_s.db.mode == Mode::LanguageServer {
+            return if self.i_s.db.run_cause == RunCause::LanguageServer {
                 inf.save_redirect(self.i_s, self.file, primary.index())
             } else {
                 inf
@@ -3557,7 +3557,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let specific = match atom.unpack() {
             Name(n) => {
                 let result = self.infer_name_reference(n);
-                let mut should_save = self.i_s.db.mode == Mode::LanguageServer;
+                let mut should_save = self.i_s.db.run_cause == RunCause::LanguageServer;
                 if i_s.db.project.flags.disallow_deprecated {
                     result.add_issue_if_deprecated(
                         i_s.db,

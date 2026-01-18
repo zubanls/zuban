@@ -13,7 +13,7 @@ use super::{
     flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error,
 };
 use crate::{
-    Mode,
+    RunCause,
     arguments::{CombinedArgs, InitSubclassArgs, KnownArgs, NoArgs, SimpleArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, MetaclassState, OverloadImplementation,
@@ -385,7 +385,7 @@ impl Inference<'_, '_, '_> {
                         break;
                     }
                     */
-                    if self.i_s.db.mode == Mode::LanguageServer {
+                    if self.i_s.db.run_cause == RunCause::LanguageServer {
                         self.i_s.avoid_errors_within(|avoid_errors_i_s| {
                             self.file
                                 .inference(avoid_errors_i_s)
