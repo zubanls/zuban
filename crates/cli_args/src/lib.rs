@@ -70,8 +70,17 @@ pub struct MypyCli {
     always_false: Vec<String>,
 
     // Disallow dynamic typing:
-    // --disallow-any-unimported Disallow Any types resulting from unfollowed imports
-    // --disallow-any-expr       Disallow all expressions that have type Any
+    // any_unimported and any_expr are currently hidden, because they are not fully implemented.
+    //-/ Disallow Any types resulting from unfollowed imports
+    #[arg(long, hide = true)]
+    allow_any_unimported: bool,
+    #[arg(long, hide = true)]
+    disallow_any_unimported: bool,
+    //-/ Disallow all expressions that have type Any
+    #[arg(long, hide = true)]
+    disallow_any_expr: bool,
+    #[arg(long, hide = true)]
+    allow_any_expr: bool,
     /// Disallow functions that have Any in their signature after decorator transformation
     #[arg(long)]
     disallow_any_decorated: bool,
@@ -134,7 +143,11 @@ pub struct MypyCli {
     strict_optional: bool,
 
     // Configuring warnings:
-    // --warn-redundant-casts    Warn about casting an expression to its inferred type (inverse: --no-warn-redundant-casts)
+    /// Warn about casting an expression to its inferred type (inverse: --no-warn-redundant-casts)
+    #[arg(long)]
+    warn_redundant_casts: bool,
+    #[arg(long)]
+    no_warn_redundant_casts: bool,
     // --warn-unused-ignores     Warn about unneeded '# type: ignore' comments (inverse: --no-warn-unused-ignores)
     /// Warn about functions that end without returning (inverse: --no-warn-no-return)
     #[arg(long)]
@@ -322,13 +335,13 @@ fn apply_mypy_flags(
     apply!(flags, disallow_any_generics, allow_any_generics);
     apply!(flags, disallow_any_decorated, allow_any_decorated);
     apply!(flags, disallow_any_explicit, allow_any_explicit);
-    //apply!(disallow_any_unimported, allow_any_unimported);
-    //apply!(disallow_any_expr, allow_any_expr);
+    apply!(flags, disallow_any_unimported, allow_any_unimported);
+    apply!(flags, disallow_any_expr, allow_any_expr);
     apply!(flags, disallow_subclassing_any, allow_subclassing_any);
     apply!(flags, disallow_incomplete_defs, allow_incomplete_defs);
     apply!(flags, allow_untyped_globals, disallow_untyped_globals);
     apply!(flags, warn_unreachable, no_warn_unreachable);
-    //apply!(warn_redundant_casts, no_warn_redundant_casts);
+    apply!(flags, warn_redundant_casts, no_warn_redundant_casts);
     apply!(flags, warn_return_any, no_warn_return_any);
     apply!(flags, warn_no_return, no_warn_no_return);
     apply!(flags, no_implicit_reexport, implicit_reexport);

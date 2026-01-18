@@ -120,17 +120,9 @@ struct PerTestFlags {
 
     // Maybe implement?
     #[arg(long)]
-    warn_redundant_casts: bool,
-    #[arg(long)]
     local_partial_types: bool,
     #[arg(long)]
     no_local_partial_types: bool,
-    #[arg(long)]
-    allow_any_unimported: bool,
-    #[arg(long)]
-    disallow_any_unimported: bool,
-    #[arg(long)]
-    disallow_any_expr: bool,
     #[arg(long)]
     disable_memoryview_promotion: bool,
     #[arg(long)]
@@ -331,9 +323,6 @@ impl TestCase<'_, '_> {
             };
         }
 
-        set_flag!(disallow_any_unimported);
-        set_flag!(disallow_any_expr);
-        set_flag!(warn_redundant_casts);
         set_flag!(local_partial_types);
         set_flag!(disable_bytearray_promotion);
         set_flag!(disable_memoryview_promotion);
