@@ -5,17 +5,46 @@ pub use config::DiagnosticConfig;
 use config::{ExcludeRegex, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+
 #[derive(Parser, Default)]
 pub struct Cli {
-    // Additional options
-    /// Enable or disable mypy compatibility. By default disabled and enabled if a Mypy config is found (inverse: --no-mypy-compatible)
+    // Additional options that are not present in zmypy
+    /// Choosing a mode sets the basic preset of flags. The default mode is typed, which is not
+    /// mypy-compatible.
     #[arg(long)]
-    pub mypy_compatible: bool,
-    #[arg(long)]
-    pub no_mypy_compatible: bool,
+    mode: Option<ModeArg>,
+
     #[command(flatten)]
     pub mypy_options: MypyCli,
+}
+
+impl Cli {
+    pub fn new_mypy_compatible(mypy_options: MypyCli) -> Self {
+        Self {
+            mode: Some(ModeArg::Mypy),
+            mypy_options,
+        }
+    }
+
+    pub fn mypy_compatible(&self) -> Option<bool> {
+        Some(matches!(self.mode?, ModeArg::Mypy))
+    }
+}
+
+#[derive(Clone, ValueEnum, Copy)]
+enum ModeArg {
+    Mypy,
+    Typed,
+}
+
+impl From<ModeArg> for Mode {
+    fn from(m: ModeArg) -> Self {
+        match m {
+            ModeArg::Mypy => Mode::MypyCompatible,
+            ModeArg::Typed => Mode::Typed,
+        }
+    }
 }
 
 #[derive(Parser, Clone, Default)]
@@ -277,11 +306,8 @@ pub fn apply_flags_detailed(
     current_dir: Arc<AbsPath>,
     config_path: Option<&AbsPath>,
 ) {
-    if cli.mypy_compatible {
-        settings.mode = Mode::MypyCompatible;
-    }
-    if cli.no_mypy_compatible {
-        settings.mode = Mode::Typed;
+    if let Some(mode) = cli.mode {
+        settings.mode = mode.into();
     }
     apply_mypy_flags(
         vfs_handler,

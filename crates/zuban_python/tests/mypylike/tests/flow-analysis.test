@@ -12,7 +12,7 @@ foo  # E: Name "foo" is not defined
 bar  # E: Name "bar" is not defined
 
 [case unreachable_var_definition_with_assert]
-# flags: --mypy-compatible
+# flags: --mode mypy
 import mod
 mod.foo  # E: Module has no attribute "foo"
 mod.bar  # E: Module has no attribute "bar"
@@ -113,7 +113,7 @@ if bool(): # Causes flow analysis
 class X: ...
 
 [case flow_analysis_global_context_should_not_be_loop_context]
-# flags: --mypy-compatible
+# flags: --mode mypy
 import foo
 
 def f(x: foo.X) -> None:
@@ -275,7 +275,7 @@ class D(C):
 reveal_type(D().x)  # N: Revealed type is "int"
 
 [case avoid_crash_on_aug_assign_access2_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 class C:
     x: int
 class D(C):
@@ -285,7 +285,7 @@ class D(C):
 reveal_type(D().x)  # N: Revealed type is "int"
 
 [case avoid_crash_on_aug_assign_access2_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 class C:
     x: int
 class D(C):
@@ -529,7 +529,7 @@ class C:
     x: int
 
 [case fix_unreachable_false_positive]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 
 def fetch_url(url: str) -> dict[str, int]: ...
 

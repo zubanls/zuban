@@ -70,7 +70,7 @@ __main__.py:8:documentation -> "```python\n(variable) OtherAlias: type[str]\n```
 __main__.py:11:documentation -> "```python\n(variable) OtherAlias: type[str]\n```"
 
 [case docs_function_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 #? --codepoint-column 6 documentation
 def typed[T](x: list[T]) -> T:
     " typed doc "
@@ -92,7 +92,7 @@ __main__.py:12:documentation -> "```python\n(function) def [T] typed(x: list[T])
 __main__.py:14:documentation -> "```python\n(function) def untyped(x: Any) -> Any\n```\n---\nuntyped doc"
 
 [case docs_function_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 #? --codepoint-column 6 documentation
 def typed[T](x: list[T]) -> T:
     " typed doc "
@@ -315,7 +315,7 @@ __main__.py:22:documentation -> "```python\n(property) def read_write(self) -> s
 __main__.py:24:documentation -> "```python\n(property) def read_write(self) -> str\n```\n---\nbar"
 
 [case untyped_property_documentation_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 class C:
     @property
     #? --codepoint-column 10 documentation
@@ -331,7 +331,7 @@ __main__.py:5:documentation -> "```python\n(property) def untyped(self) -> Any\n
 __main__.py:10:documentation -> "```python\n(property) def untyped(self) -> Any\n```\n---\nfoo"
 
 [case untyped_property_documentation_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 class C:
     @property
     #? --codepoint-column 10 documentation

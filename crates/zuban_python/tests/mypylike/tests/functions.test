@@ -1,5 +1,5 @@
 [case function_subtyping_of_keyword_params]
-# flags: --mypy-compatible
+# flags: --mode mypy
 def f(*, x: int, y: str) -> None: pass
 def g(x: int, y: str) -> None: pass
 def h(x: int, y: str = "") -> None: pass
@@ -263,7 +263,7 @@ reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "Callable[
                       # N: Revealed type is "tuple[int, ...]"
 
 [case any_call_with_invalid_args_kwargs_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import Any
 
 def f(x: Any) -> None:
@@ -274,7 +274,7 @@ def f(x: Any) -> None:
     x(**undefined)  # E: Name "undefined" is not defined
 
 [case any_call_with_invalid_args_kwargs_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import Any
 
 def f(x: Any) -> None:
@@ -317,7 +317,7 @@ else:
     def f(errors: Sequence[Any]): ...
 
 [case invalid_keyword_arguments_position_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 def foo(x: int, y: int): ...
 
 foo( # type: ignore[call-arg]
@@ -330,7 +330,7 @@ foo(  # E: Unexpected keyword argument "z" for "foo"
 )
 
 [case invalid_keyword_arguments_position_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 def foo(x: int, y: int): ...
 
 foo( # type: ignore[call-arg]
@@ -407,7 +407,7 @@ def one(x: str) -> int: ...
 def four(*args: int) -> int: ...
 
 [case function_no_return_should_not_result_in_any_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # From GH #150, see also the discussion there, Mypy returns Any, Pyright None
 from typing import assert_type, Callable, Generator, Iterator
 
@@ -435,7 +435,7 @@ val = foo()  # E: "foo" does not return a value (it only ever returns None)
 assert_type(val, None)
 
 [case function_does_not_return_value_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from collections.abc import Callable
 
 def get(fn: Callable[[], None] | Callable[[], str]) -> None:
@@ -448,7 +448,7 @@ def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
     reveal_type(ret)  # N: Revealed type is "Any"
 
 [case function_does_not_return_value_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # From GH #124
 from collections.abc import Callable
 
@@ -462,7 +462,7 @@ def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
     reveal_type(ret)  # N: Revealed type is "None"
 
 [case annotations_generator_unreachable_yield]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # From conformance tests (annotations_generators.py)
 from typing import AsyncIterable, AsyncIterator, Iterable
 def generator23() -> Iterable[str]:  # OK

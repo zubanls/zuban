@@ -805,7 +805,7 @@ class c[T:a]:
 class c[a]  # E: Invalid syntax
 
 [case type_redefinition_with_annotations]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Partially from GH #99
 def check1() -> None:
     if bool():
@@ -891,7 +891,7 @@ my_tuple = (S, T)
 BadAlias3 = TypeAliasType("BadAlias3", int, type_params=my_tuple)  # E: Tuple literal expected as the type_params argument to TypeAliasType
 
 [case type_alias_type_in_class_with_outer_type_var]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Partially copied from conformance tests (aliases_typealiastype.py)
 from typing import TypeAliasType, TypeVar, Generic
 T = TypeVar("T")

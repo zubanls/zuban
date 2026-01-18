@@ -29,11 +29,7 @@ fn main() -> ExitCode {
         zmypy::run(zmypy_config)
     };
     match Cli::parse().command {
-        Commands::Mypy(mypy_options) => run_check(cli_args::Cli {
-            mypy_compatible: true,
-            no_mypy_compatible: false,
-            mypy_options,
-        }),
+        Commands::Mypy(mypy_options) => run_check(cli_args::Cli::new_mypy_compatible(mypy_options)),
         Commands::Check(zmypy_config) => run_check(zmypy_config),
         Commands::Server {} => match run_server() {
             Ok(()) => ExitCode::from(0),

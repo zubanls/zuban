@@ -830,7 +830,7 @@ def f(x: list[bytes] | list[str]):
     reveal_type(y)  # N: Revealed type is "tuple[int | bytes | str, ...]"
 
 [case invalid_star_star_context]
-# flags: --mypy-compatible
+# flags: --mode mypy
 x: dict[int, str] = {**{}}
 y: dict[int, bytes] = {**x}  # E: Unpacked dict entry 0 has incompatible type "dict[int, str]"; expected "SupportsKeysAndGetItem[int, bytes]"
 
@@ -949,13 +949,13 @@ x[::] = 1
 x[*(1, 2)] = 1
 
 [case walrus_definition_reused_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 def foo(x: int) -> None:
     w = w if (w := x) else None # E: Incompatible types in assignment (expression has type "int | None", variable has type "int")
     reveal_type(w)  # N: Revealed type is "int"
 
 [case walrus_definition_reused_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 def foo(x: int) -> None:
     w = w if (w := x) else None
     reveal_type(w)  # N: Revealed type is "int | None"
@@ -1297,7 +1297,7 @@ y: float = True
 z: float = bool()
 
 [case alias_disallowed_in_function]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Copied from conformance tests (aliases_type_statement.py)
 def func3() -> None:
     type BadTypeAlias15 = int  # E: Type alias not allowed in function
@@ -1315,7 +1315,7 @@ def func2(val):
     return 1  # OK
 
 [case no_type_check_but_params_for_calls_are_still_checked_in_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Copied from conformance tests (directives_no_type_check.py)
 from typing import no_type_check
 @no_type_check

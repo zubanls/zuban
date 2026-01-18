@@ -212,7 +212,7 @@ e: Any | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"
 f: Any | Foo[str] = Foo("")
 
 [case union_context_class_matching_with_overload]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import TypeVar, Generic, overload
 T = TypeVar('T')
 
@@ -697,7 +697,7 @@ f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo
 y4: list[Foo[Any]] = f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
 
 [case generic_covariant_match_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import TypeVar, Sequence
 
 T = TypeVar("T")
@@ -711,7 +711,7 @@ reveal_type(foo(x, y)) # N: Revealed type is "typing.Sequence[typing.Sequence[ob
 reveal_type(foo(y, x)) # N: Revealed type is "typing.Sequence[typing.Sequence[object]]"
 
 [case generic_covariant_match_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import TypeVar, Sequence
 
 T = TypeVar("T")
@@ -1099,7 +1099,7 @@ def id(x: T2) -> T2: ...
 reveal_type(foo(id))  # N: Revealed type is "Any"
 
 [case transitive_constraints_mismatch1_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import TypeVar, Callable, List, Tuple
 
 T1 = TypeVar("T1")
@@ -1113,7 +1113,7 @@ def id(x: T4, y: T4) -> T4: ...
 reveal_type(combine(id, 1, ""))  # N: Revealed type is "def (object) -> object"
 
 [case transitive_constraints_mismatch1_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import TypeVar, Callable, List, Tuple
 
 T1 = TypeVar("T1")
@@ -1239,7 +1239,7 @@ class Other2(Thing[t]):
         return self.chain(1)  # E: Argument 1 to "chain" of "Thing" has incompatible type "int"; expected "list[t]"
 
 [case __new__super_class_generics]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import Iterator, TypeVar, Iterable, Self
 
 T = TypeVar('T')

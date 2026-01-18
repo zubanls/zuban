@@ -1131,7 +1131,7 @@ class DC7:
 v7: Hashable = DC7(0)
 
 [case dataclasses_slots_checking]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Copied from conformance tests (dataclasses_slots.py)
 from dataclasses import dataclass
 

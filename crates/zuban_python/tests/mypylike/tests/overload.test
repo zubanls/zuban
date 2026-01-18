@@ -62,7 +62,7 @@ def f(x: Any) -> Any: pass  # E: Overloaded function signature 3 will never be m
 def f(x: Any) -> Any: pass
 
 [case overload_merging_nested]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import overload, Any
 @overload
 def g(x: str) -> list[list[str]]: ...
@@ -74,7 +74,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "list[list[Any]]"
 
 [case overload_merging_triple1]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import overload, Any
 @overload
 def g(x: str) -> list[str]: ...
@@ -101,7 +101,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "Any"
 
 [case overload_merging_tuple1]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[str, ...]: ...
@@ -113,7 +113,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "tuple[Any, ...]"
 
 [case overload_merging_tuple2]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[str]: ...
@@ -125,7 +125,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "tuple[Any]"
 
 [case overload_merging_tuple3]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[str, bytes]: ...
@@ -159,7 +159,7 @@ a: Any
 reveal_type(g(a)) # N: Revealed type is "tuple[int, str]"
 
 [case overload_merging_tuple6]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import overload, Any
 @overload
 def g(x: str) -> tuple[int, str]: ...
@@ -538,7 +538,7 @@ def f(x: type[int | str], y: type[int] | type[str]) -> None:
     reveal_type(foo(y))  # N: Revealed type is "int | str"
 
 [case invalid_overloads_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import overload
 
 def non_callable(func) -> int: ...
@@ -565,7 +565,7 @@ def baz(x: str) -> str: ...
 def baz(x: object) -> object: ...
 
 [case invalid_overloads_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import overload
 
 def non_callable(func) -> int: ...
@@ -824,7 +824,7 @@ class C:
 __main__:5:5:5:11: error: @final should be applied only to overload implementation
 
 [case overload_override_in_correct_positions]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import overload, override, final
 class C:
     def to_override(self, x: int) -> int: ...
@@ -857,7 +857,7 @@ class F(E):
         ...
 
 [case reverted_testTypeIsInOverloads]
-# flags: --mypy-compatible
+# flags: --mode mypy
 # From https://github.com/python/mypy/pull/17678 and were reverted
 from typing import Any, overload, Union
 from typing_extensions import TypeIs
@@ -1053,7 +1053,7 @@ def check_expand_enum(v: Color) -> None:
     assert_type(ret1, Literal[0, 1])
 
 [case enum_tuple_union_math_overloads]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, Literal, assert_type
 @overload
@@ -1068,7 +1068,7 @@ def check_expand_tuple(v: int | str) -> None:
     assert_type(ret1, int | str)
 
 [case any_exclusion_of_some_funcs]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, assert_type, Any
 @overload
@@ -1109,7 +1109,7 @@ class B:
         pass
 
 [case no_mypy_compatible_testOverloadWithOverlappingItemsAndAnyArgument8]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import overload, Any
 
 @overload
@@ -1124,7 +1124,7 @@ reveal_type(f(a, 1, 1)) # N: Revealed type is "str"
 reveal_type(f(1, *a))  # N: Revealed type is "str"
 
 [case no_mypy_compatible_testOverloadWithOverlappingItemsAndAnyArgument9]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import overload, Any, List
 
 @overload

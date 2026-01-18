@@ -364,8 +364,10 @@ impl TestCase<'_, '_> {
             PerTestFlags::from_arg_matches(&matches)?
         };
         let steps = steps.steps;
-        if flags.cli.mypy_compatible && !mypy_compatible
-            || flags.cli.no_mypy_compatible && mypy_compatible
+        if flags
+            .cli
+            .mypy_compatible()
+            .is_some_and(|m| m != mypy_compatible)
             || flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
             || flags.no_windows && cfg!(windows)
         {

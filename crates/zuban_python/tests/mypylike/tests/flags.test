@@ -336,7 +336,7 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     (*y, )  # E: Expected iterable as variadic argument  [misc]  # E: Expected iterable as variadic argument  [misc]
 
 [case untyped_override_check_untyped_defs_no_mypy_compatible]
-# flags: --check-untyped-defs --no-mypy-compatible
+# flags: --check-untyped-defs --mode typed
 import m
 
 [file m.py]
@@ -364,7 +364,7 @@ class D(C):
                                            # N:          def [T2: Any, T3: Any] g(self, grad_output: T2, *, foo: T3) -> None
 
 [case untyped_override_check_untyped_defs_mypy_compatible]
-# flags: --check-untyped-defs --mypy-compatible
+# flags: --check-untyped-defs --mode mypy
 import m
 
 [file m.py]
@@ -414,29 +414,29 @@ class E:
     def __init__(self, x): ...  # E: Function is missing a type annotation for one or more arguments
 
 [case allow_untyped_globals_default_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 [case allow_untyped_globals_default_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 x = []
 
 [case local_partial_types_default_mypy_compatible]
-# flags: --mypy-compatible --disallow-untyped-globals
+# flags: --mode mypy --disallow-untyped-globals
 x = []
 def foo() -> None:
     x.append(1)
     reveal_type(x)  # N: Revealed type is "list[int]"
 
 [case local_partial_types_default_no_mypy_compatible]
-# flags: --no-mypy-compatible --disallow-untyped-globals
+# flags: --mode typed --disallow-untyped-globals
 x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 def foo() -> None:
     x.append(1)
     reveal_type(x)  # N: Revealed type is "list[Any]"
 
 [case no_mypy_compatible_disallows_untyped_globals]
-# flags: --no-mypy-compatible --strict
+# flags: --mode typed --strict
 x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 def foo() -> None:
     x.append(1)
@@ -501,22 +501,22 @@ def f() -> None:
 a.append(1)
 
 [case list_inference_mypy_no_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 x = [1, ""]
 reveal_type(x[0])  # N: Revealed type is "int | str"
 
 [case check_untyped_defs_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 def f():
     1()  # E: "int" not callable
 
 [case set_inference_mypy_no_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 x = {1, ""}
 reveal_type(next(iter(x)))  # N: Revealed type is "int | str"
 
 [case dict_inference_mypy_no_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 x = {1: 1.0, "": b''}
 reveal_type(x)  # N: Revealed type is "dict[int | str, float | bytes]"
 reveal_type(x[0])  # N: Revealed type is "float | bytes"
@@ -530,7 +530,7 @@ reveal_type(y[""])  # N: Revealed type is "float | bytes"
 y[b'']  # E: Invalid index type "bytes" for "dict[int | str, float | bytes]"; expected type "int | str"
 
 [case dict_inference_no_mypy_compatible_too_big]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 x = {
     "a01": "b01",
     "a02": "b02",
@@ -725,7 +725,7 @@ files = '.'
 exclude = '^out'
 
 [case avoid_invalid_missing_return_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # From #50
 def check_url(url: str) -> str | None:
     try:
@@ -735,7 +735,7 @@ def check_url(url: str) -> str | None:
         pass
 
 [case avoid_invalid_missing_return_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 # From #50
 def check_url(url: str) -> str | None:  # E: Missing return statement
     try:
@@ -752,12 +752,12 @@ class Test():
         pass
 
 [case empty_body_enabled_with_type_vars]
-# flags: --disallow-empty-bodies --no-mypy-compatible
+# flags: --disallow-empty-bodies --mode typed
 def foo[T](x: T) -> T:  # E: Missing return statement
     ...
 
 [case empty_body_disabled_with_type_vars]
-# flags: --disallow-empty-bodies --disable-error-code empty-body --no-mypy-compatible
+# flags: --disallow-empty-bodies --disable-error-code empty-body --mode typed
 def foo[T](x: T) -> T:
     ...
 

@@ -1,5 +1,5 @@
 [case callable_cannot_infer_type_var_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 from typing import TypeVar, Callable
 T1 = TypeVar("T1")
 x: Callable[[T1, T1], T1]
@@ -11,7 +11,7 @@ y: Callable[[T2, T2], T2]
 y(1, "") # E: Argument 2 has incompatible type "str"; expected "int"
 
 [case callable_cannot_infer_type_var_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 from typing import TypeVar, Callable
 T1 = TypeVar("T1")
 x: Callable[[T1, T1], T1]

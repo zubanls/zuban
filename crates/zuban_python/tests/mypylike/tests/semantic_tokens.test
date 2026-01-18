@@ -47,7 +47,7 @@ Semantic tokens for full range
 
 [case method_simple_semantic_tokens_untyped_no_mypy_compatible]
 # type: ignore
-# flags: --no-mypy-compatible
+# flags: --mode typed
 #? semantic-tokens
 
 class C:
@@ -80,7 +80,7 @@ Semantic tokens for full range
 
 [case method_simple_semantic_tokens_untyped_mypy_compatible]
 # type: ignore
-# flags: --mypy-compatible
+# flags: --mode mypy
 #? semantic-tokens
 
 class C:

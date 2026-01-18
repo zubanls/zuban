@@ -1,5 +1,5 @@
 [case reachability_mypy_compatible]
-# flags: --mypy-compatible
+# flags: --mode mypy
 def foo(x: None) -> None:
     if x is None:
         return
@@ -9,7 +9,7 @@ def foo(x: None) -> None:
             reveal_type(x)
 
 [case reachability_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 def foo(x: None, y: int | None) -> None:
     if x is None:
         return
@@ -29,7 +29,7 @@ else:
     reveal_type(x) # N: Revealed type is "tuple[int, int, int]"
 
 [case narrow_unreachable_len1]
-# flags: --warn-unreachable --mypy-compatible
+# flags: --warn-unreachable --mode mypy
 from typing import Tuple
 
 x: Tuple[int, ...]
@@ -65,7 +65,7 @@ if str():
 
 
 [case narrow_unreachable_len2]
-# flags: --warn-unreachable --mypy-compatible
+# flags: --warn-unreachable --mode mypy
 from typing import Tuple
 
 x: Tuple[int, ...]
@@ -1291,7 +1291,7 @@ x = ""
 A().z
 
 [case access_self_variable_before_definition_no_mypy_compatible]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # This is supported by Mypy (many tests cover it), but we should probably
 # suppress this kind of pattern of accessing members before definition.
 x: A
@@ -1994,7 +1994,7 @@ def func1(f: float):
         f.numerator  # OK
 
 [case string_literal_narrowing_in_conformance_tests]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Copied from conformance tests (literals_interactions.py)
 from typing import Literal
 def expects_bad_status(status: Literal["MALFORMED", "ABORTED"]): ...
@@ -2028,7 +2028,7 @@ def g(x: Literal[1, 2, 3] | None):
         reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2] | None"
 
 [case str_int_enum_narrowing]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Copied partially from testNarrowingWithIntEnum and testNarrowingWithStrEnum
 from enum import IntEnum, StrEnum
 
@@ -2135,7 +2135,7 @@ def f7_union(x: complex | str) -> None:
         case _: assert_type(x, str | int | complex)
 
 [case avoid_inferring_variables_before_end_of_scope_with_nested_functions]
-# flags: --no-mypy-compatible
+# flags: --mode typed
 # Modified From GH #231
 def ensure_deck():
     def get_deck() -> dict[str, int] | None:
