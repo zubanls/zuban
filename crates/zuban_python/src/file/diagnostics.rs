@@ -1324,8 +1324,7 @@ impl Inference<'_, '_, '_> {
         let should_check_func_override = || {
             func_def.is_typed()
                 || self.flags().check_untyped_defs
-                    && (func_def.maybe_decorated().is_none()
-                        || !self.i_s.db.project.settings.mypy_compatible)
+                    && (func_def.maybe_decorated().is_none() || !self.i_s.db.mypy_compatible())
         };
 
         // Mypy completely ignores untyped functions.
@@ -1434,7 +1433,7 @@ impl Inference<'_, '_, '_> {
             StmtLikeContent::YieldExpr(y) => match y.unpack() {
                 YieldExprContent::StarExpressions(s) => {
                     // Conformance tests have things like `yield ""`.
-                    s.is_none_literal() || !self.i_s.db.project.settings.mypy_compatible
+                    s.is_none_literal() || !self.i_s.db.mypy_compatible()
                 }
                 YieldExprContent::YieldFrom(_) => false,
                 YieldExprContent::None => true,
@@ -1941,7 +1940,7 @@ impl Inference<'_, '_, '_> {
         }
 
         if let Some(return_annotation) = function.return_annotation()
-            && i_s.db.project.settings.mypy_compatible
+            && i_s.db.mypy_compatible()
             && function.is_dunder_new()
         {
             let mut class = function.class.unwrap();
@@ -2772,7 +2771,7 @@ pub(super) fn check_override(
             if let AttributeKind::Property { .. } = original {
                 // This happens when @cached_property is overwritten with @property. This is
                 // allowed in Mypy (probably due to a logic error).
-                if !i_s.db.project.settings.mypy_compatible || !original.is_cached_property() {
+                if !i_s.db.mypy_compatible() || !original.is_cached_property() {
                     from.add_issue_onto_start_including_decorator(
                         i_s,
                         IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
@@ -2811,7 +2810,7 @@ pub(super) fn check_override(
     if matched {
         if original_lookup_details.attr_kind.is_writable()
             && override_lookup_details.attr_kind.is_final()
-            && (!i_s.db.project.settings.mypy_compatible
+            && (!i_s.db.mypy_compatible()
                 || !original_lookup_details.attr_kind.is_cached_property())
         {
             let issue = IssueKind::CannotOverrideWritableWithFinalAttribute { name: name.into() };
@@ -3289,7 +3288,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         }
                         if inst2_lookup.attr_kind.is_writable()
                             && inst1_lookup.attr_kind.is_final()
-                            && (!i_s.db.project.settings.mypy_compatible
+                            && (!i_s.db.mypy_compatible()
                                 || !inst2_lookup.attr_kind.is_cached_property())
                         {
                             add_issue(IssueKind::CannotOverrideWritableWithFinalAttribute {
@@ -3312,7 +3311,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         {
                             // This happens when @cached_property is overwritten with @property. This is
                             // allowed in Mypy (probably due to a logic error).
-                            if !i_s.db.project.settings.mypy_compatible
+                            if !i_s.db.mypy_compatible()
                                 || !inst2_lookup.attr_kind.is_cached_property()
                             {
                                 add_issue(

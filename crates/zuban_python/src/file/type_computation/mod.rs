@@ -925,7 +925,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             if i_s
                                 .current_class()
                                 .is_some_and(|class| uses_class_generics(class, &t))
-                                && i_s.db.project.settings.mypy_compatible
+                                && i_s.db.mypy_compatible()
                             {
                                 self.add_issue(
                                     type_storage_node_ref,
@@ -1133,7 +1133,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return Some(db.python_state.type_of_any.clone());
                 }
                 Specific::TypingLiteralString => {
-                    return Some(if db.project.settings.mypy_compatible {
+                    return Some(if db.mypy_compatible() {
                         Type::new_class(
                             db.python_state.str_node_ref().as_link(),
                             ClassGenerics::new_none(),
@@ -4134,7 +4134,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> T {
         let in_definition = node_ref.as_link();
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _, _: Name| {
-            if from_bound && !i_s.db.project.settings.mypy_compatible {
+            if from_bound && !i_s.db.mypy_compatible() {
                 return TypeVarCallbackReturn::AddIssue(
                     IssueKind::TypeVarBoundMustNotContainTypeVars,
                 );

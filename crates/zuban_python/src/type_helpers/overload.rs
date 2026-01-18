@@ -209,7 +209,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             return OverloadResult::Single(callable);
         }
         // Mypy has a bit of a different way of working than the conformance tests
-        if (first_similar.is_none() || !i_s.db.project.settings.mypy_compatible)
+        if (first_similar.is_none() || !i_s.db.mypy_compatible())
             && args.should_do_union_math_for_overloads(i_s)
         {
             let mut non_union_args = vec![];
@@ -604,7 +604,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                     Cow::Borrowed(&c.return_type)
                 };
-                if i_s.db.project.settings.mypy_compatible {
+                if i_s.db.mypy_compatible() {
                     let mut t: Option<Type> = None;
                     for callable in self.overload.iter_functions() {
                         let f_t = to_type(callable);

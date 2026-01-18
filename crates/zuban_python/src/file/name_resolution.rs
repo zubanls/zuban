@@ -191,7 +191,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         if !self.stop_on_assignments
                             || self.is_allowed_to_assign_on_import_without_narrowing(name_def)
                         {
-                            let index = if self.i_s.db.project.settings.mypy_compatible {
+                            let index = if self.i_s.db.mypy_compatible() {
                                 import_from.index()
                             } else {
                                 import_name.index()

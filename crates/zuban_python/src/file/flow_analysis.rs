@@ -1443,7 +1443,7 @@ fn narrow_is_or_eq(
         Type::Literal(literal1)
             if is_eq
                 && (!literal1.implicit
-                    || key.is_simple_name() && !i_s.db.project.settings.mypy_compatible
+                    || key.is_simple_name() && !i_s.db.mypy_compatible()
                     || has_explicit_literal(i_s.db, checking_t))
                 || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
         {
@@ -3570,7 +3570,7 @@ impl Inference<'_, '_, '_> {
             }
         }
         // Mypy doesn't support narrowing TypedDicts by its subattributes at the moment
-        let falsey = match unsure || i_s.db.project.settings.mypy_compatible {
+        let falsey = match unsure || i_s.db.mypy_compatible() {
             true => Type::TypedDict(td.clone()),
             false => Type::NEVER,
         };

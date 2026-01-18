@@ -795,7 +795,7 @@ impl<'db> PythonFile {
     }
 
     pub fn should_infer_untyped_returns(&self, db: &Database) -> bool {
-        !db.project.settings.mypy_compatible && self.flags(db).check_untyped_defs
+        !db.mypy_compatible() && self.flags(db).check_untyped_defs
     }
 
     pub fn maybe_more_specific_flags<'x>(

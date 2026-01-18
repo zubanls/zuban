@@ -323,7 +323,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut had_at_least_one_member_with_same_name = false;
 
         let ignore_positional_param_names_old = matcher.ignore_positional_param_names;
-        let positional_default = i_s.db.project.settings.mypy_compatible;
+        let positional_default = i_s.db.mypy_compatible();
         matcher.ignore_positional_param_names = positional_default;
 
         let mut protocol_member_count = 0;
@@ -1206,7 +1206,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         add_issue: &dyn Fn(IssueKind),
     ) -> ClassConstructor<'_> {
-        if !i_s.db.project.settings.mypy_compatible
+        if !i_s.db.mypy_compatible()
             && let MetaclassState::Some(metaclass) = self.use_cached_class_infos(i_s.db).metaclass
         {
             let meta = Class::from_non_generic_link(i_s.db, metaclass);
@@ -1288,7 +1288,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     && let Some(return_annot) = func.return_annotation()
                 {
                     let t = use_cached_return_annotation_type(i_s.db, node_ref.file, return_annot);
-                    if !i_s.db.project.settings.mypy_compatible
+                    if !i_s.db.mypy_compatible()
                         && !cls
                             .as_maybe_class()
                             .is_some_and(|c| i_s.db.python_state.bare_type_node_ref() == c.node_ref)
@@ -1561,7 +1561,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // For Mypy only subclasses of the current class are valid, otherwise return the
                 // current class. Diagnostics will care about these cases and raise errors when
                 // needed.
-                if !i_s.db.project.settings.mypy_compatible
+                if !i_s.db.mypy_compatible()
                     || !result.is_any()
                         && Self::with_undefined_generics(self.node_ref)
                             .as_type(i_s.db)

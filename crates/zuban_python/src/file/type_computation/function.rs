@@ -206,7 +206,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             });
         let (mut type_vars, type_guard, star_annotation) =
             self.cache_type_vars(i_s, class, is_staticmethod);
-        if type_vars.is_empty() && !i_s.db.project.settings.mypy_compatible {
+        if type_vars.is_empty() && !i_s.db.mypy_compatible() {
             if !node.is_typed() && !["__init__", "__new__"].contains(&node.name().as_code()) {
                 let mut skip_first = class.is_some();
                 if skip_first && is_staticmethod {

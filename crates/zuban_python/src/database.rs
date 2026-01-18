@@ -909,7 +909,7 @@ impl TypeAlias {
         self.is_valid() && {
             let t = self.type_if_valid();
             matches!(t, Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_))
-                || !db.project.settings.mypy_compatible && matches!(t, Type::Tuple(_))
+                || !db.mypy_compatible() && matches!(t, Type::Tuple(_))
         }
     }
 
@@ -1196,6 +1196,11 @@ impl Database {
                 .set_promote_to(None);
         }
         new_db
+    }
+
+    #[inline]
+    pub fn mypy_compatible(&self) -> bool {
+        self.project.settings.mypy_compatible
     }
 
     pub fn file_path(&self, index: FileIndex) -> &NormalizedPath {

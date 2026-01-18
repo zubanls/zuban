@@ -751,7 +751,7 @@ pub(crate) fn match_arguments_against_params<
                     }
                 }
             };
-            if i_s.db.project.settings.mypy_compatible {
+            if i_s.db.mypy_compatible() {
                 // Mypy adds these issues on top of the whole function call instead of the specific
                 // keyword argument.
                 add_issue(IssueKind::ArgumentIssue(s.into()));

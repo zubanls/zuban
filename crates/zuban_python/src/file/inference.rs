@@ -785,7 +785,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     } else {
                         if result_context.expect_not_none() {
                             from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
-                            if i_s.db.project.settings.mypy_compatible {
+                            if i_s.db.mypy_compatible() {
                                 return Inferred::new_any_from_error();
                             }
                         }
@@ -1388,7 +1388,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     name_def_ref.add_issue(self.i_s, IssueKind::CannotRedefineAsFinal);
                 } else if matches!(assign_kind, AssignKind::Annotation { .. })
                     // Mypy does not allow assigning two vars in the same scope with x: int
-                    && !self.i_s.db.project.settings.mypy_compatible
+                    && !self.i_s.db.mypy_compatible()
                     && self
                         .infer_name_of_definition_by_index(first_index)
                         .as_cow_type(i_s)
@@ -1396,7 +1396,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 {
                 } else {
                     let mut node_ref = name_def_ref;
-                    if self.i_s.db.project.settings.mypy_compatible {
+                    if self.i_s.db.mypy_compatible() {
                         // Mypy adds redefiniton errors onto the whole import instead of just the
                         // name.
                         match name_def.maybe_import() {
@@ -1432,7 +1432,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     | ComplexPoint::FunctionOverload(_)
                     | ComplexPoint::TypeAlias(_),
                 ) => false,
-                Some(ComplexPoint::TypeVarLike(_)) => i_s.db.project.settings.mypy_compatible,
+                Some(ComplexPoint::TypeVarLike(_)) => i_s.db.mypy_compatible(),
                 _ => true,
             };
             let assign_as_new_definition = match assign_kind {
@@ -2388,7 +2388,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let first_ref = NodeRef::new(self.file, first_index_of_definition);
         let mut line = first_ref.line_one_based(self.i_s.db);
         let i_s = self.i_s;
-        if i_s.db.project.settings.mypy_compatible {
+        if i_s.db.mypy_compatible() {
             // Mypy uses the line of the first decorator as the definition line. This feels
             // weird, because the name is what matters, so in our implementation we use a
             // different line.
@@ -4840,7 +4840,7 @@ pub(crate) fn await_(
     }
     if expect_not_none && matches!(t, Type::None) {
         from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
-        if i_s.db.project.settings.mypy_compatible {
+        if i_s.db.mypy_compatible() {
             return Inferred::new_any_from_error();
         }
     }

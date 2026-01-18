@@ -413,7 +413,7 @@ impl TupleArgs {
                     ts1.iter()
                         .zip(ts2.iter())
                         .map(|(t1, t2)| {
-                            if i_s.db.project.settings.mypy_compatible {
+                            if i_s.db.mypy_compatible() {
                                 Some(t1.simplified_union(i_s, t2))
                             } else {
                                 t1.common_base_if_subtype(i_s, t2)
@@ -424,7 +424,7 @@ impl TupleArgs {
             }
             (TupleArgs::FixedLen(_), TupleArgs::FixedLen(_))
                 // Conformance tests don't allow unions with different length, Mypy allows it
-                if !i_s.db.project.settings.mypy_compatible =>
+                if !i_s.db.mypy_compatible() =>
             {
                 return None;
             }

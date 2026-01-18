@@ -1042,7 +1042,7 @@ impl<'db> Diagnostic<'db> {
             ModuleNotFound{module_name} => {
                 if let Some(types_package) = has_known_types_package(module_name) {
                     additional_notes.push(format!("Hint: \"python3 -m pip install {types_package}\""));
-                    if self.db.project.settings.mypy_compatible {
+                    if self.db.mypy_compatible() {
                         additional_notes.push(
                             r#"(or run "mypy --install-types" to install all missing stub packages)"#.to_string()
                         );

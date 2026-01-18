@@ -1863,7 +1863,7 @@ fn find_stmt_named_tuple_types(
                 }
                 _ => {
                     // Mypy disallows this, but the conformance tests do not.
-                    if db.project.settings.mypy_compatible {
+                    if db.mypy_compatible() {
                         NodeRef::new(file, assignment.index())
                             .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple)
                     }

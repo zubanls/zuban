@@ -162,7 +162,7 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         // Mypy does not generate errors for `<any func>(*1)`. It however type checks the
         // expression after `*`>. It is debatable if this makes sense, because especially in
         // untyped code it's possible that there's a None in there that might annoy users.
-        if self.i_s.db.project.settings.mypy_compatible {
+        if self.i_s.db.mypy_compatible() {
             let inference = self.file.inference(&self.i_s);
             match self.details {
                 ArgumentsDetails::Node(arguments) => {

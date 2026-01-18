@@ -1156,9 +1156,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     };
                     match infer_decorator_details(i_s, func.node_ref.file, decorator, true) {
                         InferredDecorator::Final => add("final"),
-                        InferredDecorator::Override if !i_s.db.project.settings.mypy_compatible => {
-                            add("override")
-                        }
+                        InferredDecorator::Override if !i_s.db.mypy_compatible() => add("override"),
                         _ => (),
                     }
                 }
@@ -1348,7 +1346,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
             && !has_abstract
         {
-            if i_s.db.project.settings.mypy_compatible {
+            if i_s.db.mypy_compatible() {
                 name_def_node_ref(functions.first().unwrap().defined_at)
                     .name_ref_of_name_def()
                     .add_issue_onto_start_including_decorator(
@@ -1740,7 +1738,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn as_no_type_check_callable(&self, db: &Database) -> CallableContent {
-        let params = if db.project.settings.mypy_compatible {
+        let params = if db.mypy_compatible() {
             CallableParams::Any(AnyCause::Explicit)
         } else {
             CallableParams::Simple(
@@ -1940,7 +1938,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 );
                 // Not sure why Mypy returns any here, but we probably shouldn't. See also
                 // discussion in Github #150
-                if i_s.db.project.settings.mypy_compatible {
+                if i_s.db.mypy_compatible() {
                     return Inferred::new_any_from_error();
                 }
             }
