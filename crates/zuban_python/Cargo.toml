@@ -27,6 +27,8 @@ serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 lsp-types.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon.workspace = true
 which = "*"
 
