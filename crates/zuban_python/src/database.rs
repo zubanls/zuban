@@ -1200,7 +1200,7 @@ impl Database {
 
     #[inline]
     pub fn mypy_compatible(&self) -> bool {
-        self.project.settings.mypy_compatible
+        self.project.settings.mypy_compatible()
     }
 
     pub fn file_path(&self, index: FileIndex) -> &NormalizedPath {
@@ -1597,7 +1597,7 @@ pub(crate) struct PythonProject {
 impl PythonProject {
     pub fn strict_optional_partials(&self) -> bool {
         // Mypy is currently just replacing the nullable partial to a non-nullable one.
-        self.settings.mypy_compatible
+        self.settings.mypy_compatible()
     }
 }
 

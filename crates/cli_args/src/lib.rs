@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 pub use config::DiagnosticConfig;
 
-use config::{ExcludeRegex, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{ExcludeRegex, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
 
 use clap::Parser;
@@ -278,10 +278,10 @@ pub fn apply_flags_detailed(
     config_path: Option<&AbsPath>,
 ) {
     if cli.mypy_compatible {
-        settings.mypy_compatible = true;
+        settings.mode = Mode::MypyCompatible;
     }
     if cli.no_mypy_compatible {
-        settings.mypy_compatible = false;
+        settings.mode = Mode::Typed;
     }
     apply_mypy_flags(
         vfs_handler,

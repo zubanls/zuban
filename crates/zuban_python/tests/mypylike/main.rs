@@ -12,7 +12,7 @@ use std::{
 
 use clap::{Command, CommandFactory as _, FromArgMatches as _, Parser};
 
-use config::{DiagnosticConfig, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{DiagnosticConfig, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
 use test_utils::{Step, calculate_steps};
@@ -279,7 +279,10 @@ impl TestCase<'_, '_> {
             );
         };
 
-        settings.mypy_compatible = mypy_compatible;
+        settings.mode = match mypy_compatible {
+            false => Mode::Typed,
+            true => Mode::MypyCompatible,
+        };
 
         match self.file_name {
             "check-errorcodes" => diagnostic_config.show_error_codes = true,

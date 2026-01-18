@@ -47,6 +47,12 @@ pub struct ProjectOptions {
     pub overrides: Vec<OverrideConfig>,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Mode {
+    MypyCompatible,
+    Typed,
+}
+
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Settings {
     pub platform: Option<String>,
@@ -56,7 +62,7 @@ pub struct Settings {
     pub prepended_site_packages: Vec<Arc<NormalizedPath>>,
     /// Global packages are added by default (if we are not in a venv)
     pub add_global_packages_default: bool,
-    pub mypy_compatible: bool,
+    pub mode: Mode,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
     pub typeshed_path: Option<Arc<NormalizedPath>>,
@@ -73,7 +79,7 @@ impl Default for Settings {
                 .map(|p| LocalFS::without_watcher().normalized_path_from_current_dir(&p)),
             mypy_path: vec![],
             add_global_packages_default: true,
-            mypy_compatible: false,
+            mode: Mode::Typed,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }
@@ -89,6 +95,11 @@ impl Settings {
         } else {
             "linux"
         })
+    }
+
+    #[inline]
+    pub fn mypy_compatible(&self) -> bool {
+        matches!(self.mode, Mode::MypyCompatible)
     }
 
     pub fn python_version_or_default(&self) -> PythonVersion {
@@ -184,7 +195,7 @@ impl ProjectOptions {
     pub fn mypy_default() -> Self {
         Self {
             settings: Settings {
-                mypy_compatible: true,
+                mode: Mode::MypyCompatible,
                 ..Default::default()
             },
             flags: TypeCheckerFlags::mypy_default(),

@@ -1251,7 +1251,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 match &c.kind {
                     FunctionKind::Function { .. }
-                        if !i_s.db.project.mypy_compatible()
+                        if !i_s.db.mypy_compatible()
                             // ParamSpecs are bound and can only be used from self
                             && c.params.maybe_param_spec().is_none()
                             && attribute_class.maybe_dataclass(i_s.db).is_none()
