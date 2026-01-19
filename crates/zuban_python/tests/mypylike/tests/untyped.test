@@ -881,7 +881,7 @@ class Z2(Y, X): ...
 # flags: --disallow-any-generics
 from typing import assert_type, Any
 class C:
-    def __init__(self, x):
+    def __init__(self, x=None):
         self.x = x
 
 def f(
@@ -890,3 +890,5 @@ def f(
 ):
     assert_type(c.x, Any)
     assert_type(c_invalid.x, Any)
+    other_c1 = C()
+    other_c2 = c

@@ -392,8 +392,8 @@ def f(x, errors=None):
         return (0, errors)
     return ("", errors)
 
-size, errors = f(1)
-reveal_type(errors)  # N: Revealed type is "set[Any]"
+size, errors = f(1)  # E: Need type annotation for "errors"  # E: Need type annotation for "errors"
+reveal_type(errors)  # N: Revealed type is "Any | set[Any]"
 
 [case partial_set_return_from_untyped_func2]
 # flags: --mode typed
@@ -405,8 +405,8 @@ def f(x, errors=None):
         return (0, errors)
     return ("", errors)
 
-size, errors = f(1)
-reveal_type(errors)  # N: Revealed type is "set[Any]"
+size, errors = f(1)  # E: Need type annotation for "errors"  # E: Need type annotation for "errors"
+reveal_type(errors)  # N: Revealed type is "Any | set[Any]"
 
 [case partial_set_return_from_untyped_func3]
 # flags: --mode typed
@@ -432,8 +432,8 @@ def f(x, errors=None):
         return (0, errors)
     return ("", errors)
 
-size, errors = f(1)
-reveal_type(errors)  # N: Revealed type is "collections.defaultdict[Any, Any] | collections.defaultdict[Any, list[Any]]"
+size, errors = f(1)  # E: Need type annotation for "errors"  # E: Need type annotation for "errors"
+reveal_type(errors)  # N: Revealed type is "Any | collections.defaultdict[Any, list[Any]]"
 
 [case optional_backwards_global]
 # From testOptionalBackwards3, but test access from outside of the module

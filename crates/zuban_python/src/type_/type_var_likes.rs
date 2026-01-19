@@ -751,6 +751,8 @@ impl TypeVarLike {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
                 Some(default) => GenericItem::TypeArg(default.clone())
                     .resolve_recursive_defaults_or_set_never(db),
+                // Untyped generics are not type params and should therefore simply be normal Any
+                None if tv.is_untyped() => GenericItem::TypeArg(Type::ERROR),
                 None => GenericItem::TypeArg(Type::Any(AnyCause::UnknownTypeParam)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
