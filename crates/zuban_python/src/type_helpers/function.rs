@@ -273,6 +273,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         } else {
             self.is_async()
         };
+
+        if let Some(result) = &mut result {
+            if let Some(new) = result
+                .as_cow_type(i_s)
+                .replace_any_with_unknown_type_params_with_any()
+            {
+                *result = Inferred::from_type(new)
+            }
+        }
+
         let mut result = result
             .unwrap_or_else(|| {
                 if body_node_ref.point().specific() == Specific::FunctionEndIsUnreachable {

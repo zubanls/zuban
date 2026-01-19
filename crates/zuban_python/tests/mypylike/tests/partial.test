@@ -392,7 +392,7 @@ def f(x, errors=None):
         return (0, errors)
     return ("", errors)
 
-size, errors = f(1)  # E: Need type annotation for "errors"  # E: Need type annotation for "errors"
+size, errors = f(1)
 reveal_type(errors)  # N: Revealed type is "Any | set[Any]"
 
 [case partial_set_return_from_untyped_func2]
@@ -405,7 +405,7 @@ def f(x, errors=None):
         return (0, errors)
     return ("", errors)
 
-size, errors = f(1)  # E: Need type annotation for "errors"  # E: Need type annotation for "errors"
+size, errors = f(1)
 reveal_type(errors)  # N: Revealed type is "Any | set[Any]"
 
 [case partial_set_return_from_untyped_func3]
@@ -415,11 +415,11 @@ def f():
 
 x = f()
 x.add(1)
-reveal_type(x)  # N: Revealed type is "set[int]"
+reveal_type(x)  # N: Revealed type is "set[Any]"
 
 y = f()
 y.add("")
-reveal_type(y)  # N: Revealed type is "set[str]"
+reveal_type(y)  # N: Revealed type is "set[Any]"
 
 [case partial_defaultdict_return_from_untyped_func]
 # flags: --mode typed
@@ -432,7 +432,7 @@ def f(x, errors=None):
         return (0, errors)
     return ("", errors)
 
-size, errors = f(1)  # E: Need type annotation for "errors"  # E: Need type annotation for "errors"
+size, errors = f(1)
 reveal_type(errors)  # N: Revealed type is "Any | collections.defaultdict[Any, list[Any]]"
 
 [case optional_backwards_global]

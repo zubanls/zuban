@@ -72,7 +72,7 @@ enum ReplacedParamSpec {
 }
 
 impl Type {
-    pub fn replace_any_with_unknown_type_params_with_any(&self) -> Self {
+    pub fn replace_any_with_unknown_type_params_with_any(&self) -> Option<Self> {
         struct AnyReplacer();
         impl Replacer for AnyReplacer {
             #[inline]
@@ -91,7 +91,6 @@ impl Type {
             }
         }
         self.replace_internal(&mut AnyReplacer())
-            .unwrap_or_else(|| self.clone())
     }
 
     pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {

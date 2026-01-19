@@ -357,7 +357,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     );
                 }
             }
-            Inferred::from_type(t.replace_any_with_unknown_type_params_with_any())
+            Inferred::from_type(
+                t.replace_any_with_unknown_type_params_with_any()
+                    .unwrap_or_else(|| t.clone()),
+            )
         })
     }
 
