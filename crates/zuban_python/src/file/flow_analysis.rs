@@ -1324,7 +1324,7 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
 
     for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
-            Type::Any(_) => {
+            Type::Any(_) | Type::TypeVar(_) => {
                 // Any can be None or something else.
                 truthy.union_in_place(singleton.clone());
                 add(sub_t.clone());
@@ -5337,7 +5337,7 @@ fn check_for_comparison_guard(
 ) -> Option<FramesWithParentUnions> {
     match checking_side.key.as_ref()? {
         ComparisonKey::Normal(key) => {
-            // Narrow Foo in `Foo is None`
+            // Narrow Foo in `Foo is None` or `Foo == None`
             let (truthy, falsey) = narrow_is_or_eq(
                 i_s,
                 key.clone(),

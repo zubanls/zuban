@@ -2147,3 +2147,16 @@ def ensure_deck():
 
     if deck := get_deck():
         deck_preset_id = deck["conf"]
+
+[case type_var_equal_narrowing_should_not_be_unreachable]
+# flags: --mode typed
+def f[T, S: int](x: T, y: S):
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "Literal[1]?"
+    else:
+        reveal_type(x)  # N: Revealed type is "T"
+
+    if y == 1:
+        reveal_type(y)  # N: Revealed type is "Literal[1]?"
+    else:
+        reveal_type(y)  # N: Revealed type is "S"
