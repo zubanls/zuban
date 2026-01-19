@@ -360,7 +360,7 @@ impl ProjectOptions {
                     }
                 }
                 Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
-                    bail!("Expected tool.mypy to be simple table in pyproject.toml");
+                    bail!("Expected tool.mypy to be a simple table in pyproject.toml");
                 }
             }
         }
@@ -1151,7 +1151,7 @@ mod tests {
         let err = project_options_err(code, false);
         assert_eq!(
             err.to_string(),
-            "Expected tool.mypy to be simple table in pyproject.toml"
+            "Expected tool.mypy to be a simple table in pyproject.toml"
         );
     }
 
