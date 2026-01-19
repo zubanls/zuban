@@ -215,10 +215,10 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                 type_vars = TypeVarLikes::new_untyped_params(node, skip_first)
             }
         }
-        match type_vars.len() {
-            0 => type_var_reference
+        match type_vars.is_empty() {
+            true => type_var_reference
                 .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),
-            _ => type_var_reference
+            false => type_var_reference
                 .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
         }
         debug_assert!(type_var_reference.point().calculated());

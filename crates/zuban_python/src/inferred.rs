@@ -2750,9 +2750,9 @@ fn proper_classmethod_callable(
             let type_var_likes = class.use_cached_type_vars(i_s.db);
             Type::new_class(
                 class.node_ref.as_link(),
-                match type_var_likes.len() {
-                    0 => ClassGenerics::new_none(),
-                    _ => ClassGenerics::List(GenericsList::new_generics(
+                match type_var_likes.is_empty() {
+                    true => ClassGenerics::new_none(),
+                    false => ClassGenerics::List(GenericsList::new_generics(
                         type_var_likes
                             .iter()
                             .map(|tvl| ensure_classmethod_type_var_like(tvl.clone()))

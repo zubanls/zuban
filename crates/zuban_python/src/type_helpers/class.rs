@@ -122,9 +122,9 @@ impl<'db: 'a, 'a> Class<'a> {
         let type_var_likes = node_ref.use_cached_type_vars(db);
         Self::from_position(
             node_ref,
-            match type_var_likes.len() {
-                0 => Generics::None,
-                _ => Generics::Self_ {
+            match type_var_likes.is_empty() {
+                true => Generics::None,
+                false => Generics::Self_ {
                     class_ref: node_ref,
                 },
             },
