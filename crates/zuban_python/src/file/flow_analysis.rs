@@ -5666,6 +5666,7 @@ fn split_and_intersect(
             if matched {
                 if matched_with_any {
                     true_type.simplified_union_in_place(i_s, isinstance_type);
+                    other_side.union_in_place(t.clone());
                 } else {
                     // This used to just use union_in_place. However this caused problems with bool
                     // | int, which could not be added to complex. I'm still not sure what's

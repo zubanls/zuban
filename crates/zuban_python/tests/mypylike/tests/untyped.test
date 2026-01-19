@@ -845,3 +845,15 @@ b = B('')
 reveal_type(b.a1)  # N: Revealed type is "Any"
 reveal_type(b.a2)  # N: Revealed type is "Any"
 reveal_type(b.b)  # N: Revealed type is "str"
+
+[case type_is_on_object]
+# flags: --mode typed
+from typing import TypeIs
+class A: ...
+def isbuiltin(object: object) -> TypeIs[A]: ...
+
+def f(x):
+    if isbuiltin(x):
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    else:
+        reveal_type(x)  # N: Revealed type is "T1"
