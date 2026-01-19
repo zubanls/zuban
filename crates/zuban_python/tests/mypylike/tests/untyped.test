@@ -876,3 +876,17 @@ class Y:
     def prop(self): ...
 class Z1(X, Y): ...
 class Z2(Y, X): ...
+
+[case untyped_class_no_generics]
+# flags: --disallow-any-generics
+from typing import assert_type, Any
+class C:
+    def __init__(self, x):
+        self.x = x
+
+def f(
+    c: C,
+    c_invalid: C[int]  # E: "C" expects no type arguments, but 1 given
+):
+    assert_type(c.x, Any)
+    assert_type(c_invalid.x, Any)

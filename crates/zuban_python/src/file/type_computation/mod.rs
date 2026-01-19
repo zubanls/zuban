@@ -1013,7 +1013,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             } => {
                 let cls = Class::with_undefined_generics(class_node_ref);
                 if self.flags().disallow_any_generics
-                    && cls.type_vars(self.i_s).contains_non_default()
+                    && let type_vars = cls.type_vars(self.i_s)
+                    && type_vars.contains_non_default()
+                    && !type_vars.has_from_untyped_params()
                 {
                     self.add_issue(
                         node_ref,
@@ -1889,7 +1891,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let mut generics = vec![];
 
-        if !type_var_likes.is_empty()
+        if !type_var_likes.is_empty_or_untyped()
             && type_var_likes
                 .iter()
                 .all(|t| matches!(t, TypeVarLike::TypeVar(_)))
@@ -2056,13 +2058,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         on_count_mismatch: impl FnOnce(&mut Self, GenericCounts),
     ) {
         let mut given = generics.len();
-        let expected = type_var_likes.len();
+        let expected = type_var_likes.len_of_typed();
         let has_type_var_tuple = type_var_likes
             .iter()
             .any(|tvl| matches!(tvl, TypeVarLike::TypeVarTuple(_)));
 
         let mut type_args = TypeArgIterator::new(iterator);
-        let mut type_var_iterator = type_var_likes.iter().skip(generics.len());
+        let mut type_var_iterator = type_var_likes.iter().take(expected).skip(generics.len());
         let mut is_single_param_spec = false;
         let db = self.i_s.db;
         let resolve_default = |generics: &[GenericItem], g: GenericItem| {

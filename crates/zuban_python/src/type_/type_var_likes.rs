@@ -437,6 +437,13 @@ impl TypeVarLikes {
         self.0.len()
     }
 
+    pub fn len_of_typed(&self) -> usize {
+        if self.has_from_untyped_params() {
+            return 0;
+        }
+        self.len()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
