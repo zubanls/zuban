@@ -3297,6 +3297,10 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                             return;
                         }
                         let first = first.as_cow_type(i_s);
+                        if first.is_any() || second.is_any() {
+                            // Any can be overwritten with anything
+                            return;
+                        }
                         if !first
                             .is_sub_type_of(
                                 i_s,

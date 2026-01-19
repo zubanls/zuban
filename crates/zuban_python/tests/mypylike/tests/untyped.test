@@ -857,3 +857,22 @@ def f(x):
         reveal_type(x)  # N: Revealed type is "__main__.A"
     else:
         reveal_type(x)  # N: Revealed type is "T1"
+
+[case multi_inheritance_overwrite_with_untyped_decorator]
+# flags: --mode mypy
+def untyped_decorator(func):
+    return func
+def untyped_property_decorator(func):
+    return property
+
+class X:
+    def f(self) -> None: ...
+    @property
+    def prop(self): ...
+class Y:
+    @untyped_decorator
+    def f(self) -> None: ...
+    @untyped_property_decorator
+    def prop(self): ...
+class Z1(X, Y): ...
+class Z2(Y, X): ...
