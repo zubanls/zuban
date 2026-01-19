@@ -38,7 +38,7 @@ lazy_static::lazy_static! {
         ("generators.py", 13),
         ("inheritance.py", 3),
         ("__init__.py", 1),
-        ("isinstance.py", 3),
+        ("isinstance.py", 2),
         ("lambdas.py", 18),
         ("named_param.py", 10),
         ("ordering.py", 4),
