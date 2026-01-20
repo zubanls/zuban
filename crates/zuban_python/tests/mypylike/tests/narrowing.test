@@ -2120,3 +2120,35 @@ def validate_bool(a1: bool, a2: Any) -> bool:
 def validate_str(a1: str, a2: Any) -> bool:
     assert a1 == a2
     return True
+
+[case narrowing_conjunction_disjunction_with_parent_unions]
+# From GH #261
+import dataclasses
+import enum
+from typing import Literal, reveal_type
+
+class ModelType(enum.StrEnum):
+    A = "a"
+    B = "b"
+
+@dataclasses.dataclass
+class A:
+    a: int
+    type: Literal[ModelType.A] = ModelType.A
+
+@dataclasses.dataclass
+class B:
+    b: int
+    type: Literal[ModelType.B] = ModelType.B
+
+def f(x: A | B):
+    if x.type == ModelType.A and reveal_type(x).a > 0:  # N: Revealed type is "__main__.A"
+        print("Flattened check", True)
+
+    if x.type == ModelType.A:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+        if x.a > 0:
+            print("Nested check", True)
+
+    if x.type == ModelType.A or reveal_type(x).b > 0:  # N: Revealed type is "__main__.B"
+        print("Flattened check", True)

@@ -2853,6 +2853,7 @@ impl Inference<'_, '_, '_> {
                 )
             }
         } else {
+            self.propagate_parent_unions(&mut left_frames.truthy, &left_frames.parent_unions);
             left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
                 fa.with_frame(left_frames.truthy, || {
                     right_infos = Some(self.find_guards_in_expression_parts(right));
@@ -2922,6 +2923,7 @@ impl Inference<'_, '_, '_> {
                 )
             }
         } else {
+            self.propagate_parent_unions(&mut left_frames.falsey, &left_frames.parent_unions);
             left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
                 let left_t = left_inf.as_cow_type(self.i_s);
                 fa.with_frame(left_frames.falsey, || {
