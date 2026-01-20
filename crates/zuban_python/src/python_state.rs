@@ -235,7 +235,6 @@ pub(crate) struct PythonState {
     dataclasses_capital_field_index: NodeIndex,
     dataclasses_replace_index: NodeIndex,
     warnings_deprecated_index: Option<NodeIndex>,
-    pub type_of_object: Type, // TODO currently unused
     pub type_of_any: Type,
     pub type_of_self: Type,
     pub type_of_arbitrary_tuple: Type,
@@ -369,7 +368,6 @@ impl PythonState {
             dataclasses_capital_field_index: 0,
             dataclasses_replace_index: 0,
             warnings_deprecated_index: None,
-            type_of_object: Type::None, // Will be set later
             type_of_any: Type::Type(Arc::new(Type::Any(AnyCause::Todo))),
             type_of_self: Type::Type(Arc::new(Type::Self_)),
             type_of_arbitrary_tuple: Type::Type(Arc::new(Type::Tuple(
@@ -832,8 +830,6 @@ impl PythonState {
         let builtins_bytes_mro = calculate_mro_for_class(db, db.python_state.bytes());
 
         let s = &mut db.python_state;
-        let object_type = s.object_type();
-        s.type_of_object = Type::Type(Arc::new(object_type));
         s.list_of_any = new_class!(s.list_node_ref().as_link(), Type::ERROR);
         s.dict_of_any = new_class!(s.dict_node_ref().as_link(), Type::ERROR, Type::ERROR);
         s.set_of_any = new_class!(s.set_node_ref().as_link(), Type::ERROR);
