@@ -930,3 +930,12 @@ def g(x: X, y: Y):
     assert_type(x.f(), Any)
     assert_type(y.f(), Literal[1])
     assert_never(simple())
+
+[case untyped_infer_implicit_none_return]
+# flags: --mode typed
+from typing import assert_type, Literal
+def f():
+    if bool():
+        return 1
+
+assert_type(f(), Literal[1] | None)

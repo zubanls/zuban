@@ -283,6 +283,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             } else if let Some(new) = t.replace_any_with_unknown_type_params_with_any() {
                 *result = Inferred::from_type(new)
             }
+            // None can be an implicit return
+            if body_node_ref.point().specific() != Specific::FunctionEndIsUnreachable {
+                *result = Inferred::from_type(result.as_type(i_s).union(Type::None))
+            }
         }
 
         let mut result = result
