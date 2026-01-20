@@ -309,7 +309,7 @@ if NOT_DEFINED:
     s = str()
 else:
     s = str()
-#? str()
+#? str() types.NoneType()
 possible_recursion_error(s)
 
 
