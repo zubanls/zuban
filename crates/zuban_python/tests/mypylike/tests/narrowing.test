@@ -1874,38 +1874,6 @@ if isinstance(obj, B | None):
     else:
         print('obj is B')
 
-[case narrow_literal_bool_with_equals]
-# From GH #173
-from typing import Literal, cast, reveal_type, Any
-
-class TypeA:
-    foo: Literal[True]
-    bar: int
-
-class TypeB:
-    foo: Literal[False]
-    bar: str
-
-a = cast(TypeA | TypeB, None)
-
-if bool():
-    reveal_type(a.foo)  # N: Revealed type is "bool"
-    assert a.foo == True
-    reveal_type(a.bar)  # N: Revealed type is "int"
-
-assert a.foo
-reveal_type(a.bar)  # N: Revealed type is "int"
-
-def takes_int(_: int) -> Any: ...
-
-# It should work both as a call and as a decorator
-x = a.bar
-takes_int(a.bar)
-@takes_int(a.bar)
-def wrapped_func(): ...
-@takes_int(x)
-def wrapped_func_2(): ...
-
 [case type_var_isinstance_intersection]
 from typing import TypeVar
 
@@ -2139,3 +2107,16 @@ def f[T, S: int](x: T, y: S):
         reveal_type(y)  # N: Revealed type is "Literal[1]?"
     else:
         reveal_type(y)  # N: Revealed type is "S"
+
+[case bool_different_than_any]
+# flags: --warn-unreachable
+# From GH #262
+from typing import Any
+
+def validate_bool(a1: bool, a2: Any) -> bool:
+    assert a1 == a2
+    return True
+
+def validate_str(a1: str, a2: Any) -> bool:
+    assert a1 == a2
+    return True

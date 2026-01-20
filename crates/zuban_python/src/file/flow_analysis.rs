@@ -1463,9 +1463,6 @@ fn narrow_is_or_eq(
             Some(split_singleton(key))
         }
         _ => match checking_t {
-            Type::Class(c) if c.link == i_s.db.python_state.bool_link() => {
-                Some(split_singleton(key))
-            }
             Type::Union(_) => {
                 // Remove None from the checking side, if the other side matches everything except None.
                 if checking_t
