@@ -256,6 +256,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
+        if let Some(result) = &mut result {
+            let t = result.as_cow_type(i_s);
+            if matches!(t.as_ref(), Type::None) && self.class.is_some() {
+                // When an untyped method returns None, it typically means that a subclass will
+                // return None | Any.
+                *result = Inferred::from_type(Type::ERROR.union(Type::None))
+            } else if body_node_ref.point().specific() != Specific::FunctionEndIsUnreachable {
+                // None can be an implicit return
+                *result = Inferred::from_type(result.as_type(i_s).union(Type::None))
+            }
+        }
         let needs_async_remap = if let Some(generator) = generator {
             let t = generator
                 .as_type(i_s)
@@ -276,16 +287,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         if let Some(result) = &mut result {
             let t = result.as_cow_type(i_s);
-            if matches!(t.as_ref(), Type::None) && self.class.is_some() {
-                // When an untyped method returns None, it typically means that a subclass will
-                // return None | Any.
-                *result = Inferred::from_type(Type::ERROR.union(Type::None))
-            } else if let Some(new) = t.replace_any_with_unknown_type_params_with_any() {
+            if let Some(new) = t.replace_any_with_unknown_type_params_with_any() {
                 *result = Inferred::from_type(new)
-            }
-            // None can be an implicit return
-            if body_node_ref.point().specific() != Specific::FunctionEndIsUnreachable {
-                *result = Inferred::from_type(result.as_type(i_s).union(Type::None))
             }
         }
 

@@ -174,9 +174,9 @@ class Dog:
             return friend
 
 buddy = Dog(UNKNOWN_NAME)  # E: Name "UNKNOWN_NAME" is not defined
-reveal_type(buddy.first_friend())  # N: Revealed type is "Any"
+reveal_type(buddy.first_friend())  # N: Revealed type is "Any | None"
 
-reveal_type(Dog([1]).first_friend())  # N: Revealed type is "Any"
+reveal_type(Dog([1]).first_friend())  # N: Revealed type is "Any | None"
 
 [case untyped_staticmethod]
 # flags: --mode typed
