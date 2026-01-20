@@ -892,3 +892,22 @@ def f(
     assert_type(c_invalid.x, Any)
     other_c1 = C()
     other_c2 = c
+
+[case untyped_none_in_method_inherited]
+# flags: --mode typed
+from typing import assert_type, Any, Literal
+class X:
+    def f(self):
+        return None
+
+class Y(X):
+    def f(self):
+        return 1
+
+def simple():
+    return None
+
+def g(x: X, y: Y):
+    assert_type(x.f(), Any | None)
+    assert_type(y.f(), Literal[1])
+    assert_type(simple(), None)
