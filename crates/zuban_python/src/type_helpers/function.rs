@@ -288,7 +288,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut result = result
             .unwrap_or_else(|| {
                 if body_node_ref.point().specific() == Specific::FunctionEndIsUnreachable {
-                    Inferred::new_never(NeverCause::Other)
+                    if self.class.is_some() {
+                        // Untyped methods may be overwritten in subclasses, it is very common to
+                        // return raise NotImplemented in some super classes.
+                        Inferred::new_any_from_error()
+                    } else {
+                        Inferred::new_never(NeverCause::Other)
+                    }
                 } else {
                     Inferred::new_none()
                 }

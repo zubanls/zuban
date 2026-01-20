@@ -911,3 +911,22 @@ def g(x: X, y: Y):
     assert_type(x.f(), Any | None)
     assert_type(y.f(), Literal[1])
     assert_type(simple(), None)
+
+[case untyped_no_return_in_methods]
+# flags: --mode typed
+from typing import assert_type, Any, Literal, assert_never
+class X:
+    def f(self):
+        raise NotImplementedError
+
+class Y(X):
+    def f(self):
+        return 1
+
+def simple():
+    raise NotImplementedError
+
+def g(x: X, y: Y):
+    assert_type(x.f(), Any)
+    assert_type(y.f(), Literal[1])
+    assert_never(simple())
