@@ -982,3 +982,18 @@ def fn(c: T) -> U:  # E: Name "U" is not defined
     pass
 
 fn or 1
+
+[case inferred_type_of_function_should_not_be_type_of_object]
+# flags: --mode typed
+x = (str, int)
+def safe_getattr(obj, name, default=_sentinel):
+    try:
+        ...
+    except AttributeError:
+        return default
+    else:
+        t = type(str.replace)
+        reveal_type(t)  # N: Revealed type is "type[Any]"
+        if isinstance(obj, t):
+            return getattr(obj, name)
+    return obj

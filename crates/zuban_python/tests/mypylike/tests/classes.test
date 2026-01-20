@@ -899,7 +899,7 @@ def foo(
     reveal_type(type(N))  # N: Revealed type is "type[object]"
     reveal_type(type(N))  # N: Revealed type is "type[object]"
     reveal_type(type(typing))  # N: Revealed type is "type[types.ModuleType]"
-    reveal_type(type(abs))  # N: Revealed type is "type[object]"
+    reveal_type(type(abs))  # N: Revealed type is "type[Any]"
 
 [case weird_type_executions_in_class]
 from typing import Generic, ParamSpec, TypeVarTuple
@@ -910,8 +910,8 @@ class Foo(Generic[*Ts, P]):
         reveal_type(type(super()))  # N: Revealed type is "type[super]"
         reveal_type(type(Ts))  # N: Revealed type is "type[typing.TypeVarTuple]"
         reveal_type(type(P))  # N: Revealed type is "type[typing.ParamSpec]"
-        reveal_type(type(x))  # N: Revealed type is "type[object]"
-        reveal_type(type(y))  # N: Revealed type is "type[object]"
+        reveal_type(type(x))  # N: Revealed type is "def (typing.Iterable[object] =) -> tuple[object, ...]"
+        reveal_type(type(y))  # N: Revealed type is "type[dict[str, object]]"
         reveal_type(type(self))  # N: Revealed type is "type[Self]"
 
 [case type_executions_of_special_types]
@@ -945,7 +945,7 @@ def foo(e: E, d: D, n: N, t: T):
     reveal_type(type(n))  # N: Revealed type is "type[tuple[int, fallback=__main__.N]]"
 
     reveal_type(type(T))  # N: Revealed type is "type[object]"
-    reveal_type(type(t))  # N: Revealed type is "type[object]"
+    reveal_type(type(t))  # N: Revealed type is "type[dict[str, object]]"
 
 [case self_argument_against_generics]
 from typing import Self, Generic, TypeVar

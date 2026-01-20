@@ -2726,7 +2726,7 @@ impl<'x> ClassLookupOptions<'x> {
 fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Inferred {
     let mut type_part = Type::Never(NeverCause::Other);
     for t in first_arg.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-        match t {
+        type_part.union_in_place(match t {
             Type::Class(_)
             | Type::None
             | Type::Any(_)
@@ -2735,25 +2735,31 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
             | Type::Tuple(_)
             | Type::NewType(_)
             | Type::TypeVar(_)
-            | Type::Enum(_) => type_part.union_in_place(t.clone()),
-            Type::Literal(l) => type_part.union_in_place(l.fallback_type(i_s.db)),
+            | Type::Enum(_) => t.clone(),
+            Type::Literal(l) => l.fallback_type(i_s.db),
             Type::Type(type_) => match type_.as_ref() {
                 Type::Class(c) => match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
-                    MetaclassState::Some(link) => {
-                        type_part.union_in_place(Type::new_class(*link, ClassGenerics::new_none()))
-                    }
-                    _ => type_part.union_in_place(i_s.db.python_state.object_type().clone()),
+                    MetaclassState::Some(link) => Type::new_class(*link, ClassGenerics::new_none()),
+                    _ => i_s.db.python_state.object_type().clone(),
                 },
-                Type::Any(cause) => type_part.union_in_place(Type::Any(*cause)),
-                _ => type_part.union_in_place(i_s.db.python_state.object_type()),
+                Type::Any(cause) => Type::Any(*cause),
+                _ => i_s.db.python_state.object_type(),
             },
-            Type::Module(_) | Type::NamedTuple(_) => {
-                type_part.union_in_place(i_s.db.python_state.module_type())
+            Type::Module(_) | Type::NamedTuple(_) => i_s.db.python_state.module_type(),
+            Type::EnumMember(m) => Type::Enum(m.enum_.clone()),
+            Type::Super { .. } => i_s.db.python_state.super_type(),
+            Type::ParamSpecArgs(_) => i_s.db.python_state.tuple_of_obj.clone(),
+            Type::TypedDict(_) | Type::ParamSpecKwargs(_) => {
+                i_s.db.python_state.dict_of_str_and_obj.clone()
             }
-            Type::EnumMember(m) => type_part.union_in_place(Type::Enum(m.enum_.clone())),
-            Type::Super { .. } => type_part.union_in_place(i_s.db.python_state.super_type()),
-            _ => type_part.union_in_place(i_s.db.python_state.object_type()),
-        }
+            // We cannot simply use type[object] here, because the type is unclear for narrowing at
+            // this point.
+            // We should provide better types here if possible for other types. This is however
+            // pretty hard for callables for example, because they have different types depending
+            // on the definition (e.g. builtins vs. normal Python functions) and we don't have that
+            // information available.
+            _ => Type::ERROR,
+        })
     }
     if type_part.is_never() {
         first_arg // Must be never
