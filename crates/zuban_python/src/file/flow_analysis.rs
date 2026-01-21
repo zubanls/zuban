@@ -1350,11 +1350,11 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
                         add(fa);
                         continue;
                     }
-                    /*
                     if has_custom_eq(i_s, sub_t) {
-                        return None;
+                        truthy.union_in_place(sub_t.clone());
+                        add(sub_t.clone());
+                        continue;
                     }
-                    */
                     if sub_t.is_simple_super_type_of(i_s, singleton).bool() {
                         truthy.union_in_place(singleton.clone())
                     } else if let Type::Enum(e) = sub_t

@@ -2152,3 +2152,42 @@ def f(x: A | B):
 
     if x.type == ModelType.A or reveal_type(x).b > 0:  # N: Revealed type is "__main__.B"
         print("Flattened check", True)
+
+[case no_narrowing_with_custom_eq_and_literals]
+# flags: --warn-unreachable
+from typing import Literal, assert_type
+
+class X:
+    def __eq__(self, value) -> bool:
+        return True
+
+def f(x: X, s: Literal[''], i: Literal[1], b: Literal[True]):
+    if x == s:
+        assert_type(x, X)
+    else:
+        assert_type(x, X)
+
+    if x == "":
+        assert_type(x, X)
+    else:
+        assert_type(x, X)
+
+    if x == i:
+        assert_type(x, X)
+    else:
+        assert_type(x, X)
+
+    if x == 1:
+        assert_type(x, X)
+    else:
+        assert_type(x, X)
+
+    if x == b:
+        assert_type(x, X)
+    else:
+        assert_type(x, X)
+
+    if x == True:
+        assert_type(x, X)
+    else:
+        assert_type(x, X)
