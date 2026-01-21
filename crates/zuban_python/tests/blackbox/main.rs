@@ -43,6 +43,7 @@ lazy_static::lazy_static! {
         ("named_param.py", 10),
         ("ordering.py", 4),
         ("pep0484_typing.py", 3),
+        ("pep0484_decorators.py", 2),
         ("positional_only_params.py", 3),
         ("precedence.py", 7),
         ("stdlib.py", 41),

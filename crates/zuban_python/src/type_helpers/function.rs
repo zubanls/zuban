@@ -849,6 +849,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut deprecated = None;
         let mut dataclass_transform = None;
         let mut inferred_decs = vec![];
+        let mut return_any_because_untyped = false;
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator_details(i_s, self.node_ref.file, decorator, had_first_annotation);
@@ -911,8 +912,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     kind = k
                 }
                 InferredDecorator::Inferred(dec_inf) => {
-                    // TODO check if it's an function without a return annotation and
-                    // abort in that case.
                     if self.node_ref.file.flags(i_s.db).disallow_untyped_decorators {
                         let is_typed = |inf: &Inferred, skip_first_param| {
                             let t = inf.as_cow_type(i_s);
@@ -920,7 +919,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 return false;
                             }
                             t.maybe_callable(i_s)
-                                .map(|c| c.is_typed(skip_first_param))
+                                .map(|c| {
+                                    if i_s.db.mypy_compatible() {
+                                        c.is_typed(skip_first_param)
+                                    } else {
+                                        // Decorators that don't have a return annotation should
+                                        // not be looked at as typed and we should report that as
+                                        // an error.
+                                        c.is_typed_and_annotated_result(i_s.db)
+                                    }
+                                })
                                 // A non-callable will raise errors later anyway
                                 .unwrap_or(true)
                         };
@@ -932,6 +940,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 },
                             );
                         }
+                    }
+                    if !i_s.db.mypy_compatible()
+                        && let Some(node_ref) = dec_inf.maybe_saved_node_ref(i_s.db)
+                        && let Some(func) = node_ref.maybe_function()
+                        && func.return_annotation().is_none()
+                    {
+                        return_any_because_untyped = true;
+                        continue;
                     }
                     inferred_decs.push((decorator.index(), dec_inf));
                 }
@@ -956,27 +972,39 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::Deprecated(reason) => deprecated = Some(reason),
             }
         }
-        let mut inferred = Inferred::from_type(
-            base_t
-                .map(|c| Type::Callable(Arc::new(c)))
-                .unwrap_or_else(|| {
-                    if no_type_check {
-                        Type::Callable(Arc::new(self.as_no_type_check_callable(i_s.db)))
-                    } else if is_overload {
-                        self.as_type_without_inferring_return_type(i_s, FirstParamProperties::None)
-                    } else {
-                        self.as_type(i_s, FirstParamProperties::None)
-                    }
-                }),
-        );
-        for (decorator_index, inferred_dec) in inferred_decs {
-            let nr = NodeRef::new(self.node_ref.file, decorator_index);
-            inferred = inferred_dec.execute_with_details(
-                i_s,
-                &KnownArgs::new(&inferred, nr),
-                &mut ResultContext::ExpectUnused,
-                OnTypeError::new(&on_argument_type_error),
-            );
+        let mut c = base_t.map(|c| c).unwrap_or_else(|| {
+            if no_type_check {
+                self.as_no_type_check_callable(i_s.db)
+            } else if is_overload {
+                self.as_callable_without_inferring_return_type(i_s, FirstParamProperties::None)
+            } else {
+                if return_any_because_untyped {
+                    self.as_callable_with_options(
+                        i_s,
+                        AsCallableOptions {
+                            first_param: FirstParamProperties::None,
+                            return_type: self.inferred_return_type(i_s),
+                        },
+                    )
+                } else {
+                    self.as_callable(i_s, FirstParamProperties::None)
+                }
+            }
+        });
+        if return_any_because_untyped {
+            c.return_type = Type::Any(AnyCause::Unannotated)
+        }
+        let mut inferred = Inferred::from_type(Type::Callable(Arc::new(c)));
+        if !return_any_because_untyped {
+            for (decorator_index, inferred_dec) in inferred_decs {
+                let nr = NodeRef::new(self.node_ref.file, decorator_index);
+                inferred = inferred_dec.execute_with_details(
+                    i_s,
+                    &KnownArgs::new(&inferred, nr),
+                    &mut ResultContext::ExpectUnused,
+                    OnTypeError::new(&on_argument_type_error),
+                );
+            }
         }
         if is_abstract && is_final {
             self.add_issue_onto_start_including_decorator(
@@ -1475,18 +1503,28 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         )
     }
 
-    pub fn as_type_without_inferring_return_type(
+    pub fn as_callable_without_inferring_return_type(
         &self,
         i_s: &InferenceState,
         first_param: FirstParamProperties,
-    ) -> Type {
-        Type::Callable(Arc::new(self.as_callable_with_options(
+    ) -> CallableContent {
+        self.as_callable_with_options(
             i_s,
             AsCallableOptions {
                 first_param,
                 return_type: self.return_type(i_s),
             },
-        )))
+        )
+    }
+
+    pub fn as_type_without_inferring_return_type(
+        &self,
+        i_s: &InferenceState,
+        first_param: FirstParamProperties,
+    ) -> Type {
+        Type::Callable(Arc::new(
+            self.as_callable_without_inferring_return_type(i_s, first_param),
+        ))
     }
 
     pub fn as_callable_with_options(

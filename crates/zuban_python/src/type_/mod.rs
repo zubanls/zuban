@@ -2163,6 +2163,15 @@ impl CallableLike {
         }
     }
 
+    pub fn is_typed_and_annotated_result(&self, db: &Database) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed_and_annotated_result(db),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed_and_annotated_result(db)),
+        }
+    }
+
     pub fn had_first_self_or_class_annotation(&self) -> bool {
         match self {
             Self::Callable(c) => c.kind.had_first_self_or_class_annotation(),

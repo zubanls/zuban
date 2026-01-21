@@ -787,17 +787,30 @@ impl CallableContent {
     }
 
     pub fn is_typed(&self, skip_first_param: bool) -> bool {
-        let has_unannotated = |t: &Type| matches!(t, Type::Any(AnyCause::Unannotated));
-        if !has_unannotated(&self.return_type) {
+        if self.is_typed_result() {
             return true;
         }
         match &self.params {
-            CallableParams::Simple(params) => !params
-                .iter()
-                .skip(skip_first_param.into())
-                .all(|t| t.type_.maybe_type().is_some_and(has_unannotated)),
+            CallableParams::Simple(params) => {
+                !params.iter().skip(skip_first_param.into()).all(|t| {
+                    t.type_
+                        .maybe_type()
+                        .is_some_and(|t| matches!(t, Type::Any(AnyCause::Unannotated)))
+                })
+            }
             CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
         }
+    }
+
+    fn is_typed_result(&self) -> bool {
+        !matches!(&self.return_type, Type::Any(AnyCause::Unannotated))
+    }
+
+    pub fn is_typed_and_annotated_result(&self, db: &Database) -> bool {
+        self.is_typed_result()
+            && self
+                .maybe_original_function(db)
+                .is_none_or(|f| f.return_annotation().is_some())
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
