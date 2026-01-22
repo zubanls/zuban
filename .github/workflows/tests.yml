@@ -55,5 +55,5 @@ jobs:
       - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
       - name: "Run tests"
         run: |
-            rustup show
+            rustup show -v
             cargo test --release --locked
