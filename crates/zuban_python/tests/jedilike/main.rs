@@ -182,7 +182,7 @@ fn main() -> ExitCode {
     }
     println!(
         "Ran {ran_count} of {full_count} ({unexpected_error_count} unexpected errors; \
-         {expected} expected) blackbox tests in {file_count} files; finished in {:.2}s",
+         {expected} expected) Jedi tests in {file_count} files; finished in {:.2}s",
         start.elapsed().as_secs_f32(),
         expected = error_count - unexpected_error_count,
     );
@@ -192,9 +192,9 @@ fn main() -> ExitCode {
 fn mypy_path() -> Vec<Arc<NormalizedPath>> {
     let base = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
-        .join("blackbox");
+        .join("jedilike");
 
-    ["python_files", "from_jedi_python_files"]
+    ["tests", "jedi_tests"]
         .into_iter()
         .map(|part| {
             LocalFS::without_watcher()

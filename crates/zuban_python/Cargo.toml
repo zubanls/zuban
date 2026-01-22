@@ -41,7 +41,7 @@ shlex = "*"
 zuban_debug = []
 
 [[test]]
-name = "blackbox"
+name = "jedilike"
 harness = false
 
 [[test]]
