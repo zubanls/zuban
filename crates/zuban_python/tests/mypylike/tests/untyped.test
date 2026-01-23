@@ -958,3 +958,12 @@ class C:
     reveal_type(f)  # N: Revealed type is "def [T2 <: Any] (self: __main__.C, x: T2) -> Any"
 
 reveal_type(C().f(1))  # N: Revealed type is "Any"
+
+[case untyped_property_no_error]
+class A:
+    x = 1
+
+class B(A):
+    @property
+    def x(self):
+        return 1

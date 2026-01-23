@@ -1322,9 +1322,11 @@ impl Inference<'_, '_, '_> {
         }
 
         let should_check_func_override = || {
-            func_def.is_typed()
-                || self.flags().check_untyped_defs
-                    && (func_def.maybe_decorated().is_none() || !self.i_s.db.mypy_compatible())
+            func_def.is_typed() || {
+                let flags = self.flags();
+                flags.check_untyped_defs
+                    && (func_def.maybe_decorated().is_none() || flags.check_untyped_overrides)
+            }
         };
 
         // Mypy completely ignores untyped functions.

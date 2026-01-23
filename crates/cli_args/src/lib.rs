@@ -276,6 +276,10 @@ pub struct MypyCli {
     allow_incomplete_generics: bool,
     #[arg(long, hide = true)]
     disallow_incomplete_generics: bool,
+    #[arg(long, hide = true)]
+    check_untyped_overrides: bool,
+    #[arg(long, hide = true)]
+    no_check_untyped_overrides: bool,
 }
 
 pub fn apply_flags(
@@ -377,6 +381,7 @@ fn apply_mypy_flags(
         allow_incomplete_generics,
         disallow_incomplete_generics
     );
+    apply!(flags, check_untyped_overrides, no_check_untyped_overrides);
 
     apply!(diagnostic_config, show_column_numbers, hide_column_numbers);
     apply!(diagnostic_config, show_error_end, hide_error_end);

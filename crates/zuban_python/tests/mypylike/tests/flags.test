@@ -336,7 +336,7 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     (*y, )  # E: Expected iterable as variadic argument  [misc]  # E: Expected iterable as variadic argument  [misc]
 
 [case untyped_override_check_untyped_defs_no_mypy_compatible]
-# flags: --check-untyped-defs --mode typed
+# flags: --check-untyped-defs --check-untyped-overrides --mode typed
 import m
 
 [file m.py]

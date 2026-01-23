@@ -427,6 +427,7 @@ pub struct TypeCheckerFlags {
     pub use_joins: bool,
     pub disallow_deprecated: bool,
     pub allow_incomplete_generics: bool,
+    pub check_untyped_overrides: bool,
 }
 
 impl Default for TypeCheckerFlags {
@@ -469,6 +470,7 @@ impl Default for TypeCheckerFlags {
             use_joins: false,
             disallow_deprecated: false,
             allow_incomplete_generics: false,
+            check_untyped_overrides: false,
         }
     }
 }
