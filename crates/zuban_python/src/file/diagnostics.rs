@@ -3253,6 +3253,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         debug!("Multi inheritance bind issue(inst2) on name {name}: {issue:?}");
                         had_lookup_issue.set(true)
                     })
+                    .with_avoid_inferring_return_types()
                     .without_object(),
                 );
                 let mut add_multi_inheritance_issue = || {
@@ -3274,7 +3275,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         InstanceLookupOptions::new(&|issue| {
                             debug!("Multi inheritance bind issue(inst1) on name {name}: {issue:?}");
                             had_lookup_issue.set(true)
-                        }),
+                        })
+                        .with_avoid_inferring_return_types(),
                     );
                     if had_lookup_issue.get() {
                         add_multi_inheritance_issue();

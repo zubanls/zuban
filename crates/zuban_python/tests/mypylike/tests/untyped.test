@@ -967,3 +967,35 @@ class B(A):
     @property
     def x(self):
         return 1
+
+[case untyped_override_for_multi_inheritance]
+class X:
+    def f(self):
+        return 1
+class Y:
+    def f(self):
+        if bool():
+            return None
+        else:
+            return 1
+
+class A(X, Y): ...
+class B(Y, X): ...
+
+[case untyped_override_for_multi_inheritance_with_decorators]
+def identity[T](x: T) -> T: ...
+
+class X:
+    @identity
+    def f(self):
+        return 1
+class Y:
+    @identity
+    def f(self):
+        if bool():
+            return None
+        else:
+            return 1
+
+class A(X, Y): ...
+class B(Y, X): ...
