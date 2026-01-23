@@ -111,3 +111,21 @@ higher_order(ok2)
 
 higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
 higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"
+
+[case type_var_tuple_param_spec_interaction_should_not_crash]
+# From GH #265
+from typing import Unpack
+from typing_extensions import ParamSpec, TypeVarTuple, Callable
+
+_P = ParamSpec("_P")
+_Ts = TypeVarTuple("_Ts")
+
+def foo(*args: Unpack[_Ts]):
+    pass
+
+def foo2(*args: Unpack[_Ts], **kwargs):
+    pass
+
+def bar(c: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs):
+    foo(*args)  # E: ParamSpec arguments must be of types "*_P.args, **_P.kwargs"  # E: Passing a ParamSpec to a tuple unpack is not possible
+    foo2(*args, **kwargs)  # E: Passing a ParamSpec to a tuple unpack is not possible

@@ -996,7 +996,12 @@ pub(crate) fn match_arguments_against_params<
                             InferredArg::StarredWithUnpack(with_unpack) => {
                                 gatherer.add_with_unpack(with_unpack)
                             }
-                            InferredArg::ParamSpec { .. } => unreachable!(),
+                            InferredArg::ParamSpec { .. } => {
+                                add_issue(IssueKind::ArgumentIssue(
+                                    "Passing a ParamSpec to a tuple unpack is not possible".into(),
+                                ));
+                                Ok(())
+                            }
                         };
                         if maybe_err.is_err() {
                             add_issue(IssueKind::ArgumentIssue(

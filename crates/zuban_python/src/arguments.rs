@@ -16,6 +16,7 @@ use crate::{
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
+    recoverable_error,
     type_::{IterCause, ParamSpecUsage, StringSlice, TupleArgs, Type, TypedDict, WithUnpack},
 };
 
@@ -469,6 +470,7 @@ impl<'db, 'a> ArgKind<'db, 'a> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum InferredArg<'a> {
     Inferred(Inferred),
     StarredWithUnpack(WithUnpack),
@@ -488,7 +490,7 @@ impl<'db> Arg<'db, '_> {
                 in_args_or_kwargs_and_arbitrary_len,
                 ..
             } => *in_args_or_kwargs_and_arbitrary_len,
-            ArgKind::StarredWithUnpack { .. } => true,
+            ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => true,
             _ => false,
         }
     }
@@ -511,7 +513,10 @@ impl<'db> Arg<'db, '_> {
     ) -> Inferred {
         match self.infer(result_context) {
             InferredArg::Inferred(inf) => inf,
-            _ => unreachable!(),
+            arg => {
+                recoverable_error!("Expected a normal argument and not {arg:?}");
+                Inferred::new_any_from_error()
+            }
         }
     }
 
