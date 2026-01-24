@@ -363,3 +363,18 @@ queue.append((foo, bar))
 def f(x: int):
     l = list([(0, 0)])
     l.append((x, x))
+
+[case literal_union_self_matching]
+# Regression test for GH #267: ensure literal union self-matching works correctly
+# (The fix added a fast path for matching identical unions without type variables)
+from typing import Literal
+
+Color = Literal["red", "green", "blue"]
+
+def set_color(c: Color) -> None: ...
+def get_color() -> Color: ...
+
+# Matching Color against Color should work
+c: Color = "red"
+set_color(c)
+set_color(get_color())
