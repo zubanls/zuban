@@ -1239,6 +1239,38 @@ impl Type {
         result
     }
 
+    /// Fast check if this type might contain type variables or types with special matching rules.
+    /// Uses cached flags where available (e.g., for unions) to avoid traversing the type tree.
+    /// This is an over-approximation: it may return true even if no type vars are present,
+    /// but will never return false when type vars exist or special matching is needed.
+    pub fn might_have_type_vars(&self) -> bool {
+        match self {
+            Self::Union(u) => u.might_have_type_vars,
+            // TypeVars and ParamSpecs are type variables
+            Self::TypeVar(_) | Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => true,
+            // Self_ is context-dependent: two Self_ types that appear identical may refer to
+            // different classes depending on context, so we must not skip matching for them
+            Self::Self_ => true,
+            // NewType has special type-checking rules (it's not actually a type, more like a
+            // function), so we must not skip matching for it
+            Self::NewType(_) => true,
+            // Type::Type wrapping a NewType also needs special handling
+            Self::Type(inner) => inner.might_have_type_vars(),
+            Self::Literal(_)
+            | Self::None
+            | Self::Any(_)
+            | Self::Never(_)
+            | Self::LiteralString { .. }
+            | Self::Module(_)
+            | Self::Namespace(_)
+            | Self::EnumMember(_)
+            | Self::CustomBehavior(_)
+            | Self::DataclassTransformObj(_) => false,
+            // For other types, fall back to the full check
+            _ => self.has_type_vars(),
+        }
+    }
+
     pub fn has_any(&self, i_s: &InferenceState) -> bool {
         self.has_any_internal(i_s, &mut Vec::new())
     }

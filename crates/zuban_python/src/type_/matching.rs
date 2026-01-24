@@ -263,6 +263,19 @@ impl Type {
         matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
+        // Fast path: if types are identical and don't contain type variables that need tracking,
+        // we can skip the expensive matching process. This is particularly important for large
+        // literal unions (e.g., color names with 148+ entries) where O(n²) matching is prohibitive.
+        if self == value_type && !self.might_have_type_vars() {
+            if cfg!(feature = "zuban_debug") {
+                let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
+                debug!(
+                    "Match covariant {got} :> {expected} -> True {{ with_any: false }} (fast path: identical types)",
+                );
+            }
+            return Match::new_true();
+        }
+
         // 1. Check if the type is part of the mro.
         let debug_message_for_result = |result| {
             if cfg!(feature = "zuban_debug") {
@@ -544,16 +557,22 @@ impl Type {
                 && (variance == Variance::Covariant || u1.entries.len() == 2)
         };
         match value_type {
-            Type::Union(u2) => match variance {
-                Variance::Covariant => Match::all(u2.iter(), |g2| {
-                    self.matches_union(i_s, matcher, u1, g2, variance)
-                }),
-                Variance::Invariant => {
-                    self.is_super_type_of(i_s, matcher, value_type)
-                        & self.is_sub_type_of(i_s, matcher, value_type)
+            Type::Union(u2) => {
+                // Fast path: identical unions without type vars match immediately
+                if u1 == u2 && !u1.might_have_type_vars {
+                    return Match::new_true();
                 }
-                Variance::Contravariant => unreachable!(),
-            },
+                match variance {
+                    Variance::Covariant => Match::all(u2.iter(), |g2| {
+                        self.matches_union(i_s, matcher, u1, g2, variance)
+                    }),
+                    Variance::Invariant => {
+                        self.is_super_type_of(i_s, matcher, value_type)
+                            & self.is_sub_type_of(i_s, matcher, value_type)
+                    }
+                    Variance::Contravariant => unreachable!(),
+                }
+            }
             Type::Type(t) if matches!(t.as_ref(), Type::Union(_)) => {
                 let Type::Union(u) = t.as_ref() else {
                     unreachable!();
