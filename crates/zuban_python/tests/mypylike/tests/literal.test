@@ -364,17 +364,86 @@ def f(x: int):
     l = list([(0, 0)])
     l.append((x, x))
 
-[case literal_union_self_matching]
-# Regression test for GH #267: ensure literal union self-matching works correctly
-# (The fix added a fast path for matching identical unions without type variables)
+[case large_literal_union_self_matching]
+# Regression test for GH #267: O(n^2) matching of identical large literal unions
+# Without the fast path optimization, this test times out (>30s)
+# With the optimization, it completes in <1s
 from typing import Literal
 
-Color = Literal["red", "green", "blue"]
+# Simulating Altair's ColorName_T pattern with 148 entries
+ColorName = Literal[
+    "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure",
+    "beige", "bisque", "black", "blanchedalmond", "blue",
+    "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse",
+    "chocolate", "coral", "cornflowerblue", "cornsilk", "crimson",
+    "cyan", "darkblue", "darkcyan", "darkgoldenrod", "darkgray",
+    "darkgreen", "darkgrey", "darkkhaki", "darkmagenta", "darkolivegreen",
+    "darkorange", "darkorchid", "darkred", "darksalmon", "darkseagreen",
+    "darkslateblue", "darkslategray", "darkslategrey", "darkturquoise", "darkviolet",
+    "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue",
+    "firebrick", "floralwhite", "forestgreen", "fuchsia", "gainsboro",
+    "ghostwhite", "gold", "goldenrod", "gray", "green",
+    "greenyellow", "grey", "honeydew", "hotpink", "indianred",
+    "indigo", "ivory", "khaki", "lavender", "lavenderblush",
+    "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan",
+    "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", "lightpink",
+    "lightsalmon", "lightseagreen", "lightskyblue", "lightslategray", "lightslategrey",
+    "lightsteelblue", "lightyellow", "lime", "limegreen", "linen",
+    "magenta", "maroon", "mediumaquamarine", "mediumblue", "mediumorchid",
+    "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise",
+    "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin",
+    "navajowhite", "navy", "oldlace", "olive", "olivedrab",
+    "orange", "orangered", "orchid", "palegoldenrod", "palegreen",
+    "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
+    "pink", "plum", "powderblue", "purple", "rebeccapurple",
+    "red", "rosybrown", "royalblue", "saddlebrown", "salmon",
+    "sandybrown", "seagreen", "seashell", "sienna", "silver",
+    "skyblue", "slateblue", "slategray", "slategrey", "snow",
+    "springgreen", "steelblue", "tan", "teal", "thistle",
+    "tomato", "turquoise", "violet", "wheat", "white",
+    "whitesmoke", "yellow", "yellowgreen"
+]
 
-def set_color(c: Color) -> None: ...
-def get_color() -> Color: ...
+# Simulate streamlit pattern: many re-exported methods that use the large union
+# Each function with multiple ColorName params triggers O(n^2) matching per param
+def f01(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f02(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f03(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f04(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f05(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f06(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f07(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f08(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f09(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f10(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f11(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f12(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f13(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f14(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f15(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f16(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f17(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f18(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f19(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
+def f20(a: ColorName, b: ColorName, c: ColorName) -> ColorName: ...
 
-# Matching Color against Color should work
-c: Color = "red"
-set_color(c)
-set_color(get_color())
+c: ColorName = "red"
+# Many calls with ColorName args to maximize type matching
+c = f01(c, f02(c, c, c), f03(c, c, c))
+c = f04(c, f05(c, c, c), f06(c, c, c))
+c = f07(c, f08(c, c, c), f09(c, c, c))
+c = f10(c, f11(c, c, c), f12(c, c, c))
+c = f13(c, f14(c, c, c), f15(c, c, c))
+c = f16(c, f17(c, c, c), f18(c, c, c))
+c = f19(c, f20(c, c, c), f01(c, c, c))
+c = f01(c, f02(c, c, c), f03(c, c, c))
+c = f04(c, f05(c, c, c), f06(c, c, c))
+c = f07(c, f08(c, c, c), f09(c, c, c))
+c = f10(c, f11(c, c, c), f12(c, c, c))
+c = f13(c, f14(c, c, c), f15(c, c, c))
+c = f16(c, f17(c, c, c), f18(c, c, c))
+c = f19(c, f20(c, c, c), f01(c, c, c))
+c = f01(c, f02(c, c, c), f03(c, c, c))
+c = f04(c, f05(c, c, c), f06(c, c, c))
+c = f07(c, f08(c, c, c), f09(c, c, c))
+c = f10(c, f11(c, c, c), f12(c, c, c))

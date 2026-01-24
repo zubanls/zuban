@@ -266,14 +266,21 @@ impl Type {
         // Fast path: if types are identical and don't contain type variables that need tracking,
         // we can skip the expensive matching process. This is particularly important for large
         // literal unions (e.g., color names with 148+ entries) where O(n²) matching is prohibitive.
-        if self == value_type && !self.might_have_type_vars() {
-            if cfg!(feature = "zuban_debug") {
-                let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
-                debug!(
-                    "Match covariant {got} :> {expected} -> True {{ with_any: false }} (fast path: identical types)",
-                );
+        if self == value_type && !self.might_have_type_vars() && !self.has_self_type(i_s.db) {
+            if let Type::Any(cause) = self {
+                matcher.set_all_contained_type_vars_to_any(value_type, *cause);
+                return Match::True {
+                    with_any: matcher.is_matching_reverse() && !matches!(value_type, Type::Any(_)),
+                };
+            } else {
+                if cfg!(feature = "zuban_debug") {
+                    let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
+                    debug!(
+                        "Match covariant {got} :> {expected} -> True {{ with_any: false }} (fast path: identical types)",
+                    );
+                }
+                return Match::new_true();
             }
-            return Match::new_true();
         }
 
         // 1. Check if the type is part of the mro.
