@@ -1424,7 +1424,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let maybe_complex_def = maybe_saved.and_then(|n| n.maybe_complex());
             // This is mostly to make it clear that things like NewType/TypeVars are special
             // and cannot be redefined
-            let is_special_def = match maybe_complex_def {
+            let is_special_def = || match maybe_complex_def {
                 None
                 | Some(
                     ComplexPoint::TypeInstance(_)
@@ -1433,6 +1433,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     | ComplexPoint::TypeAlias(_),
                 ) => false,
                 Some(ComplexPoint::TypeVarLike(_)) => i_s.db.mypy_compatible(),
+                Some(ComplexPoint::Class(_))
+                    if !matches!(
+                        NodeRef::new(self.file, first_index)
+                            .expect_name()
+                            .expect_type(),
+                        TypeLike::ClassDef(_)
+                    ) =>
+                {
+                    false
+                }
                 _ => true,
             };
             let assign_as_new_definition = match assign_kind {
@@ -1446,7 +1456,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     } else {
                         maybe_saved.is_some_and(|n| {
                             if let Some(complex) = maybe_complex_def {
-                                return is_special_def
+                                return is_special_def()
                                     && !matches!(
                                         complex,
                                         ComplexPoint::Class(_)
@@ -1463,7 +1473,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         })
                     }
                 }
-                _ => is_special_def,
+                _ => is_special_def(),
             };
             if assign_as_new_definition {
                 add_redefinition_issue();

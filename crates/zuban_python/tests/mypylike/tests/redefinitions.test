@@ -113,17 +113,6 @@ if bool():
 if bool():
     Y = X  # E: Name "Y" already defined on line 4
 
-[case class_redefine_with_var_not_possible]
-# flags: --allow-redefinition-new
-
-class X: ...
-class Y(X): ...
-
-if bool():
-    X = Y  # E: Name "X" already defined on line 3
-if bool():
-    Y = X  # E: Name "Y" already defined on line 4
-
 [case type_alias_redefine_with_var_not_possible]
 # flags: --allow-redefinition-new
 

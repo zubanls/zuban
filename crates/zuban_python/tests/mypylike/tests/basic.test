@@ -1633,3 +1633,9 @@ __main__:8: note: Revealed type is "Any"
 # See GH #244
 f(x := 1):  # E: Invalid syntax
 x = 1
+
+[case assign_exceptions_are_not_redefinitions]
+def f() -> None:
+    x = Exception
+    if bool():
+        x = ValueError
