@@ -1007,3 +1007,18 @@ def f(x):
         raise x
     else:
         raise 1  # E: Exception must be derived from BaseException
+
+[case untyped_list_literals_as_inputs_to_untyped_classes_no_errors]
+# flags: --mode typed
+class C:
+    def __init__(self, x):
+        self.x = x
+
+class D:
+    def __new__(cls, x):
+        return super().__new__(cls)
+
+def f(x):
+    c = C([])
+    d = D([])
+    reveal_type(c.x)  # N: Revealed type is "list[Any]"

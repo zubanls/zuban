@@ -73,23 +73,6 @@ enum ReplacedParamSpec {
 
 impl Type {
     pub fn replace_any_with_unknown_type_params_with_any(&self) -> Option<Self> {
-        struct AnyReplacer();
-        impl Replacer for AnyReplacer {
-            #[inline]
-            fn replace_type(&mut self, t: &Type) -> Option<Option<Type>> {
-                match t {
-                    Type::Any(AnyCause::UnknownTypeParam) => Some(Some(Type::ERROR)),
-                    _ => None,
-                }
-            }
-            #[inline]
-            fn replace_callable_params(&mut self, p: &CallableParams) -> Option<CallableParams> {
-                match p {
-                    CallableParams::Any(AnyCause::UnknownTypeParam) => Some(CallableParams::ERROR),
-                    _ => None,
-                }
-            }
-        }
         self.replace_internal(&mut AnyReplacer())
     }
 
@@ -281,6 +264,24 @@ impl ReplaceTypeVarLikes for Type {
             callable,
             replace_self,
         })
+    }
+}
+
+struct AnyReplacer();
+impl Replacer for AnyReplacer {
+    #[inline]
+    fn replace_type(&mut self, t: &Type) -> Option<Option<Type>> {
+        match t {
+            Type::Any(AnyCause::UnknownTypeParam) => Some(Some(Type::ERROR)),
+            _ => None,
+        }
+    }
+    #[inline]
+    fn replace_callable_params(&mut self, p: &CallableParams) -> Option<CallableParams> {
+        match p {
+            CallableParams::Any(AnyCause::UnknownTypeParam) => Some(CallableParams::ERROR),
+            _ => None,
+        }
     }
 }
 
@@ -796,6 +797,10 @@ impl GenericsList {
             self.iter(),
             |g| g.replace_internal(replacer),
         )?))
+    }
+
+    pub fn replace_any_with_unknown_type_params_with_any(&self) -> Option<Self> {
+        self.replace_internal(&mut AnyReplacer())
     }
 }
 

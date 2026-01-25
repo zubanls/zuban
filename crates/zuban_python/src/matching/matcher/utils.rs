@@ -77,7 +77,7 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
     }
     calc_dunder_init_type_vars(i_s, class, &function, |matcher, class_type_vars| {
         if class_type_vars.has_from_untyped_params() {
-            calc_untyped_func_type_vars_with_matcher(
+            let mut result = calc_untyped_func_type_vars_with_matcher(
                 matcher,
                 i_s,
                 &function,
@@ -88,7 +88,13 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
                 class.as_link(),
                 result_context,
                 on_type_error,
-            )
+            );
+            if let Some(args) = &mut result.type_arguments
+                && let Some(new) = args.replace_any_with_unknown_type_params_with_any()
+            {
+                *args = new
+            }
+            result
         } else {
             calc_type_vars_for_func_internal(
                 i_s,
