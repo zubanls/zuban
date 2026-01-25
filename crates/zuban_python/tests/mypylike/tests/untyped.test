@@ -999,3 +999,11 @@ class Y:
 
 class A(X, Y): ...
 class B(Y, X): ...
+
+[case raise_error_in_untyped_function]
+# flags: --mode typed
+def f(x):
+    if bool():
+        raise x
+    else:
+        raise 1  # E: Exception must be derived from BaseException

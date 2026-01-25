@@ -2481,6 +2481,10 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                 _ => true,
             }
         }
+        Type::TypeVar(tv) => match tv.type_var.kind(i_s.db) {
+            TypeVarKind::Bound(b) => valid_raise_type(i_s, from, b, false),
+            _ => false,
+        },
         Type::Any(_) | Type::Never(_) => true,
         Type::Union(union) => union
             .iter()
