@@ -1028,3 +1028,21 @@ def f(x):
 def f(x):
     x == 1
     x == Exception
+
+[case untyped_return_of_non_defined_attribute]
+class C:
+    def f(self):
+        try:
+            # This type is not determinable, but should not be reported,
+            # because it's untyped and the user is responsible.
+            return self.x
+        except AttributeError:
+            self.x = bool()
+            return self.x
+
+    def g(self, some_arg: bool):
+        try:
+            return self.y  # E: Cannot determine type of "y"
+        except AttributeError:
+            self.y = bool()
+            return self.y

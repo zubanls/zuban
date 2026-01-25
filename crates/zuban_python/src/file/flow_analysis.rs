@@ -10,12 +10,13 @@ use parsa_python_cst::{
     BreakStmt, CaseBlock, CasePattern, ClassPattern, CompIfIterator, ComparisonContent,
     Comparisons, Conjunction, ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock,
     ExceptExpression, Expression, ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt,
-    IfBlockIterator, IfBlockType, IfStmt, KeyEntryInPattern, LiteralPattern, LiteralPatternContent,
-    MappingPattern, MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression,
-    NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem,
-    SliceType as CSTSliceType, StarLikeExpression, StarLikeExpressionIterator, StarPatternContent,
-    SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
+    FunctionDef, IfBlockIterator, IfBlockType, IfStmt, KeyEntryInPattern, LiteralPattern,
+    LiteralPatternContent, MappingPattern, MappingPatternItem, MatchStmt, Name, NameDef,
+    NamedExpression, NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern,
+    PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
+    SequencePatternItem, SliceType as CSTSliceType, StarLikeExpression, StarLikeExpressionIterator,
+    StarPatternContent, SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber,
+    WhileStmt,
 };
 
 use crate::{
@@ -1651,7 +1652,7 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
     }
 }
 
-impl Inference<'_, '_, '_> {
+impl<'file> Inference<'_, 'file, '_> {
     pub fn is_unreachable(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
     }
@@ -1929,7 +1930,7 @@ impl Inference<'_, '_, '_> {
         c: Class,
         self_symbol: NodeIndex,
         add_issue: &dyn Fn(IssueKind),
-    ) -> Result<Option<Inferred>, ()> {
+    ) -> Result<Option<Inferred>, FunctionDef<'file>> {
         let name_node_ref = NodeRef::new(self.file, self_symbol);
         let name_def_node_ref = name_node_ref.name_def_ref_of_name();
         let c = Class::with_self_generics(self.i_s.db, c.node_ref);
@@ -1974,7 +1975,7 @@ impl Inference<'_, '_, '_> {
                 "The symbol {} is already calculating",
                 name_def_node_ref.as_code()
             );
-            return Err(());
+            return Err(func_def);
         }
         if !p.calculated() {
             if !recheck_if_on_actual_self() {
@@ -2003,7 +2004,7 @@ impl Inference<'_, '_, '_> {
                 {
                     return Ok(Some(inf));
                 }
-                return Err(());
+                return Err(func_def);
             }
         }
         Ok(Some(

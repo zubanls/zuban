@@ -412,11 +412,20 @@ impl<'a> Instance<'a> {
                 {
                     let i_s = i_s.with_class_context(&c);
                     let inference = c.node_ref.file.inference(&i_s);
-                    let Ok(maybe_found) =
-                        inference.self_lookup_with_flow_analysis(c, self_symbol, options.add_issue)
-                    else {
-                        (options.add_issue)(IssueKind::CannotDetermineType { for_: name.into() });
-                        return LookupDetails::any(AnyCause::FromError);
+                    let maybe_found = match inference.self_lookup_with_flow_analysis(
+                        c,
+                        self_symbol,
+                        options.add_issue,
+                    ) {
+                        Ok(maybe_found) => maybe_found,
+                        Err(func) => {
+                            if func.is_typed() {
+                                (options.add_issue)(IssueKind::CannotDetermineType {
+                                    for_: name.into(),
+                                });
+                            }
+                            return LookupDetails::any(AnyCause::FromError);
+                        }
                     };
                     if let Some(inf) = maybe_found {
                         if inf.maybe_saved_specific(i_s.db)
