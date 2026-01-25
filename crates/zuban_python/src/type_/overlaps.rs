@@ -38,7 +38,7 @@ impl Type {
                 return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t));
             }
             Type::Any(_) => return true, // This is a fallback
-            Type::TypedDict(td) => return td.overlaps(i_s, matcher, other, self),
+            Type::TypedDict(td) if td.overlaps(i_s, matcher, other, self) => return true,
             Type::Literal(literal2) => {
                 return match self {
                     Type::Literal(literal1) => literal1.value(i_s.db) == literal2.value(i_s.db),
@@ -50,7 +50,9 @@ impl Type {
                     return self.overlaps(i_s, matcher, b);
                 }
             }
-            Type::Type(t2) => return t2.overlaps_type_of_type_against_other(i_s, matcher, self),
+            Type::Type(t2) if t2.overlaps_type_of_type_against_other(i_s, matcher, self) => {
+                return true;
+            }
             Type::Self_ => {
                 if let Some(t) = i_s.current_type() {
                     return self.overlaps_internal(i_s, matcher, &t);

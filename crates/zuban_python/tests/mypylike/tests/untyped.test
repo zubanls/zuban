@@ -1022,3 +1022,9 @@ def f(x):
     c = C([])
     d = D([])
     reveal_type(c.x)  # N: Revealed type is "list[Any]"
+
+[case untyped_strict_equality]
+# flags: --check-untyped-defs --strict-equality
+def f(x):
+    x == 1
+    x == Exception
