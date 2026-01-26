@@ -1367,6 +1367,16 @@ impl Type {
         })
     }
 
+    pub fn has_untyped_type_params(&self, db: &Database) -> bool {
+        if db.mypy_compatible() {
+            return false; // Mypy never has unknown type params
+        }
+        self.find_in_type(
+            db,
+            &mut |t| matches!(t, Type::TypeVar(tv) if tv.type_var.is_untyped()),
+        )
+    }
+
     pub fn is_subclassable(&self, db: &Database) -> bool {
         match self {
             Self::Class(_)

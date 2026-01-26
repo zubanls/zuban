@@ -504,7 +504,7 @@ fn apply_result_context(
                     on_reset_class_type_vars(matcher, return_class)
                 }
             }
-        } else {
+        } else if !expected.has_untyped_type_params(i_s.db) {
             let return_type = func_like.inferred_return_type(i_s);
             // Fill the type var arguments from context
             return_type.is_sub_type_of(i_s, matcher, expected);
