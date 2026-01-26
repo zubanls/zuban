@@ -76,6 +76,15 @@ impl Type {
         self.replace_internal(&mut AnyReplacer())
     }
 
+    pub fn replace_unknown_type_params_with_any(&self, db: &Database) -> Option<Self> {
+        self.replace_type_var_likes(db, &mut |usage| {
+            usage
+                .as_type_var_like()
+                .is_untyped()
+                .then(|| GenericItem::TypeArg(Type::Any(AnyCause::Internal)))
+        })
+    }
+
     pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         struct LateBoundReplacer<'a, X>(&'a TypeVarManager<X>);
         impl<X: CallableId> Replacer for LateBoundReplacer<'_, X> {

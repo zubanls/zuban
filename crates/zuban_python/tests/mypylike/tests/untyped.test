@@ -1093,3 +1093,49 @@ class C:
 
 c = C()
 assert_type(c.x, set[list[Any]])
+
+[case multi_inheritance_do_not_complain_about_untyped_params1]
+# flags: --check-untyped-defs
+class A:
+    def __init__(self):
+        self.x: int = 0
+
+class U1:
+    def __init__(self, x):
+        self.x = x
+
+class U2:
+    def __init__(self, x):
+        self.x = [x]
+
+class M1(A, U1): ...
+class M2(U1, A): ...
+
+class M3(A, U2): ...  # E: Definition of "x" in base class "A" is incompatible with definition in base class "U2"
+class M4(U2, A): ...  # E: Definition of "x" in base class "U2" is incompatible with definition in base class "A"
+
+class M5(U1, U2): ...
+class M6(U2, U1): ...
+
+[case multi_inheritance_do_not_complain_about_untyped_params2]
+# flags: --check-untyped-defs
+class A:
+    def __init__(self):
+        self.x: list[int] = []
+
+class U1:
+    def __init__(self, x):
+        self.x = x
+
+class U2:
+    def __init__(self, x):
+        self.x = [x]
+
+class M1(A, U1): ...
+class M2(U1, A): ...
+
+class M3(A, U2): ...
+class M4(U2, A): ...
+
+class M5(U1, U2): ...
+class M6(U2, U1): ...
