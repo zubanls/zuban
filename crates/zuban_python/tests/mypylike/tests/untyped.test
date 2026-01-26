@@ -1144,3 +1144,17 @@ class M6(U2, U1): ...
 # flags: --mode typed
 def f(x, y):
     x = max(y, 1)
+
+[case untyped_add_assign_should_be_fine]
+# flags: --mode typed
+def f(leaf):
+    x = []
+    if bool():
+        x += leaf
+    return x
+
+reveal_type(f(1))  # N: Revealed type is "list[Any]"
+
+def g(x: int):
+    y = []
+    y += 1  # E: Argument 1 to "__iadd__" of "list" has incompatible type "int"; expected "Iterable[Any]"

@@ -620,14 +620,14 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         if right_t.is_any() {
             right_t = self.i_s.db.python_state.list_of_any.clone()
         }
-        let class = right_t.maybe_class(self.i_s.db)?;
-        if class.node_ref != wanted {
+        let class = right_t.maybe_class(self.i_s.db);
+        if class.is_none_or(|cls| cls.node_ref != wanted) {
             let left_inf = maybe_partial_node_ref.expect_inferred(self.i_s);
             lookup_and_execute(left_inf);
             return Some(());
         }
         if matches!(
-            class.nth_type_argument(self.i_s.db, 0),
+            class.unwrap().nth_type_argument(self.i_s.db, 0),
             Type::Any(AnyCause::UnknownTypeParam)
         ) {
             // This adds an empty list again, which should be fine.
