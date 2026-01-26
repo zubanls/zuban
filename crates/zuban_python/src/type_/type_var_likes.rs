@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
 };
 
-use parsa_python_cst::{FunctionDef, NodeIndex};
+use parsa_python_cst::{FunctionDef, NodeIndex, ParamKind};
 
 use super::{
     AnyCause, CallableContent, CallableParams, FormatStyle, GenericItem, GenericsList,
@@ -424,7 +424,14 @@ impl TypeVarLikes {
                 .iter()
                 .enumerate()
                 .skip(skip_first as usize)
-                .map(|(i, _)| TypeVarLike::TypeVar(Arc::new(TypeVar::for_untyped_param(i))))
+                .filter_map(|(i, param)| {
+                    if param.kind() == ParamKind::StarStar {
+                        return None;
+                    }
+                    Some(TypeVarLike::TypeVar(Arc::new(TypeVar::for_untyped_param(
+                        i,
+                    ))))
+                })
                 .collect(),
         )
     }

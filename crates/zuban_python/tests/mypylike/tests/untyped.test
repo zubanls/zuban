@@ -1056,3 +1056,21 @@ class C(type):
 class X(metaclass=C): ...
 
 reveal_type(X.name)  # N: Revealed type is "Any"
+
+[case untyped_kwargs_should_be_changable]
+# flags: --mode typed
+
+def f(**x):
+    x[1] = 1  # E: Invalid index type "int" for "dict[str, Any]"; expected type "str"
+    x[""] = ""
+    return x
+
+reveal_type(f(x=1, y=2))  # N: Revealed type is "dict[str, Any]"
+
+class C:
+    def __init__(self, **kwargs):
+        kwargs[1] = 1  # E: Invalid index type "int" for "dict[str, Any]"; expected type "str"
+        kwargs[""] = ""
+        self.kwargs = kwargs
+
+reveal_type(C(x=1).kwargs)  # N: Revealed type is "dict[str, Any]"
