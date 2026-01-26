@@ -344,7 +344,7 @@ impl<'db: 'slf, 'slf> Inferred {
             return None;
         };
         t.has_any_with_unknown_type_params(i_s.db).then(|| {
-            if !i_s.db.project.flags.allow_incomplete_generics {
+            if !i_s.db.project.flags.allow_incomplete_generics && !i_s.in_untyped_context() {
                 let for_ = from.as_code();
                 // Mypy does not enforce a type annotation for _
                 if for_ != "_" {

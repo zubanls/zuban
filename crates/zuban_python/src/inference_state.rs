@@ -248,6 +248,11 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn in_untyped_context(&self) -> bool {
+        self.current_function()
+            .is_some_and(|f| !f.node().is_typed())
+    }
+
     pub fn flags(&self) -> &'a TypeCheckerFlags
     where
         'db: 'a,

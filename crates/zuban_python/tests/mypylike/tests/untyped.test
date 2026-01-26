@@ -1074,3 +1074,22 @@ class C:
         self.kwargs = kwargs
 
 reveal_type(C(x=1).kwargs)  # N: Revealed type is "dict[str, Any]"
+
+[case no_report_of_unknown_type_params_in_untyped_contexts]
+# flags: --mode typed
+from typing import assert_type, Any
+def other(some_var): ...
+def f():
+    x = [{}]
+    other(x)
+    return x
+
+assert_type(f(), list[dict[Any, Any]])
+
+class C:
+    def __init__(self):
+        self.x = {[]}
+        other(self.x)
+
+c = C()
+assert_type(c.x, set[list[Any]])
