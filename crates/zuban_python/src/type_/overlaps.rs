@@ -114,7 +114,7 @@ impl Type {
                     .maybe_class(i_s.db)
                     .and_then(|c| c.maybe_metaclass(i_s.db))
                 {
-                    Type::new_class(metaclass, ClassGenerics::new_none())
+                    Type::new_class(metaclass, ClassGenerics::NotDefinedYet)
                         .overlaps(i_s, matcher, other)
                 } else {
                     other.is_object(i_s.db)

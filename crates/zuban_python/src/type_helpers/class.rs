@@ -114,6 +114,12 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     #[inline]
+    pub fn from_undefined_generics(db: &'db Database, link: PointLink) -> Self {
+        let class_ref = ClassNodeRef::from_link(db, link);
+        Self::with_undefined_generics(class_ref)
+    }
+
+    #[inline]
     pub fn with_undefined_generics(class_ref: ClassNodeRef<'a>) -> Self {
         Self::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
     }
@@ -1209,7 +1215,7 @@ impl<'db: 'a, 'a> Class<'a> {
         if !i_s.db.mypy_compatible()
             && let MetaclassState::Some(metaclass) = self.use_cached_class_infos(i_s.db).metaclass
         {
-            let meta = Class::from_non_generic_link(i_s.db, metaclass);
+            let meta = Class::from_undefined_generics(i_s.db, metaclass);
             let lookup = meta.instance().lookup(
                 i_s,
                 "__call__",

@@ -599,7 +599,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         }
 
         if let MetaclassState::Some(link) = class_infos.metaclass
-            && Class::from_non_generic_link(db, link)
+            && Class::from_undefined_generics(db, link)
                 .class_link_in_mro(db, db.python_state.enum_meta_link())
         {
             if !self.use_cached_type_vars(db).is_empty_or_untyped() {
@@ -804,44 +804,50 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             TypeComputationOrigin::BaseClass,
                         )
                         .compute_base_class(expr);
+                        let mut add_meta = |link| {
+                            let c = ClassInitializer::from_link(db, link);
+                            if c.is_calculating_class_infos() {
+                                NodeRef::new(self.node_ref.file, name.index()).add_type_issue(
+                                    db,
+                                    IssueKind::CyclicDefinition {
+                                        name: c.name().into(),
+                                    },
+                                );
+                                metaclass = MetaclassState::Unknown;
+                            } else if c.incomplete_mro(db)
+                                || c.class_link_in_mro(
+                                    db,
+                                    db.python_state.bare_type_node_ref().as_link(),
+                                )
+                            {
+                                Self::update_metaclass(
+                                    i_s,
+                                    node_ref,
+                                    &mut metaclass,
+                                    MetaclassState::Some(link),
+                                );
+                                if let Some(infos) = c.maybe_cached_class_infos(db)
+                                    && let Some(dt) = &infos.dataclass_transform
+                                {
+                                    set_type_to_dataclass(dt, true);
+                                    dataclass_transform = infos.dataclass_transform.clone();
+                                }
+                            } else {
+                                node_ref
+                                    .add_type_issue(db, IssueKind::MetaclassMustInheritFromType);
+                            }
+                        };
                         match meta_base {
                             CalculatedBaseClass::Type(Type::Class(GenericClass {
                                 link,
                                 generics: ClassGenerics::None { .. },
-                            })) => {
-                                let c = ClassInitializer::from_link(db, link);
-                                if c.is_calculating_class_infos() {
-                                    NodeRef::new(self.node_ref.file, name.index()).add_type_issue(
-                                        db,
-                                        IssueKind::CyclicDefinition {
-                                            name: c.name().into(),
-                                        },
-                                    );
-                                    metaclass = MetaclassState::Unknown;
-                                } else if c.incomplete_mro(db)
-                                    || c.class_link_in_mro(
-                                        db,
-                                        db.python_state.bare_type_node_ref().as_link(),
-                                    )
-                                {
-                                    Self::update_metaclass(
-                                        i_s,
-                                        node_ref,
-                                        &mut metaclass,
-                                        MetaclassState::Some(link),
-                                    );
-                                    if let Some(infos) = c.maybe_cached_class_infos(db)
-                                        && let Some(dt) = &infos.dataclass_transform
-                                    {
-                                        set_type_to_dataclass(dt, true);
-                                        dataclass_transform = infos.dataclass_transform.clone();
-                                    }
-                                } else {
-                                    node_ref.add_type_issue(
-                                        db,
-                                        IssueKind::MetaclassMustInheritFromType,
-                                    );
-                                }
+                            })) => add_meta(link),
+                            CalculatedBaseClass::Type(t)
+                                if t.maybe_class(db).is_some_and(|cls| {
+                                    cls.type_vars(i_s).has_from_untyped_params()
+                                }) =>
+                            {
+                                add_meta(t.maybe_class(db).unwrap().as_link())
                             }
                             CalculatedBaseClass::Unknown => {
                                 if node_ref.file.flags(db).disallow_subclassing_any {
@@ -855,6 +861,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 metaclass = MetaclassState::Unknown
                             }
                             _ => {
+                                debug!("Invalid metaclass: {meta_base:?}");
                                 node_ref.add_type_issue(db, IssueKind::InvalidMetaclass);
                             }
                         }
@@ -1755,7 +1762,7 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, td_infos: DeferredT
         };
         drop(borrowed);
         // TODO is this initialization correct?
-        let cls = Class::from_non_generic_link(db, deferred.0.defined_at);
+        let cls = Class::from_undefined_generics(db, deferred.0.defined_at);
         debug!(
             "Calculate TypedDict members for deferred subclass {:?}",
             cls.name()

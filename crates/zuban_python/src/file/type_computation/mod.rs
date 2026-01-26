@@ -1834,7 +1834,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         let db = self.i_s.db;
         let c = match self.compute_type_get_item_on_class_inner(
-            Class::with_undefined_generics(ClassNodeRef::from_link(db, dataclass.class.link)),
+            Class::from_undefined_generics(db, dataclass.class.link),
             slice_type,
             primary,
         ) {

@@ -1046,3 +1046,13 @@ class C:
         except AttributeError:
             self.y = bool()
             return self.y
+
+[case untyped_metaclass_should_not_cause_an_error]
+# flags: --check-untyped-defs
+class C(type):
+    def __init__(cls, name, bases, dct):
+        cls.name = name
+
+class X(metaclass=C): ...
+
+reveal_type(X.name)  # N: Revealed type is "Any"

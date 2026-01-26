@@ -1745,7 +1745,7 @@ impl PartialEq for ClassInfos {
 impl ClassInfos {
     pub fn metaclass<'db>(&self, db: &'db Database) -> Class<'db> {
         match self.metaclass {
-            MetaclassState::Some(link) => Class::from_non_generic_link(db, link),
+            MetaclassState::Some(link) => Class::from_undefined_generics(db, link),
             _ => db.python_state.bare_type_class(),
         }
     }
