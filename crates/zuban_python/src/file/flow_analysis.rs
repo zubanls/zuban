@@ -3126,13 +3126,17 @@ impl<'file> Inference<'_, 'file, '_> {
                     (expected, inf.into_type(i_s))
                 } else {
                     let of_type = inf.as_cow_type(i_s);
-                    match expected {
-                        Type::None if matches!(of_type.as_ref(), Type::TypeVar(_)) => {
-                            // Mypy makes it possible to narrow None against a bare TypeVar.
-                            (Type::None, of_type.into_owned())
-                        }
-                        _ => split_off_singleton(i_s, &of_type, &expected, true),
-                    }
+                    split_off_singleton(
+                        i_s,
+                        &of_type,
+                        &expected,
+                        !matches!(
+                            literal_pattern.unpack(),
+                            // The spec says "The singleton literals None, True and False are
+                            // compared using the is operator."
+                            LiteralPatternContent::Bool(_) | LiteralPatternContent::None
+                        ),
+                    )
                 };
                 PatternResult {
                     truthy_t: Inferred::from_type(truthy),

@@ -392,3 +392,20 @@ def bar(p: Periodicity) -> int:
             return 1
         case p.weekly:
             return 7
+
+[case match_bool_literals_and_none_as_is]
+from typing import assert_type, Literal, Any
+def f[T](x: T, y):
+    match x:
+        case "x": assert_type(x, T)
+        case None: assert_type(x, None)
+        case False: assert_type(x, Literal[False])
+        case True: assert_type(x, Literal[True])
+        case 1: assert_type(x, T)
+
+    match y:
+        case "x": assert_type(y, Any)
+        case None: assert_type(y, None)
+        case False: assert_type(y, Literal[False])
+        case True: assert_type(y, Literal[True])
+        case 1: assert_type(y, Any)
