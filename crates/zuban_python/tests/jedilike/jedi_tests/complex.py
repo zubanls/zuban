@@ -31,9 +31,9 @@ def kwargs_returner(**kwargs):
     return kwargs
 
 
-# TODO This is not really correct, needs correction probably at some point, but
-#      at least it doesn't raise an error.
-#? int()
+#? dict()
+kwargs_returner(a=1)
+#?
 kwargs_returner(a=1)[:]
 #?
 kwargs_returner(b=1)[:][0]
