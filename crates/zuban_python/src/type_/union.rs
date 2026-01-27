@@ -307,7 +307,7 @@ impl UnionType {
         }
     }
 
-    pub fn from_types(types: Vec<Type>, might_have_type_vars: bool) -> Self {
+    pub fn from_types(types: impl IntoIterator<Item = Type>, might_have_type_vars: bool) -> Self {
         Self::new(
             types
                 .into_iter()

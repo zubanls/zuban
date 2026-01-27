@@ -594,6 +594,7 @@ impl Type {
         const MAX_MATERIALIZATIONS: usize = 20;
         self.maybe_union_like(db).or_else(|| {
             Some(Cow::Owned(UnionType::from_types(
+                // TODO some of these have single members and that's not handled at the moment
                 match self {
                     Type::Class(c) if c.link == db.python_state.bool_link() => {
                         vec![

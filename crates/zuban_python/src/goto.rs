@@ -1100,22 +1100,20 @@ pub(crate) fn unpack_union_types<'a>(db: &Database, t: Cow<'a, Type>) -> Cow<'a,
         .any(|t| matches!(t, Type::Type(x) if x.is_union_like(db)))
     {
         return Cow::Owned(Type::Union(UnionType::from_types(
-            t.iter_with_unpacked_unions(db)
-                .flat_map(|t| {
-                    let mut unpacked = None;
-                    let mut non_unpacked = None;
-                    match t {
-                        Type::Type(t) if t.is_union_like(db) => {
-                            unpacked = Some(
-                                t.iter_with_unpacked_unions(db)
-                                    .map(|t| Type::Type(Arc::new(t.clone()))),
-                            )
-                        }
-                        _ => non_unpacked = Some(t.clone()),
-                    };
-                    unpacked.into_iter().flatten().chain(non_unpacked)
-                })
-                .collect(),
+            t.iter_with_unpacked_unions(db).flat_map(|t| {
+                let mut unpacked = None;
+                let mut non_unpacked = None;
+                match t {
+                    Type::Type(t) if t.is_union_like(db) => {
+                        unpacked = Some(
+                            t.iter_with_unpacked_unions(db)
+                                .map(|t| Type::Type(Arc::new(t.clone()))),
+                        )
+                    }
+                    _ => non_unpacked = Some(t.clone()),
+                };
+                unpacked.into_iter().flatten().chain(non_unpacked)
+            }),
             true,
         )));
     }

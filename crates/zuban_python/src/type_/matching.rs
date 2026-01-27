@@ -57,7 +57,7 @@ impl Type {
                 Type::Union(_) => match t1.as_ref() {
                     Type::Union(u) => {
                         let repacked = Type::Union(UnionType::from_types(
-                            u.iter().map(|t| Type::Type(Arc::new(t.clone()))).collect(),
+                            u.iter().map(|t| Type::Type(Arc::new(t.clone()))),
                             u.might_have_type_vars,
                         ));
                         repacked.matches_internal(i_s, matcher, value_type, variance)
@@ -559,7 +559,7 @@ impl Type {
                     unreachable!();
                 };
                 let repacked = Type::Union(UnionType::from_types(
-                    u.iter().map(|t| Type::Type(Arc::new(t.clone()))).collect(),
+                    u.iter().map(|t| Type::Type(Arc::new(t.clone()))),
                     u.might_have_type_vars,
                 ));
                 self.matches_union(i_s, matcher, u1, &repacked, variance)
