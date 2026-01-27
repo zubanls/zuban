@@ -39,7 +39,7 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar,
-        TypeVarKind, TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
+        TypeVarKind, TypedDict, UnionEntry, UnionType, WithUnpack, lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -3120,12 +3120,36 @@ impl<'file> Inference<'_, 'file, '_> {
             }
             PatternKind::LiteralPattern(literal_pattern) => {
                 let expected = self.literal_pattern_to_type(literal_pattern);
-                // Floats for example are not literals and can therefore never change the falsey
-                // side.
+                let of_type = inf.as_cow_type(i_s);
                 let (truthy, falsey) = if matches!(expected, Type::Class(_)) {
-                    (expected, inf.into_type(i_s))
+                    // Floats for example are not literals and can therefore never change the
+                    // falsey side and can therefore not be matched as a singleton.
+                    (
+                        Type::from_union_entries(
+                            of_type
+                                .iter_with_unpacked_unions(i_s.db)
+                                .enumerate()
+                                .filter_map(|(format_index, t)| {
+                                    match t {
+                                        Type::Class(c) if *t == expected => (),
+                                        Type::TypeVar(_) | Type::Any(_) => (),
+                                        _ => {
+                                            if !has_custom_eq(i_s, t) {
+                                                return None;
+                                            }
+                                        }
+                                    };
+                                    Some(UnionEntry {
+                                        format_index,
+                                        type_: t.clone(),
+                                    })
+                                })
+                                .collect(),
+                            true,
+                        ),
+                        of_type.into_owned(),
+                    )
                 } else {
-                    let of_type = inf.as_cow_type(i_s);
                     split_off_singleton(
                         i_s,
                         &of_type,

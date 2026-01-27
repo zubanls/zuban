@@ -402,6 +402,7 @@ def f[T](x: T, y):
         case False: assert_type(x, Literal[False])
         case True: assert_type(x, Literal[True])
         case 1: assert_type(x, T)
+        case 1.0: assert_type(x, T)
 
     match y:
         case "x": assert_type(y, Any)
@@ -409,3 +410,4 @@ def f[T](x: T, y):
         case False: assert_type(y, Literal[False])
         case True: assert_type(y, Literal[True])
         case 1: assert_type(y, Any)
+        case 1.0: assert_type(y, Any)
