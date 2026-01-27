@@ -1538,9 +1538,21 @@ del a[i], i  # E: Name "a" is not defined \
              # E: Name "i" is not defined
              #
 
-[case avoid_crash_with_recursive_decorator]
+[case avoid_crash_with_recursive_decorator_mypy]
+# flags: --mode mypy
 # From GH #140
 @fn  # E: "C" not callable  # E: Name "fn" is used before definition
+class C():
+    pass
+
+@C  # E: Too many arguments for "C"
+def fn():
+    pass
+
+[case avoid_crash_with_recursive_decorator_typed]
+# flags: --mode typed
+# From GH #140 (the Mypy test above is probably better and should probably be preferred)
+@fn  # E: Name "fn" is used before definition
 class C():
     pass
 

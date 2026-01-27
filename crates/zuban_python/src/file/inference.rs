@@ -4579,21 +4579,45 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             });
         }
         let expr = decorator.named_expression().expression();
+
+        let is_untyped_and_non_mypy_compatible = |inf: &Inferred| {
+            if !self.i_s.db.mypy_compatible()
+                && let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db)
+                && let Some(func) = node_ref.maybe_function()
+            {
+                func.return_annotation().is_none()
+            } else {
+                false
+            }
+        };
         if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = expr.unpack()
             && let PrimaryContent::Execution(exec) = primary.second()
-            && !self.point(primary.index()).calculated()
         {
-            // Try to find dataclass_transform and if there isn't one use the normal inference
             let base = self.infer_primary_or_atom(primary.first());
-            if base.maybe_saved_specific(self.i_s.db) == Some(Specific::TypingDataclassTransform) {
-                self.insert_dataclass_transform(primary, exec);
-            } else {
-                self.primary_execute(&base, primary.index(), exec, &mut ResultContext::Unknown)
-                    .save_redirect(self.i_s, self.file, primary.index());
-            };
-            debug_assert!(self.point(primary.index()).calculated());
+            if is_untyped_and_non_mypy_compatible(&base) {
+                return Inferred::new_any(AnyCause::UntypedDecorator).save_redirect(
+                    self.i_s,
+                    self.file,
+                    decorator.index(),
+                );
+            }
+            if !self.point(primary.index()).calculated() {
+                // Try to find dataclass_transform and if there isn't one use the normal inference
+                if base.maybe_saved_specific(self.i_s.db)
+                    == Some(Specific::TypingDataclassTransform)
+                {
+                    self.insert_dataclass_transform(primary, exec);
+                } else {
+                    self.primary_execute(&base, primary.index(), exec, &mut ResultContext::Unknown)
+                        .save_redirect(self.i_s, self.file, primary.index());
+                };
+                debug_assert!(self.point(primary.index()).calculated());
+            }
         }
-        let i = self.infer_named_expression(decorator.named_expression());
+        let mut i = self.infer_named_expression(decorator.named_expression());
+        if is_untyped_and_non_mypy_compatible(&i) {
+            i = Inferred::new_any(AnyCause::UntypedDecorator);
+        }
         if self.file.points.get(decorator.index()).calculated() {
             // It is possible that the decorator causes flow analysis for the whole file. In this
             // case we simply return and do not save, because it was already saved.

@@ -959,6 +959,27 @@ class C:
 
 reveal_type(C().f(1))  # N: Revealed type is "Any"
 
+[case untyped_decorator_with_wraps2]
+# flags: --mode typed
+from functools import wraps
+
+def decorate():
+    def decorator(func):
+        @wraps(func)
+        def wrapper(obj, *args, **kwargs):
+            return func(obj, *args, **kwargs)
+        return wrapper
+    return decorator
+
+class C:
+    @decorate()
+    def f(self, x):
+        yield x
+
+    reveal_type(f)  # N: Revealed type is "def [T2 <: Any] (self: __main__.C, x: T2) -> Any"
+
+reveal_type(C().f(1))  # N: Revealed type is "Any"
+
 [case untyped_property_no_error]
 class A:
     x = 1

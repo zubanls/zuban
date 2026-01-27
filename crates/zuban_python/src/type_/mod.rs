@@ -2214,6 +2214,7 @@ pub(crate) enum AnyCause {
     TypeVarReplacement,
     Internal,
     UnknownTypeParam,
+    UntypedDecorator,
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }
 

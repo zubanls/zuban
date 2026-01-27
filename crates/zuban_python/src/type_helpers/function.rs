@@ -547,12 +547,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .name_resolution_for_types(i_s)
                 .decorator_without_need_for_flow_analysis(dec)
             {
-                Some(DecoratorState::NodeRef(node_ref)) => NodeRef::new(self.file, dec.index())
-                    .set_point(Point::new_redirect(
-                        node_ref.file_index(),
-                        node_ref.node_index,
-                        Locality::Todo,
-                    )),
+                Some(DecoratorState::NodeRef(node_ref)) => {
+                    if !node_ref.point().calculated() {
+                        NodeRef::new(self.file, dec.index()).set_point(Point::new_redirect(
+                            node_ref.file_index(),
+                            node_ref.node_index,
+                            Locality::Todo,
+                        ))
+                    }
+                }
                 Some(DecoratorState::Calculating) => return false,
                 None => return true,
             }
@@ -941,15 +944,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             );
                         }
                     }
-                    if !i_s.db.mypy_compatible()
-                        && let Some(node_ref) = dec_inf.maybe_saved_node_ref(i_s.db)
-                        && let Some(func) = node_ref.maybe_function()
-                        && func.return_annotation().is_none()
-                    {
-                        return_any_because_untyped = true;
-                        continue;
-                    }
                     inferred_decs.push((decorator.index(), dec_inf));
+                }
+                InferredDecorator::UntypedDecorator => {
+                    if self.is_typed() {
+                        nr().add_issue(
+                            i_s,
+                            IssueKind::UntypedDecorator {
+                                name: self.name().into(),
+                            },
+                        );
+                    }
+                    return_any_because_untyped = true;
                 }
                 InferredDecorator::Overload => is_overload = true,
                 InferredDecorator::Abstractmethod => is_abstract = true,
@@ -2453,7 +2459,19 @@ fn infer_decorator_details(
             let reason = inference.infer_deprecated_reason(decorator);
             InferredDecorator::Deprecated(reason)
         }
-        _ => InferredDecorator::Inferred(inf),
+        _ => {
+            // We only care about this case for non-mypy compatibility, because for Mypy there are
+            // no untyped type params.
+            if !i_s.db.mypy_compatible()
+                && inf
+                    .maybe_any(i_s.db)
+                    .is_some_and(|cause| cause == AnyCause::UntypedDecorator)
+            {
+                InferredDecorator::UntypedDecorator
+            } else {
+                InferredDecorator::Inferred(inf)
+            }
+        }
     }
 }
 
@@ -2469,6 +2487,7 @@ enum InferredDecorator {
     Abstractmethod,
     Override,
     NoTypeCheck,
+    UntypedDecorator,
     Deprecated(Arc<Box<str>>),
     Final,
 }
