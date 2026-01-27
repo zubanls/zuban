@@ -594,7 +594,8 @@ impl Type {
         const MAX_MATERIALIZATIONS: usize = 20;
         self.maybe_union_like(db).or_else(|| {
             Some(Cow::Owned(UnionType::from_types(
-                // TODO some of these have single members and that's not handled at the moment
+                // For all of these we need to ensure that there are multiple union members. It
+                // otherwise makes no sense.
                 match self {
                     Type::Class(c) if c.link == db.python_state.bool_link() => {
                         vec![
@@ -602,7 +603,9 @@ impl Type {
                             Type::Literal(Literal::new_implicit(LiteralKind::Bool(false))),
                         ]
                     }
-                    Type::Enum(e) if e.members.len() < MAX_MATERIALIZATIONS => {
+                    Type::Enum(e)
+                        if e.members.len() < MAX_MATERIALIZATIONS && e.members.len() > 1 =>
+                    {
                         Enum::implicit_members(e).map(Type::EnumMember).collect()
                     }
                     Type::Tuple(tup) => match &tup.args {
@@ -638,6 +641,9 @@ impl Type {
                                         new_tuple.push(new.clone());
                                     }
                                 }
+                            }
+                            if new_tuples.len() <= 1 {
+                                return None;
                             }
                             new_tuples
                                 .into_iter()

@@ -6,7 +6,7 @@ use crate::{
     database::{ClassKind, Specific},
     debug,
     diagnostics::IssueKind,
-    type_::{ClassGenerics, NeverCause, TupleArgs, TupleUnpack, Type},
+    type_::{ClassGenerics, TupleArgs, TupleUnpack, Type},
     utils::join_with_commas,
 };
 
