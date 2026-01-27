@@ -8,6 +8,7 @@ use std::{
 
 use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Tree};
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex,
@@ -1450,21 +1451,7 @@ impl Database {
         };
         let mypy_extensions_path: &(dyn (Fn() -> String) + Sync + Send) =
             &|| mypy_extensions_dir.root_path().to_string();
-        let [
-            builtins,
-            typing,
-            typeshed,
-            types,
-            abc,
-            functools,
-            enum_file,
-            dataclasses_file,
-            typing_extensions,
-            mypy_extensions,
-            collections,
-            _collections_abc,
-            warnings,
-        ]: [&PythonFile; _] = [
+        let specs = [
             (None, "builtins.pyi"),
             (None, "typing.pyi"),
             (
@@ -1493,18 +1480,44 @@ impl Database {
             ),
             (None, "_collections_abc.pyi"),
             (None, "warnings.pyi"),
-        ]
-        .into_par_iter()
-        .map(|(in_dir, name)| {
-            if let Some((entries, path_callback)) = in_dir {
-                self.preload_typeshed_stub_in_entries(entries, name, path_callback)
-            } else {
-                self.preload_typeshed_stub(stdlib_workspace, name)
-            }
-        })
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+        ];
+        #[cfg(not(target_arch = "wasm32"))]
+        let stubs: Vec<_> = specs
+            .into_par_iter()
+            .map(|(in_dir, name)| {
+                if let Some((entries, path_callback)) = in_dir {
+                    self.preload_typeshed_stub_in_entries(entries, name, path_callback)
+                } else {
+                    self.preload_typeshed_stub(stdlib_workspace, name)
+                }
+            })
+            .collect();
+        #[cfg(target_arch = "wasm32")]
+        let stubs: Vec<_> = specs
+            .into_iter()
+            .map(|(in_dir, name)| {
+                if let Some((entries, path_callback)) = in_dir {
+                    self.preload_typeshed_stub_in_entries(entries, name, path_callback)
+                } else {
+                    self.preload_typeshed_stub(stdlib_workspace, name)
+                }
+            })
+            .collect();
+        let [
+            builtins,
+            typing,
+            typeshed,
+            types,
+            abc,
+            functools,
+            enum_file,
+            dataclasses_file,
+            typing_extensions,
+            mypy_extensions,
+            collections,
+            _collections_abc,
+            warnings,
+        ]: [&PythonFile; _] = stubs.try_into().unwrap();
 
         PythonState::initialize(
             self,
