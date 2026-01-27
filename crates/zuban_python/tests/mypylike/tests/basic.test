@@ -1045,7 +1045,8 @@ t = 1
 x = undefined  # E: Name "undefined" is not defined
 reveal_type(x)  # N: Revealed type is "Any"
 if x == ...:
-    reveal_type(x)  # N: Revealed type is "ellipsis"
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(...)  # N: Revealed type is "ellipsis"
 
 [case ellipsis_in_newer_python]
 # flags: --python-version 3.13
@@ -1053,7 +1054,8 @@ if x == ...:
 x = undefined  # E: Name "undefined" is not defined
 reveal_type(x)  # N: Revealed type is "Any"
 if x == ...:
-    reveal_type(x)  # N: Revealed type is "types.EllipsisType"
+    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(...)  # N: Revealed type is "types.EllipsisType"
 
 [case star_expr_in_older_python]
 # flags: --python-version 3.8

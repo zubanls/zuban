@@ -1318,7 +1318,12 @@ fn split_off_enum_member(
     Some((truthy, falsey))
 }
 
-fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -> (Type, Type) {
+fn split_off_singleton(
+    i_s: &InferenceState,
+    of_type: &Type,
+    singleton: &Type,
+    is_eq: bool,
+) -> (Type, Type) {
     let mut truthy = Type::Never(NeverCause::Other);
     let mut falsey = Type::Never(NeverCause::Other);
     let mut add = |t| falsey.union_in_place(t);
@@ -1327,7 +1332,11 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
         match sub_t {
             Type::Any(_) | Type::TypeVar(_) => {
                 // Any can be None or something else.
-                truthy.union_in_place(singleton.clone());
+                if is_eq {
+                    truthy.union_in_place(sub_t.clone());
+                } else {
+                    truthy.union_in_place(singleton.clone());
+                }
                 add(sub_t.clone());
             }
             Type::Literal(literal1) => match singleton {
@@ -1371,20 +1380,6 @@ fn split_off_singleton(i_s: &InferenceState, of_type: &Type, singleton: &Type) -
     (truthy, falsey)
 }
 
-fn split_off_singleton_with_type_var(
-    i_s: &InferenceState,
-    of_type: &Type,
-    singleton: &Type,
-) -> (Type, Type) {
-    match singleton {
-        Type::None if matches!(of_type, Type::TypeVar(_)) => {
-            // Mypy makes it possible to narrow None against a bare TypeVar.
-            (Type::None, of_type.clone())
-        }
-        _ => split_off_singleton(i_s, of_type, singleton),
-    }
-}
-
 fn narrow_is_or_eq(
     i_s: &InferenceState,
     key: FlowKey,
@@ -1393,7 +1388,7 @@ fn narrow_is_or_eq(
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
     let split_singleton = |key: FlowKey| {
-        let (truthy, falsey) = split_off_singleton(i_s, checking_t, other_t);
+        let (truthy, falsey) = split_off_singleton(i_s, checking_t, other_t, is_eq);
         (
             Frame::from_type(key.clone(), truthy),
             Frame::from_type(key, falsey),
@@ -1418,7 +1413,7 @@ fn narrow_is_or_eq(
             })
         }
         Type::None => {
-            let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None);
+            let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq);
             Some((Frame::new_conditional(), Frame::from_type(key, falsey)))
         }
         Type::EnumMember(member) if !is_eq || !member.implicit => {
@@ -1448,7 +1443,7 @@ fn narrow_is_or_eq(
                     || has_explicit_literal(i_s.db, checking_t))
                 || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
         {
-            let (true_type, false_type) = split_off_singleton(i_s, checking_t, other_t);
+            let (true_type, false_type) = split_off_singleton(i_s, checking_t, other_t, is_eq);
             Some((
                 Frame::from_type(key.clone(), true_type),
                 Frame::from_type(key, false_type),
@@ -1470,7 +1465,7 @@ fn narrow_is_or_eq(
                     .iter_with_unpacked_unions(i_s.db)
                     .any(|t| matches!(t, Type::None))
                 {
-                    let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None);
+                    let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq);
                     if falsey.is_simple_sub_type_of(i_s, other_t).bool()
                         || falsey.is_simple_super_type_of(i_s, other_t).bool()
                     {
@@ -3130,7 +3125,14 @@ impl<'file> Inference<'_, 'file, '_> {
                 let (truthy, falsey) = if matches!(expected, Type::Class(_)) {
                     (expected, inf.into_type(i_s))
                 } else {
-                    split_off_singleton_with_type_var(i_s, &inf.as_cow_type(i_s), &expected)
+                    let of_type = inf.as_cow_type(i_s);
+                    match expected {
+                        Type::None if matches!(of_type.as_ref(), Type::TypeVar(_)) => {
+                            // Mypy makes it possible to narrow None against a bare TypeVar.
+                            (Type::None, of_type.into_owned())
+                        }
+                        _ => split_off_singleton(i_s, &of_type, &expected, true),
+                    }
                 };
                 PatternResult {
                     truthy_t: Inferred::from_type(truthy),

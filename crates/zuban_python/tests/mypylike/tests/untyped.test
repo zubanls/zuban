@@ -1179,3 +1179,10 @@ reveal_type(f(1))  # N: Revealed type is "list[Any]"
 def g(x: int):
     y = []
     y += 1  # E: Argument 1 to "__iadd__" of "list" has incompatible type "int"; expected "Iterable[Any]"
+
+[case untyped_no_narrowing_for_any]
+# flags: --mode typed
+from typing import assert_type, Any
+def f(a):
+    if a == 1:
+        assert_type(a, Any)
