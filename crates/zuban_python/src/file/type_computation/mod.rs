@@ -2624,16 +2624,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
         }
-        TypeContent::Type(match entries.len() {
-            0 => Type::Never(NeverCause::Explicit),
-            1 => entries.into_iter().next().unwrap().type_,
-            _ => {
-                let might_have_type_vars = self.has_type_vars_or_self;
-                let mut t = UnionType::new(entries, might_have_type_vars);
-                t.sort_for_priority();
-                Type::Union(t)
-            }
-        })
+        let might_have_type_vars = self.has_type_vars_or_self;
+        TypeContent::Type(Type::from_union_entries(entries, might_have_type_vars))
     }
 
     fn compute_type_get_item_on_optional(

@@ -550,7 +550,11 @@ impl Type {
         match entries.len() {
             0 => Type::Never(NeverCause::Other),
             1 => entries.into_iter().next().unwrap().type_,
-            _ => Type::Union(UnionType::new(entries, might_have_defined_type_vars)),
+            _ => {
+                let mut union = UnionType::new(entries, might_have_defined_type_vars);
+                union.sort_for_priority();
+                Type::Union(union)
+            }
         }
     }
 
@@ -774,11 +778,7 @@ impl Type {
                         new_entries.push(entry.clone())
                     }
                 }
-                match new_entries.len() {
-                    0 => Type::Never(NeverCause::Other),
-                    1 => new_entries.into_iter().next().unwrap().type_,
-                    _ => Type::Union(UnionType::new(new_entries, union.might_have_type_vars)),
-                }
+                Self::from_union_entries(new_entries, union.might_have_type_vars)
             }
             Type::Never(cause) => Type::Never(*cause),
             t => {

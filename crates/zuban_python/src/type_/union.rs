@@ -202,19 +202,9 @@ fn merge_simplified_union_type(
         contract_bool_literals(i_s.db, &mut new_types)
     }
     if finished {
-        MergeSimplifiedUnionResult::Done(match new_types.len() {
-            0 => Type::Never(NeverCause::Other),
-            1 => new_types.into_iter().next().unwrap().type_,
-            _ => {
-                let mut union = UnionType {
-                    entries: new_types.into(),
-                    // TODO should this be calculated?
-                    might_have_type_vars: true,
-                };
-                union.sort_for_priority();
-                Type::Union(union)
-            }
-        })
+        MergeSimplifiedUnionResult::Done(Type::from_union_entries(
+            new_types, true, // TODO shouldn't this be calculated?
+        ))
     } else {
         MergeSimplifiedUnionResult::NotDone(new_types)
     }

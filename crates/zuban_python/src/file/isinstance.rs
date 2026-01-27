@@ -204,11 +204,6 @@ impl Inference<'_, '_, '_> {
         let ts: Option<Vec<Type>> = types
             .map(|t| self.process_isinstance_type(part, t, issubclass, true))
             .collect();
-        let ts = ts?;
-        Some(match ts.len() {
-            0 => Type::Never(NeverCause::Other),
-            1 => ts.into_iter().next().unwrap(),
-            _ => Type::simplified_union_from_iterators(self.i_s, ts.iter()),
-        })
+        Some(Type::simplified_union_from_iterators(self.i_s, ts?.iter()))
     }
 }
