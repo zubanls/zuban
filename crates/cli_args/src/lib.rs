@@ -2,7 +2,10 @@ use std::{path::PathBuf, sync::Arc};
 
 pub use config::DiagnosticConfig;
 
-use config::{ExcludeRegex, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{
+    ExcludeRegex, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
+    UntypedFunctionReturnMode,
+};
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
 
 use clap::{Parser, ValueEnum};
@@ -15,6 +18,12 @@ pub struct Cli {
     #[arg(long)]
     mode: Option<ModeArg>,
 
+    /// Can be either "any" to infer untyped function returns like Mypy, "inferred" to infer return
+    /// types or "advanced" to infer return types in a more sophisticated way that includes
+    /// inferring params.
+    #[arg(long)]
+    pub untyped_function_return_mode: Option<UntypedFunctionReturnMode>,
+
     #[command(flatten)]
     pub mypy_options: MypyCli,
 }
@@ -23,6 +32,7 @@ impl Cli {
     pub fn new_mypy_compatible(mypy_options: MypyCli) -> Self {
         Self {
             mode: Some(ModeArg::Mypy),
+            untyped_function_return_mode: None,
             mypy_options,
         }
     }
@@ -313,6 +323,10 @@ pub fn apply_flags_detailed(
     if let Some(mode) = cli.mode {
         settings.mode = mode.into();
     }
+    if let Some(untyped_function_return_mode) = cli.untyped_function_return_mode {
+        settings.untyped_function_return_mode = untyped_function_return_mode
+    }
+
     apply_mypy_flags(
         vfs_handler,
         settings,

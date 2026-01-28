@@ -336,7 +336,7 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     (*y, )  # E: Expected iterable as variadic argument  [misc]  # E: Expected iterable as variadic argument  [misc]
 
 [case untyped_override_check_untyped_defs_no_mypy_compatible]
-# flags: --check-untyped-defs --check-untyped-overrides --mode default
+# flags: --check-untyped-overrides --mode default
 import m
 
 [file m.py]
@@ -355,13 +355,13 @@ class D(C):
                                         # N:          def f(s: Any, *x: Any) -> Any \
                                         # N:      Subclass: \
                                         # N:          @staticmethod \
-                                        # N:          def [T1: Any, T2: Any, T3: Any] f(s: T1, grad_output: T2, *, foo: T3) -> None
+                                        # N:          def f(s: Any, grad_output: Any, *, foo: Any) -> None
 
     def g(self, grad_output, *, foo): ...  # E: Signature of "g" incompatible with supertype "C" \
                                            # N:      Superclass: \
                                            # N:          def g(self, *x: Any) -> Any \
                                            # N:      Subclass: \
-                                           # N:          def [T2: Any, T3: Any] g(self, grad_output: T2, *, foo: T3) -> None
+                                           # N:          def g(self, grad_output: Any, *, foo: Any) -> None
 
 [case untyped_override_check_untyped_defs_mypy_compatible]
 # flags: --check-untyped-defs --mode mypy

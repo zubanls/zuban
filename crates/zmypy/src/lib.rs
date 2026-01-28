@@ -87,6 +87,7 @@ fn project_from_cli(
     if let Some(typeshed_path) = typeshed_path {
         options.settings.typeshed_path = Some(typeshed_path);
     }
+
     options
         .settings
         .try_to_apply_environment_variables(&local_fs, &current_dir, lookup_env_var);

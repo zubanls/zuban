@@ -1,12 +1,12 @@
 [case mypy_no_compatible_untyped_func_exec]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x):
     return (x, "")
 
 reveal_type(f(1))  # N: Revealed type is "tuple[int, Literal['']?]"
 
 [case infer_untyped_result_but_typed_param]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x: int):
     return x
 
@@ -14,7 +14,7 @@ reveal_type(f(1))  # N: Revealed type is "int"
 reveal_type(f(""))  # E: Argument 1 to "f" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
 
 [case infer_untyped_result_but_typed_param_with_type_var]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f[S, T](x: T, y: S):
     return x
 
@@ -22,7 +22,7 @@ reveal_type(f(1, b''))  # N: Revealed type is "Literal[1]?"
 reveal_type(f("", b''))  # N: Revealed type is "Literal['']?"
 
 [case infer_untyped_result_result_context]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x):
     return [x]
 
@@ -31,7 +31,7 @@ reveal_type(f(1))  # N: Revealed type is "list[int]"
 x: list[object] = f(1)
 
 [case type_var_formatting]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 def f(x, y, z):
     return x, z
@@ -43,7 +43,7 @@ reveal_type(f)  # N: Revealed type is "def [T1 <: Any, T2 <: Any, T3 <: Any] (x:
 reveal_type(wrap(f))  # N: Revealed type is "list[def [T1 <: Any, T2 <: Any, T3 <: Any] (x: T1, y: T2, z: T3) -> tuple[T1, T3]]"
 
 [case infer_untyped_callables]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 from typing import Callable
 
@@ -65,7 +65,7 @@ reveal_type(f(ret_same))  # N: Revealed type is "tuple[Any, Any]"
 reveal_type(f(ret_other))  # N: Revealed type is "tuple[Any, int]"
 
 [case untyped_callables_with_errors]
-# flags: --mode default --check-untyped-defs
+# flags: --mode default --check-untyped-defs --untyped-function-return-mode advanced
 
 def f(x):
     1()  # E: "int" not callable
@@ -73,7 +73,7 @@ def f(x):
 reveal_type(f(""))  # N: Revealed type is "Literal['']?"
 
 [case untyped_callables_without_errors]
-# flags: --mode default --no-check-untyped-defs
+# flags: --mode default --no-check-untyped-defs --untyped-function-return-mode advanced
 
 def f(x):
     1()
@@ -81,7 +81,7 @@ def f(x):
 reveal_type(f(""))  # N: Revealed type is "Any"
 
 [case untyped_class]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 class C:
     def __init__(self, x):
@@ -95,7 +95,7 @@ reveal_type(c.x)  # N: Revealed type is "str"
 reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str, __main__.C]"
 
 [case untyped_method_typed_class]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 class C[T]:
     def __init__(self, x: T):
@@ -109,7 +109,7 @@ reveal_type(c.x)  # N: Revealed type is "str"
 reveal_type(c.f(1))  # N: Revealed type is "tuple[int, str, __main__.C[str]]"
 
 [case untyped_method_in_class_with_self_type1]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 class C:
     def f(self):
@@ -126,7 +126,7 @@ reveal_type(d.f)  # N: Revealed type is "def () -> __main__.D"
 reveal_type(d.f())  # N: Revealed type is "__main__.D"
 
 [case untyped_method_in_class_with_self_type2]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import Self
 
 class C:
@@ -144,7 +144,7 @@ reveal_type(d.f)  # N: Revealed type is "def (y: __main__.D) -> tuple[__main__.D
 reveal_type(d.f(d))  # N: Revealed type is "tuple[__main__.D, __main__.D]"
 
 [case untyped_new_type_self_return]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import NewType
 
 class C:
@@ -163,7 +163,7 @@ def g(x: NT):
     reveal_type(x.f(1))  # N: Revealed type is "tuple[__main__.NT, int]"
 
 [case avoid_crash_in_untyped_func]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 class Dog:
     def __init__(self, friends):
@@ -179,7 +179,7 @@ reveal_type(buddy.first_friend())  # N: Revealed type is "Any | None"
 reveal_type(Dog([1]).first_friend())  # N: Revealed type is "Any | None"
 
 [case untyped_staticmethod]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 class C:
     @staticmethod
@@ -216,7 +216,7 @@ reveal_type(D().f(1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
 reveal_type(wrapped4[0](1, "", b''))  # N: Revealed type is "tuple[int, bytes]"
 
 [case untyped_classmethod]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 class C:
     @classmethod
@@ -255,7 +255,7 @@ reveal_type(D().f(1, ""))  # N: Revealed type is "tuple[type[__main__.D], str]"
 reveal_type(wrapped4[0](1, ""))  # N: Revealed type is "tuple[type[__main__.D], str]"
 
 [case untyped_property]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 class C:
     def __init__(self, x):
@@ -308,7 +308,7 @@ d.h = ""
 d.h = 1
 
 [case untyped_multi_inheritance1]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 class A:
     def __init__(self, x):
         self.x = x
@@ -322,7 +322,7 @@ reveal_type(C(1).x)  # N: Revealed type is "int"
 reveal_type(D(1).x)  # N: Revealed type is "int"
 
 [case untyped_multi_inheritance2]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 class A:
     def __init__(self, x):
         self.x = x
@@ -340,7 +340,7 @@ D(1)  # E: Missing positional argument "y" in call to "D"
 reveal_type(D('', 1).x)  # N: Revealed type is "str"
 
 [case untyped_dataclass_method]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from dataclasses import dataclass
 
 @dataclass
@@ -362,7 +362,7 @@ reveal_type(d.foo(b''))  # N: Revealed type is "tuple[bytes, int]"
 reveal_type(E(1).foo(""))  # N: Revealed type is "tuple[Any, int]"
 
 [case untyped_enum_method]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from enum import Enum
 
 class C(Enum):
@@ -377,7 +377,7 @@ class D(C): ...  # E: Cannot extend enum with existing members: "C"
 reveal_type(C(1).foo(""))  # N: Revealed type is "tuple[str, Literal[__main__.C.X]?]"
 
 [case untyped_namedtuple_method]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import NamedTuple
 
 class C(NamedTuple):
@@ -393,7 +393,7 @@ reveal_type(C(1, "").foo(b""))  # N: Revealed type is "tuple[int, str, bytes]"
 reveal_type(D(1, "").foo(b""))  # N: Revealed type is "tuple[int, str, bytes]"
 
 [case untyped_new_type_as_self]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 from typing import NewType
 
@@ -411,7 +411,7 @@ def f(n: N):
     reveal_type(n.foo(b""))  # N: Revealed type is "tuple[__main__.N, Any, bytes]"
 
 [case untyped_multi_return]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x):
     if x:
         return x
@@ -422,7 +422,7 @@ reveal_type(f(1))  # N: Revealed type is "int"
 reveal_type(f(""))  # N: Revealed type is "str | int"
 
 [case untyped_generator]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 def f(x):
     yield x
@@ -466,7 +466,7 @@ class C:
 reveal_type(C(1).foo(b""))  # N: Revealed type is "typing.Generator[tuple[int, bytes], None, Any]"
 
 [case untyped_async_generator]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 async def f(x):
     yield x
@@ -487,7 +487,7 @@ async def check():
         reveal_type(z)  # N: Revealed type is "str | int"
 
 [case untyped_async]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 async def f(x):
     return x
@@ -518,14 +518,14 @@ async def check():
     reveal_type(await g(""))  # N: Revealed type is "list[str]"
 
 [case untyped_recursion1]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x):
     return f(x)
 
 reveal_type(f(1))  # N: Revealed type is "Any"
 
 [case untyped_recursion2]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x):
     if x:
         return f(x)
@@ -536,7 +536,7 @@ reveal_type(f(1))  # N: Revealed type is "Any | int"
 reveal_type(f(""))  # N: Revealed type is "Any | str"
 
 [case untyped_recursion3]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x):
     if x:
         return x
@@ -550,7 +550,7 @@ reveal_type(f(1))  # N: Revealed type is "int | Any"
 reveal_type(f(""))  # N: Revealed type is "str | Any"
 
 [case no_check_untyped_defs_with_no_mypy_compatible_methods]
-# flags: --mode default --no-check-untyped-defs
+# flags: --mode default --no-check-untyped-defs --untyped-function-return-mode advanced
 class C:
     def __init__(self, x):
         self.x = x
@@ -562,7 +562,7 @@ class C:
 reveal_type(C(1).join())  # N: Revealed type is "Any"
 
 [case class_inheritance_no_check_of_inferred_return_type1]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 class A:
     def untyped(self):
         return 1
@@ -608,7 +608,7 @@ class C(A):
          return ""
 
 [case class_inheritance_no_check_of_inferred_return_type2]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def dec[T](x: T) -> T: ...
 class A:
     @dec
@@ -679,7 +679,7 @@ class C(A):
          return ""
 
 [case incompatible_untyped_inplace_methods]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 class A:
     def __iadd__(self, other):
         return 1
@@ -702,7 +702,7 @@ class A:
         return 1
 
 [case protocol_matching_should_not_infer_return_types]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 import m
 x: m.P1 = m.C1()  # E: Incompatible types in assignment (expression has type "C1", variable has type "P1") \
                   # N: Following member(s) of "C1" have conflicts: \
@@ -735,14 +735,14 @@ class C2:
         return ""
 
 [case func_returns_itself_untyped_inference]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def g(x):
     return g
 
 reveal_type(g(1))  # N: Revealed type is "def [T1 <: Any] (x: int) -> Any"
 
 [case func_recursion_while_calculating_diagnostics]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def safeiter(it):
     def n():
         while True:
@@ -759,7 +759,7 @@ for x in safeiter([1]):
     reveal_type(x)  # N: Revealed type is "Any"
 
 [case classmethod_instantiation_no_crash]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def w(cls):
     return 1
 
@@ -772,7 +772,7 @@ reveal_type(C.with_args)  # E: Argument 2 to "__get__" of "classmethod" has inco
 x = C.with_args()  # E: Argument 2 to "__get__" of "classmethod" has incompatible type "type[C]"; expected "type[_T]"
 
 [case untyped_function_should_still_have_normal_errors]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def foo(a):  # E: Function is missing a type annotation
     if bool():
         raise Exception()
@@ -785,7 +785,7 @@ foo()  # E: Missing positional argument "a" in call to "foo"
 disallow_untyped_defs = true
 
 [case reachability_for_untyped_function_with_never]
-# flags: --mode default --disallow-untyped-defs
+# flags: --mode default --disallow-untyped-defs --untyped-function-return-mode advanced
 
 from m import f  # Ensure import order
 
@@ -803,13 +803,13 @@ x = reveal_type(m.f(1))  # N: Revealed type is "Never"
 reveal_type(x)  # N: Revealed type is "Never"
 
 [case untyped_simple_recursion]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def foo():
     reveal_type(foo()) # N: Revealed type is "Any"
     return 1
 
 [case dataclass_crash_from_inheritance]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 # From GH #235
 from dataclasses import dataclass
 
@@ -827,7 +827,7 @@ class FSMTModel:
             pass
 
 [case untyped_class_different_init]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 # From GH #235
 
 class A:
@@ -847,7 +847,7 @@ reveal_type(b.a2)  # N: Revealed type is "Any"
 reveal_type(b.b)  # N: Revealed type is "str"
 
 [case type_is_on_object]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import TypeIs
 class A: ...
 def isbuiltin(object: object) -> TypeIs[A]: ...
@@ -894,7 +894,7 @@ def f(
     other_c2 = c
 
 [case untyped_none_in_method_inherited]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import assert_type, Any, Literal
 class X:
     def f(self):
@@ -913,7 +913,7 @@ def g(x: X, y: Y):
     assert_type(simple(), None)
 
 [case untyped_no_return_in_methods]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import assert_type, Any, Literal, assert_never
 class X:
     def f(self):
@@ -932,7 +932,7 @@ def g(x: X, y: Y):
     assert_never(simple())
 
 [case untyped_infer_implicit_none_return]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import assert_type, Literal
 def f():
     if bool():
@@ -941,7 +941,7 @@ def f():
 assert_type(f(), Literal[1] | None)
 
 [case untyped_decorator_with_wraps]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from functools import wraps
 
 def decorator(func):
@@ -960,7 +960,7 @@ class C:
 reveal_type(C().f(1))  # N: Revealed type is "Any"
 
 [case untyped_decorator_with_wraps2]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from functools import wraps
 
 def decorate():
@@ -1022,7 +1022,7 @@ class A(X, Y): ...
 class B(Y, X): ...
 
 [case raise_error_in_untyped_function]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x):
     if bool():
         raise x
@@ -1030,7 +1030,7 @@ def f(x):
         raise 1  # E: Exception must be derived from BaseException
 
 [case untyped_list_literals_as_inputs_to_untyped_classes_no_errors]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 class C:
     def __init__(self, x):
         self.x = x
@@ -1079,7 +1079,7 @@ class X(metaclass=C): ...
 reveal_type(X.name)  # N: Revealed type is "Any"
 
 [case untyped_kwargs_should_be_changable]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 
 def f(**x):
     x[1] = 1  # E: Invalid index type "int" for "dict[str, Any]"; expected type "str"
@@ -1097,7 +1097,7 @@ class C:
 reveal_type(C(x=1).kwargs)  # N: Revealed type is "dict[str, Any]"
 
 [case no_report_of_unknown_type_params_in_untyped_contexts]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import assert_type, Any
 def other(some_var): ...
 def f():
@@ -1162,12 +1162,12 @@ class M5(U1, U2): ...
 class M6(U2, U1): ...
 
 [case no_untyped_generic_context]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(x, y):
     x = max(y, 1)
 
 [case untyped_add_assign_should_be_fine]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 def f(leaf):
     x = []
     if bool():
@@ -1181,8 +1181,21 @@ def g(x: int):
     y += 1  # E: Argument 1 to "__iadd__" of "list" has incompatible type "int"; expected "Iterable[Any]"
 
 [case untyped_no_narrowing_for_any]
-# flags: --mode default
+# flags: --mode default --untyped-function-return-mode advanced
 from typing import assert_type, Any
 def f(a):
     if a == 1:
         assert_type(a, Any)
+
+[case untyped_function_return_mode_in_pyproject]
+from typing import Literal, assert_type
+
+def foo(x):
+    return x
+
+assert_type(foo(1), Literal[1])
+
+[file pyproject.toml]
+[tool.zuban]
+untyped_function_return_mode = "advanced"
+check_untyped_defs = true

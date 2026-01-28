@@ -117,6 +117,7 @@ fn main() -> ExitCode {
         Settings {
             typeshed_path: Some(test_utils::typeshed_path()),
             mypy_path: mypy_path(),
+            untyped_function_return_mode: config::UntypedFunctionReturnMode::Advanced,
             ..Default::default()
         },
         TypeCheckerFlags {

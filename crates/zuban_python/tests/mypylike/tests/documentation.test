@@ -109,9 +109,9 @@ untyped
 
 [out]
 __main__.py:3:documentation -> "```python\n(function) def [T] typed(x: list[T]) -> T\n```\n---\ntyped doc"
-__main__.py:7:documentation -> "```python\n(function) def [T1: Any] untyped(x: T1) -> T1\n```\n---\nuntyped doc"
+__main__.py:7:documentation -> "```python\n(function) def untyped(x: Any) -> Any\n```\n---\nuntyped doc"
 __main__.py:12:documentation -> "```python\n(function) def [T] typed(x: list[T]) -> T\n```\n---\ntyped doc"
-__main__.py:14:documentation -> "```python\n(function) def [T1: Any] untyped(x: T1) -> T1\n```\n---\nuntyped doc"
+__main__.py:14:documentation -> "```python\n(function) def untyped(x: Any) -> Any\n```\n---\nuntyped doc"
 
 [case docs_property]
 class X:

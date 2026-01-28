@@ -3,7 +3,8 @@ mod venv;
 
 use std::{borrow::Cow, sync::Arc};
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
+use clap::ValueEnum as _;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
@@ -53,7 +54,7 @@ pub enum Mode {
     Default,
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug, clap::ValueEnum)]
 pub enum UntypedFunctionReturnMode {
     Any,
     Inferred,
@@ -88,7 +89,7 @@ impl Default for Settings {
             mypy_path: vec![],
             add_global_packages_default: true,
             mode: Mode::Default,
-            untyped_function_return_mode: UntypedFunctionReturnMode::Advanced,
+            untyped_function_return_mode: UntypedFunctionReturnMode::Inferred,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }
@@ -346,7 +347,13 @@ impl ProjectOptions {
         from_zuban: bool,
     ) -> anyhow::Result<()> {
         let Item::Table(table) = config else {
-            bail!("Expected tool.mypy to be a table in pyproject.toml");
+            bail!(
+                "Expected tool.{} to be a table in pyproject.toml",
+                match from_zuban {
+                    true => "zuban",
+                    false => "mypy",
+                }
+            );
         };
 
         for (key, item) in table.iter() {
@@ -386,7 +393,14 @@ impl ProjectOptions {
                     }
                 }
                 Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
-                    bail!("Expected tool.mypy to be a simple table in pyproject.toml");
+                    dbg!(item);
+                    bail!(
+                        "Expected tool.{} to be a simple table in pyproject.toml",
+                        match from_zuban {
+                            true => "zuban",
+                            false => "mypy",
+                        }
+                    );
                 }
             }
         }
@@ -1046,6 +1060,12 @@ fn apply_from_base_config(
             } else {
                 value.as_str()?.parse()?
             })
+        }
+        "untyped_function_return_mode" => {
+            settings.untyped_function_return_mode =
+                UntypedFunctionReturnMode::from_str(value.as_str()?, false).map_err(|err| {
+                    anyhow!("Error while parsing the untyped_function_return_mode: {err}")
+                })?;
         }
         "platform" => settings.platform = Some(value.as_str()?.to_string()),
         _ => return apply_from_config_part(flags, key, value, from_zuban),

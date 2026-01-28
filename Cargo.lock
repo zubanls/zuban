@@ -248,6 +248,7 @@ name = "config"
 version = "0.4.2"
 dependencies = [
  "anyhow",
+ "clap",
  "regex",
  "rust-ini",
  "toml_edit",
