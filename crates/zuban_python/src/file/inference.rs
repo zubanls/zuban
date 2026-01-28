@@ -4581,7 +4581,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let expr = decorator.named_expression().expression();
 
         let is_untyped_and_non_mypy_compatible = |inf: &Inferred| {
-            if !self.i_s.db.mypy_compatible()
+            if !self.i_s.db.project.settings.should_infer_return_types()
                 && let Some(node_ref) = inf.maybe_saved_node_ref(self.i_s.db)
                 && let Some(func) = node_ref.maybe_function()
             {

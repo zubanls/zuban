@@ -54,6 +54,13 @@ pub enum Mode {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub enum UntypedFunctionReturnMode {
+    Any,
+    Inferred,
+    Advanced,
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Settings {
     pub platform: Option<String>,
     pub python_version: Option<PythonVersion>,
@@ -63,6 +70,7 @@ pub struct Settings {
     /// Global packages are added by default (if we are not in a venv)
     pub add_global_packages_default: bool,
     pub mode: Mode,
+    pub untyped_function_return_mode: UntypedFunctionReturnMode,
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
     pub typeshed_path: Option<Arc<NormalizedPath>>,
@@ -80,6 +88,7 @@ impl Default for Settings {
             mypy_path: vec![],
             add_global_packages_default: true,
             mode: Mode::Default,
+            untyped_function_return_mode: UntypedFunctionReturnMode::Advanced,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }
@@ -153,6 +162,22 @@ impl Settings {
             .collect::<anyhow::Result<Vec<_>>>()?;
         Ok(())
     }
+
+    #[inline]
+    pub fn should_infer_return_types(&self) -> bool {
+        !matches!(
+            self.untyped_function_return_mode,
+            UntypedFunctionReturnMode::Any
+        )
+    }
+
+    #[inline]
+    pub fn should_infer_untyped_params(&self) -> bool {
+        matches!(
+            self.untyped_function_return_mode,
+            UntypedFunctionReturnMode::Advanced
+        )
+    }
 }
 
 fn to_normalized_path(
@@ -196,6 +221,7 @@ impl ProjectOptions {
         Self {
             settings: Settings {
                 mode: Mode::MypyCompatible,
+                untyped_function_return_mode: UntypedFunctionReturnMode::Any,
                 ..Default::default()
             },
             flags: TypeCheckerFlags::mypy_default(),

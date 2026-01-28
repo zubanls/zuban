@@ -794,10 +794,6 @@ impl<'db> PythonFile {
             .unwrap_or(&db.project.flags)
     }
 
-    pub fn should_infer_untyped_returns(&self, db: &Database) -> bool {
-        !db.mypy_compatible() && self.flags(db).check_untyped_defs
-    }
-
     pub fn maybe_more_specific_flags<'x>(
         &'x self,
         db: &'x Database,

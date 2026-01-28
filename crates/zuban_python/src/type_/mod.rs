@@ -26,6 +26,7 @@ use std::{
     sync::Arc,
 };
 
+use config::UntypedFunctionReturnMode;
 use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
 use typed_dict::rc_typed_dict_as_callable;
 use vfs::{Directory, FileIndex};
@@ -1375,8 +1376,8 @@ impl Type {
     }
 
     pub fn has_untyped_type_params(&self, db: &Database) -> bool {
-        if db.mypy_compatible() {
-            return false; // Mypy never has unknown type params
+        if !db.project.settings.should_infer_untyped_params() {
+            return false;
         }
         self.find_in_type(
             db,

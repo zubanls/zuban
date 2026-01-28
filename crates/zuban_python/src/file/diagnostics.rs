@@ -3218,7 +3218,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
     mut add_issue: impl FnMut(IssueKind),
 ) {
     let db = i_s.db;
-    let mypy_compatible = i_s.db.mypy_compatible();
+    let should_infer_untyped_params = db.project.settings.should_infer_untyped_params();
     for (i, base1) in bases().enumerate() {
         let cls1 = match base1.maybe_class(db) {
             Some(c) => c,
@@ -3297,7 +3297,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         }
                         if inst2_lookup.attr_kind.is_writable()
                             && inst1_lookup.attr_kind.is_final()
-                            && (!mypy_compatible || !inst2_lookup.attr_kind.is_cached_property())
+                            && (!db.mypy_compatible()
+                                || !inst2_lookup.attr_kind.is_cached_property())
                         {
                             add_issue(IssueKind::CannotOverrideWritableWithFinalAttribute {
                                 name: name.into(),
@@ -3305,11 +3306,11 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                             return;
                         }
                         let mut first = first.as_cow_type(i_s);
-                        if !mypy_compatible {
-                            if let Some(new) = first.replace_unknown_type_params_with_any(i_s.db) {
+                        if should_infer_untyped_params {
+                            if let Some(new) = first.replace_unknown_type_params_with_any(db) {
                                 first = Cow::Owned(new)
                             }
-                            if let Some(new) = second.replace_unknown_type_params_with_any(i_s.db) {
+                            if let Some(new) = second.replace_unknown_type_params_with_any(db) {
                                 second = Cow::Owned(new)
                             }
                         }
@@ -3331,7 +3332,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         {
                             // This happens when @cached_property is overwritten with @property. This is
                             // allowed in Mypy (probably due to a logic error).
-                            if !mypy_compatible || !inst2_lookup.attr_kind.is_cached_property() {
+                            if !db.mypy_compatible() || !inst2_lookup.attr_kind.is_cached_property()
+                            {
                                 add_issue(
                                     IssueKind::CannotOverrideWritableAttributeWithReadOnlyProperty {
                                         name: name.into(),
