@@ -23,6 +23,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{Generics, IteratorContent, OnTypeError, ResultContext},
+    recoverable_error,
     type_::{AnyCause, Type},
     type_helpers::{Class, ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{arc_slice_into_vec, join_with_commas},
@@ -965,21 +966,27 @@ pub fn execute_tuple_class<'db>(
     // "class tuple". We however would want a Tuple[int, ...] instead. Therefore we unpack the type
     // we got here.
     let ClassExecutionResult::Inferred(inf) = class_execution_result else {
-        unreachable!("Expected a __new__ within builtins.tuple")
+        recoverable_error!("Expected a __new__ within builtins.tuple");
+        return Inferred::new_any_from_error();
     };
     match inf.as_cow_type(i_s).as_ref() {
         Type::Class(tup_cls) => {
             let ClassGenerics::List(generics_list) = &tup_cls.generics else {
-                unreachable!("Expected a tuple with one type argument in typeshed")
+                recoverable_error!("Expected a tuple with one type argument in typeshed");
+                return Inferred::new_any_from_error();
             };
             let Some(GenericItem::TypeArg(t)) = generics_list.iter().next() else {
-                unreachable!("Expected a tuple with one type argument in typeshed")
+                recoverable_error!("Expected a tuple with one type argument in typeshed");
+                return Inferred::new_any_from_error();
             };
             Inferred::from_type(Type::Tuple(
                 Tuple::new_arbitrary_length_with_class_generics(t.clone(), generics_list.clone()),
             ))
         }
-        _ => unreachable!("Expected tuple.__new__ to return the tuple class"),
+        _ => {
+            recoverable_error!("Expected tuple.__new__ to return the tuple class");
+            return Inferred::new_any_from_error();
+        }
     }
 }
 
