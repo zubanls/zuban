@@ -544,16 +544,21 @@ impl Type {
                 && (variance == Variance::Covariant || u1.entries.len() == 2)
         };
         match value_type {
-            Type::Union(u2) => match variance {
-                Variance::Covariant => Match::all(u2.iter(), |g2| {
-                    self.matches_union(i_s, matcher, u1, g2, variance)
-                }),
-                Variance::Invariant => {
-                    self.is_super_type_of(i_s, matcher, value_type)
-                        & self.is_sub_type_of(i_s, matcher, value_type)
+            Type::Union(u2) => {
+                if !u1.might_have_type_vars && !u2.might_have_type_vars && u1 == u2 {
+                    return Match::new_true();
                 }
-                Variance::Contravariant => unreachable!(),
-            },
+                match variance {
+                    Variance::Covariant => Match::all(u2.iter(), |g2| {
+                        self.matches_union(i_s, matcher, u1, g2, variance)
+                    }),
+                    Variance::Invariant => {
+                        self.is_super_type_of(i_s, matcher, value_type)
+                            & self.is_sub_type_of(i_s, matcher, value_type)
+                    }
+                    Variance::Contravariant => unreachable!(),
+                }
+            }
             Type::Type(t) if matches!(t.as_ref(), Type::Union(_)) => {
                 let Type::Union(u) = t.as_ref() else {
                     unreachable!();

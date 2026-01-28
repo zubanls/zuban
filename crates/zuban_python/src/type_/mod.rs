@@ -1061,7 +1061,7 @@ impl Type {
         };
         let mut t = UnionType {
             entries: entries.into_boxed_slice(),
-            // TODO should we calculated this?
+            // TODO should we calculate this?
             might_have_type_vars: true,
         };
         t.sort_for_priority();
