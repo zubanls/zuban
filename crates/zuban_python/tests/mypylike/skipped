@@ -13,8 +13,6 @@ docs_alias
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
-disallow_untyped_decorator_typed_mode
-
 # Regression from calculating nested functions in a different way
 testLocalPartialTypesWithNestedFunction
 testLocalPartialTypesWithNestedFunction2

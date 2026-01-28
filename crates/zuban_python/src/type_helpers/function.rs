@@ -2462,7 +2462,7 @@ fn infer_decorator_details(
         _ => {
             // We only care about this case for non-mypy compatibility, because for Mypy there are
             // no untyped type params.
-            if i_s.db.project.should_infer_untyped_params()
+            if i_s.db.project.should_infer_return_types()
                 && inf
                     .maybe_any(i_s.db)
                     .is_some_and(|cause| cause == AnyCause::UntypedDecorator)
