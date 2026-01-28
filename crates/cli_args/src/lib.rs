@@ -35,14 +35,14 @@ impl Cli {
 #[derive(Clone, ValueEnum, Copy)]
 enum ModeArg {
     Mypy,
-    Typed,
+    Default,
 }
 
 impl From<ModeArg> for Mode {
     fn from(m: ModeArg) -> Self {
         match m {
             ModeArg::Mypy => Mode::MypyCompatible,
-            ModeArg::Typed => Mode::Typed,
+            ModeArg::Default => Mode::Default,
         }
     }
 }

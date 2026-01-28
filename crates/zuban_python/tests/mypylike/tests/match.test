@@ -53,7 +53,7 @@ match 1:
         reveal_type(x)  # N: Revealed type is "object"
 
 [case multi_assign_pattern]
-# flags: --mode typed
+# flags: --mode default
 # Like testMatchCapturePatternMultipleCases but for non-mypy compatibility
 m: object
 
@@ -217,7 +217,7 @@ match x:
         reveal_type(rest)  # N: Revealed type is "int | str"
 
 [case match_classes_with_guards_should_not_narrow_rest_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import assert_never
 
 def f() -> int | str: return 1
@@ -245,7 +245,7 @@ def f(x: float | str):
             reveal_type(x)  # N: Revealed type is "float | str"
 
 [case match_typed_dict_reachability]
-# flags: --mode typed
+# flags: --mode default
 # Copied from testMatchMappingPatternCapturesTypedDict, adapted for non-mypy compatibility
 from typing import TypedDict
 

@@ -274,7 +274,7 @@ def f(x: Any) -> None:
     x(**undefined)  # E: Name "undefined" is not defined
 
 [case any_call_with_invalid_args_kwargs_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import Any
 
 def f(x: Any) -> None:
@@ -330,7 +330,7 @@ foo(  # E: Unexpected keyword argument "z" for "foo"
 )
 
 [case invalid_keyword_arguments_position_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 def foo(x: int, y: int): ...
 
 foo( # type: ignore[call-arg]
@@ -407,7 +407,7 @@ def one(x: str) -> int: ...
 def four(*args: int) -> int: ...
 
 [case function_no_return_should_not_result_in_any_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 # From GH #150, see also the discussion there, Mypy returns Any, Pyright None
 from typing import assert_type, Callable, Generator, Iterator
 
@@ -448,7 +448,7 @@ def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
     reveal_type(ret)  # N: Revealed type is "Any"
 
 [case function_does_not_return_value_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 # From GH #124
 from collections.abc import Callable
 
@@ -462,7 +462,7 @@ def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
     reveal_type(ret)  # N: Revealed type is "None"
 
 [case annotations_generator_unreachable_yield]
-# flags: --mode typed
+# flags: --mode default
 # From conformance tests (annotations_generators.py)
 from typing import AsyncIterable, AsyncIterator, Iterable
 def generator23() -> Iterable[str]:  # OK

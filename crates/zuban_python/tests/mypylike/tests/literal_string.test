@@ -17,7 +17,7 @@ bad_union: Literal["hello", LiteralString]  # E: Parameter 2 of Literal[...] is 
 bad_nesting: Literal[LiteralString]  # E: Parameter 1 of Literal[...] is invalid
 
 [case literal_string_simple_matching_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import Literal, LiteralString
 def func1(a: Literal["one"], b: Literal["two"], c: str):
     x1: LiteralString = a
@@ -33,7 +33,7 @@ def func1(a: Literal["one"], b: Literal["two"], c: str):
     x3: LiteralString = c
 
 [case literal_string_operations]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (literals_literalstring.py)
 
 from typing import LiteralString, assert_type
@@ -70,7 +70,7 @@ def func2(a: LiteralString, b: LiteralString):
     x4: LiteralString = b"test"  # E: Incompatible types in assignment (expression has type "Literal[b'test']", variable has type "LiteralString")
 
 [case literal_string_additions_with_literals]
-# flags: --mode typed
+# flags: --mode default
 from typing import LiteralString, Literal
 def f(s: str, ls: LiteralString, l: Literal['x'], i: Literal[1], b: Literal[b'']):
     reveal_type(s + ls)  # N: Revealed type is "str"
@@ -85,7 +85,7 @@ def f(s: str, ls: LiteralString, l: Literal['x'], i: Literal[1], b: Literal[b'']
     ls + b  # E: Unsupported operand types for + ("LiteralString" and "Literal[b'']")
 
 [case fstrings_with_only_strings_is_literal_string]
-# flags: --mode typed
+# flags: --mode default
 from typing import LiteralString, Literal
 def f(s: str, ls: LiteralString, l: Literal['x'], i: Literal[1], b: Literal[b''], u: Literal['a', 'b']):
     reveal_type(f"s {'x'}")  # N: Revealed type is "LiteralString"
@@ -107,7 +107,7 @@ def f(s: str, ls: LiteralString, l: Literal['x'], i: Literal[1], b: Literal[b'']
     reveal_type("a" r"b")  # N: Revealed type is "LiteralString"
 
 [case literal_string_conditions_and_context]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (literals_literalstring.py)
 
 from typing import LiteralString
@@ -130,7 +130,7 @@ def return_literal_str3() -> LiteralString:
     return result  # OK
 
 [case general_literalstring_type_usage]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (literals_literalstring.py)
 
 from typing import LiteralString, TypeVar, Literal, assert_type, Generic
@@ -165,7 +165,7 @@ def func7(s: str):
 xs: list[LiteralString] = ["foo", "bar", "baz"]
 
 [case literal_string_in_overloads]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (literals_literalstring.py)
 
 from typing import LiteralString, overload, assert_type, Any, Literal, Sequence
@@ -197,7 +197,7 @@ def func10(val: Sequence[LiteralString]):
     x1: Sequence[str] = val  # OK
 
 [case literal_string_context_for_containers]
-# flags: --mode typed
+# flags: --mode default
 from typing import LiteralString, Literal
 
 def f(x: LiteralString, y: list[LiteralString]):
@@ -209,7 +209,7 @@ def f(x: LiteralString, y: list[LiteralString]):
            # N: Consider using "Sequence" instead, which is covariant
 
 [case literal_string_percent_syntax]
-# flags: --mode typed
+# flags: --mode default
 from typing import LiteralString, Literal
 
 def f(x: Literal[1], y: Literal["c %s %s"], z: LiteralString, s: str, u1: Literal['a%s', 'b%s'], u2: LiteralString | str):
@@ -238,7 +238,7 @@ def f(x: Literal[1], y: Literal["c %s %s"], z: LiteralString, s: str, u1: Litera
     reveal_type(u2 % u1)  # N: Revealed type is "str"
 
 [case literal_string_format_function]
-# flags: --mode typed
+# flags: --mode default
 
 from typing import Literal, LiteralString
 def f(l: Literal["a{}"], ls: LiteralString, u: Literal["a{}", "b{}"], s: str):
@@ -263,7 +263,7 @@ def f(l: Literal["a{}"], ls: LiteralString, u: Literal["a{}", "b{}"], s: str):
     reveal_type(s.format(u))  # N: Revealed type is "str"
 
 [case literal_string_multiplication]
-# flags: --mode typed
+# flags: --mode default
 from typing import LiteralString
 
 def f(y: LiteralString):

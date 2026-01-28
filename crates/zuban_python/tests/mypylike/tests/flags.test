@@ -336,7 +336,7 @@ def f(x: tuple[int, str] | None, y: tuple[int, str] | int):
     (*y, )  # E: Expected iterable as variadic argument  [misc]  # E: Expected iterable as variadic argument  [misc]
 
 [case untyped_override_check_untyped_defs_no_mypy_compatible]
-# flags: --check-untyped-defs --check-untyped-overrides --mode typed
+# flags: --check-untyped-defs --check-untyped-overrides --mode default
 import m
 
 [file m.py]
@@ -418,7 +418,7 @@ class E:
 x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 [case allow_untyped_globals_default_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 x = []
 
 [case local_partial_types_default_mypy_compatible]
@@ -429,14 +429,14 @@ def foo() -> None:
     reveal_type(x)  # N: Revealed type is "list[int]"
 
 [case local_partial_types_default_no_mypy_compatible]
-# flags: --mode typed --disallow-untyped-globals
+# flags: --mode default --disallow-untyped-globals
 x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 def foo() -> None:
     x.append(1)
     reveal_type(x)  # N: Revealed type is "list[Any]"
 
 [case no_mypy_compatible_disallows_untyped_globals]
-# flags: --mode typed --strict
+# flags: --mode default --strict
 x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 def foo() -> None:
     x.append(1)
@@ -501,22 +501,22 @@ def f() -> None:
 a.append(1)
 
 [case list_inference_mypy_no_compatible]
-# flags: --mode typed
+# flags: --mode default
 x = [1, ""]
 reveal_type(x[0])  # N: Revealed type is "int | str"
 
 [case check_untyped_defs_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 def f():
     1()  # E: "int" not callable
 
 [case set_inference_mypy_no_compatible]
-# flags: --mode typed
+# flags: --mode default
 x = {1, ""}
 reveal_type(next(iter(x)))  # N: Revealed type is "int | str"
 
 [case dict_inference_mypy_no_compatible]
-# flags: --mode typed
+# flags: --mode default
 x = {1: 1.0, "": b''}
 reveal_type(x)  # N: Revealed type is "dict[int | str, float | bytes]"
 reveal_type(x[0])  # N: Revealed type is "float | bytes"
@@ -530,7 +530,7 @@ reveal_type(y[""])  # N: Revealed type is "float | bytes"
 y[b'']  # E: Invalid index type "bytes" for "dict[int | str, float | bytes]"; expected type "int | str"
 
 [case dict_inference_no_mypy_compatible_too_big]
-# flags: --mode typed
+# flags: --mode default
 x = {
     "a01": "b01",
     "a02": "b02",
@@ -725,7 +725,7 @@ files = '.'
 exclude = '^out'
 
 [case avoid_invalid_missing_return_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 # From #50
 def check_url(url: str) -> str | None:
     try:
@@ -752,12 +752,12 @@ class Test():
         pass
 
 [case empty_body_enabled_with_type_vars]
-# flags: --disallow-empty-bodies --mode typed
+# flags: --disallow-empty-bodies --mode default
 def foo[T](x: T) -> T:  # E: Missing return statement
     ...
 
 [case empty_body_disabled_with_type_vars]
-# flags: --disallow-empty-bodies --disable-error-code empty-body --mode typed
+# flags: --disallow-empty-bodies --disable-error-code empty-body --mode default
 def foo[T](x: T) -> T:
     ...
 
@@ -788,7 +788,7 @@ class Node(Generic[T]):
 x = Node()
 
 [case disallow_untyped_decorator_typed_mode]
-# flags: --disallow-untyped-decorators --mode typed
+# flags: --disallow-untyped-decorators --mode default
 # Copied from testDisallowUntypedDecoratorsCallableInstanceDecoratedCall to
 # ensure the correct issues in typed mode, because the underlying code is a bit different.
 from typing import Callable, TypeVar

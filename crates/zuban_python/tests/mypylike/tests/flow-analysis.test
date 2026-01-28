@@ -285,7 +285,7 @@ class D(C):
 reveal_type(D().x)  # N: Revealed type is "int"
 
 [case avoid_crash_on_aug_assign_access2_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 class C:
     x: int
 class D(C):
@@ -529,7 +529,7 @@ class C:
     x: int
 
 [case fix_unreachable_false_positive]
-# flags: --mode typed
+# flags: --mode default
 
 def fetch_url(url: str) -> dict[str, int]: ...
 

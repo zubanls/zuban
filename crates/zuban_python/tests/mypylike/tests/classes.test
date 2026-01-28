@@ -282,7 +282,7 @@ reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
 
 [case callable_on_class_without_classvar_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import Callable
 class Foo:
     o: Callable[[], Callable[[Foo, int], None]]
@@ -311,7 +311,7 @@ reveal_type(CallableAttribute.bar)  # E: Access to generic instance variables vi
 reveal_type(CallableAttribute().bar)  # N: Revealed type is "def (__main__.CallableAttribute) -> int"
 
 [case self_method_assignment_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 # From conformance tests (generics_self_usage.py)
 from typing import Callable, Self
 class CallableAttribute:
@@ -628,7 +628,7 @@ class D(C):
              # N:          Callable[[], None]
 
 [case assign_in_subclass_to_callable_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 # Inspired a bit by testTypedDictUnpackSingleWithSubtypingNoCrash
 from typing import Callable
 
@@ -1864,7 +1864,7 @@ class Multi1(X, Y): ...
 class Multi2(Y, X): ...  # E: Cannot override writeable attribute "y" in base "X" with read-only property in base "Y"  [override]
 
 [case override_cached_property_no_mypy_compatible]
-# flags: --mode typed --show-error-codes
+# flags: --mode default --show-error-codes
 from functools import cached_property
 
 class X:
@@ -1929,7 +1929,7 @@ class Multi1(X, Y): ...  # E: Cannot override final attribute "x" (previously de
 class Multi2(Y, X): ...  # E: Cannot override writable attribute "y" with a final one  [misc]
 
 [case override_cached_property_with_final_no_mypy_compatible]
-# flags: --mode typed --show-error-codes
+# flags: --mode default --show-error-codes
 from typing import final
 from functools import cached_property
 
@@ -2049,7 +2049,7 @@ class Class2(metaclass=Meta2):
 assert_type(Class2(1), Class2)
 
 [case metaclass_dunder_call_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 # From conformance tests (constructors_call_metaclass.py)
 from typing import NoReturn, Self, TypeVar, assert_type
 
@@ -2075,7 +2075,7 @@ class Class2(metaclass=Meta2):
 assert_type(Class2(), int | Meta2)
 
 [case metaclass_dunder_call_with_generics]
-# flags: --mode typed
+# flags: --mode default
 # From conformance tests (constructors_call_metaclass.py)
 
 from typing import TypeVar, Self, assert_type
@@ -2183,7 +2183,7 @@ class Base:
     def f(self) -> None: ...
 
 [case container_with_never_explicit_unions_in_untyped_functions]
-# flags: --mode typed
+# flags: --mode default
 from typing import Never
 class X[T]:
     t: T
@@ -2227,7 +2227,7 @@ class Frame:
     config = configure
 
 [case metaclass_callable_initialization]
-# flags: --mode typed
+# flags: --mode default
 # from conformance tests (constructors_call_type.py)
 from typing import Self, TypeVar
 
@@ -2247,7 +2247,7 @@ def func1(cls: type[Class1]):
     cls()  # E: Missing positional arguments "x", "y" in call to "Class1"
 
 [case class_dunder_new_conformance_tests1]
-# flags: --mode typed
+# flags: --mode default
 # from conformance tests (constructors_call_new.py)
 from typing import Generic, Self, TypeVar, assert_type
 
@@ -2279,7 +2279,7 @@ assert_type(Class2(1), Class2[int])
 assert_type(Class2(""), Class2[str])
 
 [case class_dunder_new_conformance_tests2]
-# flags: --mode typed
+# flags: --mode default
 # from conformance tests (constructors_call_new.py)
 from typing import assert_type, Any, NoReturn
 
@@ -2342,7 +2342,7 @@ class Class7:
 assert_type(Class7(1), Class7)
 
 [case class_dunder_new_conformance_tests3]
-# flags: --mode typed
+# flags: --mode default
 # from conformance tests (constructors_call_new.py)
 
 from typing import Generic, Self, TypeVar, assert_type
@@ -2387,7 +2387,7 @@ Class11[int]()  # OK
 Class11[str]()  # E: Invalid self argument "type[Class11[str]]" to attribute function "__new__" with type "type[Class11[int]]"
 
 [case class_dunder_new_callable_conformance_tests_with_explicit_any]
-# flags: --mode typed
+# flags: --mode default
 # from conformance tests (constructors_callable.py)
 
 from typing import Generic, Self, TypeVar, assert_type, Any, overload, ParamSpec, Callable
@@ -2435,7 +2435,7 @@ assert_type(r7(0), Class7[int])
 assert_type(r7(""), Class7[str])
 
 [case class_as_callable_conformance_tests_and_generics]
-# flags: --mode typed
+# flags: --mode default
 # from conformance tests (constructors_callable.py)
 
 from typing import Generic, Self, TypeVar, assert_type, Any, overload, ParamSpec, Callable
@@ -2540,7 +2540,7 @@ def f() -> C:
     return C()
 
 [case cached_property_customized_no_crash]
-# flags: --mode typed
+# flags: --mode default
 # From GH #213
 class cached_property:
     def __init__(self, other): ...

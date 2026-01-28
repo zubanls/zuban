@@ -105,7 +105,7 @@ class A:
 reveal_type(A().x)  # N: Revealed type is "collections.defaultdict[int, list[str]]"
 
 [case partial_nullable_defaultdict_with_list_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from collections import defaultdict
 class A:
     def __init__(self) -> None:
@@ -140,7 +140,7 @@ class A:
 reveal_type(A().x)  # N: Revealed type is "list[int]"
 
 [case partial_nullable_self_overwrite_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 class A:
     def __init__(self) -> None:
         self.x = None
@@ -162,7 +162,7 @@ class A:
 reveal_type(A().x)  # N: Revealed type is "list[int]"
 
 [case partial_nullable_self_augassign_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 class A:
     def __init__(self) -> None:
         self.x = None
@@ -184,7 +184,7 @@ class A:
 reveal_type(A().x)  # N: Revealed type is "dict[str, int]"
 
 [case partial_nullable_self_dict_assign_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 class A:
     def __init__(self) -> None:
         self.x = None
@@ -206,7 +206,7 @@ x.append("")
 reveal_type(x)  # N: Revealed type is "list[str]"
 
 [case narrowed_partial1_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 import foo
 reveal_type(foo.x)  # N: Revealed type is "list[str] | None"
 
@@ -228,7 +228,7 @@ x[0] = ""
 reveal_type(x)  # N: Revealed type is "dict[int, str]"
 
 [case narrowed_partial2_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 import foo
 reveal_type(foo.x)  # N: Revealed type is "dict[int, str] | None"
 
@@ -250,7 +250,7 @@ x = [1]
 reveal_type(x)  # N: Revealed type is "list[int]"
 
 [case narrowed_partial3_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 import foo
 reveal_type(foo.x)  # N: Revealed type is "list[int] | None"
 reveal_type(foo.y)  # N: Revealed type is "set[int] | None"
@@ -284,7 +284,7 @@ y |= {1}
 reveal_type(y)  # N: Revealed type is "set[int]"
 
 [case narrowed_partial4_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 import foo
 reveal_type(foo.x)  # N: Revealed type is "list[int] | None"
 reveal_type(foo.y)  # N: Revealed type is "set[int] | None"
@@ -382,7 +382,7 @@ x: dict[str, tuple[str, ...]] = defaultdict(tuple)
 y: dict[str, tuple[int, ...]]  = defaultdict(tuple[int])
 
 [case partial_set_return_from_untyped_func1]
-# flags: --mode typed
+# flags: --mode default
 def f(x, errors=None):
     if errors is None:
         errors = set()
@@ -396,7 +396,7 @@ size, errors = f(1)
 reveal_type(errors)  # N: Revealed type is "Any | set[Any]"
 
 [case partial_set_return_from_untyped_func2]
-# flags: --mode typed
+# flags: --mode default
 def f(x, errors=None):
     if errors is None:
         errors = set()
@@ -409,7 +409,7 @@ size, errors = f(1)
 reveal_type(errors)  # N: Revealed type is "Any | set[Any]"
 
 [case partial_set_return_from_untyped_func3]
-# flags: --mode typed
+# flags: --mode default
 def f():
     return set()
 
@@ -422,7 +422,7 @@ y.add("")
 reveal_type(y)  # N: Revealed type is "set[Any]"
 
 [case partial_defaultdict_return_from_untyped_func]
-# flags: --mode typed
+# flags: --mode default
 from collections import defaultdict
 def f(x, errors=None):
     if errors is None:

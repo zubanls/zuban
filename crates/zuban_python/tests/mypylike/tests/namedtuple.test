@@ -158,7 +158,7 @@ del r.x  # E: NamedTuple attributes cannot be deleted
 del r[0]  # E: "Point3" has no attribute "__delitem__"
 
 [case namedtuple_attribute_from_conformance_tests]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (namedtuples_define_class.py)
 from typing import NamedTuple
 class Point2(NamedTuple):

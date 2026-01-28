@@ -616,7 +616,7 @@ class SyntaxTreeNode:
         return self.walk()
 
 [case reject_self_if_self_type_var_bound]
-# flags: --mode typed
+# flags: --mode default
 # From conformance tests (generics_self_usage.py)
 from typing import TypeVar, Self
 

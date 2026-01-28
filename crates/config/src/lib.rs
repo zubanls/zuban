@@ -50,7 +50,7 @@ pub struct ProjectOptions {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Mode {
     MypyCompatible,
-    Typed,
+    Default,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -79,7 +79,7 @@ impl Default for Settings {
                 .map(|p| LocalFS::without_watcher().normalized_path_from_current_dir(&p)),
             mypy_path: vec![],
             add_global_packages_default: true,
-            mode: Mode::Typed,
+            mode: Mode::Default,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }

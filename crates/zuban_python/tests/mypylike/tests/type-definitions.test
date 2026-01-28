@@ -805,7 +805,7 @@ class c[T:a]:
 class c[a]  # E: Invalid syntax
 
 [case type_redefinition_with_annotations]
-# flags: --mode typed
+# flags: --mode default
 # Partially from GH #99
 def check1() -> None:
     if bool():
@@ -891,7 +891,7 @@ my_tuple = (S, T)
 BadAlias3 = TypeAliasType("BadAlias3", int, type_params=my_tuple)  # E: Tuple literal expected as the type_params argument to TypeAliasType
 
 [case type_alias_type_in_class_with_outer_type_var]
-# flags: --mode typed
+# flags: --mode default
 # Partially copied from conformance tests (aliases_typealiastype.py)
 from typing import TypeAliasType, TypeVar, Generic
 T = TypeVar("T")
@@ -984,7 +984,7 @@ def fn(c: T) -> U:  # E: Name "U" is not defined
 fn or 1
 
 [case inferred_type_of_function_should_not_be_type_of_object]
-# flags: --mode typed
+# flags: --mode default
 x = (str, int)
 def safe_getattr(obj, name, default=_sentinel):
     try:

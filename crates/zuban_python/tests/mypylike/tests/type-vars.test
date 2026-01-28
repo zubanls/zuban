@@ -25,7 +25,7 @@ class ClassG[V]:
         ...
 
 [case type_var_syntax_bound_nested_type_variables_not_reachable_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 # From conformance tests generics_syntax_declarations.py
 class ClassG[V]:
     class ClassD[T: dict[str, V]]:  # E: TypeVar bound must not contain type variables
@@ -111,7 +111,7 @@ class ShouldBeCovariant4(Generic[T]):
     x: T
 
 [case class_type_var_should_be_self_generics_and_not_error]
-# flags: --mode typed
+# flags: --mode default
 from typing import Final, Generic, TypeVar
 
 T = TypeVar("T", covariant=True)
@@ -125,7 +125,7 @@ class C(Generic[T]):
 C[int](1)
 
 [case infer_variance_conformance_tests_valid2]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (generics_syntax_infer_variance.py)
 from typing import Final, Generic, Iterator, Sequence, TypeVar
 from dataclasses import dataclass
@@ -230,7 +230,7 @@ def foo() -> C[int]: ...
 reveal_type(foo())  # N: Revealed type is "__main__.C[int, int]"
 
 [case type_vars_in_bounds_not_allowed_in_conformance_tests]
-# flags: --mode typed
+# flags: --mode default
 from typing import TypeVar, Generic
 T = TypeVar("T")
 

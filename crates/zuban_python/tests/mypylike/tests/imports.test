@@ -125,7 +125,7 @@ import lxml  # E: Library stubs not installed for "lxml"  [import-untyped] \
 import undefined   # E: Cannot find implementation or library stub for module named "undefined"  [import-not-found]
 
 [case import_code_mypy_no_compatible]
-# flags: --show-error-codes --mode typed
+# flags: --show-error-codes --mode default
 import lxml  # E: Library stubs not installed for "lxml"  [import-untyped] \
              # N: Hint: "python3 -m pip install lxml-stubs"
 import undefined   # E: Cannot find implementation or library stub for module named "undefined"  [import-not-found]
@@ -492,7 +492,7 @@ from m import (  # E: Module "m" has no attribute "undefined2"
 [file m.py]
 
 [case type_ignore_not_possible_on_start_of_import_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from m import (  # type: ignore[attr-defined]
     undefined  # E: Module "m" has no attribute "undefined"
 )
@@ -520,7 +520,7 @@ else:
 [file m.py]
 
 [case type_ignore_for_redefinition_not_possible_on_start_of_import_no_mypy_compatible]
-# flags: --mode typed --show-error-codes
+# flags: --mode default --show-error-codes
 if bool():
     class C: ...
     class D: ...
@@ -646,7 +646,7 @@ test: pathlib.NonExistentType  # E: Name "pathlib.NonExistentType" is not define
 _  # E: Name "_" is not defined  [name-defined]
 
 [case no_crash_on_syntax_error_import]
-# flags: --mode typed
+# flags: --mode default
 from typing import Union, List,  # E: Invalid syntax
 
 class Foo:
@@ -654,7 +654,7 @@ class Foo:
 
 [case untyped_imports_default]
 # pkgs: typedpkg_ns_b
-# flags: --mode typed
+# flags: --mode default
 import typedpkg_ns.b.bbb as b
 b.bf("foo", "bar")  # E: Too many arguments for "bf"
 

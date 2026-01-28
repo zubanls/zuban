@@ -17,7 +17,7 @@ __main__.py:3: Inlay Hints:
 - 8:1: ": int"
 
 [case inlay_hints_basic_no_mypy_compatible]
-# flags: --only-language-server --mode typed
+# flags: --only-language-server --mode default
 #? inlay-hints
 
 def ret_int():
@@ -48,7 +48,7 @@ __main__.py:4: Inlay Hints:
 - 5:1: ": int"
 
 [case inlay_hints_avoid_generics]
-# flags: --mode typed
+# flags: --mode default
 #? inlay-hints
 
 def foo(x):
@@ -174,7 +174,7 @@ m.py:2: Inlay Hints:
 indirect_import.py:2: Inlay Hints:
 
 [case inlay_hints_avoid_list_never]
-# flags: --mode typed --no-typecheck
+# flags: --mode default --no-typecheck
 #? inlay-hints
 
 def x():

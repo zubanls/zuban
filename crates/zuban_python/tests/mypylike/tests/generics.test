@@ -711,7 +711,7 @@ reveal_type(foo(x, y)) # N: Revealed type is "typing.Sequence[typing.Sequence[ob
 reveal_type(foo(y, x)) # N: Revealed type is "typing.Sequence[typing.Sequence[object]]"
 
 [case generic_covariant_match_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import TypeVar, Sequence
 
 T = TypeVar("T")
@@ -1113,7 +1113,7 @@ def id(x: T4, y: T4) -> T4: ...
 reveal_type(combine(id, 1, ""))  # N: Revealed type is "def (object) -> object"
 
 [case transitive_constraints_mismatch1_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import TypeVar, Callable, List, Tuple
 
 T1 = TypeVar("T1")

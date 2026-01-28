@@ -252,7 +252,7 @@ def f(i: int, l: Literal[1, 2], strs: Literal['a', 'b']):
     reveal_type(strs * l)  # N: Revealed type is "Literal['a']? | Literal['aa']? | Literal['b']? | Literal['bb']?"
 
 [case string_literal_multiplication_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import Literal, Final
 
 x: Final = "abc"

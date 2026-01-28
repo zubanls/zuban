@@ -565,7 +565,7 @@ def baz(x: str) -> str: ...
 def baz(x: object) -> object: ...
 
 [case invalid_overloads_no_mypy_compatible]
-# flags: --mode typed
+# flags: --mode default
 from typing import overload
 
 def non_callable(func) -> int: ...
@@ -824,7 +824,7 @@ class C:
 __main__:5:5:5:11: error: @final should be applied only to overload implementation
 
 [case overload_override_in_correct_positions]
-# flags: --mode typed
+# flags: --mode default
 from typing import overload, override, final
 class C:
     def to_override(self, x: int) -> int: ...
@@ -1074,7 +1074,7 @@ def check_expand_enum(v: Color) -> None:
     assert_type(ret1, Any)
 
 [case enum_tuple_union_math_overloads]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, Literal, assert_type
 @overload
@@ -1089,7 +1089,7 @@ def check_expand_tuple(v: int | str) -> None:
     assert_type(ret1, int | str)
 
 [case any_exclusion_of_some_funcs]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, assert_type, Any
 @overload
@@ -1130,7 +1130,7 @@ class B:
         pass
 
 [case no_mypy_compatible_testOverloadWithOverlappingItemsAndAnyArgument8]
-# flags: --mode typed
+# flags: --mode default
 from typing import overload, Any
 
 @overload
@@ -1145,7 +1145,7 @@ reveal_type(f(a, 1, 1)) # N: Revealed type is "str"
 reveal_type(f(1, *a))  # N: Revealed type is "str"
 
 [case no_mypy_compatible_testOverloadWithOverlappingItemsAndAnyArgument9]
-# flags: --mode typed
+# flags: --mode default
 from typing import overload, Any, List
 
 @overload

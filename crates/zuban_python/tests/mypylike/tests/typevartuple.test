@@ -27,7 +27,7 @@ F[int, str, float]
 F[int, str, float, bool]
 
 [case type_var_tuple_aliases]
-# flags: --mode typed
+# flags: --mode default
 # From conformance tests (generics_typevartuple_specialization.py)
 from typing import TypeVarTuple, TypeVar
 T = TypeVar("T")
@@ -54,7 +54,7 @@ class Array3(Generic[*Ts1, *Ts2]):  # E: Can only use one type var tuple in a cl
     ...
 
 [case typevartuple_match_length]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (generics_typevartuple_basic.py)
 from typing import assert_type
 
@@ -69,7 +69,7 @@ func2((0,), ("0",))  # E: Argument 2 to "func2" has incompatible type "tuple[Lit
 func2((0, 0), (0,))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal[0]]"; expected "tuple[int, int]"
 
 [case typevartuple_non_unpacked_error]
-# flags: --mode typed
+# flags: --mode default
 # Copied from conformance tests (generics_typevartuple_basic.py)
 from typing import Generic, TypeVarTuple
 

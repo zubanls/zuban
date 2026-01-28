@@ -280,7 +280,7 @@ impl TestCase<'_, '_> {
         };
 
         settings.mode = match mypy_compatible {
-            false => Mode::Typed,
+            false => Mode::Default,
             true => Mode::MypyCompatible,
         };
 
