@@ -1909,7 +1909,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let return_annotation = self.return_annotation();
         let type_vars = self.type_vars(i_s.db);
         let calculated_type_vars =
-            if self.node().is_typed() || !i_s.db.project.settings.should_infer_untyped_params() {
+            if self.node().is_typed() || !i_s.db.project.should_infer_untyped_params() {
                 if !type_vars.is_empty()
                     && let Some(inf) = self.maybe_generic_decorator_overload_call(
                         i_s,
@@ -1971,7 +1971,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 )
             }
-            if i_s.db.project.settings.should_infer_return_types() {
+            if i_s.db.project.should_infer_return_types() {
                 self.return_without_annotation(
                     i_s,
                     self.ensure_cached_untyped_return(i_s),
@@ -2462,7 +2462,7 @@ fn infer_decorator_details(
         _ => {
             // We only care about this case for non-mypy compatibility, because for Mypy there are
             // no untyped type params.
-            if i_s.db.project.settings.should_infer_untyped_params()
+            if i_s.db.project.should_infer_untyped_params()
                 && inf
                     .maybe_any(i_s.db)
                     .is_some_and(|cause| cause == AnyCause::UntypedDecorator)
@@ -2593,9 +2593,7 @@ impl GeneratorType {
 
 impl FuncLike for Function<'_, '_> {
     fn inferred_return_type<'a>(&'a self, i_s: &InferenceState<'a, '_>) -> Cow<'a, Type> {
-        if !i_s.db.project.settings.should_infer_return_types()
-            || self.return_annotation().is_some()
-        {
+        if !i_s.db.project.should_infer_return_types() || self.return_annotation().is_some() {
             FuncNodeRef::return_type(self, i_s)
         } else {
             Cow::Owned(self.ensure_cached_untyped_return(i_s).as_type(i_s))

@@ -1599,6 +1599,14 @@ impl PythonProject {
         // Mypy is currently just replacing the nullable partial to a non-nullable one.
         self.settings.mypy_compatible()
     }
+
+    pub fn should_infer_untyped_params(&self) -> bool {
+        self.settings.should_infer_untyped_params() && self.flags.check_untyped_defs
+    }
+
+    pub fn should_infer_return_types(&self) -> bool {
+        self.settings.should_infer_return_types() && self.flags.check_untyped_defs
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

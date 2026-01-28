@@ -3218,7 +3218,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
     mut add_issue: impl FnMut(IssueKind),
 ) {
     let db = i_s.db;
-    let should_infer_untyped_params = db.project.settings.should_infer_untyped_params();
+    let should_infer_untyped_params = db.project.should_infer_untyped_params();
     for (i, base1) in bases().enumerate() {
         let cls1 = match base1.maybe_class(db) {
             Some(c) => c,
