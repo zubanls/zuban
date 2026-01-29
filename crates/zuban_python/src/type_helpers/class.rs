@@ -185,7 +185,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 true => ClassGenerics::new_none(),
             });
         };
-        match inf.init_as_function(i_s, dunder_init_class.as_maybe_class()) {
+        match inf.init_as_function(i_s, dunder_init_class.maybe_class()) {
             FunctionOrOverload::Function(func) => {
                 /*
                 let type_vars = self.type_vars(i_s);
@@ -1296,7 +1296,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     let t = use_cached_return_annotation_type(i_s.db, node_ref.file, return_annot);
                     if !i_s.db.mypy_compatible()
                         && !cls
-                            .as_maybe_class()
+                            .maybe_class()
                             .is_some_and(|c| i_s.db.python_state.bare_type_node_ref() == c.node_ref)
                         && !matches!(
                             t.as_ref(),
@@ -1318,7 +1318,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 Some(inf.bind_new_descriptors(
                                     i_s,
                                     self,
-                                    cls.as_maybe_class(),
+                                    cls.maybe_class(),
                                     add_issue,
                                 ))
                             })
@@ -2128,7 +2128,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn is_django_field(&self, db: &Database) -> bool {
         self.has_django_stubs_base_class(db)
             && self.mro_maybe_without_object(db, true).any(|(_, base)| {
-                base.as_maybe_class().is_some_and(|cls| {
+                base.maybe_class().is_some_and(|cls| {
                     cls.has_django_stubs_base_class(db)
                         && cls.name() == "Field"
                         && cls.file.name(db) == "fields"
@@ -2251,7 +2251,7 @@ impl<'a> TypeOrClass<'a> {
     }
 
     #[inline]
-    pub fn as_maybe_class(&self) -> Option<Class<'a>> {
+    pub fn maybe_class(&self) -> Option<Class<'a>> {
         match self {
             TypeOrClass::Class(c) => Some(*c),
             TypeOrClass::Type(_) => None,
@@ -2516,7 +2516,7 @@ fn init_as_callable(
     } else {
         cls
     };
-    let init_class = init_class.as_maybe_class();
+    let init_class = init_class.maybe_class();
     let callable = if let Some(c) = init_class {
         let i_s = &i_s.with_class_context(&c);
         inf.as_cow_type(i_s).maybe_callable(i_s)?
@@ -2606,7 +2606,7 @@ fn init_as_callable(
 fn django_model_params(i_s: &InferenceState, cls: Class) -> Vec<CallableParam> {
     let mut params = vec![];
     for (_, cls) in cls.mro(i_s.db) {
-        if let Some(cls) = cls.as_maybe_class() {
+        if let Some(cls) = cls.maybe_class() {
             for (_, symbol) in cls.class_storage.class_symbol_table.iter() {
                 let name_ref = NodeRef::new(cls.file, *symbol);
                 let name = name_ref.expect_name();

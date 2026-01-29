@@ -1255,20 +1255,24 @@ fn split_off_enum_member(
             }
             Type::Enum(e2) => {
                 if enum_member.enum_.defined_at == e2.defined_at {
-                    let is_flag_like = enum_member
-                        .enum_
-                        .class(i_s.db)
-                        .instance()
-                        .lookup_with_details(i_s, |_| (), "__or__", LookupKind::OnlyType)
-                        .lookup
-                        .is_some();
-                    if is_flag_like {
+                    let enum_class = enum_member.enum_.class(i_s.db);
+                    let is_flag =
+                        enum_class
+                            .mro_maybe_without_object(i_s.db, true)
+                            .any(|(_, c)| {
+                                c.maybe_class().is_some_and(|c| {
+                                    c.node_ref.file_index()
+                                        == i_s.db.python_state.enum_file().file_index
+                                        && c.name() == "Flag"
+                                })
+                            });
+                    if is_flag {
                         add(sub_t.clone())
                     }
                     for new_member in Enum::implicit_members(e2) {
                         if new_member.member_index == enum_member.member_index {
                             set_truthy();
-                        } else if !is_flag_like {
+                        } else if !is_flag {
                             add(Type::EnumMember(new_member))
                         }
                     }
@@ -1396,11 +1400,6 @@ fn narrow_is_or_eq(
     };
 
     match other_t {
-        Type::EnumMember(member) if member.implicit => {
-            let mut new_member = member.clone();
-            new_member.implicit = false;
-            narrow_is_or_eq(i_s, key, checking_t, &Type::EnumMember(new_member), is_eq)
-        }
         Type::None if !is_eq => {
             // Mypy makes it possible to narrow None against a bare TypeVar.
             Some(if matches!(checking_t, Type::TypeVar(_)) {
@@ -1416,7 +1415,12 @@ fn narrow_is_or_eq(
             let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq);
             Some((Frame::new_conditional(), Frame::from_type(key, falsey)))
         }
-        Type::EnumMember(member) if !is_eq || !member.implicit => {
+        Type::EnumMember(member) if member.implicit => {
+            let mut new_member = member.clone();
+            new_member.implicit = false;
+            narrow_is_or_eq(i_s, key, checking_t, &Type::EnumMember(new_member), is_eq)
+        }
+        Type::EnumMember(member) if !member.implicit => {
             let (truthy, falsey) = split_off_enum_member(i_s, checking_t, member, is_eq)?;
             let result = (
                 Frame::from_type(key.clone(), truthy),

@@ -2191,3 +2191,19 @@ def f(x: X, s: Literal[''], i: Literal[1], b: Literal[True]):
         assert_type(x, X)
     else:
         assert_type(x, X)
+
+[case int_enum_narrowing]
+import enum
+from typing import assert_never
+
+class Version(enum.IntEnum):
+    V1 = 1
+    V2 = 2
+
+def validate_version(version: Version) -> bool:
+    if version == Version.V1:
+        return True
+    elif version == Version.V2:
+        return True
+    else:
+        assert_never(version)
