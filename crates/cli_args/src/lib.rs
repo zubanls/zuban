@@ -40,6 +40,10 @@ impl Cli {
     pub fn mypy_compatible(&self) -> Option<bool> {
         Some(matches!(self.mode?, ModeArg::Mypy))
     }
+
+    pub fn mode(&self) -> Option<Mode> {
+        Some(self.mode?.into())
+    }
 }
 
 #[derive(Clone, ValueEnum, Copy)]

@@ -1,6 +1,6 @@
 use std::{io::Read, path::Path, sync::Arc};
 
-use crate::{DiagnosticConfig, ProjectOptions};
+use crate::{DiagnosticConfig, Mode, ProjectOptions};
 use toml_edit::DocumentMut;
 use vfs::{AbsPath, VfsHandler};
 
@@ -29,14 +29,14 @@ pub fn find_workspace_config(
     workspace_dir: &AbsPath,
     on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<ProjectOptions> {
-    Ok(find_mypy_config_file_in_dir(vfs, workspace_dir, false, on_check_path)?.project_options)
+    Ok(find_mypy_config_file_in_dir(vfs, workspace_dir, None, on_check_path)?.project_options)
 }
 
 pub fn find_cli_config(
     vfs: &dyn VfsHandler,
     current_dir: &AbsPath,
     config_file: Option<&Path>,
-    mypy_compatible_default: bool,
+    mode: Option<Mode>,
 ) -> anyhow::Result<FoundConfig> {
     if let Some(config_file) = config_file.as_ref() {
         let Some(config_path) = config_file.as_os_str().to_str() else {
@@ -46,7 +46,7 @@ pub fn find_cli_config(
         let s = std::fs::read_to_string(config_path.as_ref())
             .map_err(|err| anyhow::anyhow!("Issue while reading {config_path}: {err}"))?;
 
-        let result = initialize_config(vfs, current_dir, config_path, s, mypy_compatible_default)?;
+        let result = initialize_config(vfs, current_dir, config_path, s, mode)?;
         let project_options = result.0.unwrap_or_else(ProjectOptions::mypy_default);
         Ok(FoundConfig {
             project_options,
@@ -54,7 +54,7 @@ pub fn find_cli_config(
             config_path: Some(result.2),
         })
     } else {
-        find_mypy_config_file_in_dir(vfs, current_dir, mypy_compatible_default, |_| ())
+        find_mypy_config_file_in_dir(vfs, current_dir, mode, |_| ())
     }
 }
 
@@ -63,7 +63,7 @@ fn initialize_config(
     current_dir: &AbsPath,
     config_path: Arc<AbsPath>,
     content: String,
-    mypy_compatible_default: bool,
+    mode: Option<Mode>,
 ) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Arc<AbsPath>)> {
     let _p = tracing::info_span!("config_finder").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
@@ -74,7 +74,7 @@ fn initialize_config(
             &config_path,
             &content,
             &mut diagnostic_config,
-            mypy_compatible_default,
+            mode,
         )?
     } else {
         ProjectOptions::from_mypy_ini(
@@ -91,7 +91,7 @@ fn initialize_config(
 fn find_mypy_config_file_in_dir(
     vfs: &dyn VfsHandler,
     dir: &AbsPath,
-    mypy_compatible_default: bool,
+    mode: Option<Mode>,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<FoundConfig> {
     let mut end_result = None;
@@ -125,8 +125,7 @@ fn find_mypy_config_file_in_dir(
                     break;
                 }
             } else {
-                let result =
-                    initialize_config(vfs, dir, config_path, content, mypy_compatible_default)?;
+                let result = initialize_config(vfs, dir, config_path, content, mode)?;
                 if let Some(project_options) = result.0.or_else(|| {
                     ["mypy.ini", ".mypy.ini"].contains(config_name).then(|| {
                         // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
@@ -145,7 +144,7 @@ fn find_mypy_config_file_in_dir(
         }
     }
     let default_config = |config_path| FoundConfig {
-        project_options: if mypy_compatible_default {
+        project_options: if mode == Some(Mode::MypyCompatible) {
             ProjectOptions::mypy_default()
         } else {
             ProjectOptions::default()

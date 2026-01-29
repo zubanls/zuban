@@ -80,7 +80,7 @@ fn project_from_cli(
         &current_dir,
         cli.mypy_options.config_file.as_deref(),
         // Set the default to not mypy compatible, at least for now
-        cli.mypy_compatible().unwrap_or_default(),
+        cli.mode(),
     )
     .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
     let mut options = found.project_options;
