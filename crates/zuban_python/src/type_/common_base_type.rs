@@ -80,6 +80,13 @@ impl Type {
                 }
                 _ => None,
             },
+            Type::LiteralString { .. } if !matches!(t2, Type::LiteralString { .. }) => {
+                Some(i_s.db.python_state.str_type().common_base_type_internal(
+                    i_s,
+                    t2,
+                    Some(checked_recursions),
+                ))
+            }
             Type::RecursiveType(r1) => Some({
                 let mut t1 = r1.calculated_type(i_s.db);
                 let mut t2 = t2;

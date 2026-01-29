@@ -910,3 +910,18 @@ reveal_type(g1)  # N: Revealed type is "Any"
 reveal_type(g2)  # N: Revealed type is "Any"
 reveal_type(g3)  # N: Revealed type is "Any"
 reveal_type(g4)  # N: Revealed type is "Any"
+
+[case joins_in_default_mode_with_literal_strings]
+# flags: --mode default --use-joins
+d: dict[str, str] = {}
+
+env = {
+    'CFLAGS': '-O1',
+    'PATH': ':'.join([
+        '/usr/local/bin',
+        '/usr/bin',
+    ]),
+}
+reveal_type(env)  # N: Revealed type is "dict[str, str]"
+
+d = env
