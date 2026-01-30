@@ -115,6 +115,7 @@ fn find_mypy_config_file_in_dir(
                     &config_path,
                     pyproject_toml.as_ref().unwrap(),
                     &mut diagnostic_config,
+                    mode,
                 )?;
                 if let Some(project_options) = project_options {
                     end_result = Some(FoundConfig {
@@ -144,11 +145,7 @@ fn find_mypy_config_file_in_dir(
         }
     }
     let default_config = |config_path| FoundConfig {
-        project_options: if mode == Some(Mode::MypyCompatible) {
-            ProjectOptions::mypy_default()
-        } else {
-            ProjectOptions::default()
-        },
+        project_options: ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Default)),
         diagnostic_config: DiagnosticConfig::default(),
         config_path,
     };

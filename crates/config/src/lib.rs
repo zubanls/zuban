@@ -218,6 +218,14 @@ impl ProjectOptions {
         }
     }
 
+    pub fn default_for_mode(mode: Mode) -> Self {
+        if matches!(mode, Mode::MypyCompatible) {
+            ProjectOptions::mypy_default()
+        } else {
+            ProjectOptions::default()
+        }
+    }
+
     pub fn mypy_default() -> Self {
         Self {
             settings: Settings {
@@ -289,16 +297,12 @@ impl ProjectOptions {
             config_file_path,
             &document,
             diagnostic_config,
+            mode,
         )?;
         Ok(
             if let Some(config) = document.get("tool").and_then(|item| item.get("zuban")) {
-                let mut result = result.unwrap_or_else(|| {
-                    if mode == Some(Mode::MypyCompatible) {
-                        Self::mypy_default()
-                    } else {
-                        Self::default()
-                    }
-                });
+                let mut result =
+                    result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or(Mode::Default)));
                 result.apply_pyproject_table(
                     vfs,
                     current_dir,
@@ -320,9 +324,12 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         document: &DocumentMut,
         diagnostic_config: &mut DiagnosticConfig,
+        mode: Option<Mode>,
     ) -> anyhow::Result<Option<Self>> {
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
-            let mut result = ProjectOptions::mypy_default();
+            // If an explicit mode is provided, use that, otherwise since we have an explicit Mypy
+            // configuration we default to that.
+            let mut result = ProjectOptions::default_for_mode(mode.unwrap_or(Mode::MypyCompatible));
             result.apply_pyproject_table(
                 vfs,
                 current_dir,

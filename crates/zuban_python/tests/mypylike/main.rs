@@ -175,6 +175,8 @@ struct PerTestFlags {
     no_use_joins: bool,
     #[arg(long)]
     disallow_empty_bodies: bool,
+    #[arg(long)]
+    auto_mode: bool,
 }
 
 #[derive(Debug)]
@@ -190,7 +192,7 @@ impl TestCase<'_, '_> {
         &self,
         projects: &'p mut ProjectsCache,
         local_fs: &SimpleLocalFS,
-        mypy_compatible: bool,
+        mode: Option<Mode>,
         flags: PerTestFlags,
         steps: &[Step],
     ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
@@ -198,11 +200,7 @@ impl TestCase<'_, '_> {
             show_error_codes: false,
             ..Default::default()
         };
-        let po = if mypy_compatible {
-            ProjectOptions::mypy_default()
-        } else {
-            ProjectOptions::default()
-        };
+        let po = ProjectOptions::default_for_mode(mode.unwrap_or_else(|| Mode::Default));
         let mut config = po.flags;
         // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
         // different argument types.
@@ -241,25 +239,15 @@ impl TestCase<'_, '_> {
                     base_path,
                     &ini,
                     &mut diagnostic_config,
-                    match mypy_compatible {
-                        true => Some(Mode::MypyCompatible),
-                        false => Some(Mode::Default),
-                    },
+                    mode,
                 )
                 .expect("Expected there to be no errors in the pyproject.toml")
-                .unwrap_or_else(|| {
-                    if mypy_compatible {
-                        ProjectOptions::mypy_default()
-                    } else {
-                        ProjectOptions::default()
-                    }
-                })
+                .unwrap_or_else(|| ProjectOptions::default_for_mode(settings.mode))
             });
             set_mypy_path(&mut new);
             config = std::mem::replace(&mut new.flags, config);
             settings = std::mem::replace(&mut new.settings, settings);
             project_options = Some(new);
-        } else {
         }
 
         // Appears mostly in pep561.test
@@ -280,11 +268,6 @@ impl TestCase<'_, '_> {
                     })
                     .flatten(),
             );
-        };
-
-        settings.mode = match mypy_compatible {
-            false => Mode::Default,
-            true => Mode::MypyCompatible,
         };
 
         match self.file_name {
@@ -353,7 +336,7 @@ impl TestCase<'_, '_> {
         (project, diagnostic_config)
     }
 
-    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> anyhow::Result<bool> {
+    fn run(&self, projects: &mut ProjectsCache, mode: Mode) -> anyhow::Result<bool> {
         let steps = calculate_steps(Some(self.file_name), self.code);
         // Avoid parsing, because it's pretty slow and let's not do it if not strictly necessary.
         let flags = if steps.flags.is_empty() {
@@ -367,19 +350,22 @@ impl TestCase<'_, '_> {
             PerTestFlags::from_arg_matches(&matches)?
         };
         let steps = steps.steps;
-        if flags
-            .cli
-            .mypy_compatible()
-            .is_some_and(|m| m != mypy_compatible)
+        if flags.cli.mode().is_some_and(|m| m != mode)
             || flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
             || flags.no_windows && cfg!(windows)
+            || flags.auto_mode && mode == Mode::MypyCompatible
         {
             return Ok(false);
         }
         let local_fs = SimpleLocalFS::without_watcher();
         let no_typecheck = flags.no_typecheck;
-        let (mut project, diagnostic_config) =
-            self.initialize_flags(projects, &local_fs, mypy_compatible, flags, &steps);
+        let (mut project, diagnostic_config) = self.initialize_flags(
+            projects,
+            &local_fs,
+            (!flags.auto_mode).then_some(mode),
+            flags,
+            &steps,
+        );
 
         let is_parse_test = self.file_name.starts_with("parse");
         let is_semanal_test = self.file_name.starts_with("semanal-");
@@ -390,7 +376,7 @@ impl TestCase<'_, '_> {
             if cfg!(feature = "zuban_debug") {
                 println!(
                     "\nTest: {}: Step {}/{}",
-                    self.format(mypy_compatible),
+                    self.format(mode),
                     i + 1,
                     steps.len()
                 );
@@ -585,14 +571,14 @@ impl TestCase<'_, '_> {
         result
     }
 
-    fn format(&self, mypy_compatible: bool) -> String {
+    fn format(&self, mode: Mode) -> String {
         format!(
             "{} ({}, {})",
             self.name,
             self.file_name,
-            match mypy_compatible {
-                true => "mypy-compatible",
-                false => "no-mypy-compatible",
+            match mode {
+                Mode::MypyCompatible => "mypy-compatible",
+                Mode::Default => "default",
             }
         )
     }
@@ -1042,7 +1028,7 @@ fn run(
                 full_count += 1;
                 continue;
             }
-            let mut check = |result, mypy_compatible| match result {
+            let mut check = |result, mode| match result {
                 Ok(ran) => {
                     passed_count += ran as usize;
                     full_count += ran as usize;
@@ -1052,7 +1038,7 @@ fn run(
                     if cli_args.stop_after_first_error {
                         panic!("{err}")
                     } else {
-                        error_summary += &case.format(mypy_compatible);
+                        error_summary += &case.format(mode);
                         error_summary += "\n";
                         error_count += 1;
                         println!("{err}")
@@ -1061,9 +1047,12 @@ fn run(
             };
             if !from_mypy_test_suite {
                 // Run our own tests both with mypy-compatible and without it.
-                check(case.run(&mut projects, false), false)
+                check(case.run(&mut projects, Mode::Default), Mode::Default)
             }
-            check(case.run(&mut projects, true), true);
+            check(
+                case.run(&mut projects, Mode::MypyCompatible),
+                Mode::MypyCompatible,
+            );
         }
     }
     if error_count > 0 {

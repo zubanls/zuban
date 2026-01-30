@@ -138,3 +138,23 @@ show_error_codes = true
 
 [mypy-unchecked]
 no_implicit_reexport = true
+
+[case explicit_mode_with_mypy_config_should_not_lead_to_mypy_mode]
+# flags: --mode default
+
+x = [1, ""]
+
+reveal_type(x)  # N: Revealed type is "list[int | str]"
+
+[file pyproject.toml]
+[tool.mypy]
+
+[case auto_mode_should_use_mypy_in_case_of_mypy_config]
+# flags: --auto-mode
+
+x = [1, ""]
+
+reveal_type(x)  # N: Revealed type is "list[object]"
+
+[file pyproject.toml]
+[tool.mypy]
