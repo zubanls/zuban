@@ -3193,6 +3193,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 && (right_op_method.is_none()
                                     || matches!(strategy, LookupStrategy::ShortCircuit))
                             {
+                                if matches!(l_type, Type::None)
+                                    && i_s.should_ignore_none_in_untyped_context()
+                                {
+                                    had_error = false;
+                                    return Inferred::new_any_from_error();
+                                }
                                 IssueKind::UnsupportedLeftOperand {
                                     operand: Box::from(op_infos.operand),
                                     left: l_type.format_short(i_s.db),

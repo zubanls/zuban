@@ -1281,3 +1281,19 @@ def f():
 
 def g() -> None:
     optional()()  # E: "None" not callable
+
+[case untyped_none_addition]
+# flags: --mode default
+
+def optional() -> int | None: ...
+
+def f():
+    optional() + 1
+    1 + optional()
+    optional() + optional()
+
+def g() -> None:
+    optional() + 1  # E: Unsupported operand types for + ("None" and "int") \
+                    # N: Left operand is of type "int | None"
+    1 + optional()  # E: Unsupported operand types for + ("int" and "None") \
+                    # N: Right operand is of type "int | None"
