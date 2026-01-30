@@ -237,7 +237,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 self.file,
                                 name_def.as_code(),
                                 LookupKind::Normal,
-                                &mut ResultContext::Unknown,
+                                &mut ResultContext::ValueExpected,
                                 // Errors don't matter, we just want a potential context.
                                 &|_| (),
                                 &|_| (),
@@ -501,7 +501,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         right_side: AssignmentRightSide,
     ) {
         let (inplace_method, op_infos) = aug_assign.magic_methods();
-        let right = self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
+        let right = self.infer_assignment_right_side(right_side, &mut ResultContext::ValueExpected);
         let lookup_and_execute = |left: Inferred| {
             let had_lookup_error = Cell::new(false);
             let mut result = left.type_lookup_and_execute(
@@ -509,7 +509,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 node_ref.file,
                 inplace_method,
                 &KnownArgs::new(&right, node_ref),
-                &mut ResultContext::Unknown,
+                &mut ResultContext::ValueExpected,
                 &|_type| had_lookup_error.set(true),
             );
             if had_lookup_error.get() {
@@ -518,7 +518,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     op_infos,
                     left,
                     &right,
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                 )
             }
             result
@@ -675,7 +675,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         return true;
                     }
                 }
-                self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown)
+                self.infer_assignment_right_side(right_side, &mut ResultContext::ValueExpected)
                     .as_type(self.i_s)
             } else {
                 annotation_ref.add_issue(
@@ -822,7 +822,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             self.file,
             "__iter__",
             &NoArgs::new(from),
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
             &|_| {
                 if !added_iter_issue.get() {
                     added_iter_issue.set(true);
@@ -840,7 +840,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             from,
             "__next__",
             &NoArgs::new(from),
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
         );
         (
             iter_result,
@@ -1883,7 +1883,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     node_ref.file,
                     name_str,
                     LookupKind::Normal,
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     &|issue| node_ref.add_issue(i_s, issue),
                     &|t| add_attribute_error(i_s, node_ref, &base, t, name_str),
                 );
@@ -2329,7 +2329,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn infer_named_expression(&self, named_expr: NamedExpression) -> Inferred {
-        self.infer_named_expression_with_context(named_expr, &mut ResultContext::Unknown)
+        self.infer_named_expression_with_context(named_expr, &mut ResultContext::ValueExpected)
     }
 
     pub fn infer_named_expression_with_context(
@@ -2459,7 +2459,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn infer_expression(&self, expr: Expression) -> Inferred {
-        self.infer_expression_with_context(expr, &mut ResultContext::Unknown)
+        self.infer_expression_with_context(expr, &mut ResultContext::ValueExpected)
     }
 
     check_point_cache_with!(
@@ -2499,7 +2499,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn infer_expression_part(&self, node: ExpressionPart) -> Inferred {
-        self.infer_expression_part_with_context(node, &mut ResultContext::Unknown)
+        self.infer_expression_part_with_context(node, &mut ResultContext::ValueExpected)
     }
 
     pub fn infer_expression_part_with_context(
@@ -2608,7 +2608,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     node_ref.file,
                     method_name,
                     &NoArgs::new(node_ref),
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     &|type_| {
                         let operand = match operand.as_code() {
                             "~" => "~",
@@ -2691,7 +2691,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         "__ne__"
                     },
                     &KnownArgs::new(right_inf, from),
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     &|_| {
                         debug!(
                             "__eq__ is normally accessible, but might not be \
@@ -2767,7 +2767,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 op.infos,
                 left_inf,
                 right_inf,
-                &mut ResultContext::Unknown,
+                &mut ResultContext::ValueExpected,
             ),
         }
     }
@@ -2847,7 +2847,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         method.execute_with_details(
                             i_s,
                             &KnownArgs::new(&Inferred::from_type(l_type.clone()), from),
-                            &mut ResultContext::Unknown,
+                            &mut ResultContext::ValueExpected,
                             OnTypeError::new(&|_, _, _, _| {
                                 had_local_error.set(true);
                             }),
@@ -2864,7 +2864,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 from.file,
                                 "__iter__",
                                 LookupKind::OnlyType,
-                                &mut ResultContext::Unknown,
+                                &mut ResultContext::ValueExpected,
                                 &|issue| from.add_issue(i_s, issue),
                                 &|_| {
                                     let right = right_inf.format_short(i_s);
@@ -2878,7 +2878,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 from,
                                 "__next__",
                                 &NoArgs::new(from),
-                                &mut ResultContext::Unknown,
+                                &mut ResultContext::ValueExpected,
                             )
                             .as_cow_type(i_s)
                             .is_simple_super_type_of(i_s, l_type);
@@ -3020,7 +3020,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             // least for list additions.
             &mut *result_context
         } else {
-            &mut ResultContext::Unknown
+            &mut ResultContext::ValueExpected
         };
         let left = self.infer_expression_part_with_context(op.left, context);
         let right = self.infer_expression_part_with_context(op.right, context);
@@ -3260,7 +3260,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
                             return None;
                         }
-                        let mut inf = self.infer_primary(prim, &mut ResultContext::Unknown);
+                        let mut inf = self.infer_primary(prim, &mut ResultContext::ValueExpected);
                         if !self.point(index).calculated() {
                             // This could have been set in infer_primary (especially in
                             // language server mode)
@@ -3293,7 +3293,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
             PrimaryOrAtom::Atom(atom) => Some((
-                self.infer_atom(atom, &mut ResultContext::Unknown)
+                self.infer_atom(atom, &mut ResultContext::ValueExpected)
                     .maybe_saved_node_ref(self.i_s.db)?,
                 primary_or_atom,
                 None,
@@ -3316,7 +3316,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             self.infer_potential_partial_base(primary_method, true)?;
         let first_arg_as_t = || {
             let args = SimpleArgs::new(*i_s, self.file, primary.index(), execution);
-            let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
+            let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
             Some(arg.as_type(i_s).avoid_implicit_literal(i_s.db))
         };
         let save_partial = |mut resolved_partial: Type| {
@@ -3549,9 +3549,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     pub fn infer_primary_or_atom(&self, p: PrimaryOrAtom) -> Inferred {
         match p {
             PrimaryOrAtom::Primary(primary) => {
-                self.infer_primary(primary, &mut ResultContext::Unknown)
+                self.infer_primary(primary, &mut ResultContext::ValueExpected)
             }
-            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
+            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::ValueExpected),
         }
     }
 
@@ -3866,7 +3866,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 primary_target.index(),
                 second,
                 true,
-                &mut ResultContext::Unknown,
+                &mut ResultContext::ValueExpected,
             )
             .save_redirect(self.i_s, self.file, primary_target.index()),
         )
@@ -3874,7 +3874,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     pub fn infer_primary_target_or_atom(&self, t: PrimaryTargetOrAtom) -> Inferred {
         match t {
-            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
+            PrimaryTargetOrAtom::Atom(atom) => {
+                self.infer_atom(atom, &mut ResultContext::ValueExpected)
+            }
             PrimaryTargetOrAtom::PrimaryTarget(p) => self
                 .infer_primary_target(p, true)
                 .unwrap_or_else(|| Inferred::new_any(AnyCause::Internal)),
@@ -4624,8 +4626,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 {
                     self.insert_dataclass_transform(primary, exec);
                 } else {
-                    self.primary_execute(&base, primary.index(), exec, &mut ResultContext::Unknown)
-                        .save_redirect(self.i_s, self.file, primary.index());
+                    self.primary_execute(
+                        &base,
+                        primary.index(),
+                        exec,
+                        &mut ResultContext::ValueExpected,
+                    )
+                    .save_redirect(self.i_s, self.file, primary.index());
                 };
                 debug_assert!(self.point(primary.index()).calculated());
             }
@@ -4650,7 +4657,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         {
             let args = SimpleArgs::new(*self.i_s, self.file, primary.index(), exec);
             if let Some(arg) = args.iter(self.i_s.mode).next()
-                && let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown)
+                && let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::ValueExpected)
                 && let Some(s) = inf.maybe_string_literal(self.i_s)
             {
                 return Arc::new(s.as_str(self.i_s.db).into());

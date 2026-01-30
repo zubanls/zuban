@@ -99,7 +99,7 @@ impl<'db, 'file> SliceType<'file> {
     }
 
     pub(crate) fn infer(&self, i_s: &InferenceState) -> Inferred {
-        self.infer_with_context(i_s, &mut ResultContext::Unknown)
+        self.infer_with_context(i_s, &mut ResultContext::ValueExpected)
     }
 
     pub(crate) fn infer_with_context(
@@ -243,7 +243,7 @@ impl<'file> Slices<'file> {
     pub fn infer(&self, i_s: &InferenceState) -> Inferred {
         let parts = self
             .iter()
-            .map(|x| x.infer(i_s, &mut ResultContext::Unknown).as_type(i_s))
+            .map(|x| x.infer(i_s, &mut ResultContext::ValueExpected).as_type(i_s))
             .collect();
         Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(parts)))
     }

@@ -765,7 +765,7 @@ impl<'a> Matcher<'a> {
                 }
                 _ => {
                     for arg in args.iter() {
-                        let inferred = match arg.infer(&mut ResultContext::Unknown) {
+                        let inferred = match arg.infer(&mut ResultContext::ValueExpected) {
                             InferredArg::Inferred(inferred) => {
                                 if inferred.maybe_any(i_s.db).is_some() {
                                     continue;
@@ -1785,7 +1785,7 @@ fn infer_params_from_args<'db>(
     let mut params = vec![];
     let mut iterator = args.iter().peekable();
     while let Some(arg) = iterator.next() {
-        match arg.infer(&mut ResultContext::Unknown) {
+        match arg.infer(&mut ResultContext::ValueExpected) {
             InferredArg::Inferred(inf) => {
                 let t = inf.as_type(i_s);
                 let p = match (
@@ -1821,7 +1821,7 @@ fn infer_params_from_args<'db>(
                             })
                         })
                         .map(|a| {
-                            match a.infer(&mut ResultContext::Unknown) {
+                            match a.infer(&mut ResultContext::ValueExpected) {
                                 InferredArg::Inferred(inf) => Ok(inf.as_type(i_s)),
                                 _ => Err(()),
                             }

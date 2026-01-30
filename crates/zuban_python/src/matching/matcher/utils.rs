@@ -925,7 +925,7 @@ pub(crate) fn match_arguments_against_params<
                         None => {
                             // Simply infer the type to make sure type checking is done on the
                             // argument if there is no annotation.
-                            argument.infer(&mut ResultContext::Unknown);
+                            argument.infer(&mut ResultContext::ValueExpected);
                             continue;
                         }
                     },
@@ -997,10 +997,10 @@ pub(crate) fn match_arguments_against_params<
                 );
                 for (i, arg) in args.iter().enumerate() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
-                        let maybe_err = match arg.infer(&mut ResultContext::Unknown) {
+                        let maybe_err = match arg.infer(&mut ResultContext::ValueExpected) {
                             InferredArg::Inferred(_) => {
                                 gatherer.add_unpack(TupleUnpack::ArbitraryLen(
-                                    arg.infer_inferrable(i_s, &mut ResultContext::Unknown)
+                                    arg.infer_inferrable(i_s, &mut ResultContext::ValueExpected)
                                         .as_type(i_s),
                                 ))
                             }
@@ -1032,7 +1032,7 @@ pub(crate) fn match_arguments_against_params<
                         };
                         let mut result_context = match context_t {
                             Some(t) => ResultContext::new_known(t),
-                            None => ResultContext::Unknown,
+                            None => ResultContext::ValueExpected,
                         };
                         let inf = arg.infer_inferrable(i_s, &mut result_context);
                         let t = inf.as_type(i_s);

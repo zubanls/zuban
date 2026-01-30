@@ -2275,8 +2275,10 @@ impl<'file> Inference<'_, 'file, '_> {
         item_callable: impl FnOnce() -> T,
     ) -> T {
         if let Some(comp_if) = comp_ifs.next() {
-            let (_, true_frame, _) = self
-                .find_guards_in_expr_part(comp_if.expression_part(), &mut ResultContext::Unknown);
+            let (_, true_frame, _) = self.find_guards_in_expr_part(
+                comp_if.expression_part(),
+                &mut ResultContext::ValueExpected,
+            );
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_frame_and_result(true_frame, || {
                     self.flow_analysis_for_comprehension_with_comp_ifs(
@@ -2668,7 +2670,7 @@ impl<'file> Inference<'_, 'file, '_> {
             SubjectExprContent::Tuple(iterator) => (
                 self.subject_key_tuple(iterator.clone())
                     .map(SubjectKey::Tuple),
-                self.infer_tuple_iterator(iterator, &mut ResultContext::Unknown),
+                self.infer_tuple_iterator(iterator, &mut ResultContext::ValueExpected),
             ),
         };
         let rest = self.process_match_cases_and_return_rest(
@@ -2972,7 +2974,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         *node_index,
                         CSTSliceType::from_index(&self.file.tree, *node_index),
                     ),
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                 ),
                 FlowKey::Name(_) => unreachable!(),
             })
@@ -3196,7 +3198,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                     self.file,
                                     "__getitem__",
                                     LookupKind::OnlyType,
-                                    &mut ResultContext::Unknown,
+                                    &mut ResultContext::ValueExpected,
                                     &|_| (),
                                     &|_| not_found.set(true),
                                 )
@@ -3204,7 +3206,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 .execute_with_details(
                                     i_s,
                                     &KnownArgsWithCustomAddIssue::new(&key, &|_| {}),
-                                    &mut ResultContext::Unknown,
+                                    &mut ResultContext::ValueExpected,
                                     OnTypeError::new(&|_, _, _, _| ()),
                                 );
                             if not_found.get() {
@@ -3352,7 +3354,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 self.file,
                 name,
                 LookupKind::OnlyType,
-                &mut ResultContext::Unknown,
+                &mut ResultContext::ValueExpected,
                 &|_| (),
                 &|_| (),
             )
@@ -3894,7 +3896,7 @@ impl<'file> Inference<'_, 'file, '_> {
     }
 
     fn find_guards_in_expr(&self, expr: Expression) -> (TruthyInferred, Frame, Frame) {
-        self.find_guards_in_expr_with_context(expr, &mut ResultContext::Unknown)
+        self.find_guards_in_expr_with_context(expr, &mut ResultContext::ValueExpected)
     }
 
     fn find_guards_in_expr_with_context(
@@ -3930,7 +3932,7 @@ impl<'file> Inference<'_, 'file, '_> {
         &self,
         part: ExpressionPart,
     ) -> (TruthyInferred, FramesWithParentUnions) {
-        self.find_guards_in_expression_parts_with_context(part, &mut ResultContext::Unknown)
+        self.find_guards_in_expression_parts_with_context(part, &mut ResultContext::ValueExpected)
     }
 
     fn find_guards_in_expression_parts_with_context(
@@ -4398,7 +4400,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     false,
                     None,
                     false,
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     None,
                     OnTypeError::new(&on_argument_type_error),
                     &|c, calculated_type_args| {
@@ -4512,7 +4514,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     false,
                     &guard.type_,
                     OnTypeError::new(&on_argument_type_error),
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     None,
                 );
             resolved_inf.as_cow_type(self.i_s)
@@ -4688,7 +4690,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let second = primary.second();
         if matches!(second, PrimaryContent::Execution(_)) {
             return KeyWithParentUnions::new(
-                self.infer_primary(primary, &mut ResultContext::Unknown),
+                self.infer_primary(primary, &mut ResultContext::ValueExpected),
                 None,
             );
         }
@@ -4696,7 +4698,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let mut base = match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.key_from_primary(primary),
             PrimaryOrAtom::Atom(atom) => KeyWithParentUnions::new(
-                self.infer_atom(atom, &mut ResultContext::Unknown),
+                self.infer_atom(atom, &mut ResultContext::ValueExpected),
                 self.key_from_atom(atom),
             ),
         };
@@ -4726,7 +4728,7 @@ impl<'file> Inference<'_, 'file, '_> {
             primary.index(),
             second,
             false,
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
         );
         match second {
             PrimaryContent::Attribute(attr) => {
@@ -4761,7 +4763,7 @@ impl<'file> Inference<'_, 'file, '_> {
     fn key_from_expr_part(&self, expr_part: ExpressionPart) -> KeyWithParentUnions {
         match expr_part {
             ExpressionPart::Atom(atom) => KeyWithParentUnions::new(
-                self.infer_atom(atom, &mut ResultContext::Unknown),
+                self.infer_atom(atom, &mut ResultContext::ValueExpected),
                 self.key_from_atom(atom),
             ),
             ExpressionPart::Primary(primary) => self.key_from_primary(primary),
@@ -4982,7 +4984,7 @@ impl<'file> Inference<'_, 'file, '_> {
             self.file,
             attr,
             LookupKind::Normal,
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
             &|_| (),
             &|_| (), // OnLookupError is irrelevant for us here.
         )

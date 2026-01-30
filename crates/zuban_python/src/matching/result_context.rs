@@ -22,8 +22,8 @@ pub(crate) enum ResultContext<'a, 'b> {
     AssignmentNewDefinition {
         assignment_definition: PointLink,
     },
+    ValueExpected,
     Unknown,
-    Unknown2,
     ExpectUnused,
     Await,
     RevealType,
@@ -48,8 +48,8 @@ impl<'a> ResultContext<'a, '_> {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
                 Some(callable(&t))
             }
-            Self::Unknown
-            | Self::Unknown2
+            Self::ValueExpected
+            | Self::Unknown
             | Self::AssignmentNewDefinition { .. }
             | Self::ExpectUnused
             | Self::RevealType
@@ -66,8 +66,8 @@ impl<'a> ResultContext<'a, '_> {
                 Some(callable(type_, &mut Matcher::default()))
             }
             Self::WithMatcher { matcher, type_ } => Some(callable(type_, matcher)),
-            Self::Unknown
-            | Self::Unknown2
+            Self::ValueExpected
+            | Self::Unknown
             | Self::AssignmentNewDefinition { .. }
             | Self::ExpectUnused
             | Self::RevealType
@@ -119,13 +119,13 @@ impl<'a> ResultContext<'a, '_> {
 
     pub fn expect_not_none(&mut self) -> bool {
         match self {
-            Self::ExpectUnused | Self::RevealType | Self::KnownLambdaReturn(_) | Self::Unknown2 => {
+            Self::ExpectUnused | Self::RevealType | Self::KnownLambdaReturn(_) | Self::Unknown => {
                 false
             }
             Self::Known { type_, .. } | Self::WithMatcher { type_, .. } => {
                 !matches!(type_, Type::None)
             }
-            Self::AssignmentNewDefinition { .. } | Self::Unknown | Self::Await => true,
+            Self::AssignmentNewDefinition { .. } | Self::ValueExpected | Self::Await => true,
         }
     }
 
@@ -199,8 +199,8 @@ impl fmt::Debug for ResultContext<'_, '_> {
             ),
             Self::KnownLambdaReturn(t) => write!(f, "KnownLambdaReturn({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
+            Self::ValueExpected => write!(f, "Unknown"),
             Self::Unknown => write!(f, "Unknown"),
-            Self::Unknown2 => write!(f, "Unknown"),
             Self::ExpectUnused => write!(f, "ExpectUnused"),
             Self::RevealType => write!(f, "RevealType"),
             Self::AssignmentNewDefinition { .. } => write!(f, "AssignmentNewDefinition"),

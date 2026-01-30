@@ -93,7 +93,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             self.file,
             name,
             kind,
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
             &|_issue| (),
             &|_t_of_attr_error| (),
         )
@@ -206,7 +206,7 @@ impl<'db, T> PositionalDocument<'db, T> {
         self.with_i_s(|i_s| {
             self.file
                 .inference(i_s)
-                .infer_atom(atom, &mut ResultContext::Unknown)
+                .infer_atom(atom, &mut ResultContext::ValueExpected)
         })
     }
 

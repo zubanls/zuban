@@ -412,7 +412,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     } else {
                         LookupKind::Normal
                     },
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     &|issue| {
                         // Deprecated should not affect matching
                         if let IssueKind::Deprecated { .. } = &issue {
@@ -1373,7 +1373,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 debug!("Class execute: {}", result.format_short(i_s));
                 if self.node_ref == i_s.db.python_state.bare_type_node_ref()
                     && let Some(first_arg) =
-                        args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)
+                        args.maybe_single_positional_arg(i_s, &mut ResultContext::ValueExpected)
                 {
                     return execute_bare_type(i_s, first_arg);
                 }
@@ -1403,10 +1403,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 .enumerate()
                 .find_map(|(i, arg)| match &arg.kind {
                     ArgKind::Positional(arg) if i == 0 => {
-                        Some(arg.infer(&mut ResultContext::Unknown))
+                        Some(arg.infer(&mut ResultContext::ValueExpected))
                     }
                     ArgKind::Keyword(kwarg) if kwarg.key == "to" => {
-                        Some(kwarg.infer(&mut ResultContext::Unknown))
+                        Some(kwarg.infer(&mut ResultContext::ValueExpected))
                     }
                     _ => None,
                 })
@@ -1444,7 +1444,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .iter(i_s.mode)
             .find_map(|arg| match &arg.kind {
                 ArgKind::Keyword(kwarg) if kwarg.key == "null" => kwarg
-                    .infer(&mut ResultContext::Unknown)
+                    .infer(&mut ResultContext::ValueExpected)
                     .maybe_bool_literal(i_s),
                 _ => None,
             })

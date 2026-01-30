@@ -1958,7 +1958,7 @@ impl<'db: 'slf, 'slf> Inferred {
             in_file,
             name,
             kind,
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
             add_issue,
             callable,
         )
@@ -1971,7 +1971,13 @@ impl<'db: 'slf, 'slf> Inferred {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_with_result_context(i_s, node_ref, name, kind, &mut ResultContext::Unknown)
+        self.lookup_with_result_context(
+            i_s,
+            node_ref,
+            name,
+            kind,
+            &mut ResultContext::ValueExpected,
+        )
     }
 
     pub fn lookup_with_result_context(
@@ -2070,7 +2076,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.execute_with_details(
             i_s,
             args,
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
             OnTypeError::new(&on_argument_type_error),
         )
     }

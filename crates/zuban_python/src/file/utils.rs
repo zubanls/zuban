@@ -626,7 +626,7 @@ pub fn infer_string_index(
     };
 
     match simple
-        .infer(i_s, &mut ResultContext::Unknown)
+        .infer(i_s, &mut ResultContext::ValueExpected)
         .maybe_literal(i_s.db)
     {
         UnionValue::Single(literal) => infer(i_s, literal),

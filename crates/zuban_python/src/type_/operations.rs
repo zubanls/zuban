@@ -655,7 +655,13 @@ impl Type {
     }
 
     pub fn setitem_context(&self, i_s: &InferenceState, slice_type: &SliceType) -> Inferred {
-        self.get_item_internal(i_s, None, slice_type, &mut ResultContext::Unknown, &|_| ())
+        self.get_item_internal(
+            i_s,
+            None,
+            slice_type,
+            &mut ResultContext::ValueExpected,
+            &|_| (),
+        )
     }
 
     pub(crate) fn execute<'db>(
@@ -796,7 +802,7 @@ impl Type {
                     infos.file(),
                     "__iter__",
                     LookupKind::OnlyType,
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     infos.add_issue,
                     &|t| infos.add_not_iterable_issue(i_s.db, t),
                 )
@@ -807,7 +813,7 @@ impl Type {
                     infos.from,
                     "__next__",
                     &infos.as_no_args(),
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                 ),
             ),
         }
@@ -1413,7 +1419,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 args.iter(i_s.mode),
                 |issue| args.add_issue(i_s, issue),
                 true,
-                &mut ResultContext::Unknown,
+                &mut ResultContext::ValueExpected,
                 None,
                 Some(on_type_error),
             );

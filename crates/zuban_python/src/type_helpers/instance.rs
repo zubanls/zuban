@@ -307,7 +307,7 @@ impl<'a> Instance<'a> {
                                 infos.file(),
                                 dunder_next,
                                 &infos.as_no_args(),
-                                &mut ResultContext::Unknown,
+                                &mut ResultContext::ValueExpected,
                                 &|t| {
                                     infos.add_issue(IssueKind::AttributeError {
                                         object: format!("\"{}\"", t.format_short(i_s.db)).into(),
@@ -615,7 +615,7 @@ impl<'a> Instance<'a> {
                     return inf.execute_with_details(
                         i_s,
                         &args,
-                        &mut ResultContext::Unknown,
+                        &mut ResultContext::ValueExpected,
                         OnTypeError::new(&|i_s, _, _, types| {
                             let strs = types.as_boxed_strs(i_s.db);
                             add_issue(IssueKind::InvalidGetItem {
@@ -742,7 +742,7 @@ fn execute_super_internal<'db>(
     let mut next_arg = || {
         iterator.next().map(|arg| match arg.is_keyword_argument() {
             false => match arg.in_args_or_kwargs_and_arbitrary_len() {
-                false => match arg.infer(&mut ResultContext::Unknown) {
+                false => match arg.infer(&mut ResultContext::ValueExpected) {
                     InferredArg::Inferred(inf) => Ok(inf),
                     _ => Err(IssueKind::SuperOnlyAcceptsPositionalArguments),
                 },

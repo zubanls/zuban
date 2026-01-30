@@ -551,7 +551,7 @@ impl Inference<'_, '_, '_> {
                                 matches!(
                                     self.file
                                         .inference(i_s)
-                                        .infer_primary(primary, &mut ResultContext::Unknown)
+                                        .infer_primary(primary, &mut ResultContext::ValueExpected)
                                         .as_cow_type(self.i_s)
                                         .as_ref(),
                                     Type::Never(NeverCause::Explicit)
@@ -2144,7 +2144,7 @@ impl Inference<'_, '_, '_> {
                     self.add_issue(return_stmt.index(), IssueKind::ReturnValueExpected);
                 }
             } else if let Some(star_exprs) = return_stmt.star_expressions() {
-                self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown2);
+                self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
             }
         }
     }
@@ -2181,7 +2181,7 @@ impl Inference<'_, '_, '_> {
             return;
         }
         let inf = self
-            .infer_star_expressions(star_exprs, &mut ResultContext::Unknown)
+            .infer_star_expressions(star_exprs, &mut ResultContext::ValueExpected)
             .avoid_implicit_literal(self.i_s);
         let from = NodeRef::new(self.file, star_exprs.index());
         let element = if is_async {
@@ -2316,7 +2316,7 @@ impl Inference<'_, '_, '_> {
             from.file,
             normal_magic,
             LookupKind::OnlyType,
-            &mut ResultContext::Unknown,
+            &mut ResultContext::ValueExpected,
             // Theoretically this should not be ignored, but for now I'm not sure if self types are
             // working anyway.
             &|_| (),
@@ -2435,8 +2435,8 @@ impl Inference<'_, '_, '_> {
             };
             had_return = true;
             if let Some(star_expressions) = return_.star_expressions() {
-                let inf =
-                    self.infer_star_expressions(star_expressions, &mut ResultContext::Unknown);
+                let inf = self
+                    .infer_star_expressions(star_expressions, &mut ResultContext::ValueExpected);
                 if !matches!(
                     inf.as_cow_type(self.i_s).as_ref(),
                     Type::Literal(Literal {
@@ -2466,7 +2466,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                     i_s,
                     None,
                     &NoArgs::new(from),
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ValueExpected,
                     OnTypeError::new(&|_, _, _, _| {
                         recoverable_error!(
                             "Type errors should not be possible, because there are no params"

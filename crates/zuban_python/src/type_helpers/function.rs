@@ -227,8 +227,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             match return_or_yield {
                 ReturnOrYield::Return(ret) => {
                     let inf = if let Some(star_expressions) = ret.star_expressions() {
-                        inference
-                            .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
+                        inference.infer_star_expressions(
+                            star_expressions,
+                            &mut ResultContext::ValueExpected,
+                        )
                     } else {
                         Inferred::new_none()
                     };
@@ -241,7 +243,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 ReturnOrYield::Yield(yield_expr) => {
                     let inf = match yield_expr.unpack() {
                         YieldExprContent::StarExpressions(s) => {
-                            inference.infer_star_expressions(s, &mut ResultContext::Unknown)
+                            inference.infer_star_expressions(s, &mut ResultContext::ValueExpected)
                         }
                         YieldExprContent::YieldFrom(yield_from) => {
                             inference.infer_yield_from_expr(yield_from)
@@ -2078,7 +2080,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let Type::Callable(_) = first_annotation.as_ref() else {
             return None;
         };
-        let first_arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
+        let first_arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
         let first_t = first_arg.as_cow_type(i_s);
         let CallableLike::Overload(overload) = first_t.maybe_callable(i_s)? else {
             return None;

@@ -724,9 +724,9 @@ fn typed_dict_setdefault_internal<'db>(
     }
     let default = match &second_arg {
         Some(second) => match &second.kind {
-            ArgKind::Positional(second) => second.infer(&mut ResultContext::Unknown),
+            ArgKind::Positional(second) => second.infer(&mut ResultContext::ValueExpected),
             ArgKind::Keyword(second) if second.key == "default" => {
-                second.infer(&mut ResultContext::Unknown)
+                second.infer(&mut ResultContext::ValueExpected)
             }
             _ => return None,
         },
@@ -735,7 +735,7 @@ fn typed_dict_setdefault_internal<'db>(
 
     let inferred_name = first_arg
         .clone()
-        .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+        .maybe_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
             if let Some(member) = td.find_entry(i_s.db, key) {
@@ -828,7 +828,7 @@ fn typed_dict_get_or_pop_internal<'db>(
 
     let inferred_name = first_arg
         .clone()
-        .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+        .maybe_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
             if let Some(member) = td.find_entry(i_s.db, key) {
@@ -867,7 +867,7 @@ fn typed_dict_get_or_pop_internal<'db>(
             Some(maybe_had_literals.simplified_union(i_s, default))
         }
     } else {
-        let default = infer_default(&mut ResultContext::Unknown)?;
+        let default = infer_default(&mut ResultContext::ValueExpected)?;
         let is_str_key = || {
             inferred_name
                 .as_cow_type(i_s)
@@ -983,8 +983,8 @@ fn typed_dict_setitem_internal<'db>(
     if iterator.next().is_some() {
         return None;
     }
-    let inf_key = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
-    let value = second_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+    let inf_key = first_arg.maybe_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
+    let value = second_arg.maybe_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
     if let Some(literal) = inf_key.maybe_string_literal(i_s) {
         let key = literal.as_str(i_s.db);
         if let Some(member) = td.find_entry(i_s.db, key) {

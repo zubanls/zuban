@@ -50,7 +50,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 
     fn should_do_union_math_for_overloads(&self, i_s: &InferenceState<'db, '_>) -> bool {
         for arg in self.iter(i_s.mode) {
-            if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::Unknown)
+            if let InferredArg::Inferred(inf) = arg.infer(&mut ResultContext::ValueExpected)
                 && {
                     let t = inf.as_cow_type(i_s);
                     t.is_union_like(i_s.db)
@@ -185,13 +185,14 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
                     }
                 }
                 ArgumentsDetails::Comprehension(comp) => {
-                    inference.infer_generator_comprehension(comp, &mut ResultContext::Unknown);
+                    inference
+                        .infer_generator_comprehension(comp, &mut ResultContext::ValueExpected);
                 }
                 ArgumentsDetails::None => (),
             }
         } else {
             for arg in self.iter(self.i_s.mode) {
-                arg.infer(&mut ResultContext::Unknown);
+                arg.infer(&mut ResultContext::ValueExpected);
             }
         }
     }
@@ -776,7 +777,10 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
             Self::Comprehension(i_s, file, comprehension) => {
                 vec![
                     file.inference(&i_s)
-                        .infer_generator_comprehension(comprehension, &mut ResultContext::Unknown)
+                        .infer_generator_comprehension(
+                            comprehension,
+                            &mut ResultContext::ValueExpected,
+                        )
                         .format_short(&i_s),
                 ]
             }
