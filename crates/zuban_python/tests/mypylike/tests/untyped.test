@@ -1297,3 +1297,13 @@ def g() -> None:
                     # N: Left operand is of type "int | None"
     1 + optional()  # E: Unsupported operand types for + ("int" and "None") \
                     # N: Right operand is of type "int | None"
+                    #
+
+[case untyped_return_of_none]
+def none() -> None: ...
+
+def f():
+    return none()
+
+def g() -> None:
+    return none()

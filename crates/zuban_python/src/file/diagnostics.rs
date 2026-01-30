@@ -2144,7 +2144,7 @@ impl Inference<'_, '_, '_> {
                     self.add_issue(return_stmt.index(), IssueKind::ReturnValueExpected);
                 }
             } else if let Some(star_exprs) = return_stmt.star_expressions() {
-                self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
+                self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown2);
             }
         }
     }
