@@ -8,7 +8,7 @@ use config::{
 };
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 
 #[derive(Parser, Default)]
 pub struct Cli {
@@ -16,7 +16,7 @@ pub struct Cli {
     /// Choosing a mode sets the basic preset of flags. The default mode is typed, which is not
     /// mypy-compatible.
     #[arg(long)]
-    mode: Option<ModeArg>,
+    mode: Option<Mode>,
 
     /// Can be either "any" to infer untyped function returns like Mypy, "inferred" to infer return
     /// types or "advanced" to infer return types in a more sophisticated way that includes
@@ -31,33 +31,18 @@ pub struct Cli {
 impl Cli {
     pub fn new_mypy_compatible(mypy_options: MypyCli) -> Self {
         Self {
-            mode: Some(ModeArg::Mypy),
+            mode: Some(Mode::Mypy),
             untyped_function_return_mode: None,
             mypy_options,
         }
     }
 
     pub fn mypy_compatible(&self) -> Option<bool> {
-        Some(matches!(self.mode?, ModeArg::Mypy))
+        Some(matches!(self.mode?, Mode::Mypy))
     }
 
     pub fn mode(&self) -> Option<Mode> {
         Some(self.mode?.into())
-    }
-}
-
-#[derive(Clone, ValueEnum, Copy)]
-enum ModeArg {
-    Mypy,
-    Default,
-}
-
-impl From<ModeArg> for Mode {
-    fn from(m: ModeArg) -> Self {
-        match m {
-            ModeArg::Mypy => Mode::MypyCompatible,
-            ModeArg::Default => Mode::Default,
-        }
     }
 }
 

@@ -48,9 +48,9 @@ pub struct ProjectOptions {
     pub overrides: Vec<OverrideConfig>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, clap::ValueEnum)]
 pub enum Mode {
-    MypyCompatible,
+    Mypy,
     Default,
 }
 
@@ -109,7 +109,7 @@ impl Settings {
 
     #[inline]
     pub fn mypy_compatible(&self) -> bool {
-        matches!(self.mode, Mode::MypyCompatible)
+        matches!(self.mode, Mode::Mypy)
     }
 
     pub fn python_version_or_default(&self) -> PythonVersion {
@@ -219,7 +219,7 @@ impl ProjectOptions {
     }
 
     pub fn default_for_mode(mode: Mode) -> Self {
-        if matches!(mode, Mode::MypyCompatible) {
+        if matches!(mode, Mode::Mypy) {
             ProjectOptions::mypy_default()
         } else {
             ProjectOptions::default()
@@ -229,7 +229,7 @@ impl ProjectOptions {
     pub fn mypy_default() -> Self {
         Self {
             settings: Settings {
-                mode: Mode::MypyCompatible,
+                mode: Mode::Mypy,
                 untyped_function_return_mode: UntypedFunctionReturnMode::Any,
                 ..Default::default()
             },
@@ -329,7 +329,7 @@ impl ProjectOptions {
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             // If an explicit mode is provided, use that, otherwise since we have an explicit Mypy
             // configuration we default to that.
-            let mut result = ProjectOptions::default_for_mode(mode.unwrap_or(Mode::MypyCompatible));
+            let mut result = ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Mypy));
             result.apply_pyproject_table(
                 vfs,
                 current_dir,

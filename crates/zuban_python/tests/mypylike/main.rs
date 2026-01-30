@@ -353,7 +353,7 @@ impl TestCase<'_, '_> {
         if flags.cli.mode().is_some_and(|m| m != mode)
             || flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
             || flags.no_windows && cfg!(windows)
-            || flags.auto_mode && mode == Mode::MypyCompatible
+            || flags.auto_mode && mode == Mode::Mypy
         {
             return Ok(false);
         }
@@ -577,7 +577,7 @@ impl TestCase<'_, '_> {
             self.name,
             self.file_name,
             match mode {
-                Mode::MypyCompatible => "mypy-compatible",
+                Mode::Mypy => "mypy-compatible",
                 Mode::Default => "default",
             }
         )
@@ -1049,10 +1049,7 @@ fn run(
                 // Run our own tests both with mypy-compatible and without it.
                 check(case.run(&mut projects, Mode::Default), Mode::Default)
             }
-            check(
-                case.run(&mut projects, Mode::MypyCompatible),
-                Mode::MypyCompatible,
-            );
+            check(case.run(&mut projects, Mode::Mypy), Mode::Mypy);
         }
     }
     if error_count > 0 {
