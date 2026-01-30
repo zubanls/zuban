@@ -698,6 +698,9 @@ impl Type {
                     result_context
                 };
                 for entry in union.iter() {
+                    if matches!(entry, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                        continue;
+                    }
                     gather(entry.execute(i_s, None, args, result_context, on_type_error))
                 }
             }),

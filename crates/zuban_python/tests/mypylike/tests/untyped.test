@@ -1257,20 +1257,27 @@ def g() -> None:
 [case untyped_non_strict_optional_list_iter_and_index]
 # flags: --mode default
 
+def optional() -> list[int] | None: ...
+
 def f():
-    if bool():
-        x = [1]
-    else:
-        x = None
+    x = optional()
     reveal_type(x[0])  # N: Revealed type is "int"
     for y in x:
         reveal_type(y)  # N: Revealed type is "int"
 
 def g() -> None:
-    if bool():
-        x = [1]
-    else:
-        x = None
+    x = optional()
     reveal_type(x[0])  # E: Value of type "None" is not indexable  # N: Revealed type is "int | Any"
     for y in x:  # E: Item "None" of "list[int] | None" has no attribute "__iter__" (not iterable)
         reveal_type(y)  # N: Revealed type is "int | Any"
+
+[case untyped_none_call]
+# flags: --mode default
+
+def optional() -> type[int] | None: ...
+
+def f():
+    optional()()
+
+def g() -> None:
+    optional()()  # E: "None" not callable
