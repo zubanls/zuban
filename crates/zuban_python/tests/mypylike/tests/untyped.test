@@ -1253,3 +1253,24 @@ def g() -> None:
     z.append(None)
     z.append(1)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "None"
     reveal_type(z)  # N: Revealed type is "list[None]"
+
+[case untyped_non_strict_optional_list_iter_and_index]
+# flags: --mode default
+
+def f():
+    if bool():
+        x = [1]
+    else:
+        x = None
+    reveal_type(x[0])  # N: Revealed type is "int"
+    for y in x:
+        reveal_type(y)  # N: Revealed type is "int"
+
+def g() -> None:
+    if bool():
+        x = [1]
+    else:
+        x = None
+    reveal_type(x[0])  # E: Value of type "None" is not indexable  # N: Revealed type is "int | Any"
+    for y in x:  # E: Item "None" of "list[int] | None" has no attribute "__iter__" (not iterable)
+        reveal_type(y)  # N: Revealed type is "int | Any"

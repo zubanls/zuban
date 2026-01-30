@@ -540,6 +540,9 @@ impl Type {
             Type::NamedTuple(nt) => nt.get_item(i_s, slice_type, result_context, add_issue),
             Type::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
                 for t in union.iter() {
+                    if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                        continue;
+                    }
                     callable(t.get_item_internal(i_s, None, slice_type, result_context, add_issue))
                 }
             }),
@@ -759,6 +762,9 @@ impl Type {
                 let mut items = vec![];
                 let with_union_infos = infos.with_in_union(self);
                 for t in union.iter() {
+                    if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                        continue;
+                    }
                     items.push(t.iter(i_s, with_union_infos));
                 }
                 IteratorContent::Union(items)
