@@ -210,10 +210,28 @@ impl Tree {
             scope,
             CompletionNode::Global {
                 context: context(leaf),
+                at_statement_start: is_at_statement_start(leaf),
             },
             rest,
         )
     }
+}
+
+fn is_at_statement_start(leaf: PyNode) -> bool {
+    let Some(prev) = leaf.previous_leaf() else {
+        return true;
+    };
+    if matches!(prev.as_code(), ":" | ";") {
+        return true;
+    }
+    use PyNodeType::Terminal as T;
+    if prev.is_type(T(TerminalType::Newline)) || prev.is_type(T(TerminalType::Dedent)) {
+        return true;
+    }
+    leaf.parent().is_some_and(|p| {
+        (p.is_type(Nonterminal(simple_stmts)) || p.is_type(ErrorNonterminal(simple_stmts)))
+            && leaf.previous_sibling().is_none()
+    })
 }
 
 fn context(node: PyNode) -> Option<CompletionContext> {
@@ -372,6 +390,7 @@ pub enum CompletionNode<'db> {
     InsideString,
     Global {
         context: Option<CompletionContext<'db>>,
+        at_statement_start: bool, // after newline, `:`, `;`
     },
 }
 

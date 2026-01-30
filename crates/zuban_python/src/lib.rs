@@ -42,6 +42,7 @@ use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
 use lsp_types::{FoldingRangeKind, Position};
 use name::Range;
 use parsa_python_cst::{GotoNode, Scope, Tree};
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
@@ -102,6 +103,7 @@ impl Project {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn workspace_documents(&self) -> impl ParallelIterator<Item = Document<'_>> {
         let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
         known_file_indexes
@@ -117,8 +119,39 @@ impl Project {
             })
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn workspace_documents(&self) -> impl Iterator<Item = Document<'_>> {
+        let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
+        known_file_indexes
+            .into_iter()
+            .chain(
+                files_to_be_loaded
+                    .into_iter()
+                    .filter_map(|(entry, _)| self.db.load_file_from_workspace(&entry, false)),
+            )
+            .map(|file_index| Document {
+                project: self,
+                file_index,
+            })
+    }
+
     pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
         self.db.store_in_memory_file(path, code, None);
+    }
+
+    pub fn diagnostics_for_file_index(
+        &mut self,
+        file_index: FileIndex,
+    ) -> Box<[diagnostics::Diagnostic<'_>]> {
+        self.db.loaded_python_file(file_index).diagnostics(&self.db)
+    }
+
+    pub fn store_in_memory_file_with_index(
+        &mut self,
+        path: PathWithScheme,
+        code: Box<str>,
+    ) -> FileIndex {
+        self.db.store_in_memory_file(path, code, None)
     }
 
     pub fn store_file_with_lsp_changes(
@@ -234,6 +267,13 @@ impl Project {
 
     pub fn vfs_handler(&self) -> &dyn VfsHandler {
         self.db.vfs.handler.as_ref()
+    }
+
+    /// Call after registering stubs to VFS
+    pub fn add_site_packages(&self, path: std::sync::Arc<vfs::NormalizedPath>) {
+        self.db
+            .vfs
+            .add_workspace(path, vfs::WorkspaceKind::SitePackages);
     }
 }
 
