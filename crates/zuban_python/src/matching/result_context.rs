@@ -199,7 +199,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
             ),
             Self::KnownLambdaReturn(t) => write!(f, "KnownLambdaReturn({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
-            Self::ValueExpected => write!(f, "Unknown"),
+            Self::ValueExpected => write!(f, "ValueExpected"),
             Self::Unknown => write!(f, "Unknown"),
             Self::ExpectUnused => write!(f, "ExpectUnused"),
             Self::RevealType => write!(f, "RevealType"),

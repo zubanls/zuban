@@ -3000,8 +3000,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             .unwrap_or_else(|| {
                 let (params, expr) = lambda.unpack();
                 check_defaults();
-                let result =
-                    self.flow_analysis_for_lambda_body(expr, &mut ResultContext::ExpectUnused);
+                let result = self.flow_analysis_for_lambda_body(expr, &mut ResultContext::Unknown);
                 let c = CallableContent::new_simple(
                     None,
                     None,

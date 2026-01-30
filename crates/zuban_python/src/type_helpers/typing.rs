@@ -37,7 +37,7 @@ pub(crate) fn execute_cast<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'
                         .compute_cast_target(positional.node_ref)
                         .ok()
                 } else {
-                    actual = Some(positional.infer(&mut ResultContext::ExpectUnused));
+                    actual = Some(positional.infer(&mut ResultContext::Unknown));
                 }
             }
             _ => {

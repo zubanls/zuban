@@ -233,7 +233,7 @@ impl<'db, T> PositionalDocument<'db, T> {
         self.with_i_s(|i_s| {
             self.file
                 .inference(i_s)
-                .infer_primary(primary, &mut ResultContext::ExpectUnused)
+                .infer_primary(primary, &mut ResultContext::Unknown)
         })
     }
 

@@ -157,7 +157,7 @@ impl<'a> Instance<'a> {
                     .into_maybe_inferred()
                 {
                     let inst = self.as_inferred(i_s);
-                    calculate_descriptor(i_s, from, __set__, inst, value);
+                    calculate_set_descriptor(i_s, from, __set__, inst, value);
                     // Return an error regardless so it does not get narrowed.
                     return false;
                 } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
@@ -640,7 +640,7 @@ impl<'a> Instance<'a> {
     }
 }
 
-fn calculate_descriptor(
+fn calculate_set_descriptor(
     i_s: &InferenceState,
     from: NodeRef,
     set_method: Inferred,

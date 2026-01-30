@@ -699,7 +699,7 @@ impl Type {
                         Type::Callable(c) => c.return_type != Type::None,
                         _ => false,
                     }) {
-                    &mut ResultContext::ExpectUnused
+                    &mut ResultContext::Unknown
                 } else {
                     result_context
                 };

@@ -1009,7 +1009,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 inferred = inferred_dec.execute_with_details(
                     i_s,
                     &KnownArgs::new(&inferred, nr),
-                    &mut ResultContext::ExpectUnused,
+                    &mut ResultContext::Unknown,
                     OnTypeError::new(&on_argument_type_error),
                 );
             }
