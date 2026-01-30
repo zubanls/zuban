@@ -288,9 +288,19 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-        mode: Option<Mode>,
+        mut mode: Option<Mode>,
     ) -> anyhow::Result<Option<Self>> {
-        let document = code.parse()?;
+        let document: DocumentMut = code.parse()?;
+        let zuban_config = document.get("tool").and_then(|item| item.get("zuban"));
+        if let Some(Item::Table(table)) = zuban_config
+            && let Some(item) = table.get("mode")
+            && let Some(value) = item.as_value()
+        {
+            mode = Some(
+                Mode::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
+                    .map_err(|err| map_clap_error("mode", err))?,
+            );
+        }
         let result = Self::apply_pyproject_toml_mypy_part(
             vfs,
             current_dir,
@@ -299,23 +309,21 @@ impl ProjectOptions {
             diagnostic_config,
             mode,
         )?;
-        Ok(
-            if let Some(config) = document.get("tool").and_then(|item| item.get("zuban")) {
-                let mut result =
-                    result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or(Mode::Default)));
-                result.apply_pyproject_table(
-                    vfs,
-                    current_dir,
-                    config_file_path,
-                    diagnostic_config,
-                    config,
-                    true,
-                )?;
-                Some(result)
-            } else {
-                result
-            },
-        )
+        Ok(if let Some(config) = zuban_config {
+            let mut result =
+                result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or(Mode::Default)));
+            result.apply_pyproject_table(
+                vfs,
+                current_dir,
+                config_file_path,
+                diagnostic_config,
+                config,
+                true,
+            )?;
+            Some(result)
+        } else {
+            result
+        })
     }
 
     pub fn apply_pyproject_toml_mypy_part(
@@ -400,7 +408,6 @@ impl ProjectOptions {
                     }
                 }
                 Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
-                    dbg!(item);
                     bail!(
                         "Expected tool.{} to be a simple table in pyproject.toml",
                         match from_zuban {
@@ -1008,6 +1015,10 @@ fn split_and_trim<'a>(s: &'a str, pattern: &'a [char]) -> impl Iterator<Item = &
     s.split(pattern).map(|s| s.trim())
 }
 
+fn map_clap_error(arg: &str, err: String) -> anyhow::Error {
+    anyhow!("Error while parsing {arg}: {err}")
+}
+
 #[expect(clippy::too_many_arguments)]
 fn apply_from_base_config(
     vfs: &dyn VfsHandler,
@@ -1068,13 +1079,14 @@ fn apply_from_base_config(
                 value.as_str()?.parse()?
             })
         }
+        "platform" => settings.platform = Some(value.as_str()?.to_string()),
+        // Our own
+        "mode" => (), // Already checked earlier
         "untyped_function_return_mode" => {
             settings.untyped_function_return_mode =
-                UntypedFunctionReturnMode::from_str(value.as_str()?, false).map_err(|err| {
-                    anyhow!("Error while parsing the untyped_function_return_mode: {err}")
-                })?;
+                UntypedFunctionReturnMode::from_str(value.as_str()?, false)
+                    .map_err(|err| map_clap_error("untyped_function_return_mode", err))?;
         }
-        "platform" => settings.platform = Some(value.as_str()?.to_string()),
         _ => return apply_from_config_part(flags, key, value, from_zuban),
     };
     Ok(false)

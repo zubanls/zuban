@@ -142,9 +142,8 @@ no_implicit_reexport = true
 [case explicit_mode_with_mypy_config_should_not_lead_to_mypy_mode]
 # flags: --mode default
 
-x = [1, ""]
-
-reveal_type(x)  # N: Revealed type is "list[int | str]"
+def f():
+    x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [file pyproject.toml]
 [tool.mypy]
@@ -152,9 +151,30 @@ reveal_type(x)  # N: Revealed type is "list[int | str]"
 [case auto_mode_should_use_mypy_in_case_of_mypy_config]
 # flags: --auto-mode
 
-x = [1, ""]
-
-reveal_type(x)  # N: Revealed type is "list[object]"
+def f():
+    x: int = ""  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 
 [file pyproject.toml]
+[tool.mypy]
+
+[case auto_mode_with_specified_mode_in_config]
+# flags: --auto-mode
+
+def f():
+    x: int = ""  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[file pyproject.toml]
+[tool.zuban]
+mode = "mypy"
+
+[case auto_mode_with_explicit_default_mode_and_mypy_config_should_use_explicit_mode]
+# flags: --auto-mode
+
+def f():
+    x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[file pyproject.toml]
+[tool.zuban]
+mode = "default"
+
 [tool.mypy]
