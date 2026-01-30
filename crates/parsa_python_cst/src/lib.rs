@@ -117,7 +117,10 @@ impl Tree {
         for line in region.split(['\n', '\r']) {
             for comment in line.split('#').skip(1) {
                 let rest = comment.trim_start_matches(' ');
-                if let Some(ignore) = rest.strip_prefix("type:") {
+                if let Some(ignore) = rest
+                    .strip_prefix("type:")
+                    .or_else(|| rest.strip_prefix("zuban:"))
+                {
                     let ignore = ignore.trim_start_matches(' ');
                     let r = maybe_type_ignore(ignore);
                     if r.is_some() {

@@ -1682,3 +1682,15 @@ def get(browser: str = 'firefox') -> None:
             finish,
             firefox,
         )
+
+[case zuban_ignore]
+# flags: --show-error-codes
+x: int = ""  # zuban: ignore
+y: int = ""  # zuban: ignore[assignment]
+z: int = ""  # zuban: ignore[asdf]
+
+open([])  # zuban: ignore[call-overload]
+
+[out]
+__main__:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+__main__:4: note: Error code "assignment" not covered by "type: ignore" comment
