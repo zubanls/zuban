@@ -3360,7 +3360,17 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         };
         let try_to_save = |partial_class_link, unwrap_from_iterable| {
             let t = find_container_types(unwrap_from_iterable)?;
-            save_partial(new_class!(partial_class_link, t))
+            // None is not inferred, in some untyped contexts, because it only increases the false
+            // positive rate.
+            if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                let point = base.point();
+                let mut partial_flags = point.partial_flags();
+                partial_flags.finished = true;
+                base.set_point(point.set_partial_flags(partial_flags));
+                Some(Type::None)
+            } else {
+                save_partial(new_class!(partial_class_link, t))
+            }
         };
         let try_to_save_defaultdict = |container_partial_link, unwrap_from_iterable| {
             let t = find_container_types(unwrap_from_iterable)?;

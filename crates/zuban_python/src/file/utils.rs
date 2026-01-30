@@ -66,7 +66,10 @@ impl<'db> Inference<'db, '_, '_> {
                     star_expr.index(),
                 ),
             };
-            let t = t.avoid_implicit_literal(self.i_s.db);
+            let mut t = t.avoid_implicit_literal(self.i_s.db);
+            if matches!(t, Type::None) && self.i_s.should_ignore_none_in_untyped_context() {
+                t = Type::ERROR
+            }
             if let Some(r) = result.take() {
                 result = Some(r.gather_types(self.i_s, &t))
             } else {

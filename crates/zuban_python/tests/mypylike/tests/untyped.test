@@ -1225,3 +1225,31 @@ def g():
     x.upper
     expect_str(x)
     expect_str_overload(x)
+
+[case infer_none_in_list_as_any]
+# flags: --mode default
+def f():
+    x = [None]
+    reveal_type(x)  # N: Revealed type is "list[Any]"
+
+    y = []
+    y.append(None)
+    reveal_type(y)  # N: Revealed type is "list[Any]"
+
+    z = []
+    z.append(None)
+    z.append(1)
+    reveal_type(z)  # N: Revealed type is "list[Any]"
+
+def g() -> None:
+    x = [None]
+    reveal_type(x)  # N: Revealed type is "list[None]"
+
+    y = []
+    y.append(None)
+    reveal_type(y)  # N: Revealed type is "list[None]"
+
+    z = []
+    z.append(None)
+    z.append(1)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "None"
+    reveal_type(z)  # N: Revealed type is "list[None]"
