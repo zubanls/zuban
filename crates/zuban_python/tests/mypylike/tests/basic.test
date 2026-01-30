@@ -1653,3 +1653,32 @@ def f() -> None:
     x = Exception
     if bool():
         x = ValueError
+
+[case no_context_inference_for_underscore]
+# From GH #276
+import weakref
+
+class Chrome:
+    pass
+
+class Firefox:
+    pass
+
+def finish(browser: Chrome | Firefox) -> None:
+    pass
+
+def get(browser: str = 'firefox') -> None:
+    if browser == 'chrome':
+        chrome = Chrome()
+        _ = weakref.finalize(
+            chrome,
+            finish,
+            chrome,
+        )
+    else:
+        firefox = Firefox()
+        _ = weakref.finalize(
+            firefox,  # error: Argument 1 to "finalize" has incompatible type "Firefox"; expected "Chrome"  [arg-type]
+            finish,
+            firefox,
+        )

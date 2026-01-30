@@ -880,7 +880,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn infer_name_target(&self, name_def: NameDef, narrow: bool) -> Option<Inferred> {
-        if name_def.as_code() == "__slots__" {
+        if name_def.as_code() == "__slots__" || name_def.as_code() == "_" {
             return None;
         }
         let check_fallback = |name_def: NameDef| {
