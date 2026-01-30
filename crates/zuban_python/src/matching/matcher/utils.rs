@@ -862,7 +862,12 @@ pub(crate) fn match_arguments_against_params<
                 delayed_params.push((i, p.clone()));
                 return;
             }
-            let m = expected.is_super_type_of(i_s, matcher, &value_t);
+            let mut m = expected.is_super_type_of(i_s, matcher, &value_t);
+            if !m.bool() && i_s.should_ignore_none_in_untyped_context() {
+                if let Some(new_value) = value_t.maybe_remove_none(i_s.db) {
+                    m = expected.is_super_type_of(i_s, matcher, &new_value);
+                }
+            }
             if let Match::False { reason, .. } = &m {
                 debug!(
                     "Mismatch between {:?} and {:?} -> {:?}",

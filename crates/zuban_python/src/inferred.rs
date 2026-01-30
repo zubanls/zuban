@@ -3127,6 +3127,9 @@ pub fn add_attribute_error(
         _ => format!("\"{}\"", t.format_short(i_s.db)).into(),
     };
     let name = Box::from(name);
+    if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+        return;
+    }
     if let Type::TypeVar(usage) = full_type
         && let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db)
         && bound.is_union_like(i_s.db)

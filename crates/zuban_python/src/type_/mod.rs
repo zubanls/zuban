@@ -703,14 +703,14 @@ impl Type {
         }
     }
 
-    pub fn remove_none(&self, db: &Database) -> Cow<'_, Type> {
+    pub fn maybe_remove_none(&self, db: &Database) -> Option<Type> {
         if self.is_none_or_none_in_union(db) {
             let might_have_defined_type_vars = match self {
                 Type::Union(u) => u.might_have_type_vars,
                 Type::None => false,
                 _ => true,
             };
-            Cow::Owned(Type::from_union_entries(
+            Some(Type::from_union_entries(
                 self.clone()
                     .into_iter_with_unpacked_unions(db, true)
                     .filter(|union_entry| !matches!(&union_entry.type_, Type::None))
@@ -718,8 +718,14 @@ impl Type {
                 might_have_defined_type_vars,
             ))
         } else {
-            Cow::Borrowed(self)
+            None
         }
+    }
+
+    pub fn remove_none(&self, db: &Database) -> Cow<'_, Type> {
+        self.maybe_remove_none(db)
+            .map(Cow::Owned)
+            .unwrap_or(Cow::Borrowed(self))
     }
 
     pub fn into_iter_with_unpacked_unions(

@@ -253,6 +253,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             .is_some_and(|f| !f.node().is_typed())
     }
 
+    pub fn should_ignore_none_in_untyped_context(&self) -> bool {
+        self.db.project.settings.untyped_non_strict_optional() && self.in_untyped_context()
+    }
+
     pub fn flags(&self) -> &'a TypeCheckerFlags
     where
         'db: 'a,

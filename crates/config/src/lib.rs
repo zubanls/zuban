@@ -117,6 +117,10 @@ impl Settings {
             .unwrap_or_else(|| PythonVersion::new(3, 14))
     }
 
+    pub fn untyped_non_strict_optional(&self) -> bool {
+        !self.mypy_compatible()
+    }
+
     pub fn apply_python_executable(
         &mut self,
         handler: &dyn VfsHandler,

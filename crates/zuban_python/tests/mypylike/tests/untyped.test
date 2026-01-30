@@ -1199,3 +1199,29 @@ assert_type(foo(1), Literal[1])
 [tool.zuban]
 untyped_function_return_mode = "advanced"
 check_untyped_defs = true
+
+[case untyped_mode_non_strict_optional]
+# flags: --mode default
+from typing import overload
+
+def optional() -> str | None: ...
+def expect_str(s: str): ...
+
+@overload
+def expect_str_overload(s: str) -> str: ...
+@overload
+def expect_str_overload(s: int) -> int: ...
+def expect_str_overload(s): ...
+
+
+def f() -> None:
+    x = optional()
+    x.upper  # E: Item "None" of "str | None" has no attribute "upper"
+    expect_str(x)  # E: Argument 1 to "expect_str" has incompatible type "str | None"; expected "str"
+    expect_str_overload(x)  # E: Argument 1 to "expect_str_overload" has incompatible type "str | None"; expected "str"
+
+def g():
+    x = optional()
+    x.upper
+    expect_str(x)
+    expect_str_overload(x)
