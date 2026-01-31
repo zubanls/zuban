@@ -261,7 +261,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 skip_first_argument,
                 class,
                 search_init,
-                &mut ResultContext::ValueExpected,
+                &mut ResultContext::Unknown,
                 replace_self,
                 on_type_error,
                 as_union_math_type,

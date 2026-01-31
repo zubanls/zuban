@@ -307,7 +307,7 @@ impl<'a> Instance<'a> {
                                 infos.file(),
                                 dunder_next,
                                 &infos.as_no_args(),
-                                &mut ResultContext::ValueExpected,
+                                &mut ResultContext::Unknown,
                                 &|t| {
                                     infos.add_issue(IssueKind::AttributeError {
                                         object: format!("\"{}\"", t.format_short(i_s.db)).into(),
@@ -742,7 +742,7 @@ fn execute_super_internal<'db>(
     let mut next_arg = || {
         iterator.next().map(|arg| match arg.is_keyword_argument() {
             false => match arg.in_args_or_kwargs_and_arbitrary_len() {
-                false => match arg.infer(&mut ResultContext::ValueExpected) {
+                false => match arg.infer(&mut ResultContext::Unknown) {
                     InferredArg::Inferred(inf) => Ok(inf),
                     _ => Err(IssueKind::SuperOnlyAcceptsPositionalArguments),
                 },

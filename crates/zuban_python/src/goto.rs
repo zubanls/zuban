@@ -93,7 +93,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             self.file,
             name,
             kind,
-            &mut ResultContext::ValueExpected,
+            &mut ResultContext::Unknown,
             &|_issue| (),
             &|_t_of_attr_error| (),
         )

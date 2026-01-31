@@ -32,7 +32,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     if name_infos.is_none() {
                         name_infos = Some((
                             positional.node_ref,
-                            positional.infer(&mut ResultContext::ValueExpected),
+                            positional.infer(&mut ResultContext::Unknown),
                             expr.in_simple_assignment(),
                         ));
                     } else if fields_infos.is_none() {
@@ -49,7 +49,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     "value" => {
                         name_infos = Some((
                             kw.node_ref,
-                            kw.infer(&mut ResultContext::ValueExpected),
+                            kw.infer(&mut ResultContext::Unknown),
                             kw.expression.in_simple_assignment(),
                         ))
                     }

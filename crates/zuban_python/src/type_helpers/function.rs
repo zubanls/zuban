@@ -2080,7 +2080,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let Type::Callable(_) = first_annotation.as_ref() else {
             return None;
         };
-        let first_arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
+        let first_arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
         let first_t = first_arg.as_cow_type(i_s);
         let CallableLike::Overload(overload) = first_t.maybe_callable(i_s)? else {
             return None;

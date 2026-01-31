@@ -3233,7 +3233,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_ = None;
         self.file
             .inference(self.i_s)
-            .infer_primary(primary, &mut ResultContext::ValueExpected);
+            .infer_primary(primary, &mut ResultContext::Unknown);
         if let ArgumentsDetails::Node(arguments) = details {
             let mut iterator = arguments.iter();
             let name_from_expr = |slf: &mut Self, expr: Expression| {

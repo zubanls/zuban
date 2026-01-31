@@ -551,7 +551,7 @@ impl Inference<'_, '_, '_> {
                                 matches!(
                                     self.file
                                         .inference(i_s)
-                                        .infer_primary(primary, &mut ResultContext::ValueExpected)
+                                        .infer_primary(primary, &mut ResultContext::Unknown)
                                         .as_cow_type(self.i_s)
                                         .as_ref(),
                                     Type::Never(NeverCause::Explicit)

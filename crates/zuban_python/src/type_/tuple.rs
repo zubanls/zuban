@@ -851,7 +851,7 @@ fn tuple_add_internal<'db>(
     tuple1: Arc<Tuple>,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
+    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     for (_, type_or_class) in first.as_cow_type(i_s).mro(i_s.db) {
         let TypeOrClass::Type(t) = type_or_class else {
             continue;
@@ -911,7 +911,7 @@ fn tuple_mul_internal<'db>(
     tuple: Arc<Tuple>,
     args: &dyn Args<'db>,
 ) -> Option<Inferred> {
-    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::ValueExpected)?;
+    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     match &tuple.args {
         TupleArgs::FixedLen(ts) => first.run_on_int_literals(i_s, |int| {
             let zero = BigInt::ZERO;

@@ -669,7 +669,7 @@ fn field_options_from_args(
             match key {
                 "default" | "default_factory" => options.has_default = true,
                 "kw_only" => {
-                    let result = arg.infer_inferrable(i_s, &mut ResultContext::ValueExpected);
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.kw_only = Some(bool_);
                     } else {
@@ -680,7 +680,7 @@ fn field_options_from_args(
                     }
                 }
                 "init" => {
-                    let result = arg.infer_inferrable(i_s, &mut ResultContext::ValueExpected);
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.init = bool_
                     } else {
@@ -691,7 +691,7 @@ fn field_options_from_args(
                     }
                 }
                 "alias" if in_dataclass_transform => {
-                    let result = arg.infer_inferrable(i_s, &mut ResultContext::ValueExpected);
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     if let Some(alias) = result.maybe_string_literal(i_s) {
                         options.alias_name = Some(alias);
                     } else {
@@ -703,7 +703,7 @@ fn field_options_from_args(
                 }
                 "factory" if in_dataclass_transform => options.has_default = true,
                 "converter" => {
-                    let result = arg.infer_inferrable(i_s, &mut ResultContext::ValueExpected);
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     let mut converter = match result.as_cow_type(i_s).maybe_callable(i_s) {
                         Some(CallableLike::Callable(c)) => c.first_positional_type(),
                         Some(CallableLike::Overload(overload)) => {
@@ -763,7 +763,7 @@ fn apply_default_options_from_dataclass_transform_field<'db>(
                     false,
                     None,
                     false,
-                    &mut ResultContext::ValueExpected,
+                    &mut ResultContext::Unknown,
                     None,
                     OnTypeError::new(&|_, _, _, _| ()),
                     &|_, _| Type::Never(NeverCause::Other),
@@ -788,7 +788,7 @@ pub(crate) fn dataclasses_replace<'db>(
     let inf = bound.map(|t| Inferred::from_type(t.clone())).or_else(|| {
         let first = arg_iterator.next()?;
         if let ArgKind::Positional(positional) = &first.kind {
-            Some(positional.infer(&mut ResultContext::ValueExpected))
+            Some(positional.infer(&mut ResultContext::Unknown))
         } else {
             None
         }
@@ -859,7 +859,7 @@ pub(crate) fn dataclasses_replace<'db>(
                         dataclass.class(i_s.db).format_short(i_s.db)
                     ))
                 }),
-                &mut ResultContext::ValueExpected,
+                &mut ResultContext::Unknown,
                 None,
             );
         },

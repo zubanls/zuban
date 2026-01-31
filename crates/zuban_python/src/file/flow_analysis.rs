@@ -2275,10 +2275,8 @@ impl<'file> Inference<'_, 'file, '_> {
         item_callable: impl FnOnce() -> T,
     ) -> T {
         if let Some(comp_if) = comp_ifs.next() {
-            let (_, true_frame, _) = self.find_guards_in_expr_part(
-                comp_if.expression_part(),
-                &mut ResultContext::ValueExpected,
-            );
+            let (_, true_frame, _) = self
+                .find_guards_in_expr_part(comp_if.expression_part(), &mut ResultContext::Unknown);
             FLOW_ANALYSIS.with(|fa| {
                 fa.with_frame_and_result(true_frame, || {
                     self.flow_analysis_for_comprehension_with_comp_ifs(
@@ -2670,7 +2668,7 @@ impl<'file> Inference<'_, 'file, '_> {
             SubjectExprContent::Tuple(iterator) => (
                 self.subject_key_tuple(iterator.clone())
                     .map(SubjectKey::Tuple),
-                self.infer_tuple_iterator(iterator, &mut ResultContext::ValueExpected),
+                self.infer_tuple_iterator(iterator, &mut ResultContext::Unknown),
             ),
         };
         let rest = self.process_match_cases_and_return_rest(
@@ -2974,7 +2972,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         *node_index,
                         CSTSliceType::from_index(&self.file.tree, *node_index),
                     ),
-                    &mut ResultContext::ValueExpected,
+                    &mut ResultContext::Unknown,
                 ),
                 FlowKey::Name(_) => unreachable!(),
             })
@@ -3198,7 +3196,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                     self.file,
                                     "__getitem__",
                                     LookupKind::OnlyType,
-                                    &mut ResultContext::ValueExpected,
+                                    &mut ResultContext::Unknown,
                                     &|_| (),
                                     &|_| not_found.set(true),
                                 )
@@ -3206,7 +3204,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 .execute_with_details(
                                     i_s,
                                     &KnownArgsWithCustomAddIssue::new(&key, &|_| {}),
-                                    &mut ResultContext::ValueExpected,
+                                    &mut ResultContext::Unknown,
                                     OnTypeError::new(&|_, _, _, _| ()),
                                 );
                             if not_found.get() {
@@ -3354,7 +3352,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 self.file,
                 name,
                 LookupKind::OnlyType,
-                &mut ResultContext::ValueExpected,
+                &mut ResultContext::Unknown,
                 &|_| (),
                 &|_| (),
             )
