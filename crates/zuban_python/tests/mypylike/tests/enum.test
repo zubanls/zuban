@@ -511,3 +511,23 @@ class E(StrEnum):
 	A = auto()
 
 reveal_type(E.A.value)  # N: Revealed type is "Literal['a']?"
+
+[case int_enum_promotion]
+# From GH #277
+import enum
+from typing import Literal
+
+class Period(enum.IntEnum):
+    day = 24
+    other = 30
+
+def takes_float(x: float) -> None:
+    print(isinstance(x, (int, float)))
+    return None
+
+def f(p: Period, e: Literal[Period.day]):
+    takes_float(Period.day)
+    takes_float(p)
+    takes_float(e)
+    takes_float(24)
+    takes_float(24.0)

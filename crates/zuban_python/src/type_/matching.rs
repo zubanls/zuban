@@ -317,36 +317,52 @@ impl Type {
             .or(|| {
                 self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant)
             })
-            .or(|| {
-                if let Some(class2) = value_type.maybe_class(i_s.db) {
-                    if class2.incomplete_mro(i_s.db) && self.maybe_class(i_s.db).is_some() {
-                        debug!(
-                            "Match of class, because base class is incomplete: {}",
-                            class2.format_short(i_s.db)
-                        );
-                        return Match::new_true();
-                    }
-                    if !matcher.ignore_promotions() {
-                        return self.check_promotion(i_s, matcher, class2.node_ref);
-                    }
-                } else if let Type::Literal(literal) = value_type
-                    && !matcher.ignore_promotions()
-                {
-                    return self.check_promotion(i_s, matcher, literal.fallback_node_ref(i_s.db));
-                }
-                Match::new_false()
-            });
+            .or(|| self.check_promotion(i_s, matcher, value_type));
         debug_message_for_result(&result);
         result
     }
 
+    fn check_promotion(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Type,
+    ) -> Match {
+        match value_type {
+            Type::Class(c2) => {
+                let class2 = c2.class(i_s.db);
+                if class2.incomplete_mro(i_s.db) && self.maybe_class(i_s.db).is_some() {
+                    debug!(
+                        "Match of class, because base class is incomplete: {}",
+                        class2.format_short(i_s.db)
+                    );
+                    return Match::new_true();
+                }
+                self.check_class_promotion(i_s, matcher, class2.node_ref)
+            }
+            Type::Literal(literal) => {
+                self.check_class_promotion(i_s, matcher, literal.fallback_node_ref(i_s.db))
+            }
+            Type::Enum(enum_) => {
+                self.check_class_promotion(i_s, matcher, enum_.class(i_s.db).node_ref)
+            }
+            Type::EnumMember(member) => {
+                self.check_class_promotion(i_s, matcher, member.enum_.class(i_s.db).node_ref)
+            }
+            _ => Match::new_false(),
+        }
+    }
+
     #[inline]
-    pub fn check_promotion(
+    fn check_class_promotion(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
         class2_node_ref: ClassNodeRef,
     ) -> Match {
+        if matcher.ignore_promotions() {
+            return Match::new_false();
+        }
         if matches!(self, Type::None) {
             // In no-strict optional cases we don't want to match.
             return Match::new_false();
@@ -359,7 +375,7 @@ impl Type {
                 matcher,
                 &Type::new_class(cls_node_ref.as_link(), ClassGenerics::new_none()),
             )
-            .or(|| self.check_promotion(i_s, matcher, cls_node_ref))
+            .or(|| self.check_class_promotion(i_s, matcher, cls_node_ref))
         } else {
             Match::new_false()
         }
