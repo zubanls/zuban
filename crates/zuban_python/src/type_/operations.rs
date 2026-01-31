@@ -215,6 +215,9 @@ impl Type {
             Type::Tuple(tup) => callable(self, lookup_on_tuple(tup, i_s, add_issue, name)),
             Type::Union(union) => {
                 for t in union.iter() {
+                    if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                        continue;
+                    }
                     t.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
