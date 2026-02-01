@@ -251,7 +251,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
     fn add_typed_dict_completions(&mut self, typed_dict: &Arc<TypedDict>) {
         let mut starts_with: Option<&str> = None;
         if let Some(value) = &self.should_start_with_lowercase {
-            starts_with = if value.chars().nth(0) == Some('"') {
+            starts_with = if matches!(value.chars().nth(0), Some('"') | Some('\'')) {
                 value.as_str().get(1..)
             } else {
                 Some(value.as_str())

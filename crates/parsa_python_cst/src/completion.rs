@@ -49,7 +49,7 @@ impl Tree {
         );
 
         if leaf.is_type(PyNodeType::Terminal(TerminalType::String)) {
-            if let Some(maybe_dict_node) = maybe_inside_square_braces(leaf) {
+            if let Some(maybe_dict_node) = maybe_inside_square_braces(leaf) && position != leaf.end() - 1 {
                 return (
                     scope,
                     CompletionNode::InsideSquareBraces { maybe_dict_node },
@@ -175,7 +175,7 @@ impl Tree {
                         );
                     }
                 }
-                "\"" | "\'" => {
+                "\"" | "'" => {
                     if let Some(maybe_dict_node) = maybe_inside_square_braces(previous) {
                         return (
                             scope,

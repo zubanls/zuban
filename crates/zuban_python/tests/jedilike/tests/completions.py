@@ -166,7 +166,11 @@ def typed_dict():
     def complete_typed_dict_key(_dict: SomeTypedDict, a: A):
         #? ['some_field_foo', 'some_field_bar']
         _dict["some
-        #? 19 ['some_field_foo', 'some_field_bar']
+        #? 18 ['some_field_foo', 'some_field_bar']
         _dict["some"]
         #? ['some_field_foo', 'some_field_bar']
         _dict["nested_dict"]["some
+        #? 15 []
+        _dict[""]
+        #? 14 ['some_field_foo', 'some_field_bar', 'nested_dict']
+        _dict[""]
