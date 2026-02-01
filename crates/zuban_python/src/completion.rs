@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::HashSet, sync::Arc};
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
     ClassDef, CompletionContext, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name,
-    NameDef, NodeIndex, RestNode, Scope,
+    NameDef, NodeIndex, QuoteState, RestNode, Scope,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
@@ -27,7 +27,7 @@ use crate::{
     recoverable_error,
     type_::{
         CallableContent, CallableLike, CallableParam, CallableParams, Enum, EnumMemberDefinition,
-        FunctionKind, Namespace, ParamType, Type,
+        FunctionKind, Namespace, ParamType, Type, TypedDict,
     },
     type_helpers::{Class, Function, TypeOrClass, is_private},
 };
@@ -127,11 +127,6 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 self.add_attribute_completions(inf)
             }
             CompletionNode::Global { context } => {
-                let reachable_scopes = &mut ScopesIterator {
-                    file,
-                    only_reachable: true,
-                    current: Some(self.infos.scope),
-                };
                 match context {
                     Some(CompletionContext::PrimaryCall(call)) => {
                         self.add_keyword_param_completions(self.infos.infer_primary_or_atom(*call));
@@ -143,46 +138,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                     }
                     None => (),
                 }
-                for scope in reachable_scopes {
-                    match scope {
-                        Scope::Module => self.add_global_module_completions(file),
-                        Scope::Class(cls) => {
-                            let storage = ClassNodeRef::new(file, cls.index()).class_storage();
-                            for (_, node_index) in storage.class_symbol_table.iter() {
-                                self.maybe_add_tree_name(
-                                    file,
-                                    scope,
-                                    NameDef::by_index(
-                                        &file.tree,
-                                        node_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                                    ),
-                                    true,
-                                )
-                            }
-                            self.add_star_imports_completions(
-                                file,
-                                cls.index(),
-                                &mut Default::default(),
-                            )
-                        }
-                        Scope::Function(func) => {
-                            func.on_name_def_in_scope(&mut |name_def| {
-                                self.maybe_add_tree_name(file, scope, name_def, false)
-                            });
-                            self.add_star_imports_completions(
-                                file,
-                                func.index(),
-                                &mut Default::default(),
-                            )
-                        }
-                        Scope::Lambda(lambda) => {
-                            for param in lambda.params() {
-                                self.maybe_add_tree_name(file, scope, param.name_def(), false)
-                            }
-                        }
-                    };
-                }
-                self.add_module_completions(db.python_state.builtins())
+                self.add_scope_completions()
             }
             CompletionNode::ImportName { path: None } => self.add_global_import_completions(),
             CompletionNode::ImportName {
@@ -233,6 +189,110 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
             CompletionNode::InsideString => (),
+            CompletionNode::InsideSquareBraces {
+                maybe_dict_node,
+                quote_state,
+            } => {
+                let qs = quote_state.to_owned();
+                let inf = self.infos.infer_primary_or_atom(*maybe_dict_node);
+                with_i_s_non_self(db, file, self.infos.scope, |i_s| {
+                    let t: &Type = &inf.as_cow_type(i_s);
+                    match t {
+                        Type::TypedDict(type_dict) => {
+                            self.add_typed_dict_completions(type_dict, &qs);
+                        }
+                        _ => (),
+                    }
+                })
+            }
+        }
+    }
+
+    fn add_scope_completions(&mut self) {
+        let file = self.infos.file;
+        let db = self.infos.db;
+        let reachable_scopes = &mut ScopesIterator {
+            file,
+            only_reachable: true,
+            current: Some(self.infos.scope),
+        };
+        for scope in reachable_scopes {
+            match scope {
+                Scope::Module => self.add_global_module_completions(file),
+                Scope::Class(cls) => {
+                    let storage = ClassNodeRef::new(file, cls.index()).class_storage();
+                    for (_, node_index) in storage.class_symbol_table.iter() {
+                        self.maybe_add_tree_name(
+                            file,
+                            scope,
+                            NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE),
+                            true,
+                        )
+                    }
+                    self.add_star_imports_completions(file, cls.index(), &mut Default::default())
+                }
+                Scope::Function(func) => {
+                    func.on_name_def_in_scope(&mut |name_def| {
+                        self.maybe_add_tree_name(file, scope, name_def, false)
+                    });
+                    self.add_star_imports_completions(file, func.index(), &mut Default::default())
+                }
+                Scope::Lambda(lambda) => {
+                    for param in lambda.params() {
+                        self.maybe_add_tree_name(file, scope, param.name_def(), false)
+                    }
+                }
+            };
+        }
+        self.add_module_completions(db.python_state.builtins())
+    }
+
+    fn add_typed_dict_completions(
+        &mut self,
+        typed_dict: &Arc<TypedDict>,
+        quote_state: &QuoteState,
+    ) {
+        let mut starts_with: Option<&str> = None;
+        if let Some(value) = &self.should_start_with_lowercase {
+            starts_with = if matches!(value.chars().nth(0), Some('"') | Some('\'')) {
+                value.as_str().get(1..)
+            } else {
+                Some(value.as_str())
+            }
+        }
+        let is_without_quotes = match quote_state {
+            QuoteState::WithoutQuotes => true,
+            _ => false,
+        };
+        for member in typed_dict.members(self.infos.db).named.iter() {
+            let mem_name = member.name.as_str(self.infos.db);
+            if starts_with.is_some() {
+                if mem_name
+                    .get(..starts_with.unwrap().len())
+                    .map(|s| s.eq_ignore_ascii_case(starts_with.unwrap()))
+                    != Some(true)
+                {
+                    continue;
+                }
+            }
+            let mem_name_with_necessary_symbol = match quote_state {
+                QuoteState::NormalString => String::from(mem_name),
+                QuoteState::WithoutQuotes => format!("\"{}\"", mem_name),
+                QuoteState::QuoteOpened(quote) => format!("{}{}", mem_name, quote),
+            };
+            if let Some(result) = (self.on_result)(
+                self.replace_range,
+                &TypedDictMemberCompletion {
+                    db: self.infos.db,
+                    typed_dict: &typed_dict,
+                    member: mem_name_with_necessary_symbol,
+                },
+            ) {
+                self.items.push((CompletionSortPriority::Literal, result))
+            }
+        }
+        if is_without_quotes {
+            self.add_scope_completions();
         }
     }
 
@@ -979,9 +1039,28 @@ impl Completion for NamedTupleMemberCompletion<'_> {
     }
 }
 
+struct TypedDictMemberCompletion<'db> {
+    db: &'db Database,
+    typed_dict: &'db TypedDict,
+    member: String,
+}
+impl Completion for TypedDictMemberCompletion<'_> {
+    fn label(&self) -> &str {
+        self.member.as_str()
+    }
+
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::CONSTANT
+    }
+
+    fn file_path(&self) -> Option<&str> {
+        Some(self.db.file_path(self.typed_dict.defined_at.file))
+    }
+}
+
 #[derive(Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
 enum CompletionSortPriority<'db> {
-    //Literal,    // e.g. TypedDict literal
+    Literal, // e.g. TypedDict literal
     //NamedParam, // e.g. def foo(*, bar) => `foo(b` completes to bar=
     KeywordArgument,
     EnumMember,
