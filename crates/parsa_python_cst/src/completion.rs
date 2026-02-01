@@ -54,7 +54,10 @@ impl Tree {
             {
                 return (
                     scope,
-                    CompletionNode::InsideSquareBraces { maybe_dict_node },
+                    CompletionNode::InsideSquareBraces {
+                        maybe_dict_node,
+                        quote_state: QuoteState::NormalString,
+                    },
                     rest,
                 );
             }
@@ -169,19 +172,29 @@ impl Tree {
                     return (scope, CompletionNode::AfterClassKeyword, rest);
                 }
                 "[" => {
-                    if let Some(maybe_dict_node) = inside_square_braces(previous) {
+                    if let Some(maybe_dict_node) = inside_square_braces(previous)
+                        && matches!(leaf.as_code(), "\"" | "'")
+                    {
                         return (
                             scope,
-                            CompletionNode::InsideSquareBraces { maybe_dict_node },
+                            CompletionNode::InsideSquareBraces {
+                                maybe_dict_node,
+                                quote_state: QuoteState::QuoteOpened(
+                                    leaf.as_code().chars().nth(0).unwrap(),
+                                ),
+                            },
                             rest,
                         );
                     }
                 }
-                "\"" | "'" => {
+                quote @ ("\"" | "'") => {
                     if let Some(maybe_dict_node) = maybe_inside_square_braces(previous) {
                         return (
                             scope,
-                            CompletionNode::InsideSquareBraces { maybe_dict_node },
+                            CompletionNode::InsideSquareBraces {
+                                maybe_dict_node,
+                                quote_state: QuoteState::QuoteOpened(quote.chars().nth(0).unwrap()),
+                            },
                             rest,
                         );
                     }
@@ -232,6 +245,18 @@ impl Tree {
                     );
                 }
             }
+        }
+        if leaf.as_code() == "["
+            && let Some(maybe_dict_node) = inside_square_braces(leaf)
+        {
+            return (
+                scope,
+                CompletionNode::InsideSquareBraces {
+                    maybe_dict_node,
+                    quote_state: QuoteState::WithoutQuotes,
+                },
+                rest,
+            );
         }
         (
             scope,
@@ -396,6 +421,13 @@ impl Scope<'_> {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub enum QuoteState {
+    WithoutQuotes,
+    QuoteOpened(char),
+    NormalString,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum CompletionNode<'db> {
     Attribute {
         base: PrimaryOrAtom<'db>,
@@ -421,6 +453,8 @@ pub enum CompletionNode<'db> {
     InsideString,
     InsideSquareBraces {
         maybe_dict_node: PrimaryOrAtom<'db>,
+        quote_state: QuoteState,
+        //context: Option<CompletionContext<'db>>,
     },
     Global {
         context: Option<CompletionContext<'db>>,
