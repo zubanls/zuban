@@ -8,8 +8,6 @@ self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
-try_except_attribute_error_non_lookups_allowed
-
 docs_alias
 
 super_explicit_type_var_method
