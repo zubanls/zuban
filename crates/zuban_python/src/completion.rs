@@ -27,7 +27,7 @@ use crate::{
     recoverable_error,
     type_::{
         CallableContent, CallableLike, CallableParam, CallableParams, Enum, EnumMemberDefinition,
-        FunctionKind, Namespace, ParamType, Type,
+        FunctionKind, Namespace, ParamType, Type, TypedDict
     },
     type_helpers::{Class, Function, TypeOrClass, is_private},
 };
@@ -233,6 +233,54 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
             CompletionNode::InsideString => (),
+            CompletionNode::InsideSquareBraces{maybe_dict_node} => {
+                let inf = self.infos.infer_primary_or_atom(*maybe_dict_node);
+                with_i_s_non_self(db, file, self.infos.scope, |i_s| {
+                    let t: &Type = &inf.as_cow_type(i_s);
+                    match t{
+                        Type::TypedDict(type_dict) => {
+                            self.add_typed_dict_completions(type_dict);
+                        }
+                        _ => (),
+                    }
+                    
+                })
+            },
+        }
+    }
+
+    fn add_typed_dict_completions(&mut self, typed_dict: &Arc<TypedDict>){
+
+        let mut starts_with: Option<&str> = None;
+        if let Some(value) = &self.should_start_with_lowercase{
+            starts_with = if value.chars().nth(0) == Some('"'){
+                value.as_str().get(1..)
+            }else{
+                Some(value.as_str())
+            }
+        }
+        for member in typed_dict.members(self.infos.db).named.iter(){
+            let mem_name = member.name.as_str(self.infos.db);
+            if starts_with.is_some(){
+                if mem_name
+                    .get(..starts_with.unwrap().len())
+                    .map(|s| s.eq_ignore_ascii_case(starts_with.unwrap()))
+                    != Some(true)
+                {
+                    continue;
+                }
+            }
+            if let Some(result) = (self.on_result)(
+                self.replace_range,
+                &TypedDictMemberCompletion{
+                    db: self.infos.db,
+                    typed_dict: &typed_dict,
+                    member: mem_name,
+
+                }
+            ){
+                self.items.push((CompletionSortPriority::Literal, result))
+            }
         }
     }
 
@@ -979,9 +1027,28 @@ impl Completion for NamedTupleMemberCompletion<'_> {
     }
 }
 
+struct TypedDictMemberCompletion<'db>{
+    db: &'db Database,
+    typed_dict: &'db TypedDict,
+    member: &'db str,
+}
+impl Completion for TypedDictMemberCompletion<'_>{
+    fn label(&self) -> &str{
+        self.member
+    }
+
+    fn kind(&self) -> CompletionItemKind{
+        CompletionItemKind::CONSTANT
+    }
+
+    fn file_path(&self) -> Option<&str> {
+        Some(self.db.file_path(self.typed_dict.defined_at.file))
+    }
+}
+
 #[derive(Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
 enum CompletionSortPriority<'db> {
-    //Literal,    // e.g. TypedDict literal
+    Literal,    // e.g. TypedDict literal
     //NamedParam, // e.g. def foo(*, bar) => `foo(b` completes to bar=
     KeywordArgument,
     EnumMember,

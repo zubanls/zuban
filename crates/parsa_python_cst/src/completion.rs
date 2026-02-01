@@ -49,6 +49,15 @@ impl Tree {
         );
 
         if leaf.is_type(PyNodeType::Terminal(TerminalType::String)) {
+            if let Some(maybe_dict_node) = maybe_inside_square_braces(leaf){
+                return (
+                    scope, 
+                    CompletionNode::InsideSquareBraces{
+                        maybe_dict_node,
+                    },
+                    rest
+                )
+            }
             return (scope, CompletionNode::InsideString, rest);
         }
 
@@ -159,6 +168,22 @@ impl Tree {
                 "class" => {
                     return (scope, CompletionNode::AfterClassKeyword, rest);
                 }
+                "[" => {
+                    if let Some(maybe_dict_node) = inside_square_braces(previous){
+                        return (scope, CompletionNode::InsideSquareBraces{maybe_dict_node}, rest);
+                    }
+                }
+                "\"" | "\'" => {
+                    if let Some(maybe_dict_node) = maybe_inside_square_braces(previous){
+                        return (
+                            scope,
+                            CompletionNode::InsideSquareBraces{
+                                maybe_dict_node,
+                            },
+                            rest,
+                        )
+                    }
+                }
                 _ => (),
             }
             let parent = previous.parent().unwrap();
@@ -214,6 +239,26 @@ impl Tree {
             rest,
         )
     }
+}
+
+fn inside_square_braces(square_brace_node: PyNode)->Option<PrimaryOrAtom>{
+        if let Some(maybe_dict_node) = square_brace_node.previous_sibling(){
+            if maybe_dict_node.is_type(Nonterminal(atom)){
+                return Some(PrimaryOrAtom::Atom(Atom::new(maybe_dict_node)));
+            } else if maybe_dict_node.is_type(Nonterminal(primary)){
+                return Some(PrimaryOrAtom::Primary(Primary::new(maybe_dict_node)));
+            } else{ 
+                return None;
+            }
+        }
+        None
+} 
+
+fn maybe_inside_square_braces(quote_node: PyNode)->Option<PrimaryOrAtom>{
+    if let Some(square_brace) = quote_node.previous_leaf() && square_brace.as_code() == "["{
+        return inside_square_braces(square_brace);
+    }
+    None
 }
 
 fn context(node: PyNode) -> Option<CompletionContext> {
@@ -370,6 +415,7 @@ pub enum CompletionNode<'db> {
     AfterDefKeyword,
     AfterClassKeyword,
     InsideString,
+    InsideSquareBraces {maybe_dict_node: PrimaryOrAtom<'db>},
     Global {
         context: Option<CompletionContext<'db>>,
     },
