@@ -397,10 +397,15 @@ pub(crate) struct FlowAnalysisResult<T> {
     pub unfinished_partials: Vec<PointLink>,
 }
 
+#[derive(Debug)]
+struct TryFrame {
+    entries: Entries,
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
-    try_frames: RefCell<Vec<Entries>>,
+    try_frames: RefCell<Vec<TryFrame>>,
     loop_details: RefCell<Option<LoopDetails>>,
     delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
     partials_in_module: RefCell<Vec<PointLink>>,
@@ -669,10 +674,11 @@ impl FlowAnalysis {
     }
 
     fn overwrite_entry(&self, i_s: &InferenceState, new_entry: Entry) {
-        for entries in self.try_frames.borrow_mut().iter_mut() {
-            invalidate_child_entries(entries, i_s.db, &new_entry.key);
+        for try_frame in self.try_frames.borrow_mut().iter_mut() {
+            invalidate_child_entries(&mut try_frame.entries, i_s.db, &new_entry.key);
             // We don't want to add entries if they are already overwritten in the same frame.
-            if entries
+            if try_frame
+                .entries
                 .iter()
                 .any(|e| new_entry.key.is_child_of(i_s.db, &e.key))
             {
@@ -680,7 +686,7 @@ impl FlowAnalysis {
             }
 
             let mut add_entry_to_try_frame = |new_entry: &Entry| {
-                for entry in &mut *entries {
+                for entry in &mut try_frame.entries {
                     if entry.key.equals(i_s.db, &new_entry.key) {
                         entry.union(i_s, new_entry, false);
                         return true;
@@ -692,7 +698,7 @@ impl FlowAnalysis {
             // If we have a key that narrows in our ancestors, we either add it to an existing
             // one or push a new one.
             if !add_entry_to_try_frame(&new) {
-                entries.push(new)
+                try_frame.entries.push(new)
             }
         }
 
@@ -738,8 +744,8 @@ impl FlowAnalysis {
         let mut tos_frame = self.tos_frame();
         let entries = &mut tos_frame.entries;
         if cfg!(debug_assertions) {
-            for entries in self.try_frames.borrow().iter() {
-                for entry in entries.iter() {
+            for try_frame in self.try_frames.borrow().iter() {
+                for entry in try_frame.entries.iter() {
                     if entry.key.equals(db, &new_entry.key)
                         && entry.type_ != EntryKind::OriginalDeclaration
                     {
@@ -936,10 +942,12 @@ impl FlowAnalysis {
     }
 
     fn with_new_try_frame(&self, callable: impl FnOnce()) -> Frame {
-        self.try_frames.borrow_mut().push(vec![]);
+        self.try_frames
+            .borrow_mut()
+            .push(TryFrame { entries: vec![] });
         callable();
         Frame {
-            entries: self.try_frames.borrow_mut().pop().unwrap(),
+            entries: self.try_frames.borrow_mut().pop().unwrap().entries,
             ..Frame::new_conditional()
         }
     }
