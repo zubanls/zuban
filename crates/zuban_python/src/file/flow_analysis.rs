@@ -1159,6 +1159,15 @@ impl FlowAnalysis {
             new
         }
     }
+
+    pub fn in_try_that_ignores_attribute_errors(&self) -> bool {
+        if let Ok(borrowed) = self.try_frames.try_borrow() {
+            !borrowed.is_empty()
+        } else {
+            recoverable_error!("Expected to be able to access the frames");
+            false
+        }
+    }
 }
 
 fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
