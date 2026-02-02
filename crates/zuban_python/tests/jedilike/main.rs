@@ -32,7 +32,7 @@ lazy_static::lazy_static! {
         ("decorators.py", 31),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 18),
-        ("flow_analysis.py", 16),
+        ("flow_analysis.py", 17),
         ("fstring.py", 4),
         ("functions.py", 65),
         ("generators.py", 13),
