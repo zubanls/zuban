@@ -454,7 +454,6 @@ pub enum CompletionNode<'db> {
     InsideSquareBraces {
         maybe_dict_node: PrimaryOrAtom<'db>,
         quote_state: QuoteState,
-        //context: Option<CompletionContext<'db>>,
     },
     Global {
         context: Option<CompletionContext<'db>>,
