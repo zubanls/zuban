@@ -558,3 +558,22 @@ x = undefined  # E: Name "undefined" is not defined
 
 class H:
     asdf = x
+
+[case flow_analysis_for_non_typed_optional_should_match]
+# flags: --mode default
+
+import m
+
+# Removing this line would make the test pass
+m.Y(1).f()
+
+[file m.py]
+class Y:
+    x = None
+    y = []
+    def __init__(self, x):
+        self.x = x
+
+    def f(self):
+        reveal_type(self.x)  # N: Revealed type is "Any | None"
+        return self.x.foo
