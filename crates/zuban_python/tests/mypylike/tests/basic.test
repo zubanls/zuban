@@ -1694,3 +1694,32 @@ open([])  # zuban: ignore[call-overload]
 [out]
 __main__:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 __main__:4: note: Error code "assignment" not covered by "type: ignore" comment
+
+[case try_except_attribute_error_non_lookups_allowed]
+# flags: --check-untyped-defs
+def union() -> int | str: ...
+
+def f():
+    try:
+        union().upper
+        union().undefined_in_both  # E: Item "int" of "int | str" has no attribute "undefined_in_both" \
+                                   # E: Item "str" of "int | str" has no attribute "undefined_in_both"
+        (1).upper  # E: "int" has no attribute "upper"
+    except AttributeError:
+        union().upper  # E: Item "int" of "int | str" has no attribute "upper"
+    union().upper  # E: Item "int" of "int | str" has no attribute "upper"
+
+
+def g() -> None:
+    try:
+        union().upper
+        union().undefined_in_both  # E: Item "int" of "int | str" has no attribute "undefined_in_both" \
+                                   # E: Item "str" of "int | str" has no attribute "undefined_in_both"
+        (1).upper  # E: "int" has no attribute "upper"
+    except AttributeError:
+        union().upper  # E: Item "int" of "int | str" has no attribute "upper"
+    union().upper  # E: Item "int" of "int | str" has no attribute "upper"
+
+    try:
+        union().upper  # E: Item "int" of "int | str" has no attribute "upper"
+    except TypeError: ...

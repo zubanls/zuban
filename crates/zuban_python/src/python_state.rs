@@ -155,6 +155,7 @@ pub(crate) struct PythonState {
     builtins_function_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
     builtins_exception_index: NodeIndex,
+    builtins_attribute_error_index: NodeIndex,
     builtins_base_exception_group_index: Option<NodeIndex>,
     builtins_exception_group_index: Option<NodeIndex>,
     builtins_str_index: NodeIndex,
@@ -288,6 +289,7 @@ impl PythonState {
             builtins_function_index: 0,
             builtins_base_exception_index: 0,
             builtins_exception_index: 0,
+            builtins_attribute_error_index: 0,
             builtins_base_exception_group_index: None,
             builtins_exception_group_index: None,
             builtins_str_index: 0,
@@ -667,6 +669,7 @@ impl PythonState {
         cache_index!(builtins_function_index, builtins, "function");
         cache_index!(builtins_base_exception_index, builtins, "BaseException");
         cache_index!(builtins_exception_index, builtins, "Exception");
+        cache_index!(builtins_attribute_error_index, builtins, "AttributeError");
         cache_optional_index!(
             builtins_base_exception_group_index,
             builtins,
@@ -1106,6 +1109,7 @@ impl PythonState {
     attribute_link!(builtins, pub notimplementederror_link, builtins_notimplementederror);
     attribute_link!(builtins, pub slice_link, builtins_slice_index);
     attribute_link!(builtins, pub property_link, builtins_property_index);
+    attribute_link!(builtins, pub attribute_error_link, builtins_attribute_error_index);
     attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
     attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
     attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);

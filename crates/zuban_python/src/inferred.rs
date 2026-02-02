@@ -1013,6 +1013,15 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             return Some((self, attr_kind));
                         }
+                        Specific::PartialNone if i_s.db.project.flags.local_partial_types => {
+                            // Looking up partials means that they have not yet been processed and
+                            // will be inferred as None | Any. I'm not 100% sure this is always
+                            // safe, but at this point we haven't found code that
+                            return Some((
+                                Inferred::from_type(i_s.db.python_state.any_or_none.clone()),
+                                AttributeKind::Attribute,
+                            ));
+                        }
                         _ => (),
                     },
                     PointKind::Complex => {
@@ -3133,9 +3142,6 @@ pub fn add_attribute_error(
         _ => format!("\"{}\"", t.format_short(i_s.db)).into(),
     };
     let name = Box::from(name);
-    if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
-        return;
-    }
     if let Type::TypeVar(usage) = full_type
         && let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db)
         && bound.is_union_like(i_s.db)

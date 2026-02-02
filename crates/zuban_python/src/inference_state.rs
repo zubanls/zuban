@@ -3,7 +3,7 @@ use std::cell::Cell;
 use crate::{
     TypeCheckerFlags,
     database::{Database, ParentScope},
-    file::{ClassNodeRef, PythonFile, TypeVarCallbackReturn},
+    file::{ClassNodeRef, FLOW_ANALYSIS, PythonFile, TypeVarCallbackReturn},
     node_ref::NodeRef,
     type_::{CallableContent, Type, TypeVarLike},
     type_helpers::{Class, Function},
@@ -266,5 +266,9 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         } else {
             &self.db.project.flags
         }
+    }
+
+    pub fn in_try_that_ignores_attribute_errors(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| fa.in_try_that_ignores_attribute_errors())
     }
 }

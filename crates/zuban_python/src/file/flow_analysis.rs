@@ -397,10 +397,18 @@ pub(crate) struct FlowAnalysisResult<T> {
     pub unfinished_partials: Vec<PointLink>,
 }
 
+#[derive(Debug)]
+struct TryFrame {
+    entries: Entries,
+    // This is true only when an explicit AttributeError is provided and not when e.g.
+    // BaseException or Exception is caught.
+    ignores_attribute_error: bool,
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
-    try_frames: RefCell<Vec<Entries>>,
+    try_frames: RefCell<Vec<TryFrame>>,
     loop_details: RefCell<Option<LoopDetails>>,
     delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
     partials_in_module: RefCell<Vec<PointLink>>,
@@ -669,10 +677,11 @@ impl FlowAnalysis {
     }
 
     fn overwrite_entry(&self, i_s: &InferenceState, new_entry: Entry) {
-        for entries in self.try_frames.borrow_mut().iter_mut() {
-            invalidate_child_entries(entries, i_s.db, &new_entry.key);
+        for try_frame in self.try_frames.borrow_mut().iter_mut() {
+            invalidate_child_entries(&mut try_frame.entries, i_s.db, &new_entry.key);
             // We don't want to add entries if they are already overwritten in the same frame.
-            if entries
+            if try_frame
+                .entries
                 .iter()
                 .any(|e| new_entry.key.is_child_of(i_s.db, &e.key))
             {
@@ -680,7 +689,7 @@ impl FlowAnalysis {
             }
 
             let mut add_entry_to_try_frame = |new_entry: &Entry| {
-                for entry in &mut *entries {
+                for entry in &mut try_frame.entries {
                     if entry.key.equals(i_s.db, &new_entry.key) {
                         entry.union(i_s, new_entry, false);
                         return true;
@@ -692,7 +701,7 @@ impl FlowAnalysis {
             // If we have a key that narrows in our ancestors, we either add it to an existing
             // one or push a new one.
             if !add_entry_to_try_frame(&new) {
-                entries.push(new)
+                try_frame.entries.push(new)
             }
         }
 
@@ -738,8 +747,8 @@ impl FlowAnalysis {
         let mut tos_frame = self.tos_frame();
         let entries = &mut tos_frame.entries;
         if cfg!(debug_assertions) {
-            for entries in self.try_frames.borrow().iter() {
-                for entry in entries.iter() {
+            for try_frame in self.try_frames.borrow().iter() {
+                for entry in try_frame.entries.iter() {
                     if entry.key.equals(db, &new_entry.key)
                         && entry.type_ != EntryKind::OriginalDeclaration
                     {
@@ -935,11 +944,14 @@ impl FlowAnalysis {
         self.in_type_checking_only_block.set(old);
     }
 
-    fn with_new_try_frame(&self, callable: impl FnOnce()) -> Frame {
-        self.try_frames.borrow_mut().push(vec![]);
+    fn with_new_try_frame(&self, ignores_attribute_error: bool, callable: impl FnOnce()) -> Frame {
+        self.try_frames.borrow_mut().push(TryFrame {
+            entries: vec![],
+            ignores_attribute_error,
+        });
         callable();
         Frame {
-            entries: self.try_frames.borrow_mut().pop().unwrap(),
+            entries: self.try_frames.borrow_mut().pop().unwrap().entries,
             ..Frame::new_conditional()
         }
     }
@@ -1157,6 +1169,17 @@ impl FlowAnalysis {
             }
         } else {
             new
+        }
+    }
+
+    pub fn in_try_that_ignores_attribute_errors(&self) -> bool {
+        if let Ok(borrowed) = self.try_frames.try_borrow() {
+            borrowed
+                .iter()
+                .any(|try_frame| try_frame.ignores_attribute_error)
+        } else {
+            recoverable_error!("Expected to be able to access the frames");
+            false
         }
     }
 }
@@ -2455,6 +2478,16 @@ impl<'file> Inference<'_, 'file, '_> {
             let mut after_ok = Frame::new_unreachable();
             let mut after_exception = Frame::new_unreachable();
             let mut nth_except_body = 0;
+            let ignores_attribute_error = try_stmt.iter_blocks().any(|b| match b {
+                TryBlockType::Except(b) => {
+                    let (Some(except_expr), _) = b.unpack() else {
+                        return false;
+                    };
+                    let inf = self.infer_expression(except_expr.expression());
+                    inf.maybe_saved_link() == Some(self.i_s.db.python_state.attribute_error_link())
+                }
+                _ => false,
+            });
             for b in try_stmt.iter_blocks() {
                 let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
                     nth_except_body += 1;
@@ -2512,11 +2545,12 @@ impl<'file> Inference<'_, 'file, '_> {
                 };
                 match b {
                     TryBlockType::Try(block) => {
-                        try_frame_for_except = fa.with_new_try_frame(|| {
-                            try_frame = Some(fa.with_frame(Frame::new_conditional(), || {
-                                self.calc_block_diagnostics(block, class, func)
-                            }))
-                        })
+                        try_frame_for_except =
+                            fa.with_new_try_frame(ignores_attribute_error, || {
+                                try_frame = Some(fa.with_frame(Frame::new_conditional(), || {
+                                    self.calc_block_diagnostics(block, class, func)
+                                }))
+                            })
                     }
                     TryBlockType::Except(b) => {
                         let (except_expr, block) = b.unpack();
@@ -2585,7 +2619,7 @@ impl<'file> Inference<'_, 'file, '_> {
         callable: impl FnOnce(),
     ) {
         FLOW_ANALYSIS.with(|fa| {
-            let try_frame_for_except = fa.with_new_try_frame(|| {
+            let try_frame_for_except = fa.with_new_try_frame(false, || {
                 // Create a new frame that is then thrown away. This makes sense if we consider
                 // that the end of the with statement might never be reached.
                 fa.with_frame(Frame::new_conditional(), callable);

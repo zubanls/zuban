@@ -1200,7 +1200,7 @@ assert_type(foo(1), Literal[1])
 untyped_function_return_mode = "advanced"
 check_untyped_defs = true
 
-[case untyped_mode_non_strict_optional]
+[case untyped_mode_non_strict_optional_attr_lookups]
 # flags: --mode default
 from typing import overload
 
@@ -1222,9 +1222,14 @@ def f() -> None:
 
 def g():
     x = optional()
+
     x.upper
+    reveal_type(x.upper())  # N: Revealed type is "str"
     expect_str(x)
     expect_str_overload(x)
+
+    if x is None:
+        x.upper  # E: "None" has no attribute "upper"
 
 [case infer_none_in_list_as_any]
 # flags: --mode default
