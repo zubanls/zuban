@@ -369,8 +369,12 @@ impl Entries {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
-                if let DirectoryEntry::Directory(dir) = &*entry {
-                    Directory::entries(vfs, dir).unload_file(vfs, rest);
+                if let DirectoryEntry::Directory(dir) = &*entry
+                    // We do not need to unload files if the entries inside the dir do not yet
+                    // exist.
+                    && let Some(entries) = dir.entries.get()
+                {
+                    entries.unload_file(vfs, rest);
                 }
             } else if matches!(*entry, DirectoryEntry::File(_)) {
                 drop(entry);
@@ -407,8 +411,11 @@ impl Entries {
         if let Some(inner) = self.search(name) {
             match &*inner {
                 DirectoryEntry::Directory(dir) => {
-                    if let Some(rest) = rest {
-                        Directory::entries(vfs, dir).delete_directory(vfs, rest)
+                    if let Some(rest) = rest
+                        // Entries might not be loaded and therefore there's no dir to delete
+                        && let Some(entries) = dir.entries.get()
+                    {
+                        entries.delete_directory(vfs, rest)
                     } else {
                         drop(inner);
                         self.remove_name(name);
