@@ -1018,7 +1018,7 @@ fn test_virtual_environment() {
         return;
     }
 
-    let run = |expected_first: &[String], expected_second: Option<&[String]>| {
+    let run = || {
         let server = Project::with_fixture(if cfg!(windows) {
             r#"
                 [file venv/Scripts/python.exe]
@@ -1061,88 +1061,83 @@ fn test_virtual_environment() {
 
         let _span = tracing::info_span!("test_virtual_environment").entered();
 
-        server.open_in_memory_file(PATH, "from foo import foo\nfrom bar import bar");
-
-        assert_eq!(
-            server.expect_publish_diagnostics_for_file(PATH),
-            expected_first,
+        server.open_in_memory_file(
+            PATH,
+            "from foo import foo\nfrom bar import bar\nreveal_type(foo)",
         );
 
-        if let Some(expected_second) = expected_second {
-            tracing::info!("Remove it by renaming it");
-            let old_path = if cfg!(windows) {
-                "venv/Lib/site-packages/foo"
-            } else {
-                "venv/lib/python3.12/site-packages/foo"
-            };
-            let new_path = if cfg!(windows) {
-                "venv/Lib/site-packages/foo_new"
-            } else {
-                "venv/lib/python3.12/site-packages/foo_new"
-            };
-            server.rename_file_and_wait(old_path, new_path);
-            assert_eq!(
-                server.expect_publish_diagnostics_for_file(PATH),
-                expected_second,
-            );
-            server.rename_file_and_wait(new_path, old_path);
-            assert_eq!(
-                server.expect_publish_diagnostics_for_file(PATH),
-                expected_first,
-            );
+        let revealed_type_int = "Revealed type is \"builtins.int\"";
+        assert_eq!(
+            server.expect_publish_diagnostics_for_file(PATH),
+            [revealed_type_int]
+        );
 
-            tracing::info!("Check if rewriting the file causes an issue now");
-            let init = &format!("{old_path}/__init__.py");
-            server.write_file_and_wait(init, "\n");
-            assert_eq!(
-                server.expect_publish_diagnostics_for_file(PATH),
-                ["Module \"foo\" has no attribute \"foo\"".to_string()],
-            );
-
-            tracing::info!("Check adding the code again");
-            server.write_file_and_wait(init, "foo = 1");
-            let mut result = server.expect_publish_diagnostics_for_file(PATH);
-            if cfg!(target_os = "windows") && !result.is_empty() {
-                // On Windows events may be duplicated, because there is a Create event for writing
-                // and then a modification event.
-                result = server.expect_publish_diagnostics_for_file(PATH);
-            }
-            assert!(result.is_empty(), "{result:?}");
-
-            tracing::info!("Check removing it");
-            server.remove_file_and_wait(init);
-            assert_eq!(
-                server.expect_publish_diagnostics_for_file(PATH),
-                ["Module \"foo\" has no attribute \"foo\"".to_string()],
-            );
-
-            tracing::info!("Check adding it again");
-            server.write_file_and_wait(init, "foo = 1");
-            assert!(server.expect_publish_diagnostics_for_file(PATH).is_empty());
+        tracing::info!("Remove it by renaming it");
+        let old_path = if cfg!(windows) {
+            "venv/Lib/site-packages/foo"
         } else {
-            // There is no watch on the venv dir if the environment variable is not set. Therefore
-            // we cannot wait for an event. So we simply remove it.
-            server.tmp_dir.remove_file(if cfg!(windows) {
-                "venv/Lib/site-packages/foo/__init__.py"
-            } else {
-                "venv/lib/python3.12/site-packages/foo/__init__.py"
-            })
-        }
-    };
+            "venv/lib/python3.12/site-packages/foo"
+        };
+        let new_path = if cfg!(windows) {
+            "venv/Lib/site-packages/foo_new"
+        } else {
+            "venv/lib/python3.12/site-packages/foo_new"
+        };
+        let revealed_type_any = "Revealed type is \"Any\"";
+        server.rename_file_and_wait(old_path, new_path);
+        assert_eq!(
+            server.expect_publish_diagnostics_for_file(PATH),
+            [
+                "Cannot find implementation or library stub for module named \"foo\"",
+                revealed_type_any,
+            ]
+        );
+        server.rename_file_and_wait(new_path, old_path);
+        assert_eq!(
+            server.expect_publish_diagnostics_for_file(PATH),
+            [revealed_type_int]
+        );
 
-    let import_err = |name: &str| {
-        format!("Cannot find implementation or library stub for module named \"{name}\"")
+        tracing::info!("Check if rewriting the file causes an issue now");
+        let init = &format!("{old_path}/__init__.py");
+        server.write_file_and_wait(init, "\n");
+        assert_eq!(
+            server.expect_publish_diagnostics_for_file(PATH),
+            ["Module \"foo\" has no attribute \"foo\"", revealed_type_any],
+        );
+
+        tracing::info!("Check adding the code again");
+        server.write_file_and_wait(init, "foo = 1");
+        let mut result = server.expect_publish_diagnostics_for_file(PATH);
+        if cfg!(target_os = "windows") && !result.is_empty() {
+            // On Windows events may be duplicated, because there is a Create event for writing
+            // and then a modification event.
+            result = server.expect_publish_diagnostics_for_file(PATH);
+        }
+        assert_eq!(result, [revealed_type_int]);
+
+        tracing::info!("Check removing it");
+        server.remove_file_and_wait(init);
+        assert_eq!(
+            server.expect_publish_diagnostics_for_file(PATH),
+            ["Module \"foo\" has no attribute \"foo\"", revealed_type_any],
+        );
+
+        tracing::info!("Check adding it again");
+        server.write_file_and_wait(init, "foo = ''");
+        let result = server.expect_publish_diagnostics_for_file(PATH);
+        assert_eq!(result, ["Revealed type is \"builtins.str\""]);
     };
 
     tracing::info!("set venv information via $VIRTUAL_ENV");
     unsafe { std::env::set_var("VIRTUAL_ENV", "venv") };
-    run(&[], Some(&[import_err("foo")]));
+    run();
     unsafe { std::env::remove_var("VIRTUAL_ENV") };
 
     tracing::info!(
         "test_virtual_environment - After unsetting it, there should still be no errors, because the venv is found"
     );
-    run(&[], Some(&[import_err("foo")]));
+    run();
 }
 
 #[test]
