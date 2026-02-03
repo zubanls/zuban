@@ -223,7 +223,7 @@ impl Server {
 
     pub fn expect_publish_diagnostics_for_file(&self, for_file: &str) -> Vec<String> {
         let (file, diags) = self.expect_publish_diagnostics();
-        assert_eq!(for_file, file);
+        assert_eq!(for_file, file, "{diags:?}");
         diags
     }
 

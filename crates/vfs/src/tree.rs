@@ -222,7 +222,7 @@ impl Clone for Entries {
 
 #[derive(Debug, Clone)]
 pub struct Directory {
-    entries: OnceLock<Entries>,
+    pub(crate) entries: OnceLock<Entries>,
     pub parent: Parent,
     pub name: Box<str>,
 }

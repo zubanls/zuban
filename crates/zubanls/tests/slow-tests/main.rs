@@ -1127,6 +1127,34 @@ fn test_virtual_environment() {
         server.write_file_and_wait(init, "foo = ''");
         let result = server.expect_publish_diagnostics_for_file(PATH);
         assert_eq!(result, ["Revealed type is \"builtins.str\""]);
+
+        tracing::info!("Check modifying the file");
+        server.write_file_and_wait(init, "foo = b''");
+        let result = server.expect_publish_diagnostics_for_file(PATH);
+        assert_eq!(result, ["Revealed type is \"builtins.bytes\""]);
+
+        tracing::info!("Open the __init__ with different content");
+        server.open_in_memory_file(init, "foo = {1}");
+        assert!(server.expect_publish_diagnostics_for_file(init).is_empty());
+        let result = server.expect_publish_diagnostics_for_file(PATH);
+        assert_eq!(result, ["Revealed type is \"builtins.set[builtins.int]\""]);
+
+        // This should not have an influence now, because the file is loaded
+        server.write_file_and_wait(init, "foo = (1,)");
+
+        tracing::info!("Change the __init__ in memory file");
+        server.change_in_memory_file(init, "foo = [1]");
+        assert!(server.expect_publish_diagnostics_for_file(init).is_empty());
+        let result = server.expect_publish_diagnostics_for_file(PATH);
+        assert_eq!(result, ["Revealed type is \"builtins.list[builtins.int]\""]);
+
+        tracing::info!("Close the __init__ in memory file");
+        server.close_in_memory_file(init);
+        let result = server.expect_publish_diagnostics_for_file(PATH);
+        assert_eq!(
+            result,
+            ["Revealed type is \"builtins.tuple[builtins.int]\""]
+        );
     };
 
     tracing::info!("set venv information via $VIRTUAL_ENV");
