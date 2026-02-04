@@ -169,6 +169,11 @@ pub struct MypyCli {
     no_strict_optional: bool,
     #[arg(long)]
     strict_optional: bool,
+    /// Disable strict Optional checks in untyped contexts (inverse: --strict-optional)
+    #[arg(long)]
+    no_untyped_strict_optional: bool,
+    #[arg(long)]
+    untyped_strict_optional: bool,
 
     // Configuring warnings:
     /// Warn about casting an expression to its inferred type (inverse: --no-warn-redundant-casts)
@@ -353,6 +358,7 @@ fn apply_mypy_flags(
         flags.enable_strict_bytes();
     }
     apply!(flags, strict_optional, no_strict_optional);
+    apply!(flags, untyped_strict_optional, no_untyped_strict_optional);
     apply!(flags, strict_equality, no_strict_equality);
     apply!(flags, implicit_optional, no_implicit_optional);
     apply!(flags, check_untyped_defs, no_check_untyped_defs);

@@ -1314,7 +1314,7 @@ def g() -> None:
     return none()
 
 [case untyped_non_strict_optional_to_none_type]
-# flags: --mode default
+# flags: --no-untyped-strict-optional
 class A:
     x = 1
     y = 1
@@ -1324,3 +1324,46 @@ def f():
     a = optional()
     a.x = 2
     a.y += 1
+
+[case untyped_strict_is_strict_optional_even_in_untyped]
+# flags: --check-untyped-defs --strict --allow-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper  # E: Item "None" of "str | None" has no attribute "upper"
+
+[case untyped_strict_with_no_untyped_strict_optional]
+# flags: --check-untyped-defs --strict --no-untyped-strict-optional --allow-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper
+
+[case untyped_strict_optional_with_explicit_flag]
+# flags: --check-untyped-defs --untyped-strict-optional
+def optional() -> str | None: ...
+
+def f():
+    optional().upper  # E: Item "None" of "str | None" has no attribute "upper"
+
+[case untyped_strict_optional_with_config]
+# flags: --check-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper  # E: Item "None" of "str | None" has no attribute "upper"
+
+[file pyproject.toml]
+[tool.zuban]
+untyped_strict_optional = true
+
+[case untyped_non_strict_optional_with_config]
+# flags: --check-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper
+
+[file pyproject.toml]
+[tool.zuban]
+untyped_strict_optional = false
