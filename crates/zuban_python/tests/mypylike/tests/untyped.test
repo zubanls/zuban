@@ -1312,3 +1312,15 @@ def f():
 
 def g() -> None:
     return none()
+
+[case untyped_non_strict_optional_to_none_type]
+# flags: --mode default
+class A:
+    x = 1
+    y = 1
+def optional() -> A | None: ...
+
+def f():
+    a = optional()
+    a.x = 2
+    a.y += 1

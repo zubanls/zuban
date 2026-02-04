@@ -1852,6 +1852,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
                     continue;
                 }
+                Type::None if i_s.should_ignore_none_in_untyped_context() => continue,
                 _ => (),
             }
 
