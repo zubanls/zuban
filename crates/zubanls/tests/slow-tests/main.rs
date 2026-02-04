@@ -1109,7 +1109,7 @@ fn test_virtual_environment() {
         tracing::info!("Check adding the code again");
         server.write_file_and_wait(init, "foo = 1");
         let mut result = server.expect_publish_diagnostics_for_file(PATH);
-        if cfg!(target_os = "windows") && !result.is_empty() {
+        if cfg!(target_os = "windows") && result.len() > 1 {
             // On Windows events may be duplicated, because there is a Create event for writing
             // and then a modification event.
             result = server.expect_publish_diagnostics_for_file(PATH);
