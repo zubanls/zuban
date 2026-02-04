@@ -717,7 +717,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
         if self.definitions.is_empty() {
             if on_name.name_def().is_some() {
                 debug!(
-                    "Did not find the original rename definition, \
+                    "Did not find the original reference definition, \
                         but we're using the one below the cursor"
                 );
                 // On imports that cannot be found goto will not land anywhere, but we still want
@@ -730,7 +730,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 self.definitions.insert(to_unique_position(&n));
                 self.results.push((self.on_result)(n))
             } else {
-                debug!("Did not find the original rename definition for {search_name}");
+                debug!("Did not find the original reference definition for {search_name}");
                 return vec![];
             }
         }

@@ -65,3 +65,23 @@ __main__.py:2:references -> builtins.pyi:476:6; __main__.py:2:0
 str
 [out]
 __main__.py:2:references -> __main__.py:2:0
+
+[case enum_member_usages]
+from typing import Literal
+from enum import Enum
+
+class E(Enum):
+    #? --codepoint-column 4 references
+    X = "X"
+    Y = "Y"
+
+#? references
+E.X
+
+#? --codepoint-column 20 references
+def f(x: Literal[E.X]): ...
+
+[out]
+__main__.py:6:references -> __main__.py:6:4; __main__.py:10:2; __main__.py:13:19
+__main__.py:10:references -> __main__.py:6:4; __main__.py:10:2; __main__.py:13:19
+__main__.py:13:references -> __main__.py:6:4; __main__.py:10:2; __main__.py:13:19

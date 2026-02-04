@@ -4,7 +4,7 @@ set -eu -o pipefail -x
 # Simply show the current rust version
 rustup show
 
-RUST_BACKTRACE=1 cargo test --locked
+RUST_BACKTRACE=full cargo test --locked
 
 # On Windows pipefail causes problems with the command below, so deactivate it temporarily
 set +o pipefail

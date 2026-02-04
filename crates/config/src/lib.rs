@@ -117,10 +117,6 @@ impl Settings {
             .unwrap_or_else(|| PythonVersion::new(3, 14))
     }
 
-    pub fn untyped_non_strict_optional(&self) -> bool {
-        !self.mypy_compatible()
-    }
-
     pub fn apply_python_executable(
         &mut self,
         handler: &dyn VfsHandler,
@@ -486,6 +482,7 @@ pub struct TypeCheckerFlags {
     pub disallow_deprecated: bool,
     pub allow_incomplete_generics: bool,
     pub check_untyped_overrides: bool,
+    pub untyped_strict_optional: bool,
 }
 
 impl Default for TypeCheckerFlags {
@@ -529,6 +526,7 @@ impl Default for TypeCheckerFlags {
             disallow_deprecated: false,
             allow_incomplete_generics: false,
             check_untyped_overrides: false,
+            untyped_strict_optional: false,
         }
     }
 }
@@ -552,6 +550,7 @@ impl TypeCheckerFlags {
         self.allow_untyped_globals = false; // This is mostly important for --mode typed
         self.extra_checks = true;
         self.allow_incomplete_generics = false;
+        self.untyped_strict_optional = true;
     }
 
     pub fn enable_strict_bytes(&mut self) {
@@ -570,6 +569,7 @@ impl TypeCheckerFlags {
             warn_no_return: true,
             follow_untyped_imports: false,
             allow_incomplete_generics: false,
+            untyped_strict_optional: true,
             ..Default::default()
         }
     }
@@ -997,6 +997,9 @@ fn set_bool_init_flags(
         "cache_fine_grained" => (),
         "ignore_errors" => return value.as_bool(invert),
         "python_version" => bail!("python_version not supported in inline configuration"),
+
+        // Our own
+        "untyped_strict_optional" => flags.untyped_strict_optional = value.as_bool(invert)?,
         _ => {
             if add_error_if_unrecognized_option {
                 bail!("Unrecognized option: {original_name} = {}", value.as_repr());

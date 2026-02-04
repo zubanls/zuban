@@ -254,7 +254,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     }
 
     pub fn should_ignore_none_in_untyped_context(&self) -> bool {
-        self.db.project.settings.untyped_non_strict_optional() && self.in_untyped_context()
+        !self.db.project.flags.untyped_strict_optional && self.in_untyped_context()
     }
 
     pub fn flags(&self) -> &'a TypeCheckerFlags

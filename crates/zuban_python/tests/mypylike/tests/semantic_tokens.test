@@ -207,6 +207,7 @@ Semantic tokens for full range
 - 5:8:Enum -> class:none
 - 6:4:X -> class:definition
 - 8:0:E -> enum:none
+- 8:2:X -> class:none
 - 10:4:f -> function:definition,declaration
 - 10:6:e -> enum:definition,declaration
 - 10:9:E -> enum:none
