@@ -388,6 +388,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             on_result: &mut |n: ValueName<'db, '_>| callback(n.name),
         }
         .infer_definition()
+        .1
     }
 
     fn calculate_return(&mut self, name: Name<'db, '_>) -> T {
@@ -892,10 +893,10 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
 }
 
 impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
-    pub fn infer_definition(&mut self) -> Vec<T> {
+    pub fn infer_definition(&mut self) -> (Inferred, Vec<T>) {
         let mut result = vec![];
         let Some(inf) = self.infos.infer_position() else {
-            return result;
+            return (Inferred::new_any_from_error(), result);
         };
         let file = self.infos.file;
         let db = self.infos.db;
@@ -913,7 +914,7 @@ impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                 })
             }
         });
-        result
+        (inf, result)
     }
 }
 

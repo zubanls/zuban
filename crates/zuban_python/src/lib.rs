@@ -290,7 +290,8 @@ impl<'project> Document<'project> {
     ) -> anyhow::Result<Vec<T>> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
-                .infer_definition(),
+                .infer_definition()
+                .1,
         )
     }
 
