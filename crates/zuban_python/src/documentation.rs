@@ -1,6 +1,5 @@
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
-    database::Database,
     format_data::FormatData,
     goto::GotoResolver,
     inference_state::InferenceState,
@@ -15,20 +14,10 @@ impl<'project> Document<'project> {
         position: InputPosition,
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
-        let mut class_t = None;
         let mut resolver = GotoResolver::new(
             self.positional_document(position)?,
             GotoGoal::Indifferent,
-            |n: ValueName| {
-                if !only_docstrings {
-                    if class_t.is_none()
-                        && let Type::Type(_) = n.type_
-                    {
-                        class_t = Some(n.type_.clone())
-                    }
-                }
-                n.name.documentation().to_string()
-            },
+            |n: ValueName| n.name.documentation().to_string(),
         );
         let (inf, mut results) = resolver.infer_definition();
         let Some(on_symbol_range) = resolver.on_node_range() else {
@@ -39,9 +28,13 @@ impl<'project> Document<'project> {
         let db = &self.project.db;
         let mut overwritten_results = vec![];
 
-        let mut type_formatted = resolver
-            .infos
-            .with_i_s(|i_s| pretty_type_formatting(db, &inf.as_cow_type(i_s)).into_string());
+        let mut type_formatted = resolver.infos.with_i_s(|i_s| {
+            if only_docstrings {
+                "".into()
+            } else {
+                pretty_type_formatting(i_s, &inf.as_cow_type(i_s)).into_string()
+            }
+        });
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
             let kind = n.origin_kind();
@@ -61,7 +54,6 @@ impl<'project> Document<'project> {
         let declaration_kinds = resolver.goto(true);
         if !overwritten_results.is_empty() {
             results = overwritten_results;
-            class_t = None;
         }
         if results.is_empty() {
             return Ok(None);
@@ -101,14 +93,6 @@ impl<'project> Document<'project> {
                 }
             }
             out += &type_formatted;
-            if let Some(class_t) = class_t
-                && let Some(CallableLike::Callable(callable)) =
-                    class_t.maybe_callable(&InferenceState::new_in_unknown_file(db))
-            {
-                let formatted = callable.format_pretty(&FormatData::new_short(db));
-                out += "(";
-                out += formatted.split_once('(').unwrap().1;
-            }
             out += "\n```";
             if !results.is_empty() {
                 out += "\n---\n";
@@ -123,7 +107,8 @@ impl<'project> Document<'project> {
     }
 }
 
-fn pretty_type_formatting(db: &Database, t: &Type) -> Box<str> {
+fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
+    let db = i_s.db;
     match t {
         Type::FunctionOverload(o) => format!(
             "Overload(\n    {})",
@@ -134,6 +119,17 @@ fn pretty_type_formatting(db: &Database, t: &Type) -> Box<str> {
         )
         .into(),
         Type::Callable(c) => c.format_pretty(&FormatData::new_short(db)),
+        Type::Type(inner) => {
+            let mut out = inner.format_short(db).into_string();
+            if let Some(CallableLike::Callable(callable)) =
+                t.maybe_callable(&InferenceState::new_in_unknown_file(db))
+            {
+                let formatted = callable.format_pretty(&FormatData::new_short(db));
+                out += "(";
+                out += formatted.split_once('(').unwrap().1;
+            }
+            out.into_boxed_str()
+        }
         _ => t.format_short(db),
     }
 }
