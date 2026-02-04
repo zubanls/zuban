@@ -45,10 +45,14 @@ pub(crate) fn all_typechecked_files(
     )
 }
 
-fn should_skip(flags: &TypeCheckerFlags, rel_path: &str) -> bool {
+fn should_skip_file(flags: &TypeCheckerFlags, rel_path: &str) -> bool {
     if !is_file_with_python_ending(rel_path) {
         return true;
     }
+    should_skip_dir_or_file(flags, rel_path)
+}
+
+fn should_skip_dir_or_file(flags: &TypeCheckerFlags, rel_path: &str) -> bool {
     flags.excludes.iter().any(|e| e.regex.is_match(rel_path))
 }
 
@@ -99,7 +103,7 @@ impl<'db> FileSelector<'db> {
                 if let Some(more_specific_flags) = file.maybe_more_specific_flags(db) {
                     // We need to recheck, because we might have more specific information now for this
                     // file now that it's parsed.
-                    if should_skip(more_specific_flags, &p) {
+                    if should_skip_file(more_specific_flags, &p) {
                         return false;
                     }
                 }
@@ -207,18 +211,32 @@ impl<'db> FileSelector<'db> {
     }
 
     fn handle_entry(&mut self, parent_entries: &Entries, entry: &DirectoryEntry) {
+        let handler = &*self.db.vfs.handler;
+        let ignored_by_gitignore = |p, is_dir| {
+            handler
+                .gitignore_files()
+                .is_relative_path_ignored(p, is_dir)
+        };
+
         match entry {
             DirectoryEntry::File(file) => {
-                if !should_skip(
-                    &self.db.project.flags,
-                    &file.relative_path(&*self.db.vfs.handler),
-                ) && !ignore_py_if_overwritten_by_pyi(parent_entries, file)
+                let path = file.relative_path(handler);
+                if !should_skip_file(&self.db.project.flags, &path)
+                    && !ignore_py_if_overwritten_by_pyi(parent_entries, file)
+                    && !ignored_by_gitignore(&path, false)
                 {
                     self.add_file(file.clone())
                 }
             }
             DirectoryEntry::MissingEntry(_) => (),
-            DirectoryEntry::Directory(dir) => self.handle_dir(dir),
+            DirectoryEntry::Directory(dir) => {
+                let path = dir.relative_path(handler);
+                if !should_skip_dir_or_file(&self.db.project.flags, &path)
+                    && !ignored_by_gitignore(&path, true)
+                {
+                    self.handle_dir(dir)
+                }
+            }
         }
     }
 

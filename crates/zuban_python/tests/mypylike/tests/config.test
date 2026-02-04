@@ -178,3 +178,25 @@ def f():
 mode = "default"
 
 [tool.mypy]
+
+[case pyproject_ignore_gitignore_files]
+[file a.py]
+1()
+[file b.py]
+1()  # E: "int" not callable
+[file c.py]
+1()
+[file d.py]
+1()
+[file dir/c.py]
+1()  # E: "int" not callable
+[file dir/d.py]
+1()
+
+[file pyproject.toml]
+[tool.zuban]
+exclude = "a.py"
+
+[file .gitignore]
+/c.py
+d.py

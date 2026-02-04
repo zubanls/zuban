@@ -394,6 +394,14 @@ impl<F: VfsFile> Vfs<F> {
             ensured.file_entry.get_file_index(),
         );
 
+        if *ensured.file_entry.name == *".gitignore" {
+            self.handler.gitignore_files().add_gitignore(
+                ensured.file_entry.parent.clone(),
+                path.path.as_ref(),
+                &code,
+            );
+        }
+
         let in_mem_file = in_mem_file.or_else(|| {
             let file_index = ensured.file_entry.get_file_index()?;
             self.in_memory_files.insert(path.clone(), file_index);

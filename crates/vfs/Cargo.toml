@@ -16,6 +16,7 @@ utils.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 crossbeam-channel.workspace = true
+ignore = "*"
 notify.workspace = true
 glob = "*"
 same-file = "*"

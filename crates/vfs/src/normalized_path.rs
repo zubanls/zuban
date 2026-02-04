@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    path::{Component, PathBuf},
+    path::{Component, Path, PathBuf},
     sync::Arc,
 };
 
@@ -37,6 +37,12 @@ impl NormalizedPath {
 
     pub fn arc_to_abs_path(p: Arc<Self>) -> Arc<AbsPath> {
         unsafe { std::mem::transmute(p) }
+    }
+}
+
+impl AsRef<Path> for NormalizedPath {
+    fn as_ref(&self) -> &Path {
+        Path::new(&*self.0)
     }
 }
 
