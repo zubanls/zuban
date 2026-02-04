@@ -1367,3 +1367,9 @@ def f():
 [file pyproject.toml]
 [tool.zuban]
 untyped_strict_optional = false
+
+[case untyped_non_strict_optional_unpacking]
+# flags: --no-untyped-strict-optional
+def optional() -> tuple[int, int] | None: ...
+def f():
+    a, b = optional()

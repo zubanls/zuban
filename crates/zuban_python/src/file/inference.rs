@@ -2130,6 +2130,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     if union_part == &self.i_s.db.python_state.str_type() {
                         value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed)
                     }
+                    if matches!(union_part, Type::None)
+                        && self.i_s.should_ignore_none_in_untyped_context()
+                    {
+                        continue;
+                    }
                     let value_iterator = union_part.iter(
                         self.i_s,
                         IterInfos::new(value_node_ref, IterCause::AssignmentUnpack, &|issue| {
