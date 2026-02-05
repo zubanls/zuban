@@ -197,7 +197,7 @@ mode = "default"
 /c.py
 d.py
 
-[file pyproject.toml]
+
 [tool.zuban]
 exclude = "a.py"
 
@@ -223,3 +223,35 @@ exclude = "a.py"
 [file dir/.gitignore]
 /a.py
 b.py
+
+[case pyproject_gitignore_whitelist]
+[file a.py]
+1()
+[file b.py]
+1()  # E: "int" not callable
+
+[file .gitignore]
+*.py
+!b.py
+
+[case pyproject_gitignore_invalidation]
+[file a.py]
+1()
+[file b.py]
+1()
+[file .gitignore]
+b.py
+[delete .gitignore.2]
+[file .gitignore.3]
+a.py
+[file .gitignore.4]
+b.py
+[out]
+a.py:1: error: "int" not callable
+==
+a.py:1: error: "int" not callable
+b.py:1: error: "int" not callable
+==
+b.py:1: error: "int" not callable
+==
+a.py:1: error: "int" not callable
