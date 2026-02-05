@@ -1840,7 +1840,6 @@ dependencies = [
  "same-file",
  "tracing",
  "utils",
- "wasm-bindgen",
 ]
 
 [[package]]

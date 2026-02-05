@@ -13,7 +13,7 @@ use zuban_python::{PanicRecovery, Project};
 use crate::capabilities::ClientCapabilities;
 use crate::notebooks::Notebooks;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 use {
     crate::capabilities::server_capabilities,
     crate::notification_handlers::TestPanic,
@@ -41,14 +41,14 @@ use {
 // because it's not that expensive after a specific amount of diagnostics.
 const REINDEX_AFTER_N_DIAGNOSTICS: usize = 1000;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 pub static GLOBAL_NOTIFY_EVENT_COUNTER: AtomicI64 = AtomicI64::new(0);
 
 pub(crate) fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 pub fn run_server_with_custom_connection(
     connection: Connection,
     typeshed_path: Option<Arc<NormalizedPath>>,
@@ -204,7 +204,7 @@ pub fn run_server_with_custom_connection(
     Ok(())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 pub fn run_server() -> anyhow::Result<()> {
     // TODO reenable this in the alpha in some form
     //licensing::verify_license_in_config_dir()?;
@@ -217,7 +217,7 @@ pub fn run_server() -> anyhow::Result<()> {
     })
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 struct NotificationDispatcher<'a, 'sender> {
     not: Option<lsp_server::Notification>,
     global_state: &'a mut GlobalState<'sender>,
@@ -225,10 +225,10 @@ struct NotificationDispatcher<'a, 'sender> {
 
 pub(crate) struct GlobalState<'sender> {
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(target_family = "wasm"))]
     sender: &'sender Sender<lsp_server::Message>,
     // As we don't have sender prop which uses 'sender, it would throw "unused lifetime specifier" without this.
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(target_family = "wasm")]
     _phantom: std::marker::PhantomData<&'sender ()>,
     roots: Rc<[String]>,
     typeshed_path: Option<Arc<NormalizedPath>>,
@@ -236,14 +236,14 @@ pub(crate) struct GlobalState<'sender> {
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub sent_diagnostic_count: usize,
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(target_family = "wasm"))]
     changed_in_memory_files: Arc<RwLock<Vec<PathWithScheme>>>,
     pub notebooks: Notebooks,
     pub last_completion_position: Option<TextDocumentPositionParams>,
     pub shutdown_requested: bool,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 impl<'sender> GlobalState<'sender> {
     fn new(
         sender: &'sender Sender<lsp_server::Message>,
@@ -671,7 +671,7 @@ impl<'sender> GlobalState<'sender> {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 impl GlobalState<'_> {
     pub(crate) fn new(
         client_capabilities: ClientCapabilities,
@@ -709,7 +709,7 @@ impl GlobalState<'_> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 impl<'sender> NotificationDispatcher<'_, 'sender> {
     fn on_sync_mut<N>(
         &mut self,
@@ -765,13 +765,13 @@ impl<'sender> NotificationDispatcher<'_, 'sender> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 struct RequestDispatcher<'a, 'sender> {
     request: Option<lsp_server::Request>,
     global_state: &'a mut GlobalState<'sender>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 impl<'sender> RequestDispatcher<'_, 'sender> {
     fn on_sync_mut<R>(
         &mut self,
@@ -839,10 +839,10 @@ pub fn from_json<T: DeserializeOwned>(
         .map_err(|e| anyhow::format_err!("Failed to deserialize {what}: {e}; {json}"))
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 struct Cancelled(); // TODO currently unused
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 fn result_to_response<R>(
     id: lsp_server::RequestId,
     result: anyhow::Result<R::Result>,
@@ -887,7 +887,7 @@ impl std::fmt::Display for LspError {
 
 impl std::error::Error for LspError {}
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
     let (_, path) = unpack_uri(path)?;
     use std::path::{Component, Prefix};
@@ -926,7 +926,7 @@ fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<'_, str>)> {
     let Some(scheme) = uri.scheme() else {
         bail!("No scheme found in uri {}", uri.as_str())

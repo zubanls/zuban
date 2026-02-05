@@ -21,6 +21,3 @@ glob = "*"
 crossbeam-channel.workspace = true
 notify.workspace = true
 same-file = "*"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen.workspace = true

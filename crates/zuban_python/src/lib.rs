@@ -27,9 +27,9 @@ mod selection_ranges;
 mod semantic_tokens;
 mod signatures;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 mod sys_path;
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 #[path = "sys_path_stub.rs"]
 mod sys_path;
 
