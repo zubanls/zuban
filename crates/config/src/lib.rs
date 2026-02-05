@@ -72,6 +72,7 @@ pub struct Settings {
     pub add_global_packages_default: bool,
     pub mode: Mode,
     pub untyped_function_return_mode: UntypedFunctionReturnMode,
+    pub exclude_gitignore: bool, // From Mypy's --exclude_gitignore
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
     pub typeshed_path: Option<Arc<NormalizedPath>>,
@@ -90,6 +91,7 @@ impl Default for Settings {
             add_global_packages_default: true,
             mode: Mode::Default,
             untyped_function_return_mode: UntypedFunctionReturnMode::Inferred,
+            exclude_gitignore: true,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }
@@ -231,6 +233,7 @@ impl ProjectOptions {
             settings: Settings {
                 mode: Mode::Mypy,
                 untyped_function_return_mode: UntypedFunctionReturnMode::Any,
+                exclude_gitignore: false,
                 ..Default::default()
             },
             flags: TypeCheckerFlags::mypy_default(),
@@ -1050,6 +1053,9 @@ fn apply_from_base_config(
         }
         "pretty" => {
             diagnostic_config.pretty = value.as_bool(false)?;
+        }
+        "exclude_gitignore" => {
+            settings.exclude_gitignore = value.as_bool(false)?;
         }
         "no_error_summary" => {
             diagnostic_config.error_summary = value.as_bool(true)?;

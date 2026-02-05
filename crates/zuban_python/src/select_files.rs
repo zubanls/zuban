@@ -255,10 +255,12 @@ impl<'db> FileSelector<'db> {
 
     fn handle_entries(&mut self, entries: &Entries) {
         let mut need_to_drop_gitignore = false;
-        if let Some(gitignore) = entries.iter().into_iter().find_map(|e| match e {
-            DirectoryEntry::Gitignore(gitignore) => Some(gitignore.clone()),
-            _ => None,
-        }) {
+        if self.db.project.settings.exclude_gitignore
+            && let Some(gitignore) = entries.iter().into_iter().find_map(|e| match e {
+                DirectoryEntry::Gitignore(gitignore) => Some(gitignore.clone()),
+                _ => None,
+            })
+        {
             self.current_gitignores.push(gitignore);
             need_to_drop_gitignore = true
         }

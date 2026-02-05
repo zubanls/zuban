@@ -59,6 +59,10 @@ pub struct MypyCli {
     pub ignore_excludes_from_config: bool,
     #[arg(num_args = 0..)]
     pub files: Vec<String>,
+    #[arg(long, hide = true)]
+    pub exclude_gitignore: bool,
+    #[arg(long, hide = true)]
+    pub no_exclude_gitignore: bool,
     /*
     /// Type-check module; can repeat for more modules
     #[arg(short, long, hide = true)]
@@ -397,6 +401,7 @@ fn apply_mypy_flags(
     apply!(diagnostic_config, show_error_codes, hide_error_codes);
     apply!(diagnostic_config, pretty, no_pretty);
     apply!(diagnostic_config, error_summary, no_error_summary);
+    apply!(settings, exclude_gitignore, no_exclude_gitignore);
 
     apply!(flags, allow_redefinition, disallow_redefinition);
     if cli.allow_redefinition_new {

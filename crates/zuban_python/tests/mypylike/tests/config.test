@@ -180,8 +180,9 @@ mode = "default"
 [tool.mypy]
 
 [case pyproject_ignore_gitignore_files]
+# flags: --exclude-gitignore
 [file a.py]
-1()
+1()  # E: "int" not callable
 [file b.py]
 1()  # E: "int" not callable
 [file c.py]
@@ -197,11 +198,11 @@ mode = "default"
 /c.py
 d.py
 
-
 [tool.zuban]
 exclude = "a.py"
 
 [case pyproject_ignore_nested_gitignore_files]
+# flags: --exclude-gitignore
 [file a.py]
 1()  # E: "int" not callable
 [file b.py]
@@ -225,6 +226,7 @@ exclude = "a.py"
 b.py
 
 [case pyproject_gitignore_whitelist]
+# flags: --exclude-gitignore
 [file a.py]
 1()
 [file b.py]
@@ -235,6 +237,7 @@ b.py
 !b.py
 
 [case pyproject_gitignore_invalidation]
+# flags: --exclude-gitignore
 [file a.py]
 1()
 [file b.py]
@@ -255,3 +258,61 @@ b.py:1: error: "int" not callable
 b.py:1: error: "int" not callable
 ==
 a.py:1: error: "int" not callable
+
+[case pyproject_gitignore_flag_default_in_mypy_mode]
+# flags: --mode mypy
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()  # E: "int" not callable
+[file .gitignore]
+b.py
+
+[case pyproject_gitignore_flag_default_in_default_mode]
+# flags: --mode default
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()
+[file .gitignore]
+b.py
+
+[case pyproject_no_exclude_gitignore_flag]
+# flags: --no-exclude-gitignore
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()  # E: "int" not callable
+[file .gitignore]
+b.py
+
+[case pyproject_exclude_gitignore_flag]
+# flags: --exclude-gitignore
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()
+[file .gitignore]
+b.py
+
+[case pyproject_exclude_gitignore_in_config]
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()
+[file .gitignore]
+b.py
+[file pyproject.toml]
+[tool.mypy]
+exclude_gitignore = true
+
+[case pyproject_no_exclude_gitignore_in_config]
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()  # E: "int" not callable
+[file .gitignore]
+b.py
+[file pyproject.toml]
+[tool.zuban]
+exclude_gitignore = false
