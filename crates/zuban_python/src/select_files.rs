@@ -212,18 +212,14 @@ impl<'db> FileSelector<'db> {
 
     fn handle_entry(&mut self, parent_entries: &Entries, entry: &DirectoryEntry) {
         let handler = &*self.db.vfs.handler;
-        let ignored_by_gitignore = |p, is_dir| {
-            handler
-                .gitignore_files()
-                .is_relative_path_ignored(p, is_dir)
-        };
+        let ignored_by_gitignore = |p, is_dir| handler.gitignore_files().is_path_ignored(p, is_dir);
 
         match entry {
             DirectoryEntry::File(file) => {
                 let path = file.relative_path(handler);
                 if !should_skip_file(&self.db.project.flags, &path)
                     && !ignore_py_if_overwritten_by_pyi(parent_entries, file)
-                    && !ignored_by_gitignore(&path, false)
+                    && !ignored_by_gitignore(&file.absolute_path(handler), false)
                 {
                     self.add_file(file.clone())
                 }
@@ -232,7 +228,7 @@ impl<'db> FileSelector<'db> {
             DirectoryEntry::Directory(dir) => {
                 let path = dir.relative_path(handler);
                 if !should_skip_dir_or_file(&self.db.project.flags, &path)
-                    && !ignored_by_gitignore(&path, true)
+                    && !ignored_by_gitignore(&dir.absolute_path(handler), true)
                 {
                     self.handle_dir(dir)
                 }

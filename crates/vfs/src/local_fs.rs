@@ -485,19 +485,22 @@ impl GitignoreFiles<'_> {
         }
     }
 
-    fn files(&self) -> impl Iterator<Item = &'_ Gitignore> {
+    fn files(&self) -> impl Iterator<Item = &'_ GitignoreFile> {
         self.files
             .iter()
             .map(|files| {
                 OwnedMappedReadGuard::map_owned(files.read().unwrap(), |files| {
-                    files.iter().map(|f| &f.gitignore)
+                    files.iter().map(|f| &**f)
                 })
             })
             .flatten()
     }
 
-    pub fn is_relative_path_ignored(&self, rel_path: &str, is_dir: bool) -> bool {
-        self.files()
-            .any(|gitignore| gitignore.matched(rel_path, is_dir).is_ignore())
+    pub fn is_path_ignored(&self, entry: &PathWithScheme, is_dir: bool) -> bool {
+        self.files().any(|f| {
+            f.gitignore.matched(&*entry.path, is_dir).is_ignore()
+                // The scheme must also match, not just the paths
+                && f.parent.workspace().scheme == entry.scheme
+        })
     }
 }

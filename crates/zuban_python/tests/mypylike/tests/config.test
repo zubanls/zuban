@@ -193,10 +193,33 @@ mode = "default"
 [file dir/d.py]
 1()
 
+[file .gitignore]
+/c.py
+d.py
+
 [file pyproject.toml]
 [tool.zuban]
 exclude = "a.py"
 
+[case pyproject_ignore_nested_gitignore_files]
+[file a.py]
+1()  # E: "int" not callable
+[file b.py]
+1()
+[file c.py]
+1()
+[file dir/a.py]
+1()
+[file dir/nested/a.py]
+1()  # E: "int" not callable
+[file dir/b.py]
+1()
+[file dir/c.py]
+1()  # E: "int" not callable
+
 [file .gitignore]
 /c.py
-d.py
+
+[file dir/.gitignore]
+/a.py
+b.py
