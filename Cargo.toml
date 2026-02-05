@@ -48,6 +48,7 @@ toml_edit = "*"
 tracing = "*"
 tracing-subscriber = { version = "*", features = ["time", "local-time"] }
 tracing-appender = "*"
+wasm-bindgen = "0.2"
 
 # Dev dependencies
 insta = "*"
