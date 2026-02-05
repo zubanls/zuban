@@ -95,6 +95,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                                         .absolute_path(self),
                                 ) {
                                     entries.push(DirectoryEntry::Gitignore(GitignoreFile::new(
+                                        parent.clone(),
                                         &dir_entry.path(),
                                         &code,
                                     )));

@@ -242,7 +242,7 @@ pub(crate) struct AddedFile {
 #[derive(Debug)]
 pub(crate) enum AddedKind {
     FileEntry(Arc<FileEntry>),
-    Gitignore,
+    Gitignore(Arc<GitignoreFile>),
 }
 
 impl Directory {
@@ -357,10 +357,11 @@ impl Entries {
     ) -> AddedFile {
         let mut invalidations = Invalidations::default();
         let new_gitignore = || {
-            DirectoryEntry::Gitignore(GitignoreFile::new(
+            GitignoreFile::new(
+                parent.clone(),
                 &*vfs.join(&*parent.absolute_path(vfs).path, name),
                 &code,
-            ))
+            )
         };
         let file_entry = if let Some(mut entry) = self.search_mut(name) {
             match &mut *entry {
@@ -378,18 +379,20 @@ impl Entries {
                     "What happens when we want to write a file on top of a directory? When does this happen?"
                 ),
                 DirectoryEntry::Gitignore(_) => {
-                    *entry = new_gitignore();
+                    let g = new_gitignore();
+                    *entry = DirectoryEntry::Gitignore(g.clone());
                     return AddedFile {
                         invalidations: Default::default(),
-                        kind: AddedKind::Gitignore,
+                        kind: AddedKind::Gitignore(g),
                     };
                 }
             }
         } else if name == ".gitignore" {
-            self.borrow_mut().push(new_gitignore());
+            let g = new_gitignore();
+            self.borrow_mut().push(DirectoryEntry::Gitignore(g.clone()));
             return AddedFile {
                 invalidations: Default::default(),
-                kind: AddedKind::Gitignore,
+                kind: AddedKind::Gitignore(g),
             };
         } else {
             let mut borrow = self.borrow_mut();
@@ -593,10 +596,11 @@ impl Clone for Invalidations {
 #[derive(Debug)]
 pub struct GitignoreFile {
     gitignore: Gitignore,
+    pub parent: Parent,
 }
 
 impl GitignoreFile {
-    pub(crate) fn new<P: AsRef<Path>>(path: P, code: &str) -> Arc<Self> {
+    pub(crate) fn new<P: AsRef<Path>>(parent: Parent, path: P, code: &str) -> Arc<Self> {
         let path = path.as_ref();
         let parent_path = path.parent().unwrap_or(Path::new("/"));
         let mut builder = GitignoreBuilder::new(parent_path);
@@ -627,7 +631,7 @@ impl GitignoreFile {
                 Gitignore::empty()
             }
         };
-        Arc::new(Self { gitignore })
+        Arc::new(Self { parent, gitignore })
     }
 
     pub fn is_path_ignored(&self, entry: &PathWithScheme, is_dir: bool) -> bool {
