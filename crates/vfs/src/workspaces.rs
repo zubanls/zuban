@@ -179,6 +179,7 @@ impl Workspaces {
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
         path: &PathWithScheme,
+        code: &str,
     ) -> AddedFile {
         if let Some((workspace, rest)) =
             self.strip_short_path_in_workspace(vfs, case_sensitive, path)
@@ -188,13 +189,17 @@ impl Workspaces {
                 &workspace.entries,
                 vfs,
                 rest,
+                code,
             );
         }
         for workspace in self.inner_items_mut() {
             if workspace.kind == WorkspaceKind::Fallback {
-                return workspace
-                    .entries
-                    .ensure_file(Parent::Workspace(Arc::downgrade(workspace)), &path.path);
+                return workspace.entries.ensure_file(
+                    vfs,
+                    Parent::Workspace(Arc::downgrade(workspace)),
+                    &path.path,
+                    code,
+                );
             }
         }
         unreachable!("Expected to be able to place the file {path:?}")
@@ -247,6 +252,7 @@ impl Workspaces {
                         new.parent = Parent::Directory(Arc::downgrade(&dir));
                         *inner_dir = clone_inner_rcs(vfs, new);
                     }
+                    DirectoryEntry::Gitignore(_) => (),
                 }
             }
             dir
@@ -269,6 +275,7 @@ impl Workspaces {
                         *file = Arc::new(new_file);
                     }
                     DirectoryEntry::MissingEntry { .. } => (), // has no RCs
+                    DirectoryEntry::Gitignore { .. } => (),    // has no interior mutability
                 }
             }
             *workspace = new_workspace
@@ -415,6 +422,7 @@ fn ensure_dirs_and_file(
     entries: &Entries,
     vfs: &dyn VfsHandler,
     path: &str,
+    code: &str,
 ) -> AddedFile {
     let (name, rest) = vfs.split_off_folder(path);
     if let Some(rest) = rest {
@@ -427,6 +435,7 @@ fn ensure_dirs_and_file(
                         Directory::entries(vfs, arc),
                         vfs,
                         rest,
+                        code,
                     );
                 }
                 DirectoryEntry::MissingEntry(missing) => {
@@ -443,12 +452,13 @@ fn ensure_dirs_and_file(
             Directory::entries(vfs, &dir2),
             vfs,
             rest,
+            code,
         );
         entries.borrow_mut().push(DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result
     } else {
-        entries.ensure_file(parent, name)
+        entries.ensure_file(vfs, parent, name, code)
     }
 }
 

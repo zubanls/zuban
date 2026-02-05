@@ -13,10 +13,12 @@ use std::{borrow::Cow, path::Path, sync::Arc};
 use crossbeam_channel::Receiver;
 
 pub use glob_abs_path::GlobAbsPath;
-pub use local_fs::{GitignoreFiles, LocalFS, SimpleLocalFS};
+pub use local_fs::{LocalFS, SimpleLocalFS};
 pub use normalized_path::NormalizedPath;
 pub use path::AbsPath;
-pub use tree::{DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, Parent};
+pub use tree::{
+    DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, GitignoreFile, Parent,
+};
 pub use vfs::{InvalidationResult, PathWithScheme, Vfs, VfsFile, VfsPanicRecovery};
 pub use workspaces::{Workspace, WorkspaceKind};
 
@@ -111,9 +113,5 @@ pub trait VfsHandler: Sync + Send {
         _current_entry: Option<&DirectoryEntry>,
     ) -> bool {
         false
-    }
-
-    fn gitignore_files(&self) -> GitignoreFiles<'_> {
-        Default::default()
     }
 }

@@ -4,13 +4,12 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, unbounded};
-use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher, recommended_watcher};
-use utils::{FastHashSet, OwnedMappedReadGuard};
+use utils::FastHashSet;
 
 use crate::{
-    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, NormalizedPath, NotifyEvent, Parent,
-    PathWithScheme, VfsHandler,
+    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, GitignoreFile, NormalizedPath,
+    NotifyEvent, Parent, PathWithScheme, VfsHandler,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
@@ -21,7 +20,6 @@ pub struct LocalFS<T: Fn(PathWithScheme) + Sync + Send> {
     watcher: Option<(RwLock<RecommendedWatcher>, Receiver<NotifyEvent>)>,
     already_watched_dirs: RwLock<FastHashSet<PathBuf>>,
     on_invalidated_in_memory_file: Option<T>,
-    gitignore_files: RwLock<Vec<Arc<GitignoreFile>>>,
 }
 
 impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
@@ -96,11 +94,10 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                                     &FileEntry::new(parent.clone(), name.into())
                                         .absolute_path(self),
                                 ) {
-                                    self.gitignore_files().add_gitignore(
-                                        parent.clone(),
+                                    entries.push(DirectoryEntry::Gitignore(GitignoreFile::new(
                                         &dir_entry.path(),
                                         &code,
-                                    );
+                                    )));
                                 }
                                 continue;
                             }
@@ -205,12 +202,6 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
         }
         false
     }
-
-    fn gitignore_files(&self) -> GitignoreFiles<'_> {
-        GitignoreFiles {
-            files: Some(&self.gitignore_files),
-        }
-    }
 }
 
 impl SimpleLocalFS {
@@ -219,7 +210,6 @@ impl SimpleLocalFS {
             watcher: None,
             already_watched_dirs: Default::default(),
             on_invalidated_in_memory_file: None,
-            gitignore_files: Default::default(),
         }
     }
 }
@@ -240,7 +230,6 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
             watcher: watcher.map(|w| (RwLock::new(w), watcher_receiver)),
             already_watched_dirs: Default::default(),
             on_invalidated_in_memory_file: Some(on_invalidated_memory_file),
-            gitignore_files: Default::default(),
         }
     }
 
@@ -426,81 +415,4 @@ fn log_notify_error<T>(res: notify::Result<T>) -> Option<T> {
         _ => tracing::warn!("notify error: {}", err),
     })
     .ok()
-}
-
-struct GitignoreFile {
-    parent: Parent,
-    gitignore: Gitignore,
-}
-
-impl GitignoreFile {
-    fn new<P: AsRef<Path>>(parent: Parent, path: P, code: &str) -> Self {
-        let path = path.as_ref();
-        let parent_path = path.parent().unwrap_or(Path::new("/"));
-        let mut builder = GitignoreBuilder::new(parent_path);
-
-        // This is essentially copied from GitignoreBuilder::add and slightly modified
-        {
-            for (i, line) in code.lines().enumerate() {
-                let lineno = (i + 1) as u64;
-                // Match Git's handling of .gitignore files that begin with the Unicode BOM
-                const UTF8_BOM: &str = "\u{feff}";
-                let line = if i == 0 {
-                    line.trim_start_matches(UTF8_BOM)
-                } else {
-                    &line
-                };
-
-                if let Err(err) = builder.add_line(Some(path.to_path_buf()), &line) {
-                    tracing::debug!(
-                        "Error when parsing .gitignore {path:?} on line {lineno}: {err}"
-                    );
-                }
-            }
-        }
-        let gitignore = match builder.build() {
-            Ok(gi) => gi,
-            Err(err) => {
-                tracing::info!("Error while building gitignore: {err}");
-                Gitignore::empty()
-            }
-        };
-        Self { parent, gitignore }
-    }
-}
-
-#[derive(Default)]
-pub struct GitignoreFiles<'handler> {
-    files: Option<&'handler RwLock<Vec<Arc<GitignoreFile>>>>,
-}
-
-impl GitignoreFiles<'_> {
-    pub(crate) fn add_gitignore<P: AsRef<Path>>(&self, parent: Parent, path: P, code: &str) {
-        if let Some(files) = self.files {
-            tracing::debug!("Added gitignore file at path: {:?}", path.as_ref());
-            files
-                .write()
-                .unwrap()
-                .push(Arc::new(GitignoreFile::new(parent, path, code)));
-        }
-    }
-
-    fn files(&self) -> impl Iterator<Item = &'_ GitignoreFile> {
-        self.files
-            .iter()
-            .map(|files| {
-                OwnedMappedReadGuard::map_owned(files.read().unwrap(), |files| {
-                    files.iter().map(|f| &**f)
-                })
-            })
-            .flatten()
-    }
-
-    pub fn is_path_ignored(&self, entry: &PathWithScheme, is_dir: bool) -> bool {
-        self.files().any(|f| {
-            f.gitignore.matched(&*entry.path, is_dir).is_ignore()
-                // The scheme must also match, not just the paths
-                && f.parent.workspace().scheme == entry.scheme
-        })
-    }
 }

@@ -4,8 +4,8 @@ use config::TypeCheckerFlags;
 use rayon::prelude::*;
 use utils::FastHashSet;
 use vfs::{
-    DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, GlobAbsPath, LocalFS,
-    PathWithScheme,
+    DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, GitignoreFile,
+    GlobAbsPath, LocalFS, PathWithScheme,
 };
 
 use crate::{
@@ -61,6 +61,7 @@ struct FileSelector<'db> {
     to_be_loaded: Vec<(Arc<FileEntry>, PathWithScheme)>,
     file_indexes: RwLock<FastHashSet<FileIndex>>,
     added_file: bool,
+    current_gitignores: Vec<Arc<GitignoreFile>>,
 }
 
 impl<'db> FileSelector<'db> {
@@ -70,6 +71,7 @@ impl<'db> FileSelector<'db> {
             to_be_loaded: vec![],
             file_indexes: Default::default(),
             added_file: false,
+            current_gitignores: vec![],
         }
     }
 
@@ -177,8 +179,10 @@ impl<'db> FileSelector<'db> {
                     entries.walk_entries(vfs_handler, &mut |in_dir, entry| {
                         let path = match entry {
                             DirectoryEntry::File(file) => file.absolute_path(vfs_handler),
-                            DirectoryEntry::MissingEntry(_) => return false,
                             DirectoryEntry::Directory(dir) => dir.absolute_path(vfs_handler),
+                            DirectoryEntry::Gitignore(_) | DirectoryEntry::MissingEntry(_) => {
+                                return false;
+                            }
                         };
                         if not_yet_checked_globs
                             .iter()
@@ -210,29 +214,38 @@ impl<'db> FileSelector<'db> {
         }
     }
 
+    fn ignored_by_gitignore(&self, path: impl FnOnce() -> PathWithScheme, is_dir: bool) -> bool {
+        if self.current_gitignores.is_empty() {
+            return false;
+        }
+        let path = path();
+        self.current_gitignores
+            .iter()
+            .any(|gitignore| gitignore.is_path_ignored(&path, is_dir))
+    }
+
     fn handle_entry(&mut self, parent_entries: &Entries, entry: &DirectoryEntry) {
         let handler = &*self.db.vfs.handler;
-        let ignored_by_gitignore = |p, is_dir| handler.gitignore_files().is_path_ignored(p, is_dir);
 
         match entry {
             DirectoryEntry::File(file) => {
                 let path = file.relative_path(handler);
                 if !should_skip_file(&self.db.project.flags, &path)
                     && !ignore_py_if_overwritten_by_pyi(parent_entries, file)
-                    && !ignored_by_gitignore(&file.absolute_path(handler), false)
+                    && !self.ignored_by_gitignore(|| file.absolute_path(handler), false)
                 {
                     self.add_file(file.clone())
                 }
             }
-            DirectoryEntry::MissingEntry(_) => (),
             DirectoryEntry::Directory(dir) => {
                 let path = dir.relative_path(handler);
                 if !should_skip_dir_or_file(&self.db.project.flags, &path)
-                    && !ignored_by_gitignore(&dir.absolute_path(handler), true)
+                    && !self.ignored_by_gitignore(|| dir.absolute_path(handler), true)
                 {
                     self.handle_dir(dir)
                 }
             }
+            DirectoryEntry::Gitignore(_) | DirectoryEntry::MissingEntry(_) => (),
         }
     }
 
@@ -241,8 +254,21 @@ impl<'db> FileSelector<'db> {
     }
 
     fn handle_entries(&mut self, entries: &Entries) {
+        let mut need_to_drop_gitignore = false;
+        if let Some(gitignore) = entries.iter().into_iter().find_map(|e| match e {
+            DirectoryEntry::Gitignore(gitignore) => Some(gitignore.clone()),
+            _ => None,
+        }) {
+            self.current_gitignores.push(gitignore);
+            need_to_drop_gitignore = true
+        }
+
         for entry in &entries.iter() {
             self.handle_entry(entries, entry)
+        }
+
+        if need_to_drop_gitignore {
+            self.current_gitignores.pop();
         }
     }
 }

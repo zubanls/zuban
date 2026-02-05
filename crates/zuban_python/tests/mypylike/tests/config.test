@@ -205,7 +205,7 @@ exclude = "a.py"
 [file a.py]
 1()  # E: "int" not callable
 [file b.py]
-1()
+1()  # E: "int" not callable
 [file c.py]
 1()
 [file dir/a.py]

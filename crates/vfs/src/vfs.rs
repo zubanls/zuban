@@ -11,7 +11,7 @@ use utils::{FastHashSet, InsertOnlyVec};
 use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, FileEntry, FileIndex, NormalizedPath, Parent,
     VfsHandler, WorkspaceKind,
-    tree::{InvalidationDetail, Invalidations},
+    tree::{AddedKind, InvalidationDetail, Invalidations},
     workspaces::Workspaces,
 };
 
@@ -187,18 +187,30 @@ impl<F: VfsFile> Vfs<F> {
                 &recoverable_file.path.path,
                 recoverable_file.is_in_memory_file
             );
-            let ensured =
-                self.workspaces
-                    .ensure_file(&*self.handler, case_sensitive, &recoverable_file.path);
-            let file_index = self.with_added_file(
-                ensured.file_entry.clone(),
-                recoverable_file.path,
-                recoverable_file.invalidates_db,
-                |file_index| new_file(file_index, &ensured.file_entry, recoverable_file.artifacts),
+            let ensured = self.workspaces.ensure_file(
+                &*self.handler,
+                case_sensitive,
+                &recoverable_file.path,
+                // TODO this should not be an empty string, since it could include gitignore, but
+                // that's currently not supported anyway so passing an empty string here is fine.
+                "",
             );
-            if recoverable_file.is_in_memory_file {
-                let fs = self.file_state(file_index);
-                self.in_memory_files.insert(fs.path.clone(), file_index);
+            match ensured.kind {
+                AddedKind::FileEntry(file_entry) => {
+                    let file_index = self.with_added_file(
+                        file_entry.clone(),
+                        recoverable_file.path,
+                        recoverable_file.invalidates_db,
+                        |file_index| new_file(file_index, &file_entry, recoverable_file.artifacts),
+                    );
+                    if recoverable_file.is_in_memory_file {
+                        let fs = self.file_state(file_index);
+                        self.in_memory_files.insert(fs.path.clone(), file_index);
+                    }
+                }
+                AddedKind::Gitignore => {
+                    tracing::error!("Did not expect a gitignore in panic recovery")
+                }
             }
         }
     }
@@ -380,30 +392,26 @@ impl<F: VfsFile> Vfs<F> {
         path: PathWithScheme,
         code: Box<str>,
         new_file: impl FnOnce(FileIndex, &FileEntry, Box<str>) -> F,
-    ) -> (FileIndex, InvalidationResult) {
+    ) -> (Option<FileIndex>, InvalidationResult) {
         tracing::info!("Loading in memory file: {}", &path.path);
         let ensured = self
             .workspaces
-            .ensure_file(&*self.handler, case_sensitive, &path);
+            .ensure_file(&*self.handler, case_sensitive, &path, &code);
+
+        let file_entry = match ensured.kind {
+            AddedKind::FileEntry(file_entry) => file_entry,
+            AddedKind::Gitignore => return (None, InvalidationResult::InvalidatedFiles),
+        };
 
         let in_mem_file = self.in_memory_file(&path);
         debug_assert!(
-            in_mem_file.is_none()
-                || in_mem_file.is_some() && ensured.file_entry.get_file_index().is_some(),
+            in_mem_file.is_none() || in_mem_file.is_some() && file_entry.get_file_index().is_some(),
             "{path:?}; in_mem_file: {in_mem_file:?}; ensured file_index: {:?}",
-            ensured.file_entry.get_file_index(),
+            file_entry.get_file_index(),
         );
 
-        if *ensured.file_entry.name == *".gitignore" {
-            self.handler.gitignore_files().add_gitignore(
-                ensured.file_entry.parent.clone(),
-                path.path.as_ref(),
-                &code,
-            );
-        }
-
         let in_mem_file = in_mem_file.or_else(|| {
-            let file_index = ensured.file_entry.get_file_index()?;
+            let file_index = file_entry.get_file_index()?;
             self.in_memory_files.insert(path.clone(), file_index);
             Some(file_index)
         });
@@ -413,15 +421,15 @@ impl<F: VfsFile> Vfs<F> {
             if self.file_state(file_index).code() == Some(&code) {
                 // It already exists with the same code, we can therefore skip generating a new
                 // file.
-                return (file_index, result);
+                return (Some(file_index), result);
             }
             result |= self.invalidate_and_unload_file(file_index);
         }
 
         let file_index = if let Some(file_index) = in_mem_file {
-            let file = new_file(file_index, &ensured.file_entry, code);
+            let file = new_file(file_index, &file_entry, code);
             let new_file_state = Box::pin(FileState::new_parsed(
-                ensured.file_entry,
+                file_entry,
                 path,
                 file,
                 result == InvalidationResult::InvalidatedDb,
@@ -437,12 +445,10 @@ impl<F: VfsFile> Vfs<F> {
             }
             file_index
         } else {
-            let file_index = self.with_added_file(
-                ensured.file_entry.clone(),
-                path.clone(),
-                false,
-                |file_index| new_file(file_index, &ensured.file_entry, code),
-            );
+            let file_index =
+                self.with_added_file(file_entry.clone(), path.clone(), false, |file_index| {
+                    new_file(file_index, &file_entry, code)
+                });
             self.in_memory_files.insert(path, file_index);
             file_index
         };
@@ -456,7 +462,7 @@ impl<F: VfsFile> Vfs<F> {
             }
         }
         result |= self.invalidate_files(Some(file_index), ensured.invalidations);
-        (file_index, result)
+        (Some(file_index), result)
     }
 
     fn invalidate_and_unload_in_memory_file(
@@ -608,7 +614,7 @@ impl<F: VfsFile> Vfs<F> {
                             InvalidationDetail::InvalidatesDb => invalidates_db = true,
                             InvalidationDetail::Some(invs) => all_invalidations.extend(&invs),
                         },
-                        DirectoryEntry::Directory(_) => (),
+                        DirectoryEntry::Directory(_) | DirectoryEntry::Gitignore(_) => (),
                     };
                     true
                 });
@@ -685,10 +691,19 @@ impl<F: VfsFile> Vfs<F> {
         for (path, file_index) in ensure_unloaded_in_memory_paths {
             let ensured = self
                 .workspaces
-                .ensure_file(&*self.handler, case_sensitive, &path);
+                .ensure_file(&*self.handler, case_sensitive, &path, "");
             debug_assert!(ensured.invalidations.is_empty());
-            ensured.file_entry.with_set_file_index(|| file_index);
-            self.handler.on_invalidated_in_memory_file(path);
+            match ensured.kind {
+                AddedKind::FileEntry(file_entry) => {
+                    file_entry.with_set_file_index(|| file_index);
+                    self.handler.on_invalidated_in_memory_file(path);
+                }
+                AddedKind::Gitignore => {
+                    tracing::error!(
+                        "Did not expect a gitignore when ensuring unload of memory paths"
+                    )
+                }
+            }
         }
         tracing::debug!("Caused {unload_len} unloads and {invalidation_len} direct invalidations");
         InvalidationResult::InvalidatedFiles

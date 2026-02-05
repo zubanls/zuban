@@ -182,7 +182,7 @@ impl<'db> ImportFinder<'db> {
             .borrow()
             .iter()
             .filter_map(|dir_entry| match dir_entry {
-                DirectoryEntry::MissingEntry(_) => None,
+                DirectoryEntry::MissingEntry(_) | DirectoryEntry::Gitignore(_) => None,
                 e => Some(e.clone()),
             })
             .collect();
@@ -198,7 +198,9 @@ impl<'db> ImportFinder<'db> {
                     self.find_importable_name_in_file_entry(&entry, false);
                 }
             }
-            DirectoryEntry::MissingEntry(_) => unreachable!("Removed above"),
+            DirectoryEntry::MissingEntry(_) | DirectoryEntry::Gitignore(_) => {
+                unreachable!("Removed above")
+            }
             DirectoryEntry::Directory(dir) => self.find_importable_name_in_entries(
                 Directory::entries(&*self.db.vfs.handler, &dir),
                 true,
@@ -276,7 +278,6 @@ fn all_recursive_public_typeshed_file_entries(
                     }
                     found.push(entry.clone())
                 }
-                DirectoryEntry::MissingEntry(_) => (),
                 DirectoryEntry::Directory(dir) => {
                     // Underscored packages are private
                     // There's a directory in stdlib called @tests
@@ -285,6 +286,7 @@ fn all_recursive_public_typeshed_file_entries(
                     }
                     recurse(db, found, Directory::entries(&*db.vfs.handler, dir))
                 }
+                DirectoryEntry::MissingEntry(_) | DirectoryEntry::Gitignore(_) => (),
             }
         })
     }

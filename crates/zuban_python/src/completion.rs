@@ -434,7 +434,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                     }
                 }
                 DirectoryEntry::Directory(dir) => &dir.name,
-                DirectoryEntry::MissingEntry(_) => continue,
+                DirectoryEntry::MissingEntry(_) | DirectoryEntry::Gitignore(_) => continue,
             };
             // Unsafe: The name always lives as long as 'db, because file entries are
             // only cleaned up once this lifetime is released.
@@ -870,7 +870,9 @@ impl<'db> Completion for CompletionDirEntry<'db, '_> {
         match self.entry {
             DirectoryEntry::File(_) => CompletionItemKind::MODULE,
             DirectoryEntry::MissingEntry(_) => unreachable!(),
-            DirectoryEntry::Directory(_) => CompletionItemKind::FOLDER,
+            DirectoryEntry::Directory(_) | DirectoryEntry::Gitignore(_) => {
+                CompletionItemKind::FOLDER
+            }
         }
     }
 
