@@ -181,7 +181,7 @@ create_grammar!(
 
     except_block: "except" [except_expression] ":" block
     except_star_block: "except" "*" except_expression ":" block
-    except_expression: expression ["as" name_def]
+    except_expression: (expressions !"as" | expression "as" name_def)
     finally_block: "finally" ":" block
 
     // Match statement

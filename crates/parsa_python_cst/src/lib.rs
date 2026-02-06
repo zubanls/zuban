@@ -1830,18 +1830,22 @@ impl<'db> ExceptStarBlock<'db> {
 }
 
 impl<'db> ExceptExpression<'db> {
-    pub fn unpack(&self) -> (Expression<'db>, Option<NameDef<'db>>) {
+    pub fn unpack(&self) -> ExceptExpressionContent<'db> {
         // except_expression: [expression ["as" name_def]]
         let mut clause_iterator = self.node.iter_children();
-        let expr = clause_iterator.next().unwrap();
+        let first = clause_iterator.next().unwrap();
         clause_iterator.next();
-        let as_name = clause_iterator.next().map(NameDef::new);
-        (Expression::new(expr), as_name)
+        if let Some(as_name) = clause_iterator.next() {
+            ExceptExpressionContent::WithNameDef(Expression::new(first), NameDef::new(as_name))
+        } else {
+            ExceptExpressionContent::Expressions(Expressions::new(first))
+        }
     }
+}
 
-    pub fn expression(&self) -> Expression<'db> {
-        Expression::new(self.node.nth_child(0))
-    }
+pub enum ExceptExpressionContent<'db> {
+    WithNameDef(Expression<'db>, NameDef<'db>),
+    Expressions(Expressions<'db>),
 }
 
 #[derive(Debug, Copy, Clone)]

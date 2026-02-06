@@ -4262,8 +4262,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     match block {
                         TryBlockType::Except(except) => {
                             if let (Some(except_expr), _) = except.unpack() {
-                                let (expr, name_def) = except_expr.unpack();
-                                if let Some(name_def) = name_def {
+                                if let ExceptExpressionContent::WithNameDef(expr, name_def) =
+                                    except_expr.unpack()
+                                {
                                     let nr = NodeRef::new(self.file, name_def.index());
                                     if nr.point().calculating() {
                                         Inferred::new_cycle()
@@ -4286,8 +4287,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         }
                         TryBlockType::ExceptStar(except_star) => {
                             let (except_expr, _) = except_star.unpack();
-                            let (expr, name_def) = except_expr.unpack();
-                            if let Some(name_def) = name_def {
+                            if let ExceptExpressionContent::WithNameDef(expr, name_def) =
+                                except_expr.unpack()
+                            {
                                 let nr = NodeRef::new(self.file, name_def.index());
                                 if nr.point().calculating() {
                                     Inferred::new_cycle()

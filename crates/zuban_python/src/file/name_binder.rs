@@ -908,11 +908,15 @@ impl<'db> NameBinder<'db> {
         block: Block<'db>,
         ordered: bool,
     ) {
-        let (expression, name_def) = except_expr.unpack();
-        if let Some(name_def) = name_def {
-            self.add_new_definition(name_def, Point::new_uncalculated())
+        match except_expr.unpack() {
+            ExceptExpressionContent::WithNameDef(expression, name_def) => {
+                self.add_new_definition(name_def, Point::new_uncalculated());
+                self.index_non_block_node(&expression, ordered);
+            }
+            ExceptExpressionContent::Expressions(expressions) => {
+                self.index_non_block_node(&expressions, ordered);
+            }
         }
-        self.index_non_block_node(&expression, ordered);
         self.index_block(block, ordered);
     }
 

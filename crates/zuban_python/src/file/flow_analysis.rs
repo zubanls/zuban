@@ -1,5 +1,5 @@
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     collections::VecDeque,
     sync::Arc,
@@ -9,14 +9,14 @@ use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, AssignmentContent, Atom, AtomContent, Block,
     BreakStmt, CaseBlock, CasePattern, ClassPattern, CompIfIterator, ComparisonContent,
     Comparisons, Conjunction, ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock,
-    ExceptExpression, Expression, ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt,
-    FunctionDef, IfBlockIterator, IfBlockType, IfStmt, KeyEntryInPattern, LiteralPattern,
-    LiteralPatternContent, MappingPattern, MappingPatternItem, MatchStmt, Name, NameDef,
-    NamedExpression, NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern,
-    PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
-    SequencePatternItem, SliceType as CSTSliceType, StarLikeExpression, StarLikeExpressionIterator,
-    StarPatternContent, SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber,
-    WhileStmt,
+    ExceptExpression, ExceptExpressionContent, Expression, ExpressionContent, ExpressionPart,
+    ForIfClauseIterator, ForStmt, FunctionDef, IfBlockIterator, IfBlockType, IfStmt,
+    KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPattern, MappingPatternItem,
+    MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
+    ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
+    PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType, StarLikeExpression,
+    StarLikeExpressionIterator, StarPatternContent, SubjectExprContent, Target, Ternary,
+    TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
 };
 
 use crate::{
@@ -2483,8 +2483,19 @@ impl<'file> Inference<'_, 'file, '_> {
                     let (Some(except_expr), _) = b.unpack() else {
                         return false;
                     };
-                    let inf = self.infer_expression(except_expr.expression());
-                    inf.maybe_saved_link() == Some(self.i_s.db.python_state.attribute_error_link())
+                    let attribute_error = self.i_s.db.python_state.attribute_error_link();
+                    match except_expr.unpack() {
+                        ExceptExpressionContent::WithNameDef(expr, _) => {
+                            let inf = self.infer_expression(expr);
+                            inf.maybe_saved_link() == Some(attribute_error)
+                        }
+                        ExceptExpressionContent::Expressions(expressions) => {
+                            expressions.iter().any(|expr| {
+                                let inf = self.infer_expression(expr);
+                                inf.maybe_saved_link() == Some(attribute_error)
+                            })
+                        }
+                    }
                 }
                 _ => false,
             });
@@ -2500,36 +2511,46 @@ impl<'file> Inference<'_, 'file, '_> {
                     let (exception_frame, except_type) =
                         fa.with_frame_and_result(exception_frame, || {
                             let except_type = if let Some(except_expr) = except_expr {
-                                let expr;
-                                (expr, name_def) = except_expr.unpack();
-                                let inf = self.infer_expression(expr);
-                                let inf_t = inf.as_cow_type(self.i_s);
-                                if let Some(name_def) = name_def {
-                                    let instantiated = match is_star {
-                                        false => instantiate_except(self.i_s, &inf_t),
-                                        true => self.instantiate_except_star(name_def, &inf_t),
-                                    };
-                                    let name_index = name_def.name_index();
-                                    let first = first_defined_name(self.file, name_index);
-                                    if first == name_index {
-                                        Inferred::from_type(instantiated).maybe_save_redirect(
-                                            self.i_s,
-                                            self.file,
-                                            name_def.index(),
-                                            false,
-                                        );
-                                    } else {
-                                        self.save_narrowed(
-                                            FlowKey::Name(PointLink::new(
-                                                self.file.file_index,
-                                                first,
-                                            )),
-                                            instantiated,
-                                            false,
-                                        )
+                                match except_expr.unpack() {
+                                    ExceptExpressionContent::WithNameDef(expr, n) => {
+                                        let inf = self.infer_expression(expr);
+                                        let inf_t = inf.as_cow_type(self.i_s);
+                                        let instantiated = match is_star {
+                                            false => instantiate_except(self.i_s, &inf_t),
+                                            true => self.instantiate_except_star(n, &inf_t),
+                                        };
+                                        let name_index = n.name_index();
+                                        let first = first_defined_name(self.file, name_index);
+                                        if first == name_index {
+                                            Inferred::from_type(instantiated).maybe_save_redirect(
+                                                self.i_s,
+                                                self.file,
+                                                n.index(),
+                                                false,
+                                            );
+                                        } else {
+                                            self.save_narrowed(
+                                                FlowKey::Name(PointLink::new(
+                                                    self.file.file_index,
+                                                    first,
+                                                )),
+                                                instantiated,
+                                                false,
+                                            )
+                                        }
+                                        name_def = Some(n);
+                                        Some(except_type(self.i_s.db, &inf_t, true))
+                                    }
+                                    ExceptExpressionContent::Expressions(expressions) => {
+                                        Some(ExceptType::from_types(
+                                            self.i_s.db,
+                                            true,
+                                            expressions.iter().map(|expr| {
+                                                self.infer_expression(expr).as_type(self.i_s)
+                                            }),
+                                        ))
                                     }
                                 }
-                                Some(except_type(self.i_s.db, &inf_t, true))
                             } else {
                                 None
                             };
@@ -5929,10 +5950,14 @@ enum ExceptType {
 }
 
 impl ExceptType {
-    fn from_types<'x>(db: &Database, types: impl Iterator<Item = &'x Type>) -> Self {
+    fn from_types<'x, B: Borrow<Type>>(
+        db: &Database,
+        allow_tuple: bool,
+        types: impl Iterator<Item = B>,
+    ) -> Self {
         let mut result = ExceptType::ContainsOnlyBaseExceptions;
         for t in types {
-            match except_type(db, t, false) {
+            match except_type(db, t.borrow(), allow_tuple) {
                 ExceptType::ContainsOnlyBaseExceptions => (),
                 x @ ExceptType::HasExceptionGroup => result = x,
                 ExceptType::Invalid => return ExceptType::Invalid,
@@ -5959,12 +5984,13 @@ fn except_type(db: &Database, t: &Type, allow_tuple: bool) -> ExceptType {
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleArgs::FixedLen(ts) => ExceptType::from_types(db, ts.iter()),
+            TupleArgs::FixedLen(ts) => ExceptType::from_types(db, false, ts.iter()),
             TupleArgs::ArbitraryLen(t) => except_type(db, t, false),
             TupleArgs::WithUnpack(w) => match &w.unpack {
                 TupleUnpack::TypeVarTuple(_) => ExceptType::Invalid,
                 TupleUnpack::ArbitraryLen(t) => ExceptType::from_types(
                     db,
+                    false,
                     w.before
                         .iter()
                         .chain(w.after.iter())
