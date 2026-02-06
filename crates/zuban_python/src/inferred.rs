@@ -2983,6 +2983,7 @@ pub fn specific_to_type<'db>(
         }
         Specific::PartialDefaultDict => {
             definition.add_need_type_annotation_issue(i_s.db, specific);
+            debug!("Warning: Tried to access a partial default dict");
             let value_node_ref = definition.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
             Cow::Owned(new_class!(
                 i_s.db.python_state.defaultdict_link(),

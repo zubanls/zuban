@@ -448,3 +448,27 @@ if bool():
     Z = 10
 else:
     Z = None
+
+[case defaultdict_forward_lookup]
+# flags: --disallow-untyped-globals
+# From GH #258
+from collections import defaultdict
+
+class C:
+    d
+
+d = defaultdict(int)  # E: Need type annotation for "d"
+
+[case defaultdict_forward_lookup_for_type]
+# flags: --disallow-untyped-globals
+from collections import defaultdict
+
+def f() -> None:
+    x = defaultdict(int)  # E: Need type annotation for "x"
+    z: x  # E: Variable "__main__.x" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+def g() -> None:
+    z: x  # E: Variable "__main__.x" is not valid as a type \
+          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    x = defaultdict(int)  # E: Need type annotation for "x"
