@@ -1543,7 +1543,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut params = self.iter_params().peekable();
         let needs_self_type = match options.first_param {
             FirstParamProperties::Skip { .. } => {
-                params.next();
+                if let Some(p) = params.peek()
+                    && matches!(
+                        p.specific(i_s.db),
+                        WrappedParamType::PositionalOnly(_)
+                            | WrappedParamType::PositionalOrKeyword(_)
+                    )
+                {
+                    params.next();
+                }
                 false
             }
             FirstParamProperties::None => {

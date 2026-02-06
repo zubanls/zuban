@@ -2722,8 +2722,8 @@ fn proper_classmethod_callable(
             }
             let first_param = vec.remove(0);
 
-            callable.params = CallableParams::Simple(Arc::from(vec));
             if let Some(t) = first_param.type_.maybe_positional_type() {
+                callable.params = CallableParams::Simple(Arc::from(vec));
                 let c = Callable::new(original_callable, None);
                 let mut matcher = Matcher::new_callable_matcher(&c);
                 let t = replace_class_type_vars(i_s.db, t, func_class, &|| Some(as_type()));

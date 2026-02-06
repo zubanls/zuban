@@ -211,3 +211,18 @@ def puts_p_into_scope1(f: Callable[P, int]) -> None:
 
     def bad_kwargs2(*args: P.args, **kwargs: Any) -> None:  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
         pass
+
+[case param_spec_as_self]
+# From GH #259
+class C[T]:
+    def f[**P](*args: P.args, **kwargs: P.kwargs):
+        pass
+
+C[int]()
+
+class D[T]:
+    @classmethod
+    def f[**P](*args: P.args, **kwargs: P.kwargs):
+        pass
+
+D[int]()
