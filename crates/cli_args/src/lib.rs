@@ -173,7 +173,7 @@ pub struct MypyCli {
     no_strict_optional: bool,
     #[arg(long)]
     strict_optional: bool,
-    /// Disable strict Optional checks in untyped contexts (inverse: --strict-optional)
+    /// Disable strict Optional checks in untyped contexts (inverse: --untyped-strict-optional)
     #[arg(long)]
     no_untyped_strict_optional: bool,
     #[arg(long)]
