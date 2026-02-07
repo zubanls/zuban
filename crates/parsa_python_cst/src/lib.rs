@@ -4342,6 +4342,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(lambda),
                 Nonterminal(walrus),
                 Nonterminal(stmt),
+                ErrorNonterminal(stmt),
             ])
             .expect("There should always be a stmt");
         node.is_type(Nonterminal(assignment))
