@@ -402,3 +402,9 @@ class Outer[T]:
                 return arg
         assert_type(Inner()(arg), T) # OK
         return Inner() # OK
+
+[case avoid_overflow_for_recursive_type_var_default]
+# flags: --warn-no-return
+# From GH #256
+def a[T=T]() -> T:  # E: Missing return statement  # E: Type parameter "T" has a default type that refers to one or more type variables that are out of scope
+    x: T = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "T = Any")
