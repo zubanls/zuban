@@ -571,7 +571,6 @@ impl TypeCheckerFlags {
             warn_unreachable: false,
             warn_no_return: true,
             follow_untyped_imports: false,
-            allow_incomplete_generics: false,
             untyped_strict_optional: true,
             ..Default::default()
         }
