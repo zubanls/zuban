@@ -316,3 +316,33 @@ b.py
 [file pyproject.toml]
 [tool.zuban]
 exclude_gitignore = false
+
+[case ignore_errors_in_zuban_config]
+1()
+
+[file pyproject.toml]
+[tool.zuban]
+ignore_errors = true
+
+[case ignore_errors_in_zuban_config_with_module_overrides]
+
+[file a.py]
+1()
+
+[file m.py]
+1()  # E: "int" not callable
+
+[file n.py]
+1()
+
+[file pyproject.toml]
+[tool.zuban]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = 'm'
+ignore_errors = false
+
+[[tool.mypy.overrides]]
+module = 'n'
+ignore_errors = true
