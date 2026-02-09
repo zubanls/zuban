@@ -47,7 +47,9 @@ pub(crate) fn create_sys_path(
         add_editable_src_packages(handler, &mut sys_path, env);
         include_system_site_packages_in_pyvenv_cfg(env)
     } else {
-        if let Some(lib_path) = &lib_path {
+        if let Some(lib_path) = &lib_path
+            && settings.add_global_packages_default
+        {
             let p = Path::new(lib_path).join("site-packages");
             if p.exists() {
                 // This is not necessary on Ubuntu (and probably Debian), but the default in
