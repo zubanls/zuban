@@ -1,7 +1,15 @@
 // Some parts are copied from rust-analyzer
 
 mod glob_abs_path;
+
+#[cfg(not(target_family = "wasm"))]
 mod local_fs;
+
+#[cfg(target_family = "wasm")]
+#[path = "local_fs_stub.rs"]
+mod local_fs;
+
+mod memory;
 mod normalized_path;
 mod path;
 mod tree;
@@ -10,10 +18,13 @@ mod workspaces;
 
 use std::{borrow::Cow, path::Path, sync::Arc};
 
-use crossbeam_channel::Receiver;
-
 pub use glob_abs_path::GlobAbsPath;
+
 pub use local_fs::{LocalFS, SimpleLocalFS};
+
+#[cfg(target_family = "wasm")]
+pub use memory::InMemoryFs;
+
 pub use normalized_path::NormalizedPath;
 pub use path::AbsPath;
 pub use tree::{
@@ -22,7 +33,20 @@ pub use tree::{
 pub use vfs::{InvalidationResult, PathWithScheme, Vfs, VfsFile, VfsPanicRecovery};
 pub use workspaces::{Workspace, WorkspaceKind};
 
+#[cfg(not(target_family = "wasm"))]
+pub use crossbeam_channel::Receiver;
+
+#[cfg(not(target_family = "wasm"))]
 pub type NotifyEvent = notify::Result<notify::Event>;
+
+#[cfg(target_family = "wasm")]
+pub type NotifyEvent = ();
+
+#[cfg(target_family = "wasm")]
+use std::marker::PhantomData;
+
+#[cfg(target_family = "wasm")]
+pub type Receiver<T> = PhantomData<T>;
 
 /// Interface for reading and watching files.                                  
 pub trait VfsHandler: Sync + Send {

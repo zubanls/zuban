@@ -1,41 +1,54 @@
 //! Scheduling, I/O, and API endpoints.
 
-use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::atomic::AtomicI64;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
-use anyhow::bail;
-use config::ProjectOptions;
-use crossbeam_channel::{Receiver, Sender, never, select};
-use fluent_uri::Scheme;
-use lsp_server::{Connection, ExtractError, Message, Request};
-use lsp_types::notification::Notification as _;
-use lsp_types::{TextDocumentPositionParams, Uri};
-use notify::EventKind;
-use serde::{Serialize, de::DeserializeOwned};
-use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
-use zuban_python::{PanicRecovery, Project, RunCause};
+use lsp_types::TextDocumentPositionParams;
+use serde::de::DeserializeOwned;
+use vfs::{NormalizedPath, PathWithScheme};
+use zuban_python::{PanicRecovery, Project};
 
-use crate::capabilities::{ClientCapabilities, server_capabilities};
+use crate::capabilities::ClientCapabilities;
 use crate::notebooks::Notebooks;
-use crate::notification_handlers::TestPanic;
-use crate::panic_hooks;
-use crate::request_handlers::to_uri;
+
+#[cfg(not(target_family = "wasm"))]
+use {
+    crate::capabilities::server_capabilities,
+    crate::notification_handlers::TestPanic,
+    crate::panic_hooks,
+    crate::request_handlers::to_uri,
+    anyhow::bail,
+    config::ProjectOptions,
+    crossbeam_channel::{Receiver, Sender, never, select},
+    fluent_uri::Scheme,
+    lsp_server::{Connection, ExtractError, Message, Request},
+    lsp_types::Uri,
+    lsp_types::notification::Notification as _,
+    notify::EventKind,
+    serde::Serialize,
+    std::borrow::Cow,
+    std::cell::RefCell,
+    std::path::Path,
+    std::sync::RwLock,
+    std::sync::atomic::AtomicI64,
+    vfs::{LocalFS, NotifyEvent, VfsHandler as _},
+    zuban_python::RunCause,
+};
 
 // Since we currently don't do garbage collection, we simply delete the project and reindex,
 // because it's not that expensive after a specific amount of diagnostics.
 const REINDEX_AFTER_N_DIAGNOSTICS: usize = 1000;
 
+#[cfg(not(target_family = "wasm"))]
 pub static GLOBAL_NOTIFY_EVENT_COUNTER: AtomicI64 = AtomicI64::new(0);
 
-fn version() -> &'static str {
+pub(crate) fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+#[cfg(not(target_family = "wasm"))]
 pub fn run_server_with_custom_connection(
     connection: Connection,
     typeshed_path: Option<Arc<NormalizedPath>>,
@@ -191,6 +204,7 @@ pub fn run_server_with_custom_connection(
     Ok(())
 }
 
+#[cfg(not(target_family = "wasm"))]
 pub fn run_server() -> anyhow::Result<()> {
     // TODO reenable this in the alpha in some form
     //licensing::verify_license_in_config_dir()?;
@@ -203,6 +217,7 @@ pub fn run_server() -> anyhow::Result<()> {
     })
 }
 
+#[cfg(not(target_family = "wasm"))]
 struct NotificationDispatcher<'a, 'sender> {
     not: Option<lsp_server::Notification>,
     global_state: &'a mut GlobalState<'sender>,
@@ -210,19 +225,25 @@ struct NotificationDispatcher<'a, 'sender> {
 
 pub(crate) struct GlobalState<'sender> {
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
+    #[cfg(not(target_family = "wasm"))]
     sender: &'sender Sender<lsp_server::Message>,
+    // As we don't have sender prop which uses 'sender, it would throw "unused lifetime specifier" without this.
+    #[cfg(target_family = "wasm")]
+    _phantom: std::marker::PhantomData<&'sender ()>,
     roots: Rc<[String]>,
     typeshed_path: Option<Arc<NormalizedPath>>,
     pub client_capabilities: ClientCapabilities,
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub sent_diagnostic_count: usize,
+    #[cfg(not(target_family = "wasm"))]
     changed_in_memory_files: Arc<RwLock<Vec<PathWithScheme>>>,
     pub notebooks: Notebooks,
     pub last_completion_position: Option<TextDocumentPositionParams>,
     pub shutdown_requested: bool,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl<'sender> GlobalState<'sender> {
     fn new(
         sender: &'sender Sender<lsp_server::Message>,
@@ -650,6 +671,45 @@ impl<'sender> GlobalState<'sender> {
     }
 }
 
+#[cfg(target_family = "wasm")]
+impl GlobalState<'_> {
+    pub(crate) fn new(
+        client_capabilities: ClientCapabilities,
+        roots: Rc<[String]>,
+        project: Project,
+    ) -> Self {
+        GlobalState {
+            paths_that_invalidate_whole_project: Default::default(),
+            _phantom: std::marker::PhantomData,
+            roots,
+            typeshed_path: None,
+            client_capabilities,
+            project: Some(project),
+            panic_recovery: None,
+            notebooks: Default::default(),
+            sent_diagnostic_count: 0,
+            last_completion_position: None,
+            shutdown_requested: false,
+        }
+    }
+
+    pub(crate) fn project(&mut self) -> &mut Project {
+        self.project.as_mut().expect("project uninitialized")
+    }
+
+    pub(crate) fn uri_to_path(
+        project: &Project,
+        uri: &lsp_types::Uri,
+    ) -> anyhow::Result<PathWithScheme> {
+        let path = uri.as_str().strip_prefix("file://").unwrap_or(uri.as_str());
+        let h = project.vfs_handler();
+        Ok(PathWithScheme::with_file_scheme(
+            h.normalize_unchecked_abs_path(path),
+        ))
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
 impl<'sender> NotificationDispatcher<'_, 'sender> {
     fn on_sync_mut<N>(
         &mut self,
@@ -705,11 +765,13 @@ impl<'sender> NotificationDispatcher<'_, 'sender> {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 struct RequestDispatcher<'a, 'sender> {
     request: Option<lsp_server::Request>,
     global_state: &'a mut GlobalState<'sender>,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl<'sender> RequestDispatcher<'_, 'sender> {
     fn on_sync_mut<R>(
         &mut self,
@@ -777,8 +839,10 @@ pub fn from_json<T: DeserializeOwned>(
         .map_err(|e| anyhow::format_err!("Failed to deserialize {what}: {e}; {json}"))
 }
 
+#[cfg(not(target_family = "wasm"))]
 struct Cancelled(); // TODO currently unused
 
+#[cfg(not(target_family = "wasm"))]
 fn result_to_response<R>(
     id: lsp_server::RequestId,
     result: anyhow::Result<R::Result>,
@@ -823,6 +887,7 @@ impl std::fmt::Display for LspError {
 
 impl std::error::Error for LspError {}
 
+#[cfg(not(target_family = "wasm"))]
 fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
     let (_, path) = unpack_uri(path)?;
     use std::path::{Component, Prefix};
@@ -861,6 +926,7 @@ fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<'_, str>)> {
     let Some(scheme) = uri.scheme() else {
         bail!("No scheme found in uri {}", uri.as_str())
