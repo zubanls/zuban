@@ -989,7 +989,8 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             Cow::Borrowed(type_)
         } else {
-            let replaced = type_.replace_type_var_likes(db, &mut |u| Some(callable(u)));
+            let replaced = type_
+                .replace_type_var_likes_without_simplified_unions(db, &mut |u| Some(callable(u)));
             replaced
                 .map(Cow::Owned)
                 .unwrap_or_else(|| Cow::Borrowed(type_))

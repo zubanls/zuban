@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, FunctionKind,
@@ -161,6 +161,19 @@ impl Type {
             .unwrap_or_else(|| self.clone())
     }
 
+    pub fn replace_type_var_likes_without_simplified_unions(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+    ) -> Option<Self> {
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
+            db,
+            callable,
+            replace_self: &|| None,
+            simplify_unions: false,
+        })
+    }
+
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         if let Some(t) = replacer.replace_type(self) {
             return t;
@@ -272,6 +285,7 @@ impl ReplaceTypeVarLikes for Type {
             db,
             callable,
             replace_self,
+            simplify_unions: true,
         })
     }
 }
@@ -374,11 +388,11 @@ impl ReplaceTypeVarLikes for GenericItem {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Option<Self> {
-        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper::new(
             db,
             callable,
             replace_self,
-        })
+        ))
     }
 }
 
@@ -430,11 +444,7 @@ impl CallableContent {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Self {
-        let replacer = &mut ReplaceTypeVarLikesHelper {
-            db,
-            callable,
-            replace_self,
-        };
+        let replacer = &mut ReplaceTypeVarLikesHelper::new(db, callable, replace_self);
         if let Some(c) = replacer.replace_callable_without_rc(&self) {
             return c;
         }
@@ -447,11 +457,7 @@ impl CallableContent {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> CallableContent {
-        let replacer = &mut ReplaceTypeVarLikesHelper {
-            db,
-            callable,
-            replace_self,
-        };
+        let replacer = &mut ReplaceTypeVarLikesHelper::new(db, callable, replace_self);
         if let Some(c) = replacer.replace_callable_without_rc(self) {
             return c;
         }
@@ -649,11 +655,7 @@ impl ReplaceTypeVarLikes for CallableParams {
         replace_self: ReplaceSelf,
     ) -> Option<Self> {
         self.replace_internal(
-            &mut ReplaceTypeVarLikesHelper {
-                db,
-                callable,
-                replace_self,
-            },
+            &mut ReplaceTypeVarLikesHelper::new(db, callable, replace_self),
             &mut None,
             None,
         )
@@ -783,22 +785,18 @@ impl ReplaceTypeVarLikes for TupleArgs {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Option<Self> {
-        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper::new(
             db,
             callable,
             replace_self,
-        })
+        ))
     }
 }
 
 impl GenericsList {
     pub fn replace_type_var_likes(self, db: &Database, callable: ReplaceTypeVarLike) -> Self {
-        self.replace_internal(&mut ReplaceTypeVarLikesHelper {
-            db,
-            callable,
-            replace_self: &|| None,
-        })
-        .unwrap_or(self)
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper::new(db, callable, &|| None))
+            .unwrap_or(self)
     }
 
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
@@ -830,9 +828,23 @@ struct ReplaceTypeVarLikesHelper<'db, 'a> {
     db: &'db Database,
     callable: ReplaceTypeVarLike<'a>,
     replace_self: ReplaceSelf<'a>,
+    simplify_unions: bool,
 }
 
-impl ReplaceTypeVarLikesHelper<'_, '_> {
+impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
+    fn new(
+        db: &'db Database,
+        callable: ReplaceTypeVarLike<'a>,
+        replace_self: ReplaceSelf<'a>,
+    ) -> Self {
+        Self {
+            db,
+            callable,
+            replace_self,
+            simplify_unions: true,
+        }
+    }
+
     #[inline]
     fn replace_callable_without_rc(&mut self, c: &CallableContent) -> Option<CallableContent> {
         let has_type_vars = !c.type_vars.is_empty();
@@ -893,7 +905,7 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 if !u.might_have_type_vars {
                     return Some(None);
                 }
-                let new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
+                let mut new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
                     Some(UnionEntry {
                         // Performance: It is a bit questionable that this always clones.
                         // The problem is that if it doesn't, we won't use simplified union
@@ -905,17 +917,24 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                         format_index: u.format_index,
                     })
                 })?;
-                let i_s = InferenceState::new_in_unknown_file(self.db);
-                let highest_union_format_index = new_entries
-                    .iter()
-                    .map(|e| e.type_.highest_union_format_index())
-                    .max()
-                    .unwrap();
-                Some(Some(simplified_union_from_iterators_with_format_index(
-                    &i_s,
-                    new_entries.into_iter().map(|e| (e.format_index, e.type_)),
-                    highest_union_format_index,
-                )))
+                Some(Some(if self.simplify_unions {
+                    let i_s = InferenceState::new_in_unknown_file(self.db);
+                    let highest_union_format_index = new_entries
+                        .iter()
+                        .map(|e| e.type_.highest_union_format_index())
+                        .max()
+                        .unwrap();
+                    simplified_union_from_iterators_with_format_index(
+                        &i_s,
+                        new_entries.into_iter().map(|e| (e.format_index, e.type_)),
+                        highest_union_format_index,
+                    )
+                } else {
+                    let mut seen = HashSet::new();
+                    // Try to remove duplicates
+                    new_entries.retain(|entry| seen.insert(entry.type_.clone()));
+                    Type::from_union_entries(new_entries, true)
+                }))
             }
             Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
                 GenericItem::TypeArg(t) => Some(Some({
