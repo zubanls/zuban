@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
 mod arguments;
+mod auto_imports;
 mod code_actions;
 mod completion;
 mod database;
