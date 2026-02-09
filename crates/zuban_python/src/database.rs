@@ -874,7 +874,10 @@ impl TypeAlias {
             return &Type::ERROR;
         };
         match state {
-            TypeAliasState::Invalid => unreachable!(),
+            TypeAliasState::Invalid => {
+                debug!("Recursive type loop with invalid recursive type");
+                &Type::ERROR
+            }
             TypeAliasState::Valid(a) => a.type_.as_ref(),
         }
     }
