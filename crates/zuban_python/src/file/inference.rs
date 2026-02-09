@@ -4605,6 +4605,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 })
             });
         }
+        self.file
+            .points
+            .set(decorator.index(), Point::new_calculating());
         let expr = decorator.named_expression().expression();
 
         let is_untyped_and_non_mypy_compatible = |inf: &Inferred| {

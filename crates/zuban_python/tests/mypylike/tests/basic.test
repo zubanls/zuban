@@ -1474,11 +1474,11 @@ with (
 
 [case avoid_recursion_with_decorator]
 # From GH #123
-@f  # E: Name "f" is used before definition  # E: Cannot resolve name "f" (possible cyclic definition)
+@f  # E: Name "f" is used before definition
 def f():
     pass
 
-@g  # E: Name "g" is used before definition  # E: Cannot resolve name "g" (possible cyclic definition)
+@g  # E: Name "g" is used before definition
 def g() -> int:
     pass
 
@@ -1744,3 +1744,12 @@ try:
     ...
 except* ValueError, TypeError, bool:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     ...
+
+[case recursive_decorator_no_crash]
+# flags: --mode default
+# From GH #281
+def f():
+    @a  # E: Name "a" is not defined
+    @b  # E: Name "b" is used before definition
+    def b():
+        pass
