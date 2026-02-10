@@ -38,18 +38,45 @@ __main__.py:3: Code Actions: []
 #? --codepoint-column 0 code-actions
 1()  # zuban: ignore  # Also not needed
 #? --codepoint-column 0 code-actions
-1()  # zuban: ignore[misc]
+1()  # zuban: ignore[undefined]
 #? --codepoint-column 0 code-actions
-1()  # type: ignore[ misc ]
+1()  # type: ignore[ undefined ]
 #? --codepoint-column 0 code-actions
 1()  # type: ignore[ operator ]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[ undefined ]  # additional comment
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[undefined]  # zuban: ignore[undefined2]
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore[undefined]  # type: ignore[undefined2]
 [out]
 __main__.py:3: Code Actions: []
 __main__.py:5: Code Actions: []
 __main__.py:7: Code Actions: []
 __main__.py:9: Code Actions: []
 __main__.py:11: Code Actions:
-- Add "# zuban: ignore[operator]": 11:25-11:25 replaced with: ", operator"
+- Add "# zuban: ignore[operator]": 11:30-11:30 replaced with: ", operator"
 __main__.py:13: Code Actions:
-- Add "# type: ignore[operator]": 13:25-13:25 replaced with: ", operator"
+- Add "# type: ignore[operator]": 13:30-13:30 replaced with: ", operator"
 __main__.py:15: Code Actions: []
+__main__.py:17: Code Actions:
+- Add "# type: ignore[operator]": 17:30-17:30 replaced with: ", operator"
+__main__.py:19: Code Actions:
+- Add "# type: ignore[operator]": 19:29-19:29 replaced with: ", operator"
+__main__.py:21: Code Actions:
+- Add "# zuban: ignore[operator]": 21:30-21:30 replaced with: ", operator"
+
+[case code_actions_on_preexisting_type_ignores2]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore [ undefined ]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore [ undefined ]  
+[out]
+__main__:2: error: "int" not callable
+__main__:2: note: Error code "operator" not covered by "type: ignore" comment
+__main__:4: error: "int" not callable
+__main__:4: note: Error code "operator" not covered by "type: ignore" comment
+__main__.py:2: Code Actions:
+- Add "# type: ignore[operator]": 2:31-2:31 replaced with: ", operator"
+__main__.py:4: Code Actions:
+- Add "# type: ignore[operator]": 4:31-4:31 replaced with: ", operator"
