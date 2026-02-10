@@ -3076,29 +3076,77 @@ fn test_auto_imports_code_actions() {
             partial_result_params: Default::default(),
             work_done_progress_params: Default::default(),
         },
-        json!([{
-          "edit": {
-            "changes": {
-              foo.uri.as_str(): [
-                {
-                  "newText": "from email.mime.message import MIMEMessage\n\n",
-                  "range": {
-                    "start": {
-                      "line": 1,
-                      "character": 0,
-                    },
-                    "end": {
-                      "line": 1,
-                      "character": 0,
-                    },
+        json!([
+            {
+            "edit": {
+              "changes": {
+                foo.uri.as_str(): [
+                  {
+                    "newText": "from email.mime.message import MIMEMessage\n\n",
+                    "range": {
+                      "start": {
+                        "line": 1,
+                        "character": 0,
+                      },
+                      "end": {
+                        "line": 1,
+                        "character": 0,
+                      },
+                    }
                   }
-                }
-              ]
-            }
+                ]
+              }
+            },
+            "kind": "quickfix",
+            "title": "Import `email.mime.message.MIMEMessage`"
           },
-          "kind": "quickfix",
-          "title": "Import `email.mime.message.MIMEMessage`"
-        }]),
+          {
+            "edit": {
+              "changes": {
+                foo.uri.as_str(): [
+                  {
+                    "newText": "  # type: ignore[name-defined]",
+                    "range": {
+                      "end": {
+                        "character": 11,
+                        "line": 1
+                      },
+                      "start": {
+                        "character": 11,
+                        "line": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "quickfix",
+            "title": "Add \"# type: ignore[name-defined]\""
+          },
+          {
+            "edit": {
+              "changes": {
+                foo.uri.as_str(): [
+                  {
+                    "newText": "  # zuban: ignore[name-defined]",
+                    "range": {
+                      "end": {
+                        "character": 11,
+                        "line": 1
+                      },
+                      "start": {
+                        "character": 11,
+                        "line": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "quickfix",
+            "title": "Add \"# zuban: ignore[name-defined]\""
+          },
+        ]),
     );
 }
 
