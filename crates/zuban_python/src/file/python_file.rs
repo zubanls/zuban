@@ -752,9 +752,16 @@ impl<'db> PythonFile {
         if self.ignore_type_errors {
             return;
         }
-        let maybe_ignored = self
+        let (file, add) = match self.super_file {
+            Some(super_file) if super_file.is_part_of_parent() => (
+                db.loaded_python_file(super_file.file),
+                super_file.offset.unwrap_or(0),
+            ),
+            _ => (self, 0),
+        };
+        let maybe_ignored = file
             .tree
-            .type_ignore_comment_for(issue.start_position, issue.end_position);
+            .type_ignore_comment_for(issue.start_position + add, issue.end_position + add);
         let config = DiagnosticConfig {
             show_column_numbers: true,
             ..Default::default()
