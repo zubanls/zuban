@@ -39,9 +39,14 @@ impl Tree {
             }),
             Some(TypeIgnoreComment::WithoutCode) => None,
             None => {
-                let line = &self.code()[position as usize..];
-                let last_valid_position =
-                    position + line.find(['\r', '\n']).unwrap_or_else(|| line.len()) as u32;
+                let mut line = &self.code()[position as usize..];
+                if let Some(line_end) = line.find(['\r', '\n']) {
+                    line = &line[..line_end];
+                    if line.ends_with('\\') {
+                        return None;
+                    }
+                }
+                let last_valid_position = position + line.len() as u32;
 
                 let mut leaf = self.0.leaf_by_position(position);
                 while let Some(next) = leaf.next_leaf()

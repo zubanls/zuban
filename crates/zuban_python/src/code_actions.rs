@@ -54,6 +54,10 @@ impl<'project> Document<'project> {
                 && let Some(insertion) = file.tree.insertion_point_for_type_ignore(issue_start)
             {
                 let error_code = diag.mypy_error_code();
+                if error_code == "syntax" {
+                    // Syntax errors cannot be ignored
+                    continue;
+                }
                 let pos = file.byte_to_position_infos(db, insertion.insertion_index);
                 let mut add = |kind| {
                     if let Some(replacement) = insertion.format_for_kind(kind, error_code) {
