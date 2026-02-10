@@ -1,9 +1,9 @@
 [case auto_import_our_own_mods]
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
-#? --codepoint-column 0 code-actions
+#? --codepoint-column 0 code-actions --only-auto-imports
 x.completepls
 
 [file x.py]
@@ -20,7 +20,7 @@ __main__.py:6: Code Actions:
 [case auto_import_with_selection_should_have_single_import_for_repeats]
 # flags: --no-typecheck
 
-#? code-actions --until-line 6
+#? code-actions --only-auto-imports --until-line 6
 completepls
 completepls
 
@@ -35,7 +35,7 @@ __main__.py:4: Code Actions:
 # flags: --no-typecheck
 
 bar
-#? code-actions --until-line 6
+#? code-actions --only-auto-imports --until-line 6
 completepls
 x
 baz
@@ -53,11 +53,11 @@ __main__.py:5: Code Actions:
 [case auto_import_add_name_to_from1]
 # flags: --no-typecheck
 from x import a
-#? code-actions
+#? code-actions --only-auto-imports
 b
 
 def f() -> None:
-    #? code-actions
+    #? code-actions --only-auto-imports
     b
 
 [file x.py]
@@ -78,11 +78,11 @@ __main__.py:8: Code Actions:
 
 [case auto_import_add_name_to_from2]
 # flags: --no-typecheck
-#? code-actions
+#? code-actions --only-auto-imports
 b
 
 def f() -> None:
-    #? code-actions
+    #? code-actions --only-auto-imports
     b
 
 from x import a
@@ -106,17 +106,17 @@ __main__.py:7: Code Actions:
 [case auto_import_with_parens]
 # flags: --no-typecheck
 from x import (a, b)
-#? code-actions
+#? code-actions --only-auto-imports
 completeme
 
 [file test2.py]
 from x import (a, b,)
-#? code-actions
+#? code-actions --only-auto-imports
 completeme
 
 [file test3.py]
 from x import (a, b, )
-#? code-actions
+#? code-actions --only-auto-imports
 completeme
 
 [file x.py]
@@ -138,7 +138,7 @@ test3.py:3: Code Actions:
 from x import (
     a, b
     )
-#? code-actions
+#? code-actions --only-auto-imports
 completeme
 
 [file test2.py]
@@ -146,7 +146,7 @@ from x import (
     a,
     b
 )
-#? code-actions
+#? code-actions --only-auto-imports
 completeme
 
 [file test3.py]
@@ -154,7 +154,7 @@ from x import (
     a,
     b,
 )
-#? code-actions
+#? code-actions --only-auto-imports
 completeme
 
 [file x.py]
@@ -173,7 +173,7 @@ test3.py:6: Code Actions:
 [case auto_import_of_module_in_namespaces]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
 [file bar/baz/completepls.py]
@@ -184,7 +184,7 @@ __main__.py:4: Code Actions:
 [case auto_import_of_nested_module]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
 [file bar/__init__.py]
@@ -198,7 +198,7 @@ __main__.py:4: Code Actions:
 [file test1.py]
 "hello"
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
 [file test2.py]
@@ -206,7 +206,7 @@ completepls
 hello
 """
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
 [file test3.py]
@@ -215,7 +215,7 @@ hello
 """
 
 import bar
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
 [file x.py]
@@ -240,7 +240,7 @@ if TYPE_CHECKING
     import typing
 # b
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 [file x.py]
 completepls = 1
@@ -254,7 +254,7 @@ __main__.py:12: Code Actions:
 
 from typing import TYPE_CHECKING
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 [file x.py]
 completepls = 1
@@ -268,7 +268,7 @@ __main__.py:6: Code Actions:
 
 from pathlib import Path
 
-#? code-actions
+#? code-actions --only-auto-imports
 ParamSpec
 
 [out]
@@ -283,7 +283,7 @@ from pathlib import Path
 
 import x
 
-#? code-actions
+#? code-actions --only-auto-imports
 TypeVar
 
 [file x.py]
@@ -301,7 +301,7 @@ from pathlib import Path
 
 import x
 
-#? code-actions
+#? code-actions --only-auto-imports
 no_star_import
 
 [file x.py]
@@ -317,9 +317,9 @@ __main__.py:9: Code Actions:
 from pathlib import Path
 import x
 
-#? code-actions
+#? code-actions --only-auto-imports
 no_star_import
-#? code-actions
+#? code-actions --only-auto-imports
 from_star_import_not_public
 
 [file x.py]
@@ -333,7 +333,7 @@ __main__.py:10: Code Actions: []
 # flags: --no-typecheck
 
 import x
-#? code-actions
+#? code-actions --only-auto-imports
 ParamSpec
 
 [file x.py]
@@ -352,7 +352,7 @@ import typing
 import with_star_imports
 import y
 
-#? code-actions
+#? code-actions --only-auto-imports
 MIMEMessage
 
 [file test2.py]
@@ -362,7 +362,7 @@ import with_star_imports
 
 import y
 
-#? code-actions
+#? code-actions --only-auto-imports
 MIMEMessage
 
 [file test3.py]
@@ -370,7 +370,7 @@ from typing import ParamSpec
 from with_star_imports.x import undefined
 from y import y
 
-#? code-actions
+#? code-actions --only-auto-imports
 MIMEMessage
 
 [file test4.py]
@@ -380,7 +380,7 @@ from with_star_imports.x import undefined
 
 from y import y
 
-#? code-actions
+#? code-actions --only-auto-imports
 MIMEMessage
 
 [file x.py]
@@ -410,7 +410,7 @@ test4.py:8: Code Actions:
 [case auto_import_do_not_add_imports]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
 [file x.py]
@@ -426,7 +426,7 @@ __main__.py:4: Code Actions:
 [case auto_import_with_reexport]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 completepls
 
 [file x.py]
@@ -443,7 +443,7 @@ __main__.py:4: Code Actions:
 [case auto_import_with_dunder_init_reexport]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 complete_pls
 
 [file x/__init__.py]
@@ -459,7 +459,7 @@ __main__.py:4: Code Actions:
 [case auto_import_with_dunder_init_relative]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 complete_pls
 
 [file x/__init__.py]
@@ -475,7 +475,7 @@ __main__.py:4: Code Actions:
 [case auto_import_with_dunder_init_relative_nested]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 complete_pls
 
 [file x/__init__.py]
@@ -494,7 +494,7 @@ __main__.py:4: Code Actions:
 [case auto_import_with_dunder_init_relative_should_not_use]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 complete_pls
 
 [file x/__init__.py]
@@ -511,20 +511,20 @@ __main__.py:4: Code Actions:
 # flags: --no-typecheck
 
 # From stdlib/_typeshed
-#? code-actions
+#? code-actions --only-auto-imports
 IdentityFunction
-#? code-actions
+#? code-actions --only-auto-imports
 SupportsNext
-#? code-actions
+#? code-actions --only-auto-imports
 LoaderProtocol
 
 # From stdlib/@tests/test_cases/builtins/check_dict.py
-#? code-actions
+#? code-actions --only-auto-imports
 test_dict_dot_or
 
 # This exists both in _ast.py and ast.py, but should only be imported for the
 # latter
-#? code-actions
+#? code-actions --only-auto-imports
 PyCF_ALLOW_TOP_LEVEL_AWAIT
 
 [out]
@@ -538,10 +538,10 @@ __main__.py:18: Code Actions:
 [case auto_import_typeshed_toplevel_name]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 typing.typing
 
-#? --codepoint-column 0 code-actions
+#? --codepoint-column 0 code-actions --only-auto-imports
 typing.typing
 
 [out]
@@ -552,19 +552,19 @@ __main__.py:7: Code Actions:
 [case auto_import_typeshed_nested_files]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 message_from_string
 
-#? code-actions
+#? code-actions --only-auto-imports
 message
 
-#? code-actions
+#? code-actions --only-auto-imports
 MIMEPart
 
-#? code-actions
+#? code-actions --only-auto-imports
 MIMEMessage
 
-#? code-actions
+#? code-actions --only-auto-imports
 mime
 
 [out]
@@ -583,9 +583,9 @@ __main__.py:16: Code Actions:
 [case auto_import_follow_star_imports_in_same_project_have_no_effect]
 # flags: --no-typecheck
 
-#? code-actions
+#? code-actions --only-auto-imports
 complete_pls
-#? code-actions
+#? code-actions --only-auto-imports
 Path
 
 [file x/__init__.py]
@@ -608,13 +608,13 @@ __main__.py:6: Code Actions:
 
 import typing
 
-#? code-actions
+#? code-actions --only-auto-imports
 from_star_import
-#? code-actions
+#? code-actions --only-auto-imports
 from_star_import2
-#? code-actions
+#? code-actions --only-auto-imports
 from_star_import_not_public
-#? code-actions
+#? code-actions --only-auto-imports
 Path
 
 [out]
@@ -630,7 +630,7 @@ __main__.py:13: Code Actions:
 
 [case auto_import_choose_only_valid_imports]
 # flags: --no-typecheck
-#? code-actions
+#? code-actions --only-auto-imports
 something3
 
 [file x.pyc]

@@ -1,4 +1,4 @@
-use parsa_python_cst::NameParent;
+use parsa_python_cst::{CodeIndex, NameParent};
 
 use crate::{
     Document, InputPosition, PositionInfos,
@@ -43,6 +43,30 @@ impl<'project> Document<'project> {
                         actions.push(create_import_code_action(db, file, potential, title, name))
                     }
                 }
+            }
+        }
+        let in_range = |check| pos.byte <= check && check <= until.byte;
+        for diag in file.diagnostics(db) {
+            let issue_start = diag.start_position().byte_position as CodeIndex;
+            if !diag.is_note()
+                && (in_range(issue_start)
+                    || in_range(diag.end_position().byte_position as CodeIndex))
+                && let Some(insertion) = file.tree.insertion_point_for_type_ignore(issue_start)
+            {
+                let error_code = diag.mypy_error_code();
+                let pos = file.byte_to_position_infos(db, insertion.insertion_index);
+                let mut add = |kind| {
+                    if let Some(replacement) = insertion.format_for_kind(kind, error_code) {
+                        actions.push(CodeAction {
+                            title: format!(r##"Add "# {kind}: ignore[{error_code}]""##),
+                            start_of_change: pos,
+                            end_of_change: pos,
+                            replacement,
+                        })
+                    }
+                };
+                add("type");
+                add("zuban");
             }
         }
         debug!(

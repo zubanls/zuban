@@ -1,4 +1,5 @@
 mod bytes;
+mod code_actions;
 mod completion;
 mod match_stmt;
 mod ranges;

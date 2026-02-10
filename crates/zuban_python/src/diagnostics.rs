@@ -756,7 +756,7 @@ impl<'db> Diagnostic<'db> {
         }
     }
 
-    fn is_note(&self) -> bool {
+    pub(crate) fn is_note(&self) -> bool {
         matches!(
             &self.issue.kind,
             IssueKind::Note(_)

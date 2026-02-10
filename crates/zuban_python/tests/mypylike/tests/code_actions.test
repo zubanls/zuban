@@ -1,0 +1,28 @@
+[case actions_both_name_error_and_auto_import]
+# flags: --no-typecheck
+
+#? code-actions
+completepls
+
+#? --codepoint-column 0 code-actions
+x.completepls
+
+[file x.py]
+completepls = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n\n"
+- Add "# type: ignore[name-defined]": 4:11-4:11 replaced with: "  # type: ignore[name-defined]"
+- Add "# zuban: ignore[name-defined]": 4:11-4:11 replaced with: "  # zuban: ignore[name-defined]"
+__main__.py:7: Code Actions:
+- Import `x`: 4:0-4:0 replaced with: "import x\n\n"
+- Add "# type: ignore[name-defined]": 7:13-7:13 replaced with: "  # type: ignore[name-defined]"
+- Add "# zuban: ignore[name-defined]": 7:13-7:13 replaced with: "  # zuban: ignore[name-defined]"
+
+[case no_code_actions_on_reveal_type]
+# flags: --no-typecheck
+#? --codepoint-column 13 code-actions
+reveal_type(1)
+[out]
+__main__.py:3: Code Actions: []
