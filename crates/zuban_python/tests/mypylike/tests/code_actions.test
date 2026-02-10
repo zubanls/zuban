@@ -133,3 +133,19 @@ __main__.py:3: Code Actions:
 - Add "# zuban: ignore[operator]": 4:3-4:3 replaced with: "  # zuban: ignore[operator]"
 - Add "# type: ignore[operator]": 6:6-6:6 replaced with: "  # type: ignore[operator]"
 - Add "# zuban: ignore[operator]": 6:6-6:6 replaced with: "  # zuban: ignore[operator]"
+
+[case code_actions_position_within_error]
+# flags: --mode default
+def goto_or_help_or_infer(request, Script):
+    def do(code, *args, **kwargs):
+        return getattr(Script(code), request.param)(*args, **kwargs)
+
+    #? --codepoint-column 9 code-actions
+    do.type = request.param
+    return do
+
+[out]
+__main__:7: error: "Callable[[Any, VarArg(Any), KwArg(Any)], Any]" has no attribute "type"
+__main__.py:7: Code Actions:
+- Add "# type: ignore[attr-defined]": 7:27-7:27 replaced with: "  # type: ignore[attr-defined]"
+- Add "# zuban: ignore[attr-defined]": 7:27-7:27 replaced with: "  # zuban: ignore[attr-defined]"

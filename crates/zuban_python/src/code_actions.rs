@@ -45,12 +45,12 @@ impl<'project> Document<'project> {
                 }
             }
         }
-        let in_range = |check| pos.byte <= check && check <= until.byte;
+        let check_range = pos.byte..until.byte;
         for diag in file.diagnostics(db) {
             let issue_start = diag.start_position().byte_position as CodeIndex;
+            let issue_end = diag.end_position().byte_position as CodeIndex;
             if !diag.is_note()
-                && (in_range(issue_start)
-                    || in_range(diag.end_position().byte_position as CodeIndex))
+                && intersects(&check_range, &(issue_start..issue_end))
                 && let Some(insertion) = file.tree.insertion_point_for_type_ignore(issue_start)
             {
                 let error_code = diag.mypy_error_code();
@@ -79,6 +79,10 @@ impl<'project> Document<'project> {
         );
         Ok(actions)
     }
+}
+
+fn intersects<T: Ord>(a: &std::ops::Range<T>, b: &std::ops::Range<T>) -> bool {
+    a.start <= b.end && b.start <= a.end
 }
 
 pub struct CodeAction<'db> {
