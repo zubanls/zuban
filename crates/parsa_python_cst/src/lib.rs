@@ -101,7 +101,7 @@ impl Tree {
         &self,
         start: CodeIndex,
         end: CodeIndex,
-    ) -> Option<Option<&str>> {
+    ) -> Option<TypeIgnoreComment<'_>> {
         // Returns Some(None) when there is a type: ignore
         // Returns Some("foo") when there is a type: ignore['foo']
         let code = self.code();
@@ -113,7 +113,7 @@ impl Tree {
         Self::type_ignore_comment_for_region(relevant_region)
     }
 
-    fn type_ignore_comment_for_region(region: &str) -> Option<Option<&str>> {
+    fn type_ignore_comment_for_region(region: &str) -> Option<TypeIgnoreComment<'_>> {
         for line in region.split(['\n', '\r']) {
             for comment in line.split('#').skip(1) {
                 let rest = comment.trim_start_matches(' ');
@@ -136,8 +136,8 @@ impl Tree {
 
     pub fn has_type_ignore_at_start(&self) -> Result<bool, &str> {
         match Self::type_ignore_comment_for_region(self.before_first_statement()) {
-            Some(Some(ignore)) => Err(ignore),
-            Some(None) => Ok(true),
+            Some(TypeIgnoreComment::WithCodes { codes: code }) => Err(code),
+            Some(TypeIgnoreComment::WithoutCode) => Ok(true),
             None => Ok(false),
         }
     }
@@ -433,23 +433,28 @@ impl Tree {
     }
 }
 
+pub enum TypeIgnoreComment<'db> {
+    WithCodes { codes: &'db str },
+    WithoutCode,
+}
+
 pub enum PotentialInlayHint<'db> {
     FunctionDef(FunctionDef<'db>),
     Assignment(Assignment<'db>),
 }
 
-pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
+pub fn maybe_type_ignore(text: &str) -> Option<TypeIgnoreComment<'_>> {
     if let Some(after) = text.strip_prefix("ignore") {
         let trimmed = after.trim_matches(' ');
         if let Some(trimmed) = trimmed.strip_prefix('[')
             && let Some(trimmed) = trimmed.strip_suffix(']')
             && !trimmed.is_empty()
         {
-            return Some(Some(trimmed));
+            return Some(TypeIgnoreComment::WithCodes { codes: trimmed });
         }
 
         if after.is_empty() || after.starts_with([' ', '\t']) {
-            return Some(None);
+            return Some(TypeIgnoreComment::WithoutCode);
         }
     }
     None
