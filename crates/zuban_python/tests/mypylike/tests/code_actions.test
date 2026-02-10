@@ -26,3 +26,30 @@ __main__.py:7: Code Actions:
 reveal_type(1)
 [out]
 __main__.py:3: Code Actions: []
+
+[case code_actions_on_preexisting_type_ignores]
+# flags: --no-typecheck
+#? --codepoint-column 0 code-actions
+1()  # type: ignore
+#? --codepoint-column 0 code-actions
+1()  # type: ignore  # Also not needed
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore  # Also not needed
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore[misc]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[ misc ]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[ operator ]
+[out]
+__main__.py:3: Code Actions: []
+__main__.py:5: Code Actions: []
+__main__.py:7: Code Actions: []
+__main__.py:9: Code Actions: []
+__main__.py:11: Code Actions:
+- Add "# zuban: ignore[operator]": 11:25-11:25 replaced with: ", operator"
+__main__.py:13: Code Actions:
+- Add "# type: ignore[operator]": 13:25-13:25 replaced with: ", operator"
+__main__.py:15: Code Actions: []
