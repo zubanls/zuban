@@ -110,33 +110,45 @@ impl Tree {
         } else {
             &code[start as usize..]
         };
-        Self::type_ignore_comment_for_region(relevant_region)
+        Self::type_ignore_comment_for_region(start, relevant_region)
     }
 
-    fn type_ignore_comment_for_region(region: &str) -> Option<TypeIgnoreComment<'_>> {
+    fn type_ignore_comment_for_region(
+        mut start_at: CodeIndex,
+        region: &str,
+    ) -> Option<TypeIgnoreComment<'_>> {
         for line in region.split(['\n', '\r']) {
-            for comment in line.split('#').skip(1) {
+            let mut iterator = line.split('#');
+            start_at += iterator.next().unwrap().len() as CodeIndex + 1;
+            for comment in iterator {
                 let rest = comment.trim_start_matches(' ');
-                if let Some(ignore) = rest
-                    .strip_prefix("type:")
-                    .or_else(|| rest.strip_prefix("zuban:"))
-                {
+                let mut kind = "type";
+                if let Some(ignore) = rest.strip_prefix("type:").or_else(|| {
+                    kind = "zuban";
+                    rest.strip_prefix("zuban:")
+                }) {
                     let ignore = ignore.trim_start_matches(' ');
-                    let r = maybe_type_ignore(ignore);
+                    let r = maybe_type_ignore(
+                        kind,
+                        start_at + (comment.len() - ignore.len()) as CodeIndex,
+                        ignore,
+                    );
                     if r.is_some() {
                         return r;
                     }
                 } else {
                     break;
                 }
+                start_at += comment.len() as CodeIndex + 1;
             }
+            start_at += 1;
         }
         None
     }
 
     pub fn has_type_ignore_at_start(&self) -> Result<bool, &str> {
-        match Self::type_ignore_comment_for_region(self.before_first_statement()) {
-            Some(TypeIgnoreComment::WithCodes { codes: code }) => Err(code),
+        match Self::type_ignore_comment_for_region(0, self.before_first_statement()) {
+            Some(TypeIgnoreComment::WithCodes { codes: code, .. }) => Err(code),
             Some(TypeIgnoreComment::WithoutCode) => Ok(true),
             None => Ok(false),
         }
@@ -434,7 +446,11 @@ impl Tree {
 }
 
 pub enum TypeIgnoreComment<'db> {
-    WithCodes { codes: &'db str },
+    WithCodes {
+        codes: &'db str,
+        kind: &'static str,
+        codes_start_at_index: CodeIndex,
+    },
     WithoutCode,
 }
 
@@ -443,14 +459,24 @@ pub enum PotentialInlayHint<'db> {
     Assignment(Assignment<'db>),
 }
 
-pub fn maybe_type_ignore(text: &str) -> Option<TypeIgnoreComment<'_>> {
+pub fn maybe_type_ignore<'db>(
+    kind: &'static str,
+    start_at: CodeIndex,
+    text: &'db str,
+) -> Option<TypeIgnoreComment<'db>> {
     if let Some(after) = text.strip_prefix("ignore") {
-        let trimmed = after.trim_matches(' ');
+        let trimmed = after.trim_start_matches(' ');
+        let start_at = start_at + (text.len() - trimmed.len()) as CodeIndex;
+        let trimmed = trimmed.trim_end_matches(' ');
         if let Some(trimmed) = trimmed.strip_prefix('[')
             && let Some(trimmed) = trimmed.strip_suffix(']')
             && !trimmed.is_empty()
         {
-            return Some(TypeIgnoreComment::WithCodes { codes: trimmed });
+            return Some(TypeIgnoreComment::WithCodes {
+                kind,
+                codes: trimmed,
+                codes_start_at_index: start_at + 1,
+            });
         }
 
         if after.is_empty() || after.starts_with([' ', '\t']) {

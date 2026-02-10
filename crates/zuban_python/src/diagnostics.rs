@@ -2316,7 +2316,7 @@ impl Diagnostics {
     ) -> Result<&Issue, Issue> {
         let mut add_not_covered_note = None;
         if let Some(specific) = maybe_ignored {
-            if let TypeIgnoreComment::WithCodes { codes } = specific {
+            if let TypeIgnoreComment::WithCodes { codes, .. } = specific {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
                 let e = issue.kind.mypy_error_code();
                 let super_ = issue.kind.mypy_error_supercode();

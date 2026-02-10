@@ -4086,7 +4086,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     return None;
                 }
                 debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
-                if maybe_type_ignore(s).is_none() {
+                // The start index here is not correct, but we don't use it so it doesn't matter.
+                if maybe_type_ignore("type", 0, s).is_none() {
                     return Some(self.compute_type_comment(
                         assignment.end() + start as CodeIndex,
                         s,
