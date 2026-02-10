@@ -121,6 +121,8 @@ pub struct CodeActionArgs {
     pub until_line: Option<usize>,
     #[arg(long)]
     pub only_auto_imports: bool,
+    #[arg(long)]
+    pub strict_range: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -461,7 +463,7 @@ pub(crate) fn find_and_check_ide_tests(
                         line: until_line - 1,
                         column: 0,
                     });
-                    match document.code_actions(position, until) {
+                    match document.code_actions(position, until, args.strict_range) {
                         Ok(mut actions) => {
                             if args.only_auto_imports {
                                 actions.retain(|action| action.title.starts_with("Import"))

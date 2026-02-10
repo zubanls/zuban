@@ -14,17 +14,26 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         until: Option<InputPosition>,
+        // If false the range will be expanded to full lines
+        strict_range: bool,
     ) -> anyhow::Result<Vec<CodeAction<'_>>> {
         let db = &self.project.db;
         let file = db.loaded_python_file(self.file_index);
         let result = file.ensure_calculated_diagnostics(db);
         debug_assert!(result.is_ok());
-        let pos = file.line_column_to_byte(position)?;
-        let until = if let Some(until) = until {
+        let mut pos = file.line_column_to_byte(position)?;
+        let mut until = if let Some(until) = until {
             file.line_column_to_byte(until)?
         } else {
             pos
         };
+        if !strict_range {
+            let changed = file
+                .newline_indices
+                .expand_range_to_full_lines(file.code(), pos.byte..until.byte);
+            pos.byte = changed.start;
+            until.byte = changed.end;
+        }
         let mut actions: Vec<CodeAction> = vec![];
         for name in file.tree.filter_all_names(Some(pos.byte)) {
             if name.start() > until.byte {

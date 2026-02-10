@@ -7,6 +7,12 @@ completepls
 #? --codepoint-column 0 code-actions
 x.completepls
 
+#? code-actions --strict-range
+x.completepls
+
+#? code-actions
+x.completepls
+
 [file x.py]
 completepls = 1
 
@@ -19,6 +25,11 @@ __main__.py:7: Code Actions:
 - Import `x`: 4:0-4:0 replaced with: "import x\n\n"
 - Add "# type: ignore[name-defined]": 7:13-7:13 replaced with: "  # type: ignore[name-defined]"
 - Add "# zuban: ignore[name-defined]": 7:13-7:13 replaced with: "  # zuban: ignore[name-defined]"
+__main__.py:10: Code Actions: []
+__main__.py:13: Code Actions:
+- Import `x`: 4:0-4:0 replaced with: "import x\n\n"
+- Add "# type: ignore[name-defined]": 13:13-13:13 replaced with: "  # type: ignore[name-defined]"
+- Add "# zuban: ignore[name-defined]": 13:13-13:13 replaced with: "  # zuban: ignore[name-defined]"
 
 [case no_code_actions_on_reveal_type]
 # flags: --no-typecheck
