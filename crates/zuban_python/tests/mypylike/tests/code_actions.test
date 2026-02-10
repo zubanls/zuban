@@ -118,3 +118,18 @@ __main__.py:8: Code Actions: []
 ?
 [out]
 __main__.py:3: Code Actions: []
+
+[case code_actions_for_whole_module]
+# flags: --no-typecheck
+#? code-actions --until-line 7
+
+1()
+
+1 + ""
+
+[out]
+__main__.py:3: Code Actions:
+- Add "# type: ignore[operator]": 4:3-4:3 replaced with: "  # type: ignore[operator]"
+- Add "# zuban: ignore[operator]": 4:3-4:3 replaced with: "  # zuban: ignore[operator]"
+- Add "# type: ignore[operator]": 6:6-6:6 replaced with: "  # type: ignore[operator]"
+- Add "# zuban: ignore[operator]": 6:6-6:6 replaced with: "  # zuban: ignore[operator]"
