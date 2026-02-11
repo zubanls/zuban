@@ -26,8 +26,9 @@ use crate::{
     inferred::{
         ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, Inferred, MroIndex,
     },
+    match_::{Match, MismatchReason},
     matching::{
-        ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, MismatchReason, OnTypeError,
+        ErrorStrs, Generic, Generics, LookupKind, Matcher, OnTypeError,
         calc_callable_dunder_init_type_vars, calc_callable_type_vars,
         calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage,
     },

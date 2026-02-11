@@ -10,10 +10,10 @@ use crate::{
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
+    match_::{ArgumentIndexWithParam, SignatureMatch},
     matching::{
-        ArgumentIndexWithParam, CalculatedTypeArgs, Generics, OnTypeError, SignatureMatch,
-        calc_callable_dunder_init_type_vars, calc_callable_type_vars, maybe_class_usage,
-        replace_class_type_vars_in_callable,
+        CalculatedTypeArgs, Generics, OnTypeError, calc_callable_dunder_init_type_vars,
+        calc_callable_type_vars, maybe_class_usage, replace_class_type_vars_in_callable,
     },
     result_context::ResultContext,
     type_::{

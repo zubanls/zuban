@@ -1,5 +1,5 @@
 use super::{
-    super::{Match, MismatchReason},
+    super::MismatchReason,
     bound::{Bound, BoundKind},
 };
 use crate::{
@@ -7,6 +7,7 @@ use crate::{
     debug,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
+    match_::Match,
     matching::MatcherFormatResult,
     recoverable_error,
     type_::{

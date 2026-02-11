@@ -18,7 +18,7 @@ use self::{
     type_var_matcher::CalculatingTypeArg,
 };
 
-use super::{Generics, GotType, Match, OnTypeError, SignatureMatch};
+use super::{Generics, GotType, OnTypeError};
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
@@ -26,6 +26,7 @@ use crate::{
     diagnostics::IssueKind,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
+    match_::{Match, SignatureMatch},
     matching::Generic,
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,

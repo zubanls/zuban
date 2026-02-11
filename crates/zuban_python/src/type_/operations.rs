@@ -17,8 +17,9 @@ use crate::{
     imports::{ImportResult, namespace_import},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
+    match_::Match,
     matching::{
-        ErrorTypes, GotType, IteratorContent, LookupKind, Match, OnLookupError, OnTypeError,
+        ErrorTypes, GotType, IteratorContent, LookupKind, OnLookupError, OnTypeError,
         calc_callable_type_vars,
     },
     node_ref::NodeRef,

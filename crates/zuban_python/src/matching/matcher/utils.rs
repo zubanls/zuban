@@ -4,10 +4,7 @@ pub(super) use utils::AlreadySeen;
 use parsa_python_cst::ParamKind;
 
 use super::{
-    super::{
-        ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
-        SignatureMatch,
-    },
+    super::{FormatData, Generics, Matcher, OnTypeError},
     ReplaceSelfInMatcher,
     type_var_matcher::TypeVarMatcher,
 };
@@ -18,6 +15,7 @@ use crate::{
     diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
+    match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch},
     matching::{ErrorTypes, GotType, maybe_class_usage},
     node_ref::NodeRef,
     params::{

@@ -8,7 +8,8 @@ use crate::{
     debug,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::{Match, Matcher},
+    match_::Match,
+    matching::Matcher,
     type_::{
         AnyCause, CallableParam, CallableParams, MaybeUnpackGatherer, ParamSpecUsage, ParamType,
         StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type,

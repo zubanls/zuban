@@ -10,7 +10,8 @@ use super::{
 use crate::{
     database::Database,
     inference_state::InferenceState,
-    matching::{CheckedTypeRecursion, Match, Matcher},
+    match_::Match,
+    matching::{CheckedTypeRecursion, Matcher},
     type_::{AnyCause, CallableLike, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::{Class, TypeOrClass},
 };

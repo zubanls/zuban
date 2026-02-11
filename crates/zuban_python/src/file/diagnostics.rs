@@ -26,9 +26,8 @@ use crate::{
     imports::ImportResult,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred, infer_class_method},
-    matching::{
-        ErrorStrs, Generics, LookupKind, Match, Matcher, OnTypeError, ReplaceSelfInMatcher,
-    },
+    match_::Match,
+    matching::{ErrorStrs, Generics, LookupKind, Matcher, OnTypeError, ReplaceSelfInMatcher},
     node_ref::NodeRef,
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     recoverable_error,

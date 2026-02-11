@@ -18,6 +18,7 @@ mod inferred;
 mod inlay_hints;
 mod lines;
 mod lsp_utils;
+mod match_;
 mod matching;
 mod name;
 mod node_ref;
