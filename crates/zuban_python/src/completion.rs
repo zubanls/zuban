@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::HashSet, sync::Arc};
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
     ClassDef, CompletionContext, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name,
-    NameDef, NodeIndex, QuoteState, RestNode, Scope, is_identifier
+    NameDef, NodeIndex, QuoteState, RestNode, Scope, is_identifier,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
