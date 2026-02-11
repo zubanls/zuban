@@ -21,7 +21,7 @@ use crate::{
     },
     format_data::FormatData,
     getitem::SliceType,
-    inference_state::InferenceState,
+    inference_state::{InferenceState, Mode},
     inferred::{
         ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex,
         NAME_DEF_TO_DEFAULTDICT_DIFF, UnionValue, add_attribute_error, specific_to_type,
@@ -34,8 +34,7 @@ use crate::{
     node_ref::NodeRef,
     params::matches_simple_params,
     recoverable_error,
-    result_context::CouldBeALiteral,
-    result_context::{ResultContext, ResultContextOrigin},
+    result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
         Literal, LiteralKind, LookupResult, ParamType, StarParamType, StarStarParamType,
@@ -4072,6 +4071,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn check_point_cache(&self, i: NodeIndex) -> Option<Inferred> {
+        if !matches!(self.i_s.mode, Mode::Normal) {
+            return self
+                .file
+                .inference(&self.i_s.with_mode(Mode::Normal))
+                .check_point_cache(i);
+        }
         let resolved = self.resolve_point(i, |i_s, node_ref, next| {
             node_ref
                 .file

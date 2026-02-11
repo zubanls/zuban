@@ -1183,3 +1183,9 @@ decorator = lambda x: 1
 @overload
 def f():
     pass
+
+[case overload_should_not_cause_missing_import_to_be_ignored]
+# flags: --mode default
+def iterate[T](x: T) -> Iterator[T]: ...  # E: Name "Iterator" is not defined \
+                                          # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Iterator")
+y: list[int] = list(iterate(""))
