@@ -88,6 +88,7 @@ impl<'db> Inference<'db, '_, '_> {
     ) -> Option<Inferred> {
         let i_s = self.i_s;
         let is_empty = matches!(elements, StarLikeExpressionIterator::Empty);
+        let is_normal_assignment = result_context.is_normal_assignment();
         let result = result_context.on_unique_type_in_unpacked_union(
             i_s,
             wanted_node_ref,
@@ -102,7 +103,7 @@ impl<'db> Inference<'db, '_, '_> {
                         .replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
                         .into_owned()
                 } else {
-                    let allow_redefinition = i_s.flags().allow_redefinition;
+                    let abort_on_mismatch = is_normal_assignment && i_s.flags().allow_redefinition;
                     let found = check_elements_with_context(
                         i_s,
                         matcher,
@@ -110,9 +111,9 @@ impl<'db> Inference<'db, '_, '_> {
                         self.file,
                         elements,
                         wanted_node_ref,
-                        allow_redefinition,
+                        abort_on_mismatch,
                     );
-                    if found.is_none() && allow_redefinition {
+                    if found.is_none() && abort_on_mismatch {
                         return None;
                     }
                     found.unwrap_or_else(|| {
@@ -529,7 +530,7 @@ fn check_elements_with_context<'db>(
     file: &PythonFile,
     elements: StarLikeExpressionIterator,
     wanted_node_ref: ClassNodeRef,
-    allow_redefinition: bool,
+    abort_on_mismatch: bool,
 ) -> Option<Type> {
     // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
@@ -543,7 +544,7 @@ fn check_elements_with_context<'db>(
                 |issue| NodeRef::new(file, index).add_issue(i_s, issue),
                 |error_types, _: &MismatchReason| {
                     had_error = true;
-                    if allow_redefinition {
+                    if abort_on_mismatch {
                         return None;
                     }
                     let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);

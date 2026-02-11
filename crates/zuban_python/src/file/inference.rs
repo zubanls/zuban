@@ -28,7 +28,7 @@ use crate::{
     },
     matching::{
         CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher,
-        OnTypeError, ResultContext, TupleLenInfos, format_got_expected,
+        OnTypeError, ResultContext, ResultContextOrigin, TupleLenInfos, format_got_expected,
     },
     new_class,
     node_ref::NodeRef,
@@ -317,7 +317,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             right_side,
             &mut ResultContext::Known {
                 type_: expected,
-                from_assignment_annotation: true,
+                origin: ResultContextOrigin::AssignmentAnnotation,
             },
         );
         self.check_right_side_against_expected(expected, right, right_side)
@@ -402,7 +402,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         right_side,
                         &mut ResultContext::Known {
                             type_: &t,
-                            from_assignment_annotation: true,
+                            origin: ResultContextOrigin::AssignmentAnnotation,
                         },
                     );
                     // It is very weird, but somehow type comments in Mypy are allowed to
@@ -427,7 +427,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let inf = self.inferred_context_for_simple_assignment(targets.clone());
             let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
             let mut result_context = match &return_type {
-                Some(t) => ResultContext::new_known(t),
+                Some(t) => ResultContext::Known {
+                    type_: t,
+                    origin: ResultContextOrigin::NormalAssignment,
+                },
                 None => ResultContext::AssignmentNewDefinition {
                     assignment_definition: PointLink::new(self.file.file_index, assignment.index()),
                 },
