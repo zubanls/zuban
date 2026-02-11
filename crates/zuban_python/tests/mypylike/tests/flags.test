@@ -989,3 +989,11 @@ x = list(iterate(1))
 reveal_type(x)  # N: Revealed type is "list[int]"
 x = list(iterate(""))
 reveal_type(x)  # N: Revealed type is "list[str]"
+
+[case allow_redefinition_with_normal_assignments_to_annotated]
+# flags: --allow-redefinition --mode mypy
+from typing import Iterator
+def iterate[T](x: T) -> Iterator[T]: ...
+y: list[int] = list(iterate(""))  # E: Argument 1 to "iterate" has incompatible type "str"; expected "int"
+# TODO this should probably also say Argument 1 to "iterate" has incompatible type "str"; expected "int"
+y = list(iterate(""))  # E: Incompatible types in assignment (expression has type "list[str]", variable has type "list[int]")
