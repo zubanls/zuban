@@ -979,3 +979,13 @@ reveal_type(x)  # N: Revealed type is "dict[int, bytes] | dict[str, float]"
 
 with_annotation: dict[int, str] = {"": 1}  # E: Dict entry 0 has incompatible type "str": "int"; expected "int": "str"
 with_annotation = {"": 1}  # E: Incompatible types in assignment (expression has type "dict[str, int]", variable has type "dict[int, str]")
+
+[case allow_redefinition_and_assign_to_list_via_call]
+# flags: --allow-redefinition
+from typing import Iterator
+x = [1]
+def iterate[T](x: T) -> Iterator[T]: ...
+x = list(iterate(1))
+reveal_type(x)  # N: Revealed type is "list[int]"
+x = list(iterate(""))
+reveal_type(x)  # N: Revealed type is "list[str]"

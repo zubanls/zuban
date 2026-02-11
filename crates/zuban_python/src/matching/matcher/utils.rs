@@ -477,6 +477,9 @@ fn apply_result_context(
     func_like: &dyn FuncLike,
     on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
 ) {
+    if result_context.is_normal_assignment() && i_s.flags().allow_redefinition {
+        return;
+    }
     result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
         if let Some(return_class) = return_class {
             // This is kind of a special case. Since __init__ has no return annotation, we simply
