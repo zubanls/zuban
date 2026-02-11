@@ -1373,3 +1373,13 @@ untyped_strict_optional = false
 def optional() -> tuple[int, int] | None: ...
 def f():
     a, b = optional()
+
+[case untyped_non_strict_optional_assignment]
+# flags: --no-untyped-strict-optional --check-untyped-defs
+from typing import Any
+
+def optional_any() -> Any | None: ...
+
+def f():
+    x: str = optional_any()
+    y: str | int = optional_any()
