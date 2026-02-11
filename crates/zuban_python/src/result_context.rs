@@ -193,14 +193,14 @@ impl<'a> ResultContext<'a, '_> {
         )
     }
 
-    pub fn is_normal_assignment(&self) -> bool {
+    pub fn can_be_redefined(&self, i_s: &InferenceState) -> bool {
         matches!(
             self,
             ResultContext::Known {
                 origin: ResultContextOrigin::NormalAssignment,
                 ..
             }
-        )
+        ) && i_s.flags().allow_redefinition
     }
 }
 

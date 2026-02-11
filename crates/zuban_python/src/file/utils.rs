@@ -87,7 +87,7 @@ impl<'db> Inference<'db, '_, '_> {
     ) -> Option<Inferred> {
         let i_s = self.i_s;
         let is_empty = matches!(elements, StarLikeExpressionIterator::Empty);
-        let is_normal_assignment = result_context.is_normal_assignment();
+        let can_be_redefined = result_context.can_be_redefined(i_s);
         let result = result_context.on_unique_type_in_unpacked_union(
             i_s,
             wanted_node_ref,
@@ -102,7 +102,6 @@ impl<'db> Inference<'db, '_, '_> {
                         .replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
                         .into_owned()
                 } else {
-                    let abort_on_mismatch = is_normal_assignment && i_s.flags().allow_redefinition;
                     let found = check_elements_with_context(
                         i_s,
                         matcher,
@@ -110,9 +109,9 @@ impl<'db> Inference<'db, '_, '_> {
                         self.file,
                         elements,
                         wanted_node_ref,
-                        abort_on_mismatch,
+                        can_be_redefined,
                     );
-                    if found.is_none() && abort_on_mismatch {
+                    if found.is_none() && can_be_redefined {
                         return None;
                     }
                     found.unwrap_or_else(|| {
@@ -202,20 +201,19 @@ impl<'db> Inference<'db, '_, '_> {
             return Some(Inferred::from_type(result));
         }
 
-        let abort_on_mismatch =
-            result_context.is_normal_assignment() && i_s.flags().allow_redefinition;
+        let can_be_redefined = result_context.can_be_redefined(i_s);
         infer_dict_like(
             i_s,
             result_context,
             dict.iter_elements().next().is_none(),
-            abort_on_mismatch,
+            can_be_redefined,
             |matcher, key_t, value_t| {
                 self.check_dict_literal_with_context(
                     matcher,
                     key_t,
                     value_t,
                     dict,
-                    abort_on_mismatch,
+                    can_be_redefined,
                 )
             },
         )
