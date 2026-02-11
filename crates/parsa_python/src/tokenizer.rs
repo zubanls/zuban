@@ -36,7 +36,6 @@ lazy_static::lazy_static! {
         r"[+\-*/%&@`|^!=<>]=?", r"[\[\](){}]", r"[~;.,@]",
     ])));
 
-    static ref NAME: Regex = r(r"^[A-Za-z_0-9\u0080-\uffff]+");
     static ref NEWLINE: Regex = r(r"^(\r\n?|\n)");
     static ref F_STRING_START: Regex = r(r#"^([Ff][Rr]?|[Rr][Ff])("""|'''|'|")"#);
     static ref UNICODE_CHARACTER_NAME: Regex = r(r"\{[A-Za-z0-9\-]+( [A-Za-z0-9\-]+)*\}");
@@ -68,6 +67,17 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
     let double3 = "\"\"\"".to_owned() + r#"((?s:\\.|"[^"\\]|"\\.|""[^"\\]|""\\.|[^"\\])*""")?"#;
 
     "^".to_owned() + &or(prefixes) + &or(&[&single3, &double3, &single, &double])
+}
+
+pub fn is_identifier(s: &str) -> bool {
+    // TODO this method is probably also not correct, like find_name_length
+    lazy_static::lazy_static! {
+        static ref NAME: Regex = {
+            let single = r"[A-Za-z_\u0080-\uffff]";
+            r(&format!("^{single}([0-9]|{single})*$"))
+        };
+    }
+    NAME.is_match(s)
 }
 
 create_terminals!(struct PyTerminal, enum TerminalType,

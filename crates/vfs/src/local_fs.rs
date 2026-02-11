@@ -8,8 +8,8 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher, recommended_watcher};
 use utils::FastHashSet;
 
 use crate::{
-    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, NormalizedPath, NotifyEvent, Parent,
-    PathWithScheme, VfsHandler,
+    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, GitignoreFile, NormalizedPath,
+    NotifyEvent, Parent, PathWithScheme, VfsHandler,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
@@ -66,8 +66,10 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                 Ok(dir_entry) => {
                     let name = dir_entry.file_name();
                     let Ok(name) = name.into_string() else {
-                        let p = dir_entry.path();
-                        tracing::info!("Listdir ignored {p:?}, because it's not UTF-8");
+                        tracing::info!(
+                            "Listdir ignored {:?}, because it's not UTF-8",
+                            dir_entry.path()
+                        );
                         continue;
                     };
                     match dir_entry.file_type() {
@@ -87,6 +89,19 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                                 debug_assert!(file_type.is_file());
                                 ResolvedFileType::File
                             };
+                            if name == ".gitignore" && matches!(new, ResolvedFileType::File) {
+                                if let Some(code) = self.read_and_watch_file(
+                                    &FileEntry::new(parent.clone(), name.into())
+                                        .absolute_path(self),
+                                ) {
+                                    entries.push(DirectoryEntry::Gitignore(GitignoreFile::new(
+                                        parent.clone(),
+                                        &dir_entry.path(),
+                                        &code,
+                                    )));
+                                }
+                                continue;
+                            }
                             if let Some(entry) = new.into_dir_entry(parent.clone(), name) {
                                 entries.push(entry)
                             }

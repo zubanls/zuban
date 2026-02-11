@@ -128,7 +128,7 @@ impl Type {
         kind: LookupKind,
         result_context: &mut ResultContext,
         add_issue: &dyn Fn(IssueKind),
-        callable: &mut impl FnMut(&Type, LookupDetails),
+        callable: &mut dyn FnMut(&Type, LookupDetails),
     ) {
         let options = || {
             /* TODO ?
@@ -214,7 +214,12 @@ impl Type {
             },
             Type::Tuple(tup) => callable(self, lookup_on_tuple(tup, i_s, add_issue, name)),
             Type::Union(union) => {
+                let ignore_attr_errors = i_s.in_try_that_ignores_attribute_errors();
+                let mut need_recheck = ignore_attr_errors;
                 for t in union.iter() {
+                    if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                        continue;
+                    }
                     t.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
@@ -222,9 +227,37 @@ impl Type {
                         name,
                         kind,
                         result_context,
-                        &add_issue,
-                        callable,
+                        add_issue,
+                        &mut |t, lookup| {
+                            if ignore_attr_errors {
+                                if lookup.lookup.is_some() {
+                                    need_recheck = false;
+                                } else {
+                                    return;
+                                }
+                            }
+                            callable(t, lookup)
+                        },
                     )
+                }
+                if need_recheck {
+                    // This is needed if callable was never called, because all union entries did
+                    // not have an attribute and we're in a try: except AttributeError.
+                    for t in union.iter() {
+                        if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                            continue;
+                        }
+                        t.run_after_lookup_on_each_union_member(
+                            i_s,
+                            None,
+                            from_file,
+                            name,
+                            kind,
+                            result_context,
+                            add_issue,
+                            callable,
+                        )
+                    }
                 }
             }
             Type::Type(t) => attribute_access_of_type(
@@ -1162,7 +1195,7 @@ fn attribute_access_of_type(
     name: &str,
     kind: LookupKind,
     result_context: &mut ResultContext,
-    callable: &mut impl FnMut(&Type, LookupDetails),
+    callable: &mut dyn FnMut(&Type, LookupDetails),
     in_type: Arc<Type>,
     mapped_type: Option<&Arc<Type>>,
 ) {

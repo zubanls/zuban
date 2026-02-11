@@ -14,28 +14,12 @@ impl<'project> Document<'project> {
         position: InputPosition,
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
-        let mut types = vec![];
-        let mut class_t = None;
         let mut resolver = GotoResolver::new(
             self.positional_document(position)?,
             GotoGoal::Indifferent,
-            |n: ValueName| {
-                if !only_docstrings {
-                    if class_t.is_none()
-                        && let Type::Type(_) = n.type_
-                    {
-                        class_t = Some(n.type_.clone())
-                    }
-                    types.push(
-                        n.maybe_pretty_function_type()
-                            .unwrap_or_else(|| n.type_description())
-                            .into_string(),
-                    );
-                }
-                n.name.documentation().to_string()
-            },
+            |n: ValueName| n.name.documentation().to_string(),
         );
-        let mut results = resolver.infer_definition();
+        let (inf, mut results) = resolver.infer_definition();
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return Ok(None);
@@ -43,6 +27,15 @@ impl<'project> Document<'project> {
 
         let db = &self.project.db;
         let mut overwritten_results = vec![];
+
+        let mut type_formatted = resolver.infos.with_i_s(|i_s| {
+            if only_docstrings {
+                "".into()
+            } else {
+                pretty_type_formatting(i_s, &inf.as_cow_type(i_s)).into_string()
+            }
+        });
+
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
             let kind = n.origin_kind();
             if let Name::TreeName(n) = n
@@ -52,7 +45,7 @@ impl<'project> Document<'project> {
                 && matches!(c.kind, FunctionKind::Property { .. })
             {
                 overwritten_results.push(n.documentation().to_string());
-                types = vec![c.format_pretty(&FormatData::new_short(db)).into_string()];
+                type_formatted = c.format_pretty(&FormatData::new_short(db)).into_string();
                 return "property";
             }
             kind
@@ -61,7 +54,6 @@ impl<'project> Document<'project> {
         let declaration_kinds = resolver.goto(true);
         if !overwritten_results.is_empty() {
             results = overwritten_results;
-            class_t = None;
         }
         if results.is_empty() {
             return Ok(None);
@@ -84,11 +76,9 @@ impl<'project> Document<'project> {
                     ["class"] => {
                         // Return the inner part in type[A], because that makes more sense and
                         // looks nicer
-                        for ty in &mut types {
-                            if ty.starts_with("type[") && ty.ends_with("]") {
-                                ty.drain(..5);
-                                ty.drain(ty.len() - 1..);
-                            }
+                        if type_formatted.starts_with("type[") && type_formatted.ends_with("]") {
+                            type_formatted.drain(..5);
+                            type_formatted.drain(type_formatted.len() - 1..);
                         }
                     }
                     ["function" | "property"] => (),
@@ -102,18 +92,7 @@ impl<'project> Document<'project> {
                     }
                 }
             }
-            if let [description] = types.as_slice()
-                && let Some(class_t) = class_t
-                && let Some(CallableLike::Callable(callable)) =
-                    class_t.maybe_callable(&InferenceState::new_in_unknown_file(db))
-            {
-                out += description;
-                let formatted = callable.format_pretty(&FormatData::new_short(db));
-                out += "(";
-                out += formatted.split_once('(').unwrap().1;
-            } else {
-                out += &types.join(" | ");
-            }
+            out += &type_formatted;
             out += "\n```";
             if !results.is_empty() {
                 out += "\n---\n";
@@ -125,6 +104,33 @@ impl<'project> Document<'project> {
             documentation,
             on_symbol_range,
         }))
+    }
+}
+
+fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
+    let db = i_s.db;
+    match t {
+        Type::FunctionOverload(o) => format!(
+            "Overload(\n    {})",
+            o.iter_functions()
+                .map(|callable| { callable.format_pretty(&FormatData::new_short(db)) })
+                .collect::<Vec<_>>()
+                .join("\n    ")
+        )
+        .into(),
+        Type::Callable(c) => c.format_pretty(&FormatData::new_short(db)),
+        Type::Type(inner) => {
+            let mut out = inner.format_short(db).into_string();
+            if let Some(CallableLike::Callable(callable)) =
+                t.maybe_callable(&InferenceState::new_in_unknown_file(db))
+            {
+                let formatted = callable.format_pretty(&FormatData::new_short(db));
+                out += "(";
+                out += formatted.split_once('(').unwrap().1;
+            }
+            out.into_boxed_str()
+        }
+        _ => t.format_short(db),
     }
 }
 

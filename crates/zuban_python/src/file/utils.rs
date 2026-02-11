@@ -88,6 +88,7 @@ impl<'db> Inference<'db, '_, '_> {
     ) -> Option<Inferred> {
         let i_s = self.i_s;
         let is_empty = matches!(elements, StarLikeExpressionIterator::Empty);
+        let is_normal_assignment = result_context.is_normal_assignment();
         let result = result_context.on_unique_type_in_unpacked_union(
             i_s,
             wanted_node_ref,
@@ -102,6 +103,7 @@ impl<'db> Inference<'db, '_, '_> {
                         .replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t)
                         .into_owned()
                 } else {
+                    let abort_on_mismatch = is_normal_assignment && i_s.flags().allow_redefinition;
                     let found = check_elements_with_context(
                         i_s,
                         matcher,
@@ -109,7 +111,11 @@ impl<'db> Inference<'db, '_, '_> {
                         self.file,
                         elements,
                         wanted_node_ref,
+                        abort_on_mismatch,
                     );
+                    if found.is_none() && abort_on_mismatch {
+                        return None;
+                    }
                     found.unwrap_or_else(|| {
                         generic_t
                             .replace_type_var_likes(self.i_s.db, &mut |tv| {
@@ -118,11 +124,14 @@ impl<'db> Inference<'db, '_, '_> {
                             .unwrap_or(generic_t)
                     })
                 };
-                Inferred::from_type(new_class!(wanted_node_ref.as_link(), item))
+                Some(Inferred::from_type(new_class!(
+                    wanted_node_ref.as_link(),
+                    item
+                )))
             },
         )?;
         match result {
-            Ok(inf) => Some(inf),
+            Ok(maybe_inf) => maybe_inf,
             Err(UniqueInUnpackedUnionError::Multiple) if is_empty => Some(Inferred::from_type(
                 new_class!(wanted_node_ref.as_link(), Type::Any(AnyCause::Todo)),
             )),
@@ -194,12 +203,21 @@ impl<'db> Inference<'db, '_, '_> {
             return Some(Inferred::from_type(result));
         }
 
+        let abort_on_mismatch =
+            result_context.is_normal_assignment() && i_s.flags().allow_redefinition;
         infer_dict_like(
             i_s,
             result_context,
             dict.iter_elements().next().is_none(),
+            abort_on_mismatch,
             |matcher, key_t, value_t| {
-                self.check_dict_literal_with_context(matcher, key_t, value_t, dict)
+                self.check_dict_literal_with_context(
+                    matcher,
+                    key_t,
+                    value_t,
+                    dict,
+                    abort_on_mismatch,
+                )
             },
         )
     }
@@ -314,6 +332,7 @@ impl<'db> Inference<'db, '_, '_> {
         key_t: &Type,
         value_t: &Type,
         dict: Dict,
+        abort_on_mismatch: bool,
     ) -> Option<Type> {
         let mut new_key_context = ResultContext::new_known(key_t);
         let mut new_value_context = ResultContext::new_known(value_t);
@@ -338,6 +357,9 @@ impl<'db> Inference<'db, '_, '_> {
 
                     if !key_match.bool() || !value_match.bool() {
                         had_error = true;
+                        if abort_on_mismatch {
+                            return None;
+                        }
                         let format_errors = |expected, got, match_| {
                             let error_types = ErrorTypes {
                                 expected,
@@ -518,6 +540,7 @@ fn check_elements_with_context<'db>(
     file: &PythonFile,
     elements: StarLikeExpressionIterator,
     wanted_node_ref: ClassNodeRef,
+    abort_on_mismatch: bool,
 ) -> Option<Type> {
     // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
@@ -530,8 +553,11 @@ fn check_elements_with_context<'db>(
                 &inferred,
                 |issue| NodeRef::new(file, index).add_issue(i_s, issue),
                 |error_types, _: &MismatchReason| {
-                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     had_error = true;
+                    if abort_on_mismatch {
+                        return None;
+                    }
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     if wanted_node_ref == i_s.db.python_state.list_node_ref() {
                         Some(IssueKind::ListItemMismatch {
                             item,
@@ -657,6 +683,7 @@ pub fn infer_dict_like(
     i_s: &InferenceState,
     result_context: &mut ResultContext,
     is_empty: bool,
+    abort_on_mismatch: bool,
     infer_with_context: impl FnOnce(&mut Matcher, &Type, &Type) -> Option<Type>,
 ) -> Option<Inferred> {
     let result = result_context.on_unique_type_in_unpacked_union(
@@ -667,7 +694,10 @@ pub fn infer_dict_like(
             let key_t = generics.next().unwrap();
             let value_t = generics.next().unwrap();
             let found = infer_with_context(matcher, &key_t, &value_t);
-            Inferred::from_type(found.unwrap_or_else(|| {
+            if found.is_none() && abort_on_mismatch {
+                return None;
+            }
+            Some(Inferred::from_type(found.unwrap_or_else(|| {
                 new_class!(
                     i_s.db.python_state.dict_node_ref().as_link(),
                     key_t
@@ -677,11 +707,11 @@ pub fn infer_dict_like(
                         .replace_type_var_likes(i_s.db, &mut |tv| Some(tv.as_any_generic_item()))
                         .unwrap_or(value_t)
                 )
-            }))
+            })))
         },
     )?;
     match result {
-        Ok(inf) => Some(inf),
+        Ok(maybe_inf) => maybe_inf,
         Err(UniqueInUnpackedUnionError::Multiple) if is_empty => {
             Some(Inferred::from_type(new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),

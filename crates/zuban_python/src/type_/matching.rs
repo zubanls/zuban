@@ -489,7 +489,13 @@ impl Type {
                 // Union matching was already done.
                 if !self.is_union_like(i_s.db) =>
             {
-                return Match::all(u2.iter(), |t| self.matches(i_s, matcher, t, variance));
+                return Match::all(u2.iter(), |t| {
+                    if matches!(t, Type::None)  && i_s.should_ignore_none_in_untyped_context() {
+                        Match::new_true()
+                    } else {
+                        self.matches(i_s, matcher, t, variance)
+                    }
+                });
             }
             Type::Intersection(intersection2) => {
                 return Match::any(intersection2.iter_entries(), |t| {
@@ -566,7 +572,11 @@ impl Type {
                 }
                 match variance {
                     Variance::Covariant => Match::all(u2.iter(), |g2| {
-                        self.matches_union(i_s, matcher, u1, g2, variance)
+                        if matches!(g2, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                            Match::new_true()
+                        } else {
+                            self.matches_union(i_s, matcher, u1, g2, variance)
+                        }
                     }),
                     Variance::Invariant => {
                         self.is_super_type_of(i_s, matcher, value_type)
@@ -604,9 +614,13 @@ impl Type {
                     Variance::Covariant => {
                         Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
                     }
-                    Variance::Invariant => {
-                        Match::all(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
-                    }
+                    Variance::Invariant => Match::all(u1.iter(), |g| {
+                        if matches!(g, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                            Match::new_true()
+                        } else {
+                            g.matches(i_s, matcher, value_type, variance)
+                        }
+                    }),
                     Variance::Contravariant => unreachable!(),
                 }
             }

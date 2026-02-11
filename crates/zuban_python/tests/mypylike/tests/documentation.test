@@ -345,3 +345,17 @@ C().untyped
 [out]
 __main__.py:5:documentation -> "```python\n(property) def untyped(self) -> int\n```\n---\nfoo"
 __main__.py:10:documentation -> "```python\n(property) def untyped(self) -> int\n```\n---\nfoo"
+
+[case optional_documentation_should_show_any]
+from typing import Any
+def optional() -> Any | None: ...
+
+def f() -> None:
+    #? documentation
+    x = optional()
+    #? documentation
+    x
+
+[out]
+__main__.py:6:documentation -> "```python\n(class) Any | None\n```"
+__main__.py:8:documentation -> "```python\n(variable) x: Any | None\n```"

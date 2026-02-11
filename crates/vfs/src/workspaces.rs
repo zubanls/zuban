@@ -57,6 +57,26 @@ impl Workspaces {
         self.items.get_mut().unwrap()
     }
 
+    fn strip_short_path_in_workspace<'path>(
+        &self,
+        vfs: &dyn VfsHandler,
+        case_sensitive: bool,
+        path: &'path PathWithScheme,
+    ) -> Option<(Arc<Workspace>, &'path str)> {
+        let mut shortest: Option<(Arc<Workspace>, &'path str)> = None;
+        for workspace in self.items.read().unwrap().iter() {
+            if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
+                if shortest
+                    .as_ref()
+                    .is_none_or(|(_, shortest)| shortest.len() > p.len())
+                {
+                    shortest = Some((workspace.clone(), p))
+                }
+            }
+        }
+        shortest
+    }
+
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Workspace> {
         OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |workspaces| {
             workspaces.iter().map(|w| w.as_ref())
@@ -79,11 +99,8 @@ impl Workspaces {
         case_sensitive: bool,
         path: &PathWithScheme,
     ) -> Option<DirOrFile> {
-        self.iter()
-            .find_map(|workspace| {
-                let p = workspace.strip_path_prefix(vfs, case_sensitive, path)?;
-                workspace.entries.search_path(vfs, p)
-            })
+        self.strip_short_path_in_workspace(vfs, case_sensitive, path)
+            .and_then(|(workspace, rest)| workspace.entries.search_path(vfs, rest))
             .or_else(|| {
                 self.iter().find_map(|workspace| {
                     if workspace.kind == WorkspaceKind::Fallback
@@ -119,7 +136,7 @@ impl Workspaces {
                 });
             }
             let mut rest = rest?;
-            let mut current_dir = None;
+            let mut current_dir: Option<Arc<Directory>> = None;
             loop {
                 let (name, new_rest) = vfs.split_off_folder(rest);
                 if let Some(new_rest) = new_rest {
@@ -128,11 +145,12 @@ impl Workspaces {
                     // directories themselves should be monitored. I'm not even sure all of these
                     // paths are reachable.
                     rest = new_rest;
-                    let found = current_dir
-                        .as_ref()
-                        .map(|dir: &Arc<Directory>| Directory::entries(vfs, dir))
-                        .unwrap_or(&workspace.entries)
-                        .search(name)?;
+                    let entries = if let Some(dir) = current_dir.as_ref() {
+                        dir.entries.get()?
+                    } else {
+                        &workspace.entries
+                    };
+                    let found = entries.search(name)?;
                     match &*found {
                         DirectoryEntry::Directory(d) => {
                             let x = d.clone();
@@ -161,22 +179,27 @@ impl Workspaces {
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
         path: &PathWithScheme,
+        code: &str,
     ) -> AddedFile {
-        for workspace in self.inner_items_mut() {
-            if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
-                return ensure_dirs_and_file(
-                    Parent::Workspace(Arc::downgrade(workspace)),
-                    &workspace.entries,
-                    vfs,
-                    p,
-                );
-            }
+        if let Some((workspace, rest)) =
+            self.strip_short_path_in_workspace(vfs, case_sensitive, path)
+        {
+            return ensure_dirs_and_file(
+                Parent::Workspace(Arc::downgrade(&workspace)),
+                &workspace.entries,
+                vfs,
+                rest,
+                code,
+            );
         }
         for workspace in self.inner_items_mut() {
             if workspace.kind == WorkspaceKind::Fallback {
-                return workspace
-                    .entries
-                    .ensure_file(Parent::Workspace(Arc::downgrade(workspace)), &path.path);
+                return workspace.entries.ensure_file(
+                    vfs,
+                    Parent::Workspace(Arc::downgrade(workspace)),
+                    &path.path,
+                    code,
+                );
             }
         }
         unreachable!("Expected to be able to place the file {path:?}")
@@ -229,6 +252,7 @@ impl Workspaces {
                         new.parent = Parent::Directory(Arc::downgrade(&dir));
                         *inner_dir = clone_inner_rcs(vfs, new);
                     }
+                    DirectoryEntry::Gitignore(_) => (),
                 }
             }
             dir
@@ -251,6 +275,7 @@ impl Workspaces {
                         *file = Arc::new(new_file);
                     }
                     DirectoryEntry::MissingEntry { .. } => (), // has no RCs
+                    DirectoryEntry::Gitignore { .. } => (),    // has no interior mutability
                 }
             }
             *workspace = new_workspace
@@ -397,6 +422,7 @@ fn ensure_dirs_and_file(
     entries: &Entries,
     vfs: &dyn VfsHandler,
     path: &str,
+    code: &str,
 ) -> AddedFile {
     let (name, rest) = vfs.split_off_folder(path);
     if let Some(rest) = rest {
@@ -409,6 +435,7 @@ fn ensure_dirs_and_file(
                         Directory::entries(vfs, arc),
                         vfs,
                         rest,
+                        code,
                     );
                 }
                 DirectoryEntry::MissingEntry(missing) => {
@@ -425,12 +452,13 @@ fn ensure_dirs_and_file(
             Directory::entries(vfs, &dir2),
             vfs,
             rest,
+            code,
         );
         entries.borrow_mut().push(DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result
     } else {
-        entries.ensure_file(parent, name)
+        entries.ensure_file(vfs, parent, name, code)
     }
 }
 

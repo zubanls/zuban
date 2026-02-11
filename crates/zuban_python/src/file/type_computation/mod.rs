@@ -4086,7 +4086,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     return None;
                 }
                 debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
-                if maybe_type_ignore(s).is_none() {
+                // The start index here is not correct, but we don't use it so it doesn't matter.
+                if maybe_type_ignore("type", 0, s).is_none() {
                     return Some(self.compute_type_comment(
                         assignment.end() + start as CodeIndex,
                         s,
@@ -4375,15 +4376,21 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     },
                 );
             }
-            let type_var_like = type_var_like
+            let type_var_like = if let Some(replaced) = type_var_like
                 .replace_type_var_like_defaults_that_are_out_of_scope(
                     self.i_s.db,
                     type_var_likes.iter(),
                     |issue| {
                         NodeRef::new(self.file, name_def.index()).add_type_issue(self.i_s.db, issue)
                     },
-                )
-                .unwrap_or(type_var_like);
+                ) {
+                // Need to overwrite the old definition
+                name_def_ref
+                    .insert_complex(ComplexPoint::TypeVarLike(replaced.clone()), Locality::Todo);
+                replaced
+            } else {
+                type_var_like
+            };
             type_var_likes.push(type_var_like)
         }
         TypeVarLikes::from_vec(type_var_likes)

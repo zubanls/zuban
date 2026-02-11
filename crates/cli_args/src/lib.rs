@@ -59,6 +59,10 @@ pub struct MypyCli {
     pub ignore_excludes_from_config: bool,
     #[arg(num_args = 0..)]
     pub files: Vec<String>,
+    #[arg(long, hide = true)]
+    pub exclude_gitignore: bool,
+    #[arg(long, hide = true)]
+    pub no_exclude_gitignore: bool,
     /*
     /// Type-check module; can repeat for more modules
     #[arg(short, long, hide = true)]
@@ -169,6 +173,11 @@ pub struct MypyCli {
     no_strict_optional: bool,
     #[arg(long)]
     strict_optional: bool,
+    /// Disable strict Optional checks in untyped contexts (inverse: --untyped-strict-optional)
+    #[arg(long)]
+    no_untyped_strict_optional: bool,
+    #[arg(long)]
+    untyped_strict_optional: bool,
 
     // Configuring warnings:
     /// Warn about casting an expression to its inferred type (inverse: --no-warn-redundant-casts)
@@ -353,6 +362,7 @@ fn apply_mypy_flags(
         flags.enable_strict_bytes();
     }
     apply!(flags, strict_optional, no_strict_optional);
+    apply!(flags, untyped_strict_optional, no_untyped_strict_optional);
     apply!(flags, strict_equality, no_strict_equality);
     apply!(flags, implicit_optional, no_implicit_optional);
     apply!(flags, check_untyped_defs, no_check_untyped_defs);
@@ -391,6 +401,7 @@ fn apply_mypy_flags(
     apply!(diagnostic_config, show_error_codes, hide_error_codes);
     apply!(diagnostic_config, pretty, no_pretty);
     apply!(diagnostic_config, error_summary, no_error_summary);
+    apply!(settings, exclude_gitignore, no_exclude_gitignore);
 
     apply!(flags, allow_redefinition, disallow_redefinition);
     if cli.allow_redefinition_new {

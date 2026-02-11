@@ -1200,7 +1200,7 @@ assert_type(foo(1), Literal[1])
 untyped_function_return_mode = "advanced"
 check_untyped_defs = true
 
-[case untyped_mode_non_strict_optional]
+[case untyped_mode_non_strict_optional_attr_lookups]
 # flags: --mode default
 from typing import overload
 
@@ -1222,9 +1222,14 @@ def f() -> None:
 
 def g():
     x = optional()
+
     x.upper
+    reveal_type(x.upper())  # N: Revealed type is "str"
     expect_str(x)
     expect_str_overload(x)
+
+    if x is None:
+        x.upper  # E: "None" has no attribute "upper"
 
 [case infer_none_in_list_as_any]
 # flags: --mode default
@@ -1307,3 +1312,93 @@ def f():
 
 def g() -> None:
     return none()
+
+[case untyped_non_strict_optional_to_none_type]
+# flags: --no-untyped-strict-optional
+class A:
+    x = 1
+    y = 1
+def optional() -> A | None: ...
+
+def f():
+    a = optional()
+    a.x = 2
+    a.y += 1
+
+[case untyped_strict_is_strict_optional_even_in_untyped]
+# flags: --check-untyped-defs --strict --allow-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper  # E: Item "None" of "str | None" has no attribute "upper"
+
+[case untyped_strict_with_no_untyped_strict_optional]
+# flags: --check-untyped-defs --strict --no-untyped-strict-optional --allow-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper
+
+[case untyped_strict_optional_with_explicit_flag]
+# flags: --check-untyped-defs --untyped-strict-optional
+def optional() -> str | None: ...
+
+def f():
+    optional().upper  # E: Item "None" of "str | None" has no attribute "upper"
+
+[case untyped_strict_optional_with_config]
+# flags: --check-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper  # E: Item "None" of "str | None" has no attribute "upper"
+
+[file pyproject.toml]
+[tool.zuban]
+untyped_strict_optional = true
+
+[case untyped_non_strict_optional_with_config]
+# flags: --check-untyped-defs
+def optional() -> str | None: ...
+
+def f():
+    optional().upper
+
+[file pyproject.toml]
+[tool.zuban]
+untyped_strict_optional = false
+
+[case untyped_non_strict_optional_unpacking]
+# flags: --no-untyped-strict-optional
+def optional() -> tuple[int, int] | None: ...
+def f():
+    a, b = optional()
+
+[case untyped_non_strict_optional_assignment]
+# flags: --no-untyped-strict-optional --check-untyped-defs
+from typing import Any
+
+def optional_any() -> Any | None: ...
+
+def f():
+    x: str = optional_any()
+    y: str | int = optional_any()
+
+[case untyped_non_strict_optional_list_assignments]
+# flags: --no-untyped-strict-optional --check-untyped-defs
+from typing import Any
+from typing import Sequence
+
+def f():
+    x: list[int] = []
+    y: list[int | None] = []
+
+    if bool():
+        y = x
+    else:
+        x = y
+    z: list[int | str] = y  # E: Incompatible types in assignment (expression has type "list[int | None]", variable has type "list[int | str]") \
+                            # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                            # N: Consider using "Sequence" instead, which is covariant
+    s1: Sequence[int] = y
+    s2: Sequence[int | None] = x

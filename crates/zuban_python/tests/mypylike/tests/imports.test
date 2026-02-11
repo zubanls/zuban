@@ -53,6 +53,7 @@ class C:
     a: str
 
 [case use_context_of_star_import]
+# flags: --disallow-redefinition
 from foo import *
 
 x = [""]

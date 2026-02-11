@@ -297,6 +297,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         InvalidVariableType::Variable(NodeRef::new(self.file, name_def.index())),
                     )));
                 }
+                SpecialAssignmentKind::Defaultdict => {
+                    debug_assert!(cached_type_node_ref.point().calculating());
+                    cached_type_node_ref.set_point(Point::new_uncalculated());
+                    return Ok(Lookup::T(TypeContent::InvalidVariable(
+                        InvalidVariableType::Variable(NodeRef::new(self.file, name_def.index())),
+                    )));
+                }
             };
             inf.save_redirect(self.i_s, self.file, name_def.index());
             // Since this sets the name def, we need to imitate the inference, which sets the name
@@ -446,6 +453,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     primary.index(),
                     details,
                 )))
+            }
+            Some(Lookup::T(TypeContent::Class { node_ref, .. }))
+                if node_ref.as_link() == self.i_s.db.python_state.defaultdict_link() =>
+            {
+                Ok(SpecialAssignmentKind::Defaultdict)
             }
             _ => Err(CalculatingAliasType::Normal),
         }
@@ -1144,9 +1156,18 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
         }
         None => {
             debug_assert_eq!(node_ref.point().specific(), Specific::AnyDueToError);
-            Lookup::T(TypeContent::UNKNOWN_REPORTED)
+            Lookup::UNKNOWN_REPORTED
         }
-        _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
+        Some(ComplexPoint::TypeInstance(_)) => {
+            // This can happen for defaultdicts, which are NOT valid types
+            Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Variable(
+                node_ref,
+            )))
+        }
+        _ => {
+            recoverable_error!("Expected an Alias or TypeVarLike, but received something weird");
+            Lookup::UNKNOWN_REPORTED
+        }
     }
 }
 
@@ -1202,6 +1223,7 @@ fn is_invalid_recursive_alias(db: &Database, seen: &SeenRecursiveAliases, t: &Ty
         })
 }
 
+#[derive(Debug)]
 enum CalculatingAliasType<'tree> {
     Normal,
     TypedDict(ArgsContent<'tree>),
@@ -1225,6 +1247,7 @@ enum SpecialAssignmentKind<'db, 'tree> {
     TypeVarTuple(ArgsContent<'tree>),
     ParamSpec(ArgsContent<'tree>),
     TypeOf(ArgsContent<'tree>), // e.g. void = type(None)
+    Defaultdict, // This is handled in inference but we need to make sure to not overwrite it
 }
 
 #[derive(Debug)]

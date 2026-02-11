@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::Write, sync::Arc};
 
 use colored::{ColoredString, Colorize as _};
 use config::DiagnosticConfig;
-use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
+use parsa_python_cst::{CodeIndex, NodeIndex, Tree, TypeIgnoreComment};
 use utils::InsertOnlyVec;
 
 use crate::{
@@ -756,7 +756,7 @@ impl<'db> Diagnostic<'db> {
         }
     }
 
-    fn is_note(&self) -> bool {
+    pub(crate) fn is_note(&self) -> bool {
         matches!(
             &self.issue.kind,
             IssueKind::Note(_)
@@ -2312,16 +2312,16 @@ impl Diagnostics {
     pub fn add_if_not_ignored(
         &self,
         issue: Issue,
-        maybe_ignored: Option<Option<&str>>,
+        maybe_ignored: Option<TypeIgnoreComment>,
     ) -> Result<&Issue, Issue> {
         let mut add_not_covered_note = None;
         if let Some(specific) = maybe_ignored {
-            if let Some(specific) = specific {
+            if let TypeIgnoreComment::WithCodes { codes, .. } = specific {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
                 let e = issue.kind.mypy_error_code();
                 let super_ = issue.kind.mypy_error_supercode();
-                if specific.split(',').any(|specific| {
-                    let code = specific.trim_matches(' ');
+                if codes.split(',').any(|code| {
+                    let code = code.trim_matches(' ');
                     e == Some(code) || super_ == Some(code) || e.is_none()
                 }) {
                     return Err(issue);

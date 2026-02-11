@@ -15,14 +15,14 @@ pub fn split_lines(code: &str) -> impl Iterator<Item = &str> {
 }
 
 #[derive(Clone)]
-pub(crate) struct NewlineIndices(OnceLock<Box<[u32]>>);
+pub(crate) struct NewlineIndices(OnceLock<Box<[CodeIndex]>>);
 
 impl NewlineIndices {
     pub fn new() -> Self {
         Self(OnceLock::new())
     }
 
-    fn lines(&self, code: &str) -> &[u32] {
+    fn lines(&self, code: &str) -> &[CodeIndex] {
         self.0.get_or_init(|| {
             let mut v = vec![];
             for m in NEWLINES.find_iter(code) {
@@ -167,7 +167,7 @@ impl NewlineIndices {
         byte_position: CodeIndex,
     ) -> PositionInfos<'code> {
         let lines = self.lines(code);
-        let line = lines.partition_point(|&l| l <= byte_position as CodeIndex);
+        let line = lines.partition_point(|&l| l <= byte_position);
         PositionInfos {
             line,
             code,
@@ -177,6 +177,22 @@ impl NewlineIndices {
                 .unwrap_or(0),
             byte_position: byte_position as usize,
         }
+    }
+
+    pub fn expand_range_to_full_lines(
+        &self,
+        code: &str,
+        range: std::ops::Range<CodeIndex>,
+    ) -> std::ops::Range<CodeIndex> {
+        let infos_start = self.position_infos(code, range.start);
+        let infos_end = self.position_infos(code, range.end);
+        let lines = self.lines(code);
+        let end = if let Some(end) = lines.get(infos_end.line) {
+            *end - 1
+        } else {
+            code.len() as CodeIndex
+        };
+        infos_start.line_offset_in_code as CodeIndex..end
     }
 }
 
@@ -342,5 +358,37 @@ mod tests {
         assert_eq!(check(c5, 0), [(0, "")]);
         assert_eq!(check(c5, 1), []);
         assert_eq!(check(c5, 2), []);
+    }
+
+    #[test]
+    fn test_expand_range_to_full_lines() {
+        let check = |code, skip_lines| {
+            let indices = NewlineIndices::new();
+            indices.expand_range_to_full_lines(code, skip_lines)
+        };
+        let c1 = "";
+        assert_eq!(check(c1, 0..0), 0..0);
+        assert_eq!(check(c1, 0..1), 0..0);
+
+        let c2 = "x";
+        assert_eq!(check(c2, 0..0), 0..1);
+        assert_eq!(check(c2, 0..1), 0..1);
+        assert_eq!(check(c2, 0..2), 0..1);
+        assert_eq!(check(c2, 1..1), 0..1);
+        assert_eq!(check(c2, 1..5), 0..1);
+
+        let c2 = "x\ny\nz";
+        assert_eq!(check(c2, 0..0), 0..1);
+        assert_eq!(check(c2, 0..1), 0..1);
+        assert_eq!(check(c2, 0..2), 0..3);
+        assert_eq!(check(c2, 1..1), 0..1);
+        assert_eq!(check(c2, 1..3), 0..3);
+        assert_eq!(check(c2, 2..2), 2..3);
+        assert_eq!(check(c2, 2..3), 2..3);
+        assert_eq!(check(c2, 3..3), 2..3);
+        assert_eq!(check(c2, 3..4), 2..5);
+        assert_eq!(check(c2, 4..4), 4..5);
+        assert_eq!(check(c2, 1..5), 0..5);
+        assert_eq!(check(c2, 1..8), 0..5);
     }
 }

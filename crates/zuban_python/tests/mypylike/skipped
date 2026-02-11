@@ -4,7 +4,6 @@ testUnionOfNonIterableUnpacking
 testPostInitIsNotAFunction
 testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
-self_instance_variable1
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
@@ -57,9 +56,6 @@ testProtocolIncompatibilityWithUnionType
 testDictWithStarStarExpr
 testDictFromIterableAndStarStarArgs
 testDictFromIterableAndStarStarArgs2
-# Type variable "C.T" cannot be used as an expression
-testClassMemberTypeVarInFunctionBody
-testClassScopeImportWithError
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
@@ -146,8 +142,6 @@ testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
 # TypeIs tuple materializations
 testTypeIsTupleGeneric
-# TypeIs removes entries that can never be relevant
-testTypeIsEnumOverlappingUnionExcludesIrrelevant
 # "Function "property_decorator_missing" could always be true in boolean context"
 testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus
@@ -215,9 +209,6 @@ testWithStmtScopeAndLambda
 testSelfTypeOverrideCompatibility
 # "Property "x" defined in "Base" is read-only" because of NamedTuple inheritance
 testNewNamedTupleMethodInheritance
-# Callable attribute override with a property
-testOverrideCallableAttributeWithSettableProperty
-testOverrideCallableAttributeWithSettablePropertyMutableOverride
 # Property setter with self types
 testOverridePropertyGeneric
 testSettablePropertyAlias
@@ -290,8 +281,6 @@ testTupleOverlapDifferentTuples
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance with promotions will change outer types
-testIntersectionUsingPromotion2
-testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
 # type[any] issues
 testIsInstanceWithUnknownType
@@ -301,8 +290,6 @@ testNarrowingWithTupleOfTypesPy310Plus
 testTypeAliasWithNewUnionIsInstance
 testStartUsingPEP604Union
 isinstance_with_type_of_something_with_any_generics
-# if <typevar> is None: Narrowing
-testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
 # Narrowing keep out of function narrowings
@@ -331,8 +318,6 @@ testInferAttributeInitializedToNoneAndAssignedClassBody
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
-# explicit any context should lead to Dict[Any, Any]? might be ok?
-testGenericDictWithOverload
 # ClassVar/Final changes
 testFinalUsedWithClassVarAfterPy313
 testNamedTupleFinalAndClassVar
@@ -350,8 +335,6 @@ testIsInstanceDisjointBase
 testIsInstanceAdHocIntersectionWithStrAndBytes
 testSlotsAssignmentWithMixin
 
-# self.x = self where self: T
-testTypingSelfAttrOldVsNewStyle
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
 
@@ -365,23 +348,18 @@ testForwardRefToBadAsyncShouldNotCrash_newsemanal
 testFullCoroutineMatrix
 
 # "Cannot determine type of" probably fine
-testThreePassesRequired
 testAccessGlobalVarBeforeItsTypeIsAvailable
-testAccessDataAttributeBeforeItsTypeIsAvailable
 testMultipassAndTopLevelVariable
 testForwardReferenceToDecoratedClassMethod
 testAccessingClassAttributeWithTypeInferenceIssue
 testClassObjectsNotUnpackableWithoutIterableMetaclass
 testErrorCodeCannotDetermineType
-testCannotDetermineTypeFromOtherModule
 testColumnCannotDetermineType
 testWalrusUsedBeforeDef
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
-# TypeVarTuple as unpacked varargs
-testVariadicStarArgsCallNoCrash
 
 # Name defined in parent scope
 testListAssignmentUnequalAmountToUnpack
@@ -425,8 +403,6 @@ testTypedDictChainedGetWithEmptyDictDefault
 # TypedDict/Dict context
 testTypedDictAssignableToWiderContext
 
-# dataclasses __slots__
-testDataclassWithSlotsArg
 # InitVar set default
 testDataclassInitVarCannotBeSet
 # dataclass weird replace case
@@ -435,11 +411,6 @@ testReplaceIsDataclass
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
-# dataclass InitVar should be ok
-dataclass_post_init_should_not_crash2
-
-# multiline annotations
-testMultilineQuotedAnnotation
 
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
@@ -466,7 +437,6 @@ testNewAnalyzerImportStarForwardRef1
 testNewAnalyzerImportStarForwardRef2
 testNewAnalyzerImportOverExistingInCycleStar1
 testNewAnalyzerImportOverExistingInCycleStar2
-# import unreachable should not add an issue?
 testUnreachableAfterToplevelAssertImportThirdParty
 testUnreachableAfterToplevelAssertImportThirdParty2
 
@@ -567,7 +537,6 @@ testPEP695ValueRestrictionForwardReference
 
 # ini config multiline
 mypy_ini_exclude_multi_line_verbose_regex
-mypy_ini_exclude_multi_line_verbose_regex_not_working
 
 # ------------- Additional unimportant, but would be nice -----------------
 
@@ -632,12 +601,6 @@ testOtherVarArgs
 # Forward name binder reference in class
 testNewAnalyzerNamedTupleCallNested
 testForwardNestedPrecedesForwardGlobal
-# class binder questionable types in class body
-testRefMethodWithDecorator
-# str methods vs. str annotations, when do we use which type
-testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
-testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses
-testNewAnalyzerNameConflictsAndMultiLineDefinition
 # forwards references/type comments name binding of type definitions within function scopes
 testForwardBoundFunctionScopeWorks
 testIncrementalNestedTypeAlias
@@ -1223,8 +1186,6 @@ testErrorCodeTypeIgnoreMisspelled2
 testNoCrashOnAssignmentExprClass
 
 # invalid syntax, and therefore name errors, names should probably be Any
-testModifyTwoFilesOneWithBlockingError1
-testModifyTwoFilesOneWithBlockingError2
 testModifyTwoFilesIntroduceTwoBlockingErrors
 
 # All of these are really not important at all, because there are syntax
@@ -1377,7 +1338,6 @@ testNewRedefineNestedFunctionBasics
 testNewRedefinePartialGenericTypes
 # --alow-redefinition-new implementation details, that are probably not important
 testNewRedefineWithoutLocalPartialTypes
-testNewRedefineNestedLoopInfiniteExpansion
 testNewRedefineImportFrom-xfail
 # Multiple different flags in test
 testNewRedefineAffectsCache
@@ -1388,16 +1348,11 @@ testModuleLevelGetattrImportFromAsTwice
 testUnreachableWhenSuperclassIsAnyNoStrictOptional
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testInitializationWithMultipleValues
-testNoneAndGenericTypesOverlapNoStrictOptional
 testNamedTupleAsConditionalStrictOptionalDisabled
-testOptionalIterator
-testDescriptorAccessForUnionOfTypesWithNoStrictOptional
 testMeetOfIncompatibleProtocols
 testIssubclassWithMetaclasses
 testImportAndAssignToModule
 testSerializeDummyType
-testPerFileStrictOptionalListItemImportOptional
-testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
@@ -1554,14 +1509,11 @@ testIgnoreErrorsFromTypeshed
 
 # cmd: mypy ...
 testNonExistentFileOnCommandLine1
-testInlineConfigFineGrained1
-testInlineConfigFineGrained2
 testNoCrashOnDeletedWithCacheOnCmdline
 testFollowImportsNormalSearchPathUpdate-only_when_nocache
 testFollowImportsNormalSearchPathUpdate2-only_when_cache
 testAddNonPackageSubdir
 testAddPackage5
-testScriptsAreNotModules
 
 # Won't do Invalid Mypy TypeVars according to conformance tests:
 testDeterminismCommutativityWithJoinInvolvingProtocolBaseAndPromotableType
@@ -1598,33 +1550,15 @@ testInlineIncremental2
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
 
-# Won't support ever: python 2
-testMypyPathAndPython2Dir
-# Won't support: Python 3.7 specialties
-testGenericBuiltinWarning
-testGenericBuiltinSetWarning
-testGenericCollectionsWarning
-testNoSubcriptionOfStdlibCollections
-# Won't support: Python 3.8 specialties
-testTupleWithDifferentArgsPy38
-testDisallowAnyGenericsBuiltinTuplePre39
-testDisallowAnyGenericsBuiltinListPre39
-testDisallowAnyGenericsBuiltinSetPre39
-testDisallowAnyGenericsBuiltinDictPre39
 # Won't support Python 3.9 specialities
 testDataclassWithMatchArgsOldVersion
-testUnionOrSyntaxInIsinstanceNotSupported
 testTypeAliasWithOldUnionIsInstancePython39
-# "Subscripting classes that are not generic at runtime may require escaping"
-testCheckDisallowAnyGenericsStubOnly
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
-testNoSubscriptionOfBuiltinAliases
 testDataclassWithSlotsArgBefore310
 
 # Won't support --disable-recursive-aliases
 testNewAnalyzerAliasToNotReadyDirectBase
-testNewAnalyzerAliasToNotReadyDirectBaseFunction
 testNewAnalyzerNewTypeForwardClassAliasDirect
 testNewAnalyzerForwardTypeAliasInBase
 testRecursiveForwardReferenceInUnion
@@ -1645,16 +1579,13 @@ testSubclassOfRecursiveTypedDict
 testCorrectJoinOfSelfRecursiveTypedDicts
 
 # Won't support --force-union-syntax
-testOptionalErrorSyntax
 testLiteralUnionErrorSyntax
-testLiteralOptionalErrorSyntax
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
 # https://github.com/python/mypy/issues/14729
 testSelfTypeRestrictedMethodOverloadInit
 # Callable override https://github.com/python/mypy/issues/16549
-testClassSpec
 testClassSpecError
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102
@@ -1673,7 +1604,6 @@ testNewAnalyzerReportLoopInMRO2
 # Won't do, because too many differences because of different stubs
 testDivmod
 # xfail
-testOpWithInheritedFromAny-xfail
 testTypeGuardMultipleCondition-xfail
 # Skips
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip

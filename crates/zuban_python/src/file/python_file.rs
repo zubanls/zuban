@@ -8,8 +8,7 @@ use std::{
 };
 
 use config::{
-    DiagnosticConfig, FinalizedTypeCheckerFlags, IniOrTomlValue, TypeCheckerFlags,
-    set_flag_and_return_ignore_errors,
+    DiagnosticConfig, FinalizedTypeCheckerFlags, IniOrTomlValue, TypeCheckerFlags, set_flag,
 };
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
@@ -335,7 +334,11 @@ impl<'db> PythonFile {
             &issues,
             tree.mypy_inline_config_directives(),
         );
-        ignore_type_errors |= directives_info.ignore_errors;
+        ignore_type_errors |= match &directives_info.flags {
+            Some(flags) => flags.ignore_errors,
+            None => project_options.flags.ignore_errors,
+        };
+
         if !ignore_type_errors && let Some(issue) = add_error_if_typeshed_is_overwritten(file_entry)
         {
             let result =
@@ -749,9 +752,16 @@ impl<'db> PythonFile {
         if self.ignore_type_errors {
             return;
         }
-        let maybe_ignored = self
+        let (file, add) = match self.super_file {
+            Some(super_file) if super_file.is_part_of_parent() => (
+                db.loaded_python_file(super_file.file),
+                super_file.offset.unwrap_or(0),
+            ),
+            _ => (self, 0),
+        };
+        let maybe_ignored = file
             .tree
-            .type_ignore_comment_for(issue.start_position, issue.end_position);
+            .type_ignore_comment_for(issue.start_position + add, issue.end_position + add);
         let config = DiagnosticConfig {
             show_column_numbers: true,
             ..Default::default()
@@ -892,7 +902,6 @@ fn info_from_directives<'x>(
     directives: impl Iterator<Item = (CodeIndex, &'x str)>,
 ) -> DirectivesInfos {
     // Directives like `# mypy: disallow-any-generics`
-    let mut ignore_errors = false;
     let mut flags = None;
 
     if !project.overrides.is_empty() {
@@ -905,8 +914,8 @@ fn info_from_directives<'x>(
                 if flags.is_none() {
                     flags = Some(project.flags.clone().into_unfinalized());
                 }
-                ignore_errors |= override_
-                    .apply_to_flags_and_return_ignore_errors(flags.as_mut().unwrap())
+                override_
+                    .apply_to_flags(flags.as_mut().unwrap())
                     .expect("Issues with loading config overrides, TODO need better error");
             }
         }
@@ -928,8 +937,7 @@ fn info_from_directives<'x>(
                     Some(value) => IniOrTomlValue::Ini(value),
                     None => IniOrTomlValue::InlineConfigNoValue,
                 };
-                ignore_errors |=
-                    set_flag_and_return_ignore_errors(flags.as_mut().unwrap(), &name, value, true)?;
+                set_flag(flags.as_mut().unwrap(), &name, value, true)?;
                 Ok(())
             };
             if let Err(err) = check() {
@@ -946,15 +954,11 @@ fn info_from_directives<'x>(
             }
         }
     }
-    DirectivesInfos {
-        flags,
-        ignore_errors,
-    }
+    DirectivesInfos { flags }
 }
 
 struct DirectivesInfos {
     flags: Option<TypeCheckerFlags>,
-    ignore_errors: bool,
 }
 
 struct DirectiveSplitter<'db, 'code> {

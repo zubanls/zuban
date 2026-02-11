@@ -119,6 +119,10 @@ pub struct SelectionRangeArgs {}
 pub struct CodeActionArgs {
     #[arg(long)]
     pub until_line: Option<usize>,
+    #[arg(long)]
+    pub only_auto_imports: bool,
+    #[arg(long)]
+    pub strict_range: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -459,8 +463,11 @@ pub(crate) fn find_and_check_ide_tests(
                         line: until_line - 1,
                         column: 0,
                     });
-                    match document.code_actions(position, until) {
-                        Ok(actions) => {
+                    match document.code_actions(position, until, args.strict_range) {
+                        Ok(mut actions) => {
+                            if args.only_auto_imports {
+                                actions.retain(|action| action.title.starts_with("Import"))
+                            }
                             let end = if actions.is_empty() { " []" } else { "" };
                             output.push(format!("{path}:{test_on_line_nr}: Code Actions:{end}"));
                             for action in actions {

@@ -874,7 +874,10 @@ impl TypeAlias {
             return &Type::ERROR;
         };
         match state {
-            TypeAliasState::Invalid => unreachable!(),
+            TypeAliasState::Invalid => {
+                debug!("Recursive type loop with invalid recursive type");
+                &Type::ERROR
+            }
             TypeAliasState::Valid(a) => a.type_.as_ref(),
         }
     }
@@ -989,7 +992,8 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             Cow::Borrowed(type_)
         } else {
-            let replaced = type_.replace_type_var_likes(db, &mut |u| Some(callable(u)));
+            let replaced = type_
+                .replace_type_var_likes_without_simplified_unions(db, &mut |u| Some(callable(u)));
             replaced
                 .map(Cow::Owned)
                 .unwrap_or_else(|| Cow::Borrowed(type_))
@@ -1259,7 +1263,7 @@ impl Database {
         path: PathWithScheme,
         code: Box<str>,
         parent: Option<FileIndex>,
-    ) -> FileIndex {
+    ) {
         if let Some(parent) = parent
             && let Some(in_mem_file) = self.vfs.in_memory_file(&path)
             && let Some(file) = self.vfs.file_mut(in_mem_file)
@@ -1289,15 +1293,20 @@ impl Database {
             },
         );
         if let Some(parent) = parent {
-            // self.vfs.file_entry(parent).add_invalidation(file_index);
-            self.vfs
-                .file_mut(parent)
-                .unwrap()
-                .sub_files
-                .add_separate_file(file_index)
+            debug_assert!(
+                file_index.is_some(),
+                "With subfiles we should not get into the situation where the file index is not available"
+            );
+            if let Some(file_index) = file_index {
+                // self.vfs.file_entry(parent).add_invalidation(file_index);
+                self.vfs
+                    .file_mut(parent)
+                    .unwrap()
+                    .sub_files
+                    .add_separate_file(file_index)
+            }
         }
         self.handle_invalidation(invalidation);
-        file_index
     }
 
     fn handle_invalidation(&mut self, invalidation_result: InvalidationResult) {

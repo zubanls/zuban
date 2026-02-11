@@ -430,3 +430,15 @@ from .
 m/foo.py:2: error: Invalid syntax
 m/bar.py:2:complete -> [bar, foo]
 m/foo.py:2:complete -> [bar, foo]
+
+[case no_completion_for_imports_where_filenames_have_dashes]
+# flags: --no-typecheck
+# From GH #285
+
+#? complete
+import zuba
+
+[file zuban-foo.py]
+[file zuban-folder/something.py]
+[out]
+__main__.py:5:complete -> []

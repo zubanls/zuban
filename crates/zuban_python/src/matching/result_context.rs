@@ -12,7 +12,7 @@ use crate::{
 pub(crate) enum ResultContext<'a, 'b> {
     Known {
         type_: &'a Type,
-        from_assignment_annotation: bool,
+        origin: ResultContextOrigin,
     },
     KnownLambdaReturn(&'a Type),
     WithMatcher {
@@ -29,11 +29,18 @@ pub(crate) enum ResultContext<'a, 'b> {
     RevealType,
 }
 
+#[derive(Debug)]
+pub(crate) enum ResultContextOrigin {
+    AssignmentAnnotation,
+    NormalAssignment,
+    Other,
+}
+
 impl<'a> ResultContext<'a, '_> {
     pub fn new_known(type_: &'a Type) -> Self {
         Self::Known {
             type_,
-            from_assignment_annotation: false,
+            origin: ResultContextOrigin::Other,
         }
     }
 
@@ -180,7 +187,17 @@ impl<'a> ResultContext<'a, '_> {
         matches!(
             self,
             ResultContext::Known {
-                from_assignment_annotation: true,
+                origin: ResultContextOrigin::AssignmentAnnotation,
+                ..
+            }
+        )
+    }
+
+    pub fn is_normal_assignment(&self) -> bool {
+        matches!(
+            self,
+            ResultContext::Known {
+                origin: ResultContextOrigin::NormalAssignment,
                 ..
             }
         )
@@ -190,13 +207,9 @@ impl<'a> ResultContext<'a, '_> {
 impl fmt::Debug for ResultContext<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Known {
-                type_: t,
-                from_assignment_annotation,
-            } => write!(
-                f,
-                "Known {{ type_: {t:?}, from_assignment_annotation: {from_assignment_annotation}}}"
-            ),
+            Self::Known { type_: t, origin } => {
+                write!(f, "Known {{ type_: {t:?}, origin: {origin:?}}}")
+            }
             Self::KnownLambdaReturn(t) => write!(f, "KnownLambdaReturn({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::ValueExpected => write!(f, "ValueExpected"),

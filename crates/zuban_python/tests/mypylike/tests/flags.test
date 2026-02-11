@@ -925,3 +925,57 @@ env = {
 reveal_type(env)  # N: Revealed type is "dict[str, str]"
 
 d = env
+
+[case list_set_assignment_union_allow_redefinition]
+# flags: --allow-redefinition --no-use-joins
+import m
+reveal_type(m.x)  # N: Revealed type is "list[bytes | int]"
+reveal_type(m.y)  # N: Revealed type is "set[int | str]"
+
+[file m.py]
+def check() -> None:
+    reveal_type(x)  # N: Revealed type is "list[int | str]"
+    reveal_type(y)  # N: Revealed type is "set[int | str]"
+
+x = [1, ""]
+x = [1]
+reveal_type(x)  # N: Revealed type is "list[int | str]"
+x = [b'', 1]
+reveal_type(x)  # N: Revealed type is "list[bytes | int]"
+
+y = {1, ""}
+y = {1}
+reveal_type(y)  # N: Revealed type is "set[int | str]"
+y = {b'', 1}
+reveal_type(y)  # N: Revealed type is "set[bytes | int]"
+if bool():
+    y = [1]
+    reveal_type(y)  # N: Revealed type is "list[int]"
+reveal_type(y)  # N: Revealed type is "set[bytes | int] | list[int]"
+
+with_annotation: set[int] = {1, ""}  # E: Set item 1 has incompatible type "str"; expected "int"
+with_annotation = {"", 1}  # E: Incompatible types in assignment (expression has type "set[str | int]", variable has type "set[int]")
+
+[case dict_assignment_union_allow_redefinition]
+# flags: --allow-redefinition --no-use-joins
+import m
+reveal_type(m.x)  # N: Revealed type is "dict[int, bytes] | dict[str, float]"
+
+[file m.py]
+def check() -> None:
+    reveal_type(x)  # N: Revealed type is "dict[int, str | int]"
+
+x = {1: "", 2: 3}
+reveal_type(x)  # N: Revealed type is "dict[int, str | int]"
+x = {1: 1}
+reveal_type(x)  # N: Revealed type is "dict[int, str | int]"
+x = {1: b''}
+reveal_type(x)  # N: Revealed type is "dict[int, bytes]"
+
+if bool():
+    x = {"": 1.0}
+    reveal_type(x)  # N: Revealed type is "dict[str, float]"
+reveal_type(x)  # N: Revealed type is "dict[int, bytes] | dict[str, float]"
+
+with_annotation: dict[int, str] = {"": 1}  # E: Dict entry 0 has incompatible type "str": "int"; expected "int": "str"
+with_annotation = {"": 1}  # E: Incompatible types in assignment (expression has type "dict[str, int]", variable has type "dict[int, str]")

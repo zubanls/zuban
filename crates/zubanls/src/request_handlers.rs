@@ -428,6 +428,7 @@ impl GlobalState<'_> {
         let actions = document.code_actions(
             encoding.input_position(params.range.start),
             Some(encoding.input_position(params.range.end)),
+            false,
         )?;
         if actions.is_empty() {
             return Ok(None);

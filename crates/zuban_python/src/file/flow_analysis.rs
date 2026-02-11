@@ -1,5 +1,5 @@
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     collections::VecDeque,
     sync::Arc,
@@ -9,14 +9,14 @@ use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssertStmt, AssignmentContent, Atom, AtomContent, Block,
     BreakStmt, CaseBlock, CasePattern, ClassPattern, CompIfIterator, ComparisonContent,
     Comparisons, Conjunction, ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock,
-    ExceptExpression, Expression, ExpressionContent, ExpressionPart, ForIfClauseIterator, ForStmt,
-    FunctionDef, IfBlockIterator, IfBlockType, IfStmt, KeyEntryInPattern, LiteralPattern,
-    LiteralPatternContent, MappingPattern, MappingPatternItem, MatchStmt, Name, NameDef,
-    NamedExpression, NamedExpressionContent, NodeIndex, Operand, ParamPattern, Pattern,
-    PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
-    SequencePatternItem, SliceType as CSTSliceType, StarLikeExpression, StarLikeExpressionIterator,
-    StarPatternContent, SubjectExprContent, Target, Ternary, TryBlockType, TryStmt, UnpackedNumber,
-    WhileStmt,
+    ExceptExpression, ExceptExpressionContent, Expression, ExpressionContent, ExpressionPart,
+    ForIfClauseIterator, ForStmt, FunctionDef, IfBlockIterator, IfBlockType, IfStmt,
+    KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPattern, MappingPatternItem,
+    MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
+    ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
+    PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType, StarLikeExpression,
+    StarLikeExpressionIterator, StarPatternContent, SubjectExprContent, Target, Ternary,
+    TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
 };
 
 use crate::{
@@ -397,10 +397,18 @@ pub(crate) struct FlowAnalysisResult<T> {
     pub unfinished_partials: Vec<PointLink>,
 }
 
+#[derive(Debug)]
+struct TryFrame {
+    entries: Entries,
+    // This is true only when an explicit AttributeError is provided and not when e.g.
+    // BaseException or Exception is caught.
+    ignores_attribute_error: bool,
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
-    try_frames: RefCell<Vec<Entries>>,
+    try_frames: RefCell<Vec<TryFrame>>,
     loop_details: RefCell<Option<LoopDetails>>,
     delayed_diagnostics: RefCell<VecDeque<DelayedDiagnostic>>,
     partials_in_module: RefCell<Vec<PointLink>>,
@@ -669,10 +677,11 @@ impl FlowAnalysis {
     }
 
     fn overwrite_entry(&self, i_s: &InferenceState, new_entry: Entry) {
-        for entries in self.try_frames.borrow_mut().iter_mut() {
-            invalidate_child_entries(entries, i_s.db, &new_entry.key);
+        for try_frame in self.try_frames.borrow_mut().iter_mut() {
+            invalidate_child_entries(&mut try_frame.entries, i_s.db, &new_entry.key);
             // We don't want to add entries if they are already overwritten in the same frame.
-            if entries
+            if try_frame
+                .entries
                 .iter()
                 .any(|e| new_entry.key.is_child_of(i_s.db, &e.key))
             {
@@ -680,7 +689,7 @@ impl FlowAnalysis {
             }
 
             let mut add_entry_to_try_frame = |new_entry: &Entry| {
-                for entry in &mut *entries {
+                for entry in &mut try_frame.entries {
                     if entry.key.equals(i_s.db, &new_entry.key) {
                         entry.union(i_s, new_entry, false);
                         return true;
@@ -692,7 +701,7 @@ impl FlowAnalysis {
             // If we have a key that narrows in our ancestors, we either add it to an existing
             // one or push a new one.
             if !add_entry_to_try_frame(&new) {
-                entries.push(new)
+                try_frame.entries.push(new)
             }
         }
 
@@ -738,8 +747,8 @@ impl FlowAnalysis {
         let mut tos_frame = self.tos_frame();
         let entries = &mut tos_frame.entries;
         if cfg!(debug_assertions) {
-            for entries in self.try_frames.borrow().iter() {
-                for entry in entries.iter() {
+            for try_frame in self.try_frames.borrow().iter() {
+                for entry in try_frame.entries.iter() {
                     if entry.key.equals(db, &new_entry.key)
                         && entry.type_ != EntryKind::OriginalDeclaration
                     {
@@ -935,11 +944,14 @@ impl FlowAnalysis {
         self.in_type_checking_only_block.set(old);
     }
 
-    fn with_new_try_frame(&self, callable: impl FnOnce()) -> Frame {
-        self.try_frames.borrow_mut().push(vec![]);
+    fn with_new_try_frame(&self, ignores_attribute_error: bool, callable: impl FnOnce()) -> Frame {
+        self.try_frames.borrow_mut().push(TryFrame {
+            entries: vec![],
+            ignores_attribute_error,
+        });
         callable();
         Frame {
-            entries: self.try_frames.borrow_mut().pop().unwrap(),
+            entries: self.try_frames.borrow_mut().pop().unwrap().entries,
             ..Frame::new_conditional()
         }
     }
@@ -1157,6 +1169,17 @@ impl FlowAnalysis {
             }
         } else {
             new
+        }
+    }
+
+    pub fn in_try_that_ignores_attribute_errors(&self) -> bool {
+        if let Ok(borrowed) = self.try_frames.try_borrow() {
+            borrowed
+                .iter()
+                .any(|try_frame| try_frame.ignores_attribute_error)
+        } else {
+            recoverable_error!("Expected to be able to access the frames");
+            false
         }
     }
 }
@@ -2455,6 +2478,27 @@ impl<'file> Inference<'_, 'file, '_> {
             let mut after_ok = Frame::new_unreachable();
             let mut after_exception = Frame::new_unreachable();
             let mut nth_except_body = 0;
+            let ignores_attribute_error = try_stmt.iter_blocks().any(|b| match b {
+                TryBlockType::Except(b) => {
+                    let (Some(except_expr), _) = b.unpack() else {
+                        return false;
+                    };
+                    let attribute_error = self.i_s.db.python_state.attribute_error_link();
+                    match except_expr.unpack() {
+                        ExceptExpressionContent::WithNameDef(expr, _) => {
+                            let inf = self.infer_expression(expr);
+                            inf.maybe_saved_link() == Some(attribute_error)
+                        }
+                        ExceptExpressionContent::Expressions(expressions) => {
+                            expressions.iter().any(|expr| {
+                                let inf = self.infer_expression(expr);
+                                inf.maybe_saved_link() == Some(attribute_error)
+                            })
+                        }
+                    }
+                }
+                _ => false,
+            });
             for b in try_stmt.iter_blocks() {
                 let mut check_block = |except_expr: Option<ExceptExpression>, block, is_star| {
                     nth_except_body += 1;
@@ -2467,36 +2511,46 @@ impl<'file> Inference<'_, 'file, '_> {
                     let (exception_frame, except_type) =
                         fa.with_frame_and_result(exception_frame, || {
                             let except_type = if let Some(except_expr) = except_expr {
-                                let expr;
-                                (expr, name_def) = except_expr.unpack();
-                                let inf = self.infer_expression(expr);
-                                let inf_t = inf.as_cow_type(self.i_s);
-                                if let Some(name_def) = name_def {
-                                    let instantiated = match is_star {
-                                        false => instantiate_except(self.i_s, &inf_t),
-                                        true => self.instantiate_except_star(name_def, &inf_t),
-                                    };
-                                    let name_index = name_def.name_index();
-                                    let first = first_defined_name(self.file, name_index);
-                                    if first == name_index {
-                                        Inferred::from_type(instantiated).maybe_save_redirect(
-                                            self.i_s,
-                                            self.file,
-                                            name_def.index(),
-                                            false,
-                                        );
-                                    } else {
-                                        self.save_narrowed(
-                                            FlowKey::Name(PointLink::new(
-                                                self.file.file_index,
-                                                first,
-                                            )),
-                                            instantiated,
-                                            false,
-                                        )
+                                match except_expr.unpack() {
+                                    ExceptExpressionContent::WithNameDef(expr, n) => {
+                                        let inf = self.infer_expression(expr);
+                                        let inf_t = inf.as_cow_type(self.i_s);
+                                        let instantiated = match is_star {
+                                            false => instantiate_except(self.i_s, &inf_t),
+                                            true => self.instantiate_except_star(n, &inf_t),
+                                        };
+                                        let name_index = n.name_index();
+                                        let first = first_defined_name(self.file, name_index);
+                                        if first == name_index {
+                                            Inferred::from_type(instantiated).maybe_save_redirect(
+                                                self.i_s,
+                                                self.file,
+                                                n.index(),
+                                                false,
+                                            );
+                                        } else {
+                                            self.save_narrowed(
+                                                FlowKey::Name(PointLink::new(
+                                                    self.file.file_index,
+                                                    first,
+                                                )),
+                                                instantiated,
+                                                false,
+                                            )
+                                        }
+                                        name_def = Some(n);
+                                        Some(except_type(self.i_s.db, &inf_t, true))
+                                    }
+                                    ExceptExpressionContent::Expressions(expressions) => {
+                                        Some(ExceptType::from_types(
+                                            self.i_s.db,
+                                            true,
+                                            expressions.iter().map(|expr| {
+                                                self.infer_expression(expr).as_type(self.i_s)
+                                            }),
+                                        ))
                                     }
                                 }
-                                Some(except_type(self.i_s.db, &inf_t, true))
                             } else {
                                 None
                             };
@@ -2512,11 +2566,12 @@ impl<'file> Inference<'_, 'file, '_> {
                 };
                 match b {
                     TryBlockType::Try(block) => {
-                        try_frame_for_except = fa.with_new_try_frame(|| {
-                            try_frame = Some(fa.with_frame(Frame::new_conditional(), || {
-                                self.calc_block_diagnostics(block, class, func)
-                            }))
-                        })
+                        try_frame_for_except =
+                            fa.with_new_try_frame(ignores_attribute_error, || {
+                                try_frame = Some(fa.with_frame(Frame::new_conditional(), || {
+                                    self.calc_block_diagnostics(block, class, func)
+                                }))
+                            })
                     }
                     TryBlockType::Except(b) => {
                         let (except_expr, block) = b.unpack();
@@ -2585,7 +2640,7 @@ impl<'file> Inference<'_, 'file, '_> {
         callable: impl FnOnce(),
     ) {
         FLOW_ANALYSIS.with(|fa| {
-            let try_frame_for_except = fa.with_new_try_frame(|| {
+            let try_frame_for_except = fa.with_new_try_frame(false, || {
                 // Create a new frame that is then thrown away. This makes sense if we consider
                 // that the end of the with statement might never be reached.
                 fa.with_frame(Frame::new_conditional(), callable);
@@ -5895,10 +5950,14 @@ enum ExceptType {
 }
 
 impl ExceptType {
-    fn from_types<'x>(db: &Database, types: impl Iterator<Item = &'x Type>) -> Self {
+    fn from_types<'x, B: Borrow<Type>>(
+        db: &Database,
+        allow_tuple: bool,
+        types: impl Iterator<Item = B>,
+    ) -> Self {
         let mut result = ExceptType::ContainsOnlyBaseExceptions;
         for t in types {
-            match except_type(db, t, false) {
+            match except_type(db, t.borrow(), allow_tuple) {
                 ExceptType::ContainsOnlyBaseExceptions => (),
                 x @ ExceptType::HasExceptionGroup => result = x,
                 ExceptType::Invalid => return ExceptType::Invalid,
@@ -5925,12 +5984,13 @@ fn except_type(db: &Database, t: &Type, allow_tuple: bool) -> ExceptType {
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleArgs::FixedLen(ts) => ExceptType::from_types(db, ts.iter()),
+            TupleArgs::FixedLen(ts) => ExceptType::from_types(db, false, ts.iter()),
             TupleArgs::ArbitraryLen(t) => except_type(db, t, false),
             TupleArgs::WithUnpack(w) => match &w.unpack {
                 TupleUnpack::TypeVarTuple(_) => ExceptType::Invalid,
                 TupleUnpack::ArbitraryLen(t) => ExceptType::from_types(
                     db,
+                    false,
                     w.before
                         .iter()
                         .chain(w.after.iter())

@@ -345,7 +345,7 @@ pub fn python_import_with_needs_exact_case<'x>(
                         python_file_index = Some((file.clone(), file_index));
                     }
                 }
-                DirectoryEntry::MissingEntry { .. } => (),
+                DirectoryEntry::MissingEntry { .. } | DirectoryEntry::Gitignore(_) => (),
             }
         }
         if let Some((file_entry, file_index)) = stub_file_index.take().or(python_file_index.take())

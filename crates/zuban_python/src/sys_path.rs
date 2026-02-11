@@ -30,23 +30,38 @@ pub(crate) fn create_sys_path(
     }
 
     let version = settings.python_version_or_default();
-    let check_global_site_packages =
-        if let Some(env) = &settings.environment {
-            // We cannot use cannonicalize here, because the path of the exe is often a venv path
-            // that is a symlink to the actual exectuable. We however want the relative paths to
-            // the symlink. Therefore cannonicalize only after getting the first dir
-            let p = site_packages_path_from_env(env, version);
+    let mut add_site =
+        |p: PathBuf| {
             sys_path.push((
                 WorkspaceKind::SitePackages,
                 new_unchecked(p.to_str().expect(
                     "Should never happen, because we only put together valid unicode paths",
                 )),
-            ));
-            add_editable_src_packages(handler, &mut sys_path, env);
-            include_system_site_packages_in_pyvenv_cfg(env)
-        } else {
-            settings.add_global_packages_default
+            ))
         };
+    let check_global_site_packages = if let Some(env) = &settings.environment {
+        // We cannot use cannonicalize here, because the path of the exe is often a venv path
+        // that is a symlink to the actual exectuable. We however want the relative paths to
+        // the symlink. Therefore cannonicalize only after getting the first dir
+        add_site(site_packages_path_from_env(env, version));
+        add_editable_src_packages(handler, &mut sys_path, env);
+        include_system_site_packages_in_pyvenv_cfg(env)
+    } else {
+        if let Some(lib_path) = &lib_path
+            && settings.add_global_packages_default
+        {
+            let p = Path::new(lib_path).join("site-packages");
+            if p.exists() {
+                // This is not necessary on Ubuntu (and probably Debian), but the default in
+                // site.py is that site-packages are added. Ubuntu probably patches this.
+                tracing::info!("Looked up site-packages for {p:?} and added it to the sys path");
+                add_site(p);
+            } else {
+                tracing::info!("Looked up site-packages for {p:?} but it doesn't exist");
+            }
+        }
+        settings.add_global_packages_default
+    };
     if check_global_site_packages {
         add_user_site_packages(version, |p| {
             sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)))

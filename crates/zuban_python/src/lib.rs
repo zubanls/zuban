@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
 mod arguments;
+mod auto_imports;
 mod code_actions;
 mod completion;
 mod database;
@@ -290,7 +291,8 @@ impl<'project> Document<'project> {
     ) -> anyhow::Result<Vec<T>> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
-                .infer_definition(),
+                .infer_definition()
+                .1,
         )
     }
 

@@ -1,0 +1,162 @@
+[case actions_both_name_error_and_auto_import]
+# flags: --no-typecheck
+
+#? code-actions
+completepls
+
+#? --codepoint-column 0 code-actions
+x.completepls
+
+#? code-actions --strict-range
+x.completepls
+
+#? code-actions
+x.completepls
+
+[file x.py]
+completepls = 1
+
+[out]
+__main__.py:4: Code Actions:
+- Import `x.completepls`: 4:0-4:0 replaced with: "from x import completepls\n\n"
+- Add "# type: ignore[name-defined]": 4:11-4:11 replaced with: "  # type: ignore[name-defined]"
+- Add "# zuban: ignore[name-defined]": 4:11-4:11 replaced with: "  # zuban: ignore[name-defined]"
+__main__.py:7: Code Actions:
+- Import `x`: 4:0-4:0 replaced with: "import x\n\n"
+- Add "# type: ignore[name-defined]": 7:13-7:13 replaced with: "  # type: ignore[name-defined]"
+- Add "# zuban: ignore[name-defined]": 7:13-7:13 replaced with: "  # zuban: ignore[name-defined]"
+__main__.py:10: Code Actions: []
+__main__.py:13: Code Actions:
+- Import `x`: 4:0-4:0 replaced with: "import x\n\n"
+- Add "# type: ignore[name-defined]": 13:13-13:13 replaced with: "  # type: ignore[name-defined]"
+- Add "# zuban: ignore[name-defined]": 13:13-13:13 replaced with: "  # zuban: ignore[name-defined]"
+
+[case no_code_actions_on_reveal_type]
+# flags: --no-typecheck
+#? --codepoint-column 13 code-actions
+reveal_type(1)
+[out]
+__main__.py:3: Code Actions: []
+
+[case code_actions_on_preexisting_type_ignores]
+# flags: --no-typecheck
+#? --codepoint-column 0 code-actions
+1()  # type: ignore
+#? --codepoint-column 0 code-actions
+1()  # type: ignore  # Also not needed
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore  # Also not needed
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore[undefined]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[ undefined ]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[ operator ]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[ undefined ]  # additional comment
+#? --codepoint-column 0 code-actions
+1()  # type: ignore[undefined]  # zuban: ignore[undefined2]
+#? --codepoint-column 0 code-actions
+1()  # zuban: ignore[undefined]  # type: ignore[undefined2]
+[out]
+__main__.py:3: Code Actions: []
+__main__.py:5: Code Actions: []
+__main__.py:7: Code Actions: []
+__main__.py:9: Code Actions: []
+__main__.py:11: Code Actions:
+- Add "# zuban: ignore[operator]": 11:30-11:30 replaced with: ", operator"
+__main__.py:13: Code Actions:
+- Add "# type: ignore[operator]": 13:30-13:30 replaced with: ", operator"
+__main__.py:15: Code Actions: []
+__main__.py:17: Code Actions:
+- Add "# type: ignore[operator]": 17:30-17:30 replaced with: ", operator"
+__main__.py:19: Code Actions:
+- Add "# type: ignore[operator]": 19:29-19:29 replaced with: ", operator"
+__main__.py:21: Code Actions:
+- Add "# zuban: ignore[operator]": 21:30-21:30 replaced with: ", operator"
+
+[case code_actions_on_preexisting_type_ignores2]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore [ undefined ]
+#? --codepoint-column 0 code-actions
+1()  # type: ignore [ undefined ]  
+[out]
+__main__:2: error: "int" not callable
+__main__:2: note: Error code "operator" not covered by "type: ignore" comment
+__main__:4: error: "int" not callable
+__main__:4: note: Error code "operator" not covered by "type: ignore" comment
+__main__.py:2: Code Actions:
+- Add "# type: ignore[operator]": 2:31-2:31 replaced with: ", operator"
+__main__.py:4: Code Actions:
+- Add "# type: ignore[operator]": 4:31-4:31 replaced with: ", operator"
+
+[case code_actions_no_type_ignore_for_multi_line_string]
+#? --codepoint-column 0 code-actions
+1 + """
+asdf
+"""
+
+#? --codepoint-column 0 code-actions
+1 + """ asdf """
+
+[out]
+__main__:2: error: Unsupported operand types for + ("int" and "str")
+__main__:7: error: Unsupported operand types for + ("int" and "str")
+__main__.py:2: Code Actions: []
+__main__.py:7: Code Actions:
+- Add "# type: ignore[operator]": 7:16-7:16 replaced with: "  # type: ignore[operator]"
+- Add "# zuban: ignore[operator]": 7:16-7:16 replaced with: "  # zuban: ignore[operator]"
+
+[case code_actions_no_type_ignore_for_backslash]
+# flags: --no-typecheck
+#? --codepoint-column 0 code-actions
+1 + \
+""
+
+#? --add-lines 1 code-actions
+1 + \
+""
+
+[out]
+__main__.py:3: Code Actions: []
+__main__.py:8: Code Actions: []
+
+[case code_actions_no_type_ignore_for_syntax_error]
+# flags: --no-typecheck
+#? --codepoint-column 0 code-actions
+?
+[out]
+__main__.py:3: Code Actions: []
+
+[case code_actions_for_whole_module]
+# flags: --no-typecheck
+#? code-actions --until-line 7
+
+1()
+
+1 + ""
+
+[out]
+__main__.py:3: Code Actions:
+- Add "# type: ignore[operator]": 4:3-4:3 replaced with: "  # type: ignore[operator]"
+- Add "# zuban: ignore[operator]": 4:3-4:3 replaced with: "  # zuban: ignore[operator]"
+- Add "# type: ignore[operator]": 6:6-6:6 replaced with: "  # type: ignore[operator]"
+- Add "# zuban: ignore[operator]": 6:6-6:6 replaced with: "  # zuban: ignore[operator]"
+
+[case code_actions_position_within_error]
+# flags: --mode default
+def goto_or_help_or_infer(request, Script):
+    def do(code, *args, **kwargs):
+        return getattr(Script(code), request.param)(*args, **kwargs)
+
+    #? --codepoint-column 9 code-actions
+    do.type = request.param
+    return do
+
+[out]
+__main__:7: error: "Callable[[Any, VarArg(Any), KwArg(Any)], Any]" has no attribute "type"
+__main__.py:7: Code Actions:
+- Add "# type: ignore[attr-defined]": 7:27-7:27 replaced with: "  # type: ignore[attr-defined]"
+- Add "# zuban: ignore[attr-defined]": 7:27-7:27 replaced with: "  # zuban: ignore[attr-defined]"

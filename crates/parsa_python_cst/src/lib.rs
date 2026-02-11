@@ -1,4 +1,5 @@
 mod bytes;
+mod code_actions;
 mod completion;
 mod match_stmt;
 mod ranges;
@@ -18,7 +19,7 @@ pub use match_stmt::{
     CasePattern, KeyEntryInPattern, LiteralPatternContent, MappingPatternItem, ParamPattern,
     PatternKind, SequencePatternItem, StarPatternContent, SubjectExprContent,
 };
-pub use parsa_python::{CodeIndex, NodeIndex, keywords_contain};
+pub use parsa_python::{CodeIndex, NodeIndex, is_identifier, keywords_contain};
 use parsa_python::{
     NonterminalType::*,
     PyNode,
@@ -101,7 +102,7 @@ impl Tree {
         &self,
         start: CodeIndex,
         end: CodeIndex,
-    ) -> Option<Option<&str>> {
+    ) -> Option<TypeIgnoreComment<'_>> {
         // Returns Some(None) when there is a type: ignore
         // Returns Some("foo") when there is a type: ignore['foo']
         let code = self.code();
@@ -110,34 +111,46 @@ impl Tree {
         } else {
             &code[start as usize..]
         };
-        Self::type_ignore_comment_for_region(relevant_region)
+        Self::type_ignore_comment_for_region(start, relevant_region)
     }
 
-    fn type_ignore_comment_for_region(region: &str) -> Option<Option<&str>> {
+    fn type_ignore_comment_for_region(
+        mut start_at: CodeIndex,
+        region: &str,
+    ) -> Option<TypeIgnoreComment<'_>> {
         for line in region.split(['\n', '\r']) {
-            for comment in line.split('#').skip(1) {
+            let mut iterator = line.split('#');
+            start_at += iterator.next().unwrap().len() as CodeIndex + 1;
+            for comment in iterator {
                 let rest = comment.trim_start_matches(' ');
-                if let Some(ignore) = rest
-                    .strip_prefix("type:")
-                    .or_else(|| rest.strip_prefix("zuban:"))
-                {
+                let mut kind = "type";
+                if let Some(ignore) = rest.strip_prefix("type:").or_else(|| {
+                    kind = "zuban";
+                    rest.strip_prefix("zuban:")
+                }) {
                     let ignore = ignore.trim_start_matches(' ');
-                    let r = maybe_type_ignore(ignore);
+                    let r = maybe_type_ignore(
+                        kind,
+                        start_at + (comment.len() - ignore.len()) as CodeIndex,
+                        ignore,
+                    );
                     if r.is_some() {
                         return r;
                     }
                 } else {
                     break;
                 }
+                start_at += comment.len() as CodeIndex + 1;
             }
+            start_at += 1;
         }
         None
     }
 
     pub fn has_type_ignore_at_start(&self) -> Result<bool, &str> {
-        match Self::type_ignore_comment_for_region(self.before_first_statement()) {
-            Some(Some(ignore)) => Err(ignore),
-            Some(None) => Ok(true),
+        match Self::type_ignore_comment_for_region(0, self.before_first_statement()) {
+            Some(TypeIgnoreComment::WithCodes { codes: code, .. }) => Err(code),
+            Some(TypeIgnoreComment::WithoutCode) => Ok(true),
             None => Ok(false),
         }
     }
@@ -433,23 +446,42 @@ impl Tree {
     }
 }
 
+pub enum TypeIgnoreComment<'db> {
+    WithCodes {
+        codes: &'db str,
+        kind: &'static str,
+        codes_start_at_index: CodeIndex,
+    },
+    WithoutCode,
+}
+
 pub enum PotentialInlayHint<'db> {
     FunctionDef(FunctionDef<'db>),
     Assignment(Assignment<'db>),
 }
 
-pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
+pub fn maybe_type_ignore<'db>(
+    kind: &'static str,
+    start_at: CodeIndex,
+    text: &'db str,
+) -> Option<TypeIgnoreComment<'db>> {
     if let Some(after) = text.strip_prefix("ignore") {
-        let trimmed = after.trim_matches(' ');
+        let trimmed = after.trim_start_matches(' ');
+        let start_at = start_at + (text.len() - trimmed.len()) as CodeIndex;
+        let trimmed = trimmed.trim_end_matches(' ');
         if let Some(trimmed) = trimmed.strip_prefix('[')
             && let Some(trimmed) = trimmed.strip_suffix(']')
             && !trimmed.is_empty()
         {
-            return Some(Some(trimmed));
+            return Some(TypeIgnoreComment::WithCodes {
+                kind,
+                codes: trimmed,
+                codes_start_at_index: start_at + 1,
+            });
         }
 
         if after.is_empty() || after.starts_with([' ', '\t']) {
-            return Some(None);
+            return Some(TypeIgnoreComment::WithoutCode);
         }
     }
     None
@@ -1830,18 +1862,22 @@ impl<'db> ExceptStarBlock<'db> {
 }
 
 impl<'db> ExceptExpression<'db> {
-    pub fn unpack(&self) -> (Expression<'db>, Option<NameDef<'db>>) {
+    pub fn unpack(&self) -> ExceptExpressionContent<'db> {
         // except_expression: [expression ["as" name_def]]
         let mut clause_iterator = self.node.iter_children();
-        let expr = clause_iterator.next().unwrap();
+        let first = clause_iterator.next().unwrap();
         clause_iterator.next();
-        let as_name = clause_iterator.next().map(NameDef::new);
-        (Expression::new(expr), as_name)
+        if let Some(as_name) = clause_iterator.next() {
+            ExceptExpressionContent::WithNameDef(Expression::new(first), NameDef::new(as_name))
+        } else {
+            ExceptExpressionContent::Expressions(Expressions::new(first))
+        }
     }
+}
 
-    pub fn expression(&self) -> Expression<'db> {
-        Expression::new(self.node.nth_child(0))
-    }
+pub enum ExceptExpressionContent<'db> {
+    WithNameDef(Expression<'db>, NameDef<'db>),
+    Expressions(Expressions<'db>),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -4338,6 +4374,7 @@ impl<'db> NameDef<'db> {
                 Nonterminal(lambda),
                 Nonterminal(walrus),
                 Nonterminal(stmt),
+                ErrorNonterminal(stmt),
             ])
             .expect("There should always be a stmt");
         node.is_type(Nonterminal(assignment))

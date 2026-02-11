@@ -411,3 +411,14 @@ def f[T](x: T, y):
         case True: assert_type(y, Literal[True])
         case 1: assert_type(y, Any)
         case 1.0: assert_type(y, Any)
+
+[case match_syntax_error_no_crash]
+# From GH #257
+[True for _ in _ for _ in x]  # E: Name "_" is not defined
+
+match True:  # E: Invalid syntax
+    case {**x}:
+        if True:  # E: Invalid syntax
+    True
+[out]
+__main__:8: error: Invalid syntax

@@ -997,3 +997,8 @@ def safe_getattr(obj, name, default=_sentinel):
         if isinstance(obj, t):
             return getattr(obj, name)
     return obj
+
+[case type_ignore_of_invalid_string_forward_ref]
+# Add a line to ensure the functions are not on the first line
+def f() -> "undefined_zuban": ...  # type: ignore[name-defined]
+def g() -> "undefined_zuban  # type: ignore[name-defined]": ...  # E: Name "undefined_zuban" is not defined

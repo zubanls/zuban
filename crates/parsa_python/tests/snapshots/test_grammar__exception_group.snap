@@ -1,5 +1,6 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
 expression: tree_to_string(tree)
 ---
 file: 0-115
@@ -23,9 +24,10 @@ file: 0-115
     Keyword: 14-20 "except"
     Keyword: 20-21 "*"
     except_expression: 22-31
-     expression: 22-31
-      atom: 22-31
-       Name: 22-31 "SpamError"
+     expressions: 22-31
+      expression: 22-31
+       atom: 22-31
+        Name: 22-31 "SpamError"
     Keyword: 31-32 ":"
     block: 32-41
      Newline: 32-33 "\n"
@@ -98,4 +100,3 @@ file: 0-115
        Newline: 114-115 "\n"
      Dedent: 115-115 ""
  Endmarker: 115-115 ""
-

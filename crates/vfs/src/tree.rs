@@ -1,5 +1,9 @@
-use std::sync::{Arc, Mutex, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
+};
 
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use utils::{MappedReadGuard, MappedWriteGuard, VecRwLockWrapper};
 
 use crate::{NormalizedPath, PathWithScheme, VfsHandler, Workspace};
@@ -171,8 +175,9 @@ pub struct MissingEntry {
 #[derive(Debug, Clone)]
 pub enum DirectoryEntry {
     File(Arc<FileEntry>),
-    MissingEntry(MissingEntry),
     Directory(Arc<Directory>),
+    MissingEntry(MissingEntry),
+    Gitignore(Arc<GitignoreFile>),
 }
 
 impl DirectoryEntry {
@@ -181,6 +186,7 @@ impl DirectoryEntry {
             DirectoryEntry::File(file) => &file.name,
             DirectoryEntry::Directory(dir) => &dir.name,
             DirectoryEntry::MissingEntry(MissingEntry { name, .. }) => name,
+            DirectoryEntry::Gitignore(_) => ".gitignore",
         }
     }
 
@@ -222,7 +228,7 @@ impl Clone for Entries {
 
 #[derive(Debug, Clone)]
 pub struct Directory {
-    entries: OnceLock<Entries>,
+    pub(crate) entries: OnceLock<Entries>,
     pub parent: Parent,
     pub name: Box<str>,
 }
@@ -230,7 +236,13 @@ pub struct Directory {
 #[derive(Debug)]
 pub(crate) struct AddedFile {
     pub(crate) invalidations: Invalidations,
-    pub(crate) file_entry: Arc<FileEntry>,
+    pub(crate) kind: AddedKind,
+}
+
+#[derive(Debug)]
+pub(crate) enum AddedKind {
+    FileEntry(Arc<FileEntry>),
+    Gitignore(Arc<GitignoreFile>),
 }
 
 impl Directory {
@@ -316,6 +328,7 @@ impl Entries {
                     DirectoryEntry::File(f) => Some(DirOrFile::File(f.clone())),
                     DirectoryEntry::MissingEntry(_) => None,
                     DirectoryEntry::Directory(d) => Some(DirOrFile::Dir(d.clone())),
+                    DirectoryEntry::Gitignore(_) => None,
                 };
             }
         }
@@ -335,8 +348,21 @@ impl Entries {
         }))
     }
 
-    pub(crate) fn ensure_file(&self, parent: Parent, name: &str) -> AddedFile {
+    pub(crate) fn ensure_file(
+        &self,
+        vfs: &dyn VfsHandler,
+        parent: Parent,
+        name: &str,
+        code: &str,
+    ) -> AddedFile {
         let mut invalidations = Invalidations::default();
+        let new_gitignore = || {
+            GitignoreFile::new(
+                parent.clone(),
+                &*vfs.join(&*parent.absolute_path(vfs).path, name),
+                &code,
+            )
+        };
         let file_entry = if let Some(mut entry) = self.search_mut(name) {
             match &mut *entry {
                 DirectoryEntry::File(file_entry) => file_entry.clone(),
@@ -352,7 +378,22 @@ impl Entries {
                 DirectoryEntry::Directory(..) => unimplemented!(
                     "What happens when we want to write a file on top of a directory? When does this happen?"
                 ),
+                DirectoryEntry::Gitignore(_) => {
+                    let g = new_gitignore();
+                    *entry = DirectoryEntry::Gitignore(g.clone());
+                    return AddedFile {
+                        invalidations: Default::default(),
+                        kind: AddedKind::Gitignore(g),
+                    };
+                }
             }
+        } else if name == ".gitignore" {
+            let g = new_gitignore();
+            self.borrow_mut().push(DirectoryEntry::Gitignore(g.clone()));
+            return AddedFile {
+                invalidations: Default::default(),
+                kind: AddedKind::Gitignore(g),
+            };
         } else {
             let mut borrow = self.borrow_mut();
             let entry = FileEntry::new(parent, name.into());
@@ -361,7 +402,7 @@ impl Entries {
         };
         AddedFile {
             invalidations,
-            file_entry,
+            kind: AddedKind::FileEntry(file_entry),
         }
     }
 
@@ -369,8 +410,12 @@ impl Entries {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
-                if let DirectoryEntry::Directory(dir) = &*entry {
-                    Directory::entries(vfs, dir).unload_file(vfs, rest);
+                if let DirectoryEntry::Directory(dir) = &*entry
+                    // We do not need to unload files if the entries inside the dir do not yet
+                    // exist.
+                    && let Some(entries) = dir.entries.get()
+                {
+                    entries.unload_file(vfs, rest);
                 }
             } else if matches!(*entry, DirectoryEntry::File(_)) {
                 drop(entry);
@@ -391,6 +436,12 @@ impl Entries {
                     // TODO this probably happens with a directory called `foo.py`.
                     tracing::error!("Did not add invalidation for directory {}", name);
                 }
+                DirectoryEntry::Gitignore(_) => {
+                    tracing::error!(
+                        "Did not add invalidation for .gitignore, which \
+                        should probably not be necessary"
+                    );
+                }
             }
         } else {
             let invalidations = Invalidations::default();
@@ -407,8 +458,11 @@ impl Entries {
         if let Some(inner) = self.search(name) {
             match &*inner {
                 DirectoryEntry::Directory(dir) => {
-                    if let Some(rest) = rest {
-                        Directory::entries(vfs, dir).delete_directory(vfs, rest)
+                    if let Some(rest) = rest
+                        // Entries might not be loaded and therefore there's no dir to delete
+                        && let Some(entries) = dir.entries.get()
+                    {
+                        entries.delete_directory(vfs, rest)
                     } else {
                         drop(inner);
                         self.remove_name(name);
@@ -418,7 +472,7 @@ impl Entries {
                 DirectoryEntry::MissingEntry { .. } => {
                     Err(format!("Path {path} cannot be found (missing)"))
                 }
-                DirectoryEntry::File(_) => Err(format!(
+                DirectoryEntry::File(_) | DirectoryEntry::Gitignore(_) => Err(format!(
                     "Path {path} is supposed to be a directory but is a file"
                 )),
             }
@@ -536,6 +590,52 @@ impl Invalidations {
 impl Clone for Invalidations {
     fn clone(&self) -> Self {
         Self(RwLock::new(self.0.read().unwrap().clone()))
+    }
+}
+
+#[derive(Debug)]
+pub struct GitignoreFile {
+    gitignore: Gitignore,
+    pub parent: Parent,
+}
+
+impl GitignoreFile {
+    pub(crate) fn new<P: AsRef<Path>>(parent: Parent, path: P, code: &str) -> Arc<Self> {
+        let path = path.as_ref();
+        let parent_path = path.parent().unwrap_or(Path::new("/"));
+        let mut builder = GitignoreBuilder::new(parent_path);
+
+        // This is essentially copied from GitignoreBuilder::add and slightly modified
+        {
+            for (i, line) in code.lines().enumerate() {
+                let lineno = (i + 1) as u64;
+                // Match Git's handling of .gitignore files that begin with the Unicode BOM
+                const UTF8_BOM: &str = "\u{feff}";
+                let line = if i == 0 {
+                    line.trim_start_matches(UTF8_BOM)
+                } else {
+                    &line
+                };
+
+                if let Err(err) = builder.add_line(Some(path.to_path_buf()), &line) {
+                    tracing::debug!(
+                        "Error when parsing .gitignore {path:?} on line {lineno}: {err}"
+                    );
+                }
+            }
+        }
+        let gitignore = match builder.build() {
+            Ok(gi) => gi,
+            Err(err) => {
+                tracing::info!("Error while building gitignore: {err}");
+                Gitignore::empty()
+            }
+        };
+        Arc::new(Self { parent, gitignore })
+    }
+
+    pub fn is_path_ignored(&self, entry: &PathWithScheme, is_dir: bool) -> bool {
+        self.gitignore.matched(&*entry.path, is_dir).is_ignore()
     }
 }
 

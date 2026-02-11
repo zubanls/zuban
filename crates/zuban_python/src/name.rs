@@ -11,7 +11,6 @@ use crate::{
     completion::ScopesIterator,
     database::{Database, ParentScope},
     file::{ClassNodeRef, File, FuncNodeRef, PythonFile},
-    format_data::FormatData,
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{LookupResult, Type},
@@ -35,29 +34,6 @@ pub struct ValueName<'db, 'x> {
 }
 
 impl ValueName<'_, '_> {
-    pub fn type_description(&self) -> Box<str> {
-        match self.type_ {
-            Type::FunctionOverload(o) => format!(
-                "Overload(\n    {})",
-                o.iter_functions()
-                    .map(|callable| {
-                        callable.format_pretty(&FormatData::new_short(self.name.db()))
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n    ")
-            )
-            .into(),
-            _ => self.type_.format_short(self.name.db()),
-        }
-    }
-
-    pub fn maybe_pretty_function_type(&self) -> Option<Box<str>> {
-        match self.type_ {
-            Type::Callable(c) => Some(c.format_pretty(&FormatData::new_short(self.name.db()))),
-            _ => None,
-        }
-    }
-
     /// This is mostly for testing, you should probably not use this.
     pub fn is_instance(&self) -> bool {
         !matches!(

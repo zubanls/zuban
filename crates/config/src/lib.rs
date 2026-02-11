@@ -12,7 +12,7 @@ use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, NormalizedPath, VfsHandler};
 
 pub use searcher::{find_cli_config, find_workspace_config};
 
-type ConfigResult = anyhow::Result<bool>;
+type ConfigResult = anyhow::Result<()>;
 
 const OPTIONS_STARTING_WITH_ALLOW: [&str; 4] = [
     "allow_untyped_globals",
@@ -72,6 +72,7 @@ pub struct Settings {
     pub add_global_packages_default: bool,
     pub mode: Mode,
     pub untyped_function_return_mode: UntypedFunctionReturnMode,
+    pub exclude_gitignore: bool, // From Mypy's --exclude_gitignore
     // These are absolute paths.
     pub files_or_directories_to_check: Vec<GlobAbsPath>,
     pub typeshed_path: Option<Arc<NormalizedPath>>,
@@ -90,6 +91,7 @@ impl Default for Settings {
             add_global_packages_default: true,
             mode: Mode::Default,
             untyped_function_return_mode: UntypedFunctionReturnMode::Inferred,
+            exclude_gitignore: true,
             files_or_directories_to_check: vec![],
             prepended_site_packages: vec![],
         }
@@ -115,10 +117,6 @@ impl Settings {
     pub fn python_version_or_default(&self) -> PythonVersion {
         self.python_version
             .unwrap_or_else(|| PythonVersion::new(3, 14))
-    }
-
-    pub fn untyped_non_strict_optional(&self) -> bool {
-        !self.mypy_compatible()
     }
 
     pub fn apply_python_executable(
@@ -235,6 +233,7 @@ impl ProjectOptions {
             settings: Settings {
                 mode: Mode::Mypy,
                 untyped_function_return_mode: UntypedFunctionReturnMode::Any,
+                exclude_gitignore: false,
                 ..Default::default()
             },
             flags: TypeCheckerFlags::mypy_default(),
@@ -443,6 +442,7 @@ fn order_overrides_for_priority(overrides: &mut [OverrideConfig]) {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TypeCheckerFlags {
+    pub ignore_errors: bool,
     pub strict_optional: bool,
     pub strict_equality: bool,
     pub implicit_optional: bool,
@@ -486,11 +486,13 @@ pub struct TypeCheckerFlags {
     pub disallow_deprecated: bool,
     pub allow_incomplete_generics: bool,
     pub check_untyped_overrides: bool,
+    pub untyped_strict_optional: bool,
 }
 
 impl Default for TypeCheckerFlags {
     fn default() -> Self {
         Self {
+            ignore_errors: false,
             strict_optional: true,
             strict_equality: false,
             implicit_optional: false,
@@ -529,6 +531,7 @@ impl Default for TypeCheckerFlags {
             disallow_deprecated: false,
             allow_incomplete_generics: false,
             check_untyped_overrides: false,
+            untyped_strict_optional: false,
         }
     }
 }
@@ -549,9 +552,10 @@ impl TypeCheckerFlags {
         self.warn_return_any = true;
         self.no_implicit_reexport = true;
         self.strict_equality = true;
-        self.allow_untyped_globals = false; // This is mostly important for --mode typed
+        self.allow_untyped_globals = false; // This is mostly important for --mode default
         self.extra_checks = true;
         self.allow_incomplete_generics = false;
+        self.untyped_strict_optional = true;
     }
 
     pub fn enable_strict_bytes(&mut self) {
@@ -569,7 +573,7 @@ impl TypeCheckerFlags {
             warn_unreachable: false,
             warn_no_return: true,
             follow_untyped_imports: false,
-            allow_incomplete_generics: false,
+            untyped_strict_optional: true,
             ..Default::default()
         }
     }
@@ -758,13 +762,9 @@ pub struct OverrideConfig {
 }
 
 impl OverrideConfig {
-    pub fn apply_to_flags_and_return_ignore_errors(
-        &self,
-        flags: &mut TypeCheckerFlags,
-    ) -> ConfigResult {
-        let mut ignore_errors = false;
+    pub fn apply_to_flags(&self, flags: &mut TypeCheckerFlags) -> ConfigResult {
         for (key, value) in self.config.iter() {
-            ignore_errors |= apply_from_config_part(
+            apply_from_config_part(
                 flags,
                 key,
                 match value {
@@ -774,7 +774,7 @@ impl OverrideConfig {
                 false,
             )?;
         }
-        Ok(ignore_errors)
+        Ok(())
     }
 }
 
@@ -873,7 +873,7 @@ fn maybe_invert(name: &str) -> (bool, Cow<'_, str>) {
     (false, Cow::Borrowed(name))
 }
 
-pub fn set_flag_and_return_ignore_errors(
+pub fn set_flag(
     flags: &mut TypeCheckerFlags,
     name: &str,
     value: IniOrTomlValue,
@@ -892,18 +892,18 @@ pub fn set_flag_and_return_ignore_errors(
                             _ => bail!("TODO expected string array for {name}"),
                         }
                     }
-                    Ok(false)
+                    Ok(())
                 }
                 IniOrTomlValue::Toml(Value::String(s)) => {
                     // Apparently Mypy allows single strings for things like
                     //
                     //     enable_error_code = "ignore-without-code"
                     target.push(s.value().clone());
-                    Ok(false)
+                    Ok(())
                 }
                 IniOrTomlValue::Ini(v) => {
                     target.extend(split_and_trim(v, &[',']).map(String::from));
-                    Ok(false)
+                    Ok(())
                 }
                 _ => bail!("TODO expected string for {name}"),
             }
@@ -995,8 +995,13 @@ fn set_bool_init_flags(
         "follow_imports" | "follow_imports_for_stubs" => (),
         // Will always be irrelevant
         "cache_fine_grained" => (),
-        "ignore_errors" => return value.as_bool(invert),
+        "ignore_errors" => {
+            flags.ignore_errors = value.as_bool(invert)?;
+        }
         "python_version" => bail!("python_version not supported in inline configuration"),
+
+        // Our own
+        "untyped_strict_optional" => flags.untyped_strict_optional = value.as_bool(invert)?,
         _ => {
             if add_error_if_unrecognized_option {
                 bail!("Unrecognized option: {original_name} = {}", value.as_repr());
@@ -1008,7 +1013,7 @@ fn set_bool_init_flags(
             }
         }
     }
-    Ok(false)
+    Ok(())
 }
 
 fn split_and_trim<'a>(s: &'a str, pattern: &'a [char]) -> impl Iterator<Item = &'a str> {
@@ -1047,6 +1052,9 @@ fn apply_from_base_config(
         }
         "pretty" => {
             diagnostic_config.pretty = value.as_bool(false)?;
+        }
+        "exclude_gitignore" => {
+            settings.exclude_gitignore = value.as_bool(false)?;
         }
         "no_error_summary" => {
             diagnostic_config.error_summary = value.as_bool(true)?;
@@ -1093,7 +1101,7 @@ fn apply_from_base_config(
         }
         _ => return apply_from_config_part(flags, key, value, from_zuban),
     };
-    Ok(false)
+    Ok(())
 }
 
 fn apply_from_config_part(
@@ -1106,9 +1114,9 @@ fn apply_from_config_part(
         if value.as_bool(false)? {
             flags.enable_all_strict_flags();
         }
-        Ok(false)
+        Ok(())
     } else {
-        set_flag_and_return_ignore_errors(flags, key, value, from_zuban)
+        set_flag(flags, key, value, from_zuban)
     }
 }
 
@@ -1119,7 +1127,7 @@ fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> Conf
                 regex_str: s.into(),
                 regex,
             });
-            Ok(false)
+            Ok(())
         }
         Err(err) => bail!(err),
     };
@@ -1133,7 +1141,7 @@ fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> Conf
                     _ => bail!("TODO expected string array".to_string()),
                 }
             }
-            Ok(false)
+            Ok(())
         }
         IniOrTomlValue::Toml(Value::String(s)) => compile_str(s.value()),
         IniOrTomlValue::Ini(v) => compile_str(v),

@@ -456,7 +456,18 @@ fn lookup_members_or_aliases_on_enum(
             Enum::lookup(enum_, i_s.db, alias.pointing_to_name.as_str(i_s.db), true)
         })
     }) {
-        Some(m) => LookupResult::UnknownName(Inferred::from_type(Type::EnumMember(m))),
+        Some(m) => {
+            if let Some(link) = m.member_definition().value {
+                let node_ref = NodeRef::from_link(i_s.db, link);
+                if node_ref.maybe_name().is_some() {
+                    return LookupResult::GotoName {
+                        name: link,
+                        inf: Inferred::from_type(Type::EnumMember(m)),
+                    };
+                }
+            }
+            LookupResult::UnknownName(Inferred::from_type(Type::EnumMember(m)))
+        }
         None => LookupResult::None,
     }
 }

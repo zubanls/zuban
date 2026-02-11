@@ -211,3 +211,24 @@ def f(x: X):
     if isinstance(x, list):
         assert_type(x[0], list[X] | int)
         assert_type(x[0], X)
+
+[case no_crash_type_var_with_bound_and_alias]
+# From GH #281 (second part)
+from typing import TypeAlias, TypeVar
+
+class Array[CT: int]: ...
+
+CT = TypeVar("CT", bound="int")
+_Array: TypeAlias = Array[CT] | Array["_Array[CT]"]  # E: Type argument "_Array[CT]" of "Array" must be a subtype of "int"
+
+class Array2[CT: int | _Array2[int]]: ...
+
+CT2 = TypeVar("CT2", bound="int")
+_Array2: TypeAlias = Array2[CT2] | Array2["_Array2[CT2]"]
+
+[case invalid_alias_no_crash]
+# From GH #280
+a: c  # E: Variable "__main__.c" is not valid as a type \
+      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+b: c
+c = b[int]

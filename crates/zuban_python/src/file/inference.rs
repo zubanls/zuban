@@ -28,7 +28,7 @@ use crate::{
     },
     matching::{
         CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher,
-        OnTypeError, ResultContext, TupleLenInfos, format_got_expected,
+        OnTypeError, ResultContext, ResultContextOrigin, TupleLenInfos, format_got_expected,
     },
     new_class,
     node_ref::NodeRef,
@@ -317,7 +317,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             right_side,
             &mut ResultContext::Known {
                 type_: expected,
-                from_assignment_annotation: true,
+                origin: ResultContextOrigin::AssignmentAnnotation,
             },
         );
         self.check_right_side_against_expected(expected, right, right_side)
@@ -402,7 +402,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         right_side,
                         &mut ResultContext::Known {
                             type_: &t,
-                            from_assignment_annotation: true,
+                            origin: ResultContextOrigin::AssignmentAnnotation,
                         },
                     );
                     // It is very weird, but somehow type comments in Mypy are allowed to
@@ -427,7 +427,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let inf = self.inferred_context_for_simple_assignment(targets.clone());
             let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
             let mut result_context = match &return_type {
-                Some(t) => ResultContext::new_known(t),
+                Some(t) => ResultContext::Known {
+                    type_: t,
+                    origin: ResultContextOrigin::NormalAssignment,
+                },
                 None => ResultContext::AssignmentNewDefinition {
                     assignment_definition: PointLink::new(self.file.file_index, assignment.index()),
                 },
@@ -1274,16 +1277,18 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     narrow(first_name_link, &declaration_t)
                 }
             };
-        let set_defaultdict_type = |name_node_ref: NodeRef, t| {
+        let set_defaultdict_type = |name_node_ref: NodeRef, t: Type| {
             // It feels very weird that we're saving on the index before the defaultdict
             // definition, but it seems to be fine since this should either be a `,` for tuple
             // assignments or a `.` for self assignments or a star_targets / single_target / walrus
             // that is not used.
             let save_to = name_node_ref.add_to_node_index(NAME_DEF_TO_DEFAULTDICT_DIFF);
-            assert!(
+            debug!("Set defaultdict type to {}", t.format_short(i_s.db));
+            debug_assert!(
                 !save_to.point().calculated()
                     || save_to.point().maybe_calculated_and_specific()
-                        == Some(Specific::PartialNone)
+                        == Some(Specific::PartialNone),
+                "{save_to:?}"
             );
             save_to.insert_type(t)
         };
@@ -1852,6 +1857,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     from.add_issue(i_s, IssueKind::InvalidAssignmentTarget);
                     continue;
                 }
+                Type::None if i_s.should_ignore_none_in_untyped_context() => continue,
                 _ => (),
             }
 
@@ -2128,6 +2134,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 {
                     if union_part == &self.i_s.db.python_state.str_type() {
                         value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed)
+                    }
+                    if matches!(union_part, Type::None)
+                        && self.i_s.should_ignore_none_in_untyped_context()
+                    {
+                        continue;
                     }
                     let value_iterator = union_part.iter(
                         self.i_s,
@@ -3014,9 +3025,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     fn infer_operation(&self, op: Operation, result_context: &mut ResultContext) -> Inferred {
-        let context = if result_context.has_explicit_type() {
+        let context = if result_context.has_explicit_type() && op.infos.operand != "%" {
             // Pass on the context to each side. I'm not sure that's correct, but it's necessary at
-            // least for list additions.
+            // least for list additions. However it's wrong for `"%s" % ...`.
             &mut *result_context
         } else {
             &mut ResultContext::ValueExpected
@@ -4256,8 +4267,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     match block {
                         TryBlockType::Except(except) => {
                             if let (Some(except_expr), _) = except.unpack() {
-                                let (expr, name_def) = except_expr.unpack();
-                                if let Some(name_def) = name_def {
+                                if let ExceptExpressionContent::WithNameDef(expr, name_def) =
+                                    except_expr.unpack()
+                                {
                                     let nr = NodeRef::new(self.file, name_def.index());
                                     if nr.point().calculating() {
                                         Inferred::new_cycle()
@@ -4280,8 +4292,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         }
                         TryBlockType::ExceptStar(except_star) => {
                             let (except_expr, _) = except_star.unpack();
-                            let (expr, name_def) = except_expr.unpack();
-                            if let Some(name_def) = name_def {
+                            if let ExceptExpressionContent::WithNameDef(expr, name_def) =
+                                except_expr.unpack()
+                            {
                                 let nr = NodeRef::new(self.file, name_def.index());
                                 if nr.point().calculating() {
                                     Inferred::new_cycle()
@@ -4434,36 +4447,44 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     value.avoid_implicit_literal(i_s.db),
                 )
             };
-            let found = infer_dict_like(i_s, result_context, false, |matcher, key_t, value_t| {
-                let mut check = |expected_t: &Type, expr, part| {
-                    let inf = self.infer_expression_with_context(
-                        expr,
-                        &mut ResultContext::new_known(expected_t),
-                    );
-                    let t = inf.as_cow_type(i_s);
-                    if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
-                        Some(
-                            matcher
-                                .replace_type_var_likes_for_unknown_type_vars(i_s.db, expected_t)
-                                .into_owned()
-                                .avoid_implicit_literal(i_s.db),
-                        )
-                    } else {
-                        self.add_issue(
-                            expr.index(),
-                            IssueKind::DictComprehensionMismatch {
-                                part,
-                                got: t.format_short(i_s.db),
-                                expected: expected_t.format_short(i_s.db),
-                            },
+            let found = infer_dict_like(
+                i_s,
+                result_context,
+                false,
+                false,
+                |matcher, key_t, value_t| {
+                    let mut check = |expected_t: &Type, expr, part| {
+                        let inf = self.infer_expression_with_context(
+                            expr,
+                            &mut ResultContext::new_known(expected_t),
                         );
-                        None
-                    }
-                };
-                let key_result = check(key_t, key_value.key(), "Key");
-                let value_result = check(value_t, key_value.value(), "Value");
-                key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
-            });
+                        let t = inf.as_cow_type(i_s);
+                        if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
+                            Some(
+                                matcher
+                                    .replace_type_var_likes_for_unknown_type_vars(
+                                        i_s.db, expected_t,
+                                    )
+                                    .into_owned()
+                                    .avoid_implicit_literal(i_s.db),
+                            )
+                        } else {
+                            self.add_issue(
+                                expr.index(),
+                                IssueKind::DictComprehensionMismatch {
+                                    part,
+                                    got: t.format_short(i_s.db),
+                                    expected: expected_t.format_short(i_s.db),
+                                },
+                            );
+                            None
+                        }
+                    };
+                    let key_result = check(key_t, key_value.key(), "Key");
+                    let value_result = check(value_t, key_value.value(), "Value");
+                    key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
+                },
+            );
             found.unwrap_or_else(|| {
                 let key = self.infer_expression(key_value.key()).as_type(i_s);
                 let value = self.infer_expression(key_value.value()).as_type(i_s);
@@ -4595,6 +4616,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 })
             });
         }
+        self.file
+            .points
+            .set(decorator.index(), Point::new_calculating());
         let expr = decorator.named_expression().expression();
 
         let is_untyped_and_non_mypy_compatible = |inf: &Inferred| {

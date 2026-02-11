@@ -729,4 +729,26 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_gitignore() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file m.py]
+            1()
+            [file n.py]
+            1()
+            [file .gitignore]
+            n.py
+            "#,
+            false,
+        );
+        let diagnostics = diagnostics(Cli::parse_from([""]), test_dir.path());
+
+        assert_eq!(
+            diagnostics,
+            ["m.py:1: error: \"int\" not callable  [operator]"]
+        );
+    }
 }

@@ -3,7 +3,7 @@ use std::cell::Cell;
 use crate::{
     TypeCheckerFlags,
     database::{Database, ParentScope},
-    file::{ClassNodeRef, PythonFile, TypeVarCallbackReturn},
+    file::{ClassNodeRef, FLOW_ANALYSIS, PythonFile, TypeVarCallbackReturn},
     node_ref::NodeRef,
     type_::{CallableContent, Type, TypeVarLike},
     type_helpers::{Class, Function},
@@ -254,7 +254,8 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     }
 
     pub fn should_ignore_none_in_untyped_context(&self) -> bool {
-        self.db.project.settings.untyped_non_strict_optional() && self.in_untyped_context()
+        !self.db.project.flags.untyped_strict_optional && self.in_untyped_context()
+            || !self.flags().strict_optional
     }
 
     pub fn flags(&self) -> &'a TypeCheckerFlags
@@ -266,5 +267,9 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         } else {
             &self.db.project.flags
         }
+    }
+
+    pub fn in_try_that_ignores_attribute_errors(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| fa.in_try_that_ignores_attribute_errors())
     }
 }
