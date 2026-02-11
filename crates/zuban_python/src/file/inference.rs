@@ -3022,9 +3022,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     fn infer_operation(&self, op: Operation, result_context: &mut ResultContext) -> Inferred {
-        let context = if result_context.has_explicit_type() {
+        let context = if result_context.has_explicit_type() && op.infos.operand != "%" {
             // Pass on the context to each side. I'm not sure that's correct, but it's necessary at
-            // least for list additions.
+            // least for list additions. However it's wrong for `"%s" % ...`.
             &mut *result_context
         } else {
             &mut ResultContext::ValueExpected

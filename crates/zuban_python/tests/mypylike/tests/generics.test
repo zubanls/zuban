@@ -1943,3 +1943,7 @@ try:
     _ = WebDriverWait.until(lambda: False)  # error: Need type annotation for "_"  [var-annotated]
 except TimeoutError:
     pass
+
+[case no_context_for_string_formatting_with_next]
+args = iter([1])
+x: str = "asdf%s" % next(args)
