@@ -7,8 +7,8 @@ mod tokenizer;
 pub use parsa::{CodeIndex, NodeIndex};
 use parsa::{Grammar, create_grammar};
 
-pub use crate::tokenizer::TerminalType;
 use crate::tokenizer::{PyTerminal, PythonTokenizer};
+pub use crate::tokenizer::{TerminalType, is_identifier};
 
 create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PyTree, struct PyNode,

@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::HashSet, sync::Arc};
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
     ClassDef, CompletionContext, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name,
-    NameDef, NodeIndex, RestNode, Scope,
+    NameDef, NodeIndex, RestNode, Scope, is_identifier,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
@@ -439,7 +439,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             // Unsafe: The name always lives as long as 'db, because file entries are
             // only cleaned up once this lifetime is released.
             let name: &'db str = unsafe { std::mem::transmute(name) };
-            if !self.maybe_add(name) {
+            if !self.maybe_add(name) || !is_identifier(name) {
                 continue;
             }
             if let Some(result) = (self.on_result)(

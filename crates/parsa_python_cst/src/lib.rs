@@ -19,7 +19,7 @@ pub use match_stmt::{
     CasePattern, KeyEntryInPattern, LiteralPatternContent, MappingPatternItem, ParamPattern,
     PatternKind, SequencePatternItem, StarPatternContent, SubjectExprContent,
 };
-pub use parsa_python::{CodeIndex, NodeIndex, keywords_contain};
+pub use parsa_python::{CodeIndex, NodeIndex, is_identifier, keywords_contain};
 use parsa_python::{
     NonterminalType::*,
     PyNode,
