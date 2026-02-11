@@ -4447,36 +4447,44 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     value.avoid_implicit_literal(i_s.db),
                 )
             };
-            let found = infer_dict_like(i_s, result_context, false, |matcher, key_t, value_t| {
-                let mut check = |expected_t: &Type, expr, part| {
-                    let inf = self.infer_expression_with_context(
-                        expr,
-                        &mut ResultContext::new_known(expected_t),
-                    );
-                    let t = inf.as_cow_type(i_s);
-                    if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
-                        Some(
-                            matcher
-                                .replace_type_var_likes_for_unknown_type_vars(i_s.db, expected_t)
-                                .into_owned()
-                                .avoid_implicit_literal(i_s.db),
-                        )
-                    } else {
-                        self.add_issue(
-                            expr.index(),
-                            IssueKind::DictComprehensionMismatch {
-                                part,
-                                got: t.format_short(i_s.db),
-                                expected: expected_t.format_short(i_s.db),
-                            },
+            let found = infer_dict_like(
+                i_s,
+                result_context,
+                false,
+                false,
+                |matcher, key_t, value_t| {
+                    let mut check = |expected_t: &Type, expr, part| {
+                        let inf = self.infer_expression_with_context(
+                            expr,
+                            &mut ResultContext::new_known(expected_t),
                         );
-                        None
-                    }
-                };
-                let key_result = check(key_t, key_value.key(), "Key");
-                let value_result = check(value_t, key_value.value(), "Value");
-                key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
-            });
+                        let t = inf.as_cow_type(i_s);
+                        if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
+                            Some(
+                                matcher
+                                    .replace_type_var_likes_for_unknown_type_vars(
+                                        i_s.db, expected_t,
+                                    )
+                                    .into_owned()
+                                    .avoid_implicit_literal(i_s.db),
+                            )
+                        } else {
+                            self.add_issue(
+                                expr.index(),
+                                IssueKind::DictComprehensionMismatch {
+                                    part,
+                                    got: t.format_short(i_s.db),
+                                    expected: expected_t.format_short(i_s.db),
+                                },
+                            );
+                            None
+                        }
+                    };
+                    let key_result = check(key_t, key_value.key(), "Key");
+                    let value_result = check(value_t, key_value.value(), "Value");
+                    key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
+                },
+            );
             found.unwrap_or_else(|| {
                 let key = self.infer_expression(key_value.key()).as_type(i_s);
                 let value = self.infer_expression(key_value.value()).as_type(i_s);

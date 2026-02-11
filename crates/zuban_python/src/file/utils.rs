@@ -203,12 +203,21 @@ impl<'db> Inference<'db, '_, '_> {
             return Some(Inferred::from_type(result));
         }
 
+        let abort_on_mismatch =
+            result_context.is_normal_assignment() && i_s.flags().allow_redefinition;
         infer_dict_like(
             i_s,
             result_context,
             dict.iter_elements().next().is_none(),
+            abort_on_mismatch,
             |matcher, key_t, value_t| {
-                self.check_dict_literal_with_context(matcher, key_t, value_t, dict)
+                self.check_dict_literal_with_context(
+                    matcher,
+                    key_t,
+                    value_t,
+                    dict,
+                    abort_on_mismatch,
+                )
             },
         )
     }
@@ -323,6 +332,7 @@ impl<'db> Inference<'db, '_, '_> {
         key_t: &Type,
         value_t: &Type,
         dict: Dict,
+        abort_on_mismatch: bool,
     ) -> Option<Type> {
         let mut new_key_context = ResultContext::new_known(key_t);
         let mut new_value_context = ResultContext::new_known(value_t);
@@ -347,7 +357,7 @@ impl<'db> Inference<'db, '_, '_> {
 
                     if !key_match.bool() || !value_match.bool() {
                         had_error = true;
-                        if i_s.flags().allow_redefinition {
+                        if abort_on_mismatch {
                             return None;
                         }
                         let format_errors = |expected, got, match_| {
@@ -673,6 +683,7 @@ pub fn infer_dict_like(
     i_s: &InferenceState,
     result_context: &mut ResultContext,
     is_empty: bool,
+    abort_on_mismatch: bool,
     infer_with_context: impl FnOnce(&mut Matcher, &Type, &Type) -> Option<Type>,
 ) -> Option<Inferred> {
     let result = result_context.on_unique_type_in_unpacked_union(
@@ -683,7 +694,7 @@ pub fn infer_dict_like(
             let key_t = generics.next().unwrap();
             let value_t = generics.next().unwrap();
             let found = infer_with_context(matcher, &key_t, &value_t);
-            if found.is_none() && i_s.flags().allow_redefinition {
+            if found.is_none() && abort_on_mismatch {
                 return None;
             }
             Some(Inferred::from_type(found.unwrap_or_else(|| {
