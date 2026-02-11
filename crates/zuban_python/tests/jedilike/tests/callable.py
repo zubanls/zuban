@@ -41,7 +41,7 @@ ret[1]
 ret[2]
 
 ret = Foo(1.0).return_callable4(7)("")
-#? int()
+#?
 ret[0]
 #? str()
 ret[1]
