@@ -614,9 +614,13 @@ impl Type {
                     Variance::Covariant => {
                         Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
                     }
-                    Variance::Invariant => {
-                        Match::all(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
-                    }
+                    Variance::Invariant => Match::all(u1.iter(), |g| {
+                        if matches!(g, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                            Match::new_true()
+                        } else {
+                            g.matches(i_s, matcher, value_type, variance)
+                        }
+                    }),
                     Variance::Contravariant => unreachable!(),
                 }
             }

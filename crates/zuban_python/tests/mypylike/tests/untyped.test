@@ -1383,3 +1383,22 @@ def optional_any() -> Any | None: ...
 def f():
     x: str = optional_any()
     y: str | int = optional_any()
+
+[case untyped_non_strict_optional_list_assignments]
+# flags: --no-untyped-strict-optional --check-untyped-defs
+from typing import Any
+from typing import Sequence
+
+def f():
+    x: list[int] = []
+    y: list[int | None] = []
+
+    if bool():
+        y = x
+    else:
+        x = y
+    z: list[int | str] = y  # E: Incompatible types in assignment (expression has type "list[int | None]", variable has type "list[int | str]") \
+                            # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                            # N: Consider using "Sequence" instead, which is covariant
+    s1: Sequence[int] = y
+    s2: Sequence[int | None] = x
