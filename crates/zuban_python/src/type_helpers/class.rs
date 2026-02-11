@@ -28,11 +28,12 @@ use crate::{
     },
     matching::{
         ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, MismatchReason, OnTypeError,
-        ResultContext, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
         calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage,
     },
     node_ref::NodeRef,
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,

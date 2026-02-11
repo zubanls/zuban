@@ -28,11 +28,11 @@ use crate::{
     inferred::{AttributeKind, Inferred, infer_class_method},
     matching::{
         ErrorStrs, Generics, LookupKind, Match, Matcher, OnTypeError, ReplaceSelfInMatcher,
-        ResultContext,
     },
     node_ref::NodeRef,
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
         FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,

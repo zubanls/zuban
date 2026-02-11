@@ -1,10 +1,10 @@
 use core::fmt;
 
-use super::Matcher;
 use crate::{
     InferenceState,
     database::PointLink,
     file::ClassNodeRef,
+    matching::Matcher,
     type_::{AnyCause, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
 };

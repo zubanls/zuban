@@ -18,7 +18,7 @@ use self::{
     type_var_matcher::CalculatingTypeArg,
 };
 
-use super::{Generics, GotType, Match, OnTypeError, ResultContext, SignatureMatch};
+use super::{Generics, GotType, Match, OnTypeError, SignatureMatch};
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
@@ -32,6 +32,7 @@ use crate::{
         matches_params,
     },
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, Enum, GenericItem,
         ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,

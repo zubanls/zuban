@@ -24,13 +24,14 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        Generics, LookupKind, OnTypeError, ResultContext, calc_callable_type_vars,
-        maybe_class_usage, replace_class_type_vars,
+        Generics, LookupKind, OnTypeError, calc_callable_type_vars, maybe_class_usage,
+        replace_class_type_vars,
     },
     new_class,
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
+    result_context::ResultContext,
     type_::{CallableLike, ReplaceTypeVarLikes, callable::add_any_params_to_params},
     type_helpers::{
         Callable, Class, ClassLookupOptions, InstanceLookupOptions, LookupDetails, OverloadResult,

@@ -19,10 +19,11 @@ use crate::{
     inferred::{AttributeKind, Inferred},
     matching::{
         ErrorTypes, GotType, IteratorContent, LookupKind, Match, OnLookupError, OnTypeError,
-        ResultContext, calc_callable_type_vars,
+        calc_callable_type_vars,
     },
     node_ref::NodeRef,
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple,
         TupleUnpack,

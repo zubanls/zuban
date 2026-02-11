@@ -14,9 +14,10 @@ use crate::{
     getitem::SliceType,
     inference_state::Mode,
     inferred::Inferred,
-    matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
+    matching::{IteratorContent, Matcher, UnpackedArgument},
     node_ref::NodeRef,
     recoverable_error,
+    result_context::ResultContext,
     type_::{IterCause, ParamSpecUsage, StringSlice, TupleArgs, Type, TypedDict, WithUnpack},
 };
 

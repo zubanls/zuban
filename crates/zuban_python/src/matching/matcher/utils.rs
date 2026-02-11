@@ -6,7 +6,7 @@ use parsa_python_cst::ParamKind;
 use super::{
     super::{
         ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
-        ResultContext, SignatureMatch,
+        SignatureMatch,
     },
     ReplaceSelfInMatcher,
     type_var_matcher::TypeVarMatcher,
@@ -25,6 +25,7 @@ use crate::{
         WrappedStarStar,
     },
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics,
         GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,

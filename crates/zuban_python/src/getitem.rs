@@ -11,9 +11,9 @@ use crate::{
     file::{PythonFile, infer_index},
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
-    matching::ResultContext,
     new_class,
     node_ref::NodeRef,
+    result_context::ResultContext,
     type_::{Tuple, Type},
 };
 

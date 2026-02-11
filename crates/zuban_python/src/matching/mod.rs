@@ -2,7 +2,6 @@ mod generic;
 mod generics;
 mod match_;
 mod matcher;
-mod result_context;
 mod utils;
 
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, sync::Arc};
@@ -15,7 +14,6 @@ pub(crate) use matcher::{
     calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
     calc_func_type_vars, calc_untyped_func_type_vars,
 };
-pub(crate) use result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin};
 pub(crate) use utils::{
     calculate_property_return, create_signature_without_self_for_callable, match_self_type,
     maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,

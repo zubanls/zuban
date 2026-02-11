@@ -14,8 +14,9 @@ use crate::{
     inferred::{
         ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex, add_attribute_error,
     },
-    matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError, ResultContext},
+    matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError},
     node_ref::NodeRef,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult,
         PropertySetterType, Type, TypeVarKind,

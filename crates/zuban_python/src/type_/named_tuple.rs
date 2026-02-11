@@ -17,8 +17,9 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{Generics, IteratorContent, LookupKind, ResultContext},
+    matching::{Generics, IteratorContent, LookupKind},
     new_class,
+    result_context::ResultContext,
     type_helpers::LookupDetails,
     utils::join_with_commas,
 };

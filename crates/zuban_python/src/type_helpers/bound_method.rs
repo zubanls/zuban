@@ -1,10 +1,7 @@
 use super::{FirstParamProperties, Function, OverloadedFunction};
 use crate::{
-    arguments::Args,
-    inference_state::InferenceState,
-    inferred::Inferred,
-    matching::{OnTypeError, ResultContext},
-    type_::Type,
+    arguments::Args, inference_state::InferenceState, inferred::Inferred, matching::OnTypeError,
+    result_context::ResultContext, type_::Type,
 };
 
 #[derive(Debug)]

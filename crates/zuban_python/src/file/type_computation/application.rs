@@ -5,7 +5,6 @@ use parsa_python_cst::Name;
 
 use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
-use crate::matching::ResultContext;
 use crate::{
     database::{Specific, TypeAlias},
     diagnostics::IssueKind,
@@ -13,6 +12,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
+    result_context::ResultContext,
     type_::{Dataclass, NamedTuple, Type, TypeVarLike, TypedDict},
     type_helpers::Class,
 };

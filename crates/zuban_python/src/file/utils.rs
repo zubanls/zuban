@@ -17,12 +17,10 @@ use crate::{
     getitem::Simple,
     inference_state::InferenceState,
     inferred::UnionValue,
-    matching::{
-        ErrorStrs, ErrorTypes, GotType, IteratorContent, Match, Matcher, MismatchReason,
-        ResultContext,
-    },
+    matching::{ErrorStrs, ErrorTypes, GotType, IteratorContent, Match, Matcher, MismatchReason},
     new_class,
     node_ref::NodeRef,
+    result_context::ResultContext,
     type_::{
         AnyCause, IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes,
         Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics,

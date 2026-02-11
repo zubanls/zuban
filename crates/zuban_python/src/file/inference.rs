@@ -27,13 +27,15 @@ use crate::{
         NAME_DEF_TO_DEFAULTDICT_DIFF, UnionValue, add_attribute_error, specific_to_type,
     },
     matching::{
-        CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher,
-        OnTypeError, ResultContext, ResultContextOrigin, TupleLenInfos, format_got_expected,
+        ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher, OnTypeError,
+        TupleLenInfos, format_got_expected,
     },
     new_class,
     node_ref::NodeRef,
     params::matches_simple_params,
     recoverable_error,
+    result_context::CouldBeALiteral,
+    result_context::{ResultContext, ResultContextOrigin},
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
         Literal, LiteralKind, LookupResult, ParamType, StarParamType, StarStarParamType,

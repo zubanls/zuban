@@ -42,10 +42,11 @@ use crate::{
     imports::{ImportResult, namespace_import},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{Generics, ResultContext},
+    matching::Generics,
     new_class,
     node_ref::NodeRef,
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, CallableWithParent,
         ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember, GenericClass, GenericItem,
