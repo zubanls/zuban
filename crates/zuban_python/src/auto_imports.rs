@@ -165,10 +165,9 @@ impl<'db> ImportFinder<'db> {
         entry: &Arc<FileEntry>,
         add_star_imports: bool,
     ) -> bool {
-        let Some(file_index) = self.db.load_file_from_workspace(entry, false) else {
+        let Some(file) = self.db.load_file_from_workspace(entry) else {
             return false;
         };
-        let file = self.db.loaded_python_file(file_index);
         if file.name(self.db) == self.name {
             self.found.lock().unwrap().push(PotentialImport {
                 file,
@@ -491,8 +490,9 @@ impl TypeshedSymbols {
                 all_recursive_public_typeshed_file_entries(db, &workspace.entries)
                     .par_iter()
                     .for_each(|entry| {
-                        let file_index = db.load_file_from_workspace(entry, false).unwrap();
-                        let file = db.loaded_python_file(file_index);
+                        let file = db
+                            .load_file_from_workspace(entry)
+                            .expect("Expected there to be all typeshed files");
 
                         let mut found = found.lock().unwrap();
                         let index = found.files.len() as u32;
@@ -534,7 +534,7 @@ impl TypeshedSymbols {
                             }
                         }
                         // Builtins are already reachable
-                        if file_index == db.python_state.builtins().file_index
+                        if file.file_index == db.python_state.builtins().file_index
                             // For now disable typing_extensions, because it essentially contains
                             // the almost exact same items as typing.pyi
                             || entry.name.as_ref() == "typing_extensions.pyi"

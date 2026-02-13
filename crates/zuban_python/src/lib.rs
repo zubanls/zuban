@@ -112,7 +112,7 @@ impl Project {
             .chain(
                 files_to_be_loaded
                     .into_par_iter()
-                    .filter_map(|(entry, _)| self.db.load_file_from_workspace(&entry, false)),
+                    .filter_map(|(entry, _)| self.db.load_file_index_from_workspace(&entry, false)),
             )
             .map(|file_index| Document {
                 project: self,

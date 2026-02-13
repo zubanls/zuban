@@ -890,16 +890,13 @@ impl<'db> Completion for CompletionDirEntry<'db, '_> {
 
     fn documentation(&self) -> Option<Cow<'db, str>> {
         match self.entry {
-            DirectoryEntry::File(entry) => {
-                let file_index = self.db.load_file_from_workspace(entry, false)?;
-                Some(
-                    ModuleName {
-                        db: self.db,
-                        file: self.db.loaded_python_file(file_index),
-                    }
-                    .documentation(),
-                )
-            }
+            DirectoryEntry::File(entry) => Some(
+                ModuleName {
+                    db: self.db,
+                    file: self.db.load_file_from_workspace(entry)?,
+                }
+                .documentation(),
+            ),
             _ => None,
         }
     }

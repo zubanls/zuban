@@ -1218,7 +1218,7 @@ impl Database {
         else {
             return None;
         };
-        self.load_file_from_workspace(&file_entry, false)
+        self.load_file_index_from_workspace(&file_entry, false)
     }
 
     pub fn load_sub_file(
@@ -1230,7 +1230,12 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file_from_workspace(
+    pub fn load_file_from_workspace(&self, file_entry: &Arc<FileEntry>) -> Option<&PythonFile> {
+        let index = self.load_file_index_from_workspace(file_entry, false)?;
+        Some(self.loaded_python_file(index))
+    }
+
+    pub fn load_file_index_from_workspace(
         &self,
         file_entry: &Arc<FileEntry>,
         invalidates_db: bool,
@@ -1410,7 +1415,7 @@ impl Database {
             )
         };
         let file_index = self
-            .load_file_from_workspace(file_entry, true)
+            .load_file_index_from_workspace(file_entry, true)
             .unwrap_or_else(|| panic!("Unable to read {file_name:?} in {}", as_debug_path()));
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)
