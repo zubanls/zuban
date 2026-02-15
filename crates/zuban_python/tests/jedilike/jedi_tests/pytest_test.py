@@ -27,7 +27,7 @@ class MyClassFixture():
 # goto/infer
 # -----------------
 
-#! 18 ['def my_conftest_fixture']
+#! 18 ['def my_conftest_fixture(my_other_conftest_fixture):']
 def test_x(my_conftest_fixture, my_fixture, my_not_existing_fixture, my_yield_fixture):
     #? str()
     my_fixture
@@ -43,7 +43,7 @@ def test_x(my_conftest_fixture, my_fixture):
     pass
 
 
-#! 18 ['param MyClassFixture']
+#! 18 ['MyClassFixture']
 def test_x(MyClassFixture):
     #?
     MyClassFixture
@@ -57,12 +57,12 @@ def lala(my_fixture):
 def lala(my_fixture):
     pass
 
-#! 15 ['param my_fixture']
+#! 15 ['my_fixture']
 def lala(my_fixture):
     pass
 
 @pytest.fixture
-#! 15 ['def my_fixture']
+#! 15 ['def my_fixture() -> str:']
 def lala(my_fixture):
     pass
 
@@ -134,7 +134,7 @@ def lala(my_con):
 def test_p(monkeyp
 
 
-#! 15 ['def monkeypatch']
+#! 15 ['def monkeypatch() -> Generator[MonkeyPatch]: ...']
 def test_p(monkeypatch):
     #? ['setattr']
     monkeypatch.setatt
@@ -159,7 +159,7 @@ def inheritance_fixture(inheritance_fixture):
     return 1
 
 
-#! 48 ['def inheritance_fixture']
+#! 48 ['def inheritance_fixture():']
 def test_inheritance_fixture(inheritance_fixture, caplog):
     #? int()
     inheritance_fixture

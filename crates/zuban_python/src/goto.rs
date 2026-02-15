@@ -8,7 +8,7 @@ use std::{borrow::Cow, cell::Cell, sync::Arc};
 use parsa_python_cst::{
     Atom, DefiningStmt, DottedAsNameContent, DottedImportName, FunctionDef, GotoNode,
     Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope, TypeLike,
 };
 use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
@@ -28,6 +28,7 @@ use crate::{
     matching::LookupKind,
     name::{ModuleName, Name, NodeName, Range, TreeName},
     node_ref::NodeRef,
+    pytest::find_pytest_fixture_for_param,
     recoverable_error,
     result_context::ResultContext,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
@@ -445,6 +446,33 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                             p.specific(),
                             Specific::NameOfNameDef | Specific::FirstNameOfNameDef
                         ) {
+                            let name_def = name.name_def().unwrap();
+                            match name_def.expect_type() {
+                                TypeLike::ParamName(_) => {
+                                    if let Some(func_node) =
+                                        name_def.maybe_parent_function_of_param()
+                                        && let Some(fixture) = find_pytest_fixture_for_param(
+                                            db,
+                                            name_def,
+                                            Function::new_with_unknown_parent(
+                                                db,
+                                                NodeRef::new(file, func_node.index()),
+                                            ),
+                                            func_node,
+                                        )
+                                    {
+                                        return Some(vec![self.calculate_return(Name::TreeName(
+                                            TreeName::new(
+                                                db,
+                                                fixture.file,
+                                                Scope::Module,
+                                                fixture.node().name(),
+                                            ),
+                                        ))]);
+                                    }
+                                }
+                                _ => (),
+                            }
                             match name.name_def().unwrap().maybe_import() {
                                 Some(NameImportParent::DottedAsName(_)) => {
                                     let file_index = self.infos.infer_name(name)?.maybe_file(db)?;

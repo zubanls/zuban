@@ -4617,7 +4617,7 @@ impl<'db> NameDef<'db> {
         None
     }
 
-    pub fn parent_function_of_param(&self) -> Option<FunctionDef<'db>> {
+    pub fn maybe_parent_function_of_param(&self) -> Option<FunctionDef<'db>> {
         let parent = self.node.parent()?;
         if !matches!(
             parent.type_(),

@@ -17,12 +17,31 @@ use crate::{
 const _PYTEST_FIXTURE_MODULES: [&str; 5] =
     ["monkeypatch", "capture", "logging", "tmpdir", "pytester"];
 
-pub fn maybe_infer_pytest_param(
+pub(crate) fn maybe_infer_pytest_param(
     db: &Database,
     param: NameDef,
     func: Function,
     func_node: FunctionDef,
 ) -> Option<Inferred> {
+    let func = find_pytest_fixture_for_param(db, param, func, func_node)?;
+
+    let i_s = &InferenceState::new(db, func.file);
+    let mut t = func.inferred_return_type(i_s);
+    debug!("Executed pytest fixture: {}", t.format_short(db));
+    if let Type::Class(c) = t.as_ref()
+        && c.link == db.python_state.generator_link()
+    {
+        t = Cow::Owned(c.class(db).nth_type_argument(db, 0));
+    }
+    Some(Inferred::from_type(t.into_owned()))
+}
+
+pub(crate) fn find_pytest_fixture_for_param<'db>(
+    db: &'db Database,
+    param: NameDef,
+    func: Function,
+    func_node: FunctionDef,
+) -> Option<Function<'db, 'static>> {
     let pytest_folder = db.pytest_folder()?;
     if !is_pytest_fixture_or_test(func, func_node) {
         return None;
@@ -43,15 +62,7 @@ pub fn maybe_infer_pytest_param(
             "Found a pytest fixture for param {fixture_name:?} in {:?}",
             func.file.file_path(db),
         );
-        let i_s = &InferenceState::new(db, func.file);
-        let mut t = func.inferred_return_type(i_s);
-        debug!("Executed pytest fixture: {}", t.format_short(db));
-        if let Type::Class(c) = t.as_ref()
-            && c.link == db.python_state.generator_link()
-        {
-            t = Cow::Owned(c.class(db).nth_type_argument(db, 0));
-        }
-        Some(Inferred::from_type(t.into_owned()))
+        Some(func)
     })
 }
 

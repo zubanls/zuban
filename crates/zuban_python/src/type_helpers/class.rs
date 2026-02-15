@@ -1763,7 +1763,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                         if let Some(name) = redirected_to.maybe_name()
                             && let Some(name_def) = name.name_def()
-                            && let Some(func) = name_def.parent_function_of_param()
+                            && let Some(func) = name_def.maybe_parent_function_of_param()
                         {
                             let parent_scope =
                                 FuncNodeRef::new(redirected_to.file, func.index()).parent_scope();
