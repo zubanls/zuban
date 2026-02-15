@@ -468,24 +468,20 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                                         ))]);
                                     }
                                 }
-                                _ => (),
-                            }
-                            match name.name_def().unwrap().maybe_import() {
-                                Some(NameImportParent::DottedAsName(_)) => {
+                                TypeLike::DottedAsName(_) => {
                                     let file_index = self.infos.infer_name(name)?.maybe_file(db)?;
                                     return Some(vec![self.goto_on_file(file_index)]);
                                 }
-                                Some(NameImportParent::ImportFromAsName(_)) => (),
-                                None => {
-                                    let first = first_defined_name(file, name.index());
-                                    return self
-                                        .check_node_ref_and_maybe_follow_import(
-                                            NodeRef::new(file, first),
-                                            follow_imports,
-                                        )
-                                        .map(|r| vec![r]);
-                                }
+                                TypeLike::ImportFromAsName(_) => return None,
+                                _ => (),
                             }
+                            let first = first_defined_name(file, name.index());
+                            return self
+                                .check_node_ref_and_maybe_follow_import(
+                                    NodeRef::new(file, first),
+                                    follow_imports,
+                                )
+                                .map(|r| vec![r]);
                         }
                     }
                     PointKind::FileReference => {
