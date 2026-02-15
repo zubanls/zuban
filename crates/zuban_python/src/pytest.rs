@@ -1,4 +1,4 @@
-use std::{array::IntoIter, sync::Arc};
+use std::{array::IntoIter, borrow::Cow, sync::Arc};
 
 use parsa_python_cst::{FunctionDef, NameDef};
 use vfs::{Directory, DirectoryEntry, Parent};
@@ -10,6 +10,7 @@ use crate::{
     imports::{ImportResult, python_import},
     inference_state::InferenceState,
     inferred::Inferred,
+    type_::Type,
     type_helpers::{FuncLike as _, Function},
 };
 
@@ -43,8 +44,13 @@ pub fn maybe_infer_pytest_param(
             func.file.file_path(db),
         );
         let i_s = &InferenceState::new(db, func.file);
-        let t = func.inferred_return_type(i_s);
+        let mut t = func.inferred_return_type(i_s);
         debug!("Executed pytest fixture: {}", t.format_short(db));
+        if let Type::Class(c) = t.as_ref()
+            && c.link == db.python_state.generator_link()
+        {
+            t = Cow::Owned(c.class(db).nth_type_argument(db, 0));
+        }
         Some(Inferred::from_type(t.into_owned()))
     })
 }

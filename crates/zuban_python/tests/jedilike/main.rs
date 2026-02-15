@@ -59,7 +59,7 @@ lazy_static::lazy_static! {
         ("goto.py", 4),
         ("keywords.py", 9),
         ("ns_path.py", 4),
-        ("pytest_test.py", 27),
+        ("pytest_test.py", 25),
         ("sys_path.py", 4),
         ("stubs.py", 5),
     ]);
