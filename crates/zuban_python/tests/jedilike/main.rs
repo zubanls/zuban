@@ -151,6 +151,7 @@ fn main() -> ExitCode {
             code,
             filters: &filters,
         };
+        println!("Start to run tests for {file_name}");
         let (ran, full, errors) = f.test(&mut project);
         ran_count += ran;
         full_count += full;

@@ -66,6 +66,10 @@ def lala(my_fixture):
 def lala(my_fixture):
     pass
 
+@pytest.fixture
+#! 15 ['def my_fixture() -> str:']
+def lala(my_fixture
+
 # overriding types of a fixture should be possible
 def test_x(my_yield_fixture: str):
     #? str()

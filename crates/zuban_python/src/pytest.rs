@@ -1,6 +1,6 @@
 use std::{array::IntoIter, borrow::Cow, sync::Arc};
 
-use parsa_python_cst::{FunctionDef, NameDef};
+use parsa_python_cst::{Decorated, FunctionDef, NameDef};
 use vfs::{Directory, DirectoryEntry, Parent};
 
 use crate::{
@@ -23,7 +23,13 @@ pub(crate) fn maybe_infer_pytest_param(
     func: Function,
     func_node: FunctionDef,
 ) -> Option<Inferred> {
-    let func = find_pytest_fixture_for_param(db, param, func, func_node)?;
+    let func = find_pytest_fixture_for_param(
+        db,
+        func.file,
+        param,
+        func.node().name().as_code(),
+        func_node.maybe_decorated(),
+    )?;
 
     let i_s = &InferenceState::new(db, func.file);
     let mut t = func.inferred_return_type(i_s);
@@ -38,24 +44,25 @@ pub(crate) fn maybe_infer_pytest_param(
 
 pub(crate) fn find_pytest_fixture_for_param<'db>(
     db: &'db Database,
+    file: &PythonFile,
     param: NameDef,
-    func: Function,
-    func_node: FunctionDef,
+    func_name: &str,
+    decorated: Option<Decorated>,
 ) -> Option<Function<'db, 'static>> {
     let pytest_folder = db.pytest_folder()?;
-    if !is_pytest_fixture_or_test(func, func_node) {
+    if !is_pytest_fixture_or_test(func_name, decorated) {
         return None;
     }
     let fixture_name = param.as_code();
-    let skip_current_module = fixture_name == func.node().name().as_code();
-    FixtureModuleIterator::new(db, pytest_folder, func.file, skip_current_module).find_map(|file| {
+    let skip_current_module = fixture_name == func_name;
+    FixtureModuleIterator::new(db, pytest_folder, file, skip_current_module).find_map(|file| {
         let inf = file
             .lookup(db, |_| (), fixture_name)
             .into_maybe_inferred()?;
         let node_ref = inf.maybe_saved_node_ref(db)?;
         let func_node = node_ref.maybe_function()?;
         let func = Function::new(node_ref, None);
-        if !is_fixture(func, func_node) {
+        if !is_fixture(func_node.maybe_decorated()) {
             return None;
         }
         debug!(
@@ -66,16 +73,14 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
     })
 }
 
-fn is_pytest_fixture_or_test(func: Function, func_node: FunctionDef) -> bool {
+fn is_pytest_fixture_or_test(func_name: &str, decorated: Option<Decorated>) -> bool {
     // Pytest params are either in a `test*` function or have a pytest fixture
     // with the decorator @pytest.fixture.
-    let func_name = func_node.name().as_code();
-    func_name.starts_with("test") || is_fixture(func, func_node)
+    func_name.starts_with("test") || is_fixture(decorated)
 }
 
-fn is_fixture(func: Function, func_node: FunctionDef) -> bool {
-    debug_assert_eq!(func.node_index, func_node.index());
-    func_node.maybe_decorated().is_some_and(|dec| {
+fn is_fixture(decorated: Option<Decorated>) -> bool {
+    decorated.is_some_and(|dec| {
         // TODO check that the fixture is from pytest, this is only a heuristic
         dec.decorators()
             .iter()
