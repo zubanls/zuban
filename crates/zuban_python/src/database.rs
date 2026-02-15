@@ -3,7 +3,7 @@ use std::{
     cell::Cell,
     fmt, mem,
     ops::Range,
-    sync::{Arc, Mutex, OnceLock, RwLock},
+    sync::{Arc, Mutex, OnceLock, RwLock, Weak},
 };
 
 use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
@@ -1020,6 +1020,7 @@ pub(crate) struct Database {
     pub python_state: PythonState,
     pub project: PythonProject,
     pub run_cause: RunCause,
+    pub pytest_folder: RwLock<Option<Weak<Directory>>>,
 }
 
 impl Database {
@@ -1090,6 +1091,7 @@ impl Database {
             python_state: PythonState::reserve(),
             project,
             run_cause,
+            pytest_folder: Default::default(),
         };
 
         this.generate_python_state();
@@ -1127,6 +1129,7 @@ impl Database {
             python_state: self.python_state.clone(),
             run_cause: self.run_cause,
             project,
+            pytest_folder: Default::default(),
         };
 
         for (kind, p1) in &new_db.project.sys_path {

@@ -1,0 +1,6 @@
+from typing import Generator, final
+
+@final
+class LogCaptureFixture: ...
+
+def caplog(request) -> Generator[LogCaptureFixture]: ...

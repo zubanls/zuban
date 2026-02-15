@@ -33,6 +33,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     params::matches_simple_params,
+    pytest::maybe_infer_pytest_param,
     recoverable_error,
     result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
     type_::{
@@ -4183,7 +4184,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                         self.i_s.db.python_state.str_type(),
                                         new_any(i)
                                     )),
-                                    _ => Inferred::from_type(new_any(i)),
+                                    _ => maybe_infer_pytest_param(
+                                        self.i_s.db,
+                                        name_def,
+                                        func,
+                                        func_node,
+                                    )
+                                    .unwrap_or_else(|| Inferred::from_type(new_any(i))),
                                 };
                             }
                         }
