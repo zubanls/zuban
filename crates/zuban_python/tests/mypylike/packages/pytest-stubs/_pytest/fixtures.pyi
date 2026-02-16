@@ -55,3 +55,5 @@ class FixtureFunctionMarker:
     _ispytest: dataclasses.InitVar[bool] = False
 
     def __call__(self, function: FixtureFunction) -> FixtureFunctionDefinition: ...
+
+yield_fixture = fixture
