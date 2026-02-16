@@ -244,10 +244,14 @@ fn conftest_pytest_plugins<'db>(
 
     let mut files = vec![];
 
-    let iterator = match expr.maybe_unpacked_atom()? {
-        AtomContent::List(list) => list.unpack(),
-        AtomContent::Set(set) => set.unpack(),
-        _ => return None,
+    let iterator = if let Some(tuple) = expr.maybe_tuple() {
+        tuple.iter()
+    } else {
+        match expr.maybe_unpacked_atom()? {
+            AtomContent::List(list) => list.unpack(),
+            AtomContent::Set(set) => set.unpack(),
+            _ => return None,
+        }
     };
     for item in iterator {
         match item {

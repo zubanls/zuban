@@ -91,3 +91,26 @@ __main__:8: error: Expression is of type "int", not "str"
 __main__:7: error: Expression is of type "str", not "int"
 __main__:8: error: Expression is of type "Any", not "str"
 __main__:9: error: Expression is of type "Any", not "bytes"
+
+[case pytest_conftest_plugins_as_a_tuple]
+# pkgs: pytest-stubs
+from pytest import fixture
+from typing import assert_type
+
+def test_f(plug1) -> None:
+    assert_type(plug1, str)
+
+[file plugin1.py]
+from pytest import fixture
+@fixture()
+def plug1() -> str:
+    return ""
+
+[file conftest.py]
+pytest_plugins = ["plugin1", something_invalid]  # E: Name "something_invalid" is not defined
+[file conftest.py.2]
+pytest_plugins = {"plugin1", str}  # str makes no sense
+[file conftest.py.3]
+pytest_plugins = ("plugin1", "module_that_does_not_exist")
+[file conftest.py.4]
+pytest_plugins = ("dir.module_that_does_not_exist", "plugin1")
