@@ -48,7 +48,7 @@ lazy_static::lazy_static! {
         ("pep0484_decorators.py", 2),
         ("positional_only_params.py", 3),
         ("precedence.py", 7),
-        ("pytest_test.py", 11),
+        ("pytest_test.py", 8),
         ("stdlib.py", 41),
 
         // TODO work on these files

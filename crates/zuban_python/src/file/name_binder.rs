@@ -405,17 +405,18 @@ impl<'db> NameBinder<'db> {
                     self.index_assignment(assignment, ordered)
                 }
                 StmtLikeContent::ReturnStmt(return_stmt) => {
-                    if !matches!(self.kind, NameBinderKind::Function { .. }) {
+                    if let Some(return_expr) = return_stmt.star_expressions() {
+                        self.index_non_block_node(&return_expr, ordered);
+                    }
+                    if matches!(self.kind, NameBinderKind::Function { .. }) {
+                        self.index_return_or_yield(return_stmt.index());
+                        break;
+                    } else {
                         self.add_issue(
                             return_stmt.index(),
                             IssueKind::StmtOutsideFunction { keyword: "return" },
                         )
                     }
-                    if let Some(return_expr) = return_stmt.star_expressions() {
-                        self.index_non_block_node(&return_expr, ordered);
-                    }
-                    self.index_return_or_yield(return_stmt.index());
-                    break;
                 }
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();

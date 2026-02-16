@@ -163,7 +163,7 @@ def inheritance_fixture(inheritance_fixture):
     return 1
 
 
-#! 48 ['def inheritance_fixture():']
+#! 48 ['def inheritance_fixture(inheritance_fixture):']
 def test_inheritance_fixture(inheritance_fixture, caplog):
     #? int()
     inheritance_fixture
