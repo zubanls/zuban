@@ -8,7 +8,7 @@ def test_f(caplog, some_fixture) -> None:
     caplog.set_level()  # E: Missing positional argument "level" in call to "set_level" of "LogCaptureFixture"
     reveal_type(some_fixture)  # N: Revealed type is "int"
 
-@fixture
+@fixture()
 def some_fixture() -> int:
     return 1
 

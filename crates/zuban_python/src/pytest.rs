@@ -10,7 +10,8 @@ use crate::{
     imports::{ImportResult, global_import, python_import},
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::Type,
+    node_ref::NodeRef,
+    type_::{LookupResult, Type},
     type_helpers::{FuncLike as _, Function},
 };
 
@@ -56,12 +57,13 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
     let fixture_name = param.as_code();
     let skip_current_module = fixture_name == func_name;
     FixtureModuleIterator::new(db, pytest_folder, file, skip_current_module).find_map(|file| {
-        let inf = file
-            .lookup(db, |_| (), fixture_name)
-            .into_maybe_inferred()?;
-        let node_ref = inf.maybe_saved_node_ref(db)?;
-        let func_node = node_ref.maybe_function()?;
-        let func = Function::new(node_ref, None);
+        let node_ref = match file.lookup(db, |_| (), fixture_name) {
+            LookupResult::GotoName { name, .. } => NodeRef::from_link(db, name),
+            _ => return None,
+        };
+        debug!("Found potential fixture for name {fixture_name:?}: {node_ref:?}",);
+        let func_node = node_ref.maybe_name_of_function()?;
+        let func = Function::new(NodeRef::new(node_ref.file, func_node.index()), None);
         if !is_fixture(func_node.maybe_decorated().map(|dec| dec.decorators())) {
             return None;
         }
