@@ -1,13 +1,13 @@
 use std::{array::IntoIter, borrow::Cow, sync::Arc};
 
-use parsa_python_cst::{Decorators, FunctionDef, Name, NameDef};
+use parsa_python_cst::{AtomContent, Decorators, FunctionDef, Name, NameDef, StarLikeExpression};
 use vfs::{Directory, DirectoryEntry, Parent};
 
 use crate::{
     database::Database,
     debug,
     file::{File as _, PythonFile},
-    imports::{ImportResult, python_import},
+    imports::{ImportResult, global_import, python_import},
     inference_state::InferenceState,
     inferred::Inferred,
     type_::Type,
@@ -127,6 +127,7 @@ struct FixtureModuleIterator<'db> {
     skip_current_module: bool,
     parent: Option<Parent>,
     pytest_fixture_modules: IntoIter<&'static str, 5>,
+    current_conftest_plugin_files: std::vec::IntoIter<&'db PythonFile>,
 }
 
 impl<'db> FixtureModuleIterator<'db> {
@@ -143,6 +144,7 @@ impl<'db> FixtureModuleIterator<'db> {
             skip_current_module,
             parent: Some(current_module.file_entry(db).parent.clone()),
             pytest_fixture_modules: _PYTEST_FIXTURE_MODULES.into_iter(),
+            current_conftest_plugin_files: vec![].into_iter(),
         }
     }
 }
@@ -156,6 +158,10 @@ impl<'db> Iterator for FixtureModuleIterator<'db> {
             self.skip_current_module = true;
             return Some(self.current_module);
         }
+        // These are set by fetching the latest conftest below
+        if let result @ Some(_) = self.current_conftest_plugin_files.next() {
+            return result;
+        }
         // Search for conftest.py
         if let Some(mut parent) = self.parent.take() {
             loop {
@@ -168,13 +174,12 @@ impl<'db> Iterator for FixtureModuleIterator<'db> {
                     }
                     _ => None,
                 });
-                /*
-                * TODO
-                   plugins_list = m.tree_node.get_used_names().get("pytest_plugins")
-                   if plugins_list:
-                       name = conftest_module.create_name(plugins_list[0])
-                       yield from _load_pytest_plugins(module_context, name)
-                */
+                if let Some(file) = result
+                    && let Some(lst) = conftest_pytest_plugins(self.db, file)
+                {
+                    debug_assert!(self.current_conftest_plugin_files.clone().next().is_none());
+                    self.current_conftest_plugin_files = lst.into_iter()
+                }
                 if let Ok(dir) = parent.maybe_dir() {
                     parent = dir.parent.clone();
                     if result.is_some() {
@@ -220,6 +225,59 @@ impl<'db> Iterator for FixtureModuleIterator<'db> {
                 }
             })
             .next()
+    }
+}
+
+fn conftest_pytest_plugins<'db>(
+    db: &'db Database,
+    file: &PythonFile,
+) -> Option<Vec<&'db PythonFile>> {
+    let node_index = file.symbol_table.lookup_symbol("pytest_plugins")?;
+    let assignment = Name::by_index(&file.tree, node_index).maybe_assignment_definition_name()?;
+    let expr = assignment.maybe_simple_type_expression_assignment()?.2;
+
+    let mut files = vec![];
+
+    let iterator = match expr.maybe_unpacked_atom()? {
+        AtomContent::List(list) => list.unpack(),
+        AtomContent::Set(set) => set.unpack(),
+        _ => return None,
+    };
+    for item in iterator {
+        match item {
+            StarLikeExpression::NamedExpression(name_expr) => {
+                debug!("Found entry {name_expr:?} as a conftest pytest plugin entry");
+                if let Some(s) = name_expr.expression().maybe_string()
+                    && let Some(s) = s.as_python_string().as_str()
+                    && let Some(file) = import_dotted(db, file, s)
+                {
+                    debug!(
+                        "Found conftest pytest plugin file {:?} for {s:?}",
+                        file.file_path(db)
+                    );
+                    files.push(file)
+                }
+            }
+            _ => (),
+        }
+    }
+    Some(files)
+}
+
+fn import_dotted<'db>(
+    db: &'db Database,
+    from_file: &PythonFile,
+    s: &str,
+) -> Option<&'db PythonFile> {
+    debug!("Trying to import file {s:?}");
+    let mut iterator = s.split(".");
+    let mut result = global_import(db, from_file, iterator.next()?)?;
+    for module_name in iterator {
+        result = result.import(db, from_file, module_name)?;
+    }
+    match result {
+        ImportResult::File(file_index) => db.ensure_file_for_file_index(file_index).ok(),
+        _ => None,
     }
 }
 

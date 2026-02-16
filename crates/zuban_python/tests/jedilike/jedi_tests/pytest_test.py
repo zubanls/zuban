@@ -190,27 +190,28 @@ def test_with_annot(inheritance_fixture, with_annot):
     #? int()
     inheritance_fixture
 
+# zuban-diff: all of these are currently not supported (entry points are not checked)
 # -----------------
 # pytest external plugins
 # -----------------
 
-#? ['admin_user', 'admin_client']
+##? ['admin_user', 'admin_client']
 def test_z(admin
 
-#! 15 ['def admin_client']
+##! 15 ['def admin_client']
 def test_p(admin_client):
-    #? ['login', 'logout']
+    ##? ['login', 'logout']
     admin_client.log
 
 @pytest.fixture
 @some_decorator
-#? ['admin_user']
+##? ['admin_user']
 def bla(admin_u
     return
 
 @pytest.fixture
 @some_decorator
-#! 12 ['def admin_user']
+##! 12 ['def admin_user']
 def bla(admin_user):
     pass
 
