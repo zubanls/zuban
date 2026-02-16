@@ -114,3 +114,32 @@ pytest_plugins = {"plugin1", str}  # str makes no sense
 pytest_plugins = ("plugin1", "module_that_does_not_exist")
 [file conftest.py.4]
 pytest_plugins = ("dir.module_that_does_not_exist", "plugin1")
+
+[case pytest_completions_should_not_complete_itself]
+# pkgs: pytest-stubs
+from pytest import fixture
+
+@fixture
+#? complete
+def fixture_xyz(fixture_x
+): ...
+
+@fixture
+#? complete
+def other_fixture(fixture_x
+): ...
+
+@fixture
+#? complete
+def conftest_fixture(conftest_fix
+): ...
+
+[file conftest.py]
+from pytest import fixture
+@fixture
+def conftest_fixture(): ...
+
+[out]
+__main__.py:6:complete -> []
+__main__.py:11:complete -> [fixture_xyz]
+__main__.py:16:complete -> [conftest_fixture]

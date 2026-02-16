@@ -91,27 +91,26 @@ fn is_fixture(decorators: Option<Decorators>) -> bool {
 pub(crate) fn find_all_possible_pytest_fixtures<'db>(
     db: &'db Database,
     file: &'db PythonFile,
-    func_name: &str,
-    decorators: Option<Decorators>,
+    in_func_name: &str,
+    in_func_decorators: Option<Decorators>,
 ) -> Option<impl Iterator<Item = (&'db PythonFile, Name<'db>)>> {
     let pytest_folder = db.pytest_folder()?;
-    if !is_pytest_fixture_or_test(func_name, decorators) {
+    if !is_pytest_fixture_or_test(in_func_name, in_func_decorators) {
         return None;
     }
     Some(
         FixtureModuleIterator::new(db, pytest_folder, file, false)
-            .map(|for_file| {
+            .map(move |for_file| {
                 for_file
                     .symbol_table
                     .iter()
                     .filter_map(move |(_, &node_index)| {
                         let name = Name::by_index(&for_file.tree, node_index);
                         let func = name.name_def()?.maybe_name_of_func()?;
-                        /*
-                        if for_file.file_index == file.file_index && func_name == name {
+                        if for_file.file_index == file.file_index && in_func_name == name.as_code()
+                        {
                             return None;
                         }
-                        */
                         is_fixture(func.maybe_decorated().map(|dec| dec.decorators()))
                             .then_some((for_file, name))
                     })
