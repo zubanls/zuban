@@ -24,6 +24,7 @@ use crate::{
     name::{ModuleName, Range, TreeName, process_docstring},
     node_ref::NodeRef,
     params::Param,
+    pytest::find_pytest_fixtures,
     recoverable_error,
     type_::{
         CallableContent, CallableLike, CallableParam, CallableParams, Enum, EnumMemberDefinition,
@@ -222,6 +223,34 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 self.add_attribute_completions(inf)
             }
             CompletionNode::AsNewName => (),
+            CompletionNode::ParamName {
+                decorated,
+                func_name,
+            } => {
+                if let Some(iterator) =
+                    find_pytest_fixtures(db, file, func_name.as_code(), *decorated)
+                {
+                    for (file, name) in iterator {
+                        let n = name.as_code();
+                        if !self.maybe_add_cow(Cow::Borrowed(n)) {
+                            continue;
+                        }
+                        let result = (self.on_result)(
+                            self.replace_range,
+                            &CompletionTreeName {
+                                db,
+                                file,
+                                name,
+                                kind: CompletionItemKind::FUNCTION,
+                            },
+                        );
+                        if let Some(result) = result {
+                            self.items
+                                .push((CompletionSortPriority::Default(n), result))
+                        }
+                    }
+                }
+            }
             CompletionNode::NecessaryKeyword(keyword) => {
                 let keyword = *keyword;
                 let result = (self.on_result)(self.replace_range, &KeywordCompletion { keyword });

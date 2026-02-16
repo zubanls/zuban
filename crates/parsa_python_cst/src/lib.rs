@@ -4635,16 +4635,19 @@ impl<'db> NameDef<'db> {
     }
 
     pub fn func_param_including_error_recovery(&self) -> (NameDef<'db>, Option<Decorated<'db>>) {
-        let par = self
-            .node
-            .parent_until(&[Nonterminal(function_def), ErrorNonterminal(function_def)])
-            .unwrap();
-        let maybe_decorated = par.parent().unwrap();
-        let dec = maybe_decorated
-            .is_type(Nonterminal(decorated))
-            .then(|| Decorated::new(maybe_decorated));
-        (NameDef::new(par.iter_children().nth(1).unwrap()), dec)
+        expect_func_parent_including_error_recovery(self.node)
     }
+}
+
+fn expect_func_parent_including_error_recovery(node: PyNode) -> (NameDef, Option<Decorated>) {
+    let par = node
+        .parent_until(&[Nonterminal(function_def), ErrorNonterminal(function_def)])
+        .unwrap();
+    let maybe_decorated = par.parent().unwrap();
+    let dec = maybe_decorated
+        .is_type(Nonterminal(decorated))
+        .then(|| Decorated::new(maybe_decorated));
+    (NameDef::new(par.iter_children().nth(1).unwrap()), dec)
 }
 
 pub enum NameDefParent {

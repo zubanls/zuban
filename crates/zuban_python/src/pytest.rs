@@ -1,6 +1,6 @@
 use std::{array::IntoIter, borrow::Cow, sync::Arc};
 
-use parsa_python_cst::{Decorated, FunctionDef, NameDef};
+use parsa_python_cst::{Decorated, FunctionDef, Name, NameDef};
 use vfs::{Directory, DirectoryEntry, Parent};
 
 use crate::{
@@ -86,6 +86,37 @@ fn is_fixture(decorated: Option<Decorated>) -> bool {
             .iter()
             .any(|dec| dec.as_code().contains("fixture"))
     })
+}
+
+pub(crate) fn find_pytest_fixtures<'db>(
+    db: &'db Database,
+    file: &'db PythonFile,
+    func_name: &str,
+    decorated: Option<Decorated>,
+) -> Option<impl Iterator<Item = (&'db PythonFile, Name<'db>)>> {
+    let pytest_folder = db.pytest_folder()?;
+    if !is_pytest_fixture_or_test(func_name, decorated) {
+        return None;
+    }
+    Some(
+        FixtureModuleIterator::new(db, pytest_folder, file, false)
+            .map(|for_file| {
+                for_file
+                    .symbol_table
+                    .iter()
+                    .filter_map(move |(_, &node_index)| {
+                        let name = Name::by_index(&for_file.tree, node_index);
+                        let func = name.name_def()?.maybe_name_of_func()?;
+                        /*
+                        if for_file.file_index == file.file_index && func_name == name {
+                            return None;
+                        }
+                        */
+                        is_fixture(func.maybe_decorated()).then_some((for_file, name))
+                    })
+            })
+            .flatten(),
+    )
 }
 
 struct FixtureModuleIterator<'db> {
