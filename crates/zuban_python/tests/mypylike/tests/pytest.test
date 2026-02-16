@@ -11,3 +11,22 @@ def test_f(caplog, some_fixture) -> None:
 @fixture
 def some_fixture() -> int:
     return 1
+
+[case pytest_check_inheritance]
+# pkgs: pytest-stubs
+from pytest import fixture
+
+@fixture
+def inherited(inherited) -> str:
+    if bool():
+        return inherited  # E: Incompatible return value type (got "int", expected "str")
+    else:
+        return ""
+
+def test_something(inherited) -> None:
+    x: str = inherited
+
+[file conftest.py]
+from pytest import fixture
+@fixture
+def inherited() -> int: ...

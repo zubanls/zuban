@@ -1753,3 +1753,9 @@ def f():
     @b  # E: Name "b" is used before definition
     def b():
         pass
+
+[case invalid_function_return_should_not_cause_unreachability]
+def test_x(my_simple_fixture, my_f  # E: Invalid syntax
+    return  # E: "return" outside function
+def asdf(x: str) -> None:
+    reveal_type(x)  # N: Revealed type is "str"

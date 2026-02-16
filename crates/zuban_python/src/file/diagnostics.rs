@@ -412,7 +412,11 @@ impl Inference<'_, '_, '_> {
             }
             StmtLikeContent::ReturnStmt(return_stmt) => {
                 self.calc_return_stmt_diagnostics(func, return_stmt);
-                self.mark_current_frame_unreachable()
+                // If we are not within a function we should not mark the frame unreachable,
+                // because it is valid within a function
+                if func.is_some() {
+                    self.mark_current_frame_unreachable()
+                }
             }
             StmtLikeContent::YieldExpr(yield_expr) => {
                 self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
