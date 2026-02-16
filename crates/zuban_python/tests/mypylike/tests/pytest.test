@@ -231,3 +231,20 @@ def test_f(some_fixture) -> None:
 @yield_fixture()
 def some_fixture() -> int:
     return 1
+
+[case pytest_fixture_detection]
+# pkgs: pytest-stubs
+[file test_non_fixture.py]
+from typing import assert_type, Any
+from pytest import LogCaptureFixture
+
+def fixture[T](func: T) -> T:
+    return func
+
+@fixture
+def foo(some_fixture) -> int:
+    return 1
+
+def test_f(foo, caplog) -> None:
+    assert_type(foo, Any)
+    assert_type(caplog, LogCaptureFixture)

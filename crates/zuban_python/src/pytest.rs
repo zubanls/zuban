@@ -1,6 +1,9 @@
 use std::{array::IntoIter, borrow::Cow, sync::Arc};
 
-use parsa_python_cst::{AtomContent, Decorators, FunctionDef, Name, NameDef, StarLikeExpression};
+use parsa_python_cst::{
+    AtomContent, Decorators, ExpressionContent, ExpressionPart, FunctionDef, Name, NameDef,
+    PrimaryContent, StarLikeExpression,
+};
 use vfs::{Directory, DirectoryEntry, Parent};
 
 use crate::{
@@ -51,7 +54,7 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
     decorators: Option<Decorators>,
 ) -> Option<Function<'db, 'static>> {
     let pytest_folder = db.pytest_folder()?;
-    if !is_pytest_fixture_or_test(func_name, decorators) {
+    if !is_pytest_fixture_or_test(db, file, func_name, decorators) {
         return None;
     }
     let fixture_name = param.as_code();
@@ -64,7 +67,11 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
         debug!("Found potential fixture for name {fixture_name:?}: {node_ref:?}",);
         let func_node = node_ref.maybe_name_of_function()?;
         let func = Function::new(NodeRef::new(node_ref.file, func_node.index()), None);
-        if !is_fixture(func_node.maybe_decorated().map(|dec| dec.decorators())) {
+        if !is_fixture(
+            db,
+            file,
+            func_node.maybe_decorated().map(|dec| dec.decorators()),
+        ) {
             return None;
         }
         debug!(
@@ -75,18 +82,41 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
     })
 }
 
-fn is_pytest_fixture_or_test(func_name: &str, decorators: Option<Decorators>) -> bool {
+fn is_pytest_fixture_or_test(
+    db: &Database,
+    file: &PythonFile,
+    func_name: &str,
+    decorators: Option<Decorators>,
+) -> bool {
     // Pytest params are either in a `test*` function or have a pytest fixture
     // with the decorator @pytest.fixture.
-    func_name.starts_with("test") || is_fixture(decorators)
+    func_name.starts_with("test") || is_fixture(db, file, decorators)
 }
 
-fn is_fixture(decorators: Option<Decorators>) -> bool {
+fn is_fixture(db: &Database, file: &PythonFile, decorators: Option<Decorators>) -> bool {
     decorators.is_some_and(|decorators| {
-        // TODO check that the fixture is from pytest, this is only a heuristic
-        decorators
-            .iter()
-            .any(|dec| dec.as_code().contains("fixture"))
+        decorators.iter().any(|dec| {
+            // The first part is a heuristic, but we keep it, because we want to speed it up, since
+            // it can happen a lot for untyped code. This might in extremely weird cases where
+            // people redefine fixture like `foo = fixture` result in Any, but that's probably
+            // fine, since it's not annoying for users.
+            dec.as_code().contains("fixture") && {
+                let i_s = &InferenceState::new(db, file);
+                let inference = file.inference(i_s);
+                // We have to remove the call to `@fixture()`, because otherwise we would not get a
+                // _pytest.fixtures definition.
+                let inf = if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(prim)) =
+                    dec.named_expression().expression().unpack()
+                    && let PrimaryContent::Execution(_) = prim.second()
+                {
+                    inference.infer_primary_or_atom(prim.first())
+                } else {
+                    inference.infer_decorator(dec)
+                };
+                inf.maybe_saved_node_ref(db)
+                    .is_some_and(|node_ref| node_ref.file.qualified_name(db) == "_pytest.fixtures")
+            }
+        })
     })
 }
 
@@ -97,7 +127,7 @@ pub(crate) fn find_all_possible_pytest_fixtures<'db>(
     in_func_decorators: Option<Decorators>,
 ) -> Option<impl Iterator<Item = (&'db PythonFile, Name<'db>)>> {
     let pytest_folder = db.pytest_folder()?;
-    if !is_pytest_fixture_or_test(in_func_name, in_func_decorators) {
+    if !is_pytest_fixture_or_test(db, file, in_func_name, in_func_decorators) {
         return None;
     }
     Some(
@@ -113,8 +143,12 @@ pub(crate) fn find_all_possible_pytest_fixtures<'db>(
                         {
                             return None;
                         }
-                        is_fixture(func.maybe_decorated().map(|dec| dec.decorators()))
-                            .then_some((for_file, name))
+                        is_fixture(
+                            db,
+                            for_file,
+                            func.maybe_decorated().map(|dec| dec.decorators()),
+                        )
+                        .then_some((for_file, name))
                     })
             })
             .flatten(),
