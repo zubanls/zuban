@@ -151,3 +151,14 @@ def no_completion_inside_string_test():
     " some_var "
     #? 16 --no-name-filter []
     """ some_var """
+
+def default_and_annotation_completion():
+    class FooBarBaz: ...
+    #? 19 ["FooBarBaz"]
+    def f1(f=FooBarB)
+    #? 19 ["FooBarBaz"]
+    def f2(f=FooBarB): ...
+    #? 19 ["FooBarBaz"]
+    def f3(f:FooBarB)
+    #? 19 ["FooBarBaz"]
+    def f4(f:FooBarB): ...
