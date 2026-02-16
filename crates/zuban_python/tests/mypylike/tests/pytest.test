@@ -12,6 +12,12 @@ def test_f(caplog, some_fixture) -> None:
 def some_fixture() -> int:
     return 1
 
+[case needs_pytest_stubs_for_fixture_inference]
+from typing import assert_type, Any
+
+def test_f(caplog) -> None:
+    assert_type(caplog, Any)
+
 [case pytest_check_inheritance]
 # pkgs: pytest-stubs
 from pytest import fixture
@@ -143,3 +149,21 @@ def conftest_fixture(): ...
 __main__.py:6:complete -> []
 __main__.py:11:complete -> [fixture_xyz]
 __main__.py:16:complete -> [conftest_fixture]
+
+[case avoid_recursion_for_pytest_plugins]
+# pkgs: pytest-stubs
+[file test.py]
+from pytest import fixture
+from typing import assert_type, Any
+
+def test_f(plug1, plug_not_existing) -> None:
+    assert_type(plug1, str)
+    assert_type(plug_not_existing, Any)
+
+[file conftest.py]
+from pytest import fixture
+@fixture()
+def plug1() -> str:
+    return ""
+
+pytest_plugins = ["conftest", "test"]
