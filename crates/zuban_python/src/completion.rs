@@ -24,7 +24,7 @@ use crate::{
     name::{ModuleName, Range, TreeName, process_docstring},
     node_ref::NodeRef,
     params::Param,
-    pytest::find_pytest_fixtures,
+    pytest::find_all_possible_pytest_fixtures,
     recoverable_error,
     type_::{
         CallableContent, CallableLike, CallableParam, CallableParams, Enum, EnumMemberDefinition,
@@ -228,7 +228,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 func_name,
             } => {
                 if let Some(iterator) =
-                    find_pytest_fixtures(db, file, func_name.as_code(), *decorated)
+                    find_all_possible_pytest_fixtures(db, file, func_name.as_code(), *decorated)
                 {
                     for (file, name) in iterator {
                         let n = name.as_code();

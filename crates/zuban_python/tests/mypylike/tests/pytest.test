@@ -1,0 +1,13 @@
+[case pytest_check_fixture_stubs]
+# pkgs: pytest-stubs
+from pytest import fixture
+
+def test_f(caplog, some_fixture) -> None:
+    reveal_type(caplog)  # N: Revealed type is "_pytest.logging.LogCaptureFixture"
+    caplog.set_level(1)
+    caplog.set_level()  # E: Missing positional argument "level" in call to "set_level" of "LogCaptureFixture"
+    reveal_type(some_fixture)  # N: Revealed type is "int"
+
+@fixture
+def some_fixture() -> int:
+    return 1

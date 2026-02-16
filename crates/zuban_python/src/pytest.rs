@@ -88,7 +88,7 @@ fn is_fixture(decorated: Option<Decorated>) -> bool {
     })
 }
 
-pub(crate) fn find_pytest_fixtures<'db>(
+pub(crate) fn find_all_possible_pytest_fixtures<'db>(
     db: &'db Database,
     file: &'db PythonFile,
     func_name: &str,

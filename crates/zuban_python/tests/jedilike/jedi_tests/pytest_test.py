@@ -187,6 +187,8 @@ def with_annot() -> Generator[float, None, None]:
 def test_with_annot(inheritance_fixture, with_annot):
     #? float()
     with_annot
+    #? int()
+    inheritance_fixture
 
 # -----------------
 # pytest external plugins
