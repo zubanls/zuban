@@ -30,3 +30,64 @@ def test_something(inherited) -> None:
 from pytest import fixture
 @fixture
 def inherited() -> int: ...
+
+[case pytest_conftest_plugins_invalidation]
+# pkgs: pytest-stubs
+# flags: --check-untyped-defs --mode default
+from pytest import fixture
+from typing import assert_type
+
+def test_f(plug1, plug2, conftest_fixture):
+    assert_type(conftest_fixture, int)
+    assert_type(plug1, str)
+    assert_type(plug2, bytes)
+
+[file plugin1.py]
+from pytest import fixture
+@fixture()
+def plug1() -> str:
+    return ""
+[file plugin1.py.4]
+from pytest import fixture
+@fixture()
+def plug1() -> int:
+    return 1
+
+[file dir/plugin2.py]
+from pytest import fixture
+@fixture()
+def plug2():
+    return b""
+[file dir/plugin2.py.2]
+from pytest import fixture
+@fixture()
+def plug2():
+    return [b""]
+[file dir/plugin2.py.3]
+from pytest import fixture
+@fixture()
+def plug2():
+    return b""
+
+[file conftest.py]
+import pytest
+@pytest.fixture
+def conftest_fixture():
+    return 1
+pytest_plugins = ["plugin1", "dir.plugin2"]
+[file conftest.py.5]
+import pytest
+@pytest.fixture
+def conftest_fixture() -> str:
+    return ""
+
+[out]
+==
+__main__:9: error: Expression is of type "list[bytes]", not "bytes"
+==
+==
+__main__:8: error: Expression is of type "int", not "str"
+==
+__main__:7: error: Expression is of type "str", not "int"
+__main__:8: error: Expression is of type "Any", not "str"
+__main__:9: error: Expression is of type "Any", not "bytes"

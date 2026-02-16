@@ -165,14 +165,20 @@ impl<'db> Iterator for FixtureModuleIterator<'db> {
         // Search for conftest.py
         if let Some(mut parent) = self.parent.take() {
             loop {
-                let result = parent.with_entries(&*self.db.vfs.handler, |entries| match &*entries
-                    .search("conftest.py")?
-                {
-                    DirectoryEntry::File(entry) => {
-                        let found = self.db.load_file_from_workspace(&entry)?;
-                        (found.file_index != self.current_module.file_index).then_some(found)
+                let result = parent.with_entries(&*self.db.vfs.handler, |entries| {
+                    let imp = python_import(
+                        self.db,
+                        self.current_module,
+                        std::iter::once(entries),
+                        "conftest",
+                    );
+                    match imp? {
+                        ImportResult::File(file_index) => {
+                            let found = self.db.ensure_file_for_file_index(file_index).ok()?;
+                            (found.file_index != self.current_module.file_index).then_some(found)
+                        }
+                        _ => None,
                     }
-                    _ => None,
                 });
                 if let Some(file) = result
                     && let Some(lst) = conftest_pytest_plugins(self.db, file)
