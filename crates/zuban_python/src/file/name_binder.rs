@@ -2231,7 +2231,11 @@ pub fn is_expr_part_reachable_for_name_binder(
     Truthiness::Unknown
 }
 
-pub fn func_parent_scope(tree: &Tree, points: &Points, func_index: NodeIndex) -> ParentScope {
+pub(crate) fn func_parent_scope(
+    tree: &Tree,
+    points: &Points,
+    func_index: NodeIndex,
+) -> ParentScope {
     debug_assert!(FunctionDef::maybe_by_index(tree, func_index).is_some());
     let parent_index = func_index + FUNC_TO_PARENT_DIFF;
     let p = points.get(parent_index);

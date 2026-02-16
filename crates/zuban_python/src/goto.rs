@@ -452,11 +452,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                                     let (func_name, decorated) =
                                         name_def.func_param_including_error_recovery();
                                     if let Some(fixture) = find_pytest_fixture_for_param(
-                                        db,
-                                        file,
-                                        name_def,
-                                        func_name.as_code(),
-                                        decorated,
+                                        db, file, name_def, func_name, decorated,
                                     ) {
                                         return Some(vec![self.calculate_return(Name::TreeName(
                                             TreeName::new(

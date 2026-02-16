@@ -221,4 +221,3 @@ def bla(admin_u
 ##! 12 ['def admin_user']
 def bla(admin_user):
     pass
-

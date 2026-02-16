@@ -7,9 +7,9 @@ use parsa_python_cst::{
 use vfs::{Directory, DirectoryEntry, Parent};
 
 use crate::{
-    database::Database,
+    database::{Database, ParentScope},
     debug,
-    file::{File as _, PythonFile},
+    file::{ClassNodeRef, File as _, PythonFile, func_parent_scope},
     imports::{ImportResult, global_import, python_import},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -31,7 +31,7 @@ pub(crate) fn maybe_infer_pytest_param(
         db,
         func.file,
         param,
-        func.node().name().as_code(),
+        func.node().name_def(),
         func_node.maybe_decorated().map(|dec| dec.decorators()),
     )?;
 
@@ -50,7 +50,7 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
     db: &'db Database,
     file: &PythonFile,
     param: NameDef,
-    func_name: &str,
+    func_name: NameDef,
     decorators: Option<Decorators>,
 ) -> Option<Function<'db, 'static>> {
     let pytest_folder = db.pytest_folder()?;
@@ -58,7 +58,7 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
         return None;
     }
     let fixture_name = param.as_code();
-    let skip_current_module = fixture_name == func_name;
+    let skip_current_module = fixture_name == func_name.as_code();
     FixtureModuleIterator::new(db, pytest_folder, file, skip_current_module).find_map(|file| {
         let node_ref = match file.lookup(db, |_| (), fixture_name) {
             LookupResult::GotoName { name, .. } => NodeRef::from_link(db, name),
@@ -85,12 +85,25 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
 fn is_pytest_fixture_or_test(
     db: &Database,
     file: &PythonFile,
-    func_name: &str,
+    func_name_def: NameDef,
     decorators: Option<Decorators>,
 ) -> bool {
     // Pytest params are either in a `test*` function or have a pytest fixture
     // with the decorator @pytest.fixture.
-    func_name.starts_with("test") || is_fixture(db, file, decorators)
+    let is_test = func_name_def.as_code().starts_with("test")
+        && func_name_def.maybe_name_of_func().is_none_or(|func| {
+            match func_parent_scope(&file.tree, &file.points, func.index()) {
+                ParentScope::Module => true,
+                ParentScope::Function(_) => false,
+                ParentScope::Class(c) => {
+                    matches!(
+                        ClassNodeRef::new(file, c).class_storage().parent_scope,
+                        ParentScope::Module
+                    )
+                }
+            }
+        });
+    is_test || is_fixture(db, file, decorators)
 }
 
 fn is_fixture(db: &Database, file: &PythonFile, decorators: Option<Decorators>) -> bool {
@@ -123,11 +136,11 @@ fn is_fixture(db: &Database, file: &PythonFile, decorators: Option<Decorators>) 
 pub(crate) fn find_all_possible_pytest_fixtures<'db>(
     db: &'db Database,
     file: &'db PythonFile,
-    in_func_name: &str,
+    in_func_name_def: NameDef,
     in_func_decorators: Option<Decorators>,
 ) -> Option<impl Iterator<Item = (&'db PythonFile, Name<'db>)>> {
     let pytest_folder = db.pytest_folder()?;
-    if !is_pytest_fixture_or_test(db, file, in_func_name, in_func_decorators) {
+    if !is_pytest_fixture_or_test(db, file, in_func_name_def, in_func_decorators) {
         return None;
     }
     Some(
@@ -139,7 +152,8 @@ pub(crate) fn find_all_possible_pytest_fixtures<'db>(
                     .filter_map(move |(_, &node_index)| {
                         let name = Name::by_index(&for_file.tree, node_index);
                         let func = name.name_def()?.maybe_name_of_func()?;
-                        if for_file.file_index == file.file_index && in_func_name == name.as_code()
+                        if for_file.file_index == file.file_index
+                            && in_func_name_def.as_code() == name.as_code()
                         {
                             return None;
                         }

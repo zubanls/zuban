@@ -248,3 +248,32 @@ def foo(some_fixture) -> int:
 def test_f(foo, caplog) -> None:
     assert_type(foo, Any)
     assert_type(caplog, LogCaptureFixture)
+
+[case pytest_potential_fixture_scopes]
+# pkgs: pytest-stubs
+from typing import Any, assert_type
+from pytest import fixture
+
+@fixture()
+def some_fixture() -> int:
+    return 1
+
+def test_foo(self, some_fixture) -> None:
+    def test_foo(self, some_fixture) -> None:
+        assert_type(some_fixture, Any)
+    assert_type(some_fixture, int)
+
+class C:
+    def test_foo(self, some_fixture) -> None:
+        assert_type(some_fixture, int)
+
+    class Inner:
+        def test_foo(self, some_fixture) -> None:
+            assert_type(some_fixture, Any)
+
+    def foo(self) -> None:
+        def test_foo(self, some_fixture) -> None:
+            assert_type(some_fixture, Any)
+        class Inner:
+            def test_foo(self, some_fixture) -> None:
+                assert_type(some_fixture, Any)
