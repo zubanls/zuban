@@ -178,7 +178,10 @@ impl Tree {
                         rest,
                     );
                 }
-                Nonterminal(parameters) | ErrorNonterminal(parameters) => {
+                Nonterminal(parameters)
+                | ErrorNonterminal(parameters)
+                | Nonterminal(function_def_parameters)
+                | ErrorNonterminal(function_def_parameters) => {
                     let (func_name, dec) = expect_func_parent_including_error_recovery(parent);
                     return (
                         scope,
