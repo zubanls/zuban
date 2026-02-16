@@ -146,6 +146,13 @@ def test_p(monkeypatch):
 #? ['capsysbinary']
 def test_p(capsysbin
 
+#? 20 ['capsysbinary']
+def test_p(capsysbin):
+
+#? 20 ['capsysbinary']
+def test_p(capsysbin) -> 
+#? 20 ['capsysbinary']
+def test_p(capsysbin) -> str:
 
 def close_parens():
     pass
