@@ -7,7 +7,7 @@ use parsa_python::{
 };
 
 use crate::{
-    Atom, ClassDef, Decorated, DottedImportName, FunctionDef, Lambda, NameDef, Primary,
+    Atom, ClassDef, Decorators, DottedImportName, FunctionDef, Lambda, NameDef, Primary,
     PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Tree,
     expect_func_parent_including_error_recovery,
 };
@@ -186,7 +186,7 @@ impl Tree {
                     return (
                         scope,
                         CompletionNode::ParamName {
-                            decorated: dec,
+                            decorators: dec,
                             func_name,
                         },
                         rest,
@@ -381,7 +381,7 @@ pub enum CompletionNode<'db> {
         base: Option<DottedImportName<'db>>,
     },
     ParamName {
-        decorated: Option<Decorated<'db>>,
+        decorators: Option<Decorators<'db>>,
         func_name: NameDef<'db>,
     },
     AsNewName,

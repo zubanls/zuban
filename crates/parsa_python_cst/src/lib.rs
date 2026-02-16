@@ -4634,19 +4634,19 @@ impl<'db> NameDef<'db> {
         }
     }
 
-    pub fn func_param_including_error_recovery(&self) -> (NameDef<'db>, Option<Decorated<'db>>) {
+    pub fn func_param_including_error_recovery(&self) -> (NameDef<'db>, Option<Decorators<'db>>) {
         expect_func_parent_including_error_recovery(self.node)
     }
 }
 
-fn expect_func_parent_including_error_recovery(node: PyNode) -> (NameDef, Option<Decorated>) {
+fn expect_func_parent_including_error_recovery(node: PyNode) -> (NameDef, Option<Decorators>) {
     let par = node
         .parent_until(&[Nonterminal(function_def), ErrorNonterminal(function_def)])
         .unwrap();
     let maybe_decorated = par.parent().unwrap();
-    let dec = maybe_decorated
-        .is_type(Nonterminal(decorated))
-        .then(|| Decorated::new(maybe_decorated));
+    let dec = (maybe_decorated.is_type(Nonterminal(decorated))
+        || maybe_decorated.is_type(ErrorNonterminal(decorated)))
+    .then(|| Decorators::new(maybe_decorated.nth_child(0)));
     (NameDef::new(par.iter_children().nth(1).unwrap()), dec)
 }
 

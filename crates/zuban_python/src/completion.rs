@@ -224,11 +224,11 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             }
             CompletionNode::AsNewName => (),
             CompletionNode::ParamName {
-                decorated,
+                decorators,
                 func_name,
             } => {
                 if let Some(iterator) =
-                    find_all_possible_pytest_fixtures(db, file, func_name.as_code(), *decorated)
+                    find_all_possible_pytest_fixtures(db, file, func_name.as_code(), *decorators)
                 {
                     for (file, name) in iterator {
                         let n = name.as_code();
