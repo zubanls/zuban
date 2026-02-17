@@ -1,4 +1,4 @@
-use parsa_python_cst::{Expression, ExpressionContent, ExpressionPart, NamedExpression};
+use parsa_python_cst::{Expression, ExpressionContent, ExpressionPart, NamedExpression, NodeIndex};
 
 use crate::{
     database::{ClassKind, Specific},
@@ -17,7 +17,11 @@ impl Inference<'_, '_, '_> {
         arg: NamedExpression,
         issubclass: bool,
     ) -> Option<Type> {
-        let isinstance_type = self.isinstance_or_issubclass_type(arg.expression(), issubclass)?;
+        let isinstance_type = IsinstanceInference {
+            inference: self,
+            add_issue: &|index, kind| self.add_issue(index, kind),
+        }
+        .isinstance_or_issubclass_type(arg.expression(), issubclass)?;
         for t in isinstance_type.iter_with_unpacked_unions(self.i_s.db) {
             let cannot_use_with = |with| {
                 self.add_issue(
@@ -39,7 +43,14 @@ impl Inference<'_, '_, '_> {
         }
         Some(isinstance_type)
     }
+}
 
+struct IsinstanceInference<'db, 'file, 'i_s, 'a> {
+    inference: &'a Inference<'db, 'file, 'i_s>,
+    add_issue: &'a dyn Fn(NodeIndex, IssueKind),
+}
+
+impl IsinstanceInference<'_, '_, '_, '_> {
     fn isinstance_or_issubclass_type(&self, expr: Expression, issubclass: bool) -> Option<Type> {
         // One might think that we could just use type computation here for isinstance types. This
         // is however not really working, because the types can also be inferred like
@@ -61,7 +72,7 @@ impl Inference<'_, '_, '_> {
         from_union: bool,
     ) -> Option<Type> {
         let cannot_use_with = |with| {
-            self.add_issue(
+            (self.add_issue)(
                 part.index(),
                 IssueKind::CannotUseIsinstanceWith {
                     func: match issubclass {
@@ -83,32 +94,36 @@ impl Inference<'_, '_, '_> {
                 Some(t1.union(t2))
             }
             _ => {
-                let inf = self.infer_expression_part(part);
-                match inf.maybe_saved_specific(self.i_s.db) {
+                let i_s = self.inference.i_s;
+                let inf = self.inference.infer_expression_part(part);
+                match inf.maybe_saved_specific(i_s.db) {
                     Some(Specific::TypingAny) => {
                         return cannot_use_with("Any");
                     }
                     Some(Specific::BuiltinsType) => {
                         if issubclass {
-                            return Some(self.i_s.db.python_state.bare_type_type());
+                            return Some(i_s.db.python_state.bare_type_type());
                         } else {
-                            return Some(self.i_s.db.python_state.type_of_any.clone());
+                            return Some(i_s.db.python_state.type_of_any.clone());
                         }
                     }
                     _ => (),
                 }
 
-                let t = inf.as_cow_type(self.i_s);
+                let t = inf.as_cow_type(i_s);
                 if let Type::Class(c) = t.as_ref()
-                    && Some(c.link) == self.i_s.db.python_state.union_type_link()
+                    && Some(c.link) == i_s.db.python_state.union_type_link()
                 {
                     debug!("Found a union type for isinstance, try to compute it");
-                    let node_ref = inf.maybe_saved_node_ref(self.i_s.db)?;
+                    let node_ref = inf.maybe_saved_node_ref(i_s.db)?;
                     let expr = node_ref.maybe_expression()?;
-                    node_ref
-                        .file
-                        .inference(&InferenceState::new(self.i_s.db, node_ref.file))
-                        .isinstance_or_issubclass_type(expr, issubclass)
+                    IsinstanceInference {
+                        inference: &node_ref
+                            .file
+                            .inference(&InferenceState::new(i_s.db, node_ref.file)),
+                        add_issue: &|_, kind| (self.add_issue)(part.index(), kind),
+                    }
+                    .isinstance_or_issubclass_type(expr, issubclass)
                 } else {
                     self.process_isinstance_type(part, &t, issubclass, from_union)
                 }
@@ -123,6 +138,7 @@ impl Inference<'_, '_, '_> {
         issubclass: bool,
         from_union: bool,
     ) -> Option<Type> {
+        let i_s = self.inference.i_s;
         match t {
             Type::Tuple(tup) => match &tup.args {
                 TupleArgs::FixedLen(ts) => self.process_tuple_types(part, ts.iter(), issubclass),
@@ -147,23 +163,23 @@ impl Inference<'_, '_, '_> {
                         &cls.generics,
                         ClassGenerics::NotDefinedYet | ClassGenerics::None { .. }
                     ) {
-                        self.add_issue(
+                        (self.add_issue)(
                             part.index(),
                             IssueKind::CannotUseIsinstanceWithParametrizedGenerics,
                         );
                         return Some(Type::ERROR);
                     }
-                    let class = cls.class(self.i_s.db);
-                    let class_infos = class.use_cached_class_infos(self.i_s.db);
+                    let class = cls.class(i_s.db);
+                    let class_infos = class.use_cached_class_infos(i_s.db);
                     if matches!(class_infos.kind, ClassKind::Protocol) {
                         if !class_infos.is_runtime_checkable {
-                            self.add_issue(part.index(), IssueKind::ProtocolNotRuntimeCheckable)
+                            (self.add_issue)(part.index(), IssueKind::ProtocolNotRuntimeCheckable)
                         }
                         if issubclass {
                             let non_method_protocol_members =
-                                class.non_method_protocol_members(self.i_s.db);
+                                class.non_method_protocol_members(i_s.db);
                             if !non_method_protocol_members.is_empty() {
-                                self.add_issue(
+                                (self.add_issue)(
                                     part.index(),
                                     IssueKind::IssubcclassWithProtocolNonMethodMembers {
                                         protocol: class.name().into(),
@@ -187,7 +203,7 @@ impl Inference<'_, '_, '_> {
             */
             Type::None if from_union => Some(t.clone()),
             _ => {
-                debug!("isinstance with bad type: {}", t.format_short(self.i_s.db));
+                debug!("isinstance with bad type: {}", t.format_short(i_s.db));
                 None
             }
         }
@@ -202,6 +218,9 @@ impl Inference<'_, '_, '_> {
         let ts: Option<Vec<Type>> = types
             .map(|t| self.process_isinstance_type(part, t, issubclass, true))
             .collect();
-        Some(Type::simplified_union_from_iterators(self.i_s, ts?.iter()))
+        Some(Type::simplified_union_from_iterators(
+            self.inference.i_s,
+            ts?.iter(),
+        ))
     }
 }
