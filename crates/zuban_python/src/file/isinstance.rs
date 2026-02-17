@@ -1,6 +1,4 @@
-use parsa_python_cst::{
-    ExpressionContent, ExpressionPart, NamedExpression, NamedExpressionContent,
-};
+use parsa_python_cst::{Expression, ExpressionContent, ExpressionPart, NamedExpression};
 
 use crate::{
     database::{ClassKind, Specific},
@@ -18,7 +16,7 @@ impl Inference<'_, '_, '_> {
         arg: NamedExpression,
         issubclass: bool,
     ) -> Option<Type> {
-        let isinstance_type = self.isinstance_or_issubclass_type(arg, issubclass)?;
+        let isinstance_type = self.isinstance_or_issubclass_type(arg.expression(), issubclass)?;
         for t in isinstance_type.iter_with_unpacked_unions(self.i_s.db) {
             let cannot_use_with = |with| {
                 self.add_issue(
@@ -41,16 +39,7 @@ impl Inference<'_, '_, '_> {
         Some(isinstance_type)
     }
 
-    fn isinstance_or_issubclass_type(
-        &self,
-        arg: NamedExpression,
-        issubclass: bool,
-    ) -> Option<Type> {
-        let expr = match arg.unpack() {
-            NamedExpressionContent::Expression(expr) => expr,
-            NamedExpressionContent::Walrus(w) => w.expression(),
-        };
-
+    fn isinstance_or_issubclass_type(&self, expr: Expression, issubclass: bool) -> Option<Type> {
         // One might think that we could just use type computation here for isinstance types. This
         // is however not really working, because the types can also be inferred like
         //
@@ -108,12 +97,16 @@ impl Inference<'_, '_, '_> {
                     _ => (),
                 }
 
-                self.process_isinstance_type(
-                    part,
-                    &inf.as_cow_type(self.i_s),
-                    issubclass,
-                    from_union,
-                )
+                let t = inf.as_cow_type(self.i_s);
+                if let Type::Class(c) = t.as_ref()
+                    && Some(c.link) == self.i_s.db.python_state.union_type_link()
+                {
+                    debug!("Found a union type for isinstance, try to compute it");
+                    let expr = inf.maybe_saved_node_ref(self.i_s.db)?.maybe_expression()?;
+                    self.isinstance_or_issubclass_type(expr, issubclass)
+                } else {
+                    self.process_isinstance_type(part, &t, issubclass, from_union)
+                }
             }
         }
     }

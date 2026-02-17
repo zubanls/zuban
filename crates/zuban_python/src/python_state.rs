@@ -1129,7 +1129,7 @@ impl PythonState {
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
-    optional_attribute_link!(types, union_type_link, types_union_type_index);
+    optional_attribute_link!(types, pub union_type_link, types_union_type_index);
     optional_attribute_link!(
         builtins,
         ellipsis_fallback_link,

@@ -2207,3 +2207,20 @@ def validate_version(version: Version) -> bool:
         return True
     else:
         assert_never(version)
+
+[case isinstance_with_aliases]
+from typing import reveal_type
+
+Number = int | float
+
+def foo1(x: int | float | str) -> str:
+    if isinstance(x, Number):
+        reveal_type(x)  # N: Revealed type is "int | float"
+        return str(x)
+    return x
+
+def foo2(x: int | float | str) -> str:
+    if isinstance(x, int | float):
+        reveal_type(x)  # N: Revealed type is "int | float"
+        return str(x)
+    return x
