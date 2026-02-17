@@ -997,3 +997,21 @@ def iterate[T](x: T) -> Iterator[T]: ...
 y: list[int] = list(iterate(""))  # E: Argument 1 to "iterate" has incompatible type "str"; expected "int"
 # TODO this should probably also say Argument 1 to "iterate" has incompatible type "str"; expected "int"
 y = list(iterate(""))  # E: Incompatible types in assignment (expression has type "list[str]", variable has type "list[int]")
+
+[case context_manager_exit_no_annotation]
+# flags: --disallow-untyped-calls
+# From GH #283
+from typing import Self
+
+class CustomContextManager:
+    def foo(self) -> str:
+        return "foo"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        return False
+
+with CustomContextManager() as m:
+    print(m.foo())

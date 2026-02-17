@@ -43,7 +43,7 @@ use crate::{
         TypeVarLike, TypeVarLikes, WrongPositionalCount, replace_param_spec,
     },
     type_helpers::Class,
-    utils::debug_indent,
+    utils::{debug_indent, is_magic_method},
 };
 
 use super::callable::FuncLike;
@@ -1974,6 +1974,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .in_file()
                 .is_some_and(|file| file.flags(i_s.db).disallow_untyped_calls)
                 && !self.is_typed()
+                // Mypy only adds this error for explicit syntax calls like foo(), so to disable
+                // all the other implicit calls, just skip magic methods.
+                && !is_magic_method(self.name())
             {
                 args.add_issue(
                     i_s,
