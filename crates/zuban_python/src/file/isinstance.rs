@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use parsa_python_cst::{Expression, ExpressionContent, ExpressionPart, NamedExpression, NodeIndex};
 
 use crate::{
-    database::{ClassKind, Specific},
+    database::{ClassKind, ComplexPoint, Specific},
     debug,
     diagnostics::IssueKind,
     inference_state::InferenceState,
@@ -124,6 +126,16 @@ impl IsinstanceInference<'_, '_, '_, '_> {
                         add_issue: &|_, kind| (self.add_issue)(part.index(), kind),
                     }
                     .isinstance_or_issubclass_type(expr, issubclass)
+                } else if let Some(node_ref) = inf.maybe_saved_node_ref(i_s.db)
+                    && let Some(ComplexPoint::TypeAlias(alias)) = node_ref.maybe_complex()
+                {
+                    debug!("Found a potential `: TypeAlias` union type, try to compute it");
+                    self.process_isinstance_type(
+                        part,
+                        &Type::Type(Arc::new(alias.type_if_valid().clone())),
+                        issubclass,
+                        from_union,
+                    )
                 } else {
                     self.process_isinstance_type(part, &t, issubclass, from_union)
                 }

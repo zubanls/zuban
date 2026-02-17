@@ -286,8 +286,6 @@ testIntersectionUsingPromotion6
 testIsInstanceWithUnknownType
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
-# isinstance with alias and union literals `isinstance(x, A | B)`
-testStartUsingPEP604Union
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
 # Narrowing keep out of function narrowings
