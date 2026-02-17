@@ -372,7 +372,10 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
-                return Some(g.simple_matches(i_s, value_type, variance));
+                self.class = None;
+                let m = g.matches(i_s, self, value_type, variance);
+                self.class = Some(class);
+                return Some(m);
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) =

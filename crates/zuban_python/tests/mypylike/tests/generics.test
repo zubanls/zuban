@@ -1947,3 +1947,20 @@ except TimeoutError:
 [case no_context_for_string_formatting_with_next]
 args = iter([1])
 x: str = "asdf%s" % next(args)
+
+[case defaultdict_with_fully_provided_generics_should_be_valid]
+# From GH #291
+from collections import defaultdict
+from typing import Generic, TypeVar, Callable
+sensors = defaultdict[str, dict[str, str]](dict)
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class SimpleGeneric(Generic[S]):
+    def __init__(self) -> None: ...
+
+class X(Generic[T]):
+    def __init__(self, x: Callable[[], T]): ...
+
+X[SimpleGeneric[int]](SimpleGeneric)
