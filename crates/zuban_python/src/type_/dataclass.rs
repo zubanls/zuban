@@ -925,6 +925,14 @@ fn run_on_dataclass_for_replace(
             TypeVarKind::Constraints(_) => unimplemented!(),
             TypeVarKind::Unrestricted => type_var_error(&tv.type_var),
         },
+        Type::Self_ => {
+            if let Some(t) = i_s.current_type() {
+                run_on_dataclass_for_replace(i_s, add_issue, &t, callback)
+            } else {
+                recoverable_error!("Proper self type expected in dataclass replace");
+                false
+            }
+        }
         _ => {
             if let Some(add_issue) = add_issue {
                 add_issue(IssueKind::DataclassReplaceExpectedDataclass {

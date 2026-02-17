@@ -1250,3 +1250,23 @@ class Sensor:
     def __post_init__(self) -> None:
         self.address = 1
         self.address = "a" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case dataclass_replace_with_self]
+# From GH #297
+from dataclasses import dataclass, replace
+from typing import Self
+
+@dataclass
+class CrItem(BaseClass):  # E: Name "BaseClass" is not defined
+    def dedup_project(self) -> CrItem:
+        return replace(self, new_param=[])
+
+@dataclass
+class Other:
+    x: int
+
+    def f(self) -> Self:
+        if bool():
+            return replace(self, new_param=[])  # E: Unexpected keyword argument "new_param" for "replace" of "Other"
+        else:
+            return replace(self, x=5)
