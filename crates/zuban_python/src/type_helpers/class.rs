@@ -1968,7 +1968,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     if let Some(dataclass) = class.maybe_dataclass(i_s.db)
                         && dataclass.options.slots
                     {
-                        if Dataclass::lookup(i_s.db, &dataclass, name).is_some() {
+                        if Dataclass::has_slot(i_s.db, &dataclass, name) {
                             return;
                         }
                     } else {

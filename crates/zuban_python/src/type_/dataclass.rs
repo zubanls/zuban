@@ -174,6 +174,18 @@ impl Dataclass {
             .iter()
             .find(|p| p.name.as_ref().is_some_and(|n| n.as_str(db) == name))
     }
+
+    pub fn has_slot<'dataclass>(
+        db: &Database,
+        dataclass: &'dataclass Arc<Dataclass>,
+        name: &str,
+    ) -> bool {
+        Self::lookup(db, dataclass, name).is_some()
+            || dataclass_inits(dataclass, db)
+                .non_init_fields
+                .iter()
+                .any(|f| f.as_str(db) == name)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -181,6 +193,7 @@ struct Inits {
     __init__: CallableContent,
     __post_init__: CallableContent,
     converter_fields: ConverterFields,
+    non_init_fields: Box<[DbString]>,
 }
 
 fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Inits {
@@ -401,6 +414,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
     // want the original order in an enum.
     with_indexes.sort_by_key(|w| w.name_index);
 
+    let mut non_init_fields = vec![];
     let mut had_kw_only_marker = false;
     for infos in with_indexes.into_iter() {
         match infos.t {
@@ -456,6 +470,8 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                         has_default,
                         might_have_type_vars: true,
                     });
+                } else {
+                    non_init_fields.push(infos.name)
                 }
             }
         }
@@ -531,6 +547,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
             Type::None,
         ),
         converter_fields,
+        non_init_fields: non_init_fields.into_boxed_slice(),
     }
 }
 
@@ -989,9 +1006,13 @@ pub(crate) fn dataclass_initialize<'db>(
     }))
 }
 
-pub fn dataclass_init_func<'a>(self_: &'a Arc<Dataclass>, db: &Database) -> &'a CallableContent {
+fn dataclass_inits<'a>(self_: &'a Arc<Dataclass>, db: &Database) -> &'a Inits {
     ensure_calculated_dataclass(self_, db);
-    &self_.inits.get().unwrap().__init__
+    &self_.inits.get().unwrap()
+}
+
+pub fn dataclass_init_func<'a>(self_: &'a Arc<Dataclass>, db: &Database) -> &'a CallableContent {
+    &dataclass_inits(self_, db).__init__
 }
 
 pub fn dataclass_converter_fields_lookup<'a>(
@@ -1028,8 +1049,7 @@ pub fn dataclass_post_init_func<'a>(
     self_: &'a Arc<Dataclass>,
     db: &Database,
 ) -> &'a CallableContent {
-    ensure_calculated_dataclass(self_, db);
-    &self_.inits.get().unwrap().__post_init__
+    &dataclass_inits(self_, db).__post_init__
 }
 
 pub(crate) fn lookup_on_dataclass_type<'a>(

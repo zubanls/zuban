@@ -1239,3 +1239,14 @@ class C():
     @classmethod
     def create(cls) -> Self:
         return cls()
+
+[case correct_dataclass_slots_with_post_init]
+from dataclasses import dataclass, field
+# From GH #293
+@dataclass(slots=True, eq=False)
+class Sensor:
+    address: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.address = 1
+        self.address = "a" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
