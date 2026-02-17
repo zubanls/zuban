@@ -500,3 +500,10 @@ a.m1(__x=3)  # E: Unexpected keyword argument "__x" for "m1" of "A"
 def f4(x: int, /, __y: int) -> None: ...  # OK
 
 f4(3, __y=4)  # OK
+
+[case function_kwargs_call_after_star_args]
+def f(x: int | None = None, **kwargs): ...
+
+def check(*args) -> None:
+    f(*args, scope='file')
+    f(scope='file', *args)

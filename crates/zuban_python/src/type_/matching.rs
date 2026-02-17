@@ -9,9 +9,9 @@ use crate::{
     debug,
     file::ClassNodeRef,
     inference_state::InferenceState,
+    match_::{Match, MismatchReason},
     matching::{
-        ErrorStrs, ErrorTypes, GotType, Match, Matcher, MismatchReason, avoid_protocol_mismatch,
-        format_got_expected,
+        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_protocol_mismatch, format_got_expected,
     },
     params::matches_params,
     recoverable_error,

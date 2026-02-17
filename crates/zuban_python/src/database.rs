@@ -3,7 +3,7 @@ use std::{
     cell::Cell,
     fmt, mem,
     ops::Range,
-    sync::{Arc, Mutex, OnceLock, RwLock},
+    sync::{Arc, Mutex, OnceLock, RwLock, Weak},
 };
 
 use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
@@ -1020,6 +1020,7 @@ pub(crate) struct Database {
     pub python_state: PythonState,
     pub project: PythonProject,
     pub run_cause: RunCause,
+    pub pytest_folder: RwLock<Option<Weak<Directory>>>,
 }
 
 impl Database {
@@ -1090,6 +1091,7 @@ impl Database {
             python_state: PythonState::reserve(),
             project,
             run_cause,
+            pytest_folder: Default::default(),
         };
 
         this.generate_python_state();
@@ -1127,6 +1129,7 @@ impl Database {
             python_state: self.python_state.clone(),
             run_cause: self.run_cause,
             project,
+            pytest_folder: Default::default(),
         };
 
         for (kind, p1) in &new_db.project.sys_path {
@@ -1218,7 +1221,7 @@ impl Database {
         else {
             return None;
         };
-        self.load_file_from_workspace(&file_entry, false)
+        self.load_file_index_from_workspace(&file_entry, false)
     }
 
     pub fn load_sub_file(
@@ -1230,7 +1233,12 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file_from_workspace(
+    pub fn load_file_from_workspace(&self, file_entry: &Arc<FileEntry>) -> Option<&PythonFile> {
+        let index = self.load_file_index_from_workspace(file_entry, false)?;
+        Some(self.loaded_python_file(index))
+    }
+
+    pub fn load_file_index_from_workspace(
         &self,
         file_entry: &Arc<FileEntry>,
         invalidates_db: bool,
@@ -1410,7 +1418,7 @@ impl Database {
             )
         };
         let file_index = self
-            .load_file_from_workspace(file_entry, true)
+            .load_file_index_from_workspace(file_entry, true)
             .unwrap_or_else(|| panic!("Unable to read {file_name:?} in {}", as_debug_path()));
         debug!("Preloaded typeshed stub {file_name} as #{}", file_index.0);
         self.loaded_python_file(file_index)

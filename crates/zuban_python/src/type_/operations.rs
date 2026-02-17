@@ -17,12 +17,14 @@ use crate::{
     imports::{ImportResult, namespace_import},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
+    match_::Match,
     matching::{
-        ErrorTypes, GotType, IteratorContent, LookupKind, Match, OnLookupError, OnTypeError,
-        ResultContext, calc_callable_type_vars,
+        ErrorTypes, GotType, IteratorContent, LookupKind, OnLookupError, OnTypeError,
+        calc_callable_type_vars,
     },
     node_ref::NodeRef,
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple,
         TupleUnpack,

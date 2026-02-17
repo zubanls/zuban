@@ -7,8 +7,9 @@ use parsa_python::{
 };
 
 use crate::{
-    Atom, ClassDef, DottedImportName, FunctionDef, Lambda, NameDef, Primary, PrimaryContent,
-    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Tree,
+    Atom, ClassDef, Decorators, DottedImportName, FunctionDef, Lambda, NameDef, Primary,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Tree,
+    expect_func_parent_including_error_recovery,
 };
 
 impl Tree {
@@ -214,6 +215,20 @@ impl Tree {
                     return (
                         scope,
                         import_from_target_node(parent.parent().unwrap()),
+                        rest,
+                    );
+                }
+                Nonterminal(parameters)
+                | ErrorNonterminal(parameters)
+                | Nonterminal(function_def_parameters)
+                | ErrorNonterminal(function_def_parameters) => {
+                    let (func_name, dec) = expect_func_parent_including_error_recovery(parent);
+                    return (
+                        scope,
+                        CompletionNode::ParamName {
+                            decorators: dec,
+                            func_name,
+                        },
                         rest,
                     );
                 }
@@ -445,6 +460,10 @@ pub enum CompletionNode<'db> {
     ImportFromTarget {
         dots: usize,
         base: Option<DottedImportName<'db>>,
+    },
+    ParamName {
+        decorators: Option<Decorators<'db>>,
+        func_name: NameDef<'db>,
     },
     AsNewName,
     NecessaryKeyword(&'static str),

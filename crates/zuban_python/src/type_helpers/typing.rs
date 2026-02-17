@@ -7,7 +7,8 @@ use crate::{
     format_data::FormatData,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{CheckedTypeRecursion, CouldBeALiteral, Generic, Generics, ResultContext},
+    matching::{CheckedTypeRecursion, Generic, Generics},
+    result_context::{CouldBeALiteral, ResultContext},
     type_::{
         CallableParams, ClassGenerics, GenericClass, ParamType, ReplaceTypeVarLikes as _,
         StarParamType, StarStarParamType, TupleArgs, Type, TypedDict, TypedDictGenerics,

@@ -548,7 +548,7 @@ impl<'db> PythonFile {
                         }
                     })
             {
-                return db.load_file_from_workspace(&file_entry, false);
+                return db.load_file_index_from_workspace(&file_entry, false);
             }
             match ImportResult::import_non_stub_for_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => {
@@ -576,7 +576,7 @@ impl<'db> PythonFile {
                     _ => None,
                 }
             }) {
-            db.load_file_from_workspace(&file_entry, false)?
+            db.load_file_index_from_workspace(&file_entry, false)?
         } else {
             match ImportResult::import_stub_for_non_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => file_index,
@@ -734,6 +734,14 @@ impl<'db> PythonFile {
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
         if !i_s.should_add_issue() {
+            let config = DiagnosticConfig {
+                show_column_numbers: true,
+                ..Default::default()
+            };
+            debug!(
+                "Did ignore issue for now: {}",
+                Diagnostic::new(i_s.db, self, &issue).as_string(&config)
+            );
             return;
         }
         self.add_type_issue(i_s.db, issue)

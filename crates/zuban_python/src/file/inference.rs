@@ -21,19 +21,21 @@ use crate::{
     },
     format_data::FormatData,
     getitem::SliceType,
-    inference_state::InferenceState,
+    inference_state::{InferenceState, Mode},
     inferred::{
         ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex,
         NAME_DEF_TO_DEFAULTDICT_DIFF, UnionValue, add_attribute_error, specific_to_type,
     },
     matching::{
-        CouldBeALiteral, ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher,
-        OnTypeError, ResultContext, ResultContextOrigin, TupleLenInfos, format_got_expected,
+        ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher, OnTypeError,
+        TupleLenInfos, format_got_expected,
     },
     new_class,
     node_ref::NodeRef,
     params::matches_simple_params,
+    pytest::maybe_infer_pytest_param,
     recoverable_error,
+    result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
         Literal, LiteralKind, LookupResult, ParamType, StarParamType, StarStarParamType,
@@ -4070,6 +4072,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn check_point_cache(&self, i: NodeIndex) -> Option<Inferred> {
+        if !matches!(self.i_s.mode, Mode::Normal) {
+            return self
+                .file
+                .inference(&self.i_s.with_mode(Mode::Normal))
+                .check_point_cache(i);
+        }
         let resolved = self.resolve_point(i, |i_s, node_ref, next| {
             node_ref
                 .file
@@ -4176,7 +4184,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                         self.i_s.db.python_state.str_type(),
                                         new_any(i)
                                     )),
-                                    _ => Inferred::from_type(new_any(i)),
+                                    _ => maybe_infer_pytest_param(
+                                        self.i_s.db,
+                                        name_def,
+                                        func,
+                                        func_node,
+                                    )
+                                    .unwrap_or_else(|| Inferred::from_type(new_any(i))),
                                 };
                             }
                         }

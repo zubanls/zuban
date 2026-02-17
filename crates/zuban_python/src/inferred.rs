@@ -20,12 +20,13 @@ use crate::{
     inference_state::InferenceState,
     matching::{
         ErrorStrs, Generics, IteratorContent, LookupKind, Matcher, OnLookupError, OnTypeError,
-        ResultContext, calculate_property_return, create_signature_without_self_for_callable,
-        match_self_type, maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,
+        calculate_property_return, create_signature_without_self_for_callable, match_self_type,
+        maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,
     },
     new_class,
     node_ref::NodeRef,
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,

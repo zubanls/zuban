@@ -31,10 +31,12 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue, add_attribute_error},
-    matching::{CouldBeALiteral, LookupKind, Match, Matcher, OnTypeError, ResultContext},
+    match_::Match,
+    matching::{LookupKind, Matcher, OnTypeError},
     new_class,
     node_ref::NodeRef,
     recoverable_error,
+    result_context::{CouldBeALiteral, ResultContext},
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,

@@ -8,7 +8,7 @@ use std::{borrow::Cow, cell::Cell, sync::Arc};
 use parsa_python_cst::{
     Atom, DefiningStmt, DottedAsNameContent, DottedImportName, FunctionDef, GotoNode,
     Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope, TypeLike,
 };
 use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
@@ -25,10 +25,12 @@ use crate::{
     format_data::FormatData,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
-    matching::{LookupKind, ResultContext},
+    matching::LookupKind,
     name::{ModuleName, Name, NodeName, Range, TreeName},
     node_ref::NodeRef,
+    pytest::find_pytest_fixture_for_param,
     recoverable_error,
+    result_context::ResultContext,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::{Function, TypeOrClass},
     utils::is_file_with_python_ending,
@@ -444,22 +446,38 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                             p.specific(),
                             Specific::NameOfNameDef | Specific::FirstNameOfNameDef
                         ) {
-                            match name.name_def().unwrap().maybe_import() {
-                                Some(NameImportParent::DottedAsName(_)) => {
+                            let name_def = name.name_def().unwrap();
+                            match name_def.expect_type() {
+                                TypeLike::ParamName(_) => {
+                                    let (func_name, decorated) =
+                                        name_def.func_param_including_error_recovery();
+                                    if let Some(fixture) = find_pytest_fixture_for_param(
+                                        db, file, name_def, func_name, decorated,
+                                    ) {
+                                        return Some(vec![self.calculate_return(Name::TreeName(
+                                            TreeName::new(
+                                                db,
+                                                fixture.file,
+                                                Scope::Module,
+                                                fixture.node().name(),
+                                            ),
+                                        ))]);
+                                    }
+                                }
+                                TypeLike::DottedAsName(_) => {
                                     let file_index = self.infos.infer_name(name)?.maybe_file(db)?;
                                     return Some(vec![self.goto_on_file(file_index)]);
                                 }
-                                Some(NameImportParent::ImportFromAsName(_)) => (),
-                                None => {
-                                    let first = first_defined_name(file, name.index());
-                                    return self
-                                        .check_node_ref_and_maybe_follow_import(
-                                            NodeRef::new(file, first),
-                                            follow_imports,
-                                        )
-                                        .map(|r| vec![r]);
-                                }
+                                TypeLike::ImportFromAsName(_) => return None,
+                                _ => (),
                             }
+                            let first = first_defined_name(file, name.index());
+                            return self
+                                .check_node_ref_and_maybe_follow_import(
+                                    NodeRef::new(file, first),
+                                    follow_imports,
+                                )
+                                .map(|r| vec![r]);
                         }
                     }
                     PointKind::FileReference => {

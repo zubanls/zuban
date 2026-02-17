@@ -278,7 +278,7 @@ pub fn namespace_import(
     namespace_import_with_unloaded_file(db, from_file, namespace, name)?.ensured_loaded_file(db)
 }
 
-fn python_import<'x>(
+pub fn python_import<'x>(
     db: &Database,
     from_file: &PythonFile,
     dirs: impl Iterator<Item = &'x Entries>,

@@ -26,13 +26,12 @@ use crate::{
     imports::ImportResult,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred, infer_class_method},
-    matching::{
-        ErrorStrs, Generics, LookupKind, Match, Matcher, OnTypeError, ReplaceSelfInMatcher,
-        ResultContext,
-    },
+    match_::Match,
+    matching::{ErrorStrs, Generics, LookupKind, Matcher, OnTypeError, ReplaceSelfInMatcher},
     node_ref::NodeRef,
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
         FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
@@ -413,7 +412,11 @@ impl Inference<'_, '_, '_> {
             }
             StmtLikeContent::ReturnStmt(return_stmt) => {
                 self.calc_return_stmt_diagnostics(func, return_stmt);
-                self.mark_current_frame_unreachable()
+                // If we are not within a function we should not mark the frame unreachable,
+                // because it is valid within a function
+                if func.is_some() {
+                    self.mark_current_frame_unreachable()
+                }
             }
             StmtLikeContent::YieldExpr(yield_expr) => {
                 self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);

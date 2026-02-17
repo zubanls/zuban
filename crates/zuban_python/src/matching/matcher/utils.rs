@@ -4,10 +4,7 @@ pub(super) use utils::AlreadySeen;
 use parsa_python_cst::ParamKind;
 
 use super::{
-    super::{
-        ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
-        ResultContext, SignatureMatch,
-    },
+    super::{FormatData, Generics, Matcher, OnTypeError},
     ReplaceSelfInMatcher,
     type_var_matcher::TypeVarMatcher,
 };
@@ -18,6 +15,7 @@ use crate::{
     diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
+    match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch},
     matching::{ErrorTypes, GotType, maybe_class_usage},
     node_ref::NodeRef,
     params::{
@@ -25,6 +23,7 @@ use crate::{
         WrappedStarStar,
     },
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics,
         GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,
@@ -478,6 +477,9 @@ fn apply_result_context(
     func_like: &dyn FuncLike,
     on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
 ) {
+    if result_context.can_be_redefined(i_s) {
+        return;
+    }
     result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
         if let Some(return_class) = return_class {
             // This is kind of a special case. Since __init__ has no return annotation, we simply

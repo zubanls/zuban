@@ -86,9 +86,12 @@ impl<'db> FileSelector<'db> {
                 .collect(),
         );
         selector.to_be_loaded.par_iter().for_each(|(file, _)| {
-            if let Some(new_index) = db.load_file_from_workspace(file, false) {
-                selector.file_indexes.write().unwrap().insert(new_index);
-                let file = db.loaded_python_file(new_index);
+            if let Some(file) = db.load_file_from_workspace(file) {
+                selector
+                    .file_indexes
+                    .write()
+                    .unwrap()
+                    .insert(file.file_index);
                 find_imports_and_preload_files(db, file, &loaded_file_entries)
             }
         });

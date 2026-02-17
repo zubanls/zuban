@@ -10,8 +10,10 @@ use std::{
     time::Instant,
 };
 
+const OUR_TEST_DATA_PACKAGES_FOLDER: &str = "tests/mypylike/packages/";
+
 use config::{ProjectOptions, Settings, TypeCheckerFlags};
-use vfs::{LocalFS, NormalizedPath};
+use vfs::{LocalFS, NormalizedPath, VfsHandler as _};
 use zuban_python::{Project, RunCause};
 
 #[derive(Debug)]
@@ -23,19 +25,19 @@ pub struct Filter {
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
-        ("arrays.py", 31),
+        ("arrays.py", 30),
         ("async_.py", 4),
-        ("basic.py", 23),
+        ("basic.py", 20),
         ("classes.py", 20),
         ("comprehensions.py", 31),
         ("django.py", 3),
         ("decorators.py", 31),
         ("descriptors.py", 2),
-        ("dynamic_arrays.py", 11),
+        ("dynamic_arrays.py", 7),
         ("flow_analysis.py", 17),
         ("fstring.py", 4),
         ("functions.py", 65),
-        ("generators.py", 13),
+        ("generators.py", 10),
         ("inheritance.py", 3),
         ("__init__.py", 1),
         ("isinstance.py", 2),
@@ -49,16 +51,14 @@ lazy_static::lazy_static! {
         ("stdlib.py", 41),
 
         // TODO work on these files
-        ("completion.py", 6),
+        ("completion.py", 5),
         ("context.py", 4),
-        ("conftest.py", 1),
         ("docstring.py", 38),
         ("dynamic_params.py", 18),
         ("imports.py", 9),
         ("goto.py", 4),
         ("keywords.py", 9),
         ("ns_path.py", 4),
-        ("pytest.py", 33),
         ("sys_path.py", 4),
         ("stubs.py", 5),
     ]);
@@ -150,6 +150,7 @@ fn main() -> ExitCode {
             code,
             filters: &filters,
         };
+        println!("Start to run tests for {file_name}");
         let (ran, full, errors) = f.test(&mut project);
         ran_count += ran;
         full_count += full;
@@ -195,13 +196,15 @@ fn mypy_path() -> Vec<Arc<NormalizedPath>> {
         .join("tests")
         .join("jedilike");
 
-    ["tests", "jedi_tests"]
+    let local_fs = LocalFS::without_watcher();
+    let our_folder = local_fs.normalized_path_from_current_dir(OUR_TEST_DATA_PACKAGES_FOLDER);
+    let pytest_stubs = local_fs.join(&our_folder, "pytest-stubs");
+    let mut vec: Vec<_> = ["tests", "jedi_tests"]
         .into_iter()
-        .map(|part| {
-            LocalFS::without_watcher()
-                .normalized_path_from_current_dir(base.join(part).to_str().unwrap())
-        })
-        .collect()
+        .map(|part| local_fs.normalized_path_from_current_dir(base.join(part).to_str().unwrap()))
+        .collect();
+    vec.push(local_fs.normalize_rc_path(pytest_stubs));
+    vec
 }
 
 fn python_files(mypy_path: &[Arc<NormalizedPath>]) -> Vec<PathBuf> {

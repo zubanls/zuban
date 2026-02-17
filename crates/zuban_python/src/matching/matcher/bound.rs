@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use super::{super::Match, Matcher, MatcherFormatResult};
+use super::{Matcher, MatcherFormatResult};
 use crate::{
     database::Database,
     debug,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
+    match_::Match,
     params::matches_params_with_variance,
     type_::{
         AnyCause, CallableParams, GenericItem, NeverCause, ParamSpecArg, ParamType,

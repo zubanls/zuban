@@ -26,13 +26,15 @@ use crate::{
     inferred::{
         ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, Inferred, MroIndex,
     },
+    match_::{Match, MismatchReason},
     matching::{
-        ErrorStrs, Generic, Generics, LookupKind, Match, Matcher, MismatchReason, OnTypeError,
-        ResultContext, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        ErrorStrs, Generic, Generics, LookupKind, Matcher, OnTypeError,
+        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
         calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage,
     },
     node_ref::NodeRef,
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
@@ -1761,7 +1763,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                         if let Some(name) = redirected_to.maybe_name()
                             && let Some(name_def) = name.name_def()
-                            && let Some(func) = name_def.parent_function_of_param()
+                            && let Some(func) = name_def.maybe_parent_function_of_param()
                         {
                             let parent_scope =
                                 FuncNodeRef::new(redirected_to.file, func.index()).parent_scope();
@@ -1966,7 +1968,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     if let Some(dataclass) = class.maybe_dataclass(i_s.db)
                         && dataclass.options.slots
                     {
-                        if Dataclass::lookup(i_s.db, &dataclass, name).is_some() {
+                        if Dataclass::has_slot(i_s.db, &dataclass, name) {
                             return;
                         }
                     } else {

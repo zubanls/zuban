@@ -24,6 +24,7 @@ use crate::{
     name::{ModuleName, Range, TreeName, process_docstring},
     node_ref::NodeRef,
     params::Param,
+    pytest::find_all_possible_pytest_fixtures,
     recoverable_error,
     type_::{
         CallableContent, CallableLike, CallableParam, CallableParams, Enum, EnumMemberDefinition,
@@ -178,6 +179,34 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 self.add_attribute_completions(inf)
             }
             CompletionNode::AsNewName => (),
+            CompletionNode::ParamName {
+                decorators,
+                func_name,
+            } => {
+                if let Some(iterator) =
+                    find_all_possible_pytest_fixtures(db, file, *func_name, *decorators)
+                {
+                    for (file, name) in iterator {
+                        let n = name.as_code();
+                        if !self.maybe_add_cow(Cow::Borrowed(n)) {
+                            continue;
+                        }
+                        let result = (self.on_result)(
+                            self.replace_range,
+                            &CompletionTreeName {
+                                db,
+                                file,
+                                name,
+                                kind: CompletionItemKind::FUNCTION,
+                            },
+                        );
+                        if let Some(result) = result {
+                            self.items
+                                .push((CompletionSortPriority::Default(n), result))
+                        }
+                    }
+                }
+            }
             CompletionNode::NecessaryKeyword(keyword) => {
                 let keyword = *keyword;
                 let result = (self.on_result)(self.replace_range, &KeywordCompletion { keyword });
@@ -950,16 +979,13 @@ impl<'db> Completion for CompletionDirEntry<'db, '_> {
 
     fn documentation(&self) -> Option<Cow<'db, str>> {
         match self.entry {
-            DirectoryEntry::File(entry) => {
-                let file_index = self.db.load_file_from_workspace(entry, false)?;
-                Some(
-                    ModuleName {
-                        db: self.db,
-                        file: self.db.loaded_python_file(file_index),
-                    }
-                    .documentation(),
-                )
-            }
+            DirectoryEntry::File(entry) => Some(
+                ModuleName {
+                    db: self.db,
+                    file: self.db.load_file_from_workspace(entry)?,
+                }
+                .documentation(),
+            ),
             _ => None,
         }
     }

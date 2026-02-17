@@ -18,11 +18,14 @@ mod inferred;
 mod inlay_hints;
 mod lines;
 mod lsp_utils;
+mod match_;
 mod matching;
 mod name;
 mod node_ref;
 mod params;
+mod pytest;
 mod python_state;
+mod result_context;
 mod select_files;
 mod selection_ranges;
 mod semantic_tokens;
@@ -110,7 +113,7 @@ impl Project {
             .chain(
                 files_to_be_loaded
                     .into_par_iter()
-                    .filter_map(|(entry, _)| self.db.load_file_from_workspace(&entry, false)),
+                    .filter_map(|(entry, _)| self.db.load_file_index_from_workspace(&entry, false)),
             )
             .map(|file_index| Document {
                 project: self,

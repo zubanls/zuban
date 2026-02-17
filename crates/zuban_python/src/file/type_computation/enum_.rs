@@ -11,8 +11,8 @@ use crate::{
     file::name_resolution::NameResolution,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::ResultContext,
     node_ref::NodeRef,
+    result_context::ResultContext,
     type_::{DbString, Enum, EnumMemberDefinition, Literal, LiteralKind, StringSlice, Type},
     type_helpers::Class,
 };

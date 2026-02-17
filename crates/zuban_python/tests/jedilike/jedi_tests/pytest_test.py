@@ -27,7 +27,7 @@ class MyClassFixture():
 # goto/infer
 # -----------------
 
-#! 18 ['def my_conftest_fixture']
+#! 18 ['def my_conftest_fixture(my_other_conftest_fixture):']
 def test_x(my_conftest_fixture, my_fixture, my_not_existing_fixture, my_yield_fixture):
     #? str()
     my_fixture
@@ -43,7 +43,7 @@ def test_x(my_conftest_fixture, my_fixture):
     pass
 
 
-#! 18 ['param MyClassFixture']
+#! 18 ['MyClassFixture']
 def test_x(MyClassFixture):
     #?
     MyClassFixture
@@ -57,14 +57,18 @@ def lala(my_fixture):
 def lala(my_fixture):
     pass
 
-#! 15 ['param my_fixture']
+#! 15 ['my_fixture']
 def lala(my_fixture):
     pass
 
 @pytest.fixture
-#! 15 ['def my_fixture']
+#! 15 ['def my_fixture() -> str:']
 def lala(my_fixture):
     pass
+
+@pytest.fixture
+#! 15 ['def my_fixture() -> str:']
+def lala(my_fixture
 
 # overriding types of a fixture should be possible
 def test_x(my_yield_fixture: str):
@@ -134,7 +138,7 @@ def lala(my_con):
 def test_p(monkeyp
 
 
-#! 15 ['def monkeypatch']
+#! 15 ['def monkeypatch() -> Generator[MonkeyPatch]: ...']
 def test_p(monkeypatch):
     #? ['setattr']
     monkeypatch.setatt
@@ -142,6 +146,13 @@ def test_p(monkeypatch):
 #? ['capsysbinary']
 def test_p(capsysbin
 
+#? 20 ['capsysbinary']
+def test_p(capsysbin):
+
+#? 20 ['capsysbinary']
+def test_p(capsysbin) -> 
+#? 20 ['capsysbinary']
+def test_p(capsysbin) -> str:
 
 def close_parens():
     pass
@@ -159,7 +170,7 @@ def inheritance_fixture(inheritance_fixture):
     return 1
 
 
-#! 48 ['def inheritance_fixture']
+#! 48 ['def inheritance_fixture(inheritance_fixture):']
 def test_inheritance_fixture(inheritance_fixture, caplog):
     #? int()
     inheritance_fixture
@@ -183,28 +194,30 @@ def with_annot() -> Generator[float, None, None]:
 def test_with_annot(inheritance_fixture, with_annot):
     #? float()
     with_annot
+    #? int()
+    inheritance_fixture
 
+# zuban-diff: all of these are currently not supported (entry points are not checked)
 # -----------------
 # pytest external plugins
 # -----------------
 
-#? ['admin_user', 'admin_client']
+##? ['admin_user', 'admin_client']
 def test_z(admin
 
-#! 15 ['def admin_client']
+##! 15 ['def admin_client']
 def test_p(admin_client):
-    #? ['login', 'logout']
+    ##? ['login', 'logout']
     admin_client.log
 
 @pytest.fixture
 @some_decorator
-#? ['admin_user']
+##? ['admin_user']
 def bla(admin_u
     return
 
 @pytest.fixture
 @some_decorator
-#! 12 ['def admin_user']
+##! 12 ['def admin_user']
 def bla(admin_user):
     pass
-

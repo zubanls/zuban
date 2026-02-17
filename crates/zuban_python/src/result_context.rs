@@ -1,10 +1,10 @@
 use core::fmt;
 
-use super::Matcher;
 use crate::{
     InferenceState,
     database::PointLink,
     file::ClassNodeRef,
+    matching::Matcher,
     type_::{AnyCause, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
 };
@@ -193,14 +193,14 @@ impl<'a> ResultContext<'a, '_> {
         )
     }
 
-    pub fn is_normal_assignment(&self) -> bool {
+    pub fn can_be_redefined(&self, i_s: &InferenceState) -> bool {
         matches!(
             self,
             ResultContext::Known {
                 origin: ResultContextOrigin::NormalAssignment,
                 ..
             }
-        )
+        ) && i_s.flags().allow_redefinition
     }
 }
 

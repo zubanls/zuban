@@ -8,7 +8,8 @@ use crate::{
     debug,
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
-    matching::{Match, Matcher},
+    match_::Match,
+    matching::Matcher,
     type_::{
         AnyCause, CallableParam, CallableParams, MaybeUnpackGatherer, ParamSpecUsage, ParamType,
         StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type,
@@ -1116,6 +1117,11 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
                 self.current_arg = None;
                 Some(arg)
             } else {
+                if is_keyword_arg && arg.in_args_or_kwargs_and_arbitrary_len() {
+                    // Remove *args
+                    self.current_arg = None;
+                    return self.maybe_exact_multi_arg(is_keyword_arg);
+                }
                 self.current_arg = Some(arg);
                 None
             }

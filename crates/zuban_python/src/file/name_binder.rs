@@ -405,17 +405,18 @@ impl<'db> NameBinder<'db> {
                     self.index_assignment(assignment, ordered)
                 }
                 StmtLikeContent::ReturnStmt(return_stmt) => {
-                    if !matches!(self.kind, NameBinderKind::Function { .. }) {
+                    if let Some(return_expr) = return_stmt.star_expressions() {
+                        self.index_non_block_node(&return_expr, ordered);
+                    }
+                    if matches!(self.kind, NameBinderKind::Function { .. }) {
+                        self.index_return_or_yield(return_stmt.index());
+                        break;
+                    } else {
                         self.add_issue(
                             return_stmt.index(),
                             IssueKind::StmtOutsideFunction { keyword: "return" },
                         )
                     }
-                    if let Some(return_expr) = return_stmt.star_expressions() {
-                        self.index_non_block_node(&return_expr, ordered);
-                    }
-                    self.index_return_or_yield(return_stmt.index());
-                    break;
                 }
                 StmtLikeContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
@@ -2230,7 +2231,11 @@ pub fn is_expr_part_reachable_for_name_binder(
     Truthiness::Unknown
 }
 
-pub fn func_parent_scope(tree: &Tree, points: &Points, func_index: NodeIndex) -> ParentScope {
+pub(crate) fn func_parent_scope(
+    tree: &Tree,
+    points: &Points,
+    func_index: NodeIndex,
+) -> ParentScope {
     debug_assert!(FunctionDef::maybe_by_index(tree, func_index).is_some());
     let parent_index = func_index + FUNC_TO_PARENT_DIFF;
     let p = points.get(parent_index);

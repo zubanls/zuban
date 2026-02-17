@@ -8,7 +8,8 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{IteratorContent, OnTypeError, ResultContext},
+    matching::{IteratorContent, OnTypeError},
+    result_context::ResultContext,
     type_helpers::LookupDetails,
 };
 

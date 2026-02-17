@@ -152,7 +152,6 @@ def no_completion_inside_string_test():
     #? 16 --no-name-filter []
     """ some_var """
 
-
 def typed_dict():
     from typing import TypedDict
     class NestedTypedDict(TypedDict):
@@ -180,3 +179,14 @@ def typed_dict():
         _dict['some
         #? --contains-subset [""some_field_foo"", ""some_field_bar"", ""nested_dict"", "ArithmeticError", "AssertionError", "AttributeError"]
         _dict[
+
+def default_and_annotation_completion():
+    class FooBarBaz: ...
+    #? 19 ["FooBarBaz"]
+    def f1(f=FooBarB)
+    #? 19 ["FooBarBaz"]
+    def f2(f=FooBarB): ...
+    #? 19 ["FooBarBaz"]
+    def f3(f:FooBarB)
+    #? 19 ["FooBarBaz"]
+    def f4(f:FooBarB): ...

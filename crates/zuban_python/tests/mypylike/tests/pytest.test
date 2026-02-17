@@ -1,0 +1,279 @@
+[case pytest_check_fixture_stubs]
+# pkgs: pytest-stubs
+from pytest import fixture
+
+def test_f(caplog, some_fixture) -> None:
+    reveal_type(caplog)  # N: Revealed type is "_pytest.logging.LogCaptureFixture"
+    caplog.set_level(1)
+    caplog.set_level()  # E: Missing positional argument "level" in call to "set_level" of "LogCaptureFixture"
+    reveal_type(some_fixture)  # N: Revealed type is "int"
+
+@fixture()
+def some_fixture() -> int:
+    return 1
+
+[case needs_pytest_stubs_for_fixture_inference]
+from typing import assert_type, Any
+
+def test_f(caplog) -> None:
+    assert_type(caplog, Any)
+
+[case pytest_check_inheritance]
+# pkgs: pytest-stubs
+from pytest import fixture
+
+@fixture
+def inherited(inherited) -> str:
+    if bool():
+        return inherited  # E: Incompatible return value type (got "int", expected "str")
+    else:
+        return ""
+
+def test_something(inherited) -> None:
+    x: str = inherited
+
+[file conftest.py]
+from pytest import fixture
+@fixture
+def inherited() -> int: ...
+
+[case pytest_conftest_plugins_invalidation]
+# pkgs: pytest-stubs
+# flags: --check-untyped-defs --mode default
+from pytest import fixture
+from typing import assert_type
+
+def test_f(plug1, plug2, conftest_fixture):
+    assert_type(conftest_fixture, int)
+    assert_type(plug1, str)
+    assert_type(plug2, bytes)
+
+[file plugin1.py]
+from pytest import fixture
+@fixture()
+def plug1() -> str:
+    return ""
+[file plugin1.py.4]
+from pytest import fixture
+@fixture()
+def plug1() -> int:
+    return 1
+
+[file dir/plugin2.py]
+from pytest import fixture
+@fixture()
+def plug2():
+    return b""
+[file dir/plugin2.py.2]
+from pytest import fixture
+@fixture()
+def plug2():
+    return [b""]
+[file dir/plugin2.py.3]
+from pytest import fixture
+@fixture()
+def plug2():
+    return b""
+
+[file conftest.py]
+import pytest
+@pytest.fixture
+def conftest_fixture():
+    return 1
+pytest_plugins = ["plugin1", "dir.plugin2"]
+[file conftest.py.5]
+import pytest
+@pytest.fixture
+def conftest_fixture() -> str:
+    return ""
+
+[out]
+==
+__main__:9: error: Expression is of type "list[bytes]", not "bytes"
+==
+==
+__main__:8: error: Expression is of type "int", not "str"
+==
+__main__:7: error: Expression is of type "str", not "int"
+__main__:8: error: Expression is of type "Any", not "str"
+__main__:9: error: Expression is of type "Any", not "bytes"
+
+[case pytest_conftest_plugins_as_a_tuple]
+# pkgs: pytest-stubs
+from pytest import fixture
+from typing import assert_type
+
+def test_f(plug1) -> None:
+    assert_type(plug1, str)
+
+[file plugin1.py]
+from pytest import fixture
+@fixture()
+def plug1() -> str:
+    return ""
+
+[file conftest.py]
+pytest_plugins = ["plugin1", something_invalid]  # E: Name "something_invalid" is not defined
+[file conftest.py.2]
+pytest_plugins = {"plugin1", str}  # str makes no sense
+[file conftest.py.3]
+pytest_plugins = ("plugin1", "module_that_does_not_exist")
+[file conftest.py.4]
+pytest_plugins = ("dir.module_that_does_not_exist", "plugin1")
+
+[case pytest_completions_should_not_complete_itself]
+# pkgs: pytest-stubs
+from pytest import fixture
+
+@fixture
+#? complete
+def fixture_xyz(fixture_x
+): ...
+
+@fixture
+#? complete
+def other_fixture(fixture_x
+): ...
+
+@fixture
+#? complete
+def conftest_fixture(conftest_fix
+): ...
+
+[file conftest.py]
+from pytest import fixture
+@fixture
+def conftest_fixture(): ...
+
+[out]
+__main__.py:6:complete -> []
+__main__.py:11:complete -> [fixture_xyz]
+__main__.py:16:complete -> [conftest_fixture]
+
+[case avoid_recursion_for_pytest_plugins]
+# pkgs: pytest-stubs
+[file test.py]
+from pytest import fixture
+from typing import assert_type, Any
+
+def test_f(plug1, plug_not_existing) -> None:
+    assert_type(plug1, str)
+    assert_type(plug_not_existing, Any)
+
+[file conftest.py]
+from pytest import fixture
+@fixture()
+def plug1() -> str:
+    return ""
+
+pytest_plugins = ["conftest", "test"]
+
+[case pytest_ide_tools]
+# pkgs: pytest-stubs
+from pytest import fixture
+
+class A:
+    """
+    Something
+    """
+
+@fixture
+def my_fixture() -> A:
+    """
+    My fixture
+    """
+    return A()
+
+# goto
+def test_f1(
+    #? goto
+    my_fixture
+    ,
+    #? goto
+    caplog
+    ,
+): ...
+
+# inference
+def test_f2(
+    #? infer
+    my_fixture
+    ,
+    #? infer
+    caplog
+    ,
+): ...
+
+# documentation
+def test_f3(
+    #? documentation
+    my_fixture
+    ,
+    #? documentation
+    caplog
+    ,
+): ...
+[out]
+__main__.py:19:goto -> __main__.py:10:4:__main__.my_fixture
+__main__.py:22:goto -> _pytest/logging.pyi:9:4:_pytest.logging.caplog
+__main__.py:29:infer -> __main__.py:4:6:__main__.A
+__main__.py:32:infer -> _pytest/logging.pyi:5:6:_pytest.logging.LogCaptureFixture
+__main__.py:39:documentation -> "```python\n(function) A\n```\n---\nSomething"
+__main__.py:42:documentation -> "```python\n(function) LogCaptureFixture\n```"
+
+[case pytest_yield_fixture]
+# pkgs: pytest-stubs
+from pytest import yield_fixture
+
+def test_f(some_fixture) -> None:
+    reveal_type(some_fixture)  # N: Revealed type is "int"
+
+@yield_fixture()
+def some_fixture() -> int:
+    return 1
+
+[case pytest_fixture_detection]
+# pkgs: pytest-stubs
+[file test_non_fixture.py]
+from typing import assert_type, Any
+from pytest import LogCaptureFixture
+
+def fixture[T](func: T) -> T:
+    return func
+
+@fixture
+def foo(some_fixture) -> int:
+    return 1
+
+def test_f(foo, caplog) -> None:
+    assert_type(foo, Any)
+    assert_type(caplog, LogCaptureFixture)
+
+[case pytest_potential_fixture_scopes]
+# pkgs: pytest-stubs
+from typing import Any, assert_type
+from pytest import fixture
+
+@fixture()
+def some_fixture() -> int:
+    return 1
+
+def test_foo(self, some_fixture) -> None:
+    def test_foo(self, some_fixture) -> None:
+        assert_type(some_fixture, Any)
+    assert_type(some_fixture, int)
+
+class C:
+    def test_foo(self, some_fixture) -> None:
+        assert_type(some_fixture, int)
+
+    class Inner:
+        def test_foo(self, some_fixture) -> None:
+            assert_type(some_fixture, Any)
+
+    def foo(self) -> None:
+        def test_foo(self, some_fixture) -> None:
+            assert_type(some_fixture, Any)
+        class Inner:
+            def test_foo(self, some_fixture) -> None:
+                assert_type(some_fixture, Any)

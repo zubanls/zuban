@@ -23,8 +23,8 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::{
-        CalculatedTypeArgs, ErrorStrs, OnTypeError, ReplaceSelfInMatcher, ResultContext,
-        calc_func_type_vars, calc_untyped_func_type_vars, maybe_class_usage,
+        CalculatedTypeArgs, ErrorStrs, OnTypeError, ReplaceSelfInMatcher, calc_func_type_vars,
+        calc_untyped_func_type_vars, maybe_class_usage,
     },
     new_class,
     node_ref::NodeRef,
@@ -34,6 +34,7 @@ use crate::{
     },
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
+    result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         DataclassTransformObj, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
