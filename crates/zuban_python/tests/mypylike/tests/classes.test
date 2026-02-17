@@ -2612,3 +2612,29 @@ class C[T]:
 
 C().a  # E: "C[Any]" has no attribute "a"
 C().f()
+
+[case magic_mock_assignment]
+# From GH #292
+from dataclasses import dataclass
+from unittest.mock import AsyncMock, MagicMock, Mock
+
+@dataclass
+class AClass:
+    a: int = 1
+
+def _some_func(a: AClass) -> None:
+    print(a.a)
+
+amock = AsyncMock(spec=AClass)
+amock.a = 5  # ok
+_some_func(amock)
+
+mmock = MagicMock(spec=AClass)
+mmock.a = 5  # ok
+_some_func(mmock)
+
+mock = Mock(spec=AClass)
+mock.a = 5  # ok
+_some_func(mock)
+
+_some_func(5)  # E: Argument 1 to "_some_func" has incompatible type "int"; expected "AClass"

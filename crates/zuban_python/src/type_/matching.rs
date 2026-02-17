@@ -331,7 +331,7 @@ impl Type {
         match value_type {
             Type::Class(c2) => {
                 let class2 = c2.class(i_s.db);
-                if class2.incomplete_mro(i_s.db) && self.maybe_class(i_s.db).is_some() {
+                if class2.incomplete_mro(i_s.db) && self.is_subclassable(i_s.db) {
                     debug!(
                         "Match of class, because base class is incomplete: {}",
                         class2.format_short(i_s.db)
