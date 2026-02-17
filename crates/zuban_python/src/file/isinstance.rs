@@ -4,6 +4,7 @@ use crate::{
     database::{ClassKind, Specific},
     debug,
     diagnostics::IssueKind,
+    inference_state::InferenceState,
     type_::{ClassGenerics, TupleArgs, TupleUnpack, Type},
     utils::join_with_commas,
 };
@@ -102,8 +103,12 @@ impl Inference<'_, '_, '_> {
                     && Some(c.link) == self.i_s.db.python_state.union_type_link()
                 {
                     debug!("Found a union type for isinstance, try to compute it");
-                    let expr = inf.maybe_saved_node_ref(self.i_s.db)?.maybe_expression()?;
-                    self.isinstance_or_issubclass_type(expr, issubclass)
+                    let node_ref = inf.maybe_saved_node_ref(self.i_s.db)?;
+                    let expr = node_ref.maybe_expression()?;
+                    node_ref
+                        .file
+                        .inference(&InferenceState::new(self.i_s.db, node_ref.file))
+                        .isinstance_or_issubclass_type(expr, issubclass)
                 } else {
                     self.process_isinstance_type(part, &t, issubclass, from_union)
                 }
