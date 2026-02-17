@@ -288,7 +288,6 @@ testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
 # isinstance with alias and union literals `isinstance(x, A | B)`
 testStartUsingPEP604Union
-isinstance_with_type_of_something_with_any_generics
 # nonlocal
 testNarrowedVariableInNestedFunctionMore1
 # Narrowing keep out of function narrowings

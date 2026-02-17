@@ -1729,15 +1729,20 @@ def f(x: dict[str, tuple[int] | tuple[str, int]]) -> None:
 [file m.py]
 S1 = "hello"
 
-[case isinstance_with_type_of_something_with_any_generics]
-# flags: --show-error-codes
+[case isinstance_with_type_of_something_in_tuple]
+# flags: --mode default
 from typing import Any, Tuple
 
 x = tuple([Tuple, set])
-reveal_type(x)  # Revealed types is "tuple[type[typing.Collection[Any]], ...]"
+reveal_type(x)    # N: Revealed type is "tuple[type[tuple[Any, ...]] | type[set], ...]"
+y = Tuple, set
+reveal_type(y)    # N: Revealed type is "tuple[type[tuple[Any, ...]], type[set]]"
 
-def f(value: Any) -> bool:
-    return isinstance(value, x)
+def f(value: Any):
+    if isinstance(value, x):
+        reveal_type(x)  # N: Revealed type is "tuple[type[tuple[Any, ...]] | type[set], ...]"
+    if isinstance(value, y):
+        reveal_type(x)  # N: Revealed type is "tuple[type[tuple[Any, ...]] | type[set], ...]"
 
 [case narrowing_with_simple_type_var_fallback]
 from typing import overload, Protocol
