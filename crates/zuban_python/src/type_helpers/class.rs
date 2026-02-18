@@ -424,7 +424,14 @@ impl<'db: 'a, 'a> Class<'a> {
                         debug!("Issue in protocol: {}", issue_str);
                         *had_error.borrow_mut() = Some(issue_str);
                     },
-                    &mut |_, lookup_details| {
+                    &mut |_, mut lookup_details| {
+                        if name == "__hash__"
+                            && other.is_protocol(i_s.db)
+                            && lookup_details.class.is_object(i_s.db)
+                        {
+                            // __hash__ can be overwritten with None
+                            lookup_details.lookup = LookupResult::None;
+                        }
                         if matches!(lookup_details.lookup, LookupResult::None) {
                             had_lookup_error = true;
                         } else if had_error.borrow().is_none() {
