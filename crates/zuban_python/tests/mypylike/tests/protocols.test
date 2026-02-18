@@ -605,3 +605,26 @@ def func5(
                             # N:         def __call__(self, *args: Any, **kwargs: Any) -> None \
                             # N:     Got: \
                             # N:         def __call__(self) -> None
+
+[case protocol_object_attr_access]
+# From GH #271
+from typing import Protocol
+
+class FooProtocol(Protocol):
+    def foo(self) -> None:
+        pass
+
+class Fooer:
+    def foo(self) -> None:
+        pass
+
+class DocProto(Protocol):
+    def __str__(self) -> str: ...
+    __doc__: str | None
+
+fooer: FooProtocol = Fooer()
+fooer.__doc__
+fooer.__str__
+fooer.__hash__
+
+doc_proto: DocProto = fooer

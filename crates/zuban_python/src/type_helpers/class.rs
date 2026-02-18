@@ -1030,9 +1030,7 @@ impl<'db: 'a, 'a> Class<'a> {
             TypeOrClass::Class(*self),
             self.generics,
             class_infos.mro.iter(),
-            without_object
-                || self.node_ref == db.python_state.object_node_ref()
-                || class_infos.kind == ClassKind::Protocol,
+            without_object || self.node_ref == db.python_state.object_node_ref(),
         )
     }
 
@@ -1277,7 +1275,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 i_s,
                 "__init__",
                 0,
-                false,
+                self.is_protocol(i_s.db),
                 |lookup, cls, mro_index| (lookup, cls, mro_index),
             );
         self.lookup_and_class_and_maybe_ignore_self_internal(

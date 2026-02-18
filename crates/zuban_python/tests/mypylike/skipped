@@ -419,6 +419,13 @@ testProtocolCheckDefersNode
 # Weird and unsound mypy cases for x: typing.TypeAlias = ...
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
+# protocol hashable / join regressions
+testHashable
+testPartialTypeProtocolHashable
+testJoinProtocolWithProtocol
+testJoinProtocolWithNormal
+testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
+join_protocol_both_sides
 
 # Metaclass instance vs. class members
 testInferenceOfDunderDictOnClassObjects
