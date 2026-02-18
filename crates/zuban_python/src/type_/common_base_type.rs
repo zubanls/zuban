@@ -120,7 +120,11 @@ impl Type {
                     },
                     TypeOrClass::Class(c1) => match c2 {
                         TypeOrClass::Class(c2) => {
-                            if let Some(t) = common_base_class(i_s, *c1, c2, checked_recursions) {
+                            if let Some(t) = common_base_class(i_s, *c1, c2, checked_recursions)
+                                // Protocols are handled later.
+                                && !(c1.is_object_class(i_s.db)
+                                    && (self.is_protocol(i_s.db) || other.is_protocol(i_s.db)))
+                            {
                                 return t;
                             }
                         }
@@ -147,6 +151,10 @@ impl Type {
         }
         // Needed for protocols, because they don't inherit from object.
         i_s.db.python_state.object_type()
+    }
+
+    pub fn is_protocol(&self, db: &Database) -> bool {
+        self.maybe_class(db).is_some_and(|c| c.is_protocol(db))
     }
 }
 
