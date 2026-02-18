@@ -1122,3 +1122,18 @@ class D(TypedDict):
 [out]
 __main__:5: error: Invalid syntax
 __main__:6: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
+
+[case typed_dict_error_code_assigning_to_non_literal]
+# flags: --show-error-codes
+import typing
+
+class TestDict(typing.TypedDict):
+    a: str
+    b: str
+
+def f(key: str):
+    test = TestDict(a="a", b="b")
+    test[key] = "c"  # E: TypedDict key must be a string literal; expected one of ("a", "b")  [literal-required]
+    test[key]  # E: TypedDict key must be a string literal; expected one of ("a", "b")  [literal-required]
+    test.setdefault(key, "")  # E: Expected TypedDict key to be string literal  [literal-required]
+    test.pop(key)  # E: Expected TypedDict key to be string literal  [literal-required]

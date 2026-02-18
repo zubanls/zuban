@@ -522,7 +522,7 @@ impl IssueKind {
     pub fn mypy_error_code(&self) -> Option<&'static str> {
         use IssueKind::*;
         Some(match &self {
-            Note(_) | InvariantNote { .. } | InvalidDunderMatchArgs => return None,
+            Note(_) | InvariantNote { .. } => return None,
             InvalidSyntax
             | InvalidSyntaxInTypeComment { .. }
             | InvalidSyntaxInTypeAnnotation
@@ -623,6 +623,9 @@ impl IssueKind {
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
             TypedDictReadOnlyKeyMutated { .. } => "typeddict-readonly-mutated",
+            TypedDictAccessKeyMustBeStringLiteral { .. }
+            | TypedDictKeysMustBeStringLiteral
+            | InvalidDunderMatchArgs => "literal-required",
 
             UnreachableStatement
             | RightOperandIsNeverOperated { .. }
@@ -649,6 +652,9 @@ impl IssueKind {
             CannotAssignToAMethod => "assignment",
             ModuleNotFound { .. } => "import",
             OverloadUnmatchable { .. } | DecoratorOnTopOfPropertyNotSupported => "misc",
+            TypedDictAccessKeyMustBeStringLiteral { .. }
+            | TypedDictKeysMustBeStringLiteral
+            | InvalidDunderMatchArgs => "misc",
             _ => return None,
         })
     }
