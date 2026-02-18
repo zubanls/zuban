@@ -2249,3 +2249,25 @@ def foo4(x: int | float | str) -> str:
 Number = int | float
 class C:
     Number = int | float
+
+[case subclass_of_iterator_and_list]
+# flags: --mode default
+# From GH #284
+from collections.abc import Iterator
+from typing import Self
+
+class IterableList(list[str]):
+    def __init__(self) -> None:
+        self.iter = super().__iter__()
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> str:
+        return next(self.iter)
+
+def check(records_iter: Iterator[str]) -> None:
+    assert isinstance(records_iter, (list, tuple))
+    reveal_type(records_iter)  # N: Revealed type is "<subclass of "typing.Iterator[str]" and "list"> | <subclass of "typing.Iterator[str]" and "tuple[Any, ...]">"
+
+check(IterableList())

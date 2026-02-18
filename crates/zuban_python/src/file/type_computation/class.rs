@@ -1935,6 +1935,7 @@ pub fn linearize_mro_and_return_linearizable(
         // Instead of adding object to each iterator (because in our mro, object is not saved), we
         // just check for object in bases here. If it's not in the last position it's wrong.
         if index != bases.len() - 1 {
+            debug!("Non-linearizable, because object is not in the last position");
             linearizable = false;
         }
     }
@@ -2056,7 +2057,16 @@ pub fn linearize_mro_and_return_linearizable(
                             if skip && skip_index != base_index && is_non_object {
                                 let new = to_base_class(base_index, false, &candidate, &mut 0);
                                 let other = to_base_class(skip_index, false, next, &mut 0);
-                                if !new.type_.is_equal_type(db, &other.type_) {
+                                if !new
+                                    .type_
+                                    .is_equal_type_where_any_matches_all(db, &other.type_)
+                                {
+                                    debug!(
+                                        "Non-linearizable, because the type is similar, \
+                                            but not equal: {} != {}",
+                                        new.type_.format_short(db),
+                                        other.type_.format_short(db),
+                                    );
                                     linearizable = false
                                 }
                             }
@@ -2077,6 +2087,10 @@ pub fn linearize_mro_and_return_linearizable(
         }
         for (base_index, base_bases) in base_iterators.iter_mut().enumerate() {
             if let Some((i, type_)) = base_bases.next() {
+                debug!(
+                    "Non-linearizable, because not fetched, {} ({base_index}->{i})",
+                    type_.t.format_short(db)
+                );
                 linearizable = false;
                 // Here we know that we have issues and only add the type if it's not already
                 // there.
