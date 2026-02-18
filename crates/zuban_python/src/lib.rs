@@ -30,7 +30,13 @@ mod select_files;
 mod selection_ranges;
 mod semantic_tokens;
 mod signatures;
+
+#[cfg(not(target_family = "wasm"))]
 mod sys_path;
+#[cfg(target_family = "wasm")]
+#[path = "sys_path_stub.rs"]
+mod sys_path;
+
 mod type_;
 mod type_helpers;
 mod utils;
@@ -121,8 +127,8 @@ impl Project {
             })
     }
 
-    pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
-        self.db.store_in_memory_file(path, code, None);
+    pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) -> FileIndex {
+        self.db.store_in_memory_file(path, code, None)
     }
 
     pub fn store_file_with_lsp_changes(
