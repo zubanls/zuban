@@ -133,7 +133,9 @@ jobs:
 
       - name: "Test wheel (container)"
         if: matrix.t.test == 'container'
-        uses: addnab/docker-run-action@v3
+        # Used to be addnab/docker-run-action@v3, but it's outdated, see also
+        # https://github.com/addnab/docker-run-action/pull/64
+        uses: Baardrw/docker-run-action@034f7d8a046305809c512a9aaf8d4f2258087948
         with:
           image: ${{ matrix.t.image }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace ${{ matrix.t.docker_options }}
