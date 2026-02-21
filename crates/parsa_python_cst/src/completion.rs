@@ -50,6 +50,18 @@ impl Tree {
         );
 
         if leaf.is_type(PyNodeType::Terminal(TerminalType::String)) {
+            if let Some(maybe_dict_node) = maybe_inside_square_braces(leaf)
+                && position != leaf.end() - 1
+            {
+                return (
+                    scope,
+                    CompletionNode::InsideSquareBraces {
+                        maybe_dict_node,
+                        quote_state: QuoteState::NormalString,
+                    },
+                    rest,
+                );
+            }
             return (scope, CompletionNode::InsideString, rest);
         }
 
@@ -160,6 +172,34 @@ impl Tree {
                 "class" => {
                     return (scope, CompletionNode::AfterClassKeyword, rest);
                 }
+                "[" => {
+                    if let Some(maybe_dict_node) = inside_square_braces(previous)
+                        && matches!(leaf.as_code(), "\"" | "'")
+                    {
+                        return (
+                            scope,
+                            CompletionNode::InsideSquareBraces {
+                                maybe_dict_node,
+                                quote_state: QuoteState::QuoteOpened(
+                                    leaf.as_code().chars().nth(0).unwrap(),
+                                ),
+                            },
+                            rest,
+                        );
+                    }
+                }
+                quote @ ("\"" | "'") => {
+                    if let Some(maybe_dict_node) = maybe_inside_square_braces(previous) {
+                        return (
+                            scope,
+                            CompletionNode::InsideSquareBraces {
+                                maybe_dict_node,
+                                quote_state: QuoteState::QuoteOpened(quote.chars().nth(0).unwrap()),
+                            },
+                            rest,
+                        );
+                    }
+                }
                 _ => (),
             }
             let parent = previous.parent().unwrap();
@@ -221,6 +261,18 @@ impl Tree {
                 }
             }
         }
+        if leaf.as_code() == "["
+            && let Some(maybe_dict_node) = inside_square_braces(leaf)
+        {
+            return (
+                scope,
+                CompletionNode::InsideSquareBraces {
+                    maybe_dict_node,
+                    quote_state: QuoteState::WithoutQuotes,
+                },
+                rest,
+            );
+        }
         (
             scope,
             CompletionNode::Global {
@@ -229,6 +281,28 @@ impl Tree {
             rest,
         )
     }
+}
+
+fn inside_square_braces(square_brace_node: PyNode) -> Option<PrimaryOrAtom> {
+    if let Some(maybe_dict_node) = square_brace_node.previous_sibling() {
+        if maybe_dict_node.is_type(Nonterminal(atom)) {
+            return Some(PrimaryOrAtom::Atom(Atom::new(maybe_dict_node)));
+        } else if maybe_dict_node.is_type(Nonterminal(primary)) {
+            return Some(PrimaryOrAtom::Primary(Primary::new(maybe_dict_node)));
+        } else {
+            return None;
+        }
+    }
+    None
+}
+
+fn maybe_inside_square_braces(quote_node: PyNode) -> Option<PrimaryOrAtom> {
+    if let Some(square_brace) = quote_node.previous_leaf()
+        && square_brace.as_code() == "["
+    {
+        return inside_square_braces(square_brace);
+    }
+    None
 }
 
 fn context(node: PyNode) -> Option<CompletionContext> {
@@ -362,6 +436,13 @@ impl Scope<'_> {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub enum QuoteState {
+    WithoutQuotes,
+    QuoteOpened(char),
+    NormalString,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum CompletionNode<'db> {
     Attribute {
         base: PrimaryOrAtom<'db>,
@@ -389,6 +470,10 @@ pub enum CompletionNode<'db> {
     AfterDefKeyword,
     AfterClassKeyword,
     InsideString,
+    InsideSquareBraces {
+        maybe_dict_node: PrimaryOrAtom<'db>,
+        quote_state: QuoteState,
+    },
     Global {
         context: Option<CompletionContext<'db>>,
     },

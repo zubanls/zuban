@@ -14,7 +14,7 @@ use std::{
 
 pub use bytes::parse_python_bytes_literal;
 use completion::scope_for_node;
-pub use completion::{CompletionContext, CompletionNode, RestNode, Scope};
+pub use completion::{CompletionContext, CompletionNode, QuoteState, RestNode, Scope};
 pub use match_stmt::{
     CasePattern, KeyEntryInPattern, LiteralPatternContent, MappingPatternItem, ParamPattern,
     PatternKind, SequencePatternItem, StarPatternContent, SubjectExprContent,

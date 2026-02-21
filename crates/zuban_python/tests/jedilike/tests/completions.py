@@ -152,6 +152,34 @@ def no_completion_inside_string_test():
     #? 16 --no-name-filter []
     """ some_var """
 
+def typed_dict():
+    from typing import TypedDict
+    class NestedTypedDict(TypedDict):
+        nested_field_foo: str
+        nested_field_bar: int
+    class SomeTypedDict(TypedDict):
+        some_field_foo: str
+        some_field_bar: int
+        nested_dict: NestedTypedDict
+
+    def complete_typed_dict_key(_dict: SomeTypedDict):
+        #? ['some_field_foo"', 'some_field_bar"', 'nested_dict"']
+        _dict["
+        #? ['some_field_foo"', 'some_field_bar"']
+        _dict["some
+        #? 18 ['some_field_foo', 'some_field_bar']
+        _dict["some"]
+        #? ['nested_field_foo"', 'nested_field_bar"']
+        _dict["nested_dict"]["nested
+        #? 15 []
+        _dict[""]
+        #? 14 ['some_field_foo', 'some_field_bar', 'nested_dict']
+        _dict[""]
+        #? ['some_field_foo'', 'some_field_bar'']
+        _dict['some
+        #? --contains-subset [""some_field_foo"", ""some_field_bar"", ""nested_dict"", "ArithmeticError", "AssertionError", "AttributeError"]
+        _dict[
+
 def default_and_annotation_completion():
     class FooBarBaz: ...
     #? 19 ["FooBarBaz"]
