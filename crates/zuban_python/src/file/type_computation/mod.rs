@@ -2684,6 +2684,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         ret(t)
     }
 
+    fn compute_type_form(&mut self) -> TypeContent<'db, 'db> {
+        TypeContent::UNKNOWN_REPORTED
+    }
+
     fn compute_type_get_item_on_alias(
         &mut self,
         alias: &TypeAlias,

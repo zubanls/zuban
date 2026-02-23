@@ -253,6 +253,7 @@ impl Type {
                     t.replace_internal(replacer)
                 })?,
             ))),
+            Type::TypeForm(tf) => Some(Type::TypeForm(Arc::new(tf.replace_internal(replacer)?))),
             Type::Any(..)
             | Type::None
             | Type::Never(..)

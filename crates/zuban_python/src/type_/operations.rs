@@ -524,6 +524,7 @@ impl Type {
                 );
                 callable(self, l)
             }
+            Type::TypeForm(tf) => todo!(),
         }
     }
 

@@ -237,6 +237,10 @@ impl Type {
                 },
                 _ => Match::new_false(),
             },
+            Self::TypeForm(tf1) => match value_type {
+                Self::TypeForm(tf2) => tf1.matches_internal(i_s, matcher, value_type, variance),
+                _ => Match::new_false(),
+            },
         }
     }
 

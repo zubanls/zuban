@@ -532,6 +532,7 @@ pub(crate) enum Type {
     LiteralString {
         implicit: bool,
     },
+    TypeForm(Arc<Type>),
     Any(AnyCause),
     Never(NeverCause),
 }
@@ -1181,6 +1182,7 @@ impl Type {
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
             Self::DataclassTransformObj(_) => "TODO dataclass_transform".into(),
             Self::LiteralString { .. } => "LiteralString".into(),
+            Self::TypeForm(t) => format!("typing.TypeForm({})", t.format(format_data)).into(),
         }
     }
 
@@ -1244,6 +1246,7 @@ impl Type {
                     t.search_type_vars(found_type_var)
                 }
             }
+            Self::TypeForm(tf) => tf.search_type_vars(found_type_var),
         }
     }
 
@@ -1325,6 +1328,7 @@ impl Type {
             Self::Intersection(intersection) => intersection
                 .iter_entries()
                 .any(|t| t.has_any_internal(i_s, already_checked)),
+            Self::TypeForm(tf) => tf.has_any_internal(i_s, already_checked),
         }
     }
 

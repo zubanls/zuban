@@ -1111,6 +1111,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             )))
         }
         Type::Never(_) => (),
+        Type::TypeForm(tf) => type_to_name(i_s, tf, add),
     }
 }
 
