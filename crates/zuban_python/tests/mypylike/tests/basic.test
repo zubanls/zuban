@@ -1169,10 +1169,10 @@ def func13(t1: type[T]) -> T:
     return t1()
 
 [case assert_type_equals_implicit_literals]
-from typing import assert_type
+from typing import assert_type, Literal
 def func3[*Ts, T](*args: * tuple[int, *Ts, T]) -> tuple[T, *Ts]: ...
 
-assert_type(func3(1, "", 3j, 3.4), tuple[float, str, complex])
+assert_type(func3(1, "", 3j, 3.4), tuple[float, Literal[''], complex])
 
 [case assert_type_for_enum_literals]
 from typing import Literal, assert_type
@@ -1766,3 +1766,14 @@ def asdf(x: str) -> None:
     reveal_type(x)  # N: Revealed type is "str"
 
 glob = 1
+
+[case assert_type_for_implicit_literals_in_default_mode]
+# flags: --mode default
+from typing import assert_type, Literal
+def f[T](x: T) -> T: ...
+
+assert_type(f(1), Literal[1])
+assert_type(f(1), int)  # E: Expression is of type "Literal[1]", not "int"
+
+assert_type(f(""), Literal[''])
+assert_type(f(""), str)  # E: Expression is of type "Literal['']", not "str"

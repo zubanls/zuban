@@ -454,7 +454,9 @@ impl Type {
                 )
             }
             (Type::Literal(l1), Type::Literal(l2)) => l1.value(db) == l2.value(db),
-            (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
+            (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l))
+                if db.mypy_compatible() =>
+            {
                 l.implicit && l.fallback_node_ref(db).as_link() == c.link
             }
             (Type::LiteralString { .. }, Type::LiteralString { .. }) => true,

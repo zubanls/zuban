@@ -41,12 +41,12 @@ def inherited() -> int: ...
 # pkgs: pytest-stubs
 # flags: --check-untyped-defs --mode default
 from pytest import fixture
-from typing import assert_type
+from typing import assert_type, Literal
 
 def test_f(plug1, plug2, conftest_fixture):
-    assert_type(conftest_fixture, int)
+    assert_type(conftest_fixture, Literal[1])
     assert_type(plug1, str)
-    assert_type(plug2, bytes)
+    assert_type(plug2, Literal[b''])
 
 [file plugin1.py]
 from pytest import fixture
@@ -89,14 +89,14 @@ def conftest_fixture() -> str:
 
 [out]
 ==
-__main__:9: error: Expression is of type "list[bytes]", not "bytes"
+__main__:9: error: Expression is of type "list[bytes]", not "Literal[b'']"
 ==
 ==
 __main__:8: error: Expression is of type "int", not "str"
 ==
-__main__:7: error: Expression is of type "str", not "int"
+__main__:7: error: Expression is of type "str", not "Literal[1]"
 __main__:8: error: Expression is of type "Any", not "str"
-__main__:9: error: Expression is of type "Any", not "bytes"
+__main__:9: error: Expression is of type "Any", not "Literal[b'']"
 
 [case pytest_conftest_plugins_as_a_tuple]
 # pkgs: pytest-stubs
