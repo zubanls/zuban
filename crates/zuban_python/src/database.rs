@@ -542,6 +542,7 @@ pub(crate) enum Specific {
     TypingReadOnly,
     TypingTypeGuard,
     TypingTypeIs,
+    TypingTypeForm,
     RevealTypeFunction,
     AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple

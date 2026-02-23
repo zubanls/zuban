@@ -3033,6 +3033,7 @@ pub fn specific_to_type<'db>(
         | Specific::TypingLiteralString
         | Specific::TypingTypeGuard
         | Specific::TypingTypeIs
+        | Specific::TypingTypeForm
         | Specific::TypingConcatenateClass
         | Specific::TypingReadOnly
         | Specific::TypingTypeAlias

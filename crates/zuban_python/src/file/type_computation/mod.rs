@@ -1213,12 +1213,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     node_ref,
                     IssueKind::MustHaveOneArgument { name: "TypeGuard" },
                 ),
-                Specific::TypingUnpack => {
-                    self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
-                }
                 Specific::TypingTypeIs => {
                     self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
                 }
+                Specific::TypingUnpack => {
+                    self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
+                }
+                Specific::TypingTypeForm => self.add_issue(
+                    node_ref,
+                    IssueKind::MustHaveOneArgument { name: "TypeForm" },
+                ),
                 Specific::TypingTypeVarClass => {
                     return Some(self.i_s.db.python_state.type_var_type());
                 }
@@ -1596,6 +1600,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Specific::BuiltinsType | Specific::TypingType => {
                             self.compute_type_get_item_on_type(s)
                         }
+                        Specific::TypingTypeForm => self.compute_type_get_item_on_type(s),
                         Specific::TypingCallable => self.compute_type_get_item_on_callable(s),
                         Specific::TypingLiteral => self.compute_get_item_on_literal(s),
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),

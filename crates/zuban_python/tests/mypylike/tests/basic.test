@@ -638,6 +638,7 @@ reveal_type(super)  # N: Revealed type is "super"
 # Some types are handled in a special way, check however that normal
 # reveal_type does not crash.
 import typing
+import typing_extensions
 reveal_type(typing.TypeVar)  # N: Revealed type is "type[typing.TypeVar]"
 reveal_type(typing.TypeVarTuple)  # N: Revealed type is "type[typing.TypeVarTuple]"
 reveal_type(typing.ParamSpec)  # N: Revealed type is "type[typing.ParamSpec]"
@@ -647,6 +648,7 @@ reveal_type(typing.reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
 reveal_type(typing.NewType)  # N: Revealed type is "type[typing.NewType]"
 reveal_type(typing.TypeGuard)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.TypeIs)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing_extensions.TypeForm)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.Concatenate)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.assert_type)  # N: Revealed type is "object"
 reveal_type(typing.Required)  # N: Revealed type is "typing._SpecialForm"

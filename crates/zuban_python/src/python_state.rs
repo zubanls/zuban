@@ -1312,6 +1312,7 @@ fn typing_changes(
     set_typing_inference(typing, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(typing, "TypeGuard", Specific::TypingTypeGuard);
     set_typing_inference(typing, "TypeIs", Specific::TypingTypeIs);
+    set_typing_inference(typing, "TypeForm", Specific::TypingTypeForm);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(typing, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(
@@ -1377,6 +1378,7 @@ fn typing_changes(
     set_typing_inference(t, "NotRequired", Specific::TypingNotRequired);
     set_typing_inference(t, "Required", Specific::TypingRequired);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
+    set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
 
     for module in [typing, mypy_extensions, typing_extensions] {
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);
