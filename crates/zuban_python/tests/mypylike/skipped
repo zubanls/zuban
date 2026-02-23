@@ -15,7 +15,6 @@ super_explicit_type_var_classmethod
 invalid_type_form
 type_form_basic1_conformance_tests
 type_form_basic2_conformance_tests
-type_form_execution_conformance_tests
 type_form_subtyping_conformance_tests
 
 # Regression from calculating nested functions in a different way

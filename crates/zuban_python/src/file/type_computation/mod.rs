@@ -2700,7 +2700,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() > 0 {
             return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
-        TypeContent::Type(self.compute_slice_type(content))
+        TypeContent::Type(Type::TypeForm(Arc::new(self.compute_slice_type(content))))
     }
 
     fn compute_type_get_item_on_alias(

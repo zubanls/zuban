@@ -1074,9 +1074,9 @@ assert_type(x1, TypeForm[str | None])
 x2 = TypeForm("list[int]")
 assert_type(x2, TypeForm[list[int]])
 
-x3 = TypeForm("type(1)")  # E
+x3 = TypeForm("type(1)")  # E: Invalid type comment or annotation
 x4 = type(1)  # OK
-x5 = TypeForm(type(1))  # E
+x5 = TypeForm(type(1))  # E: Invalid type comment or annotation
 
 [case type_form_subtyping_conformance_tests]
 # Copied conformance tests (typeforms_typeform.py)
@@ -1086,13 +1086,13 @@ def get_type_form() -> TypeForm[int]:
     return int
 
 t1: TypeForm[int | str] = get_type_form()  # OK
-t2: TypeForm[str] = get_type_form()  # E
+t2: TypeForm[str] = get_type_form()  # E: Incompatible types in assignment (expression has type "typing.TypeForm(int)", variable has type "typing.TypeForm(str)")
 
 def get_type() -> type[int]:
     return int
 
 t3: TypeForm[int | str] = get_type()  # OK
-t4: TypeForm[str] = get_type()  # E
+t4: TypeForm[str] = get_type()  # E: Incompatible types in assignment (expression has type "type[int]", variable has type "typing.TypeForm(str)")
 
 [case type_form_executions_error_cases]
 from typing_extensions import TypeForm
