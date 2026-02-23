@@ -4124,25 +4124,37 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         None
     }
     pub(crate) fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+        assert_eq!(node_ref.file.file_index, self.file.file_index);
         let named_expr = node_ref.expect_named_expression();
+        let t =
+            self.compute_type_for_expr(named_expr.expression(), TypeComputationOrigin::CastTarget)?;
+        Ok(Inferred::from_type(t))
+    }
+
+    fn compute_type_for_expr(
+        &self,
+        expr: Expression,
+        origin: TypeComputationOrigin,
+    ) -> Result<Type, ()> {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self.i_s,
             self.file,
-            node_ref.as_link(),
+            PointLink::new(self.file.file_index, expr.index()),
             &mut x,
-            TypeComputationOrigin::CastTarget,
+            origin,
         );
 
-        let t = comp.compute_type(named_expr.expression());
-        let Some(mut type_) = comp.as_type_or_error(t, node_ref) else {
+        let t = comp.compute_type(expr);
+        let Some(mut type_) = comp.as_type_or_error(t, NodeRef::new(self.file, expr.index()))
+        else {
             return Err(());
         };
         let type_vars = comp.into_type_vars(|_, recalculate_type_vars| {
             type_ = recalculate_type_vars(&type_);
         });
         debug_assert!(type_vars.is_empty());
-        Ok(Inferred::from_type(type_))
+        Ok(type_)
     }
 
     fn within_type_var_like_definition<T>(
