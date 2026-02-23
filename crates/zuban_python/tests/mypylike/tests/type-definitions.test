@@ -1004,9 +1004,11 @@ def f() -> "undefined_zuban": ...  # type: ignore[name-defined]
 def g() -> "undefined_zuban  # type: ignore[name-defined]": ...  # E: Name "undefined_zuban" is not defined
 
 [case invalid_type_form]
+# flags: --disallow-any-generics
 from typing_extensions import TypeForm
-x: TypeForm = 1  # E: TypeForm must have exactly one type argument
-y: TypeForm[int, str] = int
+x: TypeForm = int  # E: Missing type parameters for generic type "TypeForm"
+reveal_type(x)  # N: Revealed type is "typing.TypeForm(Any)"
+y: TypeForm[int, str] = int  # E: Invalid type comment or annotation
 
 [case type_form_basic1_conformance_tests]
 # Copied conformance tests (typeforms_typeform.py)
@@ -1053,7 +1055,7 @@ var = 1
 
 bad1: TypeForm = tuple()  # E
 bad2: TypeForm = (1, 2)  # E
-bad3: TypeForm = 1  # E
+bad3: TypeForm = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "typing.TypeForm(Any)")
 bad4: TypeForm = Self  # E
 bad5: TypeForm = ClassVar[int]  # E
 bad6: TypeForm = Final[int]  # E

@@ -1219,10 +1219,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::TypingUnpack => {
                     self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
                 }
-                Specific::TypingTypeForm => self.add_issue(
-                    node_ref,
-                    IssueKind::MustHaveOneArgument { name: "TypeForm" },
-                ),
+                Specific::TypingTypeForm => {
+                    if self.flags().disallow_any_generics {
+                        self.add_issue(
+                            node_ref,
+                            IssueKind::MissingTypeParameters {
+                                name: "TypeForm".into(),
+                            },
+                        );
+                    }
+                    return Some(Type::TypeForm(Arc::new(Type::ERROR)));
+                }
                 Specific::TypingTypeVarClass => {
                     return Some(self.i_s.db.python_state.type_var_type());
                 }
@@ -1600,7 +1607,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Specific::BuiltinsType | Specific::TypingType => {
                             self.compute_type_get_item_on_type(s)
                         }
-                        Specific::TypingTypeForm => self.compute_type_get_item_on_type(s),
+                        Specific::TypingTypeForm => self.compute_type_get_item_on_type_form(s),
                         Specific::TypingCallable => self.compute_type_get_item_on_callable(s),
                         Specific::TypingLiteral => self.compute_get_item_on_literal(s),
                         Specific::TypingFinal => self.compute_type_get_item_on_final(s),
@@ -2684,8 +2691,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         ret(t)
     }
 
-    fn compute_type_form(&mut self) -> TypeContent<'db, 'db> {
-        TypeContent::UNKNOWN_REPORTED
+    fn compute_type_get_item_on_type_form(
+        &mut self,
+        slice_type: SliceType,
+    ) -> TypeContent<'static, 'static> {
+        let mut iterator = slice_type.iter();
+        let content = iterator.next().unwrap();
+        if iterator.count() > 0 {
+            return TypeContent::InvalidVariable(InvalidVariableType::Other);
+        }
+        TypeContent::Type(self.compute_slice_type(content))
     }
 
     fn compute_type_get_item_on_alias(
