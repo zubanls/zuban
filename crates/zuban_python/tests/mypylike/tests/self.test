@@ -678,3 +678,14 @@ class TT(Widget):
         self.bind(self._on_foo)  # E: Argument 1 to "bind" of "Widget" has incompatible type "Callable[[Widget], None]"; expected "Callable[[Self], object] | None"
 
     def _on_foo(self, junk_event: Widget) -> None: ...
+
+[case application_with_self_type]
+# From GH #306
+from typing import Self
+
+class Selection[ValueT]:
+    pass
+
+class ServerProfile:
+	def do_on_select(self) -> None:
+		x = Selection[Self]()

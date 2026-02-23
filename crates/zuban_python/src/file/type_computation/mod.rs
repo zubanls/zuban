@@ -1162,8 +1162,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeComputationOrigin::NamedTupleMember => {
                             IssueKind::NamedTupleSelfNotAllowed
                         }
-                        TypeComputationOrigin::TypeApplication
-                        | TypeComputationOrigin::TypeAlias => IssueKind::SelfTypeInTypeAliasTarget,
+                        TypeComputationOrigin::TypeAlias => IssueKind::SelfTypeInTypeAliasTarget,
+                        TypeComputationOrigin::TypeApplication => {
+                            if self.i_s.current_class().is_some() {
+                                return Some(Type::Self_);
+                            }
+                            IssueKind::SelfTypeInTypeAliasTarget
+                        }
                         TypeComputationOrigin::Other | TypeComputationOrigin::BaseClass => {
                             IssueKind::SelfTypeOutsideOfClass
                         }
