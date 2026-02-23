@@ -2126,7 +2126,7 @@ fn maybe_sys_platform_startswith(
         && let PrimaryOrAtom::Primary(prim) = before.first()
         && attr.as_code() == "startswith"
         && maybe_sys_name(prim, "platform")
-        && let Some(named_expr) = arguments.maybe_single_named_expr()
+        && let Some(named_expr) = arguments.maybe_single_positional()
         && let Some(s) = named_expr.maybe_single_string_literal()
         && let Some(to_compare) = s.as_python_string().as_str()
     {

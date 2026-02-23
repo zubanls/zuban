@@ -1403,7 +1403,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 if node_ref == non_member_ref {
                                     return None;
                                 } else if Some(node_ref) == db.python_state.enum_member_node_ref() {
-                                    if let Some(named_expr) = args.maybe_single_named_expr() {
+                                    if let Some(named_expr) = args.maybe_single_positional() {
                                         return Some(ValidEnumMemberAssignment::SubExpression(
                                             named_expr.expression(),
                                         ));

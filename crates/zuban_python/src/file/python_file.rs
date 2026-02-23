@@ -677,7 +677,7 @@ impl<'db> PythonFile {
                 && let PrimaryContent::Execution(arg_details) = maybe_call.second()
                 && let PrimaryContent::Attribute(attr) = primary.second()
             {
-                let maybe_single = arg_details.maybe_single_named_expr();
+                let maybe_single = arg_details.maybe_single_positional();
                 match attr.as_code() {
                     "append" => dunder_all.push(DbString::from_python_string(
                         file_index,

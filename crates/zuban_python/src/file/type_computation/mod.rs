@@ -26,7 +26,7 @@ use super::{
     utils::func_of_self_symbol,
 };
 use crate::{
-    arguments::SimpleArgs,
+    arguments::{Args, SimpleArgs},
     database::{
         ComplexPoint, Database, Locality, ParentScope, Point, PointKind, PointLink, Specific,
         TypeAlias,
@@ -3727,6 +3727,27 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 _ => None,
             },
         }
+    }
+
+    pub fn execute_type_form(&self, args: &dyn Args) -> Inferred {
+        let execute = || {
+            if let Some(args) = args.maybe_simple_args()
+                && let Some(positional) = args.details.maybe_single_positional()
+            {
+                assert_eq!(args.file.file_index, self.file.file_index);
+                self.compute_type_for_expr(positional.expression(), TypeComputationOrigin::Other)
+                    .unwrap_or(Type::ERROR)
+            } else {
+                args.add_issue(
+                    self.i_s,
+                    IssueKind::ArgumentIssue(
+                        "TypeForm expects a single positional argument".into(),
+                    ),
+                );
+                Type::ERROR
+            }
+        };
+        Inferred::from_type(Type::TypeForm(Arc::new(execute())))
     }
 
     fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {

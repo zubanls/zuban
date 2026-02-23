@@ -2253,12 +2253,9 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingTypeForm => {
                                 debug!("Execute type definition with {}", stringify!($name));
                                 if let Some(file) = args.in_file() {
-                                    // TODO
-                                    /*
                                     return file
                                         .name_resolution_for_types(i_s)
-                                        .compute_type_form(args);
-                                    */
+                                        .execute_type_form(args);
                                 }
                             }
                             _ => (),

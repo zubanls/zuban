@@ -126,7 +126,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 pub(crate) struct SimpleArgs<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
-    file: &'a PythonFile,
+    pub file: &'a PythonFile,
     primary_node_index: NodeIndex,
     pub details: ArgumentsDetails<'a>,
     i_s: InferenceState<'db, 'a>,

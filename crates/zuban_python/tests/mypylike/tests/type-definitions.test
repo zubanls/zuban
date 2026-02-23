@@ -1093,3 +1093,11 @@ def get_type() -> type[int]:
 
 t3: TypeForm[int | str] = get_type()  # OK
 t4: TypeForm[str] = get_type()  # E
+
+[case type_form_executions_error_cases]
+from typing_extensions import TypeForm
+TypeForm(str)
+TypeForm(str + int)  # E: Invalid type comment or annotation
+TypeForm()  # E: TypeForm expects a single positional argument
+TypeForm(int, str)  # E: TypeForm expects a single positional argument
+TypeForm(type=int)  # E: TypeForm expects a single positional argument

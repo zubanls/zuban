@@ -2815,7 +2815,7 @@ impl<'db> ArgumentsDetails<'db> {
         }
     }
 
-    pub fn maybe_single_named_expr(&self) -> Option<NamedExpression<'db>> {
+    pub fn maybe_single_positional(&self) -> Option<NamedExpression<'db>> {
         match self {
             Self::Node(args) => {
                 let mut iterator = args.iter();
