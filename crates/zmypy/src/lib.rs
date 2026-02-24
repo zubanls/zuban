@@ -400,11 +400,11 @@ mod tests {
         if cfg!(windows) {
             assert_eq!(
                 expect_not_found(&["", "/foo/zuban/undefined-path"]),
-                r"No Python files found to check for C:/foo/zuban/undefined-path"
+                r"No Python files found to check for C:\foo\zuban\undefined-path"
             );
             assert_eq!(
                 expect_not_found(&["", "/foo/zuban/undefined-path/*/baz/*"]),
-                r"No Python files found to check in C:/foo/zuban/undefined-path/*/baz/*"
+                r"No Python files found to check in C:\foo\zuban\undefined-path\*\baz\*"
             );
         } else {
             assert_eq!(
