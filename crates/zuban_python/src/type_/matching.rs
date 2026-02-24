@@ -745,6 +745,13 @@ impl Type {
                             .into(),
                             MetaclassState::None => Match::new_false(),
                         }
+                        .or(|| {
+                            // x: GenericAlias = list[int] is fine
+                            (class1.node_ref == i_s.db.python_state.generic_alias_node_ref()
+                                && matches!(c2.generics, ClassGenerics::List(_))
+                                && variance == Variance::Covariant)
+                                .into()
+                        })
                     }
                     _ => Match::new_false(),
                 };

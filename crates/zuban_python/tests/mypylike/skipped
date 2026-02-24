@@ -12,8 +12,6 @@ docs_alias
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
-type_form_basic2_conformance_tests
-
 # Regression from calculating nested functions in a different way
 testLocalPartialTypesWithNestedFunction
 testLocalPartialTypesWithNestedFunction2

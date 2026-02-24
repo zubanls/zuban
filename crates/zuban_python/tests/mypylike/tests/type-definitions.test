@@ -1056,7 +1056,7 @@ var = 1
 bad1: TypeForm = tuple()  # E: Invalid type comment or annotation
 bad2: TypeForm = (1, 2)  # E: Syntax error in type annotation \
                          # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
-bad3: TypeForm = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "typing.TypeForm(Any)")
+bad3: TypeForm = 1  # E: Invalid type: try using Literal[1] instead?
 bad4: TypeForm = Self  # E: Self type is only allowed in annotations within class definition
 bad5: TypeForm = ClassVar[int]  # E: ClassVar can only be used for assignments in class body
 bad6: TypeForm = Final[int]  # E: Final can be only used as an outermost qualifier in a variable annotation
@@ -1102,3 +1102,35 @@ TypeForm(str + int)  # E: Invalid type comment or annotation
 TypeForm()  # E: TypeForm expects a single positional argument
 TypeForm(int, str)  # E: TypeForm expects a single positional argument
 TypeForm(type=int)  # E: TypeForm expects a single positional argument
+
+[case type_form_access_attribute]
+from typing_extensions import TypeForm
+
+def get_type_form() -> TypeForm[list]:
+    return list
+
+x = get_type_form()
+x.index  # E: "typing.TypeForm(list[Any])" has no attribute "index"
+x.__str__()
+
+[case generic_alias_access_and_assignment]
+from types import GenericAlias
+x = list[int]
+y: GenericAlias = list[int]
+z: GenericAlias = list  # E: Incompatible types in assignment (expression has type "type[list]", variable has type "GenericAlias")
+
+x.index
+x.__origin__
+x.__args__
+
+reveal_type(y.index)  # N: Revealed type is "Any"
+reveal_type(y.__origin__)  # N: Revealed type is "type[Any] | Any"
+reveal_type(y.__args__)  # N: Revealed type is "tuple[Any, ...]"
+
+list[str].index
+list[str].__origin__
+list[str].__args__
+
+list.index
+list.__origin__  # E: "type[list]" has no attribute "__origin__"
+list.__args__  # E: "type[list]" has no attribute "__args__"

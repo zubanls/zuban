@@ -26,8 +26,8 @@ use crate::{
     recoverable_error,
     result_context::ResultContext,
     type_::{
-        DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple,
-        TupleUnpack,
+        ClassGenerics, DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue,
+        NamedTuple, TupleUnpack,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, Instance, InstanceLookupOptions,
@@ -524,7 +524,10 @@ impl Type {
                 );
                 callable(self, l)
             }
-            Type::TypeForm(tf) => todo!(),
+            Type::TypeForm(_) => {
+                let inst = i_s.db.python_state.object_class().instance();
+                callable(self, inst.lookup(i_s, name, options()))
+            }
         }
     }
 
@@ -1247,11 +1250,23 @@ fn attribute_access_of_type(
             },
             _ => LookupDetails::none(),
         },
-        Type::Class(g) => g.class(i_s.db).lookup(
-            i_s,
-            name,
-            ClassLookupOptions::new(&add_issue).with_kind(kind),
-        ),
+        Type::Class(g) => g
+            .class(i_s.db)
+            .lookup(
+                i_s,
+                name,
+                ClassLookupOptions::new(&add_issue).with_kind(kind),
+            )
+            .or_else(|| {
+                if matches!(g.generics, ClassGenerics::List(_)) {
+                    return i_s.db.python_state.generic_alias_class().lookup(
+                        i_s,
+                        name,
+                        ClassLookupOptions::new(&add_issue).with_kind(kind),
+                    );
+                }
+                LookupDetails::none()
+            }),
         Type::Literal(l) => l.as_instance(i_s.db).class.lookup(
             i_s,
             name,
