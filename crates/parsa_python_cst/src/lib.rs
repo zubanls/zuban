@@ -3049,7 +3049,7 @@ impl<'db> Iterator for SimpleNameIterator<'db> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum AssignmentRightSide<'db> {
     YieldExpr(YieldExpr<'db>),
     StarExpressions(StarExpressions<'db>),

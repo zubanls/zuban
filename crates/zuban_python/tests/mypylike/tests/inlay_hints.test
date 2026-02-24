@@ -223,3 +223,51 @@ __main__.py:3: Inlay Hints:
 - 24:7: " -> dict[int, int]"
 - 31:7: " -> set[int]"
 - 37:7: " -> set[int]"
+
+[case inlay_hints_for_generics]
+# flags: --mode default --no-typecheck
+#? inlay-hints
+from typing import TypedDict
+
+class C[T]:
+    def __init__(self, t: T): ...
+
+class TD[T](TypedDict):
+    x: T
+
+class F:
+    x = [1]
+    y = reversed([1])
+    z = list([1])
+
+    def f(self) -> None:
+        x = {1}
+        y = reversed([1])
+        z = dict([(1, "")])
+
+        c = C(1)
+        td = TD(x=1)
+
+[out]
+__main__.py:3: Inlay Hints:
+- 12:5: ": list[int]"
+- 13:5: ": Iterator[int]"
+- 14:5: ": list[int]"
+- 17:9: ": set[int]"
+- 18:9: ": Iterator[int]"
+- 19:9: ": dict[int, str]"
+- 21:9: ": C[int]"
+- 22:10: ": __main__.TD[int]"
+
+[case inlay_hints_with_dunder_call]
+# flags: --only-language-server
+#? inlay-hints
+class X:
+    def __call__(self) -> int: ...
+
+x = X()
+i = x()
+
+[out]
+__main__.py:3: Inlay Hints:
+- 7:1: ": int"
