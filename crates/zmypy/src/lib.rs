@@ -337,10 +337,7 @@ mod tests {
         // No venv information should fail to import
         assert_eq!(
             d(&[""]),
-            [
-                format!("m.py:1: {err}"),
-                format!("test-dir{}n.py:1: {err}", std::path::MAIN_SEPARATOR),
-            ]
+            [format!("m.py:1: {err}"), format!("test-dir/n.py:1: {err}"),]
         );
         // venv information via --python-executable should work
         let empty: [&str; _] = [];
@@ -381,29 +378,23 @@ mod tests {
             expect_diagnostics_error(Cli::parse_from(cli_args), test_dir.path().into())
         };
 
-        let err1 = format!(
-            "foo{sep}bar{sep}mod1.py:1: error: \"int\" not callable  [operator]",
-            sep = std::path::MAIN_SEPARATOR
-        );
-        let err2 = format!(
-            "foo{}mod2.py:1: error: \"int\" not callable  [operator]",
-            std::path::MAIN_SEPARATOR
-        );
+        let err1 = "foo/bar/mod1.py:1: error: \"int\" not callable  [operator]";
+        let err2 = "foo/mod2.py:1: error: \"int\" not callable  [operator]";
         let err3 = "mod3.py:1: error: \"int\" not callable  [operator]";
 
-        assert_eq!(d(&[""]), [&*err2]);
+        assert_eq!(d(&[""]), [err2]);
 
-        assert_eq!(d(&["", "foo/**/mod[1-9].py"]), [&*err1, &*err2]);
-        assert_eq!(d(&["", "**/*.py"]), [&*err1, &*err2, err3]);
-        assert_eq!(d(&["", "**/mod2.py"]), [&*err2]);
-        assert_eq!(d(&["", "**/"]), [&*err1, &*err2, err3]);
-        assert_eq!(d(&["", "**/mod?.py"]), [&*err1, &*err2, err3]);
+        assert_eq!(d(&["", "foo/**/mod[1-9].py"]), [err1, err2]);
+        assert_eq!(d(&["", "**/*.py"]), [err1, err2, err3]);
+        assert_eq!(d(&["", "**/mod2.py"]), [err2]);
+        assert_eq!(d(&["", "**/"]), [err1, err2, err3]);
+        assert_eq!(d(&["", "**/mod?.py"]), [err1, err2, err3]);
         assert_eq!(d(&["", "*.py"]), [err3]);
-        assert_eq!(d(&["", "foo"]), [&*err1, &*err2]);
-        assert_eq!(d(&["", "./foo"]), [&*err1, &*err2]);
-        assert_eq!(d(&["", "does-not-exist/../foo"]), [&*err1, &*err2]);
+        assert_eq!(d(&["", "foo"]), [err1, err2]);
+        assert_eq!(d(&["", "./foo"]), [err1, err2]);
+        assert_eq!(d(&["", "does-not-exist/../foo"]), [err1, err2]);
         // Same file twice
-        assert_eq!(d(&["", "foo", "foo/mod2.py"]), [&*err1, &*err2]);
+        assert_eq!(d(&["", "foo", "foo/mod2.py"]), [err1, err2]);
 
         expect_not_found(&["", "foo", "undefined-path"]);
         if cfg!(windows) {
@@ -571,10 +562,7 @@ mod tests {
 
         assert_eq!(
             d(&["", "foo/no_py_ending"]),
-            [format!(
-                "foo{}no_py_ending:1: error: \"int\" not callable  [operator]",
-                std::path::MAIN_SEPARATOR
-            )]
+            ["foo/no_py_ending:1: error: \"int\" not callable  [operator]",]
         );
         assert!(err(&["", "foo/"]).starts_with("No Python files found to check for"));
         assert_eq!(err(&[""]), "No Python files found to check");
