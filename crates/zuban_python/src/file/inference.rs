@@ -2508,6 +2508,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 );
             }
         }
+        if result_context.expects_type_form()
+            && !inferred
+                .as_cow_type(self.i_s)
+                .valid_in_type_form_assignment(self.i_s.db)
+        {
+            return self.compute_type_form_expr(expr);
+        }
         inferred
     }
 

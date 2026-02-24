@@ -746,6 +746,11 @@ impl Type {
         }
     }
 
+    pub fn valid_in_type_form_assignment(&self, db: &Database) -> bool {
+        self.iter_with_unpacked_unions(db)
+            .all(|t| matches!(t, Type::TypeForm(_) | Type::Type(_) | Type::None))
+    }
+
     pub fn iter_with_unpacked_unions_without_unpacking_recursive_types(
         &self,
     ) -> impl Iterator<Item = &Type> {

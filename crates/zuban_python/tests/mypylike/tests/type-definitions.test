@@ -1023,8 +1023,8 @@ ok5: TypeForm[str | None] = Optional[str]  # OK
 ok6: TypeForm[str | None] = "str | None"  # OK
 ok7: TypeForm[str | None] = Any  # OK
 
-err1: TypeForm[str | None] = str | int  # E
-err2: TypeForm[str | None] = list[str | None]  #
+err1: TypeForm[str | None] = str | int  # E: Incompatible types in assignment (expression has type "typing.TypeForm(str | int)", variable has type "typing.TypeForm(str | None)")
+err2: TypeForm[str | None] = list[str | None]  # E: Incompatible types in assignment (expression has type "type[list[str | None]]", variable has type "typing.TypeForm(str | None)")
 
 v_any: TypeForm[Any] = int | str
 v_str: TypeForm[str] = str
@@ -1053,15 +1053,16 @@ v4: TypeForm[set[str]] = "set[str]"  # OK
 Ts = TypeVarTuple("Ts")
 var = 1
 
-bad1: TypeForm = tuple()  # E
-bad2: TypeForm = (1, 2)  # E
+bad1: TypeForm = tuple()  # E: Invalid type comment or annotation
+bad2: TypeForm = (1, 2)  # E: Syntax error in type annotation \
+                         # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 bad3: TypeForm = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "typing.TypeForm(Any)")
-bad4: TypeForm = Self  # E
-bad5: TypeForm = ClassVar[int]  # E
-bad6: TypeForm = Final[int]  # E
-bad7: TypeForm = Unpack[Ts]  # E
-bad8: TypeForm = Optional  # E
-bad9: TypeForm = "int + str"  # E
+bad4: TypeForm = Self  # E: Self type is only allowed in annotations within class definition
+bad5: TypeForm = ClassVar[int]  # E: ClassVar can only be used for assignments in class body
+bad6: TypeForm = Final[int]  # E: Final can be only used as an outermost qualifier in a variable annotation
+bad7: TypeForm = Unpack[Ts]  # E: TypeVarTuple "Ts" is unbound
+bad8: TypeForm = Optional  # E: Optional[...] must have exactly one type argument
+bad9: TypeForm = "int + str"  # E: Invalid type comment or annotation
 
 [case type_form_execution_conformance_tests]
 # Copied conformance tests (typeforms_typeform.py)

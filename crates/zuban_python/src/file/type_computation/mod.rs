@@ -3735,24 +3735,25 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     pub fn execute_type_form(&self, args: &dyn Args) -> Inferred {
-        let execute = || {
-            if let Some(args) = args.maybe_simple_args()
-                && let Some(positional) = args.details.maybe_single_positional()
-            {
-                assert_eq!(args.file.file_index, self.file.file_index);
-                self.compute_type_for_expr(positional.expression(), TypeComputationOrigin::Other)
-                    .unwrap_or(Type::ERROR)
-            } else {
-                args.add_issue(
-                    self.i_s,
-                    IssueKind::ArgumentIssue(
-                        "TypeForm expects a single positional argument".into(),
-                    ),
-                );
-                Type::ERROR
-            }
+        if let Some(args) = args.maybe_simple_args()
+            && let Some(positional) = args.details.maybe_single_positional()
+        {
+            assert_eq!(args.file.file_index, self.file.file_index);
+            self.compute_type_form_expr(positional.expression())
+        } else {
+            args.add_issue(
+                self.i_s,
+                IssueKind::ArgumentIssue("TypeForm expects a single positional argument".into()),
+            );
+            Inferred::new_any_from_error()
+        }
+    }
+
+    pub fn compute_type_form_expr(&self, expr: Expression) -> Inferred {
+        let Ok(t) = self.compute_type_for_expr(expr, TypeComputationOrigin::Other) else {
+            return Inferred::new_any_from_error();
         };
-        Inferred::from_type(Type::TypeForm(Arc::new(execute())))
+        Inferred::from_type(Type::TypeForm(Arc::new(t)))
     }
 
     fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
