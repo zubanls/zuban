@@ -628,6 +628,7 @@ mod tests {
                 [file venv/Lib/site-packages/frompth.pth]
                 ../../..
                 ../../frompth
+                .
 
                 [file venv/frompth/my_frompth/__init__.py]
                 x = 1
@@ -662,10 +663,15 @@ mod tests {
                 # This adds the base path again, which should not recurse
                 ../../../..
                 ../../../frompth
+                # This recurses with the same dir, should not cause a crash
+                .
 
                 [file venv/frompth/my_frompth/__init__.py]
                 x = 1
                 [file venv/frompth/my_frompth/py.typed]
+                [file venv/frompth/venv.pth]
+                # Introduce a recursion that should cause no problems
+                ../lib/python3.12/site-packages
 
                 [file venv/lib/python3.12/site-packages/foo.py]
 
