@@ -626,6 +626,7 @@ mod tests {
                 version = 3.12.3
 
                 [file venv/Lib/site-packages/frompth.pth]
+                ../../..
                 ../../frompth
 
                 [file venv/frompth/my_frompth/__init__.py]
@@ -658,6 +659,8 @@ mod tests {
                 version = 3.12.3
 
                 [file venv/lib/python3.12/site-packages/frompth.pth]
+                # This adds the base path again, which should not recurse
+                ../../../..
                 ../../../frompth
 
                 [file venv/frompth/my_frompth/__init__.py]

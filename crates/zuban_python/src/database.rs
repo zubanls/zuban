@@ -1065,7 +1065,7 @@ impl Database {
                 vfs.handler
                     .unchecked_normalized_path(vfs.handler.unchecked_abs_path(&p)),
                 WorkspaceKind::Typeshed,
-            )
+            );
         }
 
         for (kind, p) in &project.sys_path {
@@ -1143,7 +1143,7 @@ impl Database {
         };
 
         for (kind, p1) in &new_db.project.sys_path {
-            new_db.vfs.add_workspace(p1.clone(), *kind)
+            new_db.vfs.add_workspace(p1.clone(), *kind);
         }
         tracing::debug!(
             "Workspace base paths (for reused project): {:?}",
@@ -1564,7 +1564,10 @@ fn add_workspace_and_check_for_pth_files(
     is_recovery: bool,
     kind: WorkspaceKind,
 ) {
-    vfs.add_workspace(path, kind);
+    if !vfs.add_workspace(path, kind) {
+        // The workspace was already added
+        return;
+    };
     if !is_recovery {
         // Imitate the logic for .pth files. Copied some of the logic from site.py from the Python
         // standard library.

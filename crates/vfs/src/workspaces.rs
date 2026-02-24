@@ -35,14 +35,15 @@ impl Workspaces {
         scheme: Scheme,
         root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
-    ) {
+    ) -> bool {
         let mut items = self.items.write().unwrap();
         if items.iter().any(|item| item.root_path == root) {
             // The path is already in there
-            return;
+            return false;
         }
         let workspace = Workspace::new(vfs, &*items, scheme, root, kind);
-        items.push(workspace)
+        items.push(workspace);
+        true
     }
 
     pub(crate) fn add_at_start(

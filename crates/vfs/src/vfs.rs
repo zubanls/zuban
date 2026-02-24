@@ -221,7 +221,7 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&self, root_path: Arc<NormalizedPath>, kind: WorkspaceKind) {
+    pub fn add_workspace(&self, root_path: Arc<NormalizedPath>, kind: WorkspaceKind) -> bool {
         self.workspaces
             .add(&*self.handler, file_scheme(), root_path, kind)
     }
