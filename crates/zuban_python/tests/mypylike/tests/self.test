@@ -687,5 +687,5 @@ class Selection[ValueT]:
     pass
 
 class ServerProfile:
-	def do_on_select(self) -> None:
-		x = Selection[Self]()
+    def do_on_select(self) -> None:
+        x = Selection[Self]()
