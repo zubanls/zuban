@@ -2360,6 +2360,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         name_def.index(),
                         IssueKind::NameError {
                             name: name_def.as_code().into(),
+                            note: None,
                         },
                     );
                     self.assign_any_to_target(target, NodeRef::new(self.file, name_def.index()));

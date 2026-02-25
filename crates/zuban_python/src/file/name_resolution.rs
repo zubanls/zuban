@@ -382,12 +382,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             save_to_index,
                         ));
                     }
-                    self.add_issue(
-                        save_to_index,
-                        IssueKind::NameError {
-                            name: Box::from(name_str),
-                        },
-                    );
+                    let mut note = None;
                     if !name_str.starts_with('_')
                         && i_s
                             .db
@@ -397,17 +392,21 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             .is_some()
                     {
                         // TODO what about underscore or other vars?
-                        self.add_issue(
-                            save_to_index,
-                            IssueKind::Note(
-                                format!(
-                                    "Did you forget to import it from \"typing\"? \
+                        note = Some(
+                            format!(
+                                "Did you forget to import it from \"typing\"? \
                              (Suggestion: \"from typing import {name_str}\")",
-                                )
-                                .into(),
-                            ),
+                            )
+                            .into(),
                         );
                     }
+                    self.add_issue(
+                        save_to_index,
+                        IssueKind::NameError {
+                            name: Box::from(name_str),
+                            note,
+                        },
+                    );
                     Point::new_specific(Specific::AnyDueToError, Locality::Todo)
                 }
             }

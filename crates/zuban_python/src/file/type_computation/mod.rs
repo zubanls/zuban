@@ -160,6 +160,7 @@ impl InvalidVariableType<'_> {
             }
             Self::NameError { name } => IssueKind::NameError {
                 name: (*name).into(),
+                note: None,
             },
             Self::Function { node_ref } => IssueKind::InvalidType {
                 message: format!(
@@ -1238,17 +1239,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::ParamSpec(p) => {
                 self.add_issue(
                     node_ref,
-                    IssueKind::new_invalid_type(format!(
+                    IssueKind::InvalidType{message: format!(
                         "Invalid location for ParamSpec \"{}\"",
-                        p.param_spec.name(self.i_s.db),
-                    )),
-                );
-                self.add_issue(
-                    node_ref,
-                    IssueKind::Note(Box::from(
-                        "You can use ParamSpec as the first \
-                                              argument to Callable, e.g., \"Callable[P, int]\"",
-                    )),
+                        p.param_spec.name(self.i_s.db)
+                    ).into(), additional_note: Some("You can use ParamSpec as the first \
+                                              argument to Callable, e.g., \"Callable[P, int]\"")},
                 );
             }
             TypeContent::Unpacked(t) => {
@@ -3331,15 +3326,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn add_module_issue(&self, node_ref: NodeRef, qualified_name: &str) {
         self.add_issue(
             node_ref,
-            IssueKind::new_invalid_type (
-                format!("Module \"{qualified_name}\" is not valid as a type",)
-            ),
-        );
-        self.add_issue(
-            node_ref,
-            IssueKind::Note(Box::from(
-                "Perhaps you meant to use a protocol matching the module structure?",
-            )),
+            IssueKind::InvalidType {
+                message: format!("Module \"{qualified_name}\" is not valid as a type",).into(),
+                additional_note: Some("Perhaps you meant to use a protocol matching the module structure?"),
+            },
         );
     }
 }

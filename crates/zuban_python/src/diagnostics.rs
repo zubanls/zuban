@@ -38,7 +38,7 @@ pub(crate) enum IssueKind {
     ImportStubNoExplicitReexport { module_name: Box<str>, attribute: Box<str> },
     UnsupportedClassScopedImport,
     UnimportedRevealType,  // From --enable-error-code=unimported-reveal
-    NameError { name: Box<str> },
+    NameError { name: Box<str>, note: Option<Box<str>> },
     ReadingDeletedVariable,
     ArgumentIssue(Box<str>),
     ArgumentTypeIssue(Box<str>),
@@ -237,7 +237,7 @@ pub(crate) enum IssueKind {
         string_name: Box<str>,
         variable_name: Box<str>
     },
-    TypeVarInReturnButNotArgument,
+    TypeVarInReturnButNotArgument { note: Option<Box<str>> },
     TypeVarCovariantInParamType,
     TypeVarContravariantInReturnType,
     TypeVarVarianceIncompatibleWithParentType { type_var_name: Box<str> },
@@ -557,7 +557,7 @@ impl IssueKind {
             | InvalidSetItemTarget { .. } => "assignment",
             CannotAssignToAMethod => "method-assign",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
-            TypeVarInReturnButNotArgument
+            TypeVarInReturnButNotArgument { .. }
             | TypeVarCovariantInParamType
             | TypeVarContravariantInReturnType
             | TypeVarVarianceIncompatibleWithParentType { .. }
@@ -811,7 +811,7 @@ impl<'db> Diagnostic<'db> {
                 | AttributeError { .. }
                 | OverloadUnmatchable { .. }
                 | OverloadImplementationParamsNotBroadEnough { .. }
-                | TypeVarInReturnButNotArgument
+                | TypeVarInReturnButNotArgument { .. }
                 | OnlyClassTypeApplication
                 | UnsupportedClassScopedImport
                 | CannotInheritFromFinalClass { .. }
@@ -858,7 +858,12 @@ impl<'db> Diagnostic<'db> {
             ),
             UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_string(),
-            NameError{name} => format!(r#"Name "{name}" is not defined"#),
+            NameError{ name, note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.clone().into())
+                }
+                format!(r#"Name "{name}" is not defined"#)
+            }
             ReadingDeletedVariable => format!(
                 r#"Trying to read deleted variable "{}""#,
                 self.code_under_issue()
@@ -1555,8 +1560,12 @@ impl<'db> Diagnostic<'db> {
                 "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
             ),
-            TypeVarInReturnButNotArgument =>
-                "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string(),
+            TypeVarInReturnButNotArgument { note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.clone().into())
+                }
+                "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string()
+            }
             TypeVarCovariantInParamType =>
                 "Cannot use a covariant type variable as a parameter".to_string(),
             TypeVarContravariantInReturnType =>

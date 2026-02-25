@@ -393,19 +393,18 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             && unbound_in_params.contains(&TypeVarLike::TypeVar(usage.type_var.clone()))
         {
             let node_ref = self.expect_return_annotation_node_ref();
-            node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
-            if let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db) {
-                node_ref.add_issue(
-                    i_s,
-                    IssueKind::Note(
-                        format!(
-                            "Consider using the upper bound \"{}\" instead",
-                            bound.format_short(i_s.db)
-                        )
-                        .into(),
-                    ),
-                );
-            }
+            let note = if let TypeVarKind::Bound(bound) = usage.type_var.kind(i_s.db) {
+                Some(
+                    format!(
+                        "Consider using the upper bound \"{}\" instead",
+                        bound.format_short(i_s.db)
+                    )
+                    .into(),
+                )
+            } else {
+                None
+            };
+            node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument { note });
         }
         for type_var_like in unbound_type_vars.into_iter() {
             self.add_issue_for_declaration(

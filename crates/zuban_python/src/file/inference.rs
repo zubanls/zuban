@@ -562,6 +562,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         name_def.index(),
                         IssueKind::NameError {
                             name: name_def.as_code().into(),
+                            note: None,
                         },
                     )
                 }
