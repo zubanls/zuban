@@ -1641,27 +1641,21 @@ impl Inference<'_, '_, '_> {
         {
             let ret_type = function.expected_return_type_for_return_stmt(i_s);
             let has_trivial_body = function.has_trivial_body(i_s);
-            let maybe_add_async = || {
-                if has_trivial_body
+            let maybe_async_note = || {
+                (has_trivial_body
                     && function
                         .class
                         .and_then(|c| c.maybe_metaclass(i_s.db))
-                        .is_some_and(|metaclass| metaclass == i_s.db.python_state.abc_meta_link())
-                {
-                    self.add_issue(
-                        name_def.index(),
-                        IssueKind::Note(
-                            "If the method is meant to be abstract, use @abc.abstractmethod".into(),
-                        ),
-                    );
-                }
+                        .is_some_and(|metaclass| metaclass == i_s.db.python_state.abc_meta_link()))
+                .then_some("If the method is meant to be abstract, use @abc.abstractmethod")
             };
             if matches!(ret_type.as_ref(), Type::Never(_)) {
                 self.add_issue(
                     name_def.index(),
-                    IssueKind::ImplicitReturnInFunctionWithNeverReturn,
+                    IssueKind::ImplicitReturnInFunctionWithNeverReturn {
+                        note: maybe_async_note(),
+                    },
                 );
-                maybe_add_async()
             } else {
                 let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
                 if self.flags().warn_no_return {
@@ -1678,9 +1672,9 @@ impl Inference<'_, '_, '_> {
                                 } else {
                                     "return"
                                 },
+                                note: maybe_async_note(),
                             },
                         );
-                        maybe_add_async()
                     }
                 } else if !is_valid {
                     if has_trivial_body {
@@ -1693,18 +1687,18 @@ impl Inference<'_, '_, '_> {
                                     } else {
                                         "return"
                                     },
+                                    note: maybe_async_note(),
                                 },
                             );
-                            maybe_add_async()
                         }
                     } else {
                         self.add_issue(
                             name_def.index(),
                             IssueKind::IncompatibleImplicitReturn {
                                 expected: ret_type.format_short(i_s.db),
+                                note: maybe_async_note(),
                             },
                         );
-                        maybe_add_async()
                     }
                 }
             }

@@ -47,7 +47,7 @@ pub(crate) enum IssueKind {
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
-    IncompatibleImplicitReturn { expected: Box<str> },
+    IncompatibleImplicitReturn { expected: Box<str>, note: Option<&'static str> },
     ReturnValueExpected,
     NoReturnValueExpected,
     IncompatibleTypes { cause: &'static str, got: Box<str>, expected: Box<str> },
@@ -55,8 +55,8 @@ pub(crate) enum IssueKind {
     InvalidGeneratorReturnType,
     InvalidAsyncGeneratorReturnType,
     ReturnStmtInFunctionWithNeverReturn,
-    ImplicitReturnInFunctionWithNeverReturn,
-    MissingReturnStatement { code: &'static str },
+    ImplicitReturnInFunctionWithNeverReturn { note: Option<&'static str> },
+    MissingReturnStatement { code: &'static str, note: Option<&'static str> },
     YieldFromIncompatibleSendTypes { got: Box<str>, expected: Box<str> },
     YieldFromCannotBeApplied { to: Box<str> },
     YieldValueExpected,
@@ -547,7 +547,7 @@ impl IssueKind {
             | IncompatibleImplicitReturn { .. }
             | ReturnValueExpected
             | NoReturnValueExpected => "return-value",
-            MissingReturnStatement { code } => code,
+            MissingReturnStatement { code, .. } => code,
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
@@ -871,9 +871,12 @@ impl<'db> Diagnostic<'db> {
             IncompatibleReturn{got, expected} => {
                 format!(r#"Incompatible return value type (got "{got}", expected "{expected}")"#)
             }
-            IncompatibleImplicitReturn { expected } => format!(
-                r#"Incompatible return value type (implicitly returns "None", expected "{expected}")"#
-            ),
+            IncompatibleImplicitReturn { expected, note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.to_string())
+                }
+                format!(r#"Incompatible return value type (implicitly returns "None", expected "{expected}")"#)
+            }
             ReturnValueExpected => "Return value expected".to_string(),
             NoReturnValueExpected => "No return value expected".to_string(),
             IncompatibleTypes{cause, got, expected} => {
@@ -886,9 +889,18 @@ impl<'db> Diagnostic<'db> {
                 r#"The return type of an async generator function should be "AsyncGenerator" or one of its supertypes"#.to_string(),
             ReturnStmtInFunctionWithNeverReturn =>
                 "Return statement in function which does not return".to_string(),
-            ImplicitReturnInFunctionWithNeverReturn =>
-                "Implicit return in function which does not return".to_string(),
-            MissingReturnStatement { .. } => "Missing return statement".to_string(),
+            ImplicitReturnInFunctionWithNeverReturn { note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.to_string());
+                }
+                "Implicit return in function which does not return".to_string()
+            }
+            MissingReturnStatement { note, .. } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.to_string());
+                }
+                "Missing return statement".to_string()
+            },
             YieldFromIncompatibleSendTypes { got, expected } => format!(
                 r#"Incompatible send types in yield from (actual type "{got}", expected type "{expected}")"#
             ),
