@@ -299,10 +299,10 @@ impl TestCase<'_, '_> {
                 &mut settings,
                 &mut config,
                 &mut diagnostic_config,
-                flags.cli,
                 current_dir.clone(),
-                None,
+                flags.cli,
                 current_dir,
+                None,
             );
         });
 

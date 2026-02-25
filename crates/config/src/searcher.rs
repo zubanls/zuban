@@ -5,7 +5,7 @@ use toml_edit::DocumentMut;
 use vfs::{AbsPath, VfsHandler};
 
 const PYPROJECT_TOML_NAME: &str = "pyproject.toml";
-const CONFIG_PATHS: [&str; 4] = [
+const CONFIG_NAMES: [&str; 4] = [
     // Mypy prioritizes mypy.ini. But since we allow [tool.zuban] entries as well it makes sense
     // to check that first. I doubt many people have both mypy.ini and pyproject.toml configs for
     // Mypy.
@@ -83,7 +83,7 @@ pub fn find_cli_config(
 
 fn initialize_config(
     vfs: &dyn VfsHandler,
-    current_dir: &AbsPath,
+    in_dir: &AbsPath,
     config_path: Arc<AbsPath>,
     content: String,
     mode: Option<Mode>,
@@ -93,20 +93,14 @@ fn initialize_config(
     let options = if config_path.ends_with(".toml") {
         ProjectOptions::from_pyproject_toml_only(
             vfs,
-            current_dir,
+            in_dir,
             &config_path,
             &content,
             &mut diagnostic_config,
             mode,
         )?
     } else {
-        ProjectOptions::from_mypy_ini(
-            vfs,
-            current_dir,
-            &config_path,
-            &content,
-            &mut diagnostic_config,
-        )?
+        ProjectOptions::from_mypy_ini(vfs, in_dir, &config_path, &content, &mut diagnostic_config)?
     };
     Ok((options, diagnostic_config, config_path))
 }
@@ -119,7 +113,7 @@ fn find_mypy_config_file_in_dir(
 ) -> anyhow::Result<Option<FoundConfig>> {
     let mut end_result = None;
     let mut pyproject_toml: Option<DocumentMut> = None;
-    for config_name in CONFIG_PATHS.iter() {
+    for config_name in CONFIG_NAMES.iter() {
         let path = vfs.join(&dir, config_name);
         on_check_path(&path);
         if let Ok(mut file) = std::fs::File::open(path.as_ref()) {
@@ -197,12 +191,12 @@ fn find_mypy_config_file_in_dir(
 fn default_config(
     mode: Option<Mode>,
     config_path: Option<Arc<AbsPath>>,
-    current_dir: Arc<AbsPath>,
+    dir: Arc<AbsPath>,
 ) -> FoundConfig {
     FoundConfig {
         project_options: ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Default)),
         diagnostic_config: DiagnosticConfig::default(),
         config_path,
-        most_probable_base: current_dir,
+        most_probable_base: dir,
     }
 }

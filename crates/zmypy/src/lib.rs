@@ -88,18 +88,20 @@ fn project_from_cli(
         options.settings.typeshed_path = Some(typeshed_path);
     }
 
-    options
-        .settings
-        .try_to_apply_environment_variables(&local_fs, &current_dir, lookup_env_var);
+    options.settings.try_to_apply_environment_variables(
+        &local_fs,
+        &found.most_probable_base,
+        lookup_env_var,
+    );
 
     cli_args::apply_flags(
         &local_fs,
         &mut options,
         &mut found.diagnostic_config,
-        cli,
         current_dir,
-        found.config_path.as_deref(),
+        cli,
         found.most_probable_base,
+        found.config_path.as_deref(),
     );
 
     (
@@ -438,10 +440,10 @@ mod tests {
             &local_fs,
             &mut project_options,
             &mut DiagnosticConfig::default(),
+            current_dir.clone(),
             cli,
-            current_dir.clone(),
-            Some(current_dir.as_ref()),
-            current_dir.clone(),
+            current_dir,
+            None,
         );
         let files: Vec<&str> = project_options
             .settings
@@ -481,21 +483,33 @@ mod tests {
     #[test]
     fn test_relative_dirs_in_output() {
         logging_config::setup_logging_for_tests();
+        // Add files for both Windows and Unix
         let fixture = format!(
             r#"
+            [file venv/bin/python]
+
+            [file venv/pyvenv.cfg]
+            include-system-site-packages = false
+            version = 3.12.3
+
+            [file venv/Lib/site-packages/invenv.py]
+            [file venv/lib/python3.12/site-packages/invenv.py]
+
             [file pyproject.toml]
             [tool.zuban]
             [file folder1/m1.py]
             from folder2 import m2
+            import invenv
             1()
             [file folder2/m2.py]
             from folder1 import m1
+            import invenv
             ""()
             "#
         );
         let test_dir = test_utils::write_files_from_fixture(&fixture, false);
-        let m1 = r#"m1.py:2: error: "int" not callable  [operator]"#;
-        let m2 = r#"../folder2/m2.py:2: error: "str" not callable  [operator]"#;
+        let m1 = r#"m1.py:3: error: "int" not callable  [operator]"#;
+        let m2 = r#"../folder2/m2.py:3: error: "str" not callable  [operator]"#;
         let all_issues = [m2, m1];
 
         let dir = &format!("{}/folder1", test_dir.path());

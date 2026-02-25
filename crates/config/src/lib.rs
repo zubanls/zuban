@@ -122,13 +122,13 @@ impl Settings {
     pub fn apply_python_executable(
         &mut self,
         handler: &dyn VfsHandler,
-        current_dir: &AbsPath,
+        project_dir: &AbsPath,
         config_file_path: Option<&AbsPath>,
         python_executable: &str,
     ) -> anyhow::Result<()> {
         const ERR: &str = "Expected a python-executable to be at least two directories deep";
         let python_executable =
-            to_normalized_path(handler, current_dir, config_file_path, python_executable);
+            to_normalized_path(handler, project_dir, config_file_path, python_executable);
         let Some(executable_dir) = python_executable.as_ref().as_ref().parent() else {
             bail!(ERR)
         };
@@ -149,7 +149,7 @@ impl Settings {
     pub fn set_files_or_directories_to_check(
         &mut self,
         handler: &dyn VfsHandler,
-        current_dir: &AbsPath,
+        project_dir: &AbsPath,
         config_file_path: Option<&AbsPath>,
         items: impl IntoIterator<Item = String>,
     ) -> anyhow::Result<()> {
@@ -158,7 +158,7 @@ impl Settings {
             .map(|s| {
                 GlobAbsPath::new(
                     handler,
-                    current_dir,
+                    project_dir,
                     &replace_env_vars(config_file_path, &s),
                 )
             })
@@ -185,15 +185,15 @@ impl Settings {
 
 fn to_normalized_path(
     handler: &dyn VfsHandler,
-    current_dir: &AbsPath,
+    project_dir: &AbsPath,
     config_file_path: Option<&AbsPath>,
     s: &str,
 ) -> Arc<NormalizedPath> {
     // Replace only $MYPY_CONFIG_FILE_DIR for now.
     handler.normalize_rc_path(if s.contains('$') {
-        handler.absolute_path(current_dir, &replace_env_vars(config_file_path, s))
+        handler.absolute_path(project_dir, &replace_env_vars(config_file_path, s))
     } else {
-        handler.absolute_path(current_dir, s)
+        handler.absolute_path(project_dir, s)
     })
 }
 
@@ -243,7 +243,7 @@ impl ProjectOptions {
 
     pub fn from_mypy_ini(
         vfs: &dyn VfsHandler,
-        current_dir: &AbsPath,
+        project_dir: &AbsPath,
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
@@ -258,7 +258,7 @@ impl ProjectOptions {
                 for (key, value) in section.iter() {
                     apply_from_base_config(
                         vfs,
-                        current_dir,
+                        project_dir,
                         Some(config_file_path),
                         &mut result.settings,
                         &mut result.flags,
@@ -287,7 +287,7 @@ impl ProjectOptions {
 
     pub fn from_pyproject_toml_only(
         vfs: &dyn VfsHandler,
-        current_dir: &AbsPath,
+        project_dir: &AbsPath,
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
@@ -306,7 +306,7 @@ impl ProjectOptions {
         }
         let result = Self::apply_pyproject_toml_mypy_part(
             vfs,
-            current_dir,
+            project_dir,
             config_file_path,
             &document,
             diagnostic_config,
@@ -317,7 +317,7 @@ impl ProjectOptions {
                 result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or(Mode::Default)));
             result.apply_pyproject_table(
                 vfs,
-                current_dir,
+                project_dir,
                 config_file_path,
                 diagnostic_config,
                 config,
@@ -331,7 +331,7 @@ impl ProjectOptions {
 
     pub fn apply_pyproject_toml_mypy_part(
         vfs: &dyn VfsHandler,
-        current_dir: &AbsPath,
+        project_dir: &AbsPath,
         config_file_path: &AbsPath,
         document: &DocumentMut,
         diagnostic_config: &mut DiagnosticConfig,
@@ -343,7 +343,7 @@ impl ProjectOptions {
             let mut result = ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Mypy));
             result.apply_pyproject_table(
                 vfs,
-                current_dir,
+                project_dir,
                 config_file_path,
                 diagnostic_config,
                 config,
@@ -358,7 +358,7 @@ impl ProjectOptions {
     fn apply_pyproject_table(
         &mut self,
         vfs: &dyn VfsHandler,
-        current_dir: &AbsPath,
+        project_dir: &AbsPath,
         config_file_path: &AbsPath,
         diagnostic_config: &mut DiagnosticConfig,
         config: &Item,
@@ -379,7 +379,7 @@ impl ProjectOptions {
                 Item::Value(value) => {
                     apply_from_base_config(
                         vfs,
-                        current_dir,
+                        project_dir,
                         Some(config_file_path),
                         &mut self.settings,
                         &mut self.flags,
@@ -1031,7 +1031,7 @@ fn map_clap_error(arg: &str, err: String) -> anyhow::Error {
 #[expect(clippy::too_many_arguments)]
 fn apply_from_base_config(
     vfs: &dyn VfsHandler,
-    current_dir: &AbsPath,
+    project_dir: &AbsPath,
     config_file_path: Option<&AbsPath>,
     settings: &mut Settings,
     flags: &mut TypeCheckerFlags,
@@ -1071,7 +1071,7 @@ fn apply_from_base_config(
         }
         "files" => settings.set_files_or_directories_to_check(
             vfs,
-            current_dir,
+            project_dir,
             config_file_path,
             value.as_str_list(key, &[','])?,
         )?,
@@ -1079,10 +1079,10 @@ fn apply_from_base_config(
             value
                 .as_str_list(key, &[',', ':'])?
                 .into_iter()
-                .map(|s| to_normalized_path(vfs, current_dir, config_file_path, &s)),
+                .map(|s| to_normalized_path(vfs, project_dir, config_file_path, &s)),
         ),
         "python_executable" => {
-            settings.apply_python_executable(vfs, current_dir, config_file_path, value.as_str()?)?
+            settings.apply_python_executable(vfs, project_dir, config_file_path, value.as_str()?)?
         }
         "python_version" => {
             settings.python_version = Some(if let IniOrTomlValue::Toml(Value::Float(f)) = &value {
@@ -1174,20 +1174,20 @@ mod tests {
 
     fn project_options(code: &str, from_ini: bool) -> anyhow::Result<Option<ProjectOptions>> {
         let local_fs = LocalFS::without_watcher();
-        let current_dir = local_fs.unchecked_abs_path("/foo");
+        let project_dir = local_fs.unchecked_abs_path("/foo");
         if from_ini {
             ProjectOptions::from_mypy_ini(
                 &local_fs,
-                &current_dir,
-                &current_dir,
+                &project_dir,
+                &project_dir,
                 code,
                 &mut DiagnosticConfig::default(),
             )
         } else {
             ProjectOptions::from_pyproject_toml_only(
                 &local_fs,
-                &current_dir,
-                &current_dir,
+                &project_dir,
+                &project_dir,
                 code,
                 &mut DiagnosticConfig::default(),
                 None,

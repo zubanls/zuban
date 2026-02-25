@@ -294,20 +294,20 @@ pub fn apply_flags(
     vfs_handler: &SimpleLocalFS,
     project_options: &mut ProjectOptions,
     diagnostic_config: &mut DiagnosticConfig,
-    cli: Cli,
     current_dir: Arc<AbsPath>,
+    cli: Cli,
+    project_dir: Arc<AbsPath>,
     config_path: Option<&AbsPath>,
-    most_probable_base: Arc<AbsPath>,
 ) {
     apply_flags_detailed(
         vfs_handler,
         &mut project_options.settings,
         &mut project_options.flags,
         diagnostic_config,
-        cli,
         current_dir,
+        cli,
+        project_dir,
         config_path,
-        most_probable_base,
     )
 }
 
@@ -316,10 +316,10 @@ pub fn apply_flags_detailed(
     settings: &mut Settings,
     flags: &mut TypeCheckerFlags,
     diagnostic_config: &mut DiagnosticConfig,
-    cli: Cli,
     current_dir: Arc<AbsPath>,
+    cli: Cli,
+    project_dir: Arc<AbsPath>,
     config_path: Option<&AbsPath>,
-    most_probable_base: Arc<AbsPath>,
 ) {
     if let Some(mode) = cli.mode {
         settings.mode = mode.into();
@@ -333,14 +333,14 @@ pub fn apply_flags_detailed(
         settings,
         flags,
         diagnostic_config,
-        cli.mypy_options,
         current_dir,
+        cli.mypy_options,
         config_path,
     );
 
     settings
         .mypy_path
-        .push(vfs_handler.normalize_rc_path(most_probable_base));
+        .push(vfs_handler.normalize_rc_path(project_dir));
 }
 
 fn apply_mypy_flags(
@@ -348,8 +348,8 @@ fn apply_mypy_flags(
     settings: &mut Settings,
     flags: &mut TypeCheckerFlags,
     diagnostic_config: &mut DiagnosticConfig,
-    cli: MypyCli,
     current_dir: Arc<AbsPath>,
+    cli: MypyCli,
     config_path: Option<&AbsPath>,
 ) {
     macro_rules! apply {
