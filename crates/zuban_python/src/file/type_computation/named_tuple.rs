@@ -76,7 +76,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
             let StarLikeExpression::NamedExpression(type_expr) = second else {
                 self.name_resolution.add_issue(
                     name_expr.index(),
-                    IssueKind::InvalidType("Star args are not supported".into()),
+                    IssueKind::new_invalid_type("Star args are not supported"),
                 );
                 return None;
             };

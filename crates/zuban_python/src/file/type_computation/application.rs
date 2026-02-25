@@ -180,7 +180,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 self.add_issue(
                     slice_type.cst_node.index(),
-                    IssueKind::InvalidType("Invalid type application".to_string().into()),
+                    IssueKind::new_invalid_type("Invalid type application"),
                 );
                 Inferred::new_any_from_error()
             }

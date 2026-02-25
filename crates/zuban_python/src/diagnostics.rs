@@ -157,7 +157,7 @@ pub(crate) enum IssueKind {
     ProtocolWithTypeParamsNoBracketsExpected,
     InvalidShadowingOfTypeshedModule { module: &'static str },
 
-    InvalidType(Box<str>),
+    InvalidType { message: Box<str>, additional_note: Option<&'static str> },
     InvalidTypeDeclaration,
     ClassVarOnlyInAssignmentsInClass,
     ClassVarNestedInsideOtherType,
@@ -542,7 +542,7 @@ impl IssueKind {
             | NotIterableMissingIterInUnion { .. } => "union-attr",
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject { .. } => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
-            InvalidType(_) => "valid-type",
+            InvalidType { .. } => "valid-type",
             IncompatibleReturn { .. }
             | IncompatibleImplicitReturn { .. }
             | ReturnValueExpected
@@ -678,6 +678,13 @@ impl IssueKind {
             }
         }
         true
+    }
+
+    pub(crate) fn new_invalid_type(message: impl Into<Box<str>>) -> Self {
+        IssueKind::InvalidType {
+            message: message.into(),
+            additional_note: None,
+        }
     }
 }
 
@@ -971,7 +978,13 @@ impl<'db> Diagnostic<'db> {
             NameUsedBeforeDefinition { name } => format!(
                 r#"Name "{name}" is used before definition"#
             ),
-            ArgumentIssue(s) | ArgumentTypeIssue(s) | InvalidType(s) => s.clone().into(),
+            ArgumentIssue(s) | ArgumentTypeIssue(s) => s.clone().into(),
+            InvalidType { message, additional_note } => {
+                if let Some(additional_note) = additional_note {
+                    additional_notes.push(additional_note.to_string());
+                }
+                message.clone().into()
+            }
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
             TooFewArguments(rest) => format!("Too few arguments{rest}"),
             IncompatibleDefaultArgument {argument_name, got, expected} => {
