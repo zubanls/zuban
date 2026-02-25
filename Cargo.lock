@@ -218,7 +218,7 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
 name = "cli_args"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -255,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -888,7 +888,7 @@ dependencies = [
 
 [[package]]
 name = "licensing"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -922,7 +922,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "logging_config"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "tracing",
@@ -1116,7 +1116,7 @@ dependencies = [
 
 [[package]]
 name = "parsa"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "lazy_static",
  "regex",
@@ -1125,7 +1125,7 @@ dependencies = [
 
 [[package]]
 name = "parsa_python"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "insta",
  "lazy_static",
@@ -1136,7 +1136,7 @@ dependencies = [
 
 [[package]]
 name = "parsa_python_cst"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "num-bigint",
  "num-traits",
@@ -1216,7 +1216,7 @@ checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
 [[package]]
 name = "primer"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "clap",
  "cli_args",
@@ -1391,7 +1391,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scripts"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "parsa_python",
  "zuban_python",
@@ -1589,7 +1589,7 @@ dependencies = [
 
 [[package]]
 name = "test_utils"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "lazy_static",
  "regex",
@@ -1838,7 +1838,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "dirs",
  "fnv",
@@ -1860,7 +1860,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vfs"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -2174,7 +2174,7 @@ checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 
 [[package]]
 name = "zmypy"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2191,7 +2191,7 @@ dependencies = [
 
 [[package]]
 name = "zuban"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2204,7 +2204,7 @@ dependencies = [
 
 [[package]]
 name = "zuban_benchmark"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "config",
  "criterion",
@@ -2217,7 +2217,7 @@ dependencies = [
 
 [[package]]
 name = "zuban_python"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2245,7 +2245,7 @@ dependencies = [
 
 [[package]]
 name = "zubanls"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
