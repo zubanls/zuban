@@ -1146,7 +1146,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeComputationOrigin::NamedTupleMember => {
                                 IssueKind::NamedTupleSelfNotAllowed
                             }
-                            TypeComputationOrigin::TypeAlias => IssueKind::SelfTypeInTypeAliasTarget,
+                            TypeComputationOrigin::TypeAlias => {
+                                IssueKind::SelfTypeInTypeAliasTarget
+                            }
                             TypeComputationOrigin::TypeApplication => {
                                 if self.i_s.current_class().is_some() {
                                     return Some(Type::Self_);
@@ -1175,7 +1177,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             }
                         },
                     );
-                },
+                }
                 Specific::TypingNamedTuple => {
                     return Some(db.python_state.typing_named_tuple_type());
                 }
@@ -1206,7 +1208,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         node_ref,
                         IssueKind::MustHaveOneArgument { name: "TypeGuard" },
                     );
-                },
+                }
                 Specific::TypingTypeIs => {
                     self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" });
                 }
@@ -1235,23 +1237,31 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 _ => {
                     self.add_issue(node_ref, IssueKind::new_invalid_type("Invalid type"));
-                },
+                }
             },
-            TypeContent::TypeVarTuple(t) => {self.add_issue(
-                node_ref,
-                IssueKind::new_invalid_type(format!(
-                    "TypeVarTuple \"{}\" is only valid with an unpack",
-                    t.type_var_tuple.name(self.i_s.db),
-                )),
-            );},
+            TypeContent::TypeVarTuple(t) => {
+                self.add_issue(
+                    node_ref,
+                    IssueKind::new_invalid_type(format!(
+                        "TypeVarTuple \"{}\" is only valid with an unpack",
+                        t.type_var_tuple.name(self.i_s.db),
+                    )),
+                );
+            }
             TypeContent::ParamSpec(p) => {
                 self.add_issue(
                     node_ref,
-                    IssueKind::InvalidType{message: format!(
-                        "Invalid location for ParamSpec \"{}\"",
-                        p.param_spec.name(self.i_s.db)
-                    ).into(), additional_note: Some("You can use ParamSpec as the first \
-                                              argument to Callable, e.g., \"Callable[P, int]\"")},
+                    IssueKind::InvalidType {
+                        message: format!(
+                            "Invalid location for ParamSpec \"{}\"",
+                            p.param_spec.name(self.i_s.db)
+                        )
+                        .into(),
+                        additional_note: Some(
+                            "You can use ParamSpec as the first \
+                                              argument to Callable, e.g., \"Callable[P, int]\"",
+                        ),
+                    },
                 );
             }
             TypeContent::Unpacked(t) => {
@@ -2897,10 +2907,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         AtomContent::Complex(_) => {
                             self.add_issue(
                                 slice.as_node_ref(),
-                                IssueKind::new_invalid_type ( format!(
+                                IssueKind::new_invalid_type(format!(
                                     "Parameter {} of Literal[...] cannot be of type \"complex\"",
                                     index
-                                ))
+                                )),
                             );
                             return TypeContent::UNKNOWN_REPORTED;
                         }
@@ -2944,20 +2954,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialCase(Specific::TypingAny) => {
                 self.add_issue(
                     slice.as_node_ref(),
-                    IssueKind::new_invalid_type (
-                        format!(
-                            "Parameter {index} of Literal[...] cannot be of type \"Any\""
-                        )
-                    ),
+                    IssueKind::new_invalid_type(format!(
+                        "Parameter {index} of Literal[...] cannot be of type \"Any\""
+                    )),
                 );
                 TypeContent::UNKNOWN_REPORTED
             }
             TypeContent::InvalidVariable(_) => {
                 self.add_issue(
                     slice.as_node_ref(),
-                    IssueKind::new_invalid_type (
-                        format!("Parameter {index} of Literal[...] is invalid")
-                    ),
+                    IssueKind::new_invalid_type(format!(
+                        "Parameter {index} of Literal[...] is invalid"
+                    )),
                 );
                 TypeContent::UNKNOWN_REPORTED
             }
@@ -2975,9 +2983,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => {
                     self.add_issue(
                         slice.as_node_ref(),
-                        IssueKind::new_invalid_type (
-                            format!("Parameter {index} of Literal[...] is invalid")
-                        ),
+                        IssueKind::new_invalid_type(format!(
+                            "Parameter {index} of Literal[...] is invalid"
+                        )),
                     );
                     TypeContent::UNKNOWN_REPORTED
                 }
@@ -2992,7 +3000,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.next().is_none() {
             self.add_issue(
                 slice_type.as_node_ref(),
-                IssueKind::new_invalid_type ( 
+                IssueKind::new_invalid_type(
                     "Annotated[...] must have exactly one type argument and at least one annotation",
                 ),
             );
@@ -3065,9 +3073,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let add_issue = || {
             self.add_issue(
                 slice_type.as_node_ref(),
-                IssueKind::new_invalid_type (
-                    "FlexibleAlias must have exactly two type arguments"
-                ),
+                IssueKind::new_invalid_type("FlexibleAlias must have exactly two type arguments"),
             )
         };
 
@@ -3240,9 +3246,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if result.is_none() && !expr.is_none_literal() {
                     slf.add_issue_for_index(
                         expr.index(),
-                        IssueKind::new_invalid_type (
-                            "Name argument should be a string literal"
-                        ),
+                        IssueKind::new_invalid_type("Name argument should be a string literal"),
                     );
                 }
                 result
@@ -3322,8 +3326,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn add_issue(&self, node_ref: NodeRef, issue_kind: IssueKind) -> bool {
-        !self.errors_already_calculated
-            && node_ref.add_issue(self.i_s, issue_kind)
+        !self.errors_already_calculated && node_ref.add_issue(self.i_s, issue_kind)
     }
 
     fn add_issue_for_index(&self, index: NodeIndex, issue_kind: IssueKind) -> bool {
@@ -3335,7 +3338,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             node_ref,
             IssueKind::InvalidType {
                 message: format!("Module \"{qualified_name}\" is not valid as a type",).into(),
-                additional_note: Some("Perhaps you meant to use a protocol matching the module structure?"),
+                additional_note: Some(
+                    "Perhaps you meant to use a protocol matching the module structure?",
+                ),
             },
         )
     }
@@ -3407,12 +3412,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let pr = match base {
             Lookup::T(TypeContent::Module(file)) => {
                 let had_issue = Cell::new(false);
-                let (pr, _) = self
-                    .with_new_file(file)
-                    .resolve_module_access(name.as_code(), |_| {
-                        had_issue.set(true);
-                        false
-                    })?;
+                let (pr, _) =
+                    self.with_new_file(file)
+                        .resolve_module_access(name.as_code(), |_| {
+                            had_issue.set(true);
+                            false
+                        })?;
                 if had_issue.get() {
                     return None;
                 }
@@ -4003,8 +4008,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 StarExpressionContent::StarExpression(s) => {
                     self.add_issue(
                         s.index(),
-                        IssueKind::new_invalid_type (
-                            "Star expressions are not allowed within a type comment"
+                        IssueKind::new_invalid_type(
+                            "Star expressions are not allowed within a type comment",
                         ),
                     );
                     TypeCommentDetails::new_any()
@@ -4043,8 +4048,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     StarLikeExpression::StarNamedExpression(s) => {
                         self.add_issue(
                             s.index(),
-                            IssueKind::new_invalid_type (
-                                "Star expressions are not allowed within a type comment"
+                            IssueKind::new_invalid_type(
+                                "Star expressions are not allowed within a type comment",
                             ),
                         );
                         return Type::ERROR;
@@ -4291,7 +4296,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         })
     }
 
-    fn add_type_issue(&self, node_index: NodeIndex, kind: IssueKind) -> bool{
+    fn add_type_issue(&self, node_index: NodeIndex, kind: IssueKind) -> bool {
         let from = NodeRef::new(self.file, node_index);
         from.add_type_issue(self.i_s.db, kind)
     }
