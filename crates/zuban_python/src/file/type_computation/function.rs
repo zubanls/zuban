@@ -128,7 +128,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
 
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) -> bool {
         let node = self.node();
-        self.file.maybe_add_issue(
+        self.file.add_issue(
             i_s,
             Issue::from_start_stop(node.start(), node.end_position_of_colon(), kind),
         )
@@ -141,7 +141,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     ) -> bool {
         let node = self.node();
         if let Some(decorated) = node.maybe_decorated() {
-            self.file.maybe_add_issue(
+            self.file.add_issue(
                 i_s,
                 Issue::from_start_stop(decorated.start(), decorated.end_position_last_leaf(), kind),
             )

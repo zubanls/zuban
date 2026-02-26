@@ -247,7 +247,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 self.i_s,
                                 &typed_dict,
                                 matcher,
-                                |issue| node_ref.maybe_add_issue(i_s, issue),
+                                |issue| node_ref.add_issue(i_s, issue),
                                 key,
                                 &mut extra_keys,
                                 |context| {
@@ -278,7 +278,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     self.i_s,
                                     &typed_dict,
                                     matcher,
-                                    |issue| node_ref.maybe_add_issue(i_s, issue),
+                                    |issue| node_ref.add_issue(i_s, issue),
                                     key,
                                     &mut extra_keys,
                                     |_| Inferred::from_type(member.type_.clone()),
@@ -302,7 +302,7 @@ impl<'db> Inference<'db, '_, '_> {
         maybe_add_extra_keys_issue(
             i_s.db,
             &typed_dict,
-            |issue| dict_node_ref.maybe_add_issue(i_s, issue),
+            |issue| dict_node_ref.add_issue(i_s, issue),
             extra_keys,
         );
         if !missing_keys.is_empty() {
@@ -550,7 +550,7 @@ fn check_elements_with_context<'db>(
                 i_s,
                 matcher,
                 &inferred,
-                |issue| NodeRef::new(file, index).maybe_add_issue(i_s, issue),
+                |issue| NodeRef::new(file, index).add_issue(i_s, issue),
                 |error_types, _: &MismatchReason| {
                     had_error = true;
                     if abort_on_mismatch {

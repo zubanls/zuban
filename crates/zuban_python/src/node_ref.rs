@@ -315,13 +315,9 @@ impl<'file> NodeRef<'file> {
     }
 
     /// Returns false if the issue was not added
-    pub(crate) fn maybe_add_issue(&self, i_s: &InferenceState, kind: IssueKind) -> bool {
-        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
-        self.file.maybe_add_issue(i_s, issue)
-    }
-
     pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) -> bool {
-        self.maybe_add_issue(i_s, kind)
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
+        self.file.add_issue(i_s, issue)
     }
 
     pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) -> bool {

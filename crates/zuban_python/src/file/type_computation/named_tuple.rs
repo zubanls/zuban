@@ -96,7 +96,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
                 name,
                 t,
                 false,
-                |issue| self.name_resolution.maybe_add_issue(ne.index(), issue),
+                |issue| self.name_resolution.add_issue(ne.index(), issue),
             )
         }
         Some(params)

@@ -33,7 +33,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         self.as_node_ref_internal()
             .expect("Otherwise add_issue should be implemented")
-            .maybe_add_issue(i_s, issue)
+            .add_issue(i_s, issue)
     }
     fn starting_line(&self, db: &Database) -> String {
         let Some(node_ref) = self.as_node_ref_internal() else {
@@ -582,7 +582,7 @@ impl<'db> Arg<'db, '_> {
 
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         match self.as_node_ref() {
-            Ok(node_ref) => node_ref.maybe_add_issue(i_s, issue),
+            Ok(node_ref) => node_ref.add_issue(i_s, issue),
             Err(add_issue) => add_issue.0(issue),
         }
     }

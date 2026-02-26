@@ -71,7 +71,7 @@ impl<'a> Instance<'a> {
             t.error_if_not_matches(
                 i_s,
                 value,
-                |issue| from.maybe_add_issue(i_s, issue),
+                |issue| from.add_issue(i_s, issue),
                 |error_types| {
                     let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                     had_errors = true;
@@ -168,7 +168,7 @@ impl<'a> Instance<'a> {
                     return false;
                 } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                     i_s,
-                    |issue| from.maybe_add_issue(i_s, issue),
+                    |issue| from.add_issue(i_s, issue),
                     self.class.as_type(i_s.db),
                 ) {
                     // It feels weird that a descriptor that only defines __get__ should

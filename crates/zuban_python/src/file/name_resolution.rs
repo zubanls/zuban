@@ -899,12 +899,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
 
     pub fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) -> bool {
         let from = NodeRef::new(self.file, node_index);
-        from.maybe_add_issue(self.i_s, issue)
-    }
-
-    pub fn maybe_add_issue(&self, node_index: NodeIndex, issue: IssueKind) -> bool {
-        let from = NodeRef::new(self.file, node_index);
-        from.maybe_add_issue(self.i_s, issue)
+        from.add_issue(self.i_s, issue)
     }
 
     pub fn flags(&self) -> &FinalizedTypeCheckerFlags {

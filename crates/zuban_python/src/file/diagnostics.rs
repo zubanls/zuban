@@ -341,7 +341,7 @@ impl Inference<'_, '_, '_> {
         if self.flags().warn_unreachable {
             FLOW_ANALYSIS.with(|fa| {
                 fa.report_unreachable_if_not_reported_before(|| {
-                    self.file.maybe_add_issue(
+                    self.file.add_issue(
                         self.i_s,
                         Issue::from_start_stop(
                             start_position,
@@ -1604,7 +1604,7 @@ impl Inference<'_, '_, '_> {
                     t.error_if_not_matches(
                         i_s,
                         &inf,
-                        |issue| self.maybe_add_issue(default.index(), issue),
+                        |issue| self.add_issue(default.index(), issue),
                         |error_types| {
                             let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                             if default.is_ellipsis_literal()
@@ -2129,7 +2129,7 @@ impl Inference<'_, '_, '_> {
                     t.error_if_not_matches(
                         i_s,
                         &inf,
-                        |issue| self.maybe_add_issue(star_exprs.index(), issue),
+                        |issue| self.add_issue(star_exprs.index(), issue),
                         |error_types| {
                             Some({
                                 if matches!(t.as_ref(), Type::None) {
@@ -2894,10 +2894,8 @@ pub(super) fn check_override(
                         added_liskov_note = true;
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
-                                from.file.maybe_add_issue(
-                                    i_s,
-                                    Issue::from_start_stop(s.start, s.end, issue),
-                                );
+                                from.file
+                                    .add_issue(i_s, Issue::from_start_stop(s.start, s.end, issue));
                             }
                             _ => {
                                 from.add_issue(i_s, issue);
