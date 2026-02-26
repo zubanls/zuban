@@ -659,25 +659,22 @@ impl IssueKind {
         })
     }
 
-    pub(crate) fn should_be_reported(&self, flags: &TypeCheckerFlags) -> bool {
+    pub(crate) fn is_disabled(&self, flags: &TypeCheckerFlags) -> bool {
         if !flags.disabled_error_codes.is_empty() {
-            let should_not_report = |code| {
-                if let Some(code) = code
-                    && flags.disabled_error_codes.iter().any(|c| c == code)
-                    && !flags.enabled_error_codes.iter().any(|c| c == code)
-                {
-                    return true;
-                }
-                false
+            let should_not_report = |code: Option<&str>| {
+                code.is_some_and(|code| {
+                    flags.disabled_error_codes.iter().any(|c| c == code)
+                        && !flags.enabled_error_codes.iter().any(|c| c == code)
+                })
             };
             if should_not_report(self.mypy_error_code()) {
-                return false;
+                return true;
             }
             if should_not_report(self.mypy_error_supercode()) {
-                return false;
+                return true;
             }
         }
-        true
+        false
     }
 
     pub(crate) fn new_invalid_type(message: impl Into<Box<str>>) -> Self {

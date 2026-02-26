@@ -731,7 +731,7 @@ impl<'db> PythonFile {
 
     /// Returns false if the issue was not added
     pub fn maybe_add_issue(&self, i_s: &InferenceState, issue: Issue) -> bool {
-        if !i_s.should_add_issue() || !issue.kind.should_be_reported(i_s.flags()) {
+        if !i_s.should_add_issue() || issue.kind.is_disabled(i_s.flags()) {
             let config = DiagnosticConfig {
                 show_column_numbers: true,
                 ..Default::default()

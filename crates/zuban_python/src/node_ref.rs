@@ -325,7 +325,7 @@ impl<'file> NodeRef<'file> {
     }
 
     pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) {
-        if !kind.should_be_reported(self.file.flags(db)) {
+        if kind.is_disabled(self.file.flags(db)) {
             return;
         }
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);

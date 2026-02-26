@@ -249,11 +249,8 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_issue(&self, node_index: NodeIndex, kind: IssueKind) {
-        if !kind.should_be_reported(self.db_infos.flags) {
-            debug!(
-                "New ignored name binder issue due to disabled error codes: {:?}",
-                kind
-            );
+        if kind.is_disabled(self.db_infos.flags) {
+            debug!("New disabled name binder issue: {:?}", kind);
             return;
         }
         let issue = Issue::from_node_index(self.db_infos.tree, node_index, kind, true);
