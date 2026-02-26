@@ -1015,3 +1015,17 @@ class CustomContextManager:
 
 with CustomContextManager() as m:
     print(m.foo())
+
+[case avoid_notes_when_errors_are_disabled1]
+# From GH #308
+# flags: --disable-error-code=operator
+union = str | float
+
+def f(val1: union, val2: union) -> union:
+    return val1 + val2
+
+[case avoid_notes_when_errors_are_disabled2]
+union = str | float
+
+def f(val1: union, val2: union) -> union:
+    return val1 + val2  # type: ignore[operator]

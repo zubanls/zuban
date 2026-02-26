@@ -731,7 +731,8 @@ impl<'db> PythonFile {
         db.vfs.file_path(self.file_index)
     }
 
-    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
+    /// Returns false if the issue was not added
+    pub fn maybe_add_issue(&self, i_s: &InferenceState, issue: Issue) -> bool {
         if !i_s.should_add_issue() {
             let config = DiagnosticConfig {
                 show_column_numbers: true,
@@ -741,7 +742,7 @@ impl<'db> PythonFile {
                 "Did ignore issue for now: {}",
                 Diagnostic::new(i_s.db, self, &issue).as_string(&config, None)
             );
-            return;
+            return false;
         }
         self.add_type_issue(i_s.db, issue)
     }
@@ -753,11 +754,12 @@ impl<'db> PythonFile {
             .is_some_and(|dir| *dir.name == *"django-stubs")
     }
 
-    pub fn add_type_issue(&self, db: &'db Database, issue: Issue) {
+    /// Returns false if the issue was not added
+    pub fn add_type_issue(&self, db: &'db Database, issue: Issue) -> bool {
         // This function adds issues in all normal cases and does not respect the InferenceState
         // mode.
         if self.ignore_type_errors {
-            return;
+            return false;
         }
         let (file, add) = match self.super_file {
             Some(super_file) if super_file.is_part_of_parent() => (
@@ -773,7 +775,8 @@ impl<'db> PythonFile {
             show_column_numbers: true,
             ..Default::default()
         };
-        match self.issues.add_if_not_ignored(issue, maybe_ignored) {
+        let result = self.issues.add_if_not_ignored(issue, maybe_ignored);
+        match &result {
             Ok(issue) => debug!(
                 "NEW ISSUE: {}",
                 Diagnostic::new(db, self, issue).as_string(&config, None)
@@ -783,6 +786,7 @@ impl<'db> PythonFile {
                 Diagnostic::new(db, self, &issue).as_string(&config, None)
             ),
         }
+        result.is_ok()
     }
 
     pub(crate) fn name_and_parent_dir(

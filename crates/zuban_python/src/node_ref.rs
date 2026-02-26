@@ -314,14 +314,19 @@ impl<'file> NodeRef<'file> {
         self.file.tree.code_of_index(self.node_index)
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
+    /// Returns false if the issue was not added
+    pub(crate) fn maybe_add_issue(&self, i_s: &InferenceState, kind: IssueKind) -> bool {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
-        self.file.add_issue(i_s, issue)
+        self.file.maybe_add_issue(i_s, issue)
+    }
+
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
+        self.maybe_add_issue(i_s, kind);
     }
 
     pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
-        self.file.add_type_issue(db, issue)
+        self.file.add_type_issue(db, issue);
     }
 
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {

@@ -128,10 +128,10 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
 
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
         let node = self.node();
-        self.file.add_issue(
+        self.file.maybe_add_issue(
             i_s,
             Issue::from_start_stop(node.start(), node.end_position_of_colon(), kind),
-        )
+        );
     }
 
     pub(crate) fn add_issue_onto_start_including_decorator(
@@ -141,10 +141,10 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     ) {
         let node = self.node();
         if let Some(decorated) = node.maybe_decorated() {
-            self.file.add_issue(
+            self.file.maybe_add_issue(
                 i_s,
                 Issue::from_start_stop(decorated.start(), decorated.end_position_last_leaf(), kind),
-            )
+            );
         } else {
             self.add_issue_for_declaration(i_s, kind)
         }

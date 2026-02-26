@@ -489,7 +489,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                     unreachable!();
                 };
                 if name.file_index == file.file_index {
-                    file.add_issue(
+                    file.maybe_add_issue(
                         i_s,
                         Issue::from_start_stop(name.start, name.end, issue_type),
                     );

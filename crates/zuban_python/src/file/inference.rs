@@ -2690,7 +2690,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         match cmp {
             ComparisonContent::Equals(l, op, r) | ComparisonContent::NotEquals(l, op, r) => {
                 if let Some(formatted_err) = needs_strict_equality_error() {
-                    self.file.add_issue(
+                    self.file.maybe_add_issue(
                         self.i_s,
                         Issue::from_start_stop(
                             l.start(),
@@ -2700,7 +2700,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 right_type: formatted_err.expected,
                             },
                         ),
-                    )
+                    );
                 }
                 let from = NodeRef::new(self.file, op.index());
                 left_inf.type_lookup_and_execute(
@@ -2724,7 +2724,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             ComparisonContent::Is(l, _, r) | ComparisonContent::IsNot(l, _, r) => {
                 if let Some(formatted_err) = needs_strict_equality_error() {
-                    self.file.add_issue(
+                    self.file.maybe_add_issue(
                         self.i_s,
                         Issue::from_start_stop(
                             l.start(),
@@ -2734,7 +2734,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 right_type: formatted_err.expected,
                             },
                         ),
-                    )
+                    );
                 }
                 Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
@@ -2768,7 +2768,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         && !self.is_strict_equality_comparison(&element_t, &container_t)
                     {
                         let formatted = format_got_expected(self.i_s.db, &element_t, &container_t);
-                        self.file.add_issue(
+                        self.file.maybe_add_issue(
                             self.i_s,
                             Issue::from_start_stop(
                                 l.start(),
@@ -2778,7 +2778,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     container_type: formatted.expected,
                                 },
                             ),
-                        )
+                        );
                     }
                 }
                 self.infer_in_operator(from, &left_inf, right_inf)
@@ -3208,7 +3208,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 }),
                         };
                         add_to_union(result.unwrap_or_else(|| {
-                            had_error = true;
                             let issue = if left_op_method.is_none()
                                 && (right_op_method.is_none()
                                     || matches!(strategy, LookupStrategy::ShortCircuit))
@@ -3216,7 +3215,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 if matches!(l_type, Type::None)
                                     && i_s.should_ignore_none_in_untyped_context()
                                 {
-                                    had_error = false;
                                     return Inferred::new_any_from_error();
                                 }
                                 IssueKind::UnsupportedLeftOperand {
@@ -3230,7 +3228,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     right: r_type.format_short(i_s.db),
                                 }
                             };
-                            from.add_issue(i_s, issue);
+                            had_error |= from.maybe_add_issue(i_s, issue);
                             result_backup.unwrap_or_else(Inferred::new_any_from_error)
                         }))
                     }
