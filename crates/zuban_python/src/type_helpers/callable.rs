@@ -63,7 +63,7 @@ impl<'a> Callable<'a> {
                         .map(|c| c.as_str(i_s.db).into())
                         .unwrap_or_else(|| "<class>".into()),
                 },
-            )
+            );
         }
         let return_type = &self.content.return_type;
         if result_context.expect_not_none() && matches!(&return_type, Type::None) {

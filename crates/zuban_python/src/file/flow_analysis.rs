@@ -3261,7 +3261,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 .into_inferred()
                                 .execute_with_details(
                                     i_s,
-                                    &KnownArgsWithCustomAddIssue::new(&key, &|_| {}),
+                                    &KnownArgsWithCustomAddIssue::new(&key, &|_| false),
                                     &mut ResultContext::Unknown,
                                     OnTypeError::new(&|_, _, _, _| ()),
                                 );

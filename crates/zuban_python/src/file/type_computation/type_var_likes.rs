@@ -173,7 +173,9 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
                     arg.add_issue(i_s, IssueKind::UnexpectedComprehension);
                     return None;
                 }
-                _ => arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "TypeVar" }),
+                _ => {
+                    arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "TypeVar" });
+                }
             }
         }
         if constraints.len() == 1 {
@@ -322,12 +324,14 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                     arg.add_issue(i_s, IssueKind::UnexpectedComprehension);
                     return None;
                 }
-                _ => arg.add_issue(
-                    i_s,
-                    IssueKind::UnexpectedArgumentTo {
-                        name: "TypeVarTuple",
-                    },
-                ),
+                _ => {
+                    arg.add_issue(
+                        i_s,
+                        IssueKind::UnexpectedArgumentTo {
+                            name: "TypeVarTuple",
+                        },
+                    );
+                }
             }
         }
         Some(TypeVarLike::TypeVarTuple(Arc::new(TypeVarTuple::new(
@@ -427,7 +431,9 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                         IssueKind::ParamSpecKeywordArgumentWithoutDefinedSemantics,
                     );
                 }
-                _ => arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" }),
+                _ => {
+                    arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" });
+                }
             }
         }
         Some(TypeVarLike::ParamSpec(Arc::new(ParamSpec::new(

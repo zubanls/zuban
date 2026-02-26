@@ -626,7 +626,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 redefinition: redefinition
                                     .format_pretty(&FormatData::new_short(i_s.db)),
                             },
-                        )
+                        );
                     }
                 } else {
                     original_t.error_if_not_matches(
@@ -1983,7 +1983,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     IssueKind::CallToUntypedFunction {
                         name: self.name().into(),
                     },
-                )
+                );
             }
             if i_s.db.project.should_infer_return_types() {
                 self.return_without_annotation(
@@ -2105,7 +2105,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     i_s,
                     &KnownArgsWithCustomAddIssue::new(
                         &Inferred::from_type(Type::Callable(overload_callable.clone())),
-                        &|_| had_errors.set(true),
+                        &|_| {
+                            had_errors.set(true);
+                            false
+                        },
                     ),
                     skip_first_argument,
                     on_type_error,

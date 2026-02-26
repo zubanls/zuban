@@ -16,7 +16,13 @@ pub(crate) fn method_with_fallback<'db, 'x, T>(
 ) -> Inferred {
     handler(i_s, td, args).unwrap_or_else(|| {
         fallback_instance()
-            .type_lookup(i_s, |issue| args.add_issue(i_s, issue), name)
+            .type_lookup(
+                i_s,
+                |issue| {
+                    args.add_issue(i_s, issue);
+                },
+                name,
+            )
             .into_inferred()
             .execute_with_details(i_s, args, result_context, on_type_error)
     })

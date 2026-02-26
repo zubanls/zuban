@@ -693,7 +693,7 @@ impl<'a> Matcher<'a> {
         usage: &ParamSpecUsage,
         args: Box<[Arg<'db, '_>]>,
         func_like: &dyn FuncLike,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         on_type_error: Option<OnTypeError>,
         of_function: &dyn Fn(&str) -> Option<Box<str>>,
     ) -> SignatureMatch {

@@ -694,7 +694,7 @@ fn field_options_from_args(
                         arg.add_issue(
                             i_s,
                             IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() },
-                        )
+                        );
                     }
                 }
                 "init" => {
@@ -705,7 +705,7 @@ fn field_options_from_args(
                         arg.add_issue(
                             i_s,
                             IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() },
-                        )
+                        );
                     }
                 }
                 "alias" if in_dataclass_transform => {
@@ -716,7 +716,7 @@ fn field_options_from_args(
                         arg.add_issue(
                             i_s,
                             IssueKind::DataclassTransformFieldAliasParamMustBeString,
-                        )
+                        );
                     }
                 }
                 "factory" if in_dataclass_transform => options.has_default = true,
@@ -843,7 +843,9 @@ pub(crate) fn dataclasses_replace<'db>(
                     if lookup_on_dataclass(
                         dataclass,
                         i_s,
-                        |issue| args.add_issue(i_s, issue),
+                        |issue| {
+                            args.add_issue(i_s, issue);
+                        },
                         name.as_str(i_s.db),
                     )
                     .lookup
@@ -892,7 +894,7 @@ pub(crate) fn dataclasses_replace<'db>(
 
 fn run_on_dataclass_for_replace(
     i_s: &InferenceState,
-    add_issue: Option<&dyn Fn(IssueKind)>,
+    add_issue: Option<&dyn Fn(IssueKind) -> bool>,
     t: &Type,
     callback: &mut impl FnMut(&Arc<Dataclass>),
 ) -> bool {

@@ -312,7 +312,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         mut args: ArgIterator<'db, 'x>,
         skip_first_argument: bool,
         non_union_args: &mut Vec<Arg<'db, 'x>>,
-        add_issue: &impl Fn(IssueKind),
+        add_issue: &impl Fn(IssueKind) -> bool,
         search_init: bool,
         class: Option<&Class>,
         replace_self: Option<ReplaceSelf>,

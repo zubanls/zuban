@@ -1018,14 +1018,41 @@ with CustomContextManager() as m:
 
 [case avoid_notes_when_errors_are_disabled1]
 # From GH #308
-# flags: --disable-error-code=operator
+# flags: --disable-error-code=operator --disable-error-code=assignment
 union = str | float
 
 def f(val1: union, val2: union) -> union:
     return val1 + val2
+
+def g(x: list[int]):
+    y: list[object] = x
 
 [case avoid_notes_when_errors_are_disabled2]
 union = str | float
 
 def f(val1: union, val2: union) -> union:
     return val1 + val2  # type: ignore[operator]
+
+def g(x: list[int]):
+    y: list[object] = x  # type: ignore[assignment]
+
+[case avoid_notes_when_protocol_errors_are_disabled1]
+# flags: --disable-error-code=arg-type --disable-error-code=assignment
+from typing import Iterator
+
+def f(x: Iterator[int]): ...
+
+x = [1]
+f(x)
+
+y: Iterator[int] = x
+
+[case avoid_notes_when_protocol_errors_are_disabled2]
+from typing import Iterator
+
+def f(x: Iterator[int]): ...
+
+x = [1]
+f(x)  # type: ignore[arg-type]
+
+y: Iterator[int] = x  # type: ignore[assignment]

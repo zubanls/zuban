@@ -689,7 +689,7 @@ fn add_access_key_must_be_string_literal_issue(
                 .map(|member| format!("\"{}\"", member.name.as_str(db))),
         )
         .into(),
-    })
+    });
 }
 
 pub(crate) fn typed_dict_setdefault<'db>(
@@ -751,9 +751,9 @@ fn typed_dict_setdefault_internal<'db>(
                         expected: member.type_.format_short(i_s.db),
                     };
                     if let Some(second_arg) = second_arg.as_ref() {
-                        second_arg.add_issue(i_s, issue)
+                        second_arg.add_issue(i_s, issue);
                     } else {
-                        args.add_issue(i_s, issue)
+                        args.add_issue(i_s, issue);
                     }
                 }
                 member.type_.clone()
@@ -841,7 +841,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                             typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
                             key: key.into(),
                         },
-                    )
+                    );
                 }
                 member.type_.clone()
             } else if is_pop {
@@ -1034,7 +1034,9 @@ fn typed_dict_setitem_internal<'db>(
             },
         );
     } else {
-        add_access_key_must_be_string_literal_issue(i_s.db, td, |issue| args.add_issue(i_s, issue))
+        add_access_key_must_be_string_literal_issue(i_s.db, td, |issue| {
+            args.add_issue(i_s, issue);
+        })
     }
     Some(Inferred::new_none())
 }
@@ -1271,7 +1273,7 @@ pub(crate) fn infer_typed_dict_arg(
     i_s: &InferenceState,
     typed_dict: &TypedDict,
     matcher: &mut Matcher,
-    add_issue: impl Fn(IssueKind),
+    maybe_add_issue: impl Fn(IssueKind) -> bool,
     key: &str,
     extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
@@ -1286,7 +1288,7 @@ pub(crate) fn infer_typed_dict_arg(
             i_s,
             matcher,
             &inferred,
-            add_issue,
+            maybe_add_issue,
             |error_types, _: &MismatchReason| {
                 let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                 Some(IssueKind::TypedDictIncompatibleType {
@@ -1361,7 +1363,7 @@ pub(crate) fn check_typed_dict_call<'db>(
                     .into(),
                 keys: missing_keys.into(),
             },
-        )
+        );
     }
     Some(if matches!(&typed_dict.generics, TypedDictGenerics::None) {
         Type::TypedDict(typed_dict)
@@ -1375,7 +1377,7 @@ pub(crate) fn check_typed_dict_call<'db>(
 pub(crate) fn maybe_add_extra_keys_issue(
     db: &Database,
     typed_dict: &TypedDict,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     mut extra_keys: Vec<String>,
 ) {
     add_issue(IssueKind::TypedDictExtraKey {
@@ -1391,5 +1393,5 @@ pub(crate) fn maybe_add_extra_keys_issue(
         typed_dict: typed_dict
             .name_or_fallback(&FormatData::new_short(db))
             .into(),
-    })
+    });
 }

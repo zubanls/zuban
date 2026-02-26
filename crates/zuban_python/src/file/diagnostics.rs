@@ -1601,7 +1601,7 @@ impl Inference<'_, '_, '_> {
                     t.error_if_not_matches(
                         i_s,
                         &inf,
-                        |issue| self.add_issue(default.index(), issue),
+                        |issue| self.maybe_add_issue(default.index(), issue),
                         |error_types| {
                             let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                             if default.is_ellipsis_literal()
@@ -2023,7 +2023,7 @@ impl Inference<'_, '_, '_> {
                                 type_: func_type.format_short(self.i_s.db),
                                 special_method: "__getattr__",
                             },
-                        )
+                        );
                     }
                 }
                 _ => {
@@ -2124,7 +2124,7 @@ impl Inference<'_, '_, '_> {
                     t.error_if_not_matches(
                         i_s,
                         &inf,
-                        |issue| self.add_issue(star_exprs.index(), issue),
+                        |issue| self.maybe_add_issue(star_exprs.index(), issue),
                         |error_types| {
                             Some({
                                 if matches!(t.as_ref(), Type::None) {
@@ -2283,7 +2283,7 @@ impl Inference<'_, '_, '_> {
                         .as_type(i_s, FirstParamProperties::None)
                         .format_short(i_s.db),
                 },
-            )
+            );
         };
 
         let from = func.node_ref; // TODO this NodeRef shouldn't be used.
@@ -2410,7 +2410,7 @@ impl Inference<'_, '_, '_> {
                         name1: func.name().into(),
                         name2: normal_magic_name,
                     },
-                )
+                );
             }
         }
     }
@@ -2917,7 +2917,7 @@ pub(super) fn check_override(
                         async_note,
                     };
                     if let Some(func) = maybe_func() {
-                        func.add_issue_for_declaration(i_s, issue)
+                        func.add_issue_for_declaration(i_s, issue);
                     } else {
                         from.add_issue(i_s, issue);
                     }
@@ -3019,7 +3019,7 @@ pub(super) fn check_override(
                 notes: notes.into(),
             };
             if let Some(func) = maybe_func() {
-                func.add_issue_for_declaration(i_s, issue)
+                func.add_issue_for_declaration(i_s, issue);
 
             // This condition is so weird, but we try to be close to Mypy
             } else if matches!(override_t, Type::FunctionOverload(_))
@@ -3398,7 +3398,7 @@ fn check_for_missing_annotations(
     if flags.disallow_untyped_defs || flags.disallow_incomplete_defs && has_explicit_annotation {
         let has_args = || function.iter_non_self_args(i_s).next().is_some();
         if !has_return_type && !has_param_annotations && has_args() {
-            function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped)
+            function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped);
         } else {
             if !has_return_type || return_annotation.is_none() && !has_args() {
                 function.add_issue_for_declaration(

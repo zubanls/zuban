@@ -1426,7 +1426,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 Generics::from_class_generics(i_s.db, class_ref, &c.generics),
                 None,
             );
-            if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, add_issue, instance) {
+            if let Some(inf) = potential_descriptor.bind_dunder_get(
+                i_s,
+                |i| {
+                    add_issue(i);
+                    true
+                },
+                instance,
+            ) {
                 return Some(Some((inf, AttributeKind::Attribute)));
             }
         }
@@ -1747,6 +1754,10 @@ impl<'db: 'slf, 'slf> Inferred {
                 .into_maybe_inferred()
             {
                 let class_as_inferred = class.as_inferred(i_s);
+                let add_issue = |issue| {
+                    add_issue(issue);
+                    true
+                };
                 return Some(Some(inf.execute(
                     i_s,
                     &CombinedArgs::new(
@@ -2025,7 +2036,9 @@ impl<'db: 'slf, 'slf> Inferred {
             name,
             args,
             result_context,
-            &|issue| args.add_issue(i_s, issue),
+            &|issue| {
+                args.add_issue(i_s, issue);
+            },
             on_lookup_error,
             OnTypeError::new(&on_argument_type_error),
         )

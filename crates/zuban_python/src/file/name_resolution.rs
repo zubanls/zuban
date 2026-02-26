@@ -897,9 +897,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         self.lookup_type_name_on_class(cls, name)
     }
 
-    pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
+    pub fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
         let from = NodeRef::new(self.file, node_index);
         from.add_issue(self.i_s, issue);
+    }
+
+    pub fn maybe_add_issue(&self, node_index: NodeIndex, issue: IssueKind) -> bool {
+        let from = NodeRef::new(self.file, node_index);
+        from.maybe_add_issue(self.i_s, issue)
     }
 
     pub fn flags(&self) -> &FinalizedTypeCheckerFlags {

@@ -68,11 +68,16 @@ impl<'a> Instance<'a> {
         }
         let check_compatible = |t: &Type, value: &_| {
             let mut had_errors = false;
-            t.error_if_not_matches(i_s, value, add_issue, |error_types| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
-                had_errors = true;
-                Some(IssueKind::IncompatibleAssignment { got, expected })
-            });
+            t.error_if_not_matches(
+                i_s,
+                value,
+                |issue| from.maybe_add_issue(i_s, issue),
+                |error_types| {
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
+                    had_errors = true;
+                    Some(IssueKind::IncompatibleAssignment { got, expected })
+                },
+            );
             !had_errors
         };
 
@@ -81,7 +86,7 @@ impl<'a> Instance<'a> {
             .lookup(
                 i_s,
                 name_str,
-                ClassLookupOptions::new(&|issue| from.add_issue(i_s, issue))
+                ClassLookupOptions::new(&add_issue)
                     .with_origin(ApplyClassDescriptorsOrigin::InstanceSetattrAccess)
                     .with_avoid_metaclass(),
             )
@@ -139,13 +144,10 @@ impl<'a> Instance<'a> {
             return false;
         }
         if lookup_details.is_final(i_s.db) {
-            from.add_issue(
-                i_s,
-                IssueKind::CannotAssignToFinal {
-                    is_attribute: true,
-                    name: name_str.into(),
-                },
-            );
+            add_issue(IssueKind::CannotAssignToFinal {
+                is_attribute: true,
+                name: name_str.into(),
+            });
             inf = Cow::Owned(inf.into_owned().avoid_implicit_literal(i_s));
         }
 
@@ -163,7 +165,7 @@ impl<'a> Instance<'a> {
                     return false;
                 } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                     i_s,
-                    add_issue,
+                    |issue| from.maybe_add_issue(i_s, issue),
                     self.class.as_type(i_s.db),
                 ) {
                     // It feels weird that a descriptor that only defines __get__ should
@@ -189,7 +191,7 @@ impl<'a> Instance<'a> {
                             add_issue(IssueKind::Deprecated {
                                 identifier: format!("function {}", c.qualified_name(i_s.db)).into(),
                                 reason: reason.clone(),
-                            })
+                            });
                         }
                         match &wanted.type_ {
                             PropertySetterType::SameTypeFromCachedProperty => {
@@ -230,24 +232,27 @@ impl<'a> Instance<'a> {
     pub(crate) fn bind_dunder_get(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         instance: Type,
     ) -> Option<Inferred> {
-        self.type_lookup(i_s, &add_issue, "__get__")
-            .into_maybe_inferred()
-            .map(|inf| {
-                let c_t = Type::Type(Arc::new(instance.clone()));
-                inf.execute(
-                    i_s,
-                    &CombinedArgs::new(
-                        &KnownArgsWithCustomAddIssue::new(
-                            &Inferred::from_type(instance),
-                            &add_issue,
-                        ),
-                        &KnownArgsWithCustomAddIssue::new(&Inferred::from_type(c_t), &add_issue),
-                    ),
-                )
-            })
+        self.type_lookup(
+            i_s,
+            |kind| {
+                add_issue(kind);
+            },
+            "__get__",
+        )
+        .into_maybe_inferred()
+        .map(|inf| {
+            let c_t = Type::Type(Arc::new(instance.clone()));
+            inf.execute(
+                i_s,
+                &CombinedArgs::new(
+                    &KnownArgsWithCustomAddIssue::new(&Inferred::from_type(instance), &add_issue),
+                    &KnownArgsWithCustomAddIssue::new(&Inferred::from_type(c_t), &add_issue),
+                ),
+            )
+        })
     }
 
     pub(crate) fn execute<'db>(
@@ -258,7 +263,13 @@ impl<'a> Instance<'a> {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(inf) = self
-            .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
+            .type_lookup(
+                i_s,
+                |issue| {
+                    args.add_issue(i_s, issue);
+                },
+                "__call__",
+            )
             .into_maybe_inferred()
         {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
@@ -472,7 +483,10 @@ impl<'a> Instance<'a> {
                         i_s,
                         &KnownArgsWithCustomAddIssue::new(
                             &Inferred::new_any(AnyCause::Internal),
-                            &options.add_issue,
+                            &|issue| {
+                                (options.add_issue)(issue);
+                                true
+                            },
                         ),
                     ));
                     let is_writable = {

@@ -176,7 +176,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         IssueKind::CannotInstantiateProtocol {
                             name: self.name().into(),
                         },
-                    )
+                    );
                 }
             } else {
                 debug_assert!(self.incomplete_mro(i_s.db));
@@ -1539,7 +1539,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     name: self.name().into(),
                     abstract_attributes: class_infos.abstract_attributes.clone(),
                 },
-            )
+            );
         }
 
         match &class_infos.kind {
@@ -1565,7 +1565,9 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let d = |_: &dyn FuncLike, _: &Database| Some(format!("\"{}\"", self.name()));
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
-        match self.find_relevant_constructor(i_s, &|issue| args.add_issue(i_s, issue)) {
+        match self.find_relevant_constructor(i_s, &|issue| {
+            args.add_issue(i_s, issue);
+        }) {
             ClassConstructor::DunderNew { constructor } => {
                 let result = constructor
                     .into_inferred()

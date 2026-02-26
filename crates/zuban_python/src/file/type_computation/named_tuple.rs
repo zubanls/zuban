@@ -96,7 +96,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
                 name,
                 t,
                 false,
-                |issue| self.name_resolution.add_issue(ne.index(), issue),
+                |issue| self.name_resolution.maybe_add_issue(ne.index(), issue),
             )
         }
         Some(params)
@@ -332,10 +332,12 @@ pub(crate) fn new_collections_named_tuple<'db>(
                     },
                 );
             }
-            _ => arg.add_issue(
-                i_s,
-                IssueKind::TooManyArguments(r#" for "namedtuple""#.into()),
-            ),
+            _ => {
+                arg.add_issue(
+                    i_s,
+                    IssueKind::TooManyArguments(r#" for "namedtuple""#.into()),
+                );
+            }
         }
     }
 
@@ -449,21 +451,21 @@ fn is_identifier(s: &str) -> bool {
     chars.all(|c| c.is_alphanumeric() || c == '_')
 }
 
-pub fn add_named_tuple_param(
+fn add_named_tuple_param(
     named_tuple: &'static str,
     db: &Database,
     params: &mut Vec<CallableParam>,
     field_name: StringSlice,
     t: Type,
     rename: bool,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
 ) {
     let name_str = field_name.as_str(db);
     let mut field_name = field_name.into();
     let mut add_and_change = |issue| {
         field_name = DbString::ArcStr(Arc::from(format!("_{}", params.len() - 1)));
         if !rename {
-            add_issue(issue)
+            add_issue(issue);
         }
     };
     if params.iter().any(|param| {

@@ -305,7 +305,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         expected.error_if_not_matches(
             self.i_s,
             &right,
-            |issue| self.add_issue(right_side.index(), issue),
+            |issue| self.maybe_add_issue(right_side.index(), issue),
             on_type_error,
         );
     }
@@ -739,7 +739,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     .error_if_not_matches(
                         i_s,
                         &inf,
-                        |issue| from.add_issue(i_s, issue),
+                        |issue| from.maybe_add_issue(i_s, issue),
                         |error_types| {
                             let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
                             Some(IssueKind::IncompatibleTypes {
@@ -759,7 +759,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 generator.yield_type.error_if_not_matches(
                     i_s,
                     &yields,
-                    |issue| from.add_issue(i_s, issue),
+                    |issue| from.maybe_add_issue(i_s, issue),
                     |error_types| {
                         let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
                         Some(IssueKind::IncompatibleTypes {
@@ -1196,7 +1196,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         declaration_t.error_if_not_matches(
             self.i_s,
             value,
-            |issue| from.add_issue(self.i_s, issue),
+            |issue| from.maybe_add_issue(self.i_s, issue),
             |error_types| {
                 had_error = true;
                 let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
@@ -1916,7 +1916,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             declaration_t.error_if_not_matches(
                 i_s,
                 value,
-                |issue| from.add_issue(i_s, issue),
+                |issue| from.maybe_add_issue(i_s, issue),
                 |error_types| {
                     save_narrowed.set(false);
                     let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s.db);
@@ -3991,7 +3991,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         &Inferred::new_any_from_error(),
                         // Errors are reported when checking the file (the signature can only contain
                         // one positional argument)
-                        &|_| (),
+                        &|_| false,
                     ),
                 )
             }
@@ -4540,7 +4540,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         i_s,
                         matcher,
                         &inf,
-                        |issue| self.add_issue(comp_expr.index(), issue),
+                        |issue| self.maybe_add_issue(comp_expr.index(), issue),
                         |error_types, _: &_| Some(on_mismatch(error_types)),
                     );
                     matcher

@@ -1589,7 +1589,7 @@ impl Type {
         &self,
         i_s: &InferenceState,
         value: &Inferred,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         mut on_error: impl FnMut(&ErrorTypes) -> Option<IssueKind>,
     ) {
         self.error_if_not_matches_with_matcher(
@@ -1606,7 +1606,7 @@ impl Type {
         i_s: &InferenceState,
         matcher: &mut Matcher,
         value: &Inferred,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         mut on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
     ) {
         let value_type = value.as_cow_type(i_s);
@@ -1626,8 +1626,11 @@ impl Type {
                 );
             }
             if let Some(error) = on_error(&error_types, reason) {
-                add_issue(error);
-                error_types.add_mismatch_notes(add_issue)
+                if add_issue(error) {
+                    error_types.add_mismatch_notes(|kind| {
+                        add_issue(kind);
+                    })
+                }
             }
         }
     }

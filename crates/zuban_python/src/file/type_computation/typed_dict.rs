@@ -336,7 +336,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
         return None;
     };
     let options = check_typed_dict_arguments(i_s, file, iterator, false, |issue| {
-        args.add_issue(i_s, issue)
+        args.add_issue(i_s, issue);
     });
     let dct_iterator = match atom_content {
         AtomContent::Dict(dct) => dct.iter_elements(),
