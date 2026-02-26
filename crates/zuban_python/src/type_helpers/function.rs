@@ -801,11 +801,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 };
                 if let Some(wrong) = callable.has_exactly_one_positional_parameter() {
                     match wrong {
-                        WrongPositionalCount::TooMany => self
-                            .add_issue_onto_start_including_decorator(
+                        WrongPositionalCount::TooMany => {
+                            self.add_issue_onto_start_including_decorator(
                                 i_s,
                                 IssueKind::TooManyArguments(" for property".into()),
-                            ),
+                            );
+                        }
                         // IssueType::MethodWithoutArguments will be checked and added later.
                         WrongPositionalCount::TooFew => (),
                     }
@@ -905,7 +906,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                         FunctionKind::Staticmethod => {
                             if matches!(kind, FunctionKind::Classmethod { .. }) {
-                                nr().add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod)
+                                nr().add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod);
                             }
                             if self.class.is_none() {
                                 used_with_a_non_method("staticmethod");
@@ -971,7 +972,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::Override => {
                     is_override = true;
                     if self.class.is_none() {
-                        used_with_a_non_method("override")
+                        used_with_a_non_method("override");
                     }
                 }
                 InferredDecorator::DataclassTransform(transform) => {
@@ -1021,11 +1022,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 IssueKind::FinalMethodIsAbstract {
                     name: self.name().into(),
                 },
-            )
+            );
         }
         if is_abstract && self.class.is_none() {
             is_abstract = false;
-            used_with_a_non_method("abstractmethod")
+            used_with_a_non_method("abstractmethod");
         }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));
@@ -1045,7 +1046,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if t.has_any(i_s) {
                 let got = (!matches!(t.as_ref(), Type::Any(_))).then(|| t.format_short(i_s.db));
                 NodeRef::new(self.node_ref.file, self.node().name().index())
-                    .add_issue(i_s, IssueKind::UntypedFunctionAfterDecorator { got })
+                    .add_issue(i_s, IssueKind::UntypedFunctionAfterDecorator { got });
             }
         }
         if matches!(
@@ -1214,7 +1215,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 }
                                 true => IssueKind::InStubMustBeAppliedToFirstOverload { kind },
                             },
-                        )
+                        );
                     };
                     match infer_decorator_details(i_s, func.node_ref.file, decorator, true) {
                         InferredDecorator::Final => add("final"),
@@ -1321,7 +1322,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if next_details.is_overload {
                 if let Some(implementation) = &implementation {
                     NodeRef::from_link(i_s.db, implementation.function_link)
-                        .add_issue(i_s, IssueKind::OverloadImplementationNotLast)
+                        .add_issue(i_s, IssueKind::OverloadImplementationNotLast);
                 }
                 add_func(
                     &next_func,
@@ -1361,7 +1362,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             IssueKind::NotCallable {
                                 type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
                             },
-                        )
+                        );
                     }
                 }
             }
@@ -1388,7 +1389,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.add_issue_onto_start_including_decorator(
                 i_s,
                 IssueKind::OverloadInconsistentKind { kind },
-            )
+            );
         }
         if let Some(implementation) = &implementation
             && in_stub
@@ -1727,7 +1728,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             NodeRef::new(self.file, p.param.name_def().index()).add_type_issue(
                                 i_s.db,
                                 IssueKind::LegacyPositionalOnlyParamAfterNormal,
-                            )
+                            );
                         }
                         ParamType::PositionalOnly(as_t(t))
                     } else {

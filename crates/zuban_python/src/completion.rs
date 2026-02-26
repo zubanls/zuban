@@ -208,7 +208,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                                 i_s.db,
                                 *dots,
                                 *base,
-                                |_| (),
+                                |_| false,
                             )
                     }))
                 }

@@ -154,7 +154,7 @@ impl Tuple {
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Inferred {
         // Make sure the get_item part is inferred.
         slice_type.infer(i_s);
@@ -767,7 +767,7 @@ fn merge_types(original: impl MergableTypes, new: impl MergableTypes) -> Arc<[Ty
 pub(crate) fn lookup_on_tuple<'x>(
     tuple: &'x Arc<Tuple>,
     i_s: &'x InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     name: &str,
 ) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {

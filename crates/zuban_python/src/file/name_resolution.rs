@@ -567,7 +567,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub(super) fn resolve_module_access(
         &self,
         name: &str,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
     ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let result = self.resolve_module_access_internal(name, add_issue);
         if cfg!(feature = "zuban_debug") {
@@ -590,7 +590,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     fn resolve_module_access_internal(
         &self,
         name: &str,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
     ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let db = self.i_s.db;
         Some(if let Some(name_ref) = self.file.lookup_symbol(name) {
@@ -612,7 +612,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.file.qualified_name(db).into(),
                     attribute: name.into(),
-                })
+                });
             }
             if self.stop_on_assignments
                 && name_ref.point().maybe_specific() == Some(Specific::FirstNameOfNameDef)
@@ -897,9 +897,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         self.lookup_type_name_on_class(cls, name)
     }
 
-    pub fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
+    pub fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) -> bool {
         let from = NodeRef::new(self.file, node_index);
-        from.add_issue(self.i_s, issue);
+        from.maybe_add_issue(self.i_s, issue)
     }
 
     pub fn maybe_add_issue(&self, node_index: NodeIndex, issue: IssueKind) -> bool {

@@ -132,7 +132,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         // testDisallowAnyExplicitAlias
                         if self.flags().disallow_any_explicit {
                             NodeRef::new(file, name_or_prim.index())
-                                .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                                .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit);
                         }
                     }
                     // It seems like Mypy is handling these differently?
@@ -540,7 +540,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                         IssueKind::DuplicateTypeVarInTypeAliasType {
                                                             name: tvl.name(self.i_s.db).into()
                                                         }
-                                                    )
+                                                    );
                                                 } else if matches!(
                                                     tvl,
                                                     TypeVarLike::TypeVarTuple(_)
@@ -553,7 +553,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                         IssueKind::MultipleTypeVarTupleDisallowedInTypeParams {
                                                             in_type_alias_type: true,
                                                         }
-                                                    )
+                                                    );
                                                 } else {
                                                     type_var_manager.add(
                                                         tvl,
@@ -570,16 +570,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                     // TODO this is very imprecise
                                                     is_unpack: c.starts_with("Unpack[")
                                                     || c.starts_with("typing.Unpack[")
-                                                })
+                                                });
                                             }
                                         };
                                     }
                                     parsa_python_cst::StarLikeExpression::StarNamedExpression(
                                         s,
-                                    ) => self.add_type_issue(
-                                        s.index(),
-                                        IssueKind::StarredExpressionOnlyNoTarget,
-                                    ),
+                                    ) => {
+                                        self.add_type_issue(
+                                            s.index(),
+                                            IssueKind::StarredExpressionOnlyNoTarget,
+                                        );
+                                    }
                                     _ => unreachable!(),
                                 }
                             }
@@ -907,7 +909,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         type_alias: parsa_python_cst::TypeAlias,
     ) -> Lookup<'file, 'file> {
         if self.i_s.current_function().is_some() && !self.i_s.db.mypy_compatible() {
-            self.add_issue(type_alias.index(), IssueKind::TypeAliasSyntaxInFunction)
+            self.add_issue(type_alias.index(), IssueKind::TypeAliasSyntaxInFunction);
         }
         let (name_def, type_params, expr) = type_alias.unpack();
         let alias_type_ref = type_alias_type_node_ref(self.file, type_alias);

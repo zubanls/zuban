@@ -394,7 +394,7 @@ impl KeywordArg<'_, '_> {
             .infer_expression_with_context(self.expression, result_context)
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         self.node_ref.add_issue(i_s, issue)
     }
 }
@@ -868,7 +868,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                             IssueKind::ParamSpecArgumentsNeedsBothStarAndStarStar {
                                                 name: u1.param_spec.name(i_s.db).into(),
                                             },
-                                        )
+                                        );
                                     }
                                     Some(BaseArgReturn::Arg(ArgKind::ParamSpec {
                                         usage: u1.clone(),
@@ -1276,7 +1276,7 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
 
 pub(crate) struct NoArgs<'a> {
     node_ref: NodeRef<'a>,
-    add_issue: Option<&'a dyn Fn(IssueKind)>,
+    add_issue: Option<&'a dyn Fn(IssueKind) -> bool>,
 }
 
 impl<'a> NoArgs<'a> {
@@ -1288,7 +1288,7 @@ impl<'a> NoArgs<'a> {
     }
     pub fn new_with_custom_add_issue(
         node_ref: NodeRef<'a>,
-        add_issue: &'a dyn Fn(IssueKind),
+        add_issue: &'a dyn Fn(IssueKind) -> bool,
     ) -> Self {
         Self {
             node_ref,

@@ -1234,7 +1234,7 @@ pub fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -
         let Some(cls) = t.inner_generic_class(i_s) else {
             return false;
         };
-        let details = cls.lookup(i_s, method, ClassLookupOptions::new(&|_| ()));
+        let details = cls.lookup(i_s, method, ClassLookupOptions::new(&|_| false));
         details.lookup.is_some() && !details.class.originates_in_builtins_or_typing(i_s.db)
     })
 }
@@ -1588,7 +1588,7 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
         let check_enum = |enum_| {
             // By default bool(<Some Enum Member>) is True, but __bool__/__len__ can change that.
             let check_dunder = |name| {
-                let l = lookup_on_enum_instance(i_s, &|_| (), enum_, name);
+                let l = lookup_on_enum_instance(i_s, &|_| false, enum_, name);
                 narrow_by_return_literal(l)
             };
             check_dunder("__bool__")
@@ -1613,7 +1613,7 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                 .or_else(|| {
                     let class = c.class(i_s.db);
                     let narrow_class_by_return_literal = |name| {
-                        let l = class.lookup(i_s, name, ClassLookupOptions::new(&|_| ()));
+                        let l = class.lookup(i_s, name, ClassLookupOptions::new(&|_| false));
                         narrow_by_return_literal(l)
                     };
 
@@ -1953,7 +1953,7 @@ impl<'file> Inference<'_, 'file, '_> {
         &self,
         c: Class,
         self_symbol: NodeIndex,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Result<Option<Inferred>, FunctionDef<'file>> {
         let name_node_ref = NodeRef::new(self.file, self_symbol);
         let name_def_node_ref = name_node_ref.name_def_ref_of_name();
@@ -2402,10 +2402,10 @@ impl<'file> Inference<'_, 'file, '_> {
                             if let Some(cls) = on_t.maybe_class(self.i_s.db)
                                 && cls.maybe_named_tuple_base(self.i_s.db).is_some()
                             {
-                                named_tuple_attr_cannot_be_deleted()
+                                named_tuple_attr_cannot_be_deleted();
                             }
                             if let Type::NamedTuple(_) = on_t {
-                                named_tuple_attr_cannot_be_deleted()
+                                named_tuple_attr_cannot_be_deleted();
                             }
                         }
                     },
@@ -2749,7 +2749,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     IssueKind::NonExhaustiveMatch {
                         unmatched_type: rest.format_short(self.i_s.db),
                     },
-                )
+                );
             }
         }
     }
@@ -2908,7 +2908,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 self.add_issue(
                     and.index(),
                     IssueKind::RightOperandIsNeverOperated { right: "and" },
-                )
+                );
             }
         } else {
             self.propagate_parent_unions(&mut left_frames.truthy, &left_frames.parent_unions);
@@ -2978,7 +2978,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 self.add_issue(
                     or.index(),
                     IssueKind::RightOperandIsNeverOperated { right: "or" },
-                )
+                );
             }
         } else {
             self.propagate_parent_unions(&mut left_frames.falsey, &left_frames.parent_unions);
@@ -3255,7 +3255,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                     "__getitem__",
                                     LookupKind::OnlyType,
                                     &mut ResultContext::Unknown,
-                                    &|_| (),
+                                    &|_| false,
                                     &|_| not_found.set(true),
                                 )
                                 .into_inferred()
@@ -3280,7 +3280,7 @@ impl<'file> Inference<'_, 'file, '_> {
     fn split_for_dotted_pattern_name(&self, inf: Inferred, dotted_t: &Type) -> PatternResult {
         let inf_t = inf.into_type(self.i_s);
         let fallback = |inf_t| {
-            let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, dotted_t, |_| {});
+            let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, dotted_t, |_| false);
             if !truthy.is_singleton(self.i_s.db) {
                 falsey.union_in_place(inf_t)
             }
@@ -3378,6 +3378,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let inf_type = inf.as_cow_type(i_s);
         let (truthy, falsey) = split_and_intersect(self.i_s, &inf_type, target_t, |issue| {
             debug!("Intersection for class target not possible: {issue:?}");
+            false
         });
         let (mut truthy, falsey_new) = run_pattern_for_each_type(self.i_s, truthy, |t| {
             self.find_guards_in_class_pattern_part2(t, subject_key, params.clone(), target_t)
@@ -3411,7 +3412,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 name,
                 LookupKind::OnlyType,
                 &mut ResultContext::Unknown,
-                &|_| (),
+                &|_| false,
                 &|_| (),
             )
         };
@@ -3520,7 +3521,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 } else {
                                     IssueKind::DuplicateImplicitKeywordPattern { name: key.into() }
                                 },
-                            )
+                            );
                         }
                     }
                     if find_inner_guards_and_return_unreachable(
@@ -4310,11 +4311,7 @@ impl<'file> Inference<'_, 'file, '_> {
             self.i_s,
             &input.inf.as_cow_type(self.i_s),
             &isinstance_type,
-            |issue| {
-                if self.flags().warn_unreachable {
-                    self.add_issue(args.index(), issue)
-                }
-            },
+            |issue| self.flags().warn_unreachable && self.add_issue(args.index(), issue),
         );
         let key = input.key?;
         Some(FramesWithParentUnions {
@@ -4580,11 +4577,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 self.i_s,
                 &infos.inf.as_cow_type(self.i_s),
                 &resolved_guard_t,
-                |issue| {
-                    if self.flags().warn_unreachable {
-                        self.add_issue(args.index(), issue)
-                    }
-                },
+                |issue| self.flags().warn_unreachable && self.add_issue(args.index(), issue),
             );
             (
                 Frame::from_type(key.clone(), truthy),
@@ -5041,7 +5034,7 @@ impl<'file> Inference<'_, 'file, '_> {
             attr,
             LookupKind::Normal,
             &mut ResultContext::ValueExpected,
-            &|_| (),
+            &|_| false,
             &|_| (), // OnLookupError is irrelevant for us here.
         )
     }
@@ -5712,7 +5705,7 @@ fn split_and_intersect(
     i_s: &InferenceState,
     original_t: &Type,
     isinstance_type: &Type,
-    mut add_issue: impl Fn(IssueKind),
+    mut add_issue: impl Fn(IssueKind) -> bool,
 ) -> (Type, Type) {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
     let mut true_type = Type::Never(NeverCause::Other);
@@ -5934,7 +5927,7 @@ fn intersect<'x>(
     i_s: &InferenceState,
     t1: &'x Type,
     t2: &'x Type,
-    add_issue: &mut dyn FnMut(IssueKind),
+    add_issue: &mut dyn FnMut(IssueKind) -> bool,
 ) -> Option<Cow<'x, Type>> {
     Some(if t2.is_simple_sub_type_of(i_s, t1).bool() {
         Cow::Borrowed(t2)

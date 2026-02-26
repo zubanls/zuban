@@ -138,15 +138,15 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         &self,
         i_s: &InferenceState,
         kind: IssueKind,
-    ) {
+    ) -> bool {
         let node = self.node();
         if let Some(decorated) = node.maybe_decorated() {
             self.file.maybe_add_issue(
                 i_s,
                 Issue::from_start_stop(decorated.start(), decorated.end_position_last_leaf(), kind),
-            );
+            )
         } else {
-            self.add_issue_for_declaration(i_s, kind);
+            self.add_issue_for_declaration(i_s, kind)
         }
     }
 

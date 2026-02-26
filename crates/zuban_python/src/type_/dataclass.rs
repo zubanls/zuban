@@ -356,7 +356,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                         );
                         if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {
                             annotation_ref
-                                .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass)
+                                .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass);
                         }
                     }
                 }
@@ -556,7 +556,7 @@ fn set_descriptor_update_for_init(i_s: &InferenceState, t: &mut Type) {
         return;
     };
     let lookup = cls
-        .lookup(i_s, "__set__", ClassLookupOptions::new(&|_| ()))
+        .lookup(i_s, "__set__", ClassLookupOptions::new(&|_| false))
         .lookup;
     let Some(inf) = lookup.maybe_inferred() else {
         return;
@@ -843,9 +843,7 @@ pub(crate) fn dataclasses_replace<'db>(
                     if lookup_on_dataclass(
                         dataclass,
                         i_s,
-                        |issue| {
-                            args.add_issue(i_s, issue);
-                        },
+                        |issue| args.add_issue(i_s, issue),
                         name.as_str(i_s.db),
                     )
                     .lookup
@@ -1066,7 +1064,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     in_type: &Arc<Type>,
     dataclass: &'a Arc<Dataclass>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
@@ -1196,7 +1194,7 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
 pub(crate) fn lookup_on_dataclass<'a>(
     self_: &'a Arc<Dataclass>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     name: &str,
 ) -> LookupDetails<'a> {
     if self_.options.frozen == Some(true)

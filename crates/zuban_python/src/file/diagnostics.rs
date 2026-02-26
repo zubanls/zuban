@@ -183,7 +183,7 @@ impl Inference<'_, '_, '_> {
             }
 
             if let Some(name_ref) = self.file.lookup_symbol("__getattribute__") {
-                name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
+                name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel);
             }
             if let Some(name_ref) = self.file.lookup_symbol("__getattr__") {
                 let actual = name_ref.infer_name_of_definition_by_index(self.i_s);
@@ -203,7 +203,7 @@ impl Inference<'_, '_, '_> {
                             type_: actual.format_short(self.i_s.db),
                             special_method: "__getattr__",
                         },
-                    )
+                    );
                 }
             }
         })
@@ -223,7 +223,7 @@ impl Inference<'_, '_, '_> {
                             self.add_issue(
                                 annotation.index(),
                                 IssueKind::ProtocolMemberCannotBeFinal,
-                            )
+                            );
                         }
                         false
                     }
@@ -446,7 +446,7 @@ impl Inference<'_, '_, '_> {
                             Point::new_specific(Specific::AnyDueToError, Locality::File),
                         );
                     }
-                    self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel)
+                    self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel);
                 }
             }
             StmtLikeContent::NonlocalStmt(_) => {}
@@ -813,7 +813,7 @@ impl Inference<'_, '_, '_> {
                         IssueKind::AlreadyDefinedTypeParameter {
                             name: name_def.as_code().into(),
                         },
-                    )
+                    );
                 }
             }
         }
@@ -848,7 +848,7 @@ impl Inference<'_, '_, '_> {
                         IssueKind::AlreadyDefinedTypeParameter {
                             name: name_def.as_code().into(),
                         },
-                    )
+                    );
                 }
             }
         }
@@ -964,7 +964,9 @@ impl Inference<'_, '_, '_> {
         let class_infos = class_node_ref.use_cached_class_infos(db);
 
         let type_vars = class_node_ref.use_cached_type_vars(db);
-        type_vars.add_error_if_default_after_type_var_tuple(|issue| c.add_issue_on_name(db, issue));
+        type_vars.add_error_if_default_after_type_var_tuple(|issue| {
+            c.add_issue_on_name(db, issue);
+        });
 
         if let Some(t) = class_infos.undefined_generics_type.get() {
             match t.as_ref() {
@@ -976,7 +978,7 @@ impl Inference<'_, '_, '_> {
                             IssueKind::DataclassPlusExplicitSlots {
                                 class_name: c.name().into(),
                             },
-                        )
+                        );
                     }
                 }
                 Type::Enum(e) => {
@@ -1002,7 +1004,7 @@ impl Inference<'_, '_, '_> {
                                             actual: actual.format_short(self.i_s),
                                             expected: expected.format_short(self.i_s),
                                         },
-                                    )
+                                    );
                                 }
                             }
                         }
@@ -1110,7 +1112,7 @@ impl Inference<'_, '_, '_> {
                     IssueKind::InvalidSlotsDefinition {
                         actual: t.format_short(i_s.db),
                     },
-                )
+                );
             }
         }
         if let Some(node_index) = c
@@ -1139,7 +1141,7 @@ impl Inference<'_, '_, '_> {
             };
             if !is_ok {
                 NodeRef::new(self.file, node_index)
-                    .add_issue(&i_s, IssueKind::InvalidDunderMatchArgs)
+                    .add_issue(&i_s, IssueKind::InvalidDunderMatchArgs);
             }
         }
         match class_infos.kind {
@@ -1162,7 +1164,7 @@ impl Inference<'_, '_, '_> {
                                 object: format!("\"{}\"", c.name()).into(),
                                 name: name.into(),
                             },
-                        )
+                        );
                     }
                 }
                 if type_params.is_none() {
@@ -1182,7 +1184,7 @@ impl Inference<'_, '_, '_> {
                             NodeRef::new(self.file, in_class_same_name_index).add_type_issue(
                                 self.i_s.db,
                                 IssueKind::NamedTupleOverwriteInSubclass,
-                            )
+                            );
                         }
                     }
                 }
@@ -1196,7 +1198,8 @@ impl Inference<'_, '_, '_> {
             self.i_s,
             "__init_subclass__",
             ClassLookupOptions::new(&|issue| {
-                debug!("TODO __init_subclass__ error ignored: {issue:?}")
+                debug!("TODO __init_subclass__ error ignored: {issue:?}");
+                false
             })
             .with_ignore_self(),
         );
@@ -1337,7 +1340,7 @@ impl Inference<'_, '_, '_> {
             let original_details = c.lookup(
                 i_s,
                 name,
-                ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                ClassLookupOptions::new(&|_| false).with_ignore_self(),
             );
             add_error_if_final(i_s, from, name, &original_details);
             return;
@@ -1627,7 +1630,7 @@ impl Inference<'_, '_, '_> {
             function.add_issue_onto_start_including_decorator(
                 i_s,
                 IssueKind::ProtocolMemberCannotBeFinal,
-            )
+            );
         }
 
         if NodeRef::new(self.file, body.index()).point().specific()
@@ -1806,7 +1809,7 @@ impl Inference<'_, '_, '_> {
                                                 type_var_like: type_var_like.clone(),
                                                 class_name: class.name().into(),
                                             },
-                                        )
+                                        );
                                     }
                                 }
                             }
@@ -1816,7 +1819,7 @@ impl Inference<'_, '_, '_> {
             } else if !was_star {
                 function
                     .node_ref
-                    .add_issue(i_s, IssueKind::MethodWithoutArguments)
+                    .add_issue(i_s, IssueKind::MethodWithoutArguments);
             }
         }
 
@@ -1964,17 +1967,19 @@ impl Inference<'_, '_, '_> {
                                     returns: t.format_short(i_s.db),
                                     must_return: class.format_short(i_s.db),
                                 },
-                            )
+                            );
                         }
                     }
                     Type::Type(_) | Type::Any(_) | Type::Never(_) => (),
                     Type::Enum(e) if e.class == class.node_ref.as_link() => (),
-                    t => self.add_issue(
-                        return_annotation.index(),
-                        IssueKind::NewMustReturnAnInstance {
-                            got: t.format_short(i_s.db),
-                        },
-                    ),
+                    t => {
+                        self.add_issue(
+                            return_annotation.index(),
+                            IssueKind::NewMustReturnAnInstance {
+                                got: t.format_short(i_s.db),
+                            },
+                        );
+                    }
                 }
             }
         }
@@ -1999,7 +2004,7 @@ impl Inference<'_, '_, '_> {
                             IssueKind::MustReturnNone {
                                 function_name: function.name().into(),
                             },
-                        )
+                        );
                     }
                 }
                 "exit" => {
@@ -2118,7 +2123,7 @@ impl Inference<'_, '_, '_> {
                             IssueKind::ReturnedAnyWarning {
                                 expected: t.format_short(i_s.db),
                             },
-                        )
+                        );
                     }
 
                     t.error_if_not_matches(
@@ -2316,7 +2321,7 @@ impl Inference<'_, '_, '_> {
             &mut ResultContext::ValueExpected,
             // Theoretically this should not be ignored, but for now I'm not sure if self types are
             // working anyway.
-            &|_| (),
+            &|_| false,
             &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
@@ -2367,7 +2372,7 @@ impl Inference<'_, '_, '_> {
                                 reverse_class: func.class.unwrap().format_short(i_s.db),
                                 forward_class: forward.format_short(i_s.db),
                             },
-                        )
+                        );
                     }
                 };
                 match lookup_details.lookup.into_inferred().as_type(i_s) {
@@ -2378,12 +2383,14 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                     Type::Any(_) | Type::CustomBehavior(_) => (),
-                    _ => from.add_issue(
-                        i_s,
-                        IssueKind::ForwardOperatorIsNotCallable {
-                            forward_name: normal_magic,
-                        },
-                    ),
+                    _ => {
+                        from.add_issue(
+                            i_s,
+                            IssueKind::ForwardOperatorIsNotCallable {
+                                forward_name: normal_magic,
+                            },
+                        );
+                    }
                 }
             },
         )
@@ -2395,7 +2402,7 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let instance = func.class.unwrap().instance();
-        let options = InstanceLookupOptions::new(&|_| ()).with_avoid_inferring_return_types();
+        let options = InstanceLookupOptions::new(&|_| false).with_avoid_inferring_return_types();
         let normal_method = instance.lookup(i_s, normal_magic_name, options).lookup;
         if let Some(normal_inf) = normal_method.into_maybe_inferred() {
             let inplace_method = instance.lookup(i_s, func.name(), options).lookup;
@@ -2506,7 +2513,7 @@ pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef)
                     IssueKind::AsyncNotIterable {
                         type_: t.format_short(i_s.db),
                     },
-                )
+                );
             },
         )
         .type_lookup_and_execute_with_attribute_error(
@@ -2623,6 +2630,7 @@ fn find_and_check_override(
     let instance = Instance::new(override_class, None);
     let add_lookup_issue = |_issue| {
         // TODO we need to work on this, see testSelfTypeOverrideCompatibility
+        false
     };
     let mut original_details = instance.lookup(
         i_s,
@@ -2685,7 +2693,7 @@ fn find_and_check_override(
         let issue = IssueKind::MissingBaseForOverride { name: name.into() };
         // For whatever reason, this is how Mypy does it and we don't want to screw up the line
         // numbers
-        let lookup = override_class.simple_lookup(i_s, |_| (), name);
+        let lookup = override_class.simple_lookup(i_s, |_| false, name);
         if matches!(
             lookup.into_inferred().as_type(i_s),
             Type::FunctionOverload(_)
@@ -2778,7 +2786,7 @@ pub(super) fn check_override(
                     from.add_issue_onto_start_including_decorator(
                         i_s,
                         IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
-                    )
+                    );
                 }
             // TODO we should not need to check if we are in a frozen dataclass, the attr kind
             // should never be writable in the first place!
@@ -2786,7 +2794,7 @@ pub(super) fn check_override(
                 from.add_issue(
                     i_s,
                     IssueKind::ReadOnlyPropertyCannotOverwriteWritableAttribute,
-                )
+                );
             }
         }
         (Classmethod { .. } | Staticmethod { .. }, DefMethod { .. }) => {
@@ -2794,18 +2802,22 @@ pub(super) fn check_override(
             // and instance, others not.
             match_ = Match::new_false();
         }
-        (ClassVar, AnnotatedAttribute) => from.add_issue(
-            i_s,
-            IssueKind::CannotOverrideClassVariableWithInstanceVariable {
-                base_class: original_class_name(&original_class),
-            },
-        ),
-        (AnnotatedAttribute, ClassVar) => from.add_issue(
-            i_s,
-            IssueKind::CannotOverrideInstanceVariableWithClassVariable {
-                base_class: original_class_name(&original_class),
-            },
-        ),
+        (ClassVar, AnnotatedAttribute) => {
+            from.add_issue(
+                i_s,
+                IssueKind::CannotOverrideClassVariableWithInstanceVariable {
+                    base_class: original_class_name(&original_class),
+                },
+            );
+        }
+        (AnnotatedAttribute, ClassVar) => {
+            from.add_issue(
+                i_s,
+                IssueKind::CannotOverrideInstanceVariableWithClassVariable {
+                    base_class: original_class_name(&original_class),
+                },
+            );
+        }
         _ => (),
     }
     let mut added_liskov_note = false;
@@ -2818,7 +2830,7 @@ pub(super) fn check_override(
         {
             let issue = IssueKind::CannotOverrideWritableWithFinalAttribute { name: name.into() };
             if let Some(func) = maybe_func() {
-                func.add_issue_onto_start_including_decorator(i_s, issue)
+                func.add_issue_onto_start_including_decorator(i_s, issue);
             } else {
                 from.add_issue(i_s, issue);
             }
@@ -2887,7 +2899,9 @@ pub(super) fn check_override(
                                     Issue::from_start_stop(s.start, s.end, issue),
                                 );
                             }
-                            _ => from.add_issue(i_s, issue),
+                            _ => {
+                                from.add_issue(i_s, issue);
+                            }
                         }
                         emitted = true;
                     }
@@ -2959,7 +2973,7 @@ pub(super) fn check_override(
                         expected: original_t.format_short(i_s.db),
                         base_class: original_class_name(&original_class),
                     },
-                )
+                );
             }
         }
         if !emitted {
@@ -2979,7 +2993,7 @@ pub(super) fn check_override(
                         .lookup(
                             i_s,
                             name,
-                            ClassLookupOptions::new(&|_| ()).with_super_count(
+                            ClassLookupOptions::new(&|_| false).with_super_count(
                                 original_lookup_details
                                     .mro_index
                                     .map(|m| m.0 as usize)
@@ -3002,7 +3016,7 @@ pub(super) fn check_override(
                     &mut notes,
                     &i_s.with_class_context(&override_class),
                     override_t,
-                    override_class.simple_lookup(i_s, |_| (), name),
+                    override_class.simple_lookup(i_s, |_| false, name),
                 );
             }
 
@@ -3033,7 +3047,7 @@ pub(super) fn check_override(
             {
                 from.add_issue_onto_start_including_decorator(i_s, issue)
             } else {
-                from.add_issue(i_s, issue)
+                from.add_issue(i_s, issue);
             }
         }
     }
@@ -3066,7 +3080,7 @@ fn check_property_setter_override(
         from.add_issue_and_prefer_on_setter_decorator(
             i_s,
             IssueKind::IncompatiblePropertySetterOverride { notes },
-        )
+        );
     }
 }
 
@@ -3205,7 +3219,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                     actual_variance: tv_variance,
                     expected_variance,
                 },
-            )
+            );
         }
     }
 }
@@ -3214,7 +3228,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
     i_s: &InferenceState,
     bases: impl Fn() -> BASES,
     should_check: impl Fn(&str) -> bool,
-    mut add_issue: impl FnMut(IssueKind),
+    mut add_issue: impl FnMut(IssueKind) -> bool,
 ) {
     let db = i_s.db;
     let should_infer_untyped_params = db.project.should_infer_untyped_params();
@@ -3255,7 +3269,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                     // it.
                     InstanceLookupOptions::new(&|issue| {
                         debug!("Multi inheritance bind issue(inst2) on name {name}: {issue:?}");
-                        had_lookup_issue.set(true)
+                        had_lookup_issue.set(true);
+                        false
                     })
                     .with_avoid_inferring_return_types()
                     .without_object(),
@@ -3265,7 +3280,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         name: name.into(),
                         class1: cls1.name().into(),
                         class2: instance2.class.name().into(),
-                    })
+                    });
                 };
                 if had_lookup_issue.get() {
                     add_multi_inheritance_issue();
@@ -3278,7 +3293,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         name,
                         InstanceLookupOptions::new(&|issue| {
                             debug!("Multi inheritance bind issue(inst1) on name {name}: {issue:?}");
-                            had_lookup_issue.set(true)
+                            had_lookup_issue.set(true);
+                            false
                         })
                         .with_avoid_inferring_return_types(),
                     );
@@ -3325,7 +3341,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                             )
                             .bool()
                         {
-                            add_multi_inheritance_issue()
+                            add_multi_inheritance_issue();
                         } else if !inst1_lookup.attr_kind.is_writable()
                             && inst2_lookup.attr_kind.is_writable()
                         {
@@ -3354,7 +3370,7 @@ fn check_type_var_variance_for_base(
     in_definition: PointLink,
     type_vars: &TypeVarLikes,
     base: &Type,
-    mut add_issue: impl FnMut(IssueKind),
+    mut add_issue: impl FnMut(IssueKind) -> bool,
 ) {
     for (i, check_type_var) in type_vars.iter().enumerate() {
         let TypeVarLike::TypeVar(tv) = check_type_var else {

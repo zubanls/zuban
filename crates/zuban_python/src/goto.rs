@@ -96,7 +96,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             name,
             kind,
             &mut ResultContext::Unknown,
-            &|_issue| (),
+            &|_issue| false,
             &|_t_of_attr_error| (),
         )
     }

@@ -253,7 +253,7 @@ impl TypedDictArgs {
                             false => "NotRequired",
                         },
                     },
-                )
+                );
             }
             result = Some(ExtraItemsType {
                 t: t.type_,
@@ -336,7 +336,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
         return None;
     };
     let options = check_typed_dict_arguments(i_s, file, iterator, false, |issue| {
-        args.add_issue(i_s, issue);
+        args.add_issue(i_s, issue)
     });
     let dct_iterator = match atom_content {
         AtomContent::Dict(dct) => dct.iter_elements(),
@@ -386,7 +386,7 @@ pub(super) fn check_typed_dict_arguments<'file>(
     file: &PythonFile,
     args: ArgsIterator<'file>,
     ignore_positional: bool,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
 ) -> TypedDictArgs {
     let mut result = TypedDictArgs::default();
 

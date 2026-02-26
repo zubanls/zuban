@@ -16,7 +16,7 @@ use crate::{
 use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry, UnionType};
 
 type RunOnUnionEntry<'a> =
-    &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind), &mut dyn FnMut(&Type, LookupDetails));
+    &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind) -> bool, &mut dyn FnMut(&Type, LookupDetails));
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Intersection {
@@ -44,7 +44,7 @@ impl Intersection {
         i_s: &InferenceState,
         t1: &Type,
         t2: &Type,
-        add_issue: &mut dyn FnMut(IssueKind),
+        add_issue: &mut dyn FnMut(IssueKind) -> bool,
     ) -> Result<Type, ()> {
         let mut handle_union = |union: &UnionType, other: &Type| {
             let mut found_issues = vec![];
@@ -54,7 +54,10 @@ impl Intersection {
                     i_s,
                     other,
                     &entry.type_,
-                    &mut |issue| found_issues.push(issue),
+                    &mut |issue| {
+                        found_issues.push(issue);
+                        true
+                    },
                 ) {
                     new_entries.push(UnionEntry {
                         type_,
@@ -64,7 +67,7 @@ impl Intersection {
             }
             if new_entries.is_empty() {
                 for issue in found_issues {
-                    add_issue(issue)
+                    add_issue(issue);
                 }
                 Err(())
             } else {
@@ -122,7 +125,7 @@ impl Intersection {
                 add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
                     intersection: format!(r#""{}" and "NoneType""#, t1.format_short(i_s.db)).into(),
                     final_class: "NoneType".into(),
-                })
+                });
             }
             Err(())
         };
@@ -187,7 +190,10 @@ impl Intersection {
                 i_s,
                 || intersection.iter_entries(),
                 |_| true,
-                |_| *had_issue = true,
+                |_| {
+                    *had_issue = true;
+                    false
+                },
             );
         };
 
@@ -258,7 +264,7 @@ impl Intersection {
 
     fn wrap_first_non_failing<T>(
         &self,
-        mut callable: impl FnMut(&Type, &dyn Fn(IssueKind)) -> T,
+        mut callable: impl FnMut(&Type, &dyn Fn(IssueKind) -> bool) -> T,
     ) -> Result<T, IssueKind> {
         let first_issue = Cell::new(None);
         for t in self.iter_entries() {
@@ -266,6 +272,7 @@ impl Intersection {
             let result = callable(t, &|issue| {
                 first_issue.set(first_issue.take().or(Some(issue)));
                 had_issue.set(true);
+                false
             });
             if !had_issue.get() {
                 return Ok(result);
@@ -279,7 +286,7 @@ impl Intersection {
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Inferred {
         self.wrap_first_non_failing(|t, add_issue| {
             t.get_item_internal(i_s, None, slice_type, result_context, add_issue)
@@ -319,7 +326,7 @@ impl Intersection {
     pub(crate) fn run_after_lookup_on_each_union_member(
         &self,
         run_on_entry: RunOnUnionEntry,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         callable: &mut dyn FnMut(&Type, LookupDetails),
     ) {
         let first_issue = Cell::new(None);
@@ -330,6 +337,7 @@ impl Intersection {
                 &|issue| {
                     had_issue.set(true);
                     first_issue.set(first_issue.take().or(Some(issue)));
+                    false
                 },
                 &mut |on_t, l| {
                     if l.lookup.is_some() {

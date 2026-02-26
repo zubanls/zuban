@@ -286,12 +286,14 @@ impl<'db> Inference<'db, '_, '_> {
                             }
                         }
                         t if is_any_dict(i_s.db, t) => (),
-                        t => node_ref.add_issue(
-                            i_s,
-                            IssueKind::TypedDictUnsupportedTypeInStarStar {
-                                type_: t.format_short(i_s.db),
-                            },
-                        ),
+                        t => {
+                            node_ref.add_issue(
+                                i_s,
+                                IssueKind::TypedDictUnsupportedTypeInStarStar {
+                                    type_: t.format_short(i_s.db),
+                                },
+                            );
+                        }
                     }
                 }
             }
@@ -312,7 +314,7 @@ impl<'db> Inference<'db, '_, '_> {
                         .into(),
                     keys: missing_keys.iter().map(|k| Box::from(*k)).collect(),
                 },
-            )
+            );
         }
         if matches!(&typed_dict.generics, TypedDictGenerics::None) {
             Type::TypedDict(typed_dict)
@@ -434,7 +436,7 @@ impl<'db> Inference<'db, '_, '_> {
                 )
                 .into(),
             },
-        )
+        );
     }
 
     // For dict(..)

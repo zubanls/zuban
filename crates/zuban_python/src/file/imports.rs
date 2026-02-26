@@ -184,7 +184,7 @@ impl PythonFile {
         db: &Database,
         level: usize,
         dotted_name: Option<DottedImportName>,
-        add_issue: impl FnOnce(IssueKind),
+        add_issue: impl FnOnce(IssueKind) -> bool,
     ) -> Option<ImportResult> {
         let maybe_level_file = if level > 0 {
             match find_import_ancestor(db, self, level) {

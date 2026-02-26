@@ -35,7 +35,7 @@ impl Inference<'_, '_, '_> {
                         },
                         with,
                     },
-                )
+                );
             };
             match t {
                 Type::TypedDict(_) => cannot_use_with("TypedDict"),
@@ -49,7 +49,7 @@ impl Inference<'_, '_, '_> {
 
 struct IsinstanceInference<'db, 'file, 'i_s, 'a> {
     inference: &'a Inference<'db, 'file, 'i_s>,
-    add_issue: &'a dyn Fn(NodeIndex, IssueKind),
+    add_issue: &'a dyn Fn(NodeIndex, IssueKind) -> bool,
 }
 
 impl IsinstanceInference<'_, '_, '_, '_> {
@@ -185,7 +185,7 @@ impl IsinstanceInference<'_, '_, '_, '_> {
                     let class_infos = class.use_cached_class_infos(i_s.db);
                     if matches!(class_infos.kind, ClassKind::Protocol) {
                         if !class_infos.is_runtime_checkable {
-                            (self.add_issue)(part.index(), IssueKind::ProtocolNotRuntimeCheckable)
+                            (self.add_issue)(part.index(), IssueKind::ProtocolNotRuntimeCheckable);
                         }
                         if issubclass {
                             let non_method_protocol_members =
@@ -200,7 +200,7 @@ impl IsinstanceInference<'_, '_, '_, '_> {
                                         )
                                         .into(),
                                     },
-                                )
+                                );
                             }
                         }
                     }

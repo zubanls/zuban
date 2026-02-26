@@ -163,7 +163,7 @@ impl NamedTuple {
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Inferred {
         self.as_tuple()
             .get_item(i_s, slice_type, result_context, add_issue)
@@ -336,7 +336,7 @@ impl NamedTuple {
     pub(crate) fn lookup<'a>(
         &self,
         i_s: &'a InferenceState,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         name: &str,
         as_self: Option<&dyn Fn() -> Type>,
     ) -> LookupDetails<'a> {

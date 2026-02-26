@@ -803,7 +803,7 @@ impl TypeVarLike {
         &self,
         db: &Database,
         previous_type_vars: impl Iterator<Item = &'x TypeVarLike> + Clone,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
     ) -> Option<Self> {
         if let Some(default) = self.default(db) {
             let mut had_issue = false;

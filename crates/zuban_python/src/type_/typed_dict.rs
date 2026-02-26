@@ -437,7 +437,7 @@ impl TypedDict {
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => infer_string_index(
@@ -679,7 +679,7 @@ impl Hash for TypedDict {
 fn add_access_key_must_be_string_literal_issue(
     db: &Database,
     td: &TypedDict,
-    add_issue: impl FnOnce(IssueKind),
+    add_issue: impl FnOnce(IssueKind) -> bool,
 ) {
     add_issue(IssueKind::TypedDictAccessKeyMustBeStringLiteral {
         keys: join_with_commas(
@@ -1034,9 +1034,7 @@ fn typed_dict_setitem_internal<'db>(
             },
         );
     } else {
-        add_access_key_must_be_string_literal_issue(i_s.db, td, |issue| {
-            args.add_issue(i_s, issue);
-        })
+        add_access_key_must_be_string_literal_issue(i_s.db, td, |issue| args.add_issue(i_s, issue))
     }
     Some(Inferred::new_none())
 }
@@ -1200,7 +1198,7 @@ pub(crate) fn initialize_typed_dict<'db>(
 pub(crate) fn lookup_on_typed_dict<'a>(
     td: Arc<TypedDict>,
     i_s: &'a InferenceState,
-    add_issue: &dyn Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind) -> bool,
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {

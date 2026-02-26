@@ -102,7 +102,10 @@ impl<'a> Instance<'a> {
             let had_setattr_issue = Cell::new(false);
             let l = self.lookup_with_details(
                 i_s,
-                |_| had_setattr_issue.set(true),
+                |_| {
+                    had_setattr_issue.set(true);
+                    false
+                },
                 "__setattr__",
                 LookupKind::OnlyType,
             );
@@ -235,24 +238,21 @@ impl<'a> Instance<'a> {
         add_issue: impl Fn(IssueKind) -> bool,
         instance: Type,
     ) -> Option<Inferred> {
-        self.type_lookup(
-            i_s,
-            |kind| {
-                add_issue(kind);
-            },
-            "__get__",
-        )
-        .into_maybe_inferred()
-        .map(|inf| {
-            let c_t = Type::Type(Arc::new(instance.clone()));
-            inf.execute(
-                i_s,
-                &CombinedArgs::new(
-                    &KnownArgsWithCustomAddIssue::new(&Inferred::from_type(instance), &add_issue),
-                    &KnownArgsWithCustomAddIssue::new(&Inferred::from_type(c_t), &add_issue),
-                ),
-            )
-        })
+        self.type_lookup(i_s, |kind| add_issue(kind), "__get__")
+            .into_maybe_inferred()
+            .map(|inf| {
+                let c_t = Type::Type(Arc::new(instance.clone()));
+                inf.execute(
+                    i_s,
+                    &CombinedArgs::new(
+                        &KnownArgsWithCustomAddIssue::new(
+                            &Inferred::from_type(instance),
+                            &add_issue,
+                        ),
+                        &KnownArgsWithCustomAddIssue::new(&Inferred::from_type(c_t), &add_issue),
+                    ),
+                )
+            })
     }
 
     pub(crate) fn execute<'db>(
@@ -263,13 +263,7 @@ impl<'a> Instance<'a> {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(inf) = self
-            .type_lookup(
-                i_s,
-                |issue| {
-                    args.add_issue(i_s, issue);
-                },
-                "__call__",
-            )
+            .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
             .into_maybe_inferred()
         {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
@@ -324,7 +318,7 @@ impl<'a> Instance<'a> {
                                     infos.add_issue(IssueKind::AttributeError {
                                         object: format!("\"{}\"", t.format_short(i_s.db)).into(),
                                         name: dunder_next.into(),
-                                    })
+                                    });
                                 },
                             ),
                     )
@@ -555,7 +549,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_with_details(
         &self,
         i_s: &'a InferenceState,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
@@ -569,7 +563,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_on_self(
         &self,
         i_s: &'a InferenceState,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
@@ -585,7 +579,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn type_lookup(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         name: &str,
     ) -> LookupResult {
         self.lookup_with_details(i_s, add_issue, name, LookupKind::OnlyType)
@@ -608,7 +602,7 @@ impl<'a> Instance<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
         as_instance: &Type,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Inferred {
         if let Some(named_tuple) = self.class.maybe_named_tuple_base(i_s.db) {
             // TODO this doesn't take care of the mro and could not be the first __getitem__
@@ -637,7 +631,7 @@ impl<'a> Instance<'a> {
                                 type_: self.class.format_short(i_s.db),
                                 actual: strs.got,
                                 expected: strs.expected,
-                            })
+                            });
                         }),
                     );
                 }
@@ -695,7 +689,7 @@ struct ClassMroFinder<'db, 'a, 'd> {
     i_s: &'d InferenceState<'db, 'd>,
     instance: &'d Instance<'d>,
     mro_iterator: MroIterator<'db, 'a>,
-    add_issue: &'d dyn Fn(IssueKind),
+    add_issue: &'d dyn Fn(IssueKind) -> bool,
     name: &'d str,
     as_instance: Option<&'a Type>,
 }
@@ -1076,7 +1070,7 @@ impl LookupDetails<'_> {
 
 #[derive(Copy, Clone)]
 pub(crate) struct InstanceLookupOptions<'x> {
-    add_issue: &'x dyn Fn(IssueKind),
+    add_issue: &'x dyn Fn(IssueKind) -> bool,
     kind: LookupKind,
     super_count: usize,
     skip_first_self: bool,
@@ -1089,7 +1083,7 @@ pub(crate) struct InstanceLookupOptions<'x> {
 }
 
 impl<'x> InstanceLookupOptions<'x> {
-    pub(crate) fn new(add_issue: &'x dyn Fn(IssueKind)) -> Self {
+    pub(crate) fn new(add_issue: &'x dyn Fn(IssueKind) -> bool) -> Self {
         Self {
             add_issue,
             kind: LookupKind::Normal,

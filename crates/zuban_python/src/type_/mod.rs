@@ -913,6 +913,7 @@ impl Type {
                         |issue| {
                             debug!("Caught issue: {issue:?}");
                             had_issue.set(true);
+                            false
                         },
                         "__call__",
                     )
@@ -933,7 +934,10 @@ impl Type {
         let cls_callable = |cls: Class| {
             let error = Cell::new(false);
             let result = cls
-                .find_relevant_constructor(i_s, &|_| error.set(true))
+                .find_relevant_constructor(i_s, &|_| {
+                    error.set(true);
+                    false
+                })
                 .maybe_callable(i_s, cls);
             if error.get() {
                 return None;

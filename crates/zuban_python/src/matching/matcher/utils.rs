@@ -223,7 +223,14 @@ impl CalculatedTypeArgs {
                     let had_error = Cell::new(false);
                     let inf = cls
                         .instance()
-                        .type_lookup(i_s, |_| had_error.set(true), "__call__")
+                        .type_lookup(
+                            i_s,
+                            |_| {
+                                had_error.set(true);
+                                false
+                            },
+                            "__call__",
+                        )
                         .into_inferred();
                     if !had_error.get() {
                         return self.into_return_type(

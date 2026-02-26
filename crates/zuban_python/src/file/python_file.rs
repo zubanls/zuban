@@ -441,7 +441,12 @@ impl<'db> PythonFile {
             .map(|node_index| NodeRef::new(self, node_index))
     }
 
-    pub fn lookup(&self, db: &Database, add_issue: impl Fn(IssueKind), name: &str) -> LookupResult {
+    pub fn lookup(
+        &self,
+        db: &Database,
+        add_issue: impl Fn(IssueKind) -> bool,
+        name: &str,
+    ) -> LookupResult {
         let i_s = &InferenceState::new(db, self);
         let inference = self.inference(i_s);
         if let Some((pr, redirect_to)) = inference.resolve_module_access(name, &add_issue) {

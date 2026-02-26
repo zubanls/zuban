@@ -141,9 +141,9 @@ impl InvalidVariableType<'_> {
     fn add_issue(
         &self,
         db: &Database,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         origin: TypeComputationOrigin,
-    ) {
+    ) -> bool {
         add_issue(match self {
             Self::Variable(var_ref) | Self::ParamNameAsBaseClassAny(var_ref) => {
                 IssueKind::InvalidType {
@@ -1136,44 +1136,46 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         ),
                     );
                 }
-                Specific::TypingSelf => self.add_issue(
-                    node_ref,
-                    match self.origin {
-                        TypeComputationOrigin::TypedDictMember => {
-                            IssueKind::TypedDictSelfNotAllowed
-                        }
-                        TypeComputationOrigin::NamedTupleMember => {
-                            IssueKind::NamedTupleSelfNotAllowed
-                        }
-                        TypeComputationOrigin::TypeAlias => IssueKind::SelfTypeInTypeAliasTarget,
-                        TypeComputationOrigin::TypeApplication => {
-                            if self.i_s.current_class().is_some() {
-                                return Some(Type::Self_);
+                Specific::TypingSelf => {
+                    self.add_issue(
+                        node_ref,
+                        match self.origin {
+                            TypeComputationOrigin::TypedDictMember => {
+                                IssueKind::TypedDictSelfNotAllowed
                             }
-                            IssueKind::SelfTypeInTypeAliasTarget
-                        }
-                        TypeComputationOrigin::Other | TypeComputationOrigin::BaseClass => {
-                            IssueKind::SelfTypeOutsideOfClass
-                        }
-                        TypeComputationOrigin::ParamTypeCommentOrAnnotation {
-                            is_staticmethod: true,
-                        } if self.i_s.current_class().is_some() => {
-                            IssueKind::SelfTypeInStaticMethod
-                        }
-                        _ => {
-                            if let Some(class) = self.i_s.current_class() {
-                                if class.is_metaclass(db) {
-                                    IssueKind::SelfTypeInMetaclass
-                                } else {
-                                    self.has_type_vars_or_self = true;
+                            TypeComputationOrigin::NamedTupleMember => {
+                                IssueKind::NamedTupleSelfNotAllowed
+                            }
+                            TypeComputationOrigin::TypeAlias => IssueKind::SelfTypeInTypeAliasTarget,
+                            TypeComputationOrigin::TypeApplication => {
+                                if self.i_s.current_class().is_some() {
                                     return Some(Type::Self_);
                                 }
-                            } else {
+                                IssueKind::SelfTypeInTypeAliasTarget
+                            }
+                            TypeComputationOrigin::Other | TypeComputationOrigin::BaseClass => {
                                 IssueKind::SelfTypeOutsideOfClass
                             }
-                        }
-                    },
-                ),
+                            TypeComputationOrigin::ParamTypeCommentOrAnnotation {
+                                is_staticmethod: true,
+                            } if self.i_s.current_class().is_some() => {
+                                IssueKind::SelfTypeInStaticMethod
+                            }
+                            _ => {
+                                if let Some(class) = self.i_s.current_class() {
+                                    if class.is_metaclass(db) {
+                                        IssueKind::SelfTypeInMetaclass
+                                    } else {
+                                        self.has_type_vars_or_self = true;
+                                        return Some(Type::Self_);
+                                    }
+                                } else {
+                                    IssueKind::SelfTypeOutsideOfClass
+                                }
+                            }
+                        },
+                    );
+                },
                 Specific::TypingNamedTuple => {
                     return Some(db.python_state.typing_named_tuple_type());
                 }
@@ -1188,7 +1190,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::TypingClassVar => {
                     self.add_issue(node_ref, IssueKind::ClassVarNestedInsideOtherType);
                 }
-                Specific::TypingFinal => self.add_issue(node_ref, IssueKind::FinalInWrongPlace),
+                Specific::TypingFinal => {
+                    self.add_issue(node_ref, IssueKind::FinalInWrongPlace);
+                }
                 Specific::TypingAnnotated => {
                     self.add_issue(
                         node_ref,
@@ -1197,12 +1201,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )
                     );
                 }
-                Specific::TypingTypeGuard => self.add_issue(
-                    node_ref,
-                    IssueKind::MustHaveOneArgument { name: "TypeGuard" },
-                ),
+                Specific::TypingTypeGuard => {
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::MustHaveOneArgument { name: "TypeGuard" },
+                    );
+                },
                 Specific::TypingTypeIs => {
-                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
+                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" });
                 }
                 Specific::TypingUnpack => {
                     self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
@@ -1227,15 +1233,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::TypingParamSpecClass => {
                     return Some(self.i_s.db.python_state.param_spec_type());
                 }
-                _ => self.add_issue(node_ref, IssueKind::new_invalid_type("Invalid type")),
+                _ => {
+                    self.add_issue(node_ref, IssueKind::new_invalid_type("Invalid type"));
+                },
             },
-            TypeContent::TypeVarTuple(t) => self.add_issue(
+            TypeContent::TypeVarTuple(t) => {self.add_issue(
                 node_ref,
                 IssueKind::new_invalid_type(format!(
                     "TypeVarTuple \"{}\" is only valid with an unpack",
                     t.type_var_tuple.name(self.i_s.db),
                 )),
-            ),
+            );},
             TypeContent::ParamSpec(p) => {
                 self.add_issue(
                     node_ref,
@@ -1300,7 +1308,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             }
             TypeContent::Final { t: _, .. } => {
-                self.add_issue(node_ref, IssueKind::FinalInWrongPlace)
+                self.add_issue(node_ref, IssueKind::FinalInWrongPlace);
             }
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(self.i_s.db, |t| self.add_issue(node_ref, t), self.origin);
@@ -1331,12 +1339,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeContent::TypedDictFieldModifier(m) => {
-                self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() })
+                self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: m.name() });
             }
             TypeContent::CallableParam(_)
             | TypeContent::GenericWithGenerics
             | TypeContent::ProtocolWithGenerics => {
-                self.add_issue(node_ref, IssueKind::new_invalid_type("Invalid type"))
+                self.add_issue(node_ref, IssueKind::new_invalid_type("Invalid type"));
             }
         }
         None
@@ -1458,7 +1466,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.add_issue(
                         node_ref_a,
                         IssueKind::ForwardReferenceUnionsCausesRuntimeError,
-                    )
+                    );
                 }
                 if matches!(b.maybe_unpacked_atom(), Some(AtomContent::Strings(_)))
                     && !matches!(first, TypeContent::Type(Type::TypeVar(_)))
@@ -1466,16 +1474,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.add_issue(
                         node_ref_b,
                         IssueKind::ForwardReferenceUnionsCausesRuntimeError,
-                    )
+                    );
                 }
 
                 if self.errors_already_calculated {
                     if self.flags().disallow_any_explicit {
                         if matches!(first, TypeContent::SpecialCase(Specific::TypingAny)) {
-                            node_ref_a.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                            node_ref_a.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit);
                         }
                         if matches!(second, TypeContent::SpecialCase(Specific::TypingAny)) {
-                            node_ref_b.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                            node_ref_b.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit);
                         }
                     }
                     if let Some(first) = self.as_type_or_error(first, node_ref_a)
@@ -3042,7 +3050,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.add_issue(
                 slice_type.as_node_ref(),
                 IssueKind::MustHaveOneArgument { name },
-            )
+            );
         }
         TypeContent::TypeGuardInfo(TypeGuardInfo {
             type_: self.compute_slice_type(first),
@@ -3095,7 +3103,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if usage.in_definition == self.for_definition
             ) && !unpacked_type_var_tuple
             {
-                self.add_issue(s.as_node_ref(), IssueKind::TypeVarExpected { class })
+                self.add_issue(s.as_node_ref(), IssueKind::TypeVarExpected { class });
             }
         }
     }
@@ -3313,24 +3321,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.type_var_manager.into_type_vars()
     }
 
-    fn add_issue(&self, node_ref: NodeRef, issue_kind: IssueKind) {
-        if !self.errors_already_calculated {
-            node_ref.add_issue(self.i_s, issue_kind)
-        }
+    fn add_issue(&self, node_ref: NodeRef, issue_kind: IssueKind) -> bool {
+        !self.errors_already_calculated
+            && node_ref.add_issue(self.i_s, issue_kind)
     }
 
-    fn add_issue_for_index(&self, index: NodeIndex, issue_kind: IssueKind) {
+    fn add_issue_for_index(&self, index: NodeIndex, issue_kind: IssueKind) -> bool {
         self.add_issue(NodeRef::new(self.file, index), issue_kind)
     }
 
-    fn add_module_issue(&self, node_ref: NodeRef, qualified_name: &str) {
+    fn add_module_issue(&self, node_ref: NodeRef, qualified_name: &str) -> bool {
         self.add_issue(
             node_ref,
             IssueKind::InvalidType {
                 message: format!("Module \"{qualified_name}\" is not valid as a type",).into(),
                 additional_note: Some("Perhaps you meant to use a protocol matching the module structure?"),
             },
-        );
+        )
     }
 }
 
@@ -3402,7 +3409,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let had_issue = Cell::new(false);
                 let (pr, _) = self
                     .with_new_file(file)
-                    .resolve_module_access(name.as_code(), |_| had_issue.set(true))?;
+                    .resolve_module_access(name.as_code(), |_| {
+                        had_issue.set(true);
+                        false
+                    })?;
                 if had_issue.get() {
                     return None;
                 }
@@ -3677,7 +3687,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         Lookup::T(TypeContent::Module(f)) => {
                             let (pr, _) = self
                                 .with_new_file(f)
-                                .resolve_module_access(name.as_str(), |_| ())?;
+                                .resolve_module_access(name.as_str(), |_| false)?;
                             Some(self.point_resolution_to_type_name_lookup(pr))
                         }
                         _ => None,
@@ -4281,9 +4291,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         })
     }
 
-    fn add_type_issue(&self, node_index: NodeIndex, kind: IssueKind) {
+    fn add_type_issue(&self, node_index: NodeIndex, kind: IssueKind) -> bool{
         let from = NodeRef::new(self.file, node_index);
-        from.add_type_issue(self.i_s.db, kind);
+        from.add_type_issue(self.i_s.db, kind)
     }
 
     fn compute_type_params_definition(
@@ -4873,7 +4883,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 }
             };
             if maybe_err.is_err() {
-                type_computation.add_issue(from, IssueKind::MoreThanOneUnpackTypeIsNotAllowed)
+                type_computation.add_issue(from, IssueKind::MoreThanOneUnpackTypeIsNotAllowed);
             }
             empty_not_explicit.set(false);
         };

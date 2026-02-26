@@ -60,7 +60,7 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
     let fixture_name = param.as_code();
     let skip_current_module = fixture_name == func_name.as_code();
     FixtureModuleIterator::new(db, pytest_folder, file, skip_current_module).find_map(|file| {
-        let node_ref = match file.lookup(db, |_| (), fixture_name) {
+        let node_ref = match file.lookup(db, |_| false, fixture_name) {
             LookupResult::GotoName { name, .. } => NodeRef::from_link(db, name),
             _ => return None,
         };
