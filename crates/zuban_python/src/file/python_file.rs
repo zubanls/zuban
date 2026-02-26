@@ -742,7 +742,7 @@ impl<'db> PythonFile {
             );
             return false;
         }
-        self.add_type_issue(i_s.db, issue)
+        self.add_issue_without_checking_for_disabled_error_codes(i_s.db, issue)
     }
 
     pub fn is_from_django(&self, db: &Database) -> bool {
@@ -753,7 +753,11 @@ impl<'db> PythonFile {
     }
 
     /// Returns false if the issue was not added
-    pub fn add_type_issue(&self, db: &'db Database, issue: Issue) -> bool {
+    pub fn add_issue_without_checking_for_disabled_error_codes(
+        &self,
+        db: &'db Database,
+        issue: Issue,
+    ) -> bool {
         // This function adds issues in all normal cases and does not respect the InferenceState
         // mode.
         if self.ignore_type_errors {

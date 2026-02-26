@@ -325,8 +325,12 @@ impl<'file> NodeRef<'file> {
     }
 
     pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) {
+        if !kind.should_be_reported(self.file.flags(db)) {
+            return;
+        }
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
-        self.file.add_type_issue(db, issue);
+        self.file
+            .add_issue_without_checking_for_disabled_error_codes(db, issue);
     }
 
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {

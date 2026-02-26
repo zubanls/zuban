@@ -18,7 +18,7 @@ use crate::{
         ProtocolMember, Specific, TypedDictArgs, TypedDictDefinition,
     },
     debug,
-    diagnostics::{Issue, IssueKind},
+    diagnostics::IssueKind,
     file::{
         OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
         name_resolution::{NameResolution, PointResolution},
@@ -155,8 +155,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub(crate) fn add_issue_on_name(&self, db: &Database, kind: IssueKind) {
-        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
-        self.file.add_type_issue(db, issue);
+        NodeRef::new(self.file, self.node_index).add_type_issue(db, kind)
     }
 
     #[inline]

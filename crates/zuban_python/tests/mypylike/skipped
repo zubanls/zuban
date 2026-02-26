@@ -7,10 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
-testDisableErrorCodeConfigFile
-testDisableErrorCodeConfigFilePyProjectTOML
-testPerModuleErrorCodes
-
 docs_alias
 
 super_explicit_type_var_method
