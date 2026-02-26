@@ -6,7 +6,10 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
-avoid_notes_when_errors_are_disabled1
+
+testDisableErrorCodeConfigFile
+testDisableErrorCodeConfigFilePyProjectTOML
+testPerModuleErrorCodes
 
 docs_alias
 

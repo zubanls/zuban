@@ -211,11 +211,9 @@ impl File for PythonFile {
             let result = self.ensure_calculated_diagnostics(db);
             debug_assert!(result.is_ok());
         }
-        let flags = self.flags(db);
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
-                .filter(|i| i.kind.should_be_reported(flags))
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
@@ -733,7 +731,7 @@ impl<'db> PythonFile {
 
     /// Returns false if the issue was not added
     pub fn maybe_add_issue(&self, i_s: &InferenceState, issue: Issue) -> bool {
-        if !i_s.should_add_issue() {
+        if !i_s.should_add_issue() || !issue.kind.should_be_reported(i_s.flags()) {
             let config = DiagnosticConfig {
                 show_column_numbers: true,
                 ..Default::default()
