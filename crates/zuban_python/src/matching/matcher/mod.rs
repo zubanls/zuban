@@ -304,22 +304,24 @@ impl<'a> Matcher<'a> {
                     if let Some(replace_self) = self.replace_self {
                         return replace_self().simple_matches(i_s, value_type, variance);
                     }
+                    let check_class = |cls: Class| {
+                        if self.func_like.is_none_or(|c| c.is_callable()) {
+                            // In case we are working within a function, Self is bound already.
+                            if cls.use_cached_class_infos(i_s.db).is_final
+                                && let Some(current) = i_s.current_class()
+                                && current.node_ref == cls.node_ref
+                            {
+                                return Match::new_true();
+                            }
+                        }
+                        Match::new_false()
+                    };
                     match value_type {
                         Type::Enum(e) => check_enum(e),
                         Type::EnumMember(m) => check_enum(&m.enum_),
-                        _ => {
-                            if self.func_like.is_none_or(|c| c.is_callable()) {
-                                // In case we are working within a function, Self is bound already.
-                                if let Some(class) = value_type.maybe_class(i_s.db)
-                                    && class.use_cached_class_infos(i_s.db).is_final
-                                    && let Some(current) = i_s.current_class()
-                                    && current.node_ref == class.node_ref
-                                {
-                                    return Match::new_true();
-                                }
-                            }
-                            Match::new_false()
-                        }
+                        Type::Class(c) => check_class(c.class(i_s.db)),
+                        Type::Dataclass(c) => check_class(c.class(i_s.db)),
+                        _ => Match::new_false(),
                     }
                 }
             }

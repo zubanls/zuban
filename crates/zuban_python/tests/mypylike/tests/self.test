@@ -689,3 +689,19 @@ class Selection[ValueT]:
 class ServerProfile:
     def do_on_select(self) -> None:
         x = Selection[Self]()
+
+[case final_dataclass_allows_passing_self]
+# From GH #312
+from dataclasses import dataclass
+from typing import Self, final
+
+@final
+@dataclass
+class Size:
+    value: int
+
+    def end(self) -> 'Size':
+        return self - Size(1)
+
+    def __sub__(self, other: Self) -> 'Size':
+        return self
