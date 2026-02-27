@@ -339,6 +339,8 @@ impl<'db> Inference<'db, '_, '_> {
         // Since it's a list, now check all the entries if they match the given
         // result generic;
         let mut had_error = false;
+        let mut key_with_any_matches = Type::NEVER;
+        let mut value_with_any_matches = Type::NEVER;
         let i_s = self.i_s;
         let inference = self.file.inference(i_s);
         for (i, key_value) in dict.iter_elements().enumerate() {
@@ -353,6 +355,13 @@ impl<'db> Inference<'db, '_, '_> {
                         .infer_expression_with_context(key_value.value(), &mut new_value_context);
                     let got_value_t = value_inf.as_cow_type(i_s);
                     let value_match = value_t.is_super_type_of(i_s, matcher, &got_value_t);
+
+                    if matches!(key_match, Match::True { with_any: true }) {
+                        key_with_any_matches.simplified_union_in_place(i_s, &got_key_t)
+                    }
+                    if matches!(value_match, Match::True { with_any: true }) {
+                        value_with_any_matches.simplified_union_in_place(i_s, &got_value_t)
+                    }
 
                     if !key_match.bool() || !value_match.bool() {
                         had_error = true;
@@ -406,12 +415,8 @@ impl<'db> Inference<'db, '_, '_> {
         (!had_error).then(|| {
             new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
-                matcher
-                    .replace_type_var_likes_for_unknown_type_vars(i_s.db, key_t)
-                    .into_owned(),
-                matcher
-                    .replace_type_var_likes_for_unknown_type_vars(i_s.db, value_t)
-                    .into_owned(),
+                merge_with_any_matches(i_s, matcher, key_t, key_with_any_matches),
+                merge_with_any_matches(i_s, matcher, value_t, value_with_any_matches),
             )
         })
     }
@@ -544,12 +549,14 @@ fn check_elements_with_context<'db>(
     // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
     let mut had_error = false;
+    let mut with_any_matches = Type::NEVER;
     for (item, element) in elements.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, matcher, inferred: Inferred, index| {
-            generic_t.error_if_not_matches_with_matcher(
+            let value_t = inferred.as_cow_type(i_s);
+            let m = generic_t.error_if_t_not_matches_with_matcher(
                 i_s,
                 matcher,
-                &inferred,
+                &value_t,
                 |issue| NodeRef::new(file, index).add_issue(i_s, issue),
                 |error_types, _: &MismatchReason| {
                     had_error = true;
@@ -572,6 +579,9 @@ fn check_elements_with_context<'db>(
                     }
                 },
             );
+            if matches!(m, Match::True { with_any: true }) {
+                with_any_matches.simplified_union_in_place(i_s, &value_t)
+            }
         };
         let inference = file.inference(i_s);
         match element {
@@ -600,11 +610,21 @@ fn check_elements_with_context<'db>(
             StarLikeExpression::StarExpression(_) => unreachable!(),
         };
     }
-    (!had_error).then(|| {
-        matcher
-            .replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t)
-            .into_owned()
-    })
+    (!had_error).then(|| merge_with_any_matches(i_s, matcher, generic_t, with_any_matches))
+}
+
+fn merge_with_any_matches(
+    i_s: &InferenceState,
+    matcher: &Matcher,
+    expected: &Type,
+    with_any_matches: Type,
+) -> Type {
+    let t = matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, expected);
+    if with_any_matches.is_never() {
+        t.into_owned()
+    } else {
+        t.simplified_union(i_s, &with_any_matches)
+    }
 }
 
 pub fn on_argument_type_error(

@@ -1611,14 +1611,25 @@ impl Type {
         matcher: &mut Matcher,
         value: &Inferred,
         add_issue: impl Fn(IssueKind) -> bool,
-        mut on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
+        on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
     ) {
         let value_type = value.as_cow_type(i_s);
-        let matches = self.is_super_type_of(i_s, matcher, &value_type);
+        self.error_if_t_not_matches_with_matcher(i_s, matcher, &value_type, add_issue, on_error);
+    }
+
+    pub(crate) fn error_if_t_not_matches_with_matcher(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Type,
+        add_issue: impl Fn(IssueKind) -> bool,
+        mut on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
+    ) -> Match {
+        let matches = self.is_super_type_of(i_s, matcher, value_type);
         if let Match::False { ref reason, .. } = matches {
             let error_types = ErrorTypes {
                 expected: self,
-                got: GotType::Type(&value_type),
+                got: GotType::Type(value_type),
                 matcher: Some(matcher),
                 reason,
             };
@@ -1637,6 +1648,7 @@ impl Type {
                 }
             }
         }
+        matches
     }
 
     pub fn on_any_typed_dict(

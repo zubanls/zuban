@@ -1189,3 +1189,29 @@ def f():
 def iterate[T](x: T) -> Iterator[T]: ...  # E: Name "Iterator" is not defined \
                                           # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Iterator")
 y: list[int] = list(iterate(""))
+
+[case overload_with_any_matching_should_not_return_first]
+# From GH #309
+from typing import overload, Any, Never
+
+@overload
+def f(x: list[None]) -> Never: ...
+@overload
+def f(x: list[int]) -> int: ...
+def f(x) -> int: ...
+
+def check1(x: list[Any], y: Any):
+    reveal_type(f(x))  # N: Revealed type is "Any"
+    reveal_type(f([y]))  # N: Revealed type is "Any"
+
+@overload
+def g(x: dict[None, None]) -> Never: ...
+@overload
+def g(x: dict[int, int]) -> int: ...
+def g(x) -> int: ...
+
+def check2(x: dict[Any, Any], y: Any):
+    reveal_type(g(x))  # N: Revealed type is "Any"
+    reveal_type(g({y: y}))  # N: Revealed type is "Any"
+    reveal_type(g({y: 1}))  # N: Revealed type is "int"
+    reveal_type(g({1: y}))  # N: Revealed type is "int"
