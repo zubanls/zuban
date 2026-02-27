@@ -445,14 +445,16 @@ impl TestCase<'_, '_> {
                                 s = s.replace("__main__.py:", "__main__:");
                             }
                             if cfg!(target_os = "windows") {
-                                // TODO this only checks the first line, but with notes there may
-                                // be multiple lines.
-                                let colon = s.find(":").unwrap();
-                                let to_change = &mut s[..colon];
                                 // Safety: OK because we only modify ASCII
-                                for b in unsafe { to_change.as_bytes_mut() } {
-                                    if *b == b'\\' {
-                                        *b = b'/'
+                                let bytes = unsafe { s.as_bytes_mut() };
+                                for line in bytes.split_mut(|c| *c == b'\n') {
+                                    if let Some(colon) = line.iter().position(|c| *c == b':') {
+                                        let to_change = &mut line[..colon];
+                                        for b in to_change {
+                                            if *b == b'\\' {
+                                                *b = b'/'
+                                            }
+                                        }
                                     }
                                 }
                             }
