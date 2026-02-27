@@ -3035,15 +3035,29 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     fn infer_operation(&self, op: Operation, result_context: &mut ResultContext) -> Inferred {
-        let context = if result_context.has_explicit_type() && op.infos.operand != "%" {
-            // Pass on the context to each side. I'm not sure that's correct, but it's necessary at
-            // least for list additions. However it's wrong for `"%s" % ...`.
-            &mut *result_context
-        } else {
-            &mut ResultContext::ValueExpected
+        let mut check = |part: ExpressionPart| {
+            let context = if result_context.has_explicit_type()
+                && matches!(
+                    part.maybe_unpacked_atom(),
+                    Some(
+                        AtomContent::List(_)
+                            | AtomContent::ListComprehension(_)
+                            | AtomContent::Set(_)
+                            | AtomContent::SetComprehension(_)
+                            | AtomContent::Dict(_)
+                            | AtomContent::DictComprehension(_)
+                    )
+                ) {
+                // Pass on the context to each side. It's nessary at least for list additions, but
+                // can potentially be wrong even here. Not sure this is right.
+                &mut *result_context
+            } else {
+                &mut ResultContext::ValueExpected
+            };
+            self.infer_expression_part_with_context(part, context)
         };
-        let left = self.infer_expression_part_with_context(op.left, context);
-        let right = self.infer_expression_part_with_context(op.right, context);
+        let left = check(op.left);
+        let right = check(op.right);
         self.infer_detailed_operation(op.index, op.infos, left, &right, result_context)
     }
 

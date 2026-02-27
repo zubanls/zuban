@@ -1964,3 +1964,7 @@ class X(Generic[T]):
     def __init__(self, x: Callable[[], T]): ...
 
 X[SimpleGeneric[int]](SimpleGeneric)
+
+[case generic_context_avoid_multiplication_context_inference]
+# From GH #310
+x: str = "x" * max(1, 10)
