@@ -1045,7 +1045,16 @@ impl Database {
         let mut vfs = Vfs::new(vfs_handler);
 
         for p in project.settings.mypy_path.iter() {
-            vfs.add_workspace(p.clone(), WorkspaceKind::TypeChecking);
+            if vfs.add_workspace(p.clone(), WorkspaceKind::TypeChecking) {
+                // Add the src/ directory as well since this is very typical for people to use.
+                // This also helps most uv users.
+                if vfs.workspaces.expect_last().entries.search("src").is_some() {
+                    vfs.add_workspace(
+                        vfs.handler.normalize_rc_path(vfs.handler.join(p, "src")),
+                        WorkspaceKind::TypeChecking,
+                    );
+                }
+            }
         }
 
         // Theoretically according to PEP 561 (Distributing and Packaging Type Information), this
