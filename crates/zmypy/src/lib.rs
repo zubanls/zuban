@@ -846,4 +846,32 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_recognize_src_folder() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file src/foo.py]
+            import bar
+            import other
+            import other2
+            [file src/bar.py]
+            [file hello/other.py]
+            import foo
+            [file other2.py]
+            import foo
+            ",
+            false,
+        );
+        let diagnostics = diagnostics(Cli::parse_from([""]), test_dir.path());
+
+        assert_eq!(
+            diagnostics,
+            [
+                "src/foo.py:2: error: Cannot find implementation or library stub \
+                 for module named \"other\"  [import-not-found]"
+            ]
+        );
+    }
 }
