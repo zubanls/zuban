@@ -600,17 +600,17 @@ mod tests {
             hello-zuban = "hello_zuban:entry_point"
 
             [tool.mypy]
-            mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
-            files = ["$MYPY_CONFIG_FILE_DIR/src"]
+            mypy_path = "$MYPY_CONFIG_FILE_DIR/source"
+            files = ["$MYPY_CONFIG_FILE_DIR/source"]
             strict = true
 
-            [file src/hello_zuban/__init__.py]
+            [file source/hello_zuban/__init__.py]
             from hello_zuban.hello import X
-            from src.hello_zuban.hello import Z
+            from source.hello_zuban.hello import Z
 
             x = X()
 
-            [file src/hello_zuban/hello.py]
+            [file source/hello_zuban/hello.py]
             Z = 1
             class X: pass
             1()
@@ -622,7 +622,7 @@ mod tests {
 
         assert_eq!(
             d(),
-            ["src/hello_zuban/hello.py:3: error: \"int\" not callable  [operator]"]
+            ["source/hello_zuban/hello.py:3: error: \"int\" not callable  [operator]"]
         );
     }
 
@@ -809,30 +809,30 @@ mod tests {
     #[test]
     fn test_read_file_only_once() {
         logging_config::setup_logging_for_tests();
-        for mypy_path in ["['src/inner', 'src']", "['src', 'src/inner']"] {
+        for mypy_path in ["['source/inner', 'source']", "['source', 'source/inner']"] {
             let fixture = format!(
                 r#"
-            [file pyproject.toml]
-            [tool.zuban]
-            mypy_path = {mypy_path}
+                [file pyproject.toml]
+                [tool.zuban]
+                mypy_path = {mypy_path}
 
-            [file src/inner/m1.py]
-            import m2
-            from inner.m2 import C
-            import src
+                [file source/inner/m1.py]
+                import m2
+                from inner.m2 import C
+                import source
 
-            a: m2.C = C()
-            b: C = m2.C()
-            c: C = C()
-            d: m2.C = m2.C()
+                a: m2.C = C()
+                b: C = m2.C()
+                c: C = C()
+                d: m2.C = m2.C()
 
-            e: src.inner.m2.C = C()
+                e: source.inner.m2.C = C()
 
-            wrong1: src.inner.m2.C = 1
+                wrong1: source.inner.m2.C = 1
 
-            [file src/inner/m2.py]
-            class C: ...
-            "#
+                [file source/inner/m2.py]
+                class C: ...
+                "#
             );
             let test_dir = test_utils::write_files_from_fixture(&fixture, false);
             let diagnostics = diagnostics(Cli::parse_from([""]), test_dir.path());
@@ -840,7 +840,7 @@ mod tests {
             assert_eq!(
                 diagnostics,
                 [
-                    "src/inner/m1.py:12: error: Incompatible types in assignment (expression \
+                    "source/inner/m1.py:12: error: Incompatible types in assignment (expression \
                      has type \"int\", variable has type \"C\")  [assignment]"
                 ]
             );
