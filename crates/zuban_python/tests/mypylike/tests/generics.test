@@ -1968,3 +1968,4 @@ X[SimpleGeneric[int]](SimpleGeneric)
 [case generic_context_avoid_multiplication_context_inference]
 # From GH #310
 x: str = "x" * max(1, 10)
+y: list[int] = [1] * max(1, 10)
