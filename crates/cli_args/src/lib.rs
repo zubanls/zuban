@@ -281,6 +281,11 @@ pub struct MypyCli {
     #[arg(long)]
     no_error_summary: bool,
     #[arg(long, hide = true)]
+    explicit_package_bases: bool,
+    #[arg(long, hide = true)]
+    no_explicit_package_bases: bool,
+    // Non-Mypy options
+    #[arg(long, hide = true)]
     allow_incomplete_generics: bool,
     #[arg(long, hide = true)]
     disallow_incomplete_generics: bool,
@@ -409,6 +414,7 @@ fn apply_mypy_flags(
     apply!(diagnostic_config, pretty, no_pretty);
     apply!(diagnostic_config, error_summary, no_error_summary);
     apply!(settings, exclude_gitignore, no_exclude_gitignore);
+    apply!(settings, explicit_package_bases, no_explicit_package_bases);
 
     apply!(flags, allow_redefinition, disallow_redefinition);
     if cli.allow_redefinition_new {
