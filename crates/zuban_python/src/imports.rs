@@ -166,19 +166,42 @@ pub fn global_import<'a>(
         return Some(ImportResult::File(db.python_state.typing().file_index));
     }
     // First try <package>-stubs
-    global_import_of_stubs_folders(db, from_file, name).or_else(|| {
-        python_import_with_needs_exact_case(
-            db,
-            from_file,
-            db.vfs
-                .workspaces
-                .iter()
-                .map(|w| (&w.entries, w.part_of_site_packages())),
-            name,
-            false,
-            true,
-        )
-    })
+    global_import_of_stubs_folders(db, from_file, name)
+        .or_else(|| {
+            python_import_with_needs_exact_case(
+                db,
+                from_file,
+                db.vfs
+                    .workspaces
+                    .iter()
+                    .map(|w| (&w.entries, w.part_of_site_packages())),
+                name,
+                false,
+                true,
+            )
+        })
+        .or_else(|| {
+            if !db.project.settings.explicit_package_bases {
+                // Since the sys path is sometimes not complete and people have weird setups we
+                // simply allow the first outer directory without an `__init__.py[i]` as an
+                // additional sys path entry. --explicit-package-bases deactivates this.
+                let mut parent = from_file.file_entry(db).parent.clone();
+                while let Ok(dir) = parent.maybe_dir() {
+                    if load_init_file(db, &dir, from_file.file_index).is_none() {
+                        return python_import_with_needs_exact_case(
+                            db,
+                            from_file,
+                            std::iter::once((Directory::entries(&db.vfs, &dir), false)),
+                            name,
+                            false,
+                            true,
+                        );
+                    }
+                    parent = dir.parent.clone()
+                }
+            }
+            None
+        })
 }
 
 fn global_import_of_stubs_folders<'a>(
