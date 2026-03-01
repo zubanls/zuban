@@ -34,6 +34,32 @@ impl Settings {
         if self.environment.is_some() {
             return;
         }
+        if try_to_find_env_in_dir(
+            &mut self.environment,
+            &mut self.python_version,
+            vfs_handler,
+            base_directory,
+        ) {
+            return;
+        }
+        for path in &self.mypy_path {
+            if **path.as_ref() != *base_directory
+                && try_to_find_env_in_dir(
+                    &mut self.environment,
+                    &mut self.python_version,
+                    vfs_handler,
+                    path,
+                )
+            {
+                return;
+            }
+        }
+        // The environment variable has an intentionally lower priority than looking for venvs.
+        // This appears to happen in a lot of cases where Zuban is run as a tool from e.g. uv, but
+        // probably also happens with pipx, where virtual environments are used to isolate Zuban
+        // (see also GitHub #21). This might also happen in VSCode when multiple projects are
+        // opened in a different order where the first and initial $VIRTUAL_ENV is different than
+        // the actual virtual envs of the later opened projects.
         match lookup_env_var("VIRTUAL_ENV").or_else(|_| lookup_env_var("CONDA_PREFIX")) {
             Ok(path) => {
                 self.environment = Some(
@@ -42,26 +68,6 @@ impl Settings {
             }
             Err(err) => {
                 tracing::info!("Tried to access $VIRTUAL_ENV, but got: {err}");
-                if try_to_find_env_in_dir(
-                    &mut self.environment,
-                    &mut self.python_version,
-                    vfs_handler,
-                    base_directory,
-                ) {
-                    return;
-                }
-                for path in &self.mypy_path {
-                    if **path.as_ref() != *base_directory
-                        && try_to_find_env_in_dir(
-                            &mut self.environment,
-                            &mut self.python_version,
-                            vfs_handler,
-                            path,
-                        )
-                    {
-                        return;
-                    }
-                }
             }
         }
     }
