@@ -1113,6 +1113,16 @@ x = get_type_form()
 x.index  # E: "typing.TypeForm(list[Any])" has no attribute "index"
 x.__str__()
 
+[case type_form_assert_type]
+# Copied conformance tests (typeforms_typeform.py)
+from typing import assert_type, Any
+from typing_extensions import TypeForm
+
+def func1(x: TypeForm, y: TypeForm[int]) -> None:
+    assert_type(x, TypeForm[Any])
+    assert_type(y, TypeForm[int])
+
+
 [case generic_alias_access_and_assignment]
 from types import GenericAlias
 x = list[int]
