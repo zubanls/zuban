@@ -864,14 +864,19 @@ mod tests {
             ",
             false,
         );
-        let diagnostics = diagnostics(Cli::parse_from([""]), test_dir.path());
-
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
         assert_eq!(
-            diagnostics,
+            ds,
             [
                 "src/foo.py:2: error: Cannot find implementation or library stub \
                  for module named \"other\"  [import-not-found]"
             ]
         );
+
+        let ds = diagnostics(
+            Cli::parse_from(["", "--explicit-package-bases"]),
+            test_dir.path(),
+        );
+        assert_eq!(ds.len(), 4);
     }
 }

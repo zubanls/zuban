@@ -1045,7 +1045,9 @@ impl Database {
         let mut vfs = Vfs::new(vfs_handler);
 
         for p in project.settings.mypy_path.iter() {
-            if vfs.add_workspace(p.clone(), WorkspaceKind::TypeChecking) {
+            if vfs.add_workspace(p.clone(), WorkspaceKind::TypeChecking)
+                && !project.settings.explicit_package_bases
+            {
                 // Add the src/ directory as well since this is very typical for people to use.
                 // This also helps most uv users.
                 if vfs.workspaces.expect_last().entries.search("src").is_some() {
