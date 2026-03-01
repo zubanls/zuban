@@ -482,6 +482,7 @@ impl Type {
                 m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
             }
             (Type::Any(_), _) | (_, Type::Any(_)) => any_is_all,
+            (Type::TypeForm(t1), Type::TypeForm(t2)) => eq(t1, t2),
             _ => self == other,
         }
     }
