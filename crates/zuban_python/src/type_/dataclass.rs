@@ -1099,6 +1099,20 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             slots_as_lookup_result(dataclass, i_s.db),
             AttributeKind::Attribute,
         )
+    } else if name == "__hash__"
+        && !dataclass.options.unsafe_hash
+        && !dataclass.options.frozen.unwrap_or_default()
+        && dataclass.options.eq
+        && !dataclass
+            .class(i_s.db)
+            .lookup_symbol(i_s, "__hash__")
+            .is_some()
+    {
+        return LookupDetails::new(
+            Type::Dataclass(dataclass.clone()),
+            LookupResult::UnknownName(Inferred::new_none()),
+            AttributeKind::Attribute,
+        );
     } else if name == "__match_args__" && dataclass.options.match_args {
         let (lookup, attr_kind) = dunder_match_args_tuple(dataclass.clone(), i_s);
         LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind)
@@ -1217,10 +1231,18 @@ pub(crate) fn lookup_on_dataclass<'a>(
     if result.is_some() && !class.lookup_symbol(i_s, name).is_some() {
         return LookupDetails::new(Type::Dataclass(self_.clone()), result, attr_kind);
     }
-    let mut lookup_options = InstanceLookupOptions::new(&add_issue);
-    if name == "__hash__" && !self_.options.unsafe_hash && !self_.options.frozen.unwrap_or_default()
+    let lookup_options = InstanceLookupOptions::new(&add_issue);
+    if name == "__hash__"
+        && !self_.options.unsafe_hash
+        && !self_.options.frozen.unwrap_or_default()
+        && self_.options.eq
+        && !class.lookup_symbol(i_s, "__hash__").is_some()
     {
-        lookup_options = lookup_options.without_object();
+        return LookupDetails::new(
+            Type::Dataclass(self_.clone()),
+            LookupResult::UnknownName(Inferred::new_none()),
+            AttributeKind::Attribute,
+        );
     }
     let mut lookup_details = class.instance().lookup(
         i_s,
