@@ -405,7 +405,7 @@ create_grammar!(
         | ",".(kwarg | double_starred_expression)+ ","?
     starred_expression: "*" expression
     double_starred_expression: "**" expression
-    kwarg: Name "=" expression
+    kwarg: Name "=" expression | atom "." NeverMatch
 
     // ASSIGNMENT TARGETS
     // ==================
