@@ -93,7 +93,14 @@ pub struct Grammar<T> {
 
 #[derive(Debug, Clone, Copy)]
 enum ModeData<'a> {
-    Alternative(BacktrackingPoint<'a>),
+    Alternative {
+        backtracking: BacktrackingPoint<'a>,
+        fallback_plan: &'a Plan,
+    },
+    LastAlternative {
+        backtracking: BacktrackingPoint<'a>,
+        original_used_nodes: usize,
+    },
     LL,
 }
 
@@ -102,7 +109,7 @@ struct BacktrackingPoint<'a> {
     tree_node_count: usize,
     token_index: usize,
     children_count: usize,
-    fallback_plan: &'a Plan,
+    first_plan: &'a Plan,
 }
 
 struct StackNode<'a> {
@@ -250,7 +257,7 @@ impl<'a, T: Token> Grammar<T> {
             ModeData::LL => {
                 stack.pop_normal();
             }
-            ModeData::Alternative(_) => {
+            ModeData::Alternative { .. } | ModeData::LastAlternative { .. } => {
                 let old_tos = stack.stack_nodes.pop().unwrap();
                 let tos = stack.tos_mut();
                 tos.children_count = old_tos.children_count;
@@ -272,27 +279,43 @@ impl<'a, T: Token> Grammar<T> {
     ) {
         // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
-            if let ModeData::Alternative(backtracking_point) = node.mode {
-                stack.stack_nodes.truncate(i);
+            match node.mode {
+                ModeData::Alternative {
+                    backtracking,
+                    fallback_plan,
+                } => {
+                    let original_used_nodes = stack.tree_nodes.len();
+                    let reset =
+                    |stack: &mut Stack,
+                     backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>| {
+                        stack.stack_nodes.truncate(i + 1);
 
-                stack
-                    .tree_nodes
-                    .truncate(backtracking_point.tree_node_count);
-                let tos = stack.tos_mut();
-                tos.children_count = backtracking_point.children_count;
-                backtracking_tokenizer.reset(backtracking_point.token_index);
-                let t = backtracking_tokenizer.next().unwrap();
-                self.apply_plan(
-                    stack,
-                    backtracking_point.fallback_plan,
-                    &t,
-                    backtracking_tokenizer,
-                );
-                if !stack.tos().enabled_token_recording {
-                    backtracking_tokenizer.stop();
+                        stack
+                            .tree_nodes
+                            .truncate(backtracking.tree_node_count);
+                        let tos = stack.tos_mut();
+                        tos.children_count = backtracking.children_count;
+                        backtracking_tokenizer.reset(backtracking.token_index);
+                        backtracking_tokenizer.next().unwrap()
+                    };
+                    let t = reset(stack, backtracking_tokenizer);
+                    let tos = stack.stack_nodes.last_mut().unwrap();
+                    tos.mode = ModeData::LastAlternative {
+                        backtracking,
+                        original_used_nodes,
+                    };
+                    self.apply_plan(stack, fallback_plan, &t, backtracking_tokenizer);
+                    if !stack.tos().enabled_token_recording {
+                        backtracking_tokenizer.stop();
+                    }
+                    // The token was not used, but the tokenizer backtracked.
+                    return; // Error Recovery done.
                 }
-                // The token was not used, but the tokenizer backtracked.
-                return; // Error Recovery done.
+                ModeData::LastAlternative {
+                    backtracking,
+                    original_used_nodes,
+                } => {}
+                ModeData::LL => (),
             }
         }
 
@@ -323,7 +346,7 @@ impl<'a, T: Token> Grammar<T> {
             }
         }
         // First step of error recovery is to mark tree nodes as failed and pop the
-        // stack nodes that are failed.
+        // stack nodes that failed.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
             if self.automatons[&node.node_id].does_error_recovery {
                 while stack.stack_nodes.len() > i {
@@ -421,12 +444,15 @@ impl<'a, T: Token> Grammar<T> {
                         stack.tos().tree_node_index,
                         push.next_dfa(),
                         start_index,
-                        ModeData::Alternative(BacktrackingPoint {
-                            tree_node_count: stack.tree_nodes.len(),
-                            token_index: backtracking_tokenizer.start(token),
+                        ModeData::Alternative {
+                            backtracking: BacktrackingPoint {
+                                tree_node_count: stack.tree_nodes.len(),
+                                token_index: backtracking_tokenizer.start(token),
+                                first_plan: plan,
+                                children_count,
+                            },
                             fallback_plan: unsafe { &*alternative_plan },
-                            children_count,
-                        }),
+                        },
                         children_count,
                         enabled_token_recording,
                     );
