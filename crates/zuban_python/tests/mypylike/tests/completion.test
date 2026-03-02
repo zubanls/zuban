@@ -442,3 +442,23 @@ import zuba
 [file zuban-folder/something.py]
 [out]
 __main__.py:5:complete -> []
+
+[case enum_completion_in_function_call_context]
+# flags: --no-typecheck
+# From GH #313
+from enum import StrEnum
+
+class FooStr(StrEnum):
+    SOME_FIELD: str
+    ANOTHER_FIELD: int
+
+def some_function():
+    pass
+
+#? complete --filter SOME_FIELD --filter ANOTHER_FIELD --filter strip --filter value
+some_function(FooStr.
+#? complete
+some_function(FooStr.SOME
+[out]
+__main__.py:13:complete -> [ANOTHER_FIELD, SOME_FIELD, strip, value]
+__main__.py:15:complete -> [SOME_FIELD]

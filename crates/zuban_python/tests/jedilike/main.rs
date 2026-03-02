@@ -42,7 +42,7 @@ lazy_static::lazy_static! {
         ("__init__.py", 1),
         ("isinstance.py", 2),
         ("lambdas.py", 18),
-        ("named_param.py", 10),
+        ("named_param.py", 12),
         ("ordering.py", 4),
         ("pep0484_typing.py", 3),
         ("pep0484_decorators.py", 2),
