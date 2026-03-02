@@ -6,6 +6,7 @@ testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
+enum_completion_in_function_call_context
 
 docs_alias
 
