@@ -5,7 +5,6 @@ use parsa_python_cst::{
     CallArgs, ClassDef, CompletionContext, CompletionNode, FunctionDef,
     NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NodeIndex, RestNode, Scope, is_identifier,
 };
-use utils::FastHashSet;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
@@ -316,20 +315,22 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         c: Option<CallableLike>,
         args: Option<CallArgs>,
     ) {
-        let already_used: FastHashSet<&str> = args
-            .map(|args| args.keyword_params_until(self.infos.node.cursor_position.byte))
-            .into_iter()
-            .flatten()
-            .collect();
+        let used = args
+            .map(|args| args.used_args_until(&self.infos.node.rest))
+            .unwrap_or_default();
+        debug!("Used params for keyword params {used:?}");
         let mut add = |c: &CallableContent| {
             if let CallableParams::Simple(params) = &c.params {
-                for param in params.iter() {
+                for (i, param) in params.iter().enumerate() {
                     if matches!(
                         param.type_,
                         ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
                     ) {
                         if let Some(name) = param.name(self.infos.db) {
-                            if already_used.contains(name) {
+                            if used.keyword_args.contains(name)
+                                || used.positional_args > i
+                                    && matches!(param.type_, ParamType::PositionalOrKeyword(_))
+                            {
                                 continue;
                             }
                             let keyword_argument = format!("{name}=");

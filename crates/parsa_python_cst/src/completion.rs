@@ -5,6 +5,7 @@ use parsa_python::{
     PyNodeType::{self, ErrorNonterminal, Nonterminal},
     TerminalType,
 };
+use utils::FastHashSet;
 
 use crate::{
     Atom, ClassDef, Decorators, DottedImportName, FunctionDef, Lambda, NameDef, Primary,
@@ -306,26 +307,38 @@ fn call_args(node: PyNode) -> Option<CallArgs> {
 pub struct CallArgs<'db>(PyNode<'db>);
 
 impl<'db> CallArgs<'db> {
-    pub fn keyword_params_until(
-        &self,
-        until_pos: CodeIndex,
-    ) -> impl Iterator<Item = &'db str> + use<'db> {
-        let kwargs_ = self.0.iter_children().find(|node| {
-            node.is_type(Nonterminal(kwargs)) || node.is_type(ErrorNonterminal(kwargs))
-        });
-        kwargs_
-            .map(move |kwargs_| {
-                kwargs_.iter_children().filter_map(move |node| {
-                    if node.start() > until_pos {
-                        return None;
+    pub fn used_args_until(&self, until: &RestNode) -> UsedArgs<'db> {
+        let mut positional_args = 0;
+        let mut keyword_args = FastHashSet::default();
+        'outer: for child in self.0.iter_children() {
+            if child.start() >= until.node.start() {
+                break 'outer;
+            }
+            if child.is_type(Nonterminal(named_expression)) {
+                positional_args += 1;
+            } else if child.is_type(Nonterminal(kwargs)) || child.is_type(ErrorNonterminal(kwargs))
+            {
+                for in_kwargs in child.iter_children() {
+                    if in_kwargs.start() >= until.node.start() {
+                        break 'outer;
                     }
-                    node.is_type(Nonterminal(kwarg))
-                        .then(|| node.nth_child(0).as_code())
-                })
-            })
-            .into_iter()
-            .flatten()
+                    if in_kwargs.is_type(Nonterminal(kwarg)) {
+                        keyword_args.insert(in_kwargs.nth_child(0).as_code());
+                    }
+                }
+            }
+        }
+        UsedArgs {
+            positional_args,
+            keyword_args,
+        }
     }
+}
+
+#[derive(Default, Debug)]
+pub struct UsedArgs<'db> {
+    pub keyword_args: FastHashSet<&'db str>,
+    pub positional_args: usize,
 }
 
 fn from_import_dots_before_node(leaf: PyNode) -> usize {
