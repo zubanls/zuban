@@ -99,7 +99,7 @@ enum ModeData<'a> {
     },
     LastAlternative {
         backtracking: BacktrackingPoint<'a>,
-        original_used_nodes: usize,
+        first_plan_start_index: CodeIndex,
     },
     LL,
 }
@@ -109,7 +109,7 @@ struct BacktrackingPoint<'a> {
     tree_node_count: usize,
     token_index: usize,
     children_count: usize,
-    first_plan: &'a Plan,
+    replay_plan: &'a Plan,
 }
 
 struct StackNode<'a> {
@@ -279,42 +279,60 @@ impl<'a, T: Token> Grammar<T> {
     ) {
         // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
+            let reset =
+                |backtracking: BacktrackingPoint,
+                 stack: &mut Stack,
+                 backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>| {
+                    stack.stack_nodes.truncate(i + 1);
+
+                    stack.tree_nodes.truncate(backtracking.tree_node_count);
+                    let tos = stack.tos_mut();
+                    tos.children_count = backtracking.children_count;
+                    backtracking_tokenizer.reset(backtracking.token_index);
+                    backtracking_tokenizer.next().unwrap()
+                };
             match node.mode {
                 ModeData::Alternative {
                     backtracking,
                     fallback_plan,
                 } => {
-                    let original_used_nodes = stack.tree_nodes.len();
-                    let reset =
-                    |stack: &mut Stack,
-                     backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>| {
-                        stack.stack_nodes.truncate(i + 1);
-
-                        stack
-                            .tree_nodes
-                            .truncate(backtracking.tree_node_count);
-                        let tos = stack.tos_mut();
-                        tos.children_count = backtracking.children_count;
-                        backtracking_tokenizer.reset(backtracking.token_index);
-                        backtracking_tokenizer.next().unwrap()
-                    };
-                    let t = reset(stack, backtracking_tokenizer);
-                    let tos = stack.stack_nodes.last_mut().unwrap();
-                    tos.mode = ModeData::LastAlternative {
+                    let first_plan_start_index = stack.tree_nodes.last().unwrap().start_index;
+                    let t = reset(backtracking, stack, backtracking_tokenizer);
+                    stack.tos_mut().mode = ModeData::LastAlternative {
                         backtracking,
-                        original_used_nodes,
+                        first_plan_start_index,
                     };
                     self.apply_plan(stack, fallback_plan, &t, backtracking_tokenizer);
-                    if !stack.tos().enabled_token_recording {
-                        backtracking_tokenizer.stop();
-                    }
                     // The token was not used, but the tokenizer backtracked.
                     return; // Error Recovery done.
                 }
                 ModeData::LastAlternative {
                     backtracking,
-                    original_used_nodes,
-                } => {}
+                    first_plan_start_index,
+                } => {
+                    // Since the alternative used more nodes than the original, simply replay the
+                    // original one that ate more code. This makes error recovery a bit nicer
+                    // and useful. Note that it might seem like we should just keep around the
+                    // previous parse results and not reparse again. This is probably not the way
+                    // to go, because this should never happen on valid code. So this only ever
+                    // needs to happen on broken code, which is definitely only a very small subset
+                    // that we have to parse.
+                    if first_plan_start_index > stack.tree_nodes.last().unwrap().start_index {
+                        let t = reset(backtracking, stack, backtracking_tokenizer);
+                        // Pop the LastAlternative that is still on the stack.
+                        stack.stack_nodes.pop();
+                        self.apply_plan(
+                            stack,
+                            backtracking.replay_plan,
+                            &t,
+                            backtracking_tokenizer,
+                        );
+                        if !stack.tos().enabled_token_recording {
+                            backtracking_tokenizer.stop();
+                        }
+                        return;
+                    }
+                }
                 ModeData::LL => (),
             }
         }
@@ -390,7 +408,6 @@ impl<'a, T: Token> Grammar<T> {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
         tos_mut.dfa_state = plan.next_dfa();
 
-        let start_index = token.start_index();
         // If we have left recursion we have to do something a bit weird: We push the same tree
         // node in between, because we only handle direct recursion. This is kind of similar
         // how LR would work. So it's an interesting mixture of LL and LR.
@@ -417,6 +434,8 @@ impl<'a, T: Token> Grammar<T> {
         }
 
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
+
+        let start_index = token.start_index();
         stack.calculate_previous_next_node();
 
         for push in &plan.pushes {
@@ -437,7 +456,7 @@ impl<'a, T: Token> Grammar<T> {
                         enabled_token_recording,
                     );
                 }
-                StackMode::Alternative(alternative_plan) => {
+                StackMode::Alternative { fallback, replay } => {
                     enabled_token_recording = true;
                     stack.push(
                         push.node_type,
@@ -448,10 +467,10 @@ impl<'a, T: Token> Grammar<T> {
                             backtracking: BacktrackingPoint {
                                 tree_node_count: stack.tree_nodes.len(),
                                 token_index: backtracking_tokenizer.start(token),
-                                first_plan: plan,
+                                replay_plan: unsafe { &*replay },
                                 children_count,
                             },
-                            fallback_plan: unsafe { &*alternative_plan },
+                            fallback_plan: unsafe { &*fallback },
                         },
                         children_count,
                         enabled_token_recording,

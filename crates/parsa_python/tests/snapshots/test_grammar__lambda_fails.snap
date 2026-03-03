@@ -1,29 +1,24 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
 expression: tree_to_string(tree)
 ---
 file: 0-100
- Error(stmt): 1-9
-  Error(simple_stmts): 1-9
-   Error(simple_stmt): 1-9
-    Error(star_expressions): 1-9
-     Error(expression): 1-9
-      Error(lambda): 1-9
+ Error(stmt): 1-13
+  Error(simple_stmts): 1-13
+   Error(simple_stmt): 1-13
+    Error(star_expressions): 1-13
+     Error(expression): 1-13
+      Error(lambda): 1-13
        Keyword: 1-7 "lambda"
-       Error(lambda_parameters): 8-9
-        Error(lambda_param_with_default): 8-9
+       Error(lambda_parameters): 8-13
+        lambda_param_no_default: 8-9
          name_def: 8-9
           Name: 8-9 "a"
- Error(stmt): 9-10
-  Error(Keyword): 9-10 ","
- Error(stmt): 11-12
-  Error(simple_stmts): 11-12
-   Error(simple_stmt): 11-12
-    Error(star_expressions): 11-12
-     Error(star_expression): 11-12
-      Keyword: 11-12 "*"
- Error(stmt): 12-13
-  Error(Keyword): 12-13 ","
+        Keyword: 9-10 ","
+        Error(lambda_star_etc): 11-13
+         Keyword: 11-12 "*"
+         Keyword: 12-13 ","
  Error(stmt): 14-16
   Error(Keyword): 14-16 "**"
  stmt: 16-28
@@ -144,4 +139,3 @@ file: 0-100
        Keyword: 96-99 "..."
    Newline: 99-100 "\n"
  Endmarker: 100-100 ""
-
