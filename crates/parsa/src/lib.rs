@@ -409,6 +409,11 @@ macro_rules! __create_node {
                 self.internal_node.type_ == type_.to_internal()
             }
 
+            pub fn is_type_or_error_thereof(&self, type_: $NodeType) -> bool {
+                self.internal_node.type_.remove_error_recovery_bit()== type_.to_internal()
+            }
+
+
             pub fn type_str(&self) -> String {
                 // Not a fast API, should probably only be used for tests.
                 match self.type_() {

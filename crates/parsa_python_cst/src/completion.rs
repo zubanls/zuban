@@ -94,10 +94,10 @@ impl Tree {
                                 rest,
                             );
                         } else if before_dot.is_type(Nonterminal(name_def))
-                            && matches!(
-                                before_dot.parent().unwrap().type_(),
-                                Nonterminal(dotted_as_name) | ErrorNonterminal(dotted_as_name)
-                            )
+                            && before_dot
+                                .parent()
+                                .unwrap()
+                                .is_type_or_error_thereof(Nonterminal(dotted_as_name))
                         {
                             return (
                                 scope,
@@ -106,10 +106,11 @@ impl Tree {
                                 },
                                 rest,
                             );
-                        } else if matches!(
-                            previous.parent().unwrap().type_(),
-                            Nonterminal(import_from) | ErrorNonterminal(import_from)
-                        ) {
+                        } else if previous
+                            .parent()
+                            .unwrap()
+                            .is_type_or_error_thereof(Nonterminal(import_from))
+                        {
                             return (
                                 scope,
                                 CompletionNode::ImportFromFirstPart {
@@ -125,10 +126,11 @@ impl Tree {
                     }
                 }
                 "from" | "..." => {
-                    if matches!(
-                        previous.parent().unwrap().type_(),
-                        Nonterminal(import_from) | ErrorNonterminal(import_from)
-                    ) {
+                    if previous
+                        .parent()
+                        .unwrap()
+                        .is_type_or_error_thereof(Nonterminal(import_from))
+                    {
                         return (
                             scope,
                             CompletionNode::ImportFromFirstPart {
@@ -238,12 +240,9 @@ fn context(node: PyNode) -> Option<CompletionContext> {
         "(" => node.parent()?,
         "," => {
             let parent = node.parent()?;
-            if parent.is_type(Nonterminal(arguments)) || parent.is_type(ErrorNonterminal(arguments))
-            {
+            if parent.is_type_or_error_thereof(Nonterminal(arguments)) {
                 parent.parent()?
-            } else if parent.is_type(Nonterminal(kwargs))
-                || parent.is_type(ErrorNonterminal(kwargs))
-            {
+            } else if parent.is_type_or_error_thereof(Nonterminal(kwargs)) {
                 parent.parent()?.parent()?
             } else {
                 return None;
@@ -301,7 +300,7 @@ fn call_args(node: PyNode) -> Option<CallArgs> {
         Nonterminal(stmt),
         ErrorNonterminal(stmt),
     ])?;
-    (args.is_type(Nonterminal(arguments)) || args.is_type(ErrorNonterminal(arguments)))
+    args.is_type_or_error_thereof(Nonterminal(arguments))
         .then_some(CallArgs(args))
 }
 
@@ -318,8 +317,7 @@ impl<'db> CallArgs<'db> {
             }
             if child.is_type(Nonterminal(named_expression)) {
                 positional_args += 1;
-            } else if child.is_type(Nonterminal(kwargs)) || child.is_type(ErrorNonterminal(kwargs))
-            {
+            } else if child.is_type_or_error_thereof(Nonterminal(kwargs)) {
                 for in_kwargs in child.iter_children() {
                     if in_kwargs.start() >= until.node.start() {
                         break 'outer;
@@ -355,10 +353,7 @@ fn from_import_dots_before_node(leaf: PyNode) -> usize {
 
 fn import_from_target_node(node: PyNode) -> CompletionNode {
     debug_assert!(
-        matches!(
-            node.type_(),
-            Nonterminal(import_from) | ErrorNonterminal(import_from),
-        ),
+        node.is_type_or_error_thereof(Nonterminal(import_from)),
         "{:?}",
         node.type_()
     );
