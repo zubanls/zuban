@@ -4391,7 +4391,7 @@ impl<'db> NameDef<'db> {
                 ErrorNonterminal(stmt),
             ])
             .unwrap();
-        if node.is_type(Nonterminal(stmt)) || node.is_type(ErrorNonterminal(stmt)) {
+        if node.is_type_or_error_thereof(Nonterminal(stmt)) {
             None
         } else if node.is_type(Nonterminal(import_from_as_name)) {
             Some(NameImportParent::ImportFromAsName(ImportFromAsName::new(
@@ -4499,9 +4499,8 @@ impl<'db> NameDef<'db> {
             TypeLike::Assignment(Assignment::new(node))
         } else if node.is_type(Nonterminal(function_def)) {
             TypeLike::Function(FunctionDef::new(node))
-        } else if node.is_type(Nonterminal(stmt))
-            | node.is_type(Nonterminal(walrus))
-            | node.is_type(ErrorNonterminal(stmt))
+        } else if node.is_type_or_error_thereof(Nonterminal(stmt))
+            || node.is_type(Nonterminal(walrus))
         {
             TypeLike::Other
         } else if node.is_type(Nonterminal(import_from_as_name)) {

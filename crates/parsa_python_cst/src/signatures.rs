@@ -69,9 +69,7 @@ impl Tree {
             if iterator.next().is_some_and(|node| node.start() < position) {
                 continue;
             }
-            if maybe_args.is_type(Nonterminal(arguments))
-                || maybe_args.is_type(ErrorNonterminal(arguments))
-            {
+            if maybe_args.is_type_or_error_thereof(Nonterminal(arguments)) {
                 return Some((
                     scope,
                     base,
@@ -88,10 +86,7 @@ impl Tree {
                 }
                 return Some((scope, base, SignatureArgsIterator::None));
             } else {
-                debug_assert!(
-                    maybe_args.is_type(Nonterminal(comprehension))
-                        || maybe_args.is_type(ErrorNonterminal(comprehension))
-                );
+                debug_assert!(maybe_args.is_type_or_error_thereof(Nonterminal(comprehension)));
                 return Some((scope, base, SignatureArgsIterator::Comprehension));
             }
         }
@@ -150,7 +145,7 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
                         return Some(SignatureArg::PositionalOrKeywordName(n.as_code()));
                     }
                 }
-                if arg.is_type(Nonterminal(kwargs)) || arg.is_type(ErrorNonterminal(kwargs)) {
+                if arg.is_type_or_error_thereof(Nonterminal(kwargs)) {
                     *args = arg.iter_children();
                     self.next()
                 } else if arg.is_type(Nonterminal(kwarg)) {
@@ -163,13 +158,9 @@ impl<'db> Iterator for SignatureArgsIterator<'db> {
                     } else {
                         Some(SignatureArg::PositionalOrKeywordName(name.as_code()))
                     }
-                } else if arg.is_type(Nonterminal(starred_expression))
-                    || arg.is_type(ErrorNonterminal(starred_expression))
-                {
+                } else if arg.is_type_or_error_thereof(Nonterminal(starred_expression)) {
                     Some(SignatureArg::StarArgs)
-                } else if arg.is_type(Nonterminal(double_starred_expression))
-                    || arg.is_type(ErrorNonterminal(double_starred_expression))
-                {
+                } else if arg.is_type_or_error_thereof(Nonterminal(double_starred_expression)) {
                     Some(SignatureArg::StarStarKwargs)
                 } else {
                     Some(SignatureArg::PositionalOrEmptyAfterComma)
