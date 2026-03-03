@@ -251,14 +251,20 @@ fn context(node: PyNode) -> Option<CompletionContext> {
     if parent.is_type(Nonterminal(primary)) {
         let prim = Primary::new(parent);
         if matches!(prim.second(), PrimaryContent::Execution(_)) {
-            Some(CompletionContext::PrimaryCall(prim.first()))
+            Some(CompletionContext::PrimaryCall {
+                base: prim.first(),
+                args: call_args(node),
+            })
         } else {
             None
         }
     } else if parent.is_type(Nonterminal(t_primary)) {
         let prim = PrimaryTarget::new(parent);
         if matches!(prim.second(), PrimaryContent::Execution(_)) {
-            Some(CompletionContext::PrimaryTargetCall(prim.first()))
+            Some(CompletionContext::PrimaryTargetCall {
+                base: prim.first(),
+                args: call_args(node),
+            })
         } else {
             None
         }
@@ -273,12 +279,52 @@ fn context(node: PyNode) -> Option<CompletionContext> {
                 assert_eq!(first.type_(), Nonterminal(primary));
                 PrimaryOrAtom::Primary(Primary::new(first))
             };
-            Some(CompletionContext::PrimaryCall(call))
+            Some(CompletionContext::PrimaryCall {
+                base: call,
+                args: call_args(node),
+            })
         } else {
             None
         }
     } else {
         None
+    }
+}
+
+fn call_args(node: PyNode) -> Option<CallArgs> {
+    let args = node.parent_until(&[
+        Nonterminal(arguments),
+        ErrorNonterminal(arguments),
+        Nonterminal(stmt),
+        ErrorNonterminal(stmt),
+    ])?;
+    (args.is_type(Nonterminal(arguments)) || args.is_type(ErrorNonterminal(arguments)))
+        .then_some(CallArgs(args))
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct CallArgs<'db>(PyNode<'db>);
+
+impl<'db> CallArgs<'db> {
+    pub fn keyword_params_until(
+        &self,
+        until_pos: CodeIndex,
+    ) -> impl Iterator<Item = &'db str> + use<'db> {
+        let kwargs_ = self.0.iter_children().find(|node| {
+            node.is_type(Nonterminal(kwargs)) || node.is_type(ErrorNonterminal(kwargs))
+        });
+        kwargs_
+            .map(move |kwargs_| {
+                kwargs_.iter_children().filter_map(move |node| {
+                    if node.start() > until_pos {
+                        return None;
+                    }
+                    node.is_type(Nonterminal(kwarg))
+                        .then(|| node.nth_child(0).as_code())
+                })
+            })
+            .into_iter()
+            .flatten()
     }
 }
 
@@ -396,8 +442,14 @@ pub enum CompletionNode<'db> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum CompletionContext<'db> {
-    PrimaryCall(PrimaryOrAtom<'db>),
-    PrimaryTargetCall(PrimaryTargetOrAtom<'db>),
+    PrimaryCall {
+        base: PrimaryOrAtom<'db>,
+        args: Option<CallArgs<'db>>,
+    },
+    PrimaryTargetCall {
+        base: PrimaryTargetOrAtom<'db>,
+        args: Option<CallArgs<'db>>,
+    },
 }
 
 /// Holds all kinds of nodes including invalid ones that might be valid starts for completion.
