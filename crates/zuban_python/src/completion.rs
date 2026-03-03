@@ -2,9 +2,10 @@ use std::{borrow::Cow, collections::HashSet, sync::Arc};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CompletionContext, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name,
-    NameDef, NodeIndex, RestNode, Scope, is_identifier,
+    CallArgs, ClassDef, CompletionContext, CompletionNode, FunctionDef,
+    NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NodeIndex, RestNode, Scope, is_identifier,
 };
+use utils::FastHashSet;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
@@ -134,12 +135,15 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                     current: Some(self.infos.scope),
                 };
                 match context {
-                    Some(CompletionContext::PrimaryCall(call)) => {
-                        self.add_keyword_param_completions(self.infos.infer_primary_or_atom(*call));
+                    Some(CompletionContext::PrimaryCall { base, args }) => {
+                        self.add_keyword_param_completions(
+                            self.infos.infer_primary_or_atom(*base),
+                            *args,
+                        );
                     }
-                    Some(CompletionContext::PrimaryTargetCall(call)) => {
-                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*call) {
-                            self.add_keyword_param_completions(inf);
+                    Some(CompletionContext::PrimaryTargetCall { base, args }) => {
+                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*base) {
+                            self.add_keyword_param_completions(inf, *args);
                         }
                     }
                     None => (),
@@ -265,7 +269,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         }
     }
 
-    fn add_keyword_param_completions(&mut self, inf: Inferred) {
+    fn add_keyword_param_completions(&mut self, inf: Inferred, args: Option<CallArgs>) {
         with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
             let maybe_django_query_method = || {
                 let bound = inf.maybe_bound_method()?;
@@ -296,14 +300,27 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             if let Some(model) = maybe_django_query_method() {
                 self.add_keyword_params_for_callable_likes(
                     Type::Type(Arc::new(model)).maybe_callable(i_s),
+                    args,
                 )
             } else {
-                self.add_keyword_params_for_callable_likes(inf.as_cow_type(i_s).maybe_callable(i_s))
+                self.add_keyword_params_for_callable_likes(
+                    inf.as_cow_type(i_s).maybe_callable(i_s),
+                    args,
+                )
             }
         })
     }
 
-    fn add_keyword_params_for_callable_likes(&mut self, c: Option<CallableLike>) {
+    fn add_keyword_params_for_callable_likes(
+        &mut self,
+        c: Option<CallableLike>,
+        args: Option<CallArgs>,
+    ) {
+        let already_used: FastHashSet<&str> = args
+            .map(|args| args.keyword_params_until(self.infos.node.cursor_position.byte))
+            .into_iter()
+            .flatten()
+            .collect();
         let mut add = |c: &CallableContent| {
             if let CallableParams::Simple(params) = &c.params {
                 for param in params.iter() {
@@ -312,6 +329,9 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                         ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
                     ) {
                         if let Some(name) = param.name(self.infos.db) {
+                            if already_used.contains(name) {
+                                continue;
+                            }
                             let keyword_argument = format!("{name}=");
                             if !self.maybe_add_cow(Cow::Owned(keyword_argument.clone())) {
                                 continue;

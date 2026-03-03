@@ -121,7 +121,7 @@ x4(1, 2, 3, 4, 5, 6, bar=2)
 
 #? 14 ['baz=']
 y(1, bar=2, ba)
-#? 7 ['bar=', 'BaseException', 'BaseExceptionGroup', 'baz=']
+#? 7 ['bar=', 'baz=', 'BaseException', 'BaseExceptionGroup']
 y(1, ba, baz=3)
 #? 14 ['baz=']
 y(1, bar=2, baz=3)
