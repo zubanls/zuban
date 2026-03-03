@@ -132,15 +132,18 @@ struct DFATransition {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum StackMode {
-    Alternative(*const Plan),
+    Alternative {
+        fallback: *const Plan,
+        replay: *const Plan,
+    },
     LL,
 }
 
 impl std::fmt::Debug for StackMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Alternative(plan) => {
-                let dfa = unsafe { &(**plan) }.next_dfa();
+            Self::Alternative { fallback, .. } => {
+                let dfa = unsafe { &(**fallback) }.next_dfa();
                 write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
             }
             Self::LL => write!(f, "LL"),
@@ -1043,15 +1046,16 @@ fn plans_for_dfa(
                         // because the plans are not touched after they have been generated.
                         automaton
                             .fallback_plans
+                            .push(Pin::new(Box::new(new_plan.clone())));
+                        automaton
+                            .fallback_plans
                             .push(Pin::new(Box::new(fallback_plan)));
-                        new_plan = nest_plan(
-                            &new_plan,
-                            t,
-                            end,
-                            StackMode::Alternative(
-                                automaton.fallback_plans.last().unwrap() as &Plan
-                            ),
-                        );
+                        let mut reversed = automaton.fallback_plans.iter().rev();
+                        let mode = StackMode::Alternative {
+                            fallback: reversed.next().unwrap() as &Plan,
+                            replay: reversed.next().unwrap() as &Plan,
+                        };
+                        new_plan = nest_plan(&new_plan, t, end, mode);
                     }
                     result.insert(transition, new_plan);
                 }

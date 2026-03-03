@@ -1,5 +1,6 @@
 ---
-source: parsa_python/tests/test_grammar.rs
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
 expression: tree_to_string(tree)
 ---
 file: 0-103
@@ -73,39 +74,31 @@ file: 0-103
       atom: 46-49
        Keyword: 46-49 "..."
    Newline: 49-50 "\n"
- Error(stmt): 50-58
-  Error(simple_stmts): 50-58
-   Error(simple_stmt): 50-58
-    Error(star_expressions): 50-58
-     Error(expression): 50-58
-      Error(lambda): 50-58
+ Error(stmt): 50-69
+  Error(simple_stmts): 50-69
+   Error(simple_stmt): 50-69
+    Error(star_expressions): 50-69
+     Error(expression): 50-69
+      Error(lambda): 50-69
        Keyword: 50-56 "lambda"
-       Error(lambda_parameters): 57-58
-        Error(lambda_param_with_default): 57-58
+       Error(lambda_parameters): 57-69
+        lambda_param_no_default: 57-58
          name_def: 57-58
           Name: 57-58 "a"
- Error(stmt): 58-59
-  Error(Keyword): 58-59 ","
- Error(stmt): 60-61
-  Error(Keyword): 60-61 "/"
- Error(stmt): 61-62
-  Error(Keyword): 61-62 ","
- Error(stmt): 63-69
-  Error(simple_stmts): 63-69
-   simple_stmt: 63-69
-    assignment: 63-69
-     star_targets: 63-64
-      name_def: 63-64
-       Name: 63-64 "b"
-     Keyword: 64-65 "="
-     star_expressions: 65-69
-      expression: 65-66
-       atom: 65-66
-        Number: 65-66 "3"
-      Keyword: 66-67 ","
-      expression: 68-69
-       atom: 68-69
-        Name: 68-69 "c"
+        Keyword: 58-59 ","
+        Keyword: 60-61 "/"
+        Keyword: 61-62 ","
+        lambda_param_with_default: 63-66
+         name_def: 63-64
+          Name: 63-64 "b"
+         Keyword: 64-65 "="
+         expression: 65-66
+          atom: 65-66
+           Number: 65-66 "3"
+        Keyword: 66-67 ","
+        Error(lambda_param_with_default): 68-69
+         name_def: 68-69
+          Name: 68-69 "c"
  Error(stmt): 69-70
   Error(Keyword): 69-70 ":"
  stmt: 71-75
@@ -116,36 +109,31 @@ file: 0-103
       atom: 71-74
        Keyword: 71-74 "..."
    Newline: 74-75 "\n"
- Error(stmt): 75-83
-  Error(simple_stmts): 75-83
-   Error(simple_stmt): 75-83
-    Error(star_expressions): 75-83
-     Error(expression): 75-83
-      Error(lambda): 75-83
+ Error(stmt): 75-91
+  Error(simple_stmts): 75-91
+   Error(simple_stmt): 75-91
+    Error(star_expressions): 75-91
+     Error(expression): 75-91
+      Error(lambda): 75-91
        Keyword: 75-81 "lambda"
-       Error(lambda_parameters): 82-83
-        Error(lambda_param_with_default): 82-83
+       Error(lambda_parameters): 82-91
+        lambda_param_no_default: 82-83
          name_def: 82-83
           Name: 82-83 "z"
- Error(stmt): 83-84
-  Error(Keyword): 83-84 ","
- Error(stmt): 85-92
-  Error(simple_stmts): 85-92
-   simple_stmt: 85-92
-    assignment: 85-92
-     star_targets: 85-86
-      name_def: 85-86
-       Name: 85-86 "a"
-     Keyword: 86-87 "="
-     star_expressions: 87-92
-      expression: 87-88
-       atom: 87-88
-        Number: 87-88 "3"
-      Keyword: 88-89 ","
-      expression: 90-91
-       atom: 90-91
-        Name: 90-91 "d"
-      Keyword: 91-92 ","
+        Keyword: 83-84 ","
+        lambda_param_with_default: 85-88
+         name_def: 85-86
+          Name: 85-86 "a"
+         Keyword: 86-87 "="
+         expression: 87-88
+          atom: 87-88
+           Number: 87-88 "3"
+        Keyword: 88-89 ","
+        Error(lambda_param_with_default): 90-91
+         name_def: 90-91
+          Name: 90-91 "d"
+ Error(stmt): 91-92
+  Error(Keyword): 91-92 ","
  Error(stmt): 93-94
   Error(Keyword): 93-94 "/"
  Error(stmt): 94-95
@@ -164,4 +152,3 @@ file: 0-103
         Keyword: 99-102 "..."
    Newline: 102-103 "\n"
  Endmarker: 103-103 ""
-

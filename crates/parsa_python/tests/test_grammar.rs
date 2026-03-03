@@ -330,6 +330,10 @@ parametrize_snapshots!(
         "#);
     completion_on_func_call1: "f(3).\n";
     completion_on_func_call2: "f(1 for a in []).\n";
+    signature_recovery: dedent(r#"
+        foo(x, y=1, z)
+        foo(x, y=1, z
+        "#);
 );
 
 #[test]

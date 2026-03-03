@@ -1585,9 +1585,9 @@ reveal_type(z)  # N: Revealed type is "Any"
 
 try:  # E: Invalid syntax
     ...
-except Exception as e  # E: Name "e" is not defined
-a4: e  # E: Name "e" is not defined
-reveal_type(e)  # E: Name "e" is not defined  # N: Revealed type is "Any"
+except Exception as e
+a4: e
+reveal_type(e)  # N: Revealed type is "Any"
 
 type t = b+  # E: Invalid syntax
 a5: t  # E: Name "t" is not defined
