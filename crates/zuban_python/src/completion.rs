@@ -2,9 +2,9 @@ use std::{borrow::Cow, collections::HashSet, sync::Arc};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    CallArgs, ClassDef, CompletionContext, CompletionNode, FunctionDef, RestNode,
-    NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NodeIndex, Scope, is_identifier,
-    QuoteState
+    CallArgs, ClassDef, CompletionContext, CompletionNode, FunctionDef,
+    NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NodeIndex, QuoteState, RestNode, Scope,
+    is_identifier,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
