@@ -238,13 +238,15 @@ fn context(node: PyNode) -> Option<CompletionContext> {
         "(" => node.parent()?,
         "," => {
             let parent = node.parent()?;
-            if parent.is_type(Nonterminal(arguments)) {
+            if parent.is_type(Nonterminal(arguments)) || parent.is_type(ErrorNonterminal(arguments))
+            {
                 parent.parent()?
-            } else if node.is_type(Nonterminal(kwargs)) {
-                parent
-                //node.parent()?.parent()?
+            } else if parent.is_type(Nonterminal(kwargs))
+                || parent.is_type(ErrorNonterminal(kwargs))
+            {
+                parent.parent()?.parent()?
             } else {
-                parent
+                return None;
             }
         }
         _ => return None,
