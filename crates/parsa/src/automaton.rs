@@ -952,18 +952,19 @@ fn plans_for_dfa(
             TransitionType::PositiveLookaheadStart => {
                 let (next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
                 for t in peek_terminals {
-                    plans.insert(
+                    add_if_no_conflict(
+                        &mut plans,
+                        &mut conflict_transitions,
+                        &mut conflict_tokens,
+                        transition,
                         t,
-                        (
-                            transition,
-                            Plan {
-                                debug_text: "positive lookahead",
-                                mode: PlanMode::PositivePeek,
-                                next_dfa,
-                                pushes: vec![],
-                                type_: t,
-                            },
-                        ),
+                        || Plan {
+                            pushes: vec![],
+                            next_dfa,
+                            type_: t,
+                            debug_text: "positive lookahead",
+                            mode: PlanMode::PositivePeek,
+                        },
                     );
                 }
             }
