@@ -100,6 +100,7 @@ enum ModeData<'a> {
     LastAlternative {
         backtracking: BacktrackingPoint<'a>,
         first_plan_start_index: CodeIndex,
+        first_plan_had_valid_stack: bool,
     },
     LL,
 }
@@ -297,10 +298,13 @@ impl<'a, T: Token> Grammar<T> {
                     fallback_plan,
                 } => {
                     let first_plan_start_index = stack.tree_nodes.last().unwrap().start_index;
+                    let first_plan_had_valid_stack = stack.stack_nodes.len() == i + 1
+                        && !stack.tos().dfa_state.is_negative_lookahead();
                     let t = reset(backtracking, stack, backtracking_tokenizer);
                     stack.tos_mut().mode = ModeData::LastAlternative {
                         backtracking,
                         first_plan_start_index,
+                        first_plan_had_valid_stack,
                     };
                     self.apply_plan(stack, fallback_plan, &t, backtracking_tokenizer);
                     // The token was not used, but the tokenizer backtracked.
@@ -309,6 +313,7 @@ impl<'a, T: Token> Grammar<T> {
                 ModeData::LastAlternative {
                     backtracking,
                     first_plan_start_index,
+                    first_plan_had_valid_stack,
                 } => {
                     // Since the alternative used more nodes than the original, simply replay the
                     // original one that ate more code. This makes error recovery a bit nicer
@@ -317,7 +322,15 @@ impl<'a, T: Token> Grammar<T> {
                     // to go, because this should never happen on valid code. So this only ever
                     // needs to happen on broken code, which is definitely only a very small subset
                     // that we have to parse.
-                    if first_plan_start_index > stack.tree_nodes.last().unwrap().start_index {
+                    let start = stack.tree_nodes.last().unwrap().start_index;
+                    if first_plan_start_index > start
+                        // In case of equal length, we prefer the branch that is failing in the
+                        // current DFA and not somewhere inside the stack, which seems like a
+                        // less likely scenario.
+                        || first_plan_start_index == start
+                            && first_plan_had_valid_stack
+                            && !stack.stack_nodes.len() != i + 1
+                    {
                         let t = reset(backtracking, stack, backtracking_tokenizer);
                         // Pop the LastAlternative that is still on the stack.
                         stack.stack_nodes.pop();

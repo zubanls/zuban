@@ -334,6 +334,9 @@ parametrize_snapshots!(
         foo(x, y=1, z)
         foo(x, y=1, z
         "#);
+    signature_recovery2: dedent(r#"
+        f(a,b,a=
+        "#);
 );
 
 #[test]

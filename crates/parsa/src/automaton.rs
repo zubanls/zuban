@@ -89,7 +89,7 @@ struct NFAState {
 
 // DFA = deterministic finite automaton
 #[derive(Debug)]
-pub struct DFAState {
+pub(crate) struct DFAState {
     transitions: Vec<DFATransition>,
     nfa_set: HashSet<NFAStateId>,
     pub is_final: bool,
@@ -101,6 +101,7 @@ pub struct DFAState {
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
     pub transition_to_plan: FastLookupTransitions,
+
     pub from_rule: &'static str,
 }
 
@@ -659,6 +660,10 @@ impl DFAState {
             }
         }
         transition_ids
+    }
+
+    pub fn is_negative_lookahead(&self) -> bool {
+        self.transitions.is_empty() && !self.is_final
     }
 }
 
