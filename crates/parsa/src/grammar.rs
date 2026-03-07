@@ -556,12 +556,13 @@ impl<'a, T: Token> Grammar<T> {
                     reusable_first_nonterminal,
                 } => {
                     enabled_token_recording = true;
-                    stack.push(
-                        push.node_type,
-                        stack.tos().tree_node_index,
-                        push.next_dfa(),
-                        start_index,
-                        ModeData::Alternative {
+                    stack.stack_nodes.push(StackNode {
+                        node_id: push.node_type,
+                        tree_node_index: stack.tos().tree_node_index,
+                        latest_child_node_index: 0,
+                        dfa_state: push.next_dfa(),
+                        children_count,
+                        mode: ModeData::Alternative {
                             backtracking: BacktrackingPoint {
                                 tree_node_count: stack.tree_nodes.len(),
                                 token_index: backtracking_tokenizer.start(token),
@@ -571,9 +572,8 @@ impl<'a, T: Token> Grammar<T> {
                             fallback_plan: unsafe { &**fallback },
                             reusable_first_nonterminal,
                         },
-                        children_count,
                         enabled_token_recording,
-                    );
+                    });
                 }
             };
             stack.tos_mut().latest_child_node_index = stack.tree_nodes.len();
@@ -652,16 +652,15 @@ impl<'a> Stack<'a> {
             mode,
             enabled_token_recording,
         });
-        // ModeData::Alternative(_) needs to be excluded here, because the tree node is already
+        // ModeData::Alternative(_) cannot be called here, because the tree node is already
         // part of the parent stack node.
-        if matches!(mode, ModeData::LL) {
-            self.tree_nodes.push(InternalNode {
-                next_node_offset: 0,
-                type_: node_id.to_squashed(),
-                start_index: start,
-                length: 0,
-            });
-        }
+        debug_assert!(matches!(mode, ModeData::LL));
+        self.tree_nodes.push(InternalNode {
+            next_node_offset: 0,
+            type_: node_id.to_squashed(),
+            start_index: start,
+            length: 0,
+        });
     }
 
     #[inline]
