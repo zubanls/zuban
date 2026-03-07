@@ -158,7 +158,7 @@ fn test_signature_param_position() {
         (code4, "i(()", 0),
         (code4, "i((),", 1),
         (code4, "i([(),", 0),
-        (code4, "i([(,", 0),
+        (code4, "i([(,", 1),
         (code4, "i(x,()", 1),
     ];
     if !failures.is_empty() {

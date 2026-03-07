@@ -131,11 +131,14 @@ struct DFATransition {
     to: *mut DFAState,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum StackMode {
     Alternative {
         fallback: *const Plan,
         replay: *const Plan,
+        // This solves a big part of the problem of exponential reparsing of for example nested
+        // parentheses if there are fallbacks (like Python's tuple/expr with parens).
+        reusable_first_nonterminal: Option<ReusableFirstNonterminal>,
     },
     LL,
 }
@@ -687,6 +690,7 @@ impl DFATransition {
 }
 
 impl Plan {
+    #[inline]
     pub fn next_dfa(&self) -> &DFAState {
         unsafe { &*self.next_dfa }
     }
@@ -1048,6 +1052,8 @@ fn plans_for_dfa(
                 if conflict_tokens.contains(&transition) {
                     if let Some(fallback_plan) = result.remove(&transition) {
                         let automaton = automatons.get_mut(&automaton_key).unwrap();
+                        let reusable_first_nonterminal =
+                            maybe_reusable_first_nonterminal(&new_plan, &fallback_plan);
                         // This sets a const pointer on the fallback plan. This is only save,
                         // because the plans are not touched after they have been generated.
                         automaton
@@ -1060,6 +1066,7 @@ fn plans_for_dfa(
                         let mode = StackMode::Alternative {
                             fallback: reversed.next().unwrap() as &Plan,
                             replay: reversed.next().unwrap() as &Plan,
+                            reusable_first_nonterminal,
                         };
                         new_plan = nest_plan(&new_plan, t, end, mode);
                     }
@@ -1093,6 +1100,41 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
         }
         plans.insert(token, (transition, create_plan()));
     }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ReusableFirstNonterminal {
+    pub pushes: Vec<Push>,
+    pub nth_tree_node: usize,
+}
+
+fn maybe_reusable_first_nonterminal(
+    plan: &Plan,
+    fallback: &Plan,
+) -> Option<ReusableFirstNonterminal> {
+    if plan.mode != PlanMode::LL || fallback.mode != PlanMode::LL {
+        return None;
+    }
+    for (i, push1) in plan.pushes.iter().enumerate() {
+        if unsafe { &*push1.next_dfa }.node_may_be_omitted
+            || !matches!(push1.stack_mode, StackMode::LL)
+        {
+            // Nodes that may be omitted would mess with the offset of the expression.
+            return None;
+        }
+        for (k, push2) in fallback.pushes.iter().enumerate() {
+            if !matches!(push2.stack_mode, StackMode::LL) {
+                break;
+            }
+            if push1.node_type == push2.node_type {
+                return Some(ReusableFirstNonterminal {
+                    nth_tree_node: i + 1,
+                    pushes: fallback.pushes.iter().take(k + 1).cloned().collect(),
+                });
+            }
+        }
+    }
+    None
 }
 
 fn create_left_recursion_plans(

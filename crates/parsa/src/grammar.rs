@@ -5,8 +5,9 @@ use utils::FastHashMap;
 use crate::{
     automaton::{
         Automatons, DFAState, InternalNonterminalType, InternalSquashedType, InternalStrToNode,
-        InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode, RuleMap, SoftKeywords,
-        Squashable, StackMode, generate_automatons,
+        InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode,
+        ReusableFirstNonterminal, RuleMap, SoftKeywords, Squashable, StackMode,
+        generate_automatons,
     },
     backtracking::BacktrackingTokenizer,
 };
@@ -96,6 +97,7 @@ enum ModeData<'a> {
     Alternative {
         backtracking: BacktrackingPoint<'a>,
         fallback_plan: &'a Plan,
+        reusable_first_nonterminal: &'a Option<ReusableFirstNonterminal>,
     },
     LastAlternative {
         backtracking: BacktrackingPoint<'a>,
@@ -285,7 +287,6 @@ impl<'a, T: Token> Grammar<T> {
                  stack: &mut Stack,
                  backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>| {
                     stack.stack_nodes.truncate(i + 1);
-
                     stack.tree_nodes.truncate(backtracking.tree_node_count);
                     let tos = stack.tos_mut();
                     tos.children_count = backtracking.children_count;
@@ -296,18 +297,84 @@ impl<'a, T: Token> Grammar<T> {
                 ModeData::Alternative {
                     backtracking,
                     fallback_plan,
+                    reusable_first_nonterminal,
                 } => {
                     let first_plan_start_index = stack.tree_nodes.last().unwrap().start_index;
                     let first_plan_had_valid_stack = stack.stack_nodes.len() == i + 1
                         && !stack.tos().dfa_state.is_negative_lookahead();
-                    let t = reset(backtracking, stack, backtracking_tokenizer);
-                    stack.tos_mut().mode = ModeData::LastAlternative {
+                    let alternative = ModeData::LastAlternative {
                         backtracking,
                         first_plan_start_index,
                         first_plan_had_valid_stack,
                     };
-                    self.apply_plan(stack, fallback_plan, &t, backtracking_tokenizer);
-                    // The token was not used, but the tokenizer backtracked.
+                    if let Some(reusable) = reusable_first_nonterminal {
+                        let c = backtracking.tree_node_count;
+                        let nth = reusable.nth_tree_node;
+                        let reuse_node_index = c - 1 + nth;
+                        debug_assert_eq!(
+                            stack.tree_nodes[reuse_node_index].type_,
+                            reusable.pushes.last().unwrap().node_type.to_squashed()
+                        );
+                        let Some((last_leaf_index, last_leaf)) =
+                            stack.last_leaf_if_proper_nonterminal(reuse_node_index)
+                        else {
+                            // Both alternatives need the same first non-terminal. If it's not
+                            // properly finished, we can abort.
+                            continue;
+                        };
+
+                        let start_index = stack.tree_nodes[reuse_node_index].start_index;
+                        backtracking_tokenizer.reset_to_last_leaf(last_leaf);
+                        stack.stack_nodes.truncate(i + 1);
+
+                        let tos_mut = stack.tos_mut();
+                        tos_mut.mode = alternative;
+                        tos_mut.dfa_state = fallback_plan.next_dfa();
+                        stack.tree_nodes.truncate(last_leaf_index + 1);
+                        // Make sure the tree nodes have the right size to overwrite them later.
+                        // It doesn't matter where we insert/remove, everything should be
+                        // overwritten.
+                        let push_len = reusable.pushes.len();
+                        stack.tree_nodes.splice(
+                            c..c + nth.checked_sub(push_len).unwrap_or(0),
+                            std::iter::repeat_n(
+                                InternalNode {
+                                    // These values should all not matter, since they are
+                                    // overwritten below.
+                                    next_node_offset: 0,
+                                    type_: InternalSquashedType(0),
+                                    start_index,
+                                    length: 0,
+                                },
+                                push_len.checked_sub(nth).unwrap_or(0),
+                            ),
+                        );
+                        for (i, push) in reusable.pushes.iter().enumerate() {
+                            debug_assert!(matches!(push.stack_mode, StackMode::LL));
+                            let tree_node_index = c + i;
+                            stack.stack_nodes.push(StackNode {
+                                node_id: push.node_type,
+                                tree_node_index,
+                                latest_child_node_index: c + i + 1,
+                                dfa_state: push.next_dfa(),
+                                children_count: 1,
+                                mode: ModeData::LL,
+                                enabled_token_recording: true,
+                            });
+                            stack.tree_nodes[tree_node_index] = InternalNode {
+                                next_node_offset: 0,
+                                type_: push.node_type.to_squashed(),
+                                start_index,
+                                length: 0,
+                            };
+                        }
+                        return;
+                    } else {
+                        let t = reset(backtracking, stack, backtracking_tokenizer);
+                        stack.tos_mut().mode = alternative;
+                        self.apply_plan(stack, fallback_plan, &t, backtracking_tokenizer);
+                        // The token was not used, but the tokenizer backtracked.
+                    }
                     return; // Error Recovery done.
                 }
                 ModeData::LastAlternative {
@@ -460,7 +527,7 @@ impl<'a, T: Token> Grammar<T> {
             let children_count = tos.children_count;
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            match push.stack_mode {
+            match &push.stack_mode {
                 StackMode::LL => {
                     stack.push(
                         push.node_type,
@@ -472,7 +539,11 @@ impl<'a, T: Token> Grammar<T> {
                         enabled_token_recording,
                     );
                 }
-                StackMode::Alternative { fallback, replay } => {
+                StackMode::Alternative {
+                    fallback,
+                    replay,
+                    reusable_first_nonterminal,
+                } => {
                     enabled_token_recording = true;
                     stack.push(
                         push.node_type,
@@ -483,10 +554,11 @@ impl<'a, T: Token> Grammar<T> {
                             backtracking: BacktrackingPoint {
                                 tree_node_count: stack.tree_nodes.len(),
                                 token_index: backtracking_tokenizer.start(token),
-                                replay_plan: unsafe { &*replay },
+                                replay_plan: unsafe { &**replay },
                                 children_count,
                             },
-                            fallback_plan: unsafe { &*fallback },
+                            fallback_plan: unsafe { &**fallback },
+                            reusable_first_nonterminal,
                         },
                         children_count,
                         enabled_token_recording,
@@ -675,6 +747,29 @@ impl<'a> Stack<'a> {
             0,
         );
         code
+    }
+
+    fn last_leaf_if_proper_nonterminal(
+        &self,
+        nth_tree_node: usize,
+    ) -> Option<(usize, &InternalNode)> {
+        if self.tree_nodes[nth_tree_node].length == 0 {
+            // If there is no length the node is not finished.
+            return None;
+        }
+        // Check the first child
+        let mut check = nth_tree_node + 1;
+        loop {
+            let node = &self.tree_nodes[check];
+            if node.next_node_offset > 0 {
+                check += node.next_node_offset as usize;
+            } else if node.type_.is_leaf() {
+                return Some((check, node));
+            } else {
+                // Check the first child
+                check += 1;
+            }
+        }
     }
 }
 

@@ -1,8 +1,7 @@
 ---
 source: crates/parsa_python/tests/test_grammar.rs
-assertion_line: 43
+assertion_line: 41
 expression: tree_to_string(tree)
-snapshot_kind: text
 ---
 file: 0-36
  Error(stmt): 1-29
@@ -18,13 +17,12 @@ file: 0-36
    Indent: 16-16 ""
    Error(case_block): 16-29
     Keyword: 16-20 "case"
-    Error(open_sequence_pattern): 21-29
-     Error(pattern): 21-29
-      name_def: 21-24
-       Name: 21-24 "bar"
-      Keyword: 25-27 "as"
-      Error(pattern_capture_target): 28-29
-       Keyword: 28-29 "_"
+    Error(pattern): 21-29
+     name_def: 21-24
+      Name: 21-24 "bar"
+     Keyword: 25-27 "as"
+     Error(pattern_capture_target): 28-29
+      Keyword: 28-29 "_"
  Error(stmt): 29-30
   Error(Keyword): 29-30 ":"
  stmt: 31-36
