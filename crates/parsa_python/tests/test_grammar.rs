@@ -209,6 +209,11 @@ parametrize_snapshots!(
             case B(a=1, b=2):
                 pass
         ");
+    match_negative_number: dedent(r#"
+        match a:
+            case -1:
+              pass
+        "#);
     dict_literal1: dedent("
         {1: 2}
         {**foo}

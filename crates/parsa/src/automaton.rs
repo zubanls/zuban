@@ -394,6 +394,10 @@ impl RuleAutomaton {
         set
     }
 
+    fn dfa_end_without_transitions(&mut self) -> *mut DFAState {
+        self.nfa_to_dfa(vec![self.nfa_end_id], self.nfa_end_id, None)
+    }
+
     fn nfa_to_dfa(
         &mut self,
         starts: Vec<NFAStateId>,
@@ -1051,9 +1055,9 @@ fn plans_for_dfa(
             for (transition, mut new_plan) in new_plans.into_iter() {
                 if conflict_tokens.contains(&transition) {
                     if let Some(fallback_plan) = result.remove(&transition) {
-                        let automaton = automatons.get_mut(&automaton_key).unwrap();
                         let reusable_first_nonterminal =
-                            maybe_reusable_first_nonterminal(&new_plan, &fallback_plan);
+                            maybe_reusable_first_nonterminal(automatons, &new_plan, &fallback_plan);
+                        let automaton = automatons.get_mut(&automaton_key).unwrap();
                         // This sets a const pointer on the fallback plan. This is only save,
                         // because the plans are not touched after they have been generated.
                         automaton
@@ -1104,11 +1108,12 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
 
 #[derive(Clone, Debug)]
 pub(crate) struct ReusableFirstNonterminal {
-    pub pushes: Vec<Push>,
+    pub pushes: Box<[Push]>,
     pub nth_tree_node: usize,
 }
 
 fn maybe_reusable_first_nonterminal(
+    automatons: &mut Automatons,
     plan: &Plan,
     fallback: &Plan,
 ) -> Option<ReusableFirstNonterminal> {
@@ -1127,9 +1132,17 @@ fn maybe_reusable_first_nonterminal(
                 break;
             }
             if push1.node_type == push2.node_type {
+                let mut pushes: Vec<_> = fallback.pushes.iter().take(k + 1).cloned().collect();
+                // We have to ensure that the last dfa state is correct, since the first node was
+                // already parsed.
+                let last = pushes.last_mut().unwrap();
+                last.next_dfa = automatons
+                    .get_mut(&last.node_type)
+                    .unwrap()
+                    .dfa_end_without_transitions();
                 return Some(ReusableFirstNonterminal {
                     nth_tree_node: i + 1,
-                    pushes: fallback.pushes.iter().take(k + 1).cloned().collect(),
+                    pushes: pushes.into_boxed_slice(),
                 });
             }
         }
@@ -1287,7 +1300,7 @@ fn split_tokens(
     }
 
     let mut generated_dfa_ids: Vec<DFAStateId> = vec![];
-    let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id, None);
+    let end_dfa = automaton.dfa_end_without_transitions();
 
     let mut as_list: Vec<_> = transition_to_nfas.values().cloned().collect();
     while !as_list.is_empty() {
