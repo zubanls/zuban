@@ -420,6 +420,9 @@ impl<'a, T: Token> Grammar<T> {
     ) {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
         tos_mut.dfa_state = plan.next_dfa();
+        if tos_mut.dfa_state.is_negative_lookahead() {
+            return;
+        }
 
         // If we have left recursion we have to do something a bit weird: We push the same tree
         // node in between, because we only handle direct recursion. This is kind of similar
