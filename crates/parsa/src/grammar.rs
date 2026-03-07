@@ -280,6 +280,36 @@ impl<'a, T: Token> Grammar<T> {
         transition: Option<InternalSquashedType>,
         token: Option<&T>,
     ) {
+        let recovered_by_adding_error_leaf = |stack: &mut Stack| {
+            if let Some(transition) = transition {
+                // If the first step did not work, we try to add the token as an error terminal to
+                // the tree.
+                for nonterminal_id in stack.tos().dfa_state.nonterminal_transition_ids() {
+                    let automaton = &self.automatons[&nonterminal_id];
+                    if automaton.does_error_recovery {
+                        stack.calculate_previous_next_node();
+                        let token = token.unwrap();
+                        // First add the nonterminal
+                        stack.tree_nodes.push(InternalNode {
+                            next_node_offset: 0,
+                            type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
+                            start_index: token.start_index(),
+                            length: token.length(),
+                        });
+                        // And then add the terminal
+                        stack.tree_nodes.push(InternalNode {
+                            next_node_offset: 0,
+                            type_: transition.set_error_recovery_bit(),
+                            start_index: token.start_index(),
+                            length: token.length(),
+                        });
+                        return true; // Error recovery is done.
+                    }
+                }
+            }
+            false
+        };
+
         // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
             let reset =
@@ -415,38 +445,14 @@ impl<'a, T: Token> Grammar<T> {
                 }
                 ModeData::LL => (),
             }
-        }
 
-        if let Some(transition) = transition {
-            // If the first step did not work, we try to add the token as an error terminal to
-            // the tree.
-            for nonterminal_id in stack.tos().dfa_state.nonterminal_transition_ids() {
-                let automaton = &self.automatons[&nonterminal_id];
-                if automaton.does_error_recovery {
-                    stack.calculate_previous_next_node();
-                    let token = token.unwrap();
-                    // First add the nonterminal
-                    stack.tree_nodes.push(InternalNode {
-                        next_node_offset: 0,
-                        type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
-                        start_index: token.start_index(),
-                        length: token.length(),
-                    });
-                    // And then add the terminal
-                    stack.tree_nodes.push(InternalNode {
-                        next_node_offset: 0,
-                        type_: transition.set_error_recovery_bit(),
-                        start_index: token.start_index(),
-                        length: token.length(),
-                    });
-                    return; // Error recovery is done.
-                }
-            }
-        }
-        // First step of error recovery is to mark tree nodes as failed and pop the
-        // stack nodes that failed.
-        for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
             if self.automatons[&node.node_id].does_error_recovery {
+                if recovered_by_adding_error_leaf(stack) {
+                    return;
+                }
+
+                // First step of error recovery is to mark tree nodes as failed and pop the
+                // stack nodes that failed.
                 while stack.stack_nodes.len() > i {
                     let stack_node = stack.stack_nodes.pop().unwrap();
                     update_tree_node_position(&mut stack.tree_nodes, &stack_node);
@@ -467,6 +473,11 @@ impl<'a, T: Token> Grammar<T> {
                 return; // Error recovery is done.
             }
         }
+
+        if recovered_by_adding_error_leaf(stack) {
+            return;
+        }
+
         panic!(
             "No error recovery function found with stack {:?} and token {token:?}",
             stack

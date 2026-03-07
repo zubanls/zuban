@@ -214,6 +214,11 @@ parametrize_snapshots!(
             case -1:
               pass
         "#);
+    match_error_recovery: dedent(r#"
+        match True:
+            case {**x}:
+                if True:
+        "#);
     dict_literal1: dedent("
         {1: 2}
         {**foo}

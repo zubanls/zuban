@@ -18,7 +18,6 @@ testLocalPartialTypesWithNestedFunction2
 
 # parser fails
 avoid_bracket_slowdown
-match_syntax_error_no_crash
 
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
