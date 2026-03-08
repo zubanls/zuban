@@ -16,9 +16,6 @@ super_explicit_type_var_classmethod
 testLocalPartialTypesWithNestedFunction
 testLocalPartialTypesWithNestedFunction2
 
-# parser fails
-avoid_bracket_slowdown
-
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3

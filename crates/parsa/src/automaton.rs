@@ -1109,7 +1109,9 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
 #[derive(Clone, Debug)]
 pub(crate) struct ReusableFirstNonterminal {
     pub pushes: Box<[Push]>,
-    pub nth_tree_node: usize,
+    // Some pushes might be alternatives that don't use up a tree node and we therefore have a
+    // different length.
+    pub tree_nodes_needed_for_pushes: usize,
 }
 
 fn maybe_reusable_first_nonterminal(
@@ -1120,17 +1122,12 @@ fn maybe_reusable_first_nonterminal(
     if plan.mode != PlanMode::LL || fallback.mode != PlanMode::LL {
         return None;
     }
-    for (i, push1) in plan.pushes.iter().enumerate() {
-        if unsafe { &*push1.next_dfa }.node_may_be_omitted
-            || !matches!(push1.stack_mode, StackMode::LL)
-        {
+    for push1 in plan.pushes.iter() {
+        if !matches!(push1.stack_mode, StackMode::LL) {
             // Nodes that may be omitted would mess with the offset of the expression.
             return None;
         }
         for (k, push2) in fallback.pushes.iter().enumerate() {
-            if !matches!(push2.stack_mode, StackMode::LL) {
-                break;
-            }
             if push1.node_type == push2.node_type {
                 let mut pushes: Vec<_> = fallback.pushes.iter().take(k + 1).cloned().collect();
                 // We have to ensure that the last dfa state is correct, since the first node was
@@ -1140,8 +1137,17 @@ fn maybe_reusable_first_nonterminal(
                     .get_mut(&last.node_type)
                     .unwrap()
                     .dfa_end_without_transitions();
+                let tree_nodes_needed_for_pushes = pushes
+                    .iter()
+                    .filter(|p| !matches!(p.stack_mode, StackMode::Alternative { .. }))
+                    .count();
+                if tree_nodes_needed_for_pushes == 0 {
+                    // TODO why does this happen?
+                    return None;
+                }
+                debug_assert!(tree_nodes_needed_for_pushes != 0);
                 return Some(ReusableFirstNonterminal {
-                    nth_tree_node: i + 1,
+                    tree_nodes_needed_for_pushes,
                     pushes: pushes.into_boxed_slice(),
                 });
             }

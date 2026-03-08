@@ -347,6 +347,13 @@ parametrize_snapshots!(
     signature_recovery2: dedent(r#"
         f(a,b,a=
         "#);
+    nested_parens: dedent(r#"
+        (((1)))
+        "#);
+    dict_comprehension: dedent("
+        {1: 2 for x in [1]}
+        {a: bc for x in [1]}
+        ");
 );
 
 #[test]

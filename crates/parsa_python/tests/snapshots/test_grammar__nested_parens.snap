@@ -1,0 +1,30 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
+expression: tree_to_string(tree)
+---
+file: 0-9
+ stmt: 1-9
+  simple_stmts: 1-9
+   simple_stmt: 1-8
+    star_expressions: 1-8
+     expression: 1-8
+      atom: 1-8
+       Keyword: 1-2 "("
+       named_expression: 2-7
+        expression: 2-7
+         atom: 2-7
+          Keyword: 2-3 "("
+          named_expression: 3-6
+           expression: 3-6
+            atom: 3-6
+             Keyword: 3-4 "("
+             named_expression: 4-5
+              expression: 4-5
+               atom: 4-5
+                Number: 4-5 "1"
+             Keyword: 5-6 ")"
+          Keyword: 6-7 ")"
+       Keyword: 7-8 ")"
+   Newline: 8-9 "\n"
+ Endmarker: 9-9 ""

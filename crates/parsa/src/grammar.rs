@@ -330,20 +330,22 @@ impl<'a, T: Token> Grammar<T> {
                     reusable_first_nonterminal,
                 } => {
                     let first_plan_start_index = stack.tree_nodes.last().unwrap().start_index;
-                    let first_plan_had_valid_stack = stack.stack_nodes.len() == i + 1
-                        && !stack.tos().dfa_state.is_negative_lookahead();
+                    let first_plan_had_valid_stack = stack.stack_nodes.len() == i + 1;
                     let alternative = ModeData::LastAlternative {
                         backtracking,
                         first_plan_start_index,
                         first_plan_had_valid_stack,
                     };
-                    if let Some(reusable) = reusable_first_nonterminal {
-                        let c = backtracking.tree_node_count;
-                        let nth = reusable.nth_tree_node;
-                        let reuse_node_index = c - 1 + nth;
+                    if let Some(reusable) = reusable_first_nonterminal
+                        && let last = reusable.pushes.last().unwrap()
+                        && let c = backtracking.tree_node_count
+                        && let Some(nth) =
+                            find_matching_node(&stack.tree_nodes[c..], last.node_type)
+                    {
+                        let reuse_node_index = c + nth;
                         debug_assert_eq!(
                             stack.tree_nodes[reuse_node_index].type_,
-                            reusable.pushes.last().unwrap().node_type.to_squashed()
+                            last.node_type.to_squashed()
                         );
                         let Some((last_leaf_index, last_leaf)) =
                             stack.last_leaf_if_proper_nonterminal(reuse_node_index)
@@ -364,9 +366,9 @@ impl<'a, T: Token> Grammar<T> {
                         // Make sure the tree nodes have the right size to overwrite them later.
                         // It doesn't matter where we insert/remove, everything should be
                         // overwritten.
-                        let push_len = reusable.pushes.len();
+                        let other_push_len = reusable.tree_nodes_needed_for_pushes - 1;
                         stack.tree_nodes.splice(
-                            c..c + nth.checked_sub(push_len).unwrap_or(0),
+                            c..c + nth.checked_sub(other_push_len).unwrap_or(0),
                             std::iter::repeat_n(
                                 InternalNode {
                                     // These values should all not matter, since they are
@@ -376,27 +378,48 @@ impl<'a, T: Token> Grammar<T> {
                                     start_index,
                                     length: 0,
                                 },
-                                push_len.checked_sub(nth).unwrap_or(0),
+                                other_push_len.checked_sub(nth).unwrap_or(0),
                             ),
                         );
-                        for (i, push) in reusable.pushes.iter().enumerate() {
-                            debug_assert!(matches!(push.stack_mode, StackMode::LL));
-                            let tree_node_index = c + i;
+                        let mut tree_node_index = c;
+                        for push in reusable.pushes.iter() {
                             stack.stack_nodes.push(StackNode {
                                 node_id: push.node_type,
                                 tree_node_index,
-                                latest_child_node_index: c + i + 1,
+                                latest_child_node_index: match &push.stack_mode {
+                                    StackMode::LL => {
+                                        stack.tree_nodes[tree_node_index] = InternalNode {
+                                            next_node_offset: 0,
+                                            type_: push.node_type.to_squashed(),
+                                            start_index,
+                                            length: 0,
+                                        };
+                                        tree_node_index += 1;
+                                        tree_node_index
+                                    }
+                                    StackMode::Alternative { .. } => tree_node_index,
+                                },
                                 dfa_state: push.next_dfa(),
                                 children_count: 1,
-                                mode: ModeData::LL,
+                                mode: match &push.stack_mode {
+                                    StackMode::LL => ModeData::LL,
+                                    StackMode::Alternative {
+                                        fallback,
+                                        replay,
+                                        reusable_first_nonterminal,
+                                    } => ModeData::Alternative {
+                                        backtracking: BacktrackingPoint {
+                                            tree_node_count: tree_node_index,
+                                            token_index: backtracking.token_index,
+                                            replay_plan: unsafe { &**replay },
+                                            children_count: 1,
+                                        },
+                                        fallback_plan: unsafe { &**fallback },
+                                        reusable_first_nonterminal,
+                                    },
+                                },
                                 enabled_token_recording: true,
                             });
-                            stack.tree_nodes[tree_node_index] = InternalNode {
-                                next_node_offset: 0,
-                                type_: push.node_type.to_squashed(),
-                                start_index,
-                                length: 0,
-                            };
                         }
                         return;
                     } else {
@@ -781,6 +804,24 @@ impl<'a> Stack<'a> {
             }
         }
     }
+}
+
+fn find_matching_node(
+    tree_nodes: &[InternalNode],
+    type_: InternalNonterminalType,
+) -> Option<usize> {
+    let type_ = type_.to_squashed();
+    let start_index = tree_nodes[0].start_index;
+    for (i, node) in tree_nodes.iter().enumerate() {
+        if node.start_index != start_index {
+            // This must be a a later node
+            return None;
+        }
+        if node.type_ == type_ {
+            return Some(i);
+        }
+    }
+    None
 }
 
 impl StackNode<'_> {
