@@ -1128,7 +1128,9 @@ fn maybe_reusable_first_nonterminal(
             return None;
         }
         for (k, push2) in fallback.pushes.iter().enumerate() {
-            if push1.node_type == push2.node_type {
+            // We have to make sure that the stack_mode is LL and not an alternative. Otherwise we
+            // could select an alternative of the current node.
+            if push1.node_type == push2.node_type && matches!(push2.stack_mode, StackMode::LL) {
                 let mut pushes: Vec<_> = fallback.pushes.iter().take(k + 1).cloned().collect();
                 // We have to ensure that the last dfa state is correct, since the first node was
                 // already parsed.
@@ -1141,10 +1143,6 @@ fn maybe_reusable_first_nonterminal(
                     .iter()
                     .filter(|p| !matches!(p.stack_mode, StackMode::Alternative { .. }))
                     .count();
-                if tree_nodes_needed_for_pushes == 0 {
-                    // TODO why does this happen?
-                    return None;
-                }
                 debug_assert!(tree_nodes_needed_for_pushes != 0);
                 return Some(ReusableFirstNonterminal {
                     tree_nodes_needed_for_pushes,
