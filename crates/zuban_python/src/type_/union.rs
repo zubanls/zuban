@@ -54,7 +54,7 @@ pub fn simplified_union_from_iterators_with_format_index(
     highest_union_format_index: usize,
 ) -> Type {
     let multiply = highest_union_format_index + 1;
-    let mut result = merge_simplified_union_type(
+    merge_simplified_union_type(
         i_s,
         types.into_iter().flat_map(|(format_index, t)| {
             t.into_iter_with_unpacked_unions(i_s.db, false)
@@ -69,34 +69,20 @@ pub fn simplified_union_from_iterators_with_format_index(
                     type_: entry.type_,
                 })
         }),
-    );
-    loop {
-        match result {
-            MergeSimplifiedUnionResult::Done(t) => return t,
-            MergeSimplifiedUnionResult::NotDone(items) => {
-                result = merge_simplified_union_type(i_s, items.into_iter())
-            }
-        }
-    }
-}
-
-enum MergeSimplifiedUnionResult {
-    NotDone(Vec<UnionEntry>),
-    Done(Type),
+    )
 }
 
 fn merge_simplified_union_type(
     i_s: &InferenceState,
     types: impl Iterator<Item = UnionEntry>,
-) -> MergeSimplifiedUnionResult {
+) -> Type {
     let mut new_types: Vec<UnionEntry> = vec![];
-    let mut finished = true;
     let mut had_enum_member = false;
     let mut had_true = false;
     let mut had_false = false;
     'outer: for additional in types {
         if additional.type_.is_object(i_s.db) {
-            return MergeSimplifiedUnionResult::Done(additional.type_);
+            return additional.type_;
         }
         if additional.type_.has_any(i_s) {
             // Generics with unknown type params can probably simply be merged with other objects
@@ -165,7 +151,6 @@ fn merge_simplified_union_type(
                                 .bool()
                             {
                                 *t = additional.type_;
-                                finished = false;
                                 continue 'outer;
                             }
                             if t.is_super_type_of(
@@ -175,7 +160,6 @@ fn merge_simplified_union_type(
                             )
                             .bool()
                             {
-                                finished = false;
                                 continue 'outer;
                             }
                         }
@@ -201,13 +185,9 @@ fn merge_simplified_union_type(
     if had_false && had_true {
         contract_bool_literals(i_s.db, &mut new_types)
     }
-    if finished {
-        MergeSimplifiedUnionResult::Done(Type::from_union_entries(
-            new_types, true, // TODO shouldn't this be calculated?
-        ))
-    } else {
-        MergeSimplifiedUnionResult::NotDone(new_types)
-    }
+    Type::from_union_entries(
+        new_types, true, // TODO shouldn't this be calculated?
+    )
 }
 
 fn try_contracting_enum_members(entries: &mut Vec<UnionEntry>) {
