@@ -116,81 +116,81 @@ fn merge_simplified_union_type(
             // recursive types that we don't handle otherwise.
             continue;
         }
-        match &additional.type_ {
-            Type::RecursiveType(r1) if r1.generics.is_some() => {
-                // Recursive aliases need special handling, because the normal subtype
-                // checking will call this function again if generics are available to
-                // cache the type.
+        let is_recursive_with_generics =
+            |t: &_| matches!(t, Type::RecursiveType(r1) if r1.generics.is_some());
+        // Recursive aliases need special handling, because the normal subtype
+        // checking will call this function again if generics are available to
+        // cache the type.
+        if is_recursive_with_generics(&additional.type_) {
+            // Since we don't remove duplicate entries in the proper way we at least do a quick
+            // equals and remove simple duplicates.
+            if new_types.iter().any(|e| e.type_ == additional.type_) {
+                continue;
             }
-            additional_t => {
-                for (i, current) in new_types.iter_mut().enumerate() {
-                    if current.type_.has_any(i_s) {
-                        if let Type::Class(c1) = &mut current.type_
-                            && c1.generics.all_any_with_unknown_type_params()
-                            && matches!(additional_t, Type::Class(c2) if c1.link == c2.link)
-                        {
-                            current.type_ = additional.type_;
-                            continue 'outer;
-                        }
-                        continue;
-                    } else if additional.type_.is_calculating(i_s.db) {
-                        break;
+        } else {
+            let additional_t = &additional.type_;
+            for (i, current) in new_types.iter_mut().enumerate() {
+                if current.type_.has_any(i_s) {
+                    if let Type::Class(c1) = &mut current.type_
+                        && c1.generics.all_any_with_unknown_type_params()
+                        && matches!(additional_t, Type::Class(c2) if c1.link == c2.link)
+                    {
+                        current.type_ = additional.type_;
+                        continue 'outer;
                     }
-                    match &mut current.type_ {
-                        Type::RecursiveType(r) if r.generics.is_some() => (),
-                        t => {
-                            if t.is_calculating(i_s.db) {
-                                if additional_t == t {
-                                    continue 'outer;
-                                } else {
-                                    continue;
-                                }
+                    continue;
+                } else if additional.type_.is_calculating(i_s.db) {
+                    break;
+                }
+                let t = &mut current.type_;
+                if is_recursive_with_generics(t) {
+                    continue;
+                }
+                if t.is_calculating(i_s.db) {
+                    if additional_t == t {
+                        continue 'outer;
+                    } else {
+                        continue;
+                    }
+                }
+                if additional_t
+                    .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
+                    .bool()
+                {
+                    // After replacing the old entry we have to check all the following
+                    // ones if they also need to be removed.
+                    new_types
+                        .extract_if(i + 1.., |e| {
+                            let t = &e.type_;
+                            // These are essentially the conditions from above repeated
+                            if t.has_any(i_s)
+                                || t.is_calculating(i_s.db)
+                                || is_recursive_with_generics(t)
+                            {
+                                return false;
                             }
-                            if additional_t
+                            additional_t
                                 .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
                                 .bool()
-                            {
-                                // After replacing the old entry we have to check all the following
-                                // ones if they also need to be removed.
-                                new_types
-                                    .extract_if(i + 1.., |e| {
-                                        let t = &e.type_;
-                                        if t.has_any(i_s) || t.is_calculating(i_s.db) {
-                                            return false;
-                                        }
-                                        additional_t
-                                            .is_super_type_of(
-                                                i_s,
-                                                &mut Matcher::with_ignored_promotions(),
-                                                t,
-                                            )
-                                            .bool()
-                                    })
-                                    .for_each(drop);
-                                new_types[i].type_ = additional.type_;
-                                continue 'outer;
-                            }
-                            if t.is_super_type_of(
-                                i_s,
-                                &mut Matcher::with_ignored_promotions(),
-                                additional_t,
-                            )
-                            .bool()
-                            {
-                                continue 'outer;
-                            }
-                        }
-                    }
+                        })
+                        .for_each(drop);
+                    new_types[i].type_ = additional.type_;
+                    continue 'outer;
                 }
-                match additional_t {
-                    Type::EnumMember(_) => had_enum_member = true,
-                    Type::Literal(literal) => match &literal.kind {
-                        LiteralKind::Bool(true) => had_true = true,
-                        LiteralKind::Bool(false) => had_false = true,
-                        _ => (),
-                    },
+                if t.is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), additional_t)
+                    .bool()
+                {
+                    continue 'outer;
+                }
+            }
+            match additional_t {
+                Type::EnumMember(_) => had_enum_member = true,
+                Type::Literal(literal) => match &literal.kind {
+                    LiteralKind::Bool(true) => had_true = true,
+                    LiteralKind::Bool(false) => had_false = true,
                     _ => (),
-                }
+                },
+                _ => (),
             }
         }
         new_types.push(additional);
